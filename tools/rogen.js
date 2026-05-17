@@ -238,175 +238,191 @@ function walk(dir, callback) {
 	}
 }
 
-async function main() {
-	const customConfigPath = cliArgs.config ? path.resolve(process.cwd(), cliArgs.config) : null;
-	const explicitDefaultPath = path.resolve(process.cwd(), "default.rogen.json");
-	const alternateDefaultPath = path.resolve(process.cwd(), ".rogen.json");
+function resolveConfigPath(customPathArg) {
+	if (customPathArg) {
+		const resolvedPath = path.resolve(process.cwd(), customPathArg);
+		if (!fs.existsSync(resolvedPath)) {
+			throw new Error(`Specified config file not found: ${customPathArg}`);
+		}
+		return resolvedPath;
+	}
 
-	let configPath = null;
-	if (customConfigPath && fs.existsSync(customConfigPath)) {
-		configPath = customConfigPath;
-	} else if (!customConfigPath) {
-		if (fs.existsSync(explicitDefaultPath)) {
-			configPath = explicitDefaultPath;
-		} else if (fs.existsSync(alternateDefaultPath)) {
-			configPath = alternateDefaultPath;
+	const explicitDefaultPath = path.resolve(process.cwd(), "default.rogen.json");
+	if (fs.existsSync(explicitDefaultPath)) return explicitDefaultPath;
+
+	const alternateDefaultPath = path.resolve(process.cwd(), ".rogen.json");
+	if (fs.existsSync(alternateDefaultPath)) return alternateDefaultPath;
+
+	return null;
+}
+
+function loadAndValidateConfig(configPath) {
+	if (!configPath) {
+		return { 
+			config: JSON.parse(JSON.stringify(FALLBACK_CONFIG)), 
+			hasConfig: false 
+		};
+	}
+
+	const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+	const standardKeys = ["sourceDir", "project", "luau", "ts", "darklua"];
+	const lowerStandardKeys = standardKeys.map(k => k.toLowerCase());
+
+	for (const key in config) {
+		const lowerKey = key.toLowerCase();
+
+		if (lowerStandardKeys.includes(lowerKey) && !standardKeys.includes(key)) {
+			const correctKey = standardKeys[lowerStandardKeys.indexOf(lowerKey)];
+			throw new Error(`\nConfiguration Error: Unrecognized key "${key}". Did you mean "${correctKey}"?\n`);
+		}
+
+		if (!standardKeys.includes(key)) {
+			const customMode = config[key];
+			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
+				throw new Error(`\nConfiguration Error: Root key "${key}" must be a valid object defining a build mode (containing 'outDir' and 'outFile').\n`);
+			}
 		}
 	}
 
-	let config = {};
-	let hasUserConfig = false;
+	return { config, hasConfig: true };
+}
+
+function getEnvironment() {
+	const isTsProject = fs.existsSync(path.join(process.cwd(), "tsconfig.json"));
+	const isDarkluaProject = fs.existsSync(path.join(process.cwd(), ".darklua.json")) 
+		|| fs.existsSync(path.join(process.cwd(), ".darklua.json5"));
 	
-	if (configPath && fs.existsSync(configPath)) {
-        config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-		hasUserConfig = true;
+	return { isTsProject, isDarkluaProject };
+}
 
-		const standardKeys = ["sourceDir", "project", "luau", "ts", "darklua"];
-        const lowerStandardKeys = standardKeys.map(k => k.toLowerCase());
+function resolveActiveModes(config, hasConfig, cliMode, env) {
+	const baseLanguage = env.isTsProject 
+		? (config.ts || FALLBACK_CONFIG.ts) 
+		: (config.luau || FALLBACK_CONFIG.luau);
+	
+	const activeModes = [];
 
-        for (const key in config) {
-            const lowerKey = key.toLowerCase();
+	if (hasConfig) {
+		if (cliMode) {
+			if (!config[cliMode]) {
+				throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
+			}
+			const selectedMode = config[cliMode];
+			if (selectedMode.wrapper === undefined) selectedMode.wrapper = baseLanguage.wrapper;
+			activeModes.push(selectedMode);
+		} else {
+			for (const key in config) {
+				if (key !== "sourceDir" && key !== "project" && typeof config[key] === "object" && !Array.isArray(config[key])) {
+					if (key === "luau" && env.isDarkluaProject) continue;
+					if (key === "ts" && !env.isTsProject) continue;
+					if (key === "darklua" && !env.isDarkluaProject) continue;
 
-            if (lowerStandardKeys.includes(lowerKey) && !standardKeys.includes(key)) {
-                const correctKey = standardKeys[lowerStandardKeys.indexOf(lowerKey)];
-                throw new Error(`\nConfiguration Error: Unrecognized key "${key}". Did you mean "${correctKey}"?\n`);
-            }
-
-            if (!standardKeys.includes(key)) {
-                const customMode = config[key];
-                if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
-                    throw new Error(`\nConfiguration Error: Root key "${key}" must be a valid object defining a build mode (containing 'outDir' and 'outFile').\n`);
-                }
-            }
+					const selectedMode = config[key];
+					if (selectedMode.wrapper === undefined) selectedMode.wrapper = baseLanguage.wrapper;
+					activeModes.push(selectedMode);
+				}
+			}
+			if (activeModes.length === 0) {
+				throw new Error("No output modes defined in configuration file. Add 'luau', 'ts', or custom modes.");
+			}
 		}
-    } else if (cliArgs.config) {
-        throw new Error(`Specified config file not found: ${cliArgs.config}`);
-    } else {
-        config = JSON.parse(JSON.stringify(FALLBACK_CONFIG));
-    }
+	} else {
+		if (cliMode) {
+			if (!config[cliMode]) {
+				throw new Error(`Mode "${cliMode}" is not defined in the fallback config.`);
+			}
+			activeModes.push({ ...baseLanguage, ...config[cliMode] });
+		} else {
+			activeModes.push(baseLanguage);
+			if (env.isDarkluaProject) {
+				activeModes.push({ ...baseLanguage, ...config.darklua });
+			}
+		}
+	}
 
+	return activeModes;
+}
+
+function build(targetConfig, config, sourcePath, env) {
+	const rojoTree = JSON.parse(JSON.stringify(config.project || { tree: { $className: "DataModel" } }));
+
+	const context = {
+		sourceDir: config.sourceDir || "src",
+		...targetConfig,
+		isTsProject: env.isTsProject,
+		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
+		name: rojoTree.name ?? "unknown",
+	};
+
+	if (!context.outDir || !context.outFile) {
+		throw new Error(`Invalid configuration: Target mode must specify 'outDir' and 'outFile'.\nReceived: ${JSON.stringify(targetConfig)}`);
+	}
+
+	let fileCount = 0;
+	walk(sourcePath, (filepath, isInit) => {
+		fileCount++;
+
+		const relativePath = path.relative(sourcePath, filepath);
+		const { targetService, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
+		
+		let current = rojoTree.tree;
+
+		if (serviceParents[targetService]) {
+			current = getOrCreateNode(current, serviceParents[targetService]);
+		}
+		current = getOrCreateNode(current, targetService);
+
+		if (context.wrapper) {
+			current = getOrCreateNode(current, context.wrapper, "Folder");
+		}
+
+		for (const part of virtualParts) {
+			current = getOrCreateNode(current, part, "Folder");
+		}
+
+		current[nodeName] = { ...current[nodeName], $path: projectPath };
+		if (current[nodeName]["$className"] === "Folder") {
+			delete current[nodeName]["$className"];
+		}
+	});
+
+	const prunedTree = pruneObject(rojoTree, context.outDir);
+	const sortedTree = sortObject(prunedTree);
+	const newContent = JSON.stringify(sortedTree, null, 2);
+
+	let shouldWrite = true;
+	if (fs.existsSync(context.outFile)) {
+		const existingContent = fs.readFileSync(context.outFile, "utf-8");
+		if (existingContent === newContent) {
+			shouldWrite = false;
+		}
+	}
+
+	if (shouldWrite) {
+		fs.writeFileSync(context.outFile, newContent);
+		console.log(`\nSuccess! Generated Rojo tree for "${context.name}"`);
+		console.log(`   Target:    ${context.outDir}`);
+		console.log(`   Processed: ${fileCount} source files`);
+		console.log(`   Output:    ${context.outFile}\n`);
+	}
+}
+
+async function main() {
+	const configPath = resolveConfigPath(cliArgs.config);
+	const { config, hasConfig } = loadAndValidateConfig(configPath);
+	
 	const sourceDir = config.sourceDir || "src";
-    const sourcePath = path.resolve(process.cwd(), sourceDir);
+	const sourcePath = path.resolve(process.cwd(), sourceDir);
+	
 	if (!fs.existsSync(sourcePath)) {
 		throw new Error(`Source directory not found: ${sourcePath}`);
 	}
 
-	const isTsProject = fs.existsSync(path.join(process.cwd(), "tsconfig.json"));
-	const isDarkluaProject = fs.existsSync(path.join(process.cwd(), ".darklua.json")) 
-		|| fs.existsSync(path.join(process.cwd(), ".darklua.json5"));
-	const baseLanguage = isTsProject 
-        ? (config.ts || FALLBACK_CONFIG.ts) 
-        : (config.luau || FALLBACK_CONFIG.luau);
-	
-	let activeModes = [];
-
-	if (hasUserConfig) {
-		if (cliArgs.mode) {
-            if (!config[cliArgs.mode]) {
-                throw new Error(`Mode "${cliArgs.mode}" is not defined in your config file.`);
-            }
-            let selectedMode = config[cliArgs.mode];
-            if (selectedMode.wrapper === undefined) {
-                selectedMode.wrapper = baseLanguage.wrapper;
-            }
-            activeModes.push(selectedMode);
-        } else {
-            for (const key in config) {
-                if (key !== "sourceDir" && key !== "project" && typeof config[key] === "object" && !Array.isArray(config[key])) {
-					if (key === "luau" && isDarkluaProject) {
-                        continue;
-                    }
-					if (key === "ts" && !isTsProject) {
-                        continue;
-                    }
-                    if (key === "darklua" && !isDarkluaProject) {
-                        continue;
-                    }
-
-                    let selectedMode = config[key];
-                    // Inherit the wrapper from the detected base language if not specified
-                    if (selectedMode.wrapper === undefined) {
-                        selectedMode.wrapper = baseLanguage.wrapper;
-                    }
-                    activeModes.push(selectedMode);
-                }
-            }
-            if (activeModes.length === 0) {
-                throw new Error("No output modes defined in configuration file. Add 'luau', 'ts', or custom modes.");
-            }
-        }
-	} else {
-        if (cliArgs.mode) {
-            if (!config[cliArgs.mode]) {
-                throw new Error(`Mode "${cliArgs.mode}" is not defined in the fallback config.`);
-            }
-            activeModes.push({ ...baseLanguage, ...config[cliArgs.mode] });
-        } else {
-            activeModes.push(baseLanguage);
-            if (isDarkluaProject) {
-                activeModes.push({ ...baseLanguage, ...config.darklua });
-            }
-        }
-    }
+	const env = getEnvironment();
+	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
 
 	for (const targetConfig of activeModes) {
-		const rojoTree = JSON.parse(JSON.stringify(config.project))
-
-		const context = {
-			sourceDir: config.sourceDir,
-			...targetConfig,
-			isTsProject,
-			emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
-			name: rojoTree.name ?? "unknown",
-		};
-
-		let fileCount = 0;
-		walk(sourcePath, (filepath, isInit) => {
-			fileCount++;
-
-			const relativePath = path.relative(sourcePath, filepath);
-			const { targetService, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
-			
-			let current = rojoTree.tree;
-
-			if (serviceParents[targetService]) {
-				current = getOrCreateNode(current, serviceParents[targetService]);
-			}
-			current = getOrCreateNode(current, targetService);
-
-			if (context.wrapper) {
-				current = getOrCreateNode(current, context.wrapper, "Folder");
-			}
-
-			for (const part of virtualParts) {
-				current = getOrCreateNode(current, part, "Folder");
-			}
-
-			current[nodeName] = { ...current[nodeName], $path: projectPath };
-			if (current[nodeName]["$className"] === "Folder") {
-				delete current[nodeName]["$className"];
-			}
-		});
-
-		const prunedTree = pruneObject(rojoTree, context.outDir);
-		const sortedTree = sortObject(prunedTree);
-		const newContent = JSON.stringify(sortedTree, null, 2);
-
-		let shouldWrite = true;
-		if (fs.existsSync(context.outFile)) {
-			const existingContent = fs.readFileSync(context.outFile, "utf-8");
-			if (existingContent === newContent) {
-				shouldWrite = false;
-			}
-		}
-
-		if (shouldWrite) {
-			fs.writeFileSync(context.outFile, newContent);
-			console.log(`\nSuccess! Generated Rojo tree for "${context.name}"`);
-			console.log(`   Target:    ${context.outDir}`);
-			console.log(`   Processed: ${fileCount} source files`);
-			console.log(`   Output:    ${context.outFile}\n`);
-		}
+		build(targetConfig, config, sourcePath, env);
 	}
 }
 
