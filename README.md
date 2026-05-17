@@ -44,7 +44,7 @@ npm install -D chokidar-cli concurrently
 Also, save the `rogen.js` script into your project as `tools/rojen.js`.
 
 ### 2. Configuration (default.rogen.json)
-Create a default.rogen.json (or .rogen.json) file in the root of your project. Rogen will automatically detect it and merge your overrides.
+Create a `.rogen.json` file in the root of your project. Rogen will automatically detect it and use that as the configuration.
 
 Here is the default configuration structure. You can add "project" to define your custom tree (e.g., adding pesde packages, mapping node_modules, or customizing specific services like SoundService).
 
@@ -102,14 +102,16 @@ Here is the default configuration structure. You can add "project" to define you
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | sourceDir           | The root directory where your uncompiled source code lives (usually "src").                                                                                                                                  |                     |
 | luau / ts / darklua | Mode-specific overrides. Rojen uses these to dictate where the compiled code ends up (outDir), the name of the generated Rojo file (outFile), and if the code should be nested in a parent folder (wrapper). |
-| project             | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rojen's auto-generated paths.              |
+| project             | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rojen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree!              |
 
 ### 3. CLI Usage
 You can run the Rogen with optional arguments:
 
 - -c, --config <path>: Specify a custom config file path.
 
-- -m, --mode <mode>: Specify the mode to run (luau, ts, or darklua). If omitted, Rojen automatically detects your project type (via tsconfig.json or .darklua.json) and runs the appropriate mode(s).
+- -m, --mode <mode>: Specify the mode to run (luau, ts, or darklua). If omitted, Rojen automatically detects your project type (via `tsconfig.json` or `.darklua.json`) and runs the appropriate mode(s).
+
+- -p, --project <mode>: Specify a path to a JSON file with a Rojo project. If omitted, Rojen will use the the project specified in "project" in the `.rogen.json` file.
 
 Thus, if you just want to run darklua, do this:
 ```bash
@@ -117,7 +119,7 @@ npm rogen -c build.rogen.json -m darklua
 ```
 
 ### 4. Update Package Script
-Add the following scripts to your package.json to automate rogen:
+Add the following scripts to your `Package.json` to automate rogen:
 
 #### For luau
 ```json
