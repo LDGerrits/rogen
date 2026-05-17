@@ -1,0 +1,46 @@
+{
+	"sourceDir": "src",
+	"luau": { 
+		"outFile": "default.project.json", 
+		"outDir": "src", 
+		"wrapper": false 
+	},
+	"ts": { 
+		"outFile": "default.project.json", 
+		"outDir": "out", 
+		"wrapper": "TS" 
+	},
+	"darklua": { 
+		"outFile": "build.project.json", 
+		"outDir": "dist" 
+	},
+	"project": {
+		"name": "roblox-project",
+		"globIgnorePaths": [
+			"**/package.json",
+			"**/tsconfig.json"
+		],
+		"tree": {
+			"$className": "DataModel",
+			"ServerScriptService": {
+				"ServerPackages": {
+					"$path": "ServerPackages"
+				}
+			},
+			"ReplicatedStorage": {
+				"rbxts_include": {
+					"$path": "include",
+					"node_modules": { 
+						"$className": "Folder", 
+						"@rbxts": { 
+							"$path": "node_modules/@rbxts" 
+						}
+					}
+				},
+				"Packages": {
+					"$path": "Packages"
+				}
+			}
+		}
+	}
+}

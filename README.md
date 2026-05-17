@@ -1,16 +1,18 @@
 <div align="center">
-	<h1>rojo-feature-router</h1>
-    <p>An automatic, file-system based router for roblox-ts and luau. Organize feature logic in a single directory.</p>
+	<h1>rogen</h1>
+    <p>A tool for feature-based folder structures with Rojo.</p>
     <img src="example.png" alt="Visual mapping of VS Code to Roblox Explorer" width="100%">
 </div>
 
-## Why use it?
-While **folder-by-type** (i.e. putting all components in one folder, all services in another) is simple, it becomes difficult to manage as projects grow, requiring you to jump between folders to edit one feature. 
+## What is Rogen?
+Rogen is a command line tool that brings **feature-based architecture** to Roblox development for both luau and roblox-ts. 
 
-**Folder-by-feature** (i.e. grouping all related files together) is superior for scaling, maintainability, and team collaboration. It makes it easier to add, modify, or delete features.
+Instead of separating your codebase in a `client`, `shared` and `server` folder at the root level, Rogen lets you group your code by domain and feature. You can keep your inventory UI, inventory server script, and inventory client script all inside a single, unified `inventory` folder. This approach improves scalability, maintainability, and team collaboration.
+
+In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo, ensuring your repository stays organized by feature while Roblox receives the exact service structure it expects. 
 
 ## Automatic Routing
-The router determines a file's destination using three main strategies. Folder-based routing takes precedence over suffix-based routing.
+Rogen determines a file's destination using three main strategies. Folder-based routing takes precedence over suffix-based routing.
 
 ### 1. Folder Context (Primary)
 If a file is located within a folder named after a service or a keyword, it is automatically routed to that service.
@@ -19,61 +21,138 @@ If a file is located within a folder named after a service or a keyword, it is a
 * **Behavior:** All files and sub-folders within these directories inherit the target service.
 
 ### 2. Suffix Context (Secondary)
-If a file is in a generic folder, the router inspects the filename for a suffix. This allows you to define a file's destination without moving it into a specific sub-folder.
+If a file is in a generic folder, Rogen inspects the filename for a suffix. This allows you to define a file's destination without moving it into a specific sub-folder.
 * **Delimited Suffixes:** Use a separator such as a dot, hyphen, or underscore.
     - Examples: `auth.server.ts`, `input-client.ts`, `data_shared.ts`
 
 * **PascalCase Suffixes:** Append the service name directly to the end of the filename.
     - Examples: `AuthServer.ts`, `InputClient.ts`, `DataShared.ts`
 
-    **Note:** The router strips the suffix for the final Rojo object name. `AuthServer.ts` becomes `Auth` in Roblox. This can be stopped by setting `appendSuffix = true` instead.
+    **Note:** Rogen strips the suffix for the final Rojo object name. `AuthServer.ts` becomes `Auth` in Roblox.
 
 ### 3. Default
 If neither matches, the file defaults to `ReplicatedStorage`.
 
 ## Setup & Integration
-Integrate the router into your workflow to ensure that your `default.project.json` stays synchronized with your file system.
+Integrate Rogen into your workflow to ensure that your `default.project.json` stays synchronized with your file system.
 
 ### 1. Install Dependencies
-Copy the `feature-router.js` script into your project (e.g. in the `tools/` directory). Then, modify the settings and rojo tree at the top of the script to your need.
-
-Also, you will need a few development tools to handle the watching, routing and concurrent execution for the commands:
+You will need a few development tools to handle the watching and concurrent execution for the commands:
 ```bash
 npm install -D chokidar-cli concurrently
 ```
+Also, save the `rogen.js` script into your project as `tools/rogen.js`.
 
-### 2. Update JSON Scripts
-Add the following scripts to your package.json to automate the build process:
+### 2. Configuration (.rogen.json)
+Create a `.rogen.json` file in the root of your project. Rogen will automatically detect it and use that as the configuration.
 
-#### luau
+Here is a default configuration structure that works for both roblox-ts and luau, including darklua support. You may want to define a custom tree in "project" for things like adding pesde packages, mapping node_modules, or customizing specific services.
+
+```json
+{
+	"sourceDir": "src",
+	"luau": { 
+		"outFile": "default.project.json", 
+		"outDir": "src", 
+		"wrapper": false 
+	},
+	"ts": { 
+		"outFile": "default.project.json", 
+		"outDir": "out", 
+		"wrapper": "TS" 
+	},
+	"darklua": { 
+		"outFile": "build.project.json", 
+		"outDir": "dist" 
+	},
+	"project": {
+		"name": "roblox-project",
+		"globIgnorePaths": [
+			"**/package.json",
+			"**/tsconfig.json"
+		],
+		"tree": {
+			"$className": "DataModel",
+			"ServerScriptService": {
+				"ServerPackages": {
+					"$path": "ServerPackages"
+				}
+			},
+			"ReplicatedStorage": {
+				"rbxts_include": {
+					"$path": "include",
+					"node_modules": { 
+						"$className": "Folder", 
+						"@rbxts": { 
+							"$path": "node_modules/@rbxts" 
+						}
+					}
+				},
+				"Packages": {
+					"$path": "Packages"
+				}
+			}
+		}
+	}
+}
+```
+
+| Property            | Description                                                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| sourceDir           | The root directory where your uncompiled source code lives (usually "src").                                                                                                                                  |                     |
+| luau / ts / darklua | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (outDir), the name of the generated Rojo file (outFile), and if the code should be nested in a parent folder (wrapper). |
+| project             | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree!              |
+
+### 3. CLI Usage
+You can run Rogen with optional arguments:
+
+- -c, --config <path>: Specify a custom config file path.
+
+- -m, --mode <mode>: Specify the mode to run (luau, ts, or darklua). If omitted, Rogen automatically detects your project type (via `tsconfig.json` or `.darklua.json`) and runs the appropriate mode(s).
+
+- -p, --project <project>: Specify a path to a JSON file that contains a Rojo project. If omitted, Rogen will use the project specified in "project" in the `.rogen.json` file.
+
+As an example, it is possible to have multiple Rogen config files, run a specific mode, and inject a specific Rojo project file. It would look something like this:
+```bash
+node tools/rogen.js -c build.rogen.json -m darklua -p build.project.json
+```
+Or, if you added the commands to `package.json`, you can do this:
+```bash
+npm run rogen -- -c build.rogen.json -m darklua -p build.project.json
+```
+
+### 4. Update Package Script
+Add the following scripts to your `package.json` to automate rogen:
+
+#### For luau
 ```json
 "scripts": {
-    "router": "node tools/feature-router.js",
-    "build": "npm run router",
-    "watch": "chokidar \"src/**/*\" -c \"npm run router\"",
+    "rogen": "node tools/rogen.js",
+    "build": "npm run rogen",
+    "watch": "chokidar \"src/**/*\" -c \"npm run rogen\"",
     "sourcemap": "rojo sourcemap --watch default.project.json --output sourcemap.json",
     "dev": "npm run build && concurrently \"npm run watch\" \"rojo serve\" \"npm run sourcemap\""
 },
 ```
 
-#### roblox-ts
+#### For roblox-ts
 ```json
 "scripts": {
-    "router": "node tools/feature-router.js",
-    "build": "npm run router && rbxtsc",
-    "watch": "concurrently \"chokidar \"src/**/*\" -c \\\"npm run router\\\"\" \"rbxtsc -w\"",
-    "dev": "npm run build && concurrently \"chokidar \"src/**/*\" -c \\\"npm run router\\\"\" \"rbxtsc -w\" \"rojo serve\""
+    "rogen": "node tools/rogen.js",
+    "build": "npm run rogen && rbxtsc",
+    "watch": "concurrently \"chokidar \"src/**/*\" -c \\\"npm run rogen\\\"\" \"rbxtsc -w\"",
+    "dev": "npm run build && concurrently \"chokidar \"src/**/*\" -c \\\"npm run rogen\\\"\" \"rbxtsc -w\" \"rojo serve\""
 },
 ```
 
-Make sure to add the following to your tsconfig.json:
+**Note:** Make sure to also add the following to your tsconfig.json:
 ```json
 "exclude": [
 	"tools"
 ]
 ```
 
-### 3. Commands
+### 5. Commands
 * **npm run build:** Generates the latest project map (and performs a single roblox-ts compilation).  
 * **npm run watch:** Monitors your src directory. If you add or move a folder, the mapper instantly updates your Rojo project (and code compilation).  
 * **npm run dev:** The dev command. It builds, compiles, starts all watchers, and launches the Rojo server all in one go.
