@@ -9,7 +9,9 @@ Rogen is a command line tool that brings **feature-based architecture** to Roblo
 
 Instead of separating your codebase in a `client`, `shared` and `server` folder at the root level, Rogen lets you group your code by domain and feature. You can keep your inventory UI, inventory server script, and inventory client script all inside a single, unified `inventory` folder. This approach improves scalability, maintainability, and team collaboration.
 
-In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo, ensuring your repository stays organized by feature while Roblox receives the exact service structure it expects. 
+In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo, ensuring your repository stays organized by feature while Roblox receives the exact service structure it expects.
+
+*If you use luau, it is **highly recommended** to also set up darklua for improved string requires.*
 
 ## Automatic Routing
 Rogen determines a file's destination using three main strategies. Folder-based routing takes precedence over suffix-based routing.
