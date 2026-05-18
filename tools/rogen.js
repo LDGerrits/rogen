@@ -247,12 +247,13 @@ function resolveRoute(relativePath, isInit, { emitLegacyScripts, isTsProject, ou
 	// Folder routing
 	for (const part of parts) {
 		const lowerPart = part.toLowerCase();
+		
 		if (lowerServiceMap[lowerPart]) {
 			targetService = lowerServiceMap[lowerPart];
 			lastRouteKeyword = lowerPart;
-		} else {
-			virtualParts.push(part);
 		}
+
+		virtualParts.push(part);
 	}
 
 	let matchedSuffixLength = 0;
