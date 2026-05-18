@@ -1,18 +1,16 @@
 {
-	"sourceDir": "src",
+	"source": "src",
 	"luau": { 
-		"outFile": "default.project.json", 
-		"outDir": "src", 
-		"wrapper": false 
+		"output": "default.project.json", 
+		"build": "src"
 	},
 	"ts": { 
-		"outFile": "default.project.json", 
-		"outDir": "out", 
-		"wrapper": "TS" 
+		"output": "default.project.json", 
+		"build": "out"
 	},
 	"darklua": { 
-		"outFile": "build.project.json", 
-		"outDir": "dist" 
+		"output": "build.project.json", 
+		"build": "dist" 
 	},
 	"project": {
 		"name": "roblox-project",

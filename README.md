@@ -50,21 +50,18 @@ Here is a default configuration structure that works for both roblox-ts and luau
 
 ```json
 {
-	"sourceDir": "src",
+	"source": "src",
 	"luau": { 
-		"outFile": "default.project.json", 
-		"outDir": "src", 
-		"wrapper": false 
+		"output": "default.project.json", 
+		"build": "src"
 	},
 	"ts": { 
-		"outFile": "default.project.json", 
-		"outDir": "out", 
-		"wrapper": "TS" 
+		"output": "default.project.json", 
+		"build": "out"
 	},
 	"darklua": { 
-		"outFile": "build.project.json", 
-		"outDir": "dist",
-		"wrapper": false
+		"output": "build.project.json", 
+		"build": "dist" 
 	},
 	"project": {
 		"name": "roblox-project",
@@ -100,26 +97,32 @@ Here is a default configuration structure that works for both roblox-ts and luau
 
 | Property            | Description                                                                                                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| sourceDir           | The root directory where your uncompiled source code lives (usually "src").                                                                                                                                  |                     |
-| luau / ts / darklua | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (outDir), the name of the generated Rojo file (outFile), and if the code should be nested in a parent folder (wrapper). |
-| project             | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree!              |
+| source           | The root directory where your uncompiled source code lives (usually "src").                                                                                                                                  |                     |
+| luau / ts / darklua | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output) |
+| template             | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree!              |
 
 ### 3. CLI Usage
-You can run Rogen with optional arguments:
+You can run Rogen with optional arguments to cleanly override your configurations on the fly:
 
-- -c, --config <path>: Specify a custom config file path.
+- `-c, --config <path>`: Specify a custom Rogen config file path.
 
-- -m, --mode <mode>: Specify the mode to run (luau, ts, or darklua). If omitted, Rogen automatically detects your project type (via `tsconfig.json` or `.darklua.json`) and runs the appropriate mode(s).
+- `-m, --mode <mode>`: Specify the mode to run (luau, ts, or darklua). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
 
-- -p, --project <project>: Specify a path to a JSON file that contains a Rojo project. If omitted, Rogen will use the project specified in "project" in the `.rogen.json` file.
+- `-s, --source <path>`: Override the directory containing your raw, uncompiled code.
 
-As an example, it is possible to have multiple Rogen config files, run a specific mode, and inject a specific Rojo project file. It would look something like this:
+- `-t, --template <path>`: Specify a path to a JSON file that contains your base Rojo blueprint. If omitted, Rogen defaults to the inline object or file mapped in your .rogen.json.
+
+- `-b, --build <path>`: Override the directory where your compiled/transpiled code lands.
+
+-  `-o, --output <path>`: Override the name and destination of the final generated Rojo .project.json file.
+
+As an example, it is possible to pass a specific configuration file, run a custom mode, inject a base template, and force a targeted output file directly from your terminal:
 ```bash
-node tools/rogen.js -c build.rogen.json -m darklua -p build.project.json
+node tools/rogen.js -c build.rogen.json -m darklua -t base.template.json -o build.project.json
 ```
-Or, if you added the commands to `package.json`, you can do this:
+Or, if you added the script execution commands to your package.json, you can pass the arguments through npm like this:
 ```bash
-npm run rogen -- -c build.rogen.json -m darklua -p build.project.json
+npm run rogen -- -c build.rogen.json -m darklua -t base.template.json -o build.project.json
 ```
 
 ### 4. Update Package Script
