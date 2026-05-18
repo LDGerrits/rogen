@@ -14,13 +14,11 @@ const FALLBACK_CONFIG = `{
 	"sourceDir": "src",
 	"luau": { 
 		"outFile": "default.project.json", 
-		"outDir": "src", 
-		"wrapper": false 
+		"outDir": "src"
 	},
 	"ts": { 
 		"outFile": "default.project.json", 
-		"outDir": "out", 
-		"wrapper": "TS" 
+		"outDir": "out"
 	},
 	"darklua": { 
 		"outFile": "build.project.json", 
@@ -75,6 +73,26 @@ const serviceParents = {
 	StarterPlayerScripts: "StarterPlayer",
 	StarterCharacterScripts: "StarterPlayer",
 };
+
+const serverContainers = new Set([
+    "ServerScriptService", 
+    "ServerStorage"
+]);
+
+const clientContainers = new Set([
+    "StarterPlayer", 
+    "StarterPlayerScripts", 
+    "StarterCharacterScripts", 
+    "StarterGui", 
+    "StarterPack", 
+    "ReplicatedFirst"
+]);
+
+const serviceAliases = new Set([
+	"server", 
+	"client", 
+	"shared"
+]);
 
 const lowerCaseServiceMap = Object.fromEntries(Object.entries(services).map(([k, v]) => [k.toLowerCase(), v]));
 const separatorRegex = new RegExp(`[\\.\\-_](${Object.keys(lowerCaseServiceMap).join("|")})$`, "i");
@@ -183,7 +201,6 @@ function resolveActiveModes(config, hasConfig, cliMode, env) {
 				throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
 			}
 			const selectedMode = config[cliMode];
-			if (selectedMode.wrapper === undefined) selectedMode.wrapper = baseLanguage.wrapper;
 			activeModes.push(selectedMode);
 		} else {
 			for (const key in config) {
@@ -193,7 +210,6 @@ function resolveActiveModes(config, hasConfig, cliMode, env) {
 					if (key === "darklua" && !env.isDarkluaProject) continue;
 
 					const selectedMode = config[key];
-					if (selectedMode.wrapper === undefined) selectedMode.wrapper = baseLanguage.wrapper;
 					activeModes.push(selectedMode);
 				}
 			}
@@ -239,21 +255,27 @@ function resolveRoute(relativePath, isInit, { emitLegacyScripts, isTsProject, ou
 	const parts = relativePath.split(path.sep);
 	const filename = parts.pop();
 	const basename = path.basename(filename, path.extname(filename));
+	const virtualParts = [];
 
 	let targetService = "ReplicatedStorage";
-	const virtualParts = [];
 	let lastRouteKeyword = null;
+	let environment = null;
 
 	// Folder routing
 	for (const part of parts) {
 		const lowerPart = part.toLowerCase();
+		const matchedService = lowerCaseServiceMap[lowerPart];
 
-		if (lowerCaseServiceMap[lowerPart]) {
-			targetService = lowerCaseServiceMap[lowerPart];
-			lastRouteKeyword = upperCaseServiceMap[lowerPart];
+		if (matchedService) {
+			targetService = matchedService;
+			lastRouteKeyword = lowerPart;
+
+			if (serviceAliases.has(lowerPart)) {
+				environment = lowerPart;
+			}
+		} else {
+			virtualParts.push(part);
 		}
-
-		virtualParts.push(upperCaseServiceMap[lowerPart] || part);
 	}
 
 	let matchedSuffixLength = 0;
@@ -264,21 +286,35 @@ function resolveRoute(relativePath, isInit, { emitLegacyScripts, isTsProject, ou
 
 	// Suffix routing
 	if (sepMatch) {
-		mappedService = lowerCaseServiceMap[sepMatch[1].toLowerCase()];
+		const suffix = sepMatch[1].toLowerCase();
+		mappedService = lowerCaseServiceMap[suffix];
 		matchedSuffixLength = sepMatch[0].length;
-		if (!isInit) {
-			virtualParts.push(sepMatch[1]);
+
+		if (!isInit && serviceAliases.has(suffix)) {
+			environment = suffix;
 		}
 	} else if (pascalMatch) {
+		const suffix = pascalMatch[1].toLowerCase();
 		mappedService = services[pascalMatch[1]];
 		matchedSuffixLength = pascalMatch[0].length;
-		if (!isInit) {
-			virtualParts.push(pascalMatch[1]);
+
+		if (!isInit && serviceAliases.has(suffix)) {
+			environment = suffix;
 		}
 	}
 	if (mappedService && !lastRouteKeyword) {
 		targetService = mappedService;
 	}
+
+	// Resolve namespace wrapper folder
+	let wrapperFolder = "shared";
+    if (serverContainers.has(targetService)) {
+        wrapperFolder = "server";
+    } else if (clientContainers.has(targetService)) {
+        wrapperFolder = "client";
+    } else if (environment) {
+        wrapperFolder = environment;
+    }
 
 	// Scripts with non-legacy RunContext run incorrectly in StarterPlayer container.
 	// Instead, always put them in ReplicatedStorage
@@ -314,7 +350,7 @@ function resolveRoute(relativePath, isInit, { emitLegacyScripts, isTsProject, ou
 		}
 	}
 
-	return { targetService, virtualParts, nodeName, projectPath };
+	return { targetService, wrapperFolder, virtualParts, nodeName, projectPath };
 }
 
 function walk(dir, callback) {
@@ -395,7 +431,7 @@ function build(targetConfig, config, sourcePath, env, baseProjectTree) {
 		fileCount++;
 
 		const relativePath = path.relative(sourcePath, filepath);
-		const { targetService, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
+		const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
 		
 		let current = rojoTree.tree;
 
@@ -404,9 +440,7 @@ function build(targetConfig, config, sourcePath, env, baseProjectTree) {
 		}
 		current = getOrCreateNode(current, targetService);
 
-		if (context.wrapper) {
-			current = getOrCreateNode(current, context.wrapper, "Folder");
-		}
+		current = getOrCreateNode(current, wrapperFolder, "Folder");
 
 		for (const part of virtualParts) {
 			current = getOrCreateNode(current, part, "Folder");
