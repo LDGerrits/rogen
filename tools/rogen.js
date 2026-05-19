@@ -429,85 +429,120 @@ function sortObject(obj) {
 		}, {});
 }
 
+function verifyPathsExist(node, buildDir) {
+	for (const key in node) {
+		const val = node[key];
+		if (typeof val !== "object" || val === null) continue;
+
+		if (val.$path && val.$path.startsWith(buildDir)) {
+			const absolutePath = path.resolve(process.cwd(), val.$path);
+			if (!fs.existsSync(absolutePath)) {
+				return false;
+			}
+		}
+		if (!verifyPathsExist(val, buildDir)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // -------------------------------
 // EXECUTION
 // -------------------------------
 
-function build(targetConfig, config, sourcePath, env, baseProjectTree) {
-	const rojoTree = JSON.parse(JSON.stringify(baseProjectTree));
-	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
+let currentGenerationId = 0; // Used for preventing concurrent overlapping loops
 
-	const context = {
-		source: config.source || "src",
-		...targetConfig,
-		isTsProject: env.isTsProject,
-		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
-		name: rojoTree.name ?? "unknown",
-	};
+function runPipeline(sourcePath, env, activeModes, baseProjectTree, config, attempt = 1, generationId = 0) {
+	if (generationId !== currentGenerationId) return;
 
-	if (!context.build || !context.output) {
-		throw new Error(`Invalid configuration: Target mode must specify 'build' and 'output'.\nReceived: ${JSON.stringify(targetConfig)}`);
-	}
+	let allPathsReady = true;
+	const pendingBuilds = [];
 
-	let fileCount = 0;
-	walk(sourcePath, (filepath, isInit) => {
-		fileCount++;
-
-		const relativePath = path.relative(sourcePath, filepath);
-		const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
-		
-		let current = rojoTree.tree;
-
-		if (serviceParents[targetService]) {
-			current = getOrCreateNode(current, serviceParents[targetService]);
-		}
-		current = getOrCreateNode(current, targetService);
-
-		current = getOrCreateNode(current, wrapperFolder, "Folder");
-
-		for (const part of virtualParts) {
-			current = getOrCreateNode(current, part, "Folder");
-		}
-
-		current[nodeName] = { ...current[nodeName], $path: projectPath };
-		if (current[nodeName]["$className"] === "Folder") {
-			delete current[nodeName]["$className"];
-		}
-	});
-
-	const prunedTree = pruneObject(rojoTree, context.build);
-	const sortedTree = sortObject(prunedTree);
-	const newContent = JSON.stringify(sortedTree, null, 2);
-
-	let shouldWrite = true;
-	if (fs.existsSync(context.output)) {
-		const existingContent = fs.readFileSync(context.output, "utf-8");
-		if (existingContent === newContent) {
-			shouldWrite = false;
-		}
-	}
-
-	if (shouldWrite) {
-		fs.writeFileSync(context.output, newContent);
-		console.log(`\nSuccess! Generated Rojo tree for "${context.name}"`);
-		console.log(`   Build:    ${context.build}`);
-		console.log(`   Processed: ${fileCount} source files`);
-		console.log(`   Output:   ${context.output}\n`);
-	}
-}
-
-function runPipeline(sourcePath, env, activeModes, baseProjectTree, config) {
 	try {
+		// Build step
 		for (const targetConfig of activeModes) {
 			const modeCopy = { ...targetConfig };
-			if (cliArgs.output) {
-				modeCopy.output = cliArgs.output;
-			} 
-			if (cliArgs.build) {
-				modeCopy.build = cliArgs.build;
+			if (cliArgs.output) modeCopy.output = cliArgs.output;
+			if (cliArgs.build) modeCopy.build = cliArgs.build;
+
+			const rojoTree = JSON.parse(JSON.stringify(baseProjectTree));
+			rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
+
+			const context = {
+				source: config.source || "src",
+				...modeCopy,
+				isTsProject: env.isTsProject,
+				emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
+				name: rojoTree.name ?? "unknown",
+			};
+
+			let fileCount = 0;
+			walk(sourcePath, (filepath, isInit) => {
+				fileCount++;
+				const relativePath = path.relative(sourcePath, filepath);
+				const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
+				
+				let current = rojoTree.tree;
+
+				if (serviceParents[targetService]) {
+					current = getOrCreateNode(current, serviceParents[targetService]);
+				}
+				current = getOrCreateNode(current, targetService);
+				current = getOrCreateNode(current, wrapperFolder, "Folder");
+
+				for (const part of virtualParts) {
+					current = getOrCreateNode(current, part, "Folder");
+				}
+
+				current[nodeName] = { ...current[nodeName], $path: projectPath };
+				if (current[nodeName]["$className"] === "Folder") {
+					delete current[nodeName]["$className"];
+				}
+			});
+
+			const prunedTree = pruneObject(rojoTree, context.build);
+			const sortedTree = sortObject(prunedTree);
+
+			if (!verifyPathsExist(sortedTree.tree, context.build)) {
+				allPathsReady = false;
 			}
-			
-			build(modeCopy, config, sourcePath, env, baseProjectTree);
+
+			pendingBuilds.push({
+				output: context.output,
+				content: JSON.stringify(sortedTree, null, 2),
+				name: context.name,
+				buildDir: context.build,
+				fileCount
+			});
+		}
+
+		// If files are missing (e.g. due to compiling), poll again for several attempts and run again
+		if (!allPathsReady && attempt <= 20) {
+			setTimeout(() => {
+				runPipeline(sourcePath, env, activeModes, baseProjectTree, config, attempt + 1, generationId);
+			}, 250);
+			return;
+		}
+
+		if (generationId !== currentGenerationId) return;
+
+		for (const b of pendingBuilds) {
+			let shouldWrite = true;
+			if (fs.existsSync(b.output)) {
+				const existingContent = fs.readFileSync(b.output, "utf-8");
+				if (existingContent === b.content) {
+					shouldWrite = false;
+				}
+			}
+
+			if (shouldWrite) {
+				fs.writeFileSync(b.output, b.content);
+				console.log(`\nSuccess! Generated Rojo tree for "${b.name}"`);
+				console.log(`   Build:    ${b.buildDir}`);
+				console.log(`   Processed: ${b.fileCount} source files`);
+				console.log(`   Output:   ${b.output}\n`);
+			}
 		}
 	} catch (err) {
 		console.error(`\nBuild Failed: ${err.message}\n`);
@@ -534,11 +569,11 @@ async function main() {
 	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
 	const baseProjectTree = loadProjectTree(cliArgs.template, config.template);
 
-	console.log("Generating initial project...");
-	runPipeline(sourcePath, env, activeModes, baseProjectTree, config);
+	currentGenerationId++;
+	runPipeline(sourcePath, env, activeModes, baseProjectTree, config, 1, currentGenerationId);
 
 	if (cliArgs.watch) {
-		console.log(`Rogen: Watching for file changes in "${source}"... (Press Ctrl+C to stop)`);
+		console.log(`Rogen watching for file changes in "${source}"... (Press Ctrl+C to stop)`);
 		
 		let debounceTimeout;
 		fs.watch(sourcePath, { recursive: true }, (_, filename) => {
@@ -547,7 +582,8 @@ async function main() {
 			clearTimeout(debounceTimeout);
 
 			debounceTimeout = setTimeout(() => {
-				runPipeline(sourcePath, env, activeModes, baseProjectTree, config);
+				currentGenerationId++;
+				runPipeline(sourcePath, env, activeModes, baseProjectTree, config, 1, currentGenerationId);
 			}, 100);
 		});
 		
