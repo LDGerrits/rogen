@@ -48,7 +48,7 @@ Also, save the `rogen.js` script into your project as `tools/rogen.js`.
 ### 2. Configuration (.rogen.json)
 Create a `.rogen.json` file in the root of your project. Rogen will automatically detect it and use that as the configuration.
 
-Here is a default configuration structure that works for both roblox-ts and luau, including darklua support. You may want to define a custom tree in "project" for things like adding pesde packages, mapping node_modules, or customizing specific services.
+Here is a default configuration structure that works for both roblox-ts and luau, including darklua support. You may want to define a custom tree in "template" for things like adding pesde packages, mapping node_modules, or customizing specific services.
 
 ```json
 {
