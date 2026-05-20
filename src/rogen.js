@@ -437,7 +437,7 @@ function findMissingPaths(node, buildDir, missing = []) {
 		if (val.$path && val.$path.startsWith(buildDir)) {
 			const absolutePath = path.resolve(process.cwd(), val.$path);
 			if (!fs.existsSync(absolutePath)) {
-				missing.push({ parent: node, key: key, path: val.$path });
+				missing.push({ parent: node, key: key, path: val.$path, absolutePath });
 			}
 		}
 		findMissingPaths(val, buildDir, missing);
@@ -508,56 +508,44 @@ let currentGenerationId = 0; // Used for preventing concurrent overlapping loops
 function runPipeline(sourcePath, env, activeModes, baseProjectTree, config, attempt = 1, generationId = 0) {
 	if (generationId !== currentGenerationId) return;
 
-	let allPathsReady = true;
-	const pendingBuilds = [];
-
 	try {
 		for (const targetConfig of activeModes) {
 			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePath);
-			
+
+			// Instantly stub missing files so Rojo doesn't crash 
+			// and roblox-ts (or other compiler) has the tree it needs to compile.
 			if (buildResult.missingPaths.length > 0) {
-				allPathsReady = false;
-			}
-
-			pendingBuilds.push(buildResult);
-		}
-
-		// If files are missing (e.g. due to compiling), poll again for several attempts and run again
-		if (!allPathsReady && attempt <= 20) {
-			setTimeout(() => {
-				runPipeline(sourcePath, env, activeModes, baseProjectTree, config, attempt + 1, generationId);
-			}, 250);
-			return;
-		}
-
-		if (generationId !== currentGenerationId) return;
-
-		for (const b of pendingBuilds) {
-			// If the attempt limit is hit but paths are still missing, prune the paths instead.
-			if (b.missingPaths.length > 0) {
-				console.warn(`\n${b.missingPaths.length} path(s) failed to compile to "${b.buildDir}" after 5 seconds:`);
-				for (const item of b.missingPaths) {
-					console.warn(`  - ${item.path}`);
-					delete item.parent[item.key];
+				for (const item of buildResult.missingPaths) {
+					const ext = path.extname(item.absolutePath).toLowerCase();
+					
+					if (ext === '.luau' || ext === '.lua') {
+						const dir = path.dirname(item.absolutePath);
+						if (!fs.existsSync(dir)) {
+							fs.mkdirSync(dir, { recursive: true });
+						}
+						fs.writeFileSync(item.absolutePath, "");
+					} else {
+						delete item.parent[item.key];
+					}
 				}
 			}
 
-			const finalContent = JSON.stringify(b.tree, null, 2);
+			const finalContent = JSON.stringify(buildResult.tree, null, 2);
 
 			let shouldWrite = true;
-			if (fs.existsSync(b.output)) {
-				const existingContent = fs.readFileSync(b.output, "utf-8");
+			if (fs.existsSync(buildResult.output)) {
+				const existingContent = fs.readFileSync(buildResult.output, "utf-8");
 				if (existingContent === finalContent) {
 					shouldWrite = false;
 				}
 			}
 
 			if (shouldWrite) {
-				fs.writeFileSync(b.output, finalContent);
-				console.log(`\nSuccess! Generated Rojo tree for "${b.name}"`);
-				console.log(`   Build:    ${b.buildDir}`);
-				console.log(`   Processed: ${b.fileCount} source files`);
-				console.log(`   Output:   ${b.output}\n`);
+				fs.writeFileSync(buildResult.output, finalContent);
+				console.log(`\nSuccess! Generated Rojo tree for "${buildResult.name}"`);
+				console.log(`   Build:     ${buildResult.buildDir}`);
+				console.log(`   Processed: ${buildResult.fileCount} source files`);
+				console.log(`   Output:    ${buildResult.output}\n`);
 			}
 		}
 	} catch (err) {
