@@ -148,3 +148,7 @@ Then, update your package.json script:
 	"watch": "concurrently \"rogen -w\" \"rbxtsc -w\""
 },
 ```
+And simply run the script:
+```bash
+npm run watch
+```
