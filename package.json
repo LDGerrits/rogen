@@ -1,6 +1,6 @@
 {
   "name": "rogen",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A tool for feature-based folder structures with Rojo.",
   "scripts": {
     "test": "jest",
