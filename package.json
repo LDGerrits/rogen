@@ -2,6 +2,17 @@
   "name": "rogen",
   "version": "1.0.2",
   "description": "A tool for feature-based folder structures with Rojo.",
-  "bin": "./src/rogen.js",
+  "main": "src/index.js",
+  "bin": {
+    "rogen": "./bin/rogen.js"
+  },
+  "pkg": {
+    "scripts": [
+      "src/**/*.js"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
   "dependencies": {}
 }
