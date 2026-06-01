@@ -11,6 +11,8 @@ Instead of separating your codebase in a `client`, `shared` and `server` folder 
 
 In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo, ensuring your repository stays organized by feature while Roblox receives the exact service structure it expects.
 
+Rogen also supports multi-repo (or polyrepo) codebases, allowing you to merge multiple repositories into a single Rojo project.
+
 *If you use luau, it is **highly recommended** to also set up darklua for improved string requires.*
 
 ## Automatic Routing
@@ -35,6 +37,13 @@ If a file is in a generic folder, Rogen inspects the filename for a suffix. This
 ### 3. Default
 If neither matches, the file defaults to `ReplicatedStorage`.
 
+## Multi-Place Merging
+Rogen supports passing an array of directories to the source config (or passing the -s CLI flag multiple times). This is useful for multi-place games where you want to share a base library across different projects.
+
+* **Clean Merging:** If src/core and src/hub both contain a shared folder, Rogen will merge the contents of both into a single ReplicatedStorage.shared folder. No duplicates are created.
+
+* *Overrides:** The order of your sources matters. If both directories contain a file with the exact same name and routing path, the directory listed last will overwrite the previous one.
+
 ## Setup & Integration
 Integrate Rogen into your workflow to ensure that your `default.project.json` stays synchronized with your file system.
 
@@ -44,7 +53,7 @@ Rogen is distributed as a standalone CLI tool. Install it into your project usin
 **Rokit (`rokit.toml`)**
 ```toml
 [tools]
-rogen = "ldgerrits/rogen@1.1.2"
+rogen = "ldgerrits/rogen@1.2.0"
 ```
 
 ### 2. Configuration (.rogen.json)
@@ -54,7 +63,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 
 ```json
 {
-	"source": "src",
+	"source": ["src"],
 	"keepSuffixes": false,
 	"luau": { 
 		"output": "default.project.json", 
@@ -106,7 +115,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 
 | Property            | Description                                                                                                                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| source              | The root directory where your uncompiled source code lives (defaults to "src").                                                                                                                                                                                     |
+| source              | The root directory (String) or directories (Array of Strings) where your source code lives (defaults to "src"). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
 | luau / ts / darklua | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |
 | aliases             | An object allowing you to define custom suffix or folder routing mappings. You can use this to register new keywords (e.g., "Controller": "StarterPlayerScripts") or overwrite Rogen's default service routing behaviors.                                           |
@@ -123,7 +132,7 @@ You can run Rogen with optional arguments to cleanly override your configuration
 
 - `-m, --mode <mode>`: Specify the mode to run (luau, ts, or darklua). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
 
-- `-s, --source <path>`: Override the directory containing your raw, uncompiled code.
+- `-s, --source <path>`: Override the directory containing your raw, uncompiled code. Can be passed multiple times (e.g., -s src/core -s src/hub) to merge multiple directories.
 
 - `-t, --template <path>`: Specify a path to a JSON file that contains your base Rojo blueprint. If omitted, Rogen defaults to the inline object or file mapped in your .rogen.json.
 

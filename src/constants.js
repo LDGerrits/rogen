@@ -1,5 +1,5 @@
 const defaultConfig = {
-	"source": "src",
+	"source": ["src"],
 	"keepSuffixes": false,
 	"aliases": {},
 	"luau": { 
