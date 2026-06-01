@@ -2,10 +2,10 @@ const fs = require("fs");
 const path = require("path");
 const { build } = require("./build");
 
-function execute(sourcePath, env, activeModes, baseProjectTree, config, cliArgs) {
+function execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs) {
 	try {
 		for (const targetConfig of activeModes) {
-			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePath, cliArgs);
+			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs);
 
 			// Add stub files so Rojo and the roblox-ts compiler don't crash 
 			if (buildResult.missingPaths.length > 0) {

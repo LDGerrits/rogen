@@ -6,7 +6,7 @@ describe("CLI Argument Parsing", () => {
 		const options = parseCliArgs(args);
 		
 		expect(options.mode).toBe("ts");
-		expect(options.source).toBe("my_src");
+		expect(options.source).toEqual(["my_src"]);
 		expect(options.watch).toBe(true);
 	});
 
@@ -15,8 +15,15 @@ describe("CLI Argument Parsing", () => {
 		const options = parseCliArgs(args);
 		
 		expect(options.mode).toBe("luau");
-		expect(options.source).toBe("other_src");
+		expect(options.source).toEqual(["other_src"]);
 		expect(options.watch).toBe(true);
+	});
+
+	it("should parse multiple source flags correctly", () => {
+		const args = ["-s", "src/core", "-s", "src/chapter1"];
+		const options = parseCliArgs(args);
+		
+		expect(options.source).toEqual(["src/core", "src/chapter1"]); // New multi-source test
 	});
 
 	it("should return undefined for omitted flags", () => {

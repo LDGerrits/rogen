@@ -50,7 +50,7 @@ describe("Builder Integration", () => {
 		const cliArgs = {};
 
 		// Execute the build
-		const result = build(targetConfig, baseTree, config, env, "src", cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
 
 		expect(result.fileCount).toBe(3); 
 		
@@ -69,5 +69,41 @@ describe("Builder Integration", () => {
 		// ui/init.lua should claim the entire folder under ReplicatedStorage.shared.ui
 		expect(result.tree.tree.ReplicatedStorage.shared.ui).toBeDefined();
 		expect(result.tree.tree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
+	});
+
+	it("should successfully merge files from multiple source directories into single containers", () => {
+		fs.existsSync.mockReturnValue(true);
+
+		fs.readdirSync.mockImplementation((dir) => {
+			const normalizedDir = dir.replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src/core")) {
+				return [{ name: "CoreMath.lua", isDirectory: () => false, isFile: () => true }];
+			}
+			
+			if (normalizedDir.endsWith("src/chapter1")) {
+				return [{ name: "LevelData.lua", isDirectory: () => false, isFile: () => true }];
+			}
+
+			return [];
+		});
+
+		const targetConfig = { build: "out", output: "test.project.json" };
+		const baseTree = { name: "test-game", tree: {} };
+		const config = { source: ["src/core", "src/chapter1"] };
+		const env = { isTsProject: false };
+		const cliArgs = {};
+
+		const result = build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs);
+
+		expect(result.fileCount).toBe(2); 
+
+		// Both files should be merged into ReplicatedStorage.shared
+		expect(result.tree.tree.ReplicatedStorage.shared.CoreMath).toBeDefined();
+		expect(result.tree.tree.ReplicatedStorage.shared.LevelData).toBeDefined();
+		
+		// Paths should correctly map relative to their respective base folders
+		expect(result.tree.tree.ReplicatedStorage.shared.CoreMath.$path).toBe("out/CoreMath.lua");
+		expect(result.tree.tree.ReplicatedStorage.shared.LevelData.$path).toBe("out/LevelData.lua");
 	});
 });

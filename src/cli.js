@@ -27,7 +27,7 @@ function parseCliArgs(args = process.argv.slice(2)) {
 		init: { type: "boolean", short: "i" },
 		config: { type: "string", short: "c" },
 		mode: { type: "string", short: "m" },
-		source: { type: "string", short: "s" },
+		source: { type: "string", short: "s", multiple: true },
 		template: { type: "string", short: "t" },
 		output: { type: "string", short: "o" },
 		build: { type: "string", short: "b" },

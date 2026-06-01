@@ -30,7 +30,7 @@ function walk(dir, callback) {
 	}
 }
 
-function build(targetConfig, baseProjectTree, config, env, sourcePath, cliArgs) {
+function build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs) {
 	const modeCopy = { ...targetConfig };
 	if (cliArgs.output) modeCopy.output = cliArgs.output;
 	if (cliArgs.build) modeCopy.build = cliArgs.build;
@@ -50,28 +50,30 @@ function build(targetConfig, baseProjectTree, config, env, sourcePath, cliArgs) 
 
 	let fileCount = 0;
 
-	walk(sourcePath, (filepath, isInit) => {
-		fileCount++;
-		const relativePath = path.relative(sourcePath, filepath);
-		const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
-		
-		let current = rojoTree.tree;
+	for (const sourcePath of sourcePaths) {
+		walk(sourcePath, (filepath, isInit) => {
+			fileCount++;
+			const relativePath = path.relative(sourcePath, filepath);
+			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, context);
+			
+			let current = rojoTree.tree;
 
-		if (serviceParents[targetService]) {
-			current = getOrCreateNode(current, serviceParents[targetService]);
-		}
-		current = getOrCreateNode(current, targetService);
-		current = getOrCreateNode(current, wrapperFolder, "Folder");
+			if (serviceParents[targetService]) {
+				current = getOrCreateNode(current, serviceParents[targetService]);
+			}
+			current = getOrCreateNode(current, targetService);
+			current = getOrCreateNode(current, wrapperFolder, "Folder");
 
-		for (const part of virtualParts) {
-			current = getOrCreateNode(current, part, "Folder");
-		}
+			for (const part of virtualParts) {
+				current = getOrCreateNode(current, part, "Folder");
+			}
 
-		current[nodeName] = { ...current[nodeName], $path: projectPath };
-		if (current[nodeName]["$className"] === "Folder") {
-			delete current[nodeName]["$className"];
-		}
-	});
+			current[nodeName] = { ...current[nodeName], $path: projectPath };
+			if (current[nodeName]["$className"] === "Folder") {
+				delete current[nodeName]["$className"];
+			}
+		});
+	}
 
 	const prunedTree = pruneObject(rojoTree, context.build);
 	const sortedTree = sortObject(prunedTree);

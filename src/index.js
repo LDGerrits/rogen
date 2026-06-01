@@ -29,30 +29,36 @@ async function main() {
 	const configPath = resolveConfigPath(cliArgs.config);
 	const { config, hasConfig } = loadAndValidateConfig(configPath);
 	
-	const source = cliArgs.source || config.source || "src";
-	const sourcePath = path.resolve(process.cwd(), source);
-	
-	if (!fs.existsSync(sourcePath)) {
-		throw new Error(`Source directory not found: ${sourcePath}`);
-	}
+	const rawSources = cliArgs.source || config.source || ["src"];
+	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
+
+	const sourcePaths = sourceDirs.map(s => {
+		const sourcePath = path.resolve(process.cwd(), s);
+		if (!fs.existsSync(sourcePath)) {
+			throw new Error(`Source directory not found: ${sourcePath}`);
+		}
+		return sourcePath;
+	});
 
 	const env = getEnvironment();
 	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
 	const baseProjectTree = loadProjectTree(cliArgs.template, config.template);
 
-	execute(sourcePath, env, activeModes, baseProjectTree, config, cliArgs);
+	execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
 
 	if (cliArgs.watch) {
 		console.log(`Rogen watching for file changes in "${source}"... (Press Ctrl+C to stop)`);
 		
 		let debounceTimeout;
-		fs.watch(sourcePath, { recursive: true }, (_, filename) => {
-			if (!filename) return;
-			clearTimeout(debounceTimeout);
-			debounceTimeout = setTimeout(() => {
-				execute(sourcePath, env, activeModes, baseProjectTree, config, cliArgs);
-			}, 100);
-		});
+		for (const sourcePath of sourcePaths) {
+			fs.watch(sourcePath, { recursive: true }, (_, filename) => {
+				if (!filename) return;
+				clearTimeout(debounceTimeout);
+				debounceTimeout = setTimeout(() => {
+					execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
+				}, 100);
+			});
+		}
 		
 		await new Promise(() => {}); // Keep alive
 	}

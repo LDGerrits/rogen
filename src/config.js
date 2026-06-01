@@ -39,6 +39,8 @@ function loadAndValidateConfig(configPath) {
 			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
 				throw new Error(`\nConfiguration Error: Key "${key}" must be a valid object defining a mode.\n`);
 			}
+		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
+			throw new Error(`\nConfiguration Error: 'source' must be a string or an array of strings.\n`);
 		} else if (key === "template" && typeof config[key] !== "object" && typeof config[key] !== "string") {
 			throw new Error(`\nConfiguration Error: 'template' must be an inline object or a string path to a JSON file.\n`);
 		} else if (key === "keepSuffixes" && typeof config[key] !== "boolean") {
