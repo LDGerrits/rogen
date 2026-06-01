@@ -38,11 +38,11 @@ If a file is in a generic folder, Rogen inspects the filename for a suffix. This
 If neither matches, the file defaults to `ReplicatedStorage`.
 
 ## Merging of Multiple Sources
-Rogen supports passing an array of directories to the source config (or passing the -s CLI flag multiple times). This is useful for multi-place games where you want to share a base library across different projects.
+Rogen supports passing an array of directories to the source config (or passing the -s CLI flag multiple times). This is useful for multi-place games where you want to share a core across different places.
 
 * **Clean Merging:** If src/core and src/hub both contain a shared folder, Rogen will merge the contents of both into a single ReplicatedStorage.shared folder. No duplicates are created.
 
-* *Overrides:** The order of your sources matters. If both directories contain a file with the exact same name and routing path, the directory listed last will overwrite the previous one.
+* **Overrides:** The order of your sources matters. If both directories contain a file with the exact same name and routing path, the directory listed last will overwrite the previous one.
 
 ## Setup & Integration
 Integrate Rogen into your workflow to ensure that your `default.project.json` stays synchronized with your file system.
