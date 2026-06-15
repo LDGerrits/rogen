@@ -1,8 +1,9 @@
 const fs = require("fs");
 const path = require("path");
+const chokidar = require("chokidar");
 const { printHelp, parseCliArgs } = require("./cli");
 const { resolveConfigPath, loadAndValidateConfig, loadProjectTree, getEnvironment, resolveActiveModes } = require("./config");
-const { execute } = require("./core/pipeline");
+const { execute } = require("./core/execute");
 const { defaultConfig } = require("./constants");
 
 async function main() {
@@ -50,15 +51,21 @@ async function main() {
 		console.log(`Rogen watching for file changes in: "${sourceDirs.join(', ')}"... (Press Ctrl+C to stop)`);
 		
 		let debounceTimeout;
-		for (const sourcePath of sourcePaths) {
-			fs.watch(sourcePath, { recursive: true }, (_, filename) => {
-				if (!filename) return;
-				clearTimeout(debounceTimeout);
-				debounceTimeout = setTimeout(() => {
-					execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
-				}, 100);
-			});
-		}
+
+		const watcher = chokidar.watch(sourcePaths, {
+			persistent: true,
+			ignoreInitial: true,
+			ignored: /(^|[\/\\])\../,
+		});
+
+		watcher.on('all', () => {
+			clearTimeout(debounceTimeout);
+			debounceTimeout = setTimeout(() => {
+				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
+			}, 100);
+		});
+
+		watcher.on('error', error => console.error(`Error in watcher: ${error}`));
 		
 		await new Promise(() => {}); // Keep alive
 	}

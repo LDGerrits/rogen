@@ -53,7 +53,7 @@ Rogen is distributed as a standalone CLI tool. Install it into your project usin
 **Rokit (`rokit.toml`)**
 ```toml
 [tools]
-rogen = "ldgerrits/rogen@1.2.1"
+rogen = "ldgerrits/rogen@1.2.2"
 ```
 
 ### 2. Configuration (.rogen.json)

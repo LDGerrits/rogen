@@ -39,6 +39,12 @@ function loadAndValidateConfig(configPath) {
 			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
 				throw new Error(`\nConfiguration Error: Key "${key}" must be a valid object defining a mode.\n`);
 			}
+			if (!customMode.output || typeof customMode.output !== "string") {
+				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "output" string.\n`);
+			}
+			if (!customMode.build || typeof customMode.build !== "string") {
+				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "build" string.\n`);
+			}
 		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
 			throw new Error(`\nConfiguration Error: 'source' must be a string or an array of strings.\n`);
 		} else if (key === "template" && typeof config[key] !== "object" && typeof config[key] !== "string") {
