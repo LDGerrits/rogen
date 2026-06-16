@@ -116,7 +116,8 @@ Here is a default configuration structure that works for both roblox-ts and luau
 | Property            | Description                                                                                                                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | source              | The root directory (String) or directories (Array of Strings) where your source code lives (defaults to "src"). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
-| luau / ts / darklua | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
+| luau / ts / darklua  | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
+| <custom_mode>  | You can define your own custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |
 | aliases             | An object allowing you to define custom suffix or folder routing mappings. You can use this to register new keywords (e.g., "Controller": "StarterPlayerScripts") or overwrite Rogen's default service routing behaviors.                                           |
 | keepSuffixes        | A boolean flag (defaults to false). When set to true, Rogen will preserve your routing suffixes in the script names instead of stripping them out.                                                                                                                  |
@@ -130,7 +131,7 @@ You can run Rogen with optional arguments to cleanly override your configuration
 
 - `-c, --config <path>`: Specify a custom Rogen config file path.
 
-- `-m, --mode <mode>`: Specify the mode to run (luau, ts, or darklua). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
+- `-m, --mode <mode>`: Specify the mode to run (luau, ts, darklua, or custom mode). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
 
 - `-s, --source <path>`: Override the directory containing your raw, uncompiled code. Can be passed multiple times (e.g., -s src/core -s src/hub) to merge multiple directories.
 
