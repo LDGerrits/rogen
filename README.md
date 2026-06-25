@@ -7,13 +7,13 @@
 ## What is Rogen?
 Rogen is a command line tool that brings **feature-based architecture** to Roblox development for both luau and roblox-ts. 
 
-Instead of separating your codebase in a `client`, `shared` and `server` folder at the root level, Rogen lets you group your code by domain and feature. You can keep your inventory UI, inventory server script, and inventory client script all inside a single, unified `inventory` folder. This approach improves scalability, maintainability, and team collaboration.
+Instead of separating your codebase in a `client`, `shared` and `server` folder at the root level, Rogen lets you group your code by domain and feature. You can keep your inventory UI, inventory server script, and inventory client script all inside a single `inventory` folder. This eliminates context-switching across different folders, making your codebase significantly easier to navigate, refactor, and scale.
 
-In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo, ensuring your repository stays organized by feature while Roblox receives the exact service structure it expects.
+In the background, Rogen watches your file system and dynamically generates your `default.project.json` map for Rojo. You get the freedom to group your code in any way you want, and Rogen takes care of sorting everything into the correct Roblox services like `ReplicatedStorage` and `ServerScriptService`. 
 
-Rogen also supports codebases that contain multiple directories, allowing you to merge them into a single Rojo project. This is useful for multi-place games where you want to share a core across different places.
+Moreover, Rogen allows you to merge multiple directories into a single Rojo project. This is useful for multi-place games where you want to share a core across different places.
 
-*If you use luau, it is **highly recommended** to also set up darklua for improved string requires.*
+**Note:** *If you use luau, it is highly recommended to set up [darklua](https://github.com/seaofvoices/darklua) for improved string requires.*
 
 ## Automatic Routing
 Rogen determines a file's destination using three main strategies. Folder-based routing takes precedence over suffix-based routing.
@@ -21,21 +21,23 @@ Rogen determines a file's destination using three main strategies. Folder-based 
 ### 1. Folder Context (Primary)
 If a file is located within a folder named after a service or a keyword, it is automatically routed to that service.
 * **Keywords:** `server`, `client`, `shared`
-* **Services:** `ReplicatedFirst`, `ServerStorage`, `StarterGui`, etc.
+* **Services:** `ReplicatedFirst`, `ServerStorage`, etc.
 * **Behavior:** All files and sub-folders within these directories inherit the target service.
 
 ### 2. Suffix Context (Secondary)
 If a file is in a generic folder, Rogen inspects the filename for a suffix. This allows you to define a file's destination without moving it into a specific sub-folder.
 * **Delimited Suffixes:** Use a separator such as a dot, hyphen, or underscore.
-	- Examples: `auth.server.ts`, `input-client.ts`, `data_shared.ts`
+	- Examples: `input-client.ts`, `data_shared.ts`, `data.server.ts`
 
 * **PascalCase Suffixes:** Append the service name directly to the end of the filename.
-	- Examples: `AuthServer.ts`, `InputClient.ts`, `DataShared.ts`
+	- Examples: `AuthServer.ts`, `InputClient.ts`, `StoreShared.ts`
 
-	**Note:** Rogen strips the suffix for the final Rojo object name. `AuthServer.ts` becomes `Auth` in Roblox.
+	**Note:** *By default, Rogen strips the suffix for the final module name (e.g. `DataServer.ts` becomes `Data` in Roblox). This behavior can be configured.*
 
 ### 3. Default
 If neither matches, the file defaults to `ReplicatedStorage`.
+
+**Note:** *If a folder contains an initialization file (like `init.luau` or `index.ts`), Rogen routes the folder itself but will not apply any further routing to its nested contents. This ensures full compatibility with how Rojo handles folders with initialization scripts.*
 
 ## Merging of Multiple Sources
 Rogen supports passing an array of directories to the source config (or passing the -s CLI flag multiple times). 
@@ -78,7 +80,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 		"build": "dist" 
 	},
 	"aliases": {
-		"Controller": "ReplicatedStorage",
+		"Controller": "StarterPlayerScripts",
 		"Service": "ServerScriptService"
 	},
 	"template": {
