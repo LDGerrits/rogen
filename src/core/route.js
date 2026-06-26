@@ -42,8 +42,10 @@ function resolveRoute(relativePath, isInit, context) {
 			lastRouteKeyword = marker;
 			if (serviceAliases.has(marker)) environment = marker;
 			
-			// Because the marker dictated the route, the folder name itself is preserved in the tree
-			virtualParts.push(part);
+			// Strip if the folder name is also a routing keyword (like "client")
+			if (!matchedService) {
+				virtualParts.push(part);
+			}
 		} else if (matchedService) {
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;

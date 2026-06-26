@@ -152,12 +152,12 @@ describe("Marker File Routing", () => {
 		expect(result.wrapperFolder).toBe("server"); 
 	});
 
-	it("should prioritize directory marker over a routing folder name", () => {
+	it("should prioritize directory marker over a routing folder name and strip the folder name", () => {
 		const context = { ...baseContext, directoryMarkers: { "client": "server" } };
 		const result = resolveRoute("client/main.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
-		// Because the marker won, the word "client" becomes a regular virtual folder
-		expect(result.virtualParts).toContain("client");
+		// Because "client" is a routing keyword, it should be stripped, even though a marker set the route!
+		expect(result.virtualParts).not.toContain("client");
 	});
 });
