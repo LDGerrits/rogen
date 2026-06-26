@@ -8,7 +8,7 @@ const { toPosix } = require("./tree");
 
 function resolveRoute(relativePath, isInit, context) {
 	const { emitLegacyScripts, isTsProject, build, routingMaps, keepSuffixes } = context;
-	const { mergedServices, lowerCaseMap, separatorRegex, pascalCaseRegex } = routingMaps;
+	const { mergedServices, lowerCaseMap, separatorSuffixRegex, pascalCaseSuffixRegex, prefixRegex } = routingMaps;
 
 	const parts = relativePath.split(/[\\/]/)
 	const filename = parts.pop();
@@ -33,22 +33,33 @@ function resolveRoute(relativePath, isInit, context) {
 		}
 	}
 
-	let matchedSuffixLength = 0;
+	let matchedLength = 0;
 	let mappedService = null;
-	const sepMatch = basename.match(separatorRegex);
-	const pascalMatch = basename.match(pascalCaseRegex);
+	let isPrefix = false;
+
+	const sepSuffixMatch = basename.match(separatorSuffixRegex);
+	const pascalSuffixMatch = basename.match(pascalCaseSuffixRegex);
+	const prefixMatch = basename.match(prefixRegex);
 
 	// Suffix routing
-	if (sepMatch) {
-		const suffix = sepMatch[1].toLowerCase();
+	if (sepSuffixMatch) {
+		const suffix = sepSuffixMatch[1].toLowerCase();
 		mappedService = lowerCaseMap[suffix];
-		matchedSuffixLength = sepMatch[0].length;
+		matchedLength = sepSuffixMatch[0].length;
 		if (!isInit && serviceAliases.has(suffix)) environment = suffix;
-	} else if (pascalMatch) {
-		const suffix = pascalMatch[1].toLowerCase();
-		mappedService = mergedServices[pascalMatch[1]];
-		matchedSuffixLength = pascalMatch[0].length;
+	} else if (pascalSuffixMatch) {
+		const suffix = pascalSuffixMatch[1].toLowerCase();
+		mappedService = mergedServices[pascalSuffixMatch[1]];
+		matchedLength = pascalSuffixMatch[0].length;
 		if (!isInit && serviceAliases.has(suffix)) environment = suffix;
+	} 
+	// Prefix routing
+	else if (prefixMatch) {
+		const prefix = prefixMatch[1].toLowerCase();
+		mappedService = lowerCaseMap[prefix];
+		matchedLength = prefixMatch[0].length;
+		if (!isInit && serviceAliases.has(prefix)) environment = prefix;
+		isPrefix = true;
 	}
 
 	if (mappedService && !lastRouteKeyword) targetService = mappedService;
@@ -85,15 +96,19 @@ function resolveRoute(relativePath, isInit, context) {
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
 			// Even if keepSuffixes is true, we must strip these exact dot-prefixes.
-			if (keepSuffixes && sepMatch) {
-				const exactMatch = sepMatch[0].toLowerCase();
+			if (keepSuffixes && sepSuffixMatch) {
+				const exactMatch = sepSuffixMatch[0].toLowerCase();
 				if (exactMatch === ".server" || exactMatch === ".client") {
 					shouldStrip = true;
 				}
 			}
 
 			if (shouldStrip) {
-				nodeName = basename.slice(0, -matchedSuffixLength);
+				if (isPrefix) {
+					nodeName = basename.slice(matchedLength); 
+				} else {
+					nodeName = basename.slice(0, -matchedLength); 
+				}
 			}
 		} 
 	}

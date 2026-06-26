@@ -88,10 +88,21 @@ function generateRoutingMaps(customAliases = {}) {
 	const mergedServices = { ...services, ...customAliases };
 	const lowerCaseMap = Object.fromEntries(Object.entries(mergedServices).map(([k, v]) => [k.toLowerCase(), v]));
 	
-	const separatorRegex = new RegExp(`[\\.\\-_](${Object.keys(lowerCaseMap).join("|")})$`, "i");
-	const pascalCaseRegex = new RegExp(`(${Object.keys(mergedServices).join("|")})$`);
+	const mergedKeys = Object.keys(mergedServices).sort((a, b) => b.length - a.length);
+	const lowerKeys = Object.keys(lowerCaseMap).sort((a, b) => b.length - a.length);
 
-	return { mergedServices, lowerCaseMap, separatorRegex, pascalCaseRegex };
+	const separatorSuffixRegex = new RegExp(`[\\.\\-_](${lowerKeys.join("|")})$`, "i");
+	const pascalCaseSuffixRegex = new RegExp(`(${mergedKeys.join("|")})$`);
+
+	const prefixRegex = new RegExp(`^(${lowerKeys.join("|")})([\\.\\-_]?)`, "i");
+
+	return { 
+		mergedServices, 
+		lowerCaseMap, 
+		separatorSuffixRegex, 
+		pascalCaseSuffixRegex, 
+		prefixRegex 
+	};
 }
 
 module.exports = {

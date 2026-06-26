@@ -68,7 +68,7 @@ describe("Router Logic", () => {
 		expect(result2.nodeName).toBe("Combat");
 	});
 
-	it("should retain routing suffixes in nodeName when keepSuffixes is true, EXCEPT for .server and .client", () => {
+	it("should retain routing suffixes in nodeName when keepSuffixes is true, except for .server and .client", () => {
 		const keepSuffixContext = { ...baseContext, keepSuffixes: true };
 		
 		// .server (must strip)
@@ -90,5 +90,28 @@ describe("Router Logic", () => {
 		const result3 = resolveRoute("ui/PlayerController.lua", false, customContext);
 		expect(result3.targetService).toBe("StarterPlayerScripts");
 		expect(result3.nodeName).toBe("PlayerController");
+	});
+
+	it("should route correctly based on separator prefix", () => {
+		const result = resolveRoute("systems/server.Combat.lua", false, baseContext);
+		
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.nodeName).toBe("Combat");
+		expect(result.wrapperFolder).toBe("server");
+	});
+
+	it("should route correctly based on pascalcase/no-separator prefix", () => {
+		const result = resolveRoute("ui/ClientController.ts", false, baseContext);
+		
+		expect(result.targetService).toBe("StarterPlayerScripts");
+		expect(result.nodeName).toBe("Controller");
+		expect(result.wrapperFolder).toBe("client");
+	});
+
+	it("should strip both prefix and separator from the node name", () => {
+		const result = resolveRoute("systems/server_Combat.lua", false, baseContext);
+		
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.nodeName).toBe("Combat");
 	});
 });
