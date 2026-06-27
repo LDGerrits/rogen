@@ -41,7 +41,7 @@ To route a specific file differently than its parent folder, use a routing prefi
 
 **Note:** *By default, Rogen strips the routing keyword from the final module name (e.g., `serverData.ts` and `data.server.ts` become `Data` and `data`, respectively). You can disable this behavior using the `--keepRouteNames` flag*.
 
-### 3. Default Fallback
+### 4. Default Fallback
 If no routing rules or keywords are found anywhere in the path, the file defaults to `ReplicatedStorage`.
 
 **Important Note for `init` Files:** *If a folder contains an initialization file (like `init.luau` or `index.ts`), Rogen routes the folder itself but will not apply any further routing to its nested contents. This ensures full compatibility with how Rojo handles folders containing initialization scripts.*
