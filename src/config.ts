@@ -29,7 +29,7 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 		if (error instanceof Error) {
 			console.error(`\nFailed to scan directory for config file: ${error.message}\n`);
 		} else {
-			console.error(`\nFailed to scan directory for config files: Unknown Error\n`);
+			console.error(`\nFailed to scan directory for config file: Unknown Error\n`);
 		}
 	}
 
@@ -50,10 +50,12 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
 				throw new Error(`\nConfiguration Error: Key "${key}" must be a valid object defining a mode.\n`);
 			}
-			if (!customMode.output || typeof customMode.output !== "string") {
+
+			const modeData = customMode as Record<string, unknown>;
+			if (!modeData.output || typeof modeData.output !== "string") {
 				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "output" string.\n`);
 			}
-			if (!customMode.build || typeof customMode.build !== "string") {
+			if (!modeData.build || typeof modeData.build !== "string") {
 				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "build" string.\n`);
 			}
 		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
@@ -68,7 +70,7 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 	return { config, hasConfig: true };
 }
 
-export function loadProjectTree(cliProjectArg?: string, configProjectField?: string | object): RojoTree {
+export function loadProjectTree(cliProjectArg?: string, configProjectField?: unknown): RojoTree {
 	let targetPath: string | null = null;
 	
 	if (cliProjectArg) {

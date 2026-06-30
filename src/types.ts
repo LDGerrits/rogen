@@ -23,8 +23,8 @@ export interface RogenConfig {
 	luau?: RogenMode;
 	ts?: RogenMode;
 	darklua?: RogenMode;
-	template?: any;
-	[key: string]: any;
+	template?: unknown;
+	[key: string]: unknown;
 }
 
 export interface Environment {
