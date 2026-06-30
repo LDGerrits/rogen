@@ -53,7 +53,7 @@ export interface RouteContext extends RogenMode {
 export interface RojoNode {
 	$className?: string;
 	$path?: string;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export interface RojoTree {

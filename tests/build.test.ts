@@ -46,6 +46,7 @@ describe("Builder Integration", () => {
 		const cliArgs: CliArgs = {};
 
 		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(3); 
 		
@@ -53,14 +54,14 @@ describe("Builder Integration", () => {
 		expect(result.buildDir).toBe("out");
 		expect(result.output).toBe("test.project.json");
 
-		expect(result.tree.tree.ServerScriptService.server.systems.Combat).toBeDefined();
-		expect(result.tree.tree.ServerScriptService.server.systems.Combat.$path).toBe("out/systems/Combat.server.lua");
+		expect(resultTree.ServerScriptService.server.systems.Combat).toBeDefined();
+		expect(resultTree.ServerScriptService.server.systems.Combat.$path).toBe("out/systems/Combat.server.lua");
 
-		expect(result.tree.tree.ReplicatedStorage.shared.Weapon).toBeDefined();
-		expect(result.tree.tree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.rbxm");
+		expect(resultTree.ReplicatedStorage.shared.Weapon).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.rbxm");
 
-		expect(result.tree.tree.ReplicatedStorage.shared.ui).toBeDefined();
-		expect(result.tree.tree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
+		expect(resultTree.ReplicatedStorage.shared.ui).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
 	});
 
 	it("should successfully merge files from multiple source directories into single containers", () => {
@@ -91,14 +92,15 @@ describe("Builder Integration", () => {
 		const cliArgs: CliArgs = {};
 
 		const result = build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs);
+		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(2); 
 
-		expect(result.tree.tree.ReplicatedStorage.shared.CoreMath).toBeDefined();
-		expect(result.tree.tree.ReplicatedStorage.shared.LevelData).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.CoreMath).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.LevelData).toBeDefined();
 		
-		expect(result.tree.tree.ReplicatedStorage.shared.CoreMath.$path).toBe("out/core/CoreMath.lua");
-		expect(result.tree.tree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
+		expect(resultTree.ReplicatedStorage.shared.CoreMath.$path).toBe("out/core/CoreMath.lua");
+		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
 	});
 
 	it("should route files based on marker files instead of folder names", () => {
@@ -130,10 +132,11 @@ describe("Builder Integration", () => {
 		const cliArgs: CliArgs = {};
 
 		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(1); 
 		
-		expect(result.tree.tree.ServerScriptService.server.Database.query).toBeDefined();
-		expect(result.tree.tree.ServerScriptService.server.Database.query.$path).toBe("out/Database/query.lua");
+		expect(resultTree.ServerScriptService.server.Database.query).toBeDefined();
+		expect(resultTree.ServerScriptService.server.Database.query.$path).toBe("out/Database/query.lua");
 	});
 });

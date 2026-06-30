@@ -8,7 +8,7 @@ export function getOrCreateNode(parent: RojoNode, key: string, className?: strin
 	if (!parent[key]) {
 		parent[key] = className == null ? {} : { $className: className };
 	}
-	return parent[key];
+	return parent[key] as RojoNode;
 }
 
 export function pruneObject(node: RojoNode, buildDir: string): RojoNode {
@@ -16,14 +16,16 @@ export function pruneObject(node: RojoNode, buildDir: string): RojoNode {
 		const val = node[key];
 		if (typeof val !== "object" || val === null) continue;
 
-		if (val.$path) {
-			if (val.$path.startsWith(buildDir)) continue; 
-			if (!fs.existsSync(path.resolve(process.cwd(), val.$path))) {
+		const childNode = val as RojoNode;
+
+		if (childNode.$path) {
+			if (childNode.$path.startsWith(buildDir)) continue; 
+			if (!fs.existsSync(path.resolve(process.cwd(), childNode.$path))) {
 				delete node[key];
 				continue;
 			}
 		}
-		pruneObject(val, buildDir);
+		pruneObject(childNode, buildDir);
 	}
 	return node;
 }
@@ -48,13 +50,15 @@ export function findMissingPaths(node: RojoNode, buildDir: string, missing: Miss
 		const val = node[key];
 		if (typeof val !== "object" || val === null) continue;
 
-		if (val.$path && val.$path.startsWith(buildDir)) {
-			const absolutePath = path.resolve(process.cwd(), val.$path);
+		const childNode = val as RojoNode;
+
+		if (childNode.$path && childNode.$path.startsWith(buildDir)) {
+			const absolutePath = path.resolve(process.cwd(), childNode.$path);
 			if (!fs.existsSync(absolutePath)) {
-				missing.push({ parent: node, key, path: val.$path, absolutePath });
+				missing.push({ parent: node, key, path: childNode.$path, absolutePath });
 			}
 		}
-		findMissingPaths(val, buildDir, missing);
+		findMissingPaths(childNode, buildDir, missing);
 	}
 	return missing;
 }

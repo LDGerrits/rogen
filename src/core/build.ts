@@ -3,7 +3,7 @@ import path from "path";
 import { getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
 import { resolveRoute } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "../constants.js";
-import { BuildResult, CliArgs, Environment, RogenConfig, RogenMode, RojoTree, RouteContext, RoutingMaps } from "../types.js";
+import { BuildResult, CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree, RouteContext, RoutingMaps } from "../types.js";
 
 const isScript = (filename: string): boolean => /\.(tsx?|luau|lua)$/i.test(filename) && !filename.toLowerCase().endsWith(".d.ts");
 const isModel = (filename: string): boolean => /\.(rbxm|rbxmx)$/i.test(filename);
@@ -112,10 +112,14 @@ export function build(
 				current = getOrCreateNode(current, part, "Folder");
 			}
 
-			current[nodeName] = { ...current[nodeName], $path: projectPath };
-			if (current[nodeName]["$className"] === "Folder") {
-				delete current[nodeName]["$className"];
+			const existingNode = (current[nodeName] as RojoNode) || {};
+			const newNode: RojoNode = { ...existingNode, $path: projectPath };
+			
+			if (newNode.$className === "Folder") {
+				delete newNode.$className;
 			}
+			
+			current[nodeName] = newNode;
 		});
 	}
 
