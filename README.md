@@ -16,7 +16,7 @@ Moreover, Rogen allows you to merge multiple directories into a single Rojo proj
 **Note:** *If you use luau, it is highly recommended to set up [darklua](https://github.com/seaofvoices/darklua) for improved string requires.*
 
 ## Automatic Routing
-Rogen determines where a file belongs by looking at your folder structure, hidden marker files, and file names. 
+Rogen determines where a file belongs by looking at your folder structure, marker files, and file names. 
 
 When multiple rules apply to the same file, Rogen follows a simple principle: **the most specific instruction wins.** An explicit rule placed directly on a file will always override a general rule set by its parent folder.
 
