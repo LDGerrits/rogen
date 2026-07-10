@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
+import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
 import { resolveRoute } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "../constants.js";
 import { BuildResult, CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree, RouteContext, RoutingMaps } from "../types.js";
@@ -66,6 +66,7 @@ export function build(
 
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));
 	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
+	const casing = config.casing ?? "camelCase";
 
 	const context: RouteContext = {
 		source: config.source || "src",
@@ -106,20 +107,21 @@ export function build(
 				current = getOrCreateNode(current, serviceParents[targetService]);
 			}
 			current = getOrCreateNode(current, targetService);
-			current = getOrCreateNode(current, wrapperFolder, "Folder");
+			current = getOrCreateNode(current, applyCasing(wrapperFolder, casing), "Folder");
 
 			for (const part of virtualParts) {
-				current = getOrCreateNode(current, part, "Folder");
+				current = getOrCreateNode(current, applyCasing(part, casing), "Folder");
 			}
 
-			const existingNode = (current[nodeName] as RojoNode) || {};
+			const casedNodeName = applyCasing(nodeName, casing);
+			const existingNode = (current[casedNodeName] as RojoNode) || {};
 			const newNode: RojoNode = { ...existingNode, $path: projectPath };
 			
 			if (newNode.$className === "Folder") {
 				delete newNode.$className;
 			}
 			
-			current[nodeName] = newNode;
+			current[casedNodeName] = newNode;
 		});
 	}
 
