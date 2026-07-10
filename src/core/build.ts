@@ -70,7 +70,7 @@ export function build(
 	const context: RouteContext = {
 		source: config.source || "src",
 		...modeCopy,
-		isTsProject: env.isTsProject,
+		isTsProject: env.isTsProject || cliArgs.mode === "ts",
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name ?? "unknown",
 		routingMaps: generateRoutingMaps(config.aliases || {}),
