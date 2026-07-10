@@ -1,5 +1,6 @@
 {
 	"source": ["src"],
+	"casing": "PascalCase",
 	"keepRouteNames": false,
 	"luau": { 
 		"output": "default.project.json", 
