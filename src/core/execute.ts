@@ -21,8 +21,12 @@ export function execute(
 					const ext = path.extname(item.absolutePath).toLowerCase();
 					if (ext === '.luau' || ext === '.lua') {
 						const dir = path.dirname(item.absolutePath);
-						if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+						if (!fs.existsSync(dir)) {
+							fs.mkdirSync(dir, { recursive: true });
+						} 
 						fs.writeFileSync(item.absolutePath, "");
+					} else if (ext === "") {
+						fs.mkdirSync(item.absolutePath, { recursive: true });
 					} else {
 						delete item.parent[item.key];
 					}
