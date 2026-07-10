@@ -18,9 +18,9 @@ Moreover, Rogen allows you to merge multiple directories into a single Rojo proj
 ## Automatic Routing
 Rogen determines where a file belongs by looking at your folder structure, marker files, and file names. 
 
-When multiple rules apply to the same file, Rogen follows a simple principle: **the most specific instruction wins.** An explicit rule placed directly on a file will always override a general rule set by its parent folder.
+When multiple rules apply to the same file, Rogen follows a simple principle: **the deepest routing instruction wins.**
 
-Here are the routing strategies, listed from lowest to highest priority:
+The routing strategies are as follows:
 
 ### 1. Folder Name
 If a folder is named after a routing keyword (`server`, `client`, `shared`) or a Roblox service (e.g., `ReplicatedFirst`), all files within it inherit that destination.
