@@ -30,7 +30,7 @@ If a folder is named after a routing keyword (`server`, `client`, `shared`) or a
 ### 2. Marker File
 To route a folder, you can also place an empty marker file (e.g., `.server`, `.client`, `.shared`) directly inside the directory.
 * **Behavior:** The entire folder is routed to that service, but the folder's name is preserved in the Roblox tree.
-* **Example:** A folder named `AntiCheat` containing a `.server` marker file will be routed to `ServerScriptService/server/AntiCheat`.
+* **Example:** With the default `camelCase` setting, a folder named `AntiCheat` containing a `.server` marker file will be routed to `ServerScriptService/server/antiCheat`.
 
 ### 3. File Name
 To route a specific file differently than its parent folder, use a routing prefix or suffix. File affixes are absolute and will always override folder names and marker files.
@@ -39,7 +39,7 @@ To route a specific file differently than its parent folder, use a routing prefi
 * **CamelCase & PascalCase:** Prepend or append the mapped keyword directly to the filename.
 	* **Examples:** inputClient.ts, serverData.ts
 
-**Note:** *By default, Rogen strips the routing keyword from the final module name (e.g., `serverData.ts` and `data.server.ts` become `Data` and `data`, respectively). You can disable this behavior using the `--keepRouteNames` flag*.
+**Note:** *By default, Rogen strips the routing keyword from the final module name (e.g., `serverData.ts` and `data.server.ts` both become `data`). You can disable this behavior using the `--keepRouteNames` flag*.
 
 ### 4. Default Fallback
 If no routing rules or keywords are found anywhere in the path, the file defaults to `ReplicatedStorage`.
@@ -73,6 +73,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 ```json
 {
 	"source": ["src"],
+	"casing": "camelCase",
 	"keepRouteNames": false,
 	"luau": { 
 		"output": "default.project.json", 
@@ -122,9 +123,12 @@ Here is a default configuration structure that works for both roblox-ts and luau
 }
 ```
 
+The `casing` setting accepts `"PascalCase"` or `"camelCase"` and defaults to `"camelCase"`. For example, `src/features/test/testServiceUtils.luau` is generated under `ReplicatedStorage/Shared/Features/Test/TestServiceUtils` with `"PascalCase"`, or under `ReplicatedStorage/shared/features/test/testServiceUtils` with `"camelCase"`.
+
 | Property            | Description                                                                                                                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | source              | The root directory (String) or directories (Array of Strings) where your source code lives (defaults to "src"). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
+| casing              | Controls generated folder and script-name casing. Accepted values are `"PascalCase"` and `"camelCase"`; defaults to `"camelCase"`. |
 | luau / ts / darklua  | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
 | <custom_mode>  | You can define your own custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |

@@ -1,6 +1,6 @@
 import fs from "fs";
-import { getOrCreateNode, sortObject, pruneObject } from "../src/core/tree.js";
-import { RojoNode } from "../src/types.js";
+import { applyCasing, getOrCreateNode, sortObject, pruneObject } from "../src/core/tree.js";
+import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
 
 describe("Tree Utilities", () => {
@@ -21,6 +21,28 @@ describe("Tree Utilities", () => {
 			const result = getOrCreateNode(parent, "MyFolder", "Folder");
 			expect(result).toEqual({ $path: "src/MyFolder" });
 		});
+	});
+
+	describe("applyCasing", () => {
+		it("should uppercase the first character for PascalCase", () => {
+			expect(applyCasing("testServiceUtils", "PascalCase")).toBe("TestServiceUtils");
+		});
+
+		it("should lowercase the first character for camelCase", () => {
+			expect(applyCasing("TestServiceUtils", "camelCase")).toBe("testServiceUtils");
+		});
+
+		it("should preserve capitalization after the first character", () => {
+			expect(applyCasing("testHTTPService", "PascalCase")).toBe("TestHTTPService");
+			expect(applyCasing("TestHTTPService", "camelCase")).toBe("testHTTPService");
+		});
+
+		it.each<Casing>(["PascalCase", "camelCase"])(
+			"should return an empty string for %s",
+			(casing) => {
+				expect(applyCasing("", casing)).toBe("");
+			}
+		);
 	});
 
 	describe("sortObject", () => {

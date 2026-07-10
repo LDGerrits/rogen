@@ -54,11 +54,11 @@ describe("Builder Integration", () => {
 		expect(result.buildDir).toBe("out");
 		expect(result.output).toBe("test.project.json");
 
-		expect(resultTree.ServerScriptService.server.systems.Combat).toBeDefined();
-		expect(resultTree.ServerScriptService.server.systems.Combat.$path).toBe("out/systems/Combat.server.lua");
+		expect(resultTree.ServerScriptService.server.systems.combat).toBeDefined();
+		expect(resultTree.ServerScriptService.server.systems.combat.$path).toBe("out/systems/Combat.server.lua");
 
-		expect(resultTree.ReplicatedStorage.shared.Weapon).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.rbxm");
+		expect(resultTree.ReplicatedStorage.shared.weapon).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.weapon.$path).toBe("out/Weapon.rbxm");
 
 		expect(resultTree.ReplicatedStorage.shared.ui).toBeDefined();
 		expect(resultTree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
@@ -96,11 +96,11 @@ describe("Builder Integration", () => {
 
 		expect(result.fileCount).toBe(2); 
 
-		expect(resultTree.ReplicatedStorage.shared.CoreMath).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.LevelData).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.coreMath).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.levelData).toBeDefined();
 		
-		expect(resultTree.ReplicatedStorage.shared.CoreMath.$path).toBe("out/core/CoreMath.lua");
-		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
+		expect(resultTree.ReplicatedStorage.shared.coreMath.$path).toBe("out/core/CoreMath.lua");
+		expect(resultTree.ReplicatedStorage.shared.levelData.$path).toBe("out/chapter1/LevelData.lua");
 	});
 
 	it("should route files based on marker files instead of folder names", () => {
@@ -136,7 +136,85 @@ describe("Builder Integration", () => {
 
 		expect(result.fileCount).toBe(1); 
 		
-		expect(resultTree.ServerScriptService.server.Database.query).toBeDefined();
-		expect(resultTree.ServerScriptService.server.Database.query.$path).toBe("out/Database/query.lua");
+		expect(resultTree.ServerScriptService.server.database.query).toBeDefined();
+		expect(resultTree.ServerScriptService.server.database.query.$path).toBe("out/Database/query.lua");
+	});
+
+	it("should generate PascalCase tree names without changing source paths", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "features", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("features")) {
+				return [
+					{ name: "test", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("test")) {
+				return [
+					{ name: "testServiceUtils.luau", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src", casing: "PascalCase" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+
+		const result = build(targetConfig, baseTree, config, env, ["src"], {});
+		const node = (result.tree.tree as any).ReplicatedStorage.Shared.Features.Test.TestServiceUtils;
+
+		expect(node).toBeDefined();
+		expect(node.$path).toBe("out/features/test/testServiceUtils.luau");
+	});
+
+	it("should generate camelCase tree names by default without changing source paths", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "Features", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("Features")) {
+				return [
+					{ name: "Test", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("Test")) {
+				return [
+					{ name: "TestServiceUtils.luau", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+
+		const result = build(targetConfig, baseTree, config, env, ["src"], {});
+		const node = (result.tree.tree as any).ReplicatedStorage.shared.features.test.testServiceUtils;
+
+		expect(node).toBeDefined();
+		expect(node.$path).toBe("out/Features/Test/TestServiceUtils.luau");
 	});
 });
