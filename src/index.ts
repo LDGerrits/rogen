@@ -4,7 +4,7 @@ import chokidar from "chokidar";
 import { printHelp, parseCliArgs } from "./cli.js";
 import { resolveConfigPath, loadAndValidateConfig, loadProjectTree, getEnvironment, resolveActiveModes } from "./config.js";
 import { execute } from "./core/execute.js";
-import { defaultConfig } from "./constants.js";
+import { defaultConfig, generateRoutingMaps } from "./constants.js";
 
 async function main(): Promise<void> {
 	const cliArgs = parseCliArgs();
@@ -49,13 +49,27 @@ async function main(): Promise<void> {
 
 	if (cliArgs.watch) {
 		console.log(`Rogen watching for file changes in: "${sourceDirs.join(', ')}"... (Press Ctrl+C to stop)`);
-		let debounceTimeout: NodeJS.Timeout;
+
+		const routingMaps = generateRoutingMaps(config.aliases || {});
 
 		const watcher = chokidar.watch(sourcePaths, {
 			persistent: true,
 			ignoreInitial: true,
-			ignored: /(^|\/|\\)\../,
+			ignored: (testPath: string) => {
+				const basename = path.basename(testPath);
+				
+				if (basename.startsWith('.')) {
+					const possibleMarker = basename.slice(1).toLowerCase();
+					if (routingMaps.lowerCaseMap[possibleMarker]) {
+						return false; 
+					}
+				}
+				
+				return /(^|[/\\])\../.test(testPath);
+			},
 		});
+
+		let debounceTimeout: NodeJS.Timeout;
 
 		watcher.on('all', () => {
 			clearTimeout(debounceTimeout);
