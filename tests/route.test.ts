@@ -113,6 +113,15 @@ describe("Router Logic", () => {
 		
 		expect(result.targetService).toBe("ServerScriptService");
 		expect(result.nodeName).toBe("Combat");
+		expect(result.wrapperFolder).toBe("server");
+	});
+
+	it("should not route when using prefix without a separator", () => {
+		const result = resolveRoute("systems/serverside.lua", false, baseContext);
+		
+		expect(result.targetService).toBe("ReplicatedStorage");
+		expect(result.nodeName).toBe("serverside");
+		expect(result.wrapperFolder).toBe("shared");
 	});
 });
 
@@ -161,7 +170,7 @@ describe("Marker File Routing", () => {
 	});
 });
 
-describe("Routing (Last Is King)", () => {
+describe("Routing (Deepest Wins)", () => {
 	const baseContext: RouteContext = {
 		source: "src",
 		build: "src",

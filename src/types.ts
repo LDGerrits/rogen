@@ -37,7 +37,8 @@ export interface RoutingMaps {
 	lowerCaseMap: Record<string, string>;
 	separatorSuffixRegex: RegExp;
 	pascalCaseSuffixRegex: RegExp;
-	prefixRegex: RegExp;
+	separatorPrefixRegex: RegExp;
+	camelCasePrefixRegex: RegExp;
 }
 
 export interface RouteContext extends RogenMode {

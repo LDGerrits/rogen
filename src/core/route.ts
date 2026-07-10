@@ -17,7 +17,7 @@ export interface RouteResolution {
 
 export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
 	const { emitLegacyScripts, isTsProject, build, routingMaps, keepRouteNames, directoryMarkers } = context;
-	const { mergedServices, lowerCaseMap, separatorSuffixRegex, pascalCaseSuffixRegex, prefixRegex } = routingMaps;
+	const { mergedServices, lowerCaseMap, separatorSuffixRegex, pascalCaseSuffixRegex, separatorPrefixRegex, camelCasePrefixRegex } = routingMaps;
 
 	const parts = relativePath.split(/[\\/]/);
 	const filename = parts.pop()!;
@@ -69,7 +69,8 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 
 	const sepSuffixMatch = basename.match(separatorSuffixRegex);
 	const pascalSuffixMatch = basename.match(pascalCaseSuffixRegex);
-	const prefixMatch = basename.match(prefixRegex);
+	const sepPrefixMatch = basename.match(separatorPrefixRegex);
+	const camelPrefixMatch = basename.match(camelCasePrefixRegex);
 
 	// Affix routing
 	if (sepSuffixMatch) {
@@ -86,10 +87,18 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		if (!isInit && serviceAliases.has(suffix)) {
 			environment = suffix;
 		}
-	} else if (prefixMatch) {
-		const prefix = prefixMatch[1].toLowerCase();
+	} else if (sepPrefixMatch) {
+		const prefix = sepPrefixMatch[1].toLowerCase();
 		mappedService = lowerCaseMap[prefix];
-		matchedLength = prefixMatch[0].length;
+		matchedLength = sepPrefixMatch[0].length; 
+		if (!isInit && serviceAliases.has(prefix)) {
+			environment = prefix;
+		}
+		isPrefix = true;
+	} else if (camelPrefixMatch) {
+		const prefix = camelPrefixMatch[1].toLowerCase();
+		mappedService = lowerCaseMap[prefix];
+		matchedLength = camelPrefixMatch[1].length;
 		if (!isInit && serviceAliases.has(prefix)) {
 			environment = prefix;
 		}

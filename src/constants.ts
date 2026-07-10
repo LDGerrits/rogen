@@ -95,15 +95,19 @@ export function generateRoutingMaps(customAliases: Record<string, string> = {}):
 	const mergedKeys = Object.keys(mergedServices).sort((a, b) => b.length - a.length);
 	const lowerKeys = Object.keys(lowerCaseMap).sort((a, b) => b.length - a.length);
 
+	const allPrefixKeys = Array.from(new Set([...lowerKeys, ...mergedKeys])).sort((a, b) => b.length - a.length);
+
 	const separatorSuffixRegex = new RegExp(`[\\.\\-_](${lowerKeys.join("|")})$`, "i");
 	const pascalCaseSuffixRegex = new RegExp(`(${mergedKeys.join("|")})$`);
-	const prefixRegex = new RegExp(`^(${lowerKeys.join("|")})([\\.\\-_]?)`, "i");
+	const separatorPrefixRegex = new RegExp(`^(${lowerKeys.join("|")})([\\.\\-_])`, "i");
+	const camelCasePrefixRegex = new RegExp(`^(${allPrefixKeys.join("|")})(?=[A-Z])`);
 
 	return { 
 		mergedServices, 
 		lowerCaseMap, 
 		separatorSuffixRegex, 
 		pascalCaseSuffixRegex, 
-		prefixRegex 
+		separatorPrefixRegex,
+		camelCasePrefixRegex
 	};
 }
