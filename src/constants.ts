@@ -3,6 +3,7 @@ import { RogenConfig, RoutingMaps } from "./types.js";
 export const defaultConfig: RogenConfig = {
 	source: ["src"],
 	keepRouteNames: false,
+	casing: "camelCase",
 	aliases: {},
 	luau: { 
 		output: "default.project.json", 
