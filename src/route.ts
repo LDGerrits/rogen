@@ -73,21 +73,21 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 	const camelPrefixMatch = basename.match(camelCasePrefixRegex);
 
 	// Affix routing
-	if (sepSuffixMatch) {
+	if (sepSuffixMatch && sepSuffixMatch[0].length < basename.length) {
 		const suffix = sepSuffixMatch[1].toLowerCase();
 		mappedService = lowerCaseMap[suffix];
 		matchedLength = sepSuffixMatch[0].length;
 		if (!isInit && serviceAliases.has(suffix)) {
 			environment = suffix;
 		}
-	} else if (pascalSuffixMatch) {
+	} else if (pascalSuffixMatch && pascalSuffixMatch[0].length < basename.length) {
 		const suffix = pascalSuffixMatch[1].toLowerCase();
 		mappedService = mergedServices[pascalSuffixMatch[1]];
 		matchedLength = pascalSuffixMatch[0].length;
 		if (!isInit && serviceAliases.has(suffix)) {
 			environment = suffix;
 		}
-	} else if (sepPrefixMatch) {
+	} else if (sepPrefixMatch && sepPrefixMatch[0].length < basename.length) {
 		const prefix = sepPrefixMatch[1].toLowerCase();
 		mappedService = lowerCaseMap[prefix];
 		matchedLength = sepPrefixMatch[0].length; 
@@ -95,7 +95,7 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 			environment = prefix;
 		}
 		isPrefix = true;
-	} else if (camelPrefixMatch) {
+	} else if (camelPrefixMatch && camelPrefixMatch[0].length < basename.length) {
 		const prefix = camelPrefixMatch[1].toLowerCase();
 		mappedService = lowerCaseMap[prefix];
 		matchedLength = camelPrefixMatch[1].length;

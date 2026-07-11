@@ -123,6 +123,14 @@ describe("Router Logic", () => {
 		expect(result.nodeName).toBe("serverside");
 		expect(result.wrapperFolder).toBe("shared");
 	});
+
+	it("should not route and keep the name if the filename exactly matches a routing keyword", () => {
+		const result = resolveRoute("ui/StarterGui.lua", false, baseContext);
+		
+		expect(result.targetService).toBe("ReplicatedStorage");
+		expect(result.nodeName).toBe("StarterGui");
+		expect(result.wrapperFolder).toBe("shared");
+	});
 });
 
 describe("Marker File Routing", () => {
