@@ -125,13 +125,13 @@ Here is a default configuration structure that works for both roblox-ts and luau
 
 | Property            | Description                                                                                                                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| source              | The root directory (String) or directories (Array of Strings) where your source code lives (defaults to "src"). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
-| casing              | Affects casing of the wrapper folders. Accepted values are `"PascalCase"` and `"camelCase"`; defaults to `"camelCase"`. |
+| source              | The root directory (`string`) or directories (`string[]`) where your source code lives (defaults to `["src"]`). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
 | luau / ts / darklua  | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
-| <custom_mode>  | You can define your own custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
+| <custom_mode>  | Define custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |
-| aliases             | An object allowing you to define custom suffix or folder routing mappings. You can use this to register new keywords (e.g., "Controller": "StarterPlayerScripts") or overwrite Rogen's default service routing behaviors.                                           |
-| keepRouteNames        | A boolean flag (defaults to false). When set to true, Rogen will preserve your routing suffixes in the script names instead of stripping them out.                                                                                                                  |
+| aliases             | An object allowing you to define custom suffix or folder routing mappings. You can use this to register new keywords (e.g., `"Controller": "StarterPlayerScripts"`) or overwrite Rogen's default service routing behaviors.                                           |
+| keepRouteNames        | A boolean flag (defaults to `false`). When set to `true`, Rogen will preserve the routing suffixes in the script names instead of stripping them out.               
+| casing              | Casing of the wrapper folders. Accepted values are `"PascalCase"` or `"camelCase"` (defaults to `"camelCase"`). |                                                                                                   |
 
 ### 3. CLI Usage
 You can run Rogen with optional arguments to cleanly override your configurations on the fly:
@@ -139,6 +139,8 @@ You can run Rogen with optional arguments to cleanly override your configuration
 - `-h, --help:` Show this help menu containing all available options.
 
 - `-i, --init:` Generate a default .rogen.json config file.
+
+- `-w, --watch`: Watch the source directory for changes, automatically regenerating your project files.
 
 - `-c, --config <path>`: Specify a custom Rogen config file path.
 
@@ -151,10 +153,6 @@ You can run Rogen with optional arguments to cleanly override your configuration
 - `-b, --build <path>`: Override the directory where your compiled/transpiled code lands.
 
 - `-o, --output <path>`: Override the name and destination of the final generated Rojo .project.json file.
-
-- `-k, --keepRouteNames`: Do not strip routing prefixes or suffixes (e.g., server, client) from names.
-
-- `-w, --watch`: Watch the source directory for changes, automatically regenerating your project files.
 
 As an example, it is possible to pass a specific configuration file, run a custom mode, inject a base template, and force a targeted output file all at the same time:
 ```bash

@@ -8,7 +8,6 @@ export interface CliArgs {
 	output?: string;
 	build?: string;
 	watch?: boolean;
-	keepRouteNames?: boolean;
 }
 
 export interface RogenMode {

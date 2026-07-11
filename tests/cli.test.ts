@@ -34,16 +34,6 @@ describe("CLI Argument Parsing", () => {
 		expect(options.watch).toBeUndefined();
 	});
 
-	it("should parse keepRouteNames flag correctly", () => {
-		const args1 = ["--keepRouteNames"];
-		const options1 = parseCliArgs(args1);
-		expect(options1.keepRouteNames).toBe(true);
-
-		const args2 = ["-k"];
-		const options2 = parseCliArgs(args2);
-		expect(options2.keepRouteNames).toBe(true);
-	});
-
 	it("should parse init flag correctly", () => {
 		const args1 = ["--init"];
 		const options1 = parseCliArgs(args1);
