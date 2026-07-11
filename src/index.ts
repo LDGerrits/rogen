@@ -41,7 +41,7 @@ async function main(): Promise<void> {
 		return sourcePath;
 	});
 
-	const env = getEnvironment();
+	const env = getEnvironment(cliArgs.mode);
 	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
 	const baseProjectTree = loadProjectTree(cliArgs.template, config.template);
 

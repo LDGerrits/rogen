@@ -83,12 +83,21 @@ export function build(
 
 	for (const sourcePath of sourcePaths) {
 
-		// Calculate the sub-path of to append to our build directory for multi-place support.
-		// So, if source is "src/hub" and build is "out", subPath becomes "hub", and context.build 
+		// Calculate the sub-path to append to our build directory for multi-place support.
+		// So, if source is "src/hub" and build is "out", subPath becomes "hub", and context.build
 		// becomes "out/hub".
+		//
+		// Leading "../" and "./" segments only navigate to the source root (e.g. a project that
+		// generates into a nested folder and points at "../../src"); they are not part of the
+		// compiler's rootDir-relative layout. Skip them so the source is treated as a root
+		// (subPath "") instead of corrupting the build path with the navigation segments.
 		const relativePath = path.relative(process.cwd(), sourcePath);
-		const segments = relativePath.split(path.sep);
-		const subPath = segments.length > 1 ? segments.slice(1).join(path.sep) : "";
+		const segments = relativePath.split(path.sep).filter((segment) => segment.length > 0);
+		let rootIndex = 0;
+		while (rootIndex < segments.length && (segments[rootIndex] === ".." || segments[rootIndex] === ".")) {
+			rootIndex += 1;
+		}
+		const subPath = segments.slice(rootIndex + 1).join(path.sep);
 		
 		const directoryMarkers: Record<string, string> = {};
 		const newContext: RouteContext = {

@@ -1,6 +1,6 @@
 import fs from "fs";
 import { jest } from "@jest/globals";
-import { loadAndValidateConfig, resolveActiveModes } from "../src/config.js";
+import { getEnvironment, loadAndValidateConfig, resolveActiveModes } from "../src/config.js";
 import { defaultConfig } from "../src/constants.js";
 import { Environment, RogenConfig } from "../src/types.js";
 
@@ -32,6 +32,7 @@ describe("Configuration Resolution", () => {
 
 	it("should fallback to luau if no config exists and environment is standard", () => {
 		const modes = resolveActiveModes({}, false, undefined, defaultEnv);
+		
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe(defaultConfig.luau!.build);
 	});
@@ -66,5 +67,27 @@ describe("Configuration Resolution", () => {
 		
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe("dist");
+	});
+});
+
+describe("Environment Detection", () => {
+	beforeEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	it("should detect a TS project from a tsconfig.json marker when no mode is given", () => {
+		jest.spyOn(fs, "existsSync").mockImplementation((p) => String(p).endsWith("tsconfig.json"));
+		expect(getEnvironment().isTsProject).toBe(true);
+	});
+
+	it("should treat an explicit --mode ts as a TS project even without a tsconfig.json in the cwd", () => {
+		// Generating into a nested folder means the cwd has no tsconfig.json marker.
+		jest.spyOn(fs, "existsSync").mockReturnValue(false);
+		expect(getEnvironment("ts").isTsProject).toBe(true);
+	});
+
+	it("should treat an explicit non-ts --mode as authoritative over a tsconfig.json marker", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+		expect(getEnvironment("luau").isTsProject).toBe(false);
 	});
 });

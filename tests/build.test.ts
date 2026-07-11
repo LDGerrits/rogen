@@ -103,6 +103,62 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
 	});
 
+	it("should treat a source reached via parent-dir navigation as a root without corrupting the build path", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "Combat.lua", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "../../src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = build(targetConfig, baseTree, config, env, ["../../src"], cliArgs);
+		const resultTree = result.tree.tree as any;
+
+		// The "../../" only navigates to the source root; it must not become a build sub-path.
+		expect(resultTree.ReplicatedStorage.shared.Combat.$path).toBe("out/Combat.lua");
+	});
+
+	it("should compile TypeScript sources to .luau paths when the environment is a TS project", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "Weapon.ts", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: true, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.luau");
+	});
+
+
 	it("should route files based on marker files instead of folder names", () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 

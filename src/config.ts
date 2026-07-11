@@ -95,10 +95,15 @@ export function loadProjectTree(cliProjectArg?: string, configProjectField?: unk
 	return JSON.parse(JSON.stringify(defaultConfig.template));
 }
 
-export function getEnvironment(): Environment {
+export function getEnvironment(cliMode?: string): Environment {
 	const cwd = process.cwd();
-	const isTsProject = fs.existsSync(path.join(cwd, "tsconfig.json"));
-	const isDarkluaProject = fs.existsSync(path.join(cwd, ".darklua.json")) || fs.existsSync(path.join(cwd, ".darklua.json5"));
+	const hasTsconfig = fs.existsSync(path.join(cwd, "tsconfig.json"));
+	const hasDarklua = fs.existsSync(path.join(cwd, ".darklua.json")) || fs.existsSync(path.join(cwd, ".darklua.json5"));
+
+	// An explicit --mode is authoritative: it declares the project's language even when Rogen
+	// runs from a directory that doesn't contain the tsconfig or .darklua marker.
+	const isTsProject = cliMode ? cliMode === "ts" : hasTsconfig;
+	const isDarkluaProject = cliMode ? cliMode === "darklua" : hasDarklua;
 	return { isTsProject, isDarkluaProject };
 }
 
