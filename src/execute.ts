@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { build } from "./build.js";
-import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "../types.js";
+import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
 
 export function execute(
 	sourcePaths: string[], 

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Casing, MissingPath, RojoNode } from "../types.js";
+import { Casing, MissingPath, RojoNode } from "./types.js";
 
 export const toPosix = (p: string): string => p.split(path.sep).join("/");
 

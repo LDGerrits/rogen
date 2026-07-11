@@ -1,5 +1,5 @@
 import fs from "fs";
-import { applyCasing, getOrCreateNode, sortObject, pruneObject } from "../src/core/tree.js";
+import { applyCasing, getOrCreateNode, sortObject, pruneObject } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
 

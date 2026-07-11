@@ -3,7 +3,7 @@ import path from "path";
 import chokidar from "chokidar";
 import { printHelp, parseCliArgs } from "./cli.js";
 import { resolveConfigPath, loadAndValidateConfig, loadProjectTree, getEnvironment, resolveActiveModes } from "./config.js";
-import { execute } from "./core/execute.js";
+import { execute } from "./execute.js";
 import { defaultConfig, generateRoutingMaps } from "./constants.js";
 
 async function main(): Promise<void> {

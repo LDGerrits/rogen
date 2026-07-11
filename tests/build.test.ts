@@ -1,5 +1,5 @@
 import fs from "fs";
-import { build } from "../src/core/build.js";
+import { build } from "../src/build.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "../src/types.js";
 import { jest } from "@jest/globals";
 

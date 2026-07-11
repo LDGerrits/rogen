@@ -1,4 +1,4 @@
-import { resolveRoute } from "../src/core/route.js";
+import { resolveRoute } from "../src/route.js";
 import { generateRoutingMaps } from "../src/constants.js";
 import { RouteContext } from "../src/types.js";
 

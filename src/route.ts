@@ -3,9 +3,9 @@ import {
 	serviceAliases, 
 	serverContainers, 
 	clientContainers
-} from "../constants.js";
+} from "./constants.js";
 import { toPosix } from "./tree.js";
-import { RouteContext } from "../types.js";
+import { RouteContext } from "./types.js";
 
 export interface RouteResolution {
 	targetService: string;
