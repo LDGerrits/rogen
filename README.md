@@ -123,12 +123,10 @@ Here is a default configuration structure that works for both roblox-ts and luau
 }
 ```
 
-The `casing` setting accepts `"PascalCase"` or `"camelCase"` and defaults to `"camelCase"`. For example, `src/features/test/testServiceUtils.luau` is generated under `ReplicatedStorage/Shared/Features/Test/TestServiceUtils` with `"PascalCase"`, or under `ReplicatedStorage/shared/features/test/testServiceUtils` with `"camelCase"`.
-
 | Property            | Description                                                                                                                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | source              | The root directory (String) or directories (Array of Strings) where your source code lives (defaults to "src"). Passing an array allows you to merge multiple source folders into a single tree.                                                                                                                                                                                    |
-| casing              | Controls generated folder and script-name casing. Accepted values are `"PascalCase"` and `"camelCase"`; defaults to `"camelCase"`. |
+| casing              | Affects casing of the wrapper folders. Accepted values are `"PascalCase"` and `"camelCase"`; defaults to `"camelCase"`. |
 | luau / ts / darklua  | Mode-specific overrides. Rogen uses these to dictate where the compiled code ends up (build) and the name of the generated Rojo file (output)                                                                                                                       |
 | <custom_mode>  | You can define your own custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |

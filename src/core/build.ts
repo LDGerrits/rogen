@@ -66,7 +66,6 @@ export function build(
 
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));
 	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
-	const casing = config.casing ?? "camelCase";
 
 	const context: RouteContext = {
 		source: config.source || "src",
@@ -77,6 +76,8 @@ export function build(
 		routingMaps: generateRoutingMaps(config.aliases || {}),
 		keepRouteNames: cliArgs.keepRouteNames ?? config.keepRouteNames ?? false
 	};
+
+	const casing = config.casing ?? "camelCase";
 
 	let fileCount = 0;
 
@@ -110,18 +111,17 @@ export function build(
 			current = getOrCreateNode(current, applyCasing(wrapperFolder, casing), "Folder");
 
 			for (const part of virtualParts) {
-				current = getOrCreateNode(current, applyCasing(part, casing), "Folder");
+				current = getOrCreateNode(current, part, "Folder");
 			}
 
-			const casedNodeName = applyCasing(nodeName, casing);
-			const existingNode = (current[casedNodeName] as RojoNode) || {};
+			const existingNode = (current[nodeName] as RojoNode) || {};
 			const newNode: RojoNode = { ...existingNode, $path: projectPath };
 			
 			if (newNode.$className === "Folder") {
 				delete newNode.$className;
 			}
 			
-			current[casedNodeName] = newNode;
+			current[nodeName] = newNode;
 		});
 	}
 

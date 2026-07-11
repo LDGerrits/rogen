@@ -54,11 +54,11 @@ describe("Builder Integration", () => {
 		expect(result.buildDir).toBe("out");
 		expect(result.output).toBe("test.project.json");
 
-		expect(resultTree.ServerScriptService.server.systems.combat).toBeDefined();
-		expect(resultTree.ServerScriptService.server.systems.combat.$path).toBe("out/systems/Combat.server.lua");
+		expect(resultTree.ServerScriptService.server.systems.Combat).toBeDefined();
+		expect(resultTree.ServerScriptService.server.systems.Combat.$path).toBe("out/systems/Combat.server.lua");
 
-		expect(resultTree.ReplicatedStorage.shared.weapon).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.weapon.$path).toBe("out/Weapon.rbxm");
+		expect(resultTree.ReplicatedStorage.shared.Weapon).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.rbxm");
 
 		expect(resultTree.ReplicatedStorage.shared.ui).toBeDefined();
 		expect(resultTree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
@@ -96,11 +96,11 @@ describe("Builder Integration", () => {
 
 		expect(result.fileCount).toBe(2); 
 
-		expect(resultTree.ReplicatedStorage.shared.coreMath).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.levelData).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.CoreMath).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.LevelData).toBeDefined();
 		
-		expect(resultTree.ReplicatedStorage.shared.coreMath.$path).toBe("out/core/CoreMath.lua");
-		expect(resultTree.ReplicatedStorage.shared.levelData.$path).toBe("out/chapter1/LevelData.lua");
+		expect(resultTree.ReplicatedStorage.shared.CoreMath.$path).toBe("out/core/CoreMath.lua");
+		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
 	});
 
 	it("should route files based on marker files instead of folder names", () => {
@@ -136,8 +136,8 @@ describe("Builder Integration", () => {
 
 		expect(result.fileCount).toBe(1); 
 		
-		expect(resultTree.ServerScriptService.server.database.query).toBeDefined();
-		expect(resultTree.ServerScriptService.server.database.query.$path).toBe("out/Database/query.lua");
+		expect(resultTree.ServerScriptService.server.Database.query).toBeDefined();
+		expect(resultTree.ServerScriptService.server.Database.query.$path).toBe("out/Database/query.lua");
 	});
 
 	it("should generate PascalCase tree names without changing source paths", () => {
@@ -173,7 +173,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
 		const result = build(targetConfig, baseTree, config, env, ["src"], {});
-		const node = (result.tree.tree as any).ReplicatedStorage.Shared.Features.Test.TestServiceUtils;
+		const node = (result.tree.tree as any).ReplicatedStorage.Shared.features.test.testServiceUtils;
 
 		expect(node).toBeDefined();
 		expect(node.$path).toBe("out/features/test/testServiceUtils.luau");
@@ -212,7 +212,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
 		const result = build(targetConfig, baseTree, config, env, ["src"], {});
-		const node = (result.tree.tree as any).ReplicatedStorage.shared.features.test.testServiceUtils;
+		const node = (result.tree.tree as any).ReplicatedStorage.shared.Features.Test.TestServiceUtils;
 
 		expect(node).toBeDefined();
 		expect(node.$path).toBe("out/Features/Test/TestServiceUtils.luau");

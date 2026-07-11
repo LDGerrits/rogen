@@ -68,7 +68,6 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 			throw new Error(`\nConfiguration Error: 'casing' must be either "PascalCase" or "camelCase".\n`);
 		}
 	}
-	config.casing ??= "camelCase";
 
 	return { config, hasConfig: true };
 }

@@ -15,13 +15,6 @@ describe("Configuration Resolution", () => {
 		jest.spyOn(fs, "readFileSync").mockReturnValue(JSON.stringify(config));
 	}
 
-	it("should default casing to camelCase", () => {
-		expect(defaultConfig.casing).toBe("camelCase");
-
-		mockConfigFile({ luau: { build: "src", output: "default.project.json" } });
-		expect(loadAndValidateConfig("test.rogen.json").config.casing).toBe("camelCase");
-	});
-
 	it.each(["PascalCase", "camelCase"] as const)("should accept %s casing", (casing) => {
 		mockConfigFile({ casing });
 
