@@ -2,6 +2,8 @@ import fs from "fs";
 import { build } from "../src/build.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "../src/types.js";
 import { jest } from "@jest/globals";
+import path from "path";
+import { execute } from "../src/execute.js";
 
 describe("Builder Integration", () => {
 	beforeEach(() => {
@@ -45,14 +47,14 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(3); 
 		
 		expect(result.name).toBe("test-game");
 		expect(result.buildDir).toBe("out");
-		expect(result.output).toBe("test.project.json");
+		expect(result.output).toBe(path.resolve(process.cwd(), "test.project.json"));
 
 		expect(resultTree.ServerScriptService.server.systems.Combat).toBeDefined();
 		expect(resultTree.ServerScriptService.server.systems.Combat.$path).toBe("out/systems/Combat.server.lua");
@@ -91,7 +93,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(2); 
@@ -124,10 +126,9 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["../../src"], cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["../../src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
-		// The "../../" only navigates to the source root; it must not become a build sub-path.
 		expect(resultTree.ReplicatedStorage.shared.Combat.$path).toBe("out/Combat.lua");
 	});
 
@@ -152,7 +153,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: true, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.luau");
@@ -187,7 +188,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs);
+		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(1); 
@@ -228,7 +229,7 @@ describe("Builder Integration", () => {
 		const config: RogenConfig = { source: "src", casing: "PascalCase" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], {});
+		const result = build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
 		const node = (result.tree.tree as any).ReplicatedStorage.Shared.features.test.testServiceUtils;
 
 		expect(node).toBeDefined();
@@ -267,10 +268,69 @@ describe("Builder Integration", () => {
 		const config: RogenConfig = { source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], {});
+		const result = build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
 		const node = (result.tree.tree as any).ReplicatedStorage.shared.Features.Test.TestServiceUtils;
 
 		expect(node).toBeDefined();
 		expect(node.$path).toBe("out/Features/Test/TestServiceUtils.luau");
+	});
+
+	it("should resolve CLI output relative to cwd, but config output relative to anchor", () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(false); 
+
+		const targetConfig = { build: "out", output: "from-config.json" };
+		const baseTree = { name: "test", tree: {} };
+		const config = { source: "src" };
+		const env = { isTsProject: false, isDarkluaProject: false };
+		const anchor = "/mock/custom/anchor/path";
+
+		const resultA = build(targetConfig, baseTree, config, env, ["src"], {}, anchor);
+
+		const expectedConfigPath = path.resolve(anchor, "from-config.json").replace(/\\/g, "/");
+		expect(resultA.output.replace(/\\/g, "/")).toBe(expectedConfigPath);
+
+		const cliArgs = { output: "from-cli.json" };
+		const resultB = build(targetConfig, baseTree, config, env, ["src"], cliArgs, anchor);
+		
+		const expectedCliPath = path.resolve(process.cwd(), "from-cli.json").replace(/\\/g, "/");
+		expect(resultB.output.replace(/\\/g, "/")).toBe(expectedCliPath);
+	});
+
+	it("should create a directory for missing extensionless paths instead of dropping them", () => {
+		jest.spyOn(fs, "existsSync").mockImplementation((p) => {
+			const pathStr = String(p).replace(/\\/g, "/");
+
+			if (pathStr.endsWith("test.json")) return false;
+			
+			if (pathStr.includes("out/MissingInitFolder")) return false;
+
+			return true;
+		});
+
+		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			if (normalizedDir.endsWith("src")) {
+				return [{ name: "MissingInitFolder", isDirectory: () => true, isFile: () => false }];
+			}
+			if (normalizedDir.endsWith("MissingInitFolder")) {
+				return [{ name: "init.lua", isDirectory: () => false, isFile: () => true }];
+			}
+			return [];
+		});
+
+		const mkdirSpy = jest.spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
+		const writeSpy = jest.spyOn(fs, "writeFileSync").mockImplementation(() => undefined as any);
+
+		const dummyEnv = { isTsProject: false, isDarkluaProject: false };
+		const dummyConfig = { source: "src", luau: { output: "test.json", build: "out" } };
+		const baseTree = { name: "test", tree: {} };
+		const anchor = process.cwd();
+
+		execute(["src"], dummyEnv, [dummyConfig.luau], baseTree, dummyConfig, {}, anchor);
+
+		const expectedDirPath = path.resolve(anchor, "out/MissingInitFolder");
+
+		expect(mkdirSpy).toHaveBeenCalledWith(expectedDirPath, { recursive: true });
+		expect(writeSpy).not.toHaveBeenCalledWith(expectedDirPath, "");
 	});
 });

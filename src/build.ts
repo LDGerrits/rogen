@@ -85,7 +85,6 @@ export function build(
 		modeCopy.output = path.resolve(anchor, targetConfig.output);
 	}
 
-	if (cliArgs.output) modeCopy.output = cliArgs.output;
 	if (cliArgs.build) modeCopy.build = cliArgs.build;
 
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));

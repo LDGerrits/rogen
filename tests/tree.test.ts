@@ -1,7 +1,8 @@
 import fs from "fs";
-import { applyCasing, getOrCreateNode, sortObject, pruneObject } from "../src/tree.js";
+import { applyCasing, getOrCreateNode, sortObject, pruneObject, findMissingPaths } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
+import path from "path";
 
 describe("Tree Utilities", () => {
 	afterEach(() => {
@@ -63,6 +64,9 @@ describe("Tree Utilities", () => {
 	describe("pruneObject", () => {
 		it("should remove nodes with invalid paths outside the build directory", () => {
 			const buildDir = "out";
+			const outputDir = "/mock/project/dir";
+			const removed: any[] = [];
+
 			const tree: RojoNode = {
 				ValidInBuild: { $path: "out/valid" },
 				ValidExternal: { $path: "node_modules/@rbxts" },
@@ -73,11 +77,35 @@ describe("Tree Utilities", () => {
 				String(pathStr).includes("@rbxts")
 			);
 
-			const pruned = pruneObject(tree, buildDir);
+			const pruned = pruneObject(tree, buildDir, outputDir, removed);
 
 			expect(pruned.ValidInBuild).toBeDefined(); 
 			expect(pruned.ValidExternal).toBeDefined(); 
 			expect(pruned.InvalidExternal).toBeUndefined(); 
+		});
+	});
+
+	describe("findMissingPaths (Output-Relative Pathing)", () => {
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it("should resolve missing paths relative to the outputDir", () => {
+			const buildDir = "build";
+			const outputDir = "/root/rojo/generated";
+			const tree: RojoNode = {
+				System: { $path: "build/systems/Combat.luau" }
+			};
+
+			jest.spyOn(fs, "existsSync").mockReturnValue(false);
+
+			const missing = findMissingPaths(tree, buildDir, outputDir);
+
+			const expectedAbsolutePath = path.resolve(outputDir, "build/systems/Combat.luau");
+
+			expect(missing.length).toBe(1);
+			expect(missing[0].treePath).toBe("System");
+			expect(missing[0].absolutePath).toBe(expectedAbsolutePath);
 		});
 	});
 });
