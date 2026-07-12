@@ -65,17 +65,24 @@ export interface RojoTree {
 	tree: RojoNode;
 }
 
+export interface RemovedPath {
+	treePath: string;
+	rojoPath: string;
+}
+
 export interface MissingPath {
 	parent: RojoNode;
 	key: string;
 	path: string;
 	absolutePath: string;
+	treePath: string;
 }
 
 export interface BuildResult {
 	output: string;
 	tree: RojoTree;
 	missingPaths: MissingPath[];
+	removed: RemovedPath[];
 	name: string;
 	buildDir: string;
 	fileCount: number;

@@ -9,13 +9,13 @@ export function execute(
 	activeModes: RogenMode[], 
 	baseProjectTree: RojoTree, 
 	config: RogenConfig, 
-	cliArgs: CliArgs
+	cliArgs: CliArgs,
+	anchor: string
 ): void {
 	try {
 		for (const targetConfig of activeModes) {
-			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs);
+			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs, anchor);
 
-			// Add stub files so Rojo and the roblox-ts compiler don't crash
 			if (buildResult.missingPaths.length > 0) {
 				for (const item of buildResult.missingPaths) {
 					const ext = path.extname(item.absolutePath).toLowerCase();
@@ -25,8 +25,10 @@ export function execute(
 							fs.mkdirSync(dir, { recursive: true });
 						} 
 						fs.writeFileSync(item.absolutePath, "");
-					} else if (ext === "") {
-						fs.mkdirSync(item.absolutePath, { recursive: true });
+					} else if (ext === "") { 
+						if (!fs.existsSync(item.absolutePath)) {
+							fs.mkdirSync(item.absolutePath, { recursive: true });
+						}
 					} else {
 						delete item.parent[item.key];
 					}

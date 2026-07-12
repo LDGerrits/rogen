@@ -36,9 +36,11 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 	return null;
 }
 
-export function loadAndValidateConfig(configPath: string | null): { config: RogenConfig; hasConfig: boolean } {
+export function loadAndValidateConfig(configPath: string | null): { config: RogenConfig; hasConfig: boolean; anchor: string } {
+	const anchor = configPath ? path.dirname(configPath) : process.cwd();
+	
 	if (!configPath) {
-		return { config: JSON.parse(JSON.stringify(defaultConfig)), hasConfig: false };
+		return { config: JSON.parse(JSON.stringify(defaultConfig)), hasConfig: false, anchor };
 	}
 
 	const config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as RogenConfig;
@@ -69,16 +71,15 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 		}
 	}
 
-	return { config, hasConfig: true };
+	return { config, hasConfig: true, anchor };
 }
 
-export function loadProjectTree(cliProjectArg?: string, configProjectField?: unknown): RojoTree {
+export function loadProjectTree(anchor: string, cliProjectArg?: string, configProjectField?: unknown): RojoTree {
 	let targetPath: string | null = null;
-	
 	if (cliProjectArg) {
 		targetPath = path.resolve(process.cwd(), cliProjectArg);
 	} else if (typeof configProjectField === "string") {
-		targetPath = path.resolve(process.cwd(), configProjectField);
+		targetPath = path.resolve(anchor, configProjectField);
 	}
 
 	if (targetPath) {
@@ -95,15 +96,16 @@ export function loadProjectTree(cliProjectArg?: string, configProjectField?: unk
 	return JSON.parse(JSON.stringify(defaultConfig.template));
 }
 
-export function getEnvironment(cliMode?: string): Environment {
-	const cwd = process.cwd();
-	const hasTsconfig = fs.existsSync(path.join(cwd, "tsconfig.json"));
-	const hasDarklua = fs.existsSync(path.join(cwd, ".darklua.json")) || fs.existsSync(path.join(cwd, ".darklua.json5"));
-
-	// An explicit --mode is authoritative: it declares the project's language even when Rogen
-	// runs from a directory that doesn't contain the tsconfig or .darklua marker.
-	const isTsProject = cliMode ? cliMode === "ts" : hasTsconfig;
-	const isDarkluaProject = cliMode ? cliMode === "darklua" : hasDarklua;
+export function getEnvironment(anchor: string, cliMode?: string): Environment {
+	if (cliMode) {
+		return {
+			isTsProject: cliMode === "ts",
+			isDarkluaProject: cliMode === "darklua"
+		};
+	}
+	const isTsProject = fs.existsSync(path.join(anchor, "tsconfig.json"));
+	const isDarkluaProject = fs.existsSync(path.join(anchor, ".darklua.json")) || 
+		fs.existsSync(path.join(anchor, ".darklua.json5"));
 	return { isTsProject, isDarkluaProject };
 }
 

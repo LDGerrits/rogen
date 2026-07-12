@@ -3,12 +3,27 @@ import path from "path";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
 import { resolveRoute } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
-import { BuildResult, CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree, RouteContext, RoutingMaps } from "./types.js";
+import { BuildResult, CliArgs, Environment, RemovedPath, RogenConfig, RogenMode, RojoNode, RojoTree, RouteContext, RoutingMaps } from "./types.js";
 
 const isScript = (filename: string): boolean => /\.(tsx?|luau|lua)$/i.test(filename) && !filename.toLowerCase().endsWith(".d.ts");
 const isModel = (filename: string): boolean => /\.(rbxm|rbxmx)$/i.test(filename);
 const isValidSource = (filename: string): boolean => isScript(filename) || isModel(filename);
 const isInitFile = (filename: string): boolean => isScript(filename) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(filename);
+
+function buildSubPath(sourceRel: string): string {
+	const segments = sourceRel.split(/[\\/]/).filter(Boolean);
+	let rootIndex = 0;
+	
+	while (rootIndex < segments.length && (segments[rootIndex] === ".." || segments[rootIndex] === ".")) {
+		rootIndex++;
+	}
+	
+	if (rootIndex + 1 >= segments.length) {
+		return "";
+	}
+	
+	return segments.slice(rootIndex + 1).join("/");
+}
 
 function walk(
 	dir: string, 
@@ -58,9 +73,18 @@ export function build(
 	config: RogenConfig, 
 	env: Environment, 
 	sourcePaths: string[], 
-	cliArgs: CliArgs
+	cliArgs: CliArgs,
+	anchor: string
 ): BuildResult {
 	const modeCopy: RogenMode = { ...targetConfig };
+	
+	// Paths resolve differently depending on if they came from CLI or config
+	if (cliArgs.output) {
+		modeCopy.output = path.resolve(process.cwd(), cliArgs.output);
+	} else {
+		modeCopy.output = path.resolve(anchor, targetConfig.output);
+	}
+
 	if (cliArgs.output) modeCopy.output = cliArgs.output;
 	if (cliArgs.build) modeCopy.build = cliArgs.build;
 
@@ -82,22 +106,8 @@ export function build(
 	let fileCount = 0;
 
 	for (const sourcePath of sourcePaths) {
-
-		// Calculate the sub-path to append to our build directory for multi-place support.
-		// So, if source is "src/hub" and build is "out", subPath becomes "hub", and context.build
-		// becomes "out/hub".
-		//
-		// Leading "../" and "./" segments only navigate to the source root (e.g. a project that
-		// generates into a nested folder and points at "../../src"); they are not part of the
-		// compiler's rootDir-relative layout. Skip them so the source is treated as a root
-		// (subPath "") instead of corrupting the build path with the navigation segments.
-		const relativePath = path.relative(process.cwd(), sourcePath);
-		const segments = relativePath.split(path.sep).filter((segment) => segment.length > 0);
-		let rootIndex = 0;
-		while (rootIndex < segments.length && (segments[rootIndex] === ".." || segments[rootIndex] === ".")) {
-			rootIndex += 1;
-		}
-		const subPath = segments.slice(rootIndex + 1).join(path.sep);
+		const relativePath = path.relative(anchor, sourcePath);
+		const subPath = buildSubPath(relativePath);
 		
 		const directoryMarkers: Record<string, string> = {};
 		const newContext: RouteContext = {
@@ -134,16 +144,20 @@ export function build(
 		});
 	}
 
-	const prunedTree = pruneObject(rojoTree.tree, context.build);
-	rojoTree.tree = prunedTree;
+	const outputDir = path.dirname(modeCopy.output);
+	const removed: RemovedPath[] = [];
+	
+	const prunedTree = pruneObject(rojoTree.tree, context.build, outputDir, removed);
+    rojoTree.tree = prunedTree;
 	
 	const sortedTree = sortObject(rojoTree);
-	const missingPaths = findMissingPaths(sortedTree.tree, context.build);
+	const missingPaths = findMissingPaths(sortedTree.tree, context.build, outputDir);
 
 	return {
-		output: context.output,
+		output: modeCopy.output,
 		tree: sortedTree,
 		missingPaths,
+		removed,
 		name: context.name,
 		buildDir: context.build,
 		fileCount

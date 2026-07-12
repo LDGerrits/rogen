@@ -28,24 +28,25 @@ async function main(): Promise<void> {
 	}
 
 	const configPath = resolveConfigPath(cliArgs.config);
-	const { config, hasConfig } = loadAndValidateConfig(configPath);
+	const { config, hasConfig, anchor } = loadAndValidateConfig(configPath);
 	
 	const rawSources = cliArgs.source || config.source || ["src"];
 	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
+	const resolveBase = cliArgs.source ? process.cwd() : anchor;
 
 	const sourcePaths = sourceDirs.map(s => {
-		const sourcePath = path.resolve(process.cwd(), s);
+		const sourcePath = path.resolve(resolveBase, s);
 		if (!fs.existsSync(sourcePath)) {
 			throw new Error(`Source directory not found: ${sourcePath}`);
 		}
 		return sourcePath;
 	});
 
-	const env = getEnvironment(cliArgs.mode);
+	const env = getEnvironment(anchor, cliArgs.mode);
 	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
-	const baseProjectTree = loadProjectTree(cliArgs.template, config.template);
+	const baseProjectTree = loadProjectTree(anchor, cliArgs.template, config.template);
 
-	execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
+	execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
 
 	if (cliArgs.watch) {
 		console.log(`Rogen watching for file changes in: "${sourceDirs.join(', ')}"... (Press Ctrl+C to stop)`);
@@ -74,7 +75,7 @@ async function main(): Promise<void> {
 		watcher.on('all', () => {
 			clearTimeout(debounceTimeout);
 			debounceTimeout = setTimeout(() => {
-				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs);
+				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
 			}, 100);
 		});
 

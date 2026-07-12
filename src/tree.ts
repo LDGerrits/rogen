@@ -1,6 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { Casing, MissingPath, RojoNode } from "./types.js";
+import { Casing, MissingPath, RemovedPath, RojoNode } from "./types.js";
+
+function hasPathPrefix(p: string, dir: string): boolean {
+	return p === dir || p.startsWith(dir + "/");
+}
 
 export const toPosix = (p: string): string => p.split(path.sep).join("/");
 
@@ -21,21 +25,25 @@ export function getOrCreateNode(parent: RojoNode, key: string, className?: strin
 	return parent[key] as RojoNode;
 }
 
-export function pruneObject(node: RojoNode, buildDir: string): RojoNode {
+export function pruneObject(node: RojoNode, buildDir: string, outputDir: string, removed: RemovedPath[] = [], treePath = ""): RojoNode {
 	for (const key in node) {
 		const val = node[key];
 		if (typeof val !== "object" || val === null) continue;
 
+		const childTreePath = treePath ? `${treePath}.${key}` : key;
 		const childNode = val as RojoNode;
 
 		if (childNode.$path) {
-			if (childNode.$path.startsWith(buildDir)) continue; 
-			if (!fs.existsSync(path.resolve(process.cwd(), childNode.$path))) {
+			if (hasPathPrefix(childNode.$path, buildDir)) continue; 
+			
+			const absolutePath = path.resolve(outputDir, childNode.$path);
+			if (!fs.existsSync(absolutePath)) {
 				delete node[key];
+				removed.push({ treePath: childTreePath, rojoPath: childNode.$path });
 				continue;
 			}
 		}
-		pruneObject(childNode, buildDir);
+		pruneObject(childNode, buildDir, outputDir, removed, childTreePath);
 	}
 	return node;
 }
@@ -55,20 +63,27 @@ export function sortObject<T>(obj: T): T {
 		}, {}) as T;
 }
 
-export function findMissingPaths(node: RojoNode, buildDir: string, missing: MissingPath[] = []): MissingPath[] {
+export function findMissingPaths(node: RojoNode, buildDir: string, outputDir: string, missing: MissingPath[] = [], treePath = ""): MissingPath[] {
 	for (const key in node) {
 		const val = node[key];
 		if (typeof val !== "object" || val === null) continue;
 
+		const childTreePath = treePath ? `${treePath}.${key}` : key;
 		const childNode = val as RojoNode;
 
-		if (childNode.$path && childNode.$path.startsWith(buildDir)) {
-			const absolutePath = path.resolve(process.cwd(), childNode.$path);
+		if (childNode.$path && hasPathPrefix(childNode.$path, buildDir)) {
+			const absolutePath = path.resolve(outputDir, childNode.$path);
 			if (!fs.existsSync(absolutePath)) {
-				missing.push({ parent: node, key, path: childNode.$path, absolutePath });
+				missing.push({ 
+					parent: node, 
+					key, 
+					treePath: childTreePath,
+					path: childNode.$path, 
+					absolutePath 
+				});
 			}
 		}
-		findMissingPaths(childNode, buildDir, missing);
+		findMissingPaths(childNode, buildDir, outputDir, missing, childTreePath);
 	}
 	return missing;
 }
