@@ -133,7 +133,7 @@ export async function build(
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name ?? "unknown",
 		routingMaps: generateRoutingMaps(config.aliases || {}),
-		keepRouteNames: config.keepRouteNames ?? false
+		fullNames: config.fullNames ?? false
 	};
 
 	const casing = config.casing ?? "camelCase";

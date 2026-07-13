@@ -39,7 +39,7 @@ To route a specific file differently than its parent folder, use a routing prefi
 * **CamelCase & PascalCase:** Prepend or append the mapped keyword directly to the filename.
 	* **Examples:** inputClient.ts, serverData.ts
 
-**Note:** *By default, Rogen strips the routing keyword from the final module name (e.g., `serverData.ts` and `data.server.ts` both become `data`). You can disable this behavior using the `--keepRouteNames` flag*.
+**Note:** *By default, Rogen strips the routing keyword from the final module name (e.g., `serverData.ts` and `data.server.ts` both become `data`). You can disable this behavior using the `--fullNames` flag*.
 
 ### 4. Default Fallback
 If no routing rules or keywords are found anywhere in the path, the file defaults to `ReplicatedStorage`.
@@ -74,7 +74,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 {
 	"source": ["src"],
 	"casing": "camelCase",
-	"keepRouteNames": false,
+	"fullNames": false,
 	"luau": { 
 		"output": "default.project.json", 
 		"build": "src"
@@ -130,7 +130,7 @@ Here is a default configuration structure that works for both roblox-ts and luau
 | <custom_mode>  | Define custom pipeline modes (e.g., "lute") by adding a new key. Custom modes must include an output and a build value.                                                                                                                       |
 | template            | The base Rojo tree template. Any standard Rojo `default.project.json` fields (like `name`, `globIgnorePaths`, or a custom `tree`) placed here will be safely merged with Rogen's auto-generated paths. You can also specify a path to a JSON file with a Rojo tree! |
 | aliases             | An object allowing you to define custom suffix or folder routing mappings. You can use this to register new keywords (e.g., `"Controller": "StarterPlayerScripts"`) or overwrite Rogen's default service routing behaviors.                                           |
-| keepRouteNames        | A boolean flag (defaults to `false`). When set to `true`, Rogen will preserve the routing suffixes in the script names instead of stripping them out.               
+| fullNames        | A boolean flag (defaults to `false`). When set to `true`, Rogen will preserve the routing suffixes in the script names instead of stripping them out.               
 | casing              | Casing of the wrapper folders. Accepted values are `"PascalCase"` or `"camelCase"` (defaults to `"camelCase"`). |                                                                                                   |
 
 ### 3. CLI Usage

@@ -3,7 +3,7 @@ import { RogenConfig } from "./types.js";
 
 export const defaultConfig: RogenConfig = {
 	source: ["src"],
-	keepRouteNames: false,
+	fullNames: false,
 	casing: "camelCase",
 	aliases: {},
 	luau: { 

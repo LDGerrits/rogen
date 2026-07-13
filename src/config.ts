@@ -3,6 +3,8 @@ import path from "path";
 import { defaultConfig } from "./constants.js";
 import { Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
 
+const FIELDS = ["source", "template", "luau", "ts", "darklua", "aliases", "fullNames", "casing"];
+
 export function resolveConfigPath(customPathArg?: string): string | null {
 	const cwd = process.cwd();
 	
@@ -44,10 +46,9 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 	}
 
 	const config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as RogenConfig;
-	const standardKeys = ["source", "template", "luau", "ts", "darklua", "aliases", "keepRouteNames", "casing"];
 
 	for (const key in config) {
-		if (!standardKeys.includes(key)) {
+		if (!FIELDS.includes(key)) {
 			const customMode = config[key];
 			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
 				throw new Error(`Configuration Error: Key "${key}" must be a valid object defining a mode.`);
@@ -64,8 +65,8 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 			throw new Error(`Configuration Error: 'source' must be a string or an array of strings.`);
 		} else if (key === "template" && typeof config[key] !== "object" && typeof config[key] !== "string") {
 			throw new Error(`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`);
-		} else if (key === "keepRouteNames" && typeof config[key] !== "boolean") {
-			throw new Error(`Configuration Error: 'keepRouteNames' must be a boolean.`);
+		} else if (key === "fullNames" && typeof config[key] !== "boolean") {
+			throw new Error(`Configuration Error: 'fullNames' must be a boolean.`);
 		} else if (key === "casing" && config[key] !== "PascalCase" && config[key] !== "camelCase") {
 			throw new Error(`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`);
 		}
@@ -111,7 +112,7 @@ export function getEnvironment(anchor: string, cliMode?: string): Environment {
 
 export function resolveActiveModes(config: RogenConfig, hasConfig: boolean, cliMode: string | undefined, env: Environment): RogenMode[] {
 	const baseLanguage = env.isTsProject ? (config.ts || defaultConfig.ts!) : (config.luau || defaultConfig.luau!);
-	const nonModeKeys = new Set(["source", "template", "aliases", "keepRouteNames", "casing"]);
+	const nonModeKeys = new Set(["source", "template", "aliases", "fullNames", "casing"]);
 	const activeModes: RogenMode[] = [];
 
 	if (hasConfig) {

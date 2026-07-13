@@ -35,7 +35,7 @@ export interface RouteContext extends RogenMode {
 	emitLegacyScripts: boolean;
 	name: string;
 	routingMaps: RoutingMaps;
-	keepRouteNames: boolean;
+	fullNames: boolean;
 	directoryMarkers?: Record<string, string>;
 }
 
@@ -190,7 +190,7 @@ function getWrapperFolder(targetService: string, environmentKeyword: string | nu
 }
 
 export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
-	const { emitLegacyScripts, isTsProject, build, routingMaps, keepRouteNames, directoryMarkers } = context;
+	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, directoryMarkers } = context;
 
 	const parts = relativePath.split(/[\\/]/);
 	const filename = parts.pop()!;
@@ -238,12 +238,12 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
 		if (affix) {
-			const fullNames = keepRouteNames || flags.fullNames;
-			let shouldStrip = !fullNames;
+			const keepFullNames = fullNames || flags.fullNames;
+			let shouldStrip = !keepFullNames;
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
-			// Even if keepRouteNames is true, we must strip these exact dot-prefixes.
-			if (fullNames) {
+			// Even if fullNames is true, we must strip these exact dot-prefixes.
+			if (keepFullNames) {
 				const exactMatch = affix.exactMatch.toLowerCase();
 				if (exactMatch === ".server" || exactMatch === ".client") {
 					shouldStrip = true;

@@ -19,7 +19,7 @@ export type Casing = "PascalCase" | "camelCase";
 
 export interface RogenConfig {
 	source?: string | string[];
-	keepRouteNames?: boolean;
+	fullNames?: boolean;
 	casing?: Casing;
 	aliases?: Record<string, string>;
 	luau?: RogenMode;

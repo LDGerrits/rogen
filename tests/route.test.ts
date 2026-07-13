@@ -9,7 +9,7 @@ describe("Router Logic", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		keepRouteNames: false,
+		fullNames: false,
 		routingMaps: generateRoutingMaps()
 	};
 
@@ -70,8 +70,8 @@ describe("Router Logic", () => {
 		expect(result2.nodeName).toBe("Combat");
 	});
 
-	it("should retain routing suffixes in nodeName when keepRouteNames is true, except for .server and .client", () => {
-		const keepSuffixContext: RouteContext = { ...baseContext, keepRouteNames: true };
+	it("should retain routing suffixes in nodeName when fullNames is true, except for .server and .client", () => {
+		const keepSuffixContext: RouteContext = { ...baseContext, fullNames: true };
 		
 		const result1 = resolveRoute("systems/Combat.server.lua", false, keepSuffixContext);
 		expect(result1.targetService).toBe("ServerScriptService");
@@ -140,7 +140,7 @@ describe("Marker File Routing", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		keepRouteNames: false,
+		fullNames: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {}
 	};
@@ -185,7 +185,7 @@ describe("Routing (Deepest Wins)", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		keepRouteNames: false,
+		fullNames: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {}
 	};

@@ -507,7 +507,7 @@ describe("Builder Integration", () => {
 		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 
-		const config: RogenConfig = { source: "src", keepRouteNames: false }; 
+		const config: RogenConfig = { source: "src", fullNames: false }; 
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
