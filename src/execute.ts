@@ -80,6 +80,12 @@ export async function execute(
 					}
 				}
 
+				if (buildResult.collisions.length > 0) {
+					for (const collision of buildResult.collisions) {
+						console.log(`${timeStamp} ⚠️ ${collision}`);
+					}
+				}
+
 				if (cliArgs.watch) {
 					const outputName = path.basename(buildResult.output);
 					console.log(`${timeStamp} ✅ Built "${buildResult.name}" (${buildResult.fileCount} files) -> ${outputName}`);

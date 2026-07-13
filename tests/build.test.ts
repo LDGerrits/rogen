@@ -526,4 +526,63 @@ describe("Builder Integration", () => {
 		expect(clientSystems["combat"]).toBeDefined();
 		expect(clientSystems["combat"].$path).toBe("out/systems/combat.client.lua");
 	});
+
+	it("should detect and report same-source collisions", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "api.server.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "api_server.luau", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+		
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		
+		expect(result.collisions.length).toBe(1);
+		expect(result.collisions[0]).toContain("Name collision");
+		expect(result.collisions[0]).toContain("api.server.luau");
+		expect(result.collisions[0]).toContain("api_server.luau");
+	});
+
+	it("should not report collisions for intentional cross-source overrides", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src/core")) {
+				return [
+					{ name: "api.luau", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+			if (normalizedDir.endsWith("src/hub")) {
+				return [
+					{ name: "api.luau", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: ["src/core", "src/hub"] };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+		
+		const result = await build(targetConfig, baseTree, config, env, ["src/core", "src/hub"], cliArgs, process.cwd());
+		
+		expect(result.collisions.length).toBe(0);
+	});
 });

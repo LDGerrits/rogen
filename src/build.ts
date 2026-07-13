@@ -13,6 +13,7 @@ interface BuildResult {
 	tree: RojoTree;
 	missingPaths: MissingPath[];
 	removed: RemovedPath[];
+	collisions: string[];
 	name: string;
 	buildDir: string;
 	fileCount: number;
@@ -138,6 +139,8 @@ export async function build(
 
 	const casing = config.casing ?? "camelCase";
 
+	const nodeOrigins = new WeakMap<RojoNode, { sourcePath: string, filepath: string }>();
+	const collisions: string[] = [];
 	let fileCount = 0;
 
 	for (const sourcePath of sourcePaths) {
@@ -177,7 +180,16 @@ export async function build(
 				return; 
 			}
 
-			const existingNode = (current[nodeName] as RojoNode) || {};
+			const existingNodeRaw = current[nodeName] as RojoNode | undefined;
+		
+			if (existingNodeRaw && existingNodeRaw.$path) {
+				const origin = nodeOrigins.get(existingNodeRaw);
+				if (origin && origin.sourcePath === sourcePath) {
+					collisions.push(`Name collision: "${origin.filepath}" and "${relativePath}" both map to the node "${nodeName}".`);
+				}
+			}
+
+			const existingNode = existingNodeRaw || {};
 			const newNode: RojoNode = { ...existingNode, $path: projectPath };
 			
 			if (newNode.$className === "Folder") {
@@ -185,6 +197,7 @@ export async function build(
 			}
 			
 			current[nodeName] = newNode;
+			nodeOrigins.set(newNode, { sourcePath, filepath: relativePath });
 		});
 	}
 
@@ -201,6 +214,7 @@ export async function build(
 		tree: sortedTree,
 		missingPaths,
 		removed,
+		collisions,
 		name: context.name,
 		buildDir: context.build,
 		fileCount
