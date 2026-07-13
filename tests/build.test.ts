@@ -20,7 +20,7 @@ describe("Builder Integration", () => {
 				return [
 					{ name: "systems", isDirectory: () => true, isFile: () => false },
 					{ name: "ui", isDirectory: () => true, isFile: () => false },
-					{ name: "ignoreMe.txt", isDirectory: () => false, isFile: () => true },
+					{ name: "ignoreMe.png", isDirectory: () => false, isFile: () => true },
 					{ name: "Weapon.rbxm", isDirectory: () => false, isFile: () => true }
 				] as fs.Dirent[];
 			}
@@ -332,5 +332,42 @@ describe("Builder Integration", () => {
 
 		expect(mkdirSpy).toHaveBeenCalledWith(expectedDirPath, { recursive: true });
 		expect(writeSpy).not.toHaveBeenCalledWith(expectedDirPath, "");
+	});
+
+	it("should support Argon and Rojo data file types (JSON, TOML, YAML, CSV, etc.)", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "config.toml", isDirectory: () => false, isFile: () => true },
+					{ name: "data.json", isDirectory: () => false, isFile: () => true },
+					{ name: "locales.csv", isDirectory: () => false, isFile: () => true },
+					{ name: "notes.txt", isDirectory: () => false, isFile: () => true },
+					{ name: "README.md", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(5);
+
+		expect(resultTree.ReplicatedStorage.shared.config.$path).toBe("out/config.toml");
+		expect(resultTree.ReplicatedStorage.shared.data.$path).toBe("out/data.json");
+		expect(resultTree.ReplicatedStorage.shared.locales.$path).toBe("out/locales.csv");
+		expect(resultTree.ReplicatedStorage.shared.notes.$path).toBe("out/notes.txt");
+		expect(resultTree.ReplicatedStorage.shared.README.$path).toBe("out/README.md");
 	});
 });
