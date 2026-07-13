@@ -76,7 +76,7 @@ async function main(): Promise<void> {
 			clearTimeout(debounceTimeout);
 			debounceTimeout = setTimeout(() => {
 				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor).catch(err => {
-                    console.error(`\n❌ Watcher Error: ${err instanceof Error ? err.message : String(err)}\n`);
+					console.error(`\n❌ Watcher Error: ${err instanceof Error ? err.message : String(err)}\n`);
 				});
 			}, 100);
 		});

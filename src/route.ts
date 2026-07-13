@@ -5,7 +5,49 @@ import {
 	clientContainers
 } from "./constants.js";
 import { toPosix } from "./tree.js";
-import { AffixResult, FolderRoutingResult, RouteContext, RouteResolution, RoutingMaps } from "./types.js";
+import { RogenMode } from "./types.js";
+
+interface FolderRoutingResult {
+	targetService: string;
+	virtualParts: string[];
+	lastRouteKeyword: string | null;
+	environmentKeyword: string | null;
+}
+
+export interface RoutingMaps {
+	mergedServices: Record<string, string>;
+	lowerCaseMap: Record<string, string>;
+	separatorSuffixRegex: RegExp;
+	pascalCaseSuffixRegex: RegExp;
+	separatorPrefixRegex: RegExp;
+	camelCasePrefixRegex: RegExp;
+}
+
+export interface RouteContext extends RogenMode {
+	source: string | string[];
+	isTsProject: boolean;
+	emitLegacyScripts: boolean;
+	name: string;
+	routingMaps: RoutingMaps;
+	keepRouteNames: boolean;
+	directoryMarkers?: Record<string, string>;
+}
+
+interface AffixResult {
+	mappedService: string;
+	matchedLength: number;
+	exactMatch: string;
+	environmentKeyword?: string;
+	isPrefix: boolean;
+}
+
+interface RouteResolution {
+	targetService: string;
+	wrapperFolder: string;
+	virtualParts: string[];
+	nodeName: string;
+	projectPath: string;
+}
 
 function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, string> | undefined, routingMaps: RoutingMaps): FolderRoutingResult {
 	const { lowerCaseMap } = routingMaps;

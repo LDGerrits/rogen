@@ -34,25 +34,6 @@ export interface Environment {
 	isDarkluaProject: boolean;
 }
 
-export interface RoutingMaps {
-	mergedServices: Record<string, string>;
-	lowerCaseMap: Record<string, string>;
-	separatorSuffixRegex: RegExp;
-	pascalCaseSuffixRegex: RegExp;
-	separatorPrefixRegex: RegExp;
-	camelCasePrefixRegex: RegExp;
-}
-
-export interface RouteContext extends RogenMode {
-	source: string | string[];
-	isTsProject: boolean;
-	emitLegacyScripts: boolean;
-	name: string;
-	routingMaps: RoutingMaps;
-	keepRouteNames: boolean;
-	directoryMarkers?: Record<string, string>;
-}
-
 export interface RojoNode {
 	$className?: string;
 	$path?: string;
@@ -63,50 +44,4 @@ export interface RojoTree {
 	name?: string;
 	emitLegacyScripts?: boolean;
 	tree: RojoNode;
-}
-
-export interface RemovedPath {
-	treePath: string;
-	rojoPath: string;
-}
-
-export interface MissingPath {
-	parent: RojoNode;
-	key: string;
-	path: string;
-	absolutePath: string;
-	treePath: string;
-}
-
-export interface BuildResult {
-	output: string;
-	tree: RojoTree;
-	missingPaths: MissingPath[];
-	removed: RemovedPath[];
-	name: string;
-	buildDir: string;
-	fileCount: number;
-}
-
-export interface RouteResolution {
-	targetService: string;
-	wrapperFolder: string;
-	virtualParts: string[];
-	nodeName: string;
-	projectPath: string;
-}
-
-export interface FolderRoutingResult {
-	targetService: string;
-	virtualParts: string[];
-	lastRouteKeyword: string | null;
-	environmentKeyword: string | null;
-}
-
-export interface AffixResult {
-	mappedService: string;
-	matchedLength: number;
-	exactMatch: string;
-	environmentKeyword?: string;
-	isPrefix: boolean;
 }

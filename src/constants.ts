@@ -1,4 +1,5 @@
-import { RogenConfig, RoutingMaps } from "./types.js";
+import { RoutingMaps } from "./route.js";
+import { RogenConfig } from "./types.js";
 
 export const defaultConfig: RogenConfig = {
 	source: ["src"],

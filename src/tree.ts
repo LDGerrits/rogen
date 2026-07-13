@@ -1,6 +1,19 @@
 import fs from "fs";
 import path from "path";
-import { Casing, MissingPath, RemovedPath, RojoNode } from "./types.js";
+import { Casing, RojoNode } from "./types.js";
+
+export interface RemovedPath {
+	treePath: string;
+	rojoPath: string;
+}
+
+export interface MissingPath {
+	parent: RojoNode;
+	key: string;
+	path: string;
+	absolutePath: string;
+	treePath: string;
+}
 
 function hasPathPrefix(p: string, dir: string): boolean {
 	return p === dir || p.startsWith(dir + "/");

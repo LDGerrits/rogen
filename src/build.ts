@@ -1,10 +1,20 @@
 import fs from "fs";
 import { promises as fsp } from "fs";
 import path from "path";
-import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
-import { resolveRoute } from "./route.js";
+import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath } from "./tree.js";
+import { resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
-import { BuildResult, CliArgs, Environment, RemovedPath, RogenConfig, RogenMode, RojoNode, RojoTree, RouteContext, RoutingMaps } from "./types.js";
+import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
+
+interface BuildResult {
+	output: string;
+	tree: RojoTree;
+	missingPaths: MissingPath[];
+	removed: RemovedPath[];
+	name: string;
+	buildDir: string;
+	fileCount: number;
+}
 
 const isScript = (filename: string): boolean => /\.(tsx?|luau|lua)$/i.test(filename) && !filename.toLowerCase().endsWith(".d.ts");
 const isModel = (filename: string): boolean => /\.(rbxm|rbxmx)$/i.test(filename);

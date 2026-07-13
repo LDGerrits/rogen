@@ -1,6 +1,5 @@
-import { resolveRoute } from "../src/route.js";
+import { resolveRoute, RouteContext } from "../src/route.js";
 import { generateRoutingMaps } from "../src/constants.js";
-import { RouteContext } from "../src/types.js";
 
 describe("Router Logic", () => {
 	const baseContext: RouteContext = {
