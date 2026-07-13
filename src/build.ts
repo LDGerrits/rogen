@@ -6,7 +6,7 @@ import { resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
 
-const SYSTEM_MARKERS = new Set(["raw"]);
+const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
 
 interface BuildResult {
 	output: string;

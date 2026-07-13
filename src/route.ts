@@ -9,6 +9,7 @@ import { RogenMode } from "./types.js";
 
 export interface SystemFlags {
 	isRaw: boolean;
+	fullNames: boolean;
 }
 
 interface FolderRoutingResult {
@@ -62,7 +63,7 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 	let lastRouteKeyword: string | null = null;
 	let environmentKeyword: string | null = null;
 
-	const flags: SystemFlags = { isRaw: false };
+	const flags: SystemFlags = { isRaw: false, fullNames: false };
 
 	// Marker routing
 	if (directoryMarkers && directoryMarkers[""]) {
@@ -70,6 +71,8 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 		
 		if (marker === "raw") {
 			flags.isRaw = true;
+		} else if (marker === "fullnames") {
+			flags.fullNames = true;
 		}
 
 		if (!flags.isRaw) {
@@ -90,6 +93,8 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 
 		if (marker === "raw") {
 			flags.isRaw = true;
+		} else if (marker === "fullnames") {
+			flags.fullNames = true;
 		}
 
 		if (flags.isRaw) {
@@ -233,11 +238,12 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
 		if (affix) {
-			let shouldStrip = !keepRouteNames;
+			const fullNames = keepRouteNames || flags.fullNames;
+			let shouldStrip = !fullNames;
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
 			// Even if keepRouteNames is true, we must strip these exact dot-prefixes.
-			if (keepRouteNames) {
+			if (fullNames) {
 				const exactMatch = affix.exactMatch.toLowerCase();
 				if (exactMatch === ".server" || exactMatch === ".client") {
 					shouldStrip = true;

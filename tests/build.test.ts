@@ -480,4 +480,50 @@ describe("Builder Integration", () => {
 		expect(resultTree.ServerScriptService).toBeUndefined();
 		expect(resultTree.StarterPlayerScripts).toBeUndefined();
 	});
+
+	it("should preserve routing keywords in file names when encountering a .fullnames marker", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "systems", isDirectory: () => true, isFile: () => false },
+				] as fs.Dirent[];
+			}
+			
+			if (normalizedDir.endsWith("systems")) {
+				return [
+					{ name: ".fullnames", isDirectory: () => false, isFile: () => true },
+					{ name: "combatServer.lua", isDirectory: () => false, isFile: () => true },
+					{ name: "combat.client.lua", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+
+		const config: RogenConfig = { source: "src", keepRouteNames: false }; 
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		const serverSystems = resultTree.ServerScriptService.server.systems;
+		expect(serverSystems).toBeDefined();
+		
+		expect(serverSystems["combatServer"]).toBeDefined();
+		expect(serverSystems["combatServer"].$path).toBe("out/systems/combatServer.lua");
+
+		const clientSystems = resultTree.StarterPlayer.StarterPlayerScripts.client.systems;
+		expect(clientSystems).toBeDefined();
+
+		expect(clientSystems["combat"]).toBeDefined();
+		expect(clientSystems["combat"].$path).toBe("out/systems/combat.client.lua");
+	});
 });
