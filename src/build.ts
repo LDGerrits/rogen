@@ -20,6 +20,7 @@ const isScript = (filename: string): boolean => /\.(tsx?|luau|lua)$/i.test(filen
 const isModel = (filename: string): boolean => /\.(rbxm|rbxmx)$/i.test(filename);
 const isData = (filename: string): boolean => /\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
 const isValidSource = (filename: string): boolean => isScript(filename) || isModel(filename) || isData(filename);
+const isKeepFile = (filename: string): boolean => /^\.(git)?keep(me)?$/i.test(filename);
 const isInitFile = (filename: string): boolean => isScript(filename) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(filename);
 
 function buildSubPath(sourceRel: string): string {
@@ -96,7 +97,7 @@ function walkSource(
 		const fullPath = path.join(dir, entry.name);
 		if (entry.isDirectory()) {
 			walkSource(fullPath, sourcePath, listings, directoryMarkers, routingMaps, callback);
-		} else if (isValidSource(entry.name)) {
+		} else if (isValidSource(entry.name) || isKeepFile(entry.name)) {
 			callback(fullPath, false);
 		}
 	}
@@ -152,7 +153,10 @@ export async function build(
 
 		walkSource(sourcePath, sourcePath, listings, directoryMarkers, context.routingMaps, (filepath, isInit) => {
 			fileCount++;
+
 			const relativePath = path.relative(sourcePath, filepath);
+			const isKeep = isKeepFile(path.basename(filepath))
+
 			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, newContext);
 			
 			let current = rojoTree.tree;
@@ -165,6 +169,10 @@ export async function build(
 
 			for (const part of virtualParts) {
 				current = getOrCreateNode(current, part, "Folder");
+			}
+
+			if (isKeep) {
+				return; 
 			}
 
 			const existingNode = (current[nodeName] as RojoNode) || {};

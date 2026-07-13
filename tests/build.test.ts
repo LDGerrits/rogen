@@ -370,4 +370,61 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.notes.$path).toBe("out/notes.txt");
 		expect(resultTree.ReplicatedStorage.shared.README.$path).toBe("out/README.md");
 	});
+
+	it("should create empty folders for directories containing .gitkeep or .keep files", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "EmptyFeatureA", isDirectory: () => true, isFile: () => false },
+					{ name: "EmptyFeatureB", isDirectory: () => true, isFile: () => false },
+					{ name: "IgnoredFeatureC", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("EmptyFeatureA")) {
+				return [
+					{ name: ".gitkeep", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("EmptyFeatureB")) {
+				return [
+					{ name: ".keep", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("IgnoredFeatureC")) {
+				return [
+					{ name: "ignoreMe.pdf", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2);
+
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureA).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureA.$className).toBe("Folder");
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureA.$path).toBeUndefined();
+
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureB).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureB.$className).toBe("Folder");
+		expect(resultTree.ReplicatedStorage.shared.EmptyFeatureB.$path).toBeUndefined();
+
+		expect(resultTree.ReplicatedStorage.shared.IgnoredFeatureC).toBeUndefined();
+	});
 });
