@@ -3,6 +3,14 @@ import path from "path";
 import { build } from "./build.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
 
+function getTimeStamp(): string {
+	const now = new Date();
+	const h = String(now.getHours()).padStart(2, '0');
+	const m = String(now.getMinutes()).padStart(2, '0');
+	const s = String(now.getSeconds()).padStart(2, '0');
+	return `[${h}:${m}:${s}]`;
+}
+
 export function execute(
 	sourcePaths: string[], 
 	env: Environment, 
@@ -15,7 +23,8 @@ export function execute(
 	try {
 		for (const targetConfig of activeModes) {
 			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs, anchor);
-
+			const dropped: string[] = [];
+			
 			if (buildResult.missingPaths.length > 0) {
 				for (const item of buildResult.missingPaths) {
 					const ext = path.extname(item.absolutePath).toLowerCase();
@@ -31,6 +40,7 @@ export function execute(
 						}
 					} else {
 						delete item.parent[item.key];
+						dropped.push(`${item.treePath} ($path "${item.path}")`);
 					}
 				}
 			}
@@ -40,22 +50,54 @@ export function execute(
 
 			if (fs.existsSync(buildResult.output)) {
 				const existingContent = fs.readFileSync(buildResult.output, "utf-8");
-				if (existingContent === finalContent) shouldWrite = false;
+				if (existingContent === finalContent) {
+					shouldWrite = false;
+				}
 			}
 
 			if (shouldWrite) {
+				const outputDir = path.dirname(buildResult.output);
+				if (!fs.existsSync(outputDir)) {
+					fs.mkdirSync(outputDir, { recursive: true });
+				}
+
 				fs.writeFileSync(buildResult.output, finalContent);
-				console.log(`\nSuccess! Generated Rojo tree for "${buildResult.name}"`);
-				console.log(`   Build:     ${buildResult.buildDir}`);
-				console.log(`   Processed: ${buildResult.fileCount} source files`);
-				console.log(`   Output:    ${buildResult.output}\n`);
+
+				const timeStamp = getTimeStamp();
+
+				const totalRemoved = buildResult.removed.length + dropped.length;
+				if (totalRemoved > 0) {
+					if (cliArgs.watch) {
+						console.log(`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`);
+					} else {
+						console.log(`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`);
+						for (const item of buildResult.removed) {
+							console.log(`   - ${item.treePath} ($path "${item.rojoPath}")`);
+						}
+						for (const item of dropped) {
+							console.log(`   - ${item}`);
+						}
+					}
+				}
+
+				if (cliArgs.watch) {
+					const outputName = path.basename(buildResult.output);
+					console.log(`${timeStamp} ✅ Built "${buildResult.name}" (${buildResult.fileCount} files) -> ${outputName}`);
+				} else {
+					console.log(`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`);
+					console.log(`   ▶ Processed: ${buildResult.fileCount} source files`);
+					console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
+					console.log(`   ▶ Output To: ${buildResult.output}\n`);
+				}
 			}
 		}
 	} catch (error) {
+		const timeStamp = getTimeStamp();
+
 		if (error instanceof Error) {
-			console.error(`\nBuild Failed: ${error.message}\n`);
+			console.error(`\n${timeStamp} ❌ Build Failed: ${error.message}\n`);
 		} else {
-			console.error(`\nBuild Failed: Unknown Error\n`);
+			console.error(`\n${timeStamp} ❌ Build Failed: Unknown Error\n`);
 		}
 	}
 }
