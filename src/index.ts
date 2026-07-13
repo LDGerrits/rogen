@@ -46,7 +46,7 @@ async function main(): Promise<void> {
 	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
 	const baseProjectTree = loadProjectTree(anchor, cliArgs.template, config.template);
 
-	execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
+	await execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
 
 	if (cliArgs.watch) {
 		console.log(`\n👀 Watching for file changes in: "${sourceDirs.join(', ')}" (Press Ctrl+C to stop)...\n`);
@@ -75,7 +75,9 @@ async function main(): Promise<void> {
 		watcher.on('all', () => {
 			clearTimeout(debounceTimeout);
 			debounceTimeout = setTimeout(() => {
-				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
+				execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor).catch(err => {
+                    console.error(`\n❌ Watcher Error: ${err instanceof Error ? err.message : String(err)}\n`);
+				});
 			}, 100);
 		});
 

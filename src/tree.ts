@@ -10,7 +10,6 @@ export const toPosix = (p: string): string => p.split(path.sep).join("/");
 
 export function applyCasing(value: string, casing: Casing): string {
 	if (value.length === 0) return value;
-
 	const firstCharacter = casing === "PascalCase"
 		? value[0].toUpperCase()
 		: value[0].toLowerCase();

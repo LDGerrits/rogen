@@ -5,38 +5,27 @@ import {
 	clientContainers
 } from "./constants.js";
 import { toPosix } from "./tree.js";
-import { RouteContext } from "./types.js";
+import { AffixResult, FolderRoutingResult, RouteContext, RouteResolution, RoutingMaps } from "./types.js";
 
-export interface RouteResolution {
-	targetService: string;
-	wrapperFolder: string;
-	virtualParts: string[];
-	nodeName: string;
-	projectPath: string;
-}
-
-export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
-	const { emitLegacyScripts, isTsProject, build, routingMaps, keepRouteNames, directoryMarkers } = context;
-	const { mergedServices, lowerCaseMap, separatorSuffixRegex, pascalCaseSuffixRegex, separatorPrefixRegex, camelCasePrefixRegex } = routingMaps;
-
-	const parts = relativePath.split(/[\\/]/);
-	const filename = parts.pop()!;
-	const basename = path.basename(filename, path.extname(filename));
+function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, string> | undefined, routingMaps: RoutingMaps): FolderRoutingResult {
+	const { lowerCaseMap } = routingMaps;
 	const virtualParts: string[] = [];
-
+	
 	let targetService = "ReplicatedStorage";
 	let lastRouteKeyword: string | null = null;
-	let environment: string | null = null;
+	let environmentKeyword: string | null = null;
 
-	// Marker routing
+	// Root marker routing
 	if (directoryMarkers && directoryMarkers[""]) {
 		const rootMarker = directoryMarkers[""];
 		targetService = lowerCaseMap[rootMarker];
 		lastRouteKeyword = rootMarker;
-		if (serviceAliases.has(rootMarker)) environment = rootMarker;
+		if (serviceAliases.has(rootMarker)) {
+			environmentKeyword = rootMarker;
+		}
 	}
 
-	// Folder routing
+	// Folder path routing
 	let currentPath = "";
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
@@ -48,7 +37,9 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		if (marker) {
 			targetService = lowerCaseMap[marker];
 			lastRouteKeyword = marker;
-			if (serviceAliases.has(marker)) environment = marker;
+			if (serviceAliases.has(marker)) {
+				environmentKeyword = marker;
+			}
 			
 			// Strip if the folder name is also a routing keyword
 			if (!matchedService) {
@@ -57,78 +48,118 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		} else if (matchedService) {
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;
-			if (serviceAliases.has(lowerPart)) environment = lowerPart;
+			if (serviceAliases.has(lowerPart)) {
+				environmentKeyword = lowerPart;
+			}
 		} else {
 			virtualParts.push(part);
 		}
 	}
 
-	let matchedLength = 0;
-	let mappedService: string | null = null;
-	let isPrefix = false;
+	return { targetService, virtualParts, lastRouteKeyword, environmentKeyword };
+}
 
-	const sepSuffixMatch = basename.match(separatorSuffixRegex);
-	const pascalSuffixMatch = basename.match(pascalCaseSuffixRegex);
-	const sepPrefixMatch = basename.match(separatorPrefixRegex);
-	const camelPrefixMatch = basename.match(camelCasePrefixRegex);
+function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingMaps): AffixResult | null {
+	const { lowerCaseMap, mergedServices, separatorSuffixRegex, pascalCaseSuffixRegex, separatorPrefixRegex, camelCasePrefixRegex } = routingMaps;
+
+	let match = basename.match(separatorSuffixRegex);
+	if (match && match[0].length < basename.length) {
+		const suffix = match[1].toLowerCase();
+		return {
+			mappedService: lowerCaseMap[suffix],
+			matchedLength: match[0].length,
+			exactMatch: match[0],
+			environmentKeyword: (!isInit && serviceAliases.has(suffix)) ? suffix : undefined,
+			isPrefix: false
+		};
+	}
+
+	match = basename.match(pascalCaseSuffixRegex);
+	if (match && match[0].length < basename.length) {
+		const suffix = match[1].toLowerCase();
+		return {
+			mappedService: mergedServices[match[1]],
+			matchedLength: match[0].length,
+			exactMatch: match[0],
+			environmentKeyword: (!isInit && serviceAliases.has(suffix)) ? suffix : undefined,
+			isPrefix: false
+		};
+	}
+
+	match = basename.match(separatorPrefixRegex);
+	if (match && match[0].length < basename.length) {
+		const prefix = match[1].toLowerCase();
+		return {
+			mappedService: lowerCaseMap[prefix],
+			matchedLength: match[0].length,
+			exactMatch: match[0],
+			environmentKeyword: (!isInit && serviceAliases.has(prefix)) ? prefix : undefined,
+			isPrefix: true
+		};
+	}
+
+	match = basename.match(camelCasePrefixRegex);
+	if (match && match[0].length < basename.length) {
+		const prefix = match[1].toLowerCase();
+		return {
+			mappedService: lowerCaseMap[prefix],
+			matchedLength: match[1].length,
+			exactMatch: match[0],
+			environmentKeyword: (!isInit && serviceAliases.has(prefix)) ? prefix : undefined,
+			isPrefix: true
+		};
+	}
+
+	return null;
+}
+
+function getWrapperFolder(targetService: string, environmentKeyword: string | null): string {
+	if (serverContainers.has(targetService)) return "server";
+	if (clientContainers.has(targetService)) return "client";
+	if (environmentKeyword) return environmentKeyword;
+	return "shared";
+}
+
+export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
+	const { emitLegacyScripts, isTsProject, build, routingMaps, keepRouteNames, directoryMarkers } = context;
+
+	const parts = relativePath.split(/[\\/]/);
+	const filename = parts.pop()!;
+	const basename = path.basename(filename, path.extname(filename));
+
+	// Folder and marker routing
+	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv } = resolveFolderRouting(parts, directoryMarkers, routingMaps);
 
 	// Affix routing
-	if (sepSuffixMatch && sepSuffixMatch[0].length < basename.length) {
-		const suffix = sepSuffixMatch[1].toLowerCase();
-		mappedService = lowerCaseMap[suffix];
-		matchedLength = sepSuffixMatch[0].length;
-		if (!isInit && serviceAliases.has(suffix)) {
-			environment = suffix;
-		}
-	} else if (pascalSuffixMatch && pascalSuffixMatch[0].length < basename.length) {
-		const suffix = pascalSuffixMatch[1].toLowerCase();
-		mappedService = mergedServices[pascalSuffixMatch[1]];
-		matchedLength = pascalSuffixMatch[0].length;
-		if (!isInit && serviceAliases.has(suffix)) {
-			environment = suffix;
-		}
-	} else if (sepPrefixMatch && sepPrefixMatch[0].length < basename.length) {
-		const prefix = sepPrefixMatch[1].toLowerCase();
-		mappedService = lowerCaseMap[prefix];
-		matchedLength = sepPrefixMatch[0].length; 
-		if (!isInit && serviceAliases.has(prefix)) {
-			environment = prefix;
-		}
-		isPrefix = true;
-	} else if (camelPrefixMatch && camelPrefixMatch[0].length < basename.length) {
-		const prefix = camelPrefixMatch[1].toLowerCase();
-		mappedService = lowerCaseMap[prefix];
-		matchedLength = camelPrefixMatch[1].length;
-		if (!isInit && serviceAliases.has(prefix)) {
-			environment = prefix;
-		}
-		isPrefix = true;
-	}
+	const affix = resolveAffixes(basename, isInit, routingMaps);
 
-	if (mappedService) {
-		targetService = mappedService;
-	}
+	// Resolve overrides
+	let targetService = affix?.mappedService ?? folderTarget;
+	const environmentKeyword = affix?.environmentKeyword ?? folderEnv;
 
 	// Resolve namespace wrapper folder
-	let wrapperFolder = "shared";
-	if (serverContainers.has(targetService)) wrapperFolder = "server";
-	else if (clientContainers.has(targetService)) wrapperFolder = "client";
-	else if (environment) wrapperFolder = environment;
+	const wrapperFolder = getWrapperFolder(targetService, environmentKeyword);
 
-	// Scripts with non-legacy RunContext run incorrectly in StarterPlayer container
+	// Edge case: Scripts with non-legacy RunContext run incorrectly in StarterPlayer container,
+	// hence they need to be put in ReplicatedStorage.
 	const isStarterPlayerContainer = targetService === "StarterPlayerScripts" || targetService === "StarterCharacterScripts";
 	if (emitLegacyScripts === false && isStarterPlayerContainer) {
 		targetService = "ReplicatedStorage";
 	}
 
+	// Node naming and path formatting
 	let nodeName = basename;
-	let projectPath: string;;
+	let projectPath: string;
 
 	if (isInit) {
 		const folderRelativePath = path.dirname(relativePath);
 		projectPath = toPosix(path.join(build, folderRelativePath));
-		if (virtualParts.length > 0) nodeName = virtualParts.pop()!;
-		else nodeName = lastRouteKeyword ? lastRouteKeyword : "source";
+		
+		if (virtualParts.length > 0) {
+			nodeName = virtualParts.pop()!;
+		} else {
+			nodeName = lastRouteKeyword ? lastRouteKeyword : "source";
+		}
 	} else {
 		let compiledRelativePath = relativePath;
 		if (isTsProject) {
@@ -137,23 +168,23 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		}
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
-		if (mappedService) {
+		if (affix) {
 			let shouldStrip = !keepRouteNames;
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
 			// Even if keepRouteNames is true, we must strip these exact dot-prefixes.
-			if (keepRouteNames && sepSuffixMatch) {
-				const exactMatch = sepSuffixMatch[0].toLowerCase();
+			if (keepRouteNames) {
+				const exactMatch = affix.exactMatch.toLowerCase();
 				if (exactMatch === ".server" || exactMatch === ".client") {
 					shouldStrip = true;
 				}
 			}
 
 			if (shouldStrip) {
-				if (isPrefix) {
-					nodeName = basename.slice(matchedLength);
+				if (affix.isPrefix) {
+					nodeName = basename.slice(affix.matchedLength);
 				} else {
-					nodeName = basename.slice(0, -matchedLength); 
+					nodeName = basename.slice(0, -affix.matchedLength); 
 				}
 			}
 		} 

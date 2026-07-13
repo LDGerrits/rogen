@@ -11,7 +11,7 @@ function getTimeStamp(): string {
 	return `[${h}:${m}:${s}]`;
 }
 
-export function execute(
+export async function execute(
 	sourcePaths: string[], 
 	env: Environment, 
 	activeModes: RogenMode[], 
@@ -19,10 +19,10 @@ export function execute(
 	config: RogenConfig, 
 	cliArgs: CliArgs,
 	anchor: string
-): void {
+): Promise<void> {
 	try {
 		for (const targetConfig of activeModes) {
-			const buildResult = build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs, anchor);
+			const buildResult = await build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs, anchor);
 			const dropped: string[] = [];
 			
 			if (buildResult.missingPaths.length > 0) {

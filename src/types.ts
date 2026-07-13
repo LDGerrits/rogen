@@ -87,3 +87,26 @@ export interface BuildResult {
 	buildDir: string;
 	fileCount: number;
 }
+
+export interface RouteResolution {
+	targetService: string;
+	wrapperFolder: string;
+	virtualParts: string[];
+	nodeName: string;
+	projectPath: string;
+}
+
+export interface FolderRoutingResult {
+	targetService: string;
+	virtualParts: string[];
+	lastRouteKeyword: string | null;
+	environmentKeyword: string | null;
+}
+
+export interface AffixResult {
+	mappedService: string;
+	matchedLength: number;
+	exactMatch: string;
+	environmentKeyword?: string;
+	isPrefix: boolean;
+}

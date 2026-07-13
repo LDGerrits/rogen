@@ -10,10 +10,10 @@ describe("Builder Integration", () => {
 		jest.restoreAllMocks();
 	});
 
-	it("should successfully build a tree and ignore non-Roblox files", () => {
+	it("should successfully build a tree and ignore non-Roblox files", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 			
 			if (normalizedDir.endsWith("src")) {
@@ -47,7 +47,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(3); 
@@ -66,10 +66,10 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
 	});
 
-	it("should successfully merge files from multiple source directories into single containers", () => {
+	it("should successfully merge files from multiple source directories into single containers", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 			
 			if (normalizedDir.endsWith("src/core")) {
@@ -93,7 +93,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src/core", "src/chapter1"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(2); 
@@ -105,10 +105,10 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe("out/chapter1/LevelData.lua");
 	});
 
-	it("should treat a source reached via parent-dir navigation as a root without corrupting the build path", () => {
+	it("should treat a source reached via parent-dir navigation as a root without corrupting the build path", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 
 			if (normalizedDir.endsWith("src")) {
@@ -126,16 +126,16 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["../../src"], cliArgs, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["../../src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(resultTree.ReplicatedStorage.shared.Combat.$path).toBe("out/Combat.lua");
 	});
 
-	it("should compile TypeScript sources to .luau paths when the environment is a TS project", () => {
+	it("should compile TypeScript sources to .luau paths when the environment is a TS project", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 
 			if (normalizedDir.endsWith("src")) {
@@ -153,17 +153,17 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: true, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe("out/Weapon.luau");
 	});
 
 
-	it("should route files based on marker files instead of folder names", () => {
+	it("should route files based on marker files instead of folder names", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 			
 			if (normalizedDir.endsWith("src")) {
@@ -188,7 +188,7 @@ describe("Builder Integration", () => {
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
 		const resultTree = result.tree.tree as any;
 
 		expect(result.fileCount).toBe(1); 
@@ -197,10 +197,10 @@ describe("Builder Integration", () => {
 		expect(resultTree.ServerScriptService.server.Database.query.$path).toBe("out/Database/query.lua");
 	});
 
-	it("should generate PascalCase tree names without changing source paths", () => {
+	it("should generate PascalCase tree names without changing source paths", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 
 			if (normalizedDir.endsWith("src")) {
@@ -229,17 +229,17 @@ describe("Builder Integration", () => {
 		const config: RogenConfig = { source: "src", casing: "PascalCase" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
 		const node = (result.tree.tree as any).ReplicatedStorage.Shared.features.test.testServiceUtils;
 
 		expect(node).toBeDefined();
 		expect(node.$path).toBe("out/features/test/testServiceUtils.luau");
 	});
 
-	it("should generate camelCase tree names by default without changing source paths", () => {
+	it("should generate camelCase tree names by default without changing source paths", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 
 			if (normalizedDir.endsWith("src")) {
@@ -268,14 +268,14 @@ describe("Builder Integration", () => {
 		const config: RogenConfig = { source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
-		const result = build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
+		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
 		const node = (result.tree.tree as any).ReplicatedStorage.shared.Features.Test.TestServiceUtils;
 
 		expect(node).toBeDefined();
 		expect(node.$path).toBe("out/Features/Test/TestServiceUtils.luau");
 	});
 
-	it("should resolve CLI output relative to cwd, but config output relative to anchor", () => {
+	it("should resolve CLI output relative to cwd, but config output relative to anchor", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(false); 
 
 		const targetConfig = { build: "out", output: "from-config.json" };
@@ -284,19 +284,19 @@ describe("Builder Integration", () => {
 		const env = { isTsProject: false, isDarkluaProject: false };
 		const anchor = "/mock/custom/anchor/path";
 
-		const resultA = build(targetConfig, baseTree, config, env, ["src"], {}, anchor);
+		const resultA = await build(targetConfig, baseTree, config, env, ["src"], {}, anchor);
 
 		const expectedConfigPath = path.resolve(anchor, "from-config.json").replace(/\\/g, "/");
 		expect(resultA.output.replace(/\\/g, "/")).toBe(expectedConfigPath);
 
 		const cliArgs = { output: "from-cli.json" };
-		const resultB = build(targetConfig, baseTree, config, env, ["src"], cliArgs, anchor);
+		const resultB = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, anchor);
 		
 		const expectedCliPath = path.resolve(process.cwd(), "from-cli.json").replace(/\\/g, "/");
 		expect(resultB.output.replace(/\\/g, "/")).toBe(expectedCliPath);
 	});
 
-	it("should create a directory for missing extensionless paths instead of dropping them", () => {
+	it("should create a directory for missing extensionless paths instead of dropping them", async () => {
 		jest.spyOn(fs, "existsSync").mockImplementation((p) => {
 			const pathStr = String(p).replace(/\\/g, "/");
 
@@ -307,7 +307,7 @@ describe("Builder Integration", () => {
 			return true;
 		});
 
-		(jest.spyOn(fs, "readdirSync") as jest.Mock<(dir: string) => any[]>).mockImplementation((dir: string) => {
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 			if (normalizedDir.endsWith("src")) {
 				return [{ name: "MissingInitFolder", isDirectory: () => true, isFile: () => false }];
@@ -326,7 +326,7 @@ describe("Builder Integration", () => {
 		const baseTree = { name: "test", tree: {} };
 		const anchor = process.cwd();
 
-		execute(["src"], dummyEnv, [dummyConfig.luau], baseTree, dummyConfig, {}, anchor);
+		await execute(["src"], dummyEnv, [dummyConfig.luau], baseTree, dummyConfig, {}, anchor);
 
 		const expectedDirPath = path.resolve(anchor, "out/MissingInitFolder");
 

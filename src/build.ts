@@ -1,4 +1,5 @@
 import fs from "fs";
+import { promises as fsp } from "fs";
 import path from "path";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths } from "./tree.js";
 import { resolveRoute } from "./route.js";
@@ -25,16 +26,39 @@ function buildSubPath(sourceRel: string): string {
 	return segments.slice(rootIndex + 1).join("/");
 }
 
-function walk(
+async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
+	const listings = new Map<string, fs.Dirent[]>();
+	
+	async function scan(currentDir: string) {
+		try {
+			const entries = await fsp.readdir(currentDir, { withFileTypes: true });
+			listings.set(currentDir, entries);
+
+			const hasInit = entries.some(e => e.isFile() && isInitFile(e.name));
+			if (hasInit) return;
+
+			const subdirs = entries.filter(e => e.isDirectory()).map(e => path.join(currentDir, e.name));
+			await Promise.all(subdirs.map(scan));
+		} catch (error) {
+			if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return;
+			throw error;
+		}
+	}
+
+	await scan(dir);
+	return listings;
+}
+
+function walkSource(
 	dir: string, 
 	sourcePath: string, 
+	listings: Map<string, fs.Dirent[]>,
 	directoryMarkers: Record<string, string>, 
 	routingMaps: RoutingMaps, 
 	callback: (filepath: string, isInit: boolean) => void
 ): void {
-	if (!fs.existsSync(dir)) return;
-
-	const entries = fs.readdirSync(dir, { withFileTypes: true });
+	const entries = listings.get(dir);
+	if (!entries) return;
 
 	// Scan for marker files
 	for (const entry of entries) {
@@ -54,20 +78,20 @@ function walk(
 	const initFile = entries.find((e) => e.isFile() && isInitFile(e.name));
 	if (initFile) {
 		callback(path.join(dir, initFile.name), true);
-		return; 
+		return;
 	}
 
 	for (const entry of entries) {
 		const fullPath = path.join(dir, entry.name);
 		if (entry.isDirectory()) {
-			walk(fullPath, sourcePath, directoryMarkers, routingMaps, callback);
+			walkSource(fullPath, sourcePath, listings, directoryMarkers, routingMaps, callback);
 		} else if (isValidSource(entry.name)) {
 			callback(fullPath, false);
 		}
 	}
 }
 
-export function build(
+export async function build(
 	targetConfig: RogenMode, 
 	baseProjectTree: RojoTree, 
 	config: RogenConfig, 
@@ -75,10 +99,8 @@ export function build(
 	sourcePaths: string[], 
 	cliArgs: CliArgs,
 	anchor: string
-): BuildResult {
+): Promise<BuildResult> {
 	const modeCopy: RogenMode = { ...targetConfig };
-	
-	// Paths resolve differently depending on if they came from CLI or config
 	if (cliArgs.output) {
 		modeCopy.output = path.resolve(process.cwd(), cliArgs.output);
 	} else {
@@ -115,7 +137,9 @@ export function build(
 			directoryMarkers
 		};
 
-		walk(sourcePath, sourcePath, directoryMarkers, context.routingMaps, (filepath, isInit) => {
+		const listings = await listTree(sourcePath);
+
+		walkSource(sourcePath, sourcePath, listings, directoryMarkers, context.routingMaps, (filepath, isInit) => {
 			fileCount++;
 			const relativePath = path.relative(sourcePath, filepath);
 			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, newContext);
@@ -147,8 +171,7 @@ export function build(
 	const removed: RemovedPath[] = [];
 	
 	const prunedTree = pruneObject(rojoTree.tree, context.build, outputDir, removed);
-    rojoTree.tree = prunedTree;
-	
+	rojoTree.tree = prunedTree;
 	const sortedTree = sortObject(rojoTree);
 	const missingPaths = findMissingPaths(sortedTree.tree, context.build, outputDir);
 
