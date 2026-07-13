@@ -27,9 +27,9 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 		}
 	} catch (error) {
 		if (error instanceof Error) {
-			console.error(`\nFailed to scan directory for config file: ${error.message}\n`);
+			console.error(`❌ Configuration Error: Failed to scan directory for .rogen.json - ${error.message}\n`);
 		} else {
-			console.error(`\nFailed to scan directory for config file: Unknown Error\n`);
+			console.error(`❌ Configuration Error: Failed to scan directory for .rogen.json - Unknown Error\n`);
 		}
 	}
 
@@ -50,24 +50,24 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 		if (!standardKeys.includes(key)) {
 			const customMode = config[key];
 			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
-				throw new Error(`\nConfiguration Error: Key "${key}" must be a valid object defining a mode.\n`);
+				throw new Error(`Configuration Error: Key "${key}" must be a valid object defining a mode.`);
 			}
 
 			const modeData = customMode as Record<string, unknown>;
 			if (!modeData.output || typeof modeData.output !== "string") {
-				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "output" string.\n`);
+				throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`);
 			}
 			if (!modeData.build || typeof modeData.build !== "string") {
-				throw new Error(`\nConfiguration Error: Custom mode "${key}" is missing a valid "build" string.\n`);
+				throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`);
 			}
 		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
-			throw new Error(`\nConfiguration Error: 'source' must be a string or an array of strings.\n`);
+			throw new Error(`Configuration Error: 'source' must be a string or an array of strings.`);
 		} else if (key === "template" && typeof config[key] !== "object" && typeof config[key] !== "string") {
-			throw new Error(`\nConfiguration Error: 'template' must be an inline object or a string path to a JSON file.\n`);
+			throw new Error(`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`);
 		} else if (key === "keepRouteNames" && typeof config[key] !== "boolean") {
-			throw new Error(`\nConfiguration Error: 'keepRouteNames' must be a boolean.\n`);
+			throw new Error(`Configuration Error: 'keepRouteNames' must be a boolean.`);
 		} else if (key === "casing" && config[key] !== "PascalCase" && config[key] !== "camelCase") {
-			throw new Error(`\nConfiguration Error: 'casing' must be either "PascalCase" or "camelCase".\n`);
+			throw new Error(`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`);
 		}
 	}
 

@@ -134,30 +134,32 @@ Here is a default configuration structure that works for both roblox-ts and luau
 | casing              | Casing of the wrapper folders. Accepted values are `"PascalCase"` or `"camelCase"` (defaults to `"camelCase"`). |                                                                                                   |
 
 ### 3. CLI Usage
-You can run Rogen with optional arguments to cleanly override your configurations on the fly:
-
-- `-h, --help:` Show this help menu containing all available options.
-
-- `-i, --init:` Generate a default .rogen.json config file.
-
-- `-w, --watch`: Watch the source directory for changes, automatically regenerating your project files.
-
-- `-c, --config <path>`: Specify a custom Rogen config file path.
-
-- `-m, --mode <mode>`: Specify the mode to run (luau, ts, darklua, or custom mode). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
-
-- `-s, --source <path>`: Override the directory containing your raw, uncompiled code. Can be passed multiple times (e.g., -s src/core -s src/hub) to merge multiple directories.
-
-- `-t, --template <path>`: Specify a path to a JSON file that contains your base Rojo blueprint. If omitted, Rogen defaults to the inline object or file mapped in your .rogen.json.
-
-- `-b, --build <path>`: Override the directory where your compiled/transpiled code lands.
-
-- `-o, --output <path>`: Override the name and destination of the final generated Rojo .project.json file.
-
-As an example, it is possible to pass a specific configuration file, run a custom mode, inject a base template, and force a targeted output file all at the same time:
+You can run Rogen with optional arguments to run actions or override configurations like this:
 ```bash
 rogen -c build.rogen.json -m darklua -t base.template.json -o build.project.json
 ```
+
+#### Actions
+- `-h, --help:` Show help menu.
+
+- `-i, --init:` Generate a default .rogen.json config file.
+
+- `-w, --watch`: Watch the source directory and regenerate automatically.
+
+#### Overrides
+- `-c, --config <path>`: Specify a custom Rogen config file path.
+
+- `-m, --mode <mode>`: Specify the target mode (luau, ts, darklua, or custom). If omitted, Rogen automatically detects your project configuration (via tsconfig.json or .darklua.json) and runs the appropriate target(s).
+
+- `-s, --source <path>`: Override the directory containing uncompiled code. Can be passed multiple times (e.g., -s src/core -s src/hub) to merge multiple directories.
+
+- `-t, --template <path>`: Specify a path to a base Rojo tree JSON template. If omitted, Rogen defaults to the inline object or file mapped in your .rogen.json.
+
+- `-b, --build <path>`: Override the output directory for transpiled code.
+
+- `-o, --output <path>`: Override the final generated Rojo project file path.
+
+
 
 ### 4. Commands
 

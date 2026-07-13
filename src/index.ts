@@ -18,12 +18,12 @@ async function main(): Promise<void> {
 		const targetPath = path.resolve(process.cwd(), ".rogen.json");
 		
 		if (fs.existsSync(targetPath)) {
-			console.error(`\nA .rogen.json file already exists in this directory.\n`);
+			console.error(`\n❌ Initialization Failed: A .rogen.json file already exists in this directory.\n`);
 			process.exit(1);
 		}
 
 		fs.writeFileSync(targetPath, JSON.stringify(defaultConfig, null, '\t'));
-		console.log(`\nSuccess! Created .rogen.json in the current directory.\n`);
+		console.log(`\n✅ Successfully created .rogen.json in the current directory.\n\n`);
 		process.exit(0);
 	}
 
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
 	execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);
 
 	if (cliArgs.watch) {
-		console.log(`Rogen watching for file changes in: "${sourceDirs.join(', ')}"... (Press Ctrl+C to stop)`);
+		console.log(`\n👀 Watching for file changes in: "${sourceDirs.join(', ')}" (Press Ctrl+C to stop)...\n`);
 
 		const routingMaps = generateRoutingMaps(config.aliases || {});
 
@@ -79,7 +79,7 @@ async function main(): Promise<void> {
 			}, 100);
 		});
 
-		watcher.on('error', (error) => console.error(`Error in watcher: ${error}`));
+		watcher.on('error', (error) => console.error(`\n❌ Watcher Error: ${error}\n`));
 		
 		await new Promise(() => {}); // Keep alive
 	}
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 
 export default function run(): void {
 	main().catch((error) => {
-		console.error(`\nBuild Failed: ${error.message}\n`);
+		console.error(`\n❌ Fatal Error: ${error.message}\n`);
 		process.exit(1);
 	});
 }

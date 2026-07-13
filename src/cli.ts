@@ -8,16 +8,18 @@ Rogen - A tool for feature-based folder structures with Rojo.
 Usage:
   rogen [options]
 
-Options:
-  -h, --help            Show this help menu
-  -i, --init            Generate a default .rogen.json config file
-  -w, --watch           Watch the source directory for changes and regenerate automatically
-  -c, --config <path>   Specify a custom Rogen config file path
-  -m, --mode <mode>     Specify the mode to run (luau, ts, darklua, or <custom_mode>)
-  -s, --source <path>   Override the directory containing your uncompiled code
-  -t, --template <path> Specify a path to a JSON file containing your base Rojo tree
-  -b, --build <path>    Override the directory where your compiled/transpiled code lands
-  -o, --output <path>   Override the name and destination of the final generated Rojo project file
+Actions:
+  -h, --help            Show this help menu.
+  -i, --init            Generate a default .rogen.json config file.
+  -w, --watch           Watch the source directory and regenerate automatically.
+
+Overrides:
+  -c, --config <path>   Specify a custom Rogen config file path.
+  -m, --mode <mode>     Specify the target mode (luau, ts, darklua, or custom).
+  -s, --source <path>   Override the directory containing uncompiled code.
+  -t, --template <path> Specify a path to a base Rojo tree JSON template.
+  -b, --build <path>    Override the output directory for transpiled code.
+  -o, --output <path>   Override the final generated Rojo project file path.
 	`);
 }
 
