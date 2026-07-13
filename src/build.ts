@@ -6,6 +6,8 @@ import { resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
 
+const SYSTEM_MARKERS = new Set(["raw"]);
+
 interface BuildResult {
 	output: string;
 	tree: RojoTree;
@@ -76,7 +78,7 @@ function walkSource(
 	for (const entry of entries) {
 		if (entry.isFile() && entry.name.startsWith('.')) {
 			const possibleMarker = entry.name.slice(1).toLowerCase();
-			if (routingMaps.lowerCaseMap[possibleMarker]) {
+			if (SYSTEM_MARKERS.has(possibleMarker) || routingMaps.lowerCaseMap[possibleMarker]) {
 				let relDir = path.relative(sourcePath, dir);
 				relDir = relDir.split(path.sep).join("/");
 				directoryMarkers[relDir] = possibleMarker;

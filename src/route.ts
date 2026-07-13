@@ -7,11 +7,16 @@ import {
 import { toPosix } from "./tree.js";
 import { RogenMode } from "./types.js";
 
+export interface SystemFlags {
+	isRaw: boolean;
+}
+
 interface FolderRoutingResult {
 	targetService: string;
 	virtualParts: string[];
 	lastRouteKeyword: string | null;
 	environmentKeyword: string | null;
+	flags: SystemFlags;
 }
 
 export interface RoutingMaps {
@@ -57,13 +62,22 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 	let lastRouteKeyword: string | null = null;
 	let environmentKeyword: string | null = null;
 
-	// Root marker routing
+	const flags: SystemFlags = { isRaw: false };
+
+	// Marker routing
 	if (directoryMarkers && directoryMarkers[""]) {
-		const rootMarker = directoryMarkers[""];
-		targetService = lowerCaseMap[rootMarker];
-		lastRouteKeyword = rootMarker;
-		if (serviceAliases.has(rootMarker)) {
-			environmentKeyword = rootMarker;
+		const marker = directoryMarkers[""];
+		
+		if (marker === "raw") {
+			flags.isRaw = true;
+		}
+
+		if (!flags.isRaw) {
+			targetService = lowerCaseMap[marker];
+			lastRouteKeyword = marker;
+			if (serviceAliases.has(marker)) {
+				environmentKeyword = marker;
+			}
 		}
 	}
 
@@ -71,10 +85,19 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 	let currentPath = "";
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
-
 		const lowerPart = part.toLowerCase();
-		const matchedService = lowerCaseMap[lowerPart];
 		const marker = directoryMarkers ? directoryMarkers[currentPath] : undefined;
+
+		if (marker === "raw") {
+			flags.isRaw = true;
+		}
+
+		if (flags.isRaw) {
+			virtualParts.push(part);
+			continue;
+		}
+
+		const matchedService = lowerCaseMap[lowerPart];
 
 		if (marker) {
 			targetService = lowerCaseMap[marker];
@@ -82,7 +105,6 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 			if (serviceAliases.has(marker)) {
 				environmentKeyword = marker;
 			}
-			
 			// Strip if the folder name is also a routing keyword
 			if (!matchedService) {
 				virtualParts.push(part);
@@ -98,7 +120,7 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 		}
 	}
 
-	return { targetService, virtualParts, lastRouteKeyword, environmentKeyword };
+	return { targetService, virtualParts, lastRouteKeyword, environmentKeyword, flags };
 }
 
 function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingMaps): AffixResult | null {
@@ -170,10 +192,10 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 	const basename = path.basename(filename, path.extname(filename));
 
 	// Folder and marker routing
-	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv } = resolveFolderRouting(parts, directoryMarkers, routingMaps);
+	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv, flags } = resolveFolderRouting(parts, directoryMarkers, routingMaps);
 
 	// Affix routing
-	const affix = resolveAffixes(basename, isInit, routingMaps);
+	const affix = flags.isRaw ? null : resolveAffixes(basename, isInit, routingMaps);
 
 	// Resolve overrides
 	let targetService = affix?.mappedService ?? folderTarget;

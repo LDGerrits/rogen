@@ -427,4 +427,57 @@ describe("Builder Integration", () => {
 
 		expect(resultTree.ReplicatedStorage.shared.IgnoredFeatureC).toBeUndefined();
 	});
+
+	it("should completely halt routing logic when encountering a .raw marker file", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "vendor", isDirectory: () => true, isFile: () => false },
+				] as fs.Dirent[];
+			}
+			
+			if (normalizedDir.endsWith("vendor")) {
+				return [
+					{ name: ".raw", isDirectory: () => false, isFile: () => true },
+					{ name: "main.server.lua", isDirectory: () => false, isFile: () => true },
+					{ name: "Client", isDirectory: () => true, isFile: () => false }
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("Client")) {
+				return [
+					{ name: "apiClient.lua", isDirectory: () => false, isFile: () => true }
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src" };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2); 
+
+		const vendorFolder = resultTree.ReplicatedStorage.shared.vendor;
+		expect(vendorFolder).toBeDefined();
+
+		expect(vendorFolder["main.server"]).toBeDefined();
+		expect(vendorFolder["main.server"].$path).toBe("out/vendor/main.server.lua");
+
+		expect(vendorFolder.Client["apiClient"]).toBeDefined();
+		expect(vendorFolder.Client["apiClient"].$path).toBe("out/vendor/Client/apiClient.lua");
+		
+		expect(resultTree.ServerScriptService).toBeUndefined();
+		expect(resultTree.StarterPlayerScripts).toBeUndefined();
+	});
 });
