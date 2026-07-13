@@ -51,23 +51,9 @@ async function main(): Promise<void> {
 	if (cliArgs.watch) {
 		console.log(`\n👀 Watching for file changes in: "${sourceDirs.join(', ')}" (Press Ctrl+C to stop)...\n`);
 
-		const routingMaps = generateRoutingMaps(config.aliases || {});
-
 		const watcher = chokidar.watch(sourcePaths, {
 			persistent: true,
-			ignoreInitial: true,
-			ignored: (testPath: string) => {
-				const basename = path.basename(testPath);
-				
-				if (basename.startsWith('.')) {
-					const possibleMarker = basename.slice(1).toLowerCase();
-					if (routingMaps.lowerCaseMap[possibleMarker]) {
-						return false; 
-					}
-				}
-				
-				return /(^|[/\\])\../.test(testPath);
-			},
+			ignoreInitial: true
 		});
 
 		let debounceTimeout: NodeJS.Timeout;
