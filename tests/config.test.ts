@@ -91,22 +91,22 @@ describe("Environment Detection", () => {
 	});
 
 	it("should prioritize CLI mode over filesystem markers", () => {
-        jest.spyOn(fs, "existsSync").mockReturnValue(false);
+		jest.spyOn(fs, "existsSync").mockReturnValue(false);
 
-        const env = getEnvironment("/mock/anchor", "ts");
-        
-        expect(env.isTsProject).toBe(true);
-        expect(env.isDarkluaProject).toBe(false);
-    });
+		const env = getEnvironment("/mock/anchor", "ts");
+		
+		expect(env.isTsProject).toBe(true);
+		expect(env.isDarkluaProject).toBe(false);
+	});
 
-    it("should correctly detect environment via filesystem if no CLI mode is provided", () => {
-        jest.spyOn(fs, "existsSync").mockImplementation((pathStr) => 
-            String(pathStr).endsWith("tsconfig.json")
-        );
+	it("should correctly detect environment via filesystem if no CLI mode is provided", () => {
+		jest.spyOn(fs, "existsSync").mockImplementation((pathStr) => 
+			String(pathStr).endsWith("tsconfig.json")
+		);
 
-        const env = getEnvironment("/mock/anchor");
-        
-        expect(env.isTsProject).toBe(true);
-        expect(env.isDarkluaProject).toBe(false);
-    });
+		const env = getEnvironment("/mock/anchor");
+		
+		expect(env.isTsProject).toBe(true);
+		expect(env.isDarkluaProject).toBe(false);
+	});
 });

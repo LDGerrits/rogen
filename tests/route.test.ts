@@ -10,7 +10,10 @@ describe("Router Logic", () => {
 		emitLegacyScripts: true,
 		isTsProject: false,
 		fullNames: false,
-		routingMaps: generateRoutingMaps()
+		routingMaps: generateRoutingMaps(),
+		environments: new Set(),
+		activeEnv: new Set(),
+		envRegexes: [],
 	};
 
 	it("should route to ServerScriptService based on suffix", () => {
@@ -142,7 +145,10 @@ describe("Marker File Routing", () => {
 		isTsProject: false,
 		fullNames: false,
 		routingMaps: generateRoutingMaps(),
-		directoryMarkers: {}
+		directoryMarkers: {},
+		environments: new Set(),
+		activeEnv: new Set(),
+		envRegexes: [],
 	};
 
 	it("should route based on a root marker file", () => {
@@ -187,7 +193,10 @@ describe("Routing (Deepest Wins)", () => {
 		isTsProject: false,
 		fullNames: false,
 		routingMaps: generateRoutingMaps(),
-		directoryMarkers: {}
+		directoryMarkers: {},
+		environments: new Set(),
+		activeEnv: new Set(),
+		envRegexes: [],
 	};
 
 	it("Deepest folder keyword wins over shallow folder keyword", () => {
@@ -256,5 +265,103 @@ describe("Routing (Deepest Wins)", () => {
 		expect(result.wrapperFolder).toBe("shared");
 		expect(result.virtualParts).toEqual(["inventory"]);
 		expect(result.nodeName).toBe("test");
+	});
+});
+
+describe("Environment Filtering", () => {
+	const activeEnv = new Set(["dev", "debug"]);
+	const environments = new Set(["dev", "prod", "debug"]);
+	const envRegexes = Array.from(activeEnv).map(env => ({
+		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
+		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
+		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i")
+	}));
+
+	const envContext: RouteContext = {
+		source: "src",
+		build: "src",
+		output: "test.project.json",
+		name: "test-game",
+		emitLegacyScripts: true,
+		isTsProject: false,
+		fullNames: false,
+		routingMaps: generateRoutingMaps(),
+		environments,
+		activeEnv,
+		envRegexes
+	};
+
+	it("should drop a file if it contains an inactive environment affix", () => {
+		const result = resolveRoute("api.prod.lua", false, envContext);
+		expect(result.dropped).toBe(true);
+	});
+
+	it("should drop a folder if it is named after an inactive environment", () => {
+		const result = resolveRoute("prod/api.lua", false, envContext);
+		expect(result.dropped).toBe(true);
+	});
+
+	it("should keep a file and strip the affix if the environment is active", () => {
+		const result = resolveRoute("api.dev.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("api"); 
+		expect(result.targetService).toBe("ReplicatedStorage"); 
+	});
+
+	it("should keep a file, strip the affix, and apply proper script routing if chained", () => {
+		const result = resolveRoute("api.dev.server.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("api");
+		expect(result.targetService).toBe("ServerScriptService");
+	});
+
+	it("should handle mixed delimiters when stripping environment tags", () => {
+		const result = resolveRoute("api-dev_server.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("api"); 
+		expect(result.targetService).toBe("ServerScriptService");
+	});
+
+	it("should strip multiple chained active environments correctly", () => {
+		const result = resolveRoute("core.dev.debug.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("core");
+	});
+
+	it("should keep a file and handle prefix environment stripping", () => {
+		const result = resolveRoute("debug-logger.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("logger");
+	});
+
+	it("should keep a folder but strip its name from virtualParts if it matches an active environment", () => {
+		const result = resolveRoute("dev/systems/combat.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.virtualParts).not.toContain("dev");
+		expect(result.virtualParts).toContain("systems");
+	});
+
+	it("should NOT strip environment tags if they are part of a larger word", () => {
+		const result = resolveRoute("device.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("device"); // 'dev' is inside 'device'
+	});
+	
+	it("should NOT drop a file if the inactive environment tag is part of a larger word", () => {
+		const result = resolveRoute("production.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("production"); // 'prod' is inactive, but inside 'production'
+	});
+	
+	it("should NOT drop a folder if the inactive environment tag is part of a larger folder name", () => {
+		const result = resolveRoute("production/api.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.virtualParts).toContain("production");
+	});
+	
+	it("should safely handle a file named exactly after an active environment", () => {
+		const result = resolveRoute("dev.lua", false, envContext);
+		expect(result.dropped).toBe(false);
+		expect(result.nodeName).toBe("dev"); 
 	});
 });

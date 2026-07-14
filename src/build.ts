@@ -2,7 +2,7 @@ import fs from "fs";
 import { promises as fsp } from "fs";
 import path from "path";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath } from "./tree.js";
-import { resolveRoute, RouteContext, RoutingMaps } from "./route.js";
+import { EnvRegexes, resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
 
@@ -61,7 +61,36 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	}
 
 	await scan(dir);
+
 	return listings;
+}
+
+function extractGlobalEnvironments(config: RogenConfig, activeEnv: Set<string>): Set<string> {
+	const globalEnvironments = new Set<string>();
+	for (const key in config) {
+		const potentialMode = config[key];
+		if (typeof potentialMode === "object" && potentialMode !== null && !Array.isArray(potentialMode)) {
+			const modeEnv = (potentialMode as Record<string, unknown>).env;
+			if (Array.isArray(modeEnv)) {
+				for (const e of modeEnv) {
+					globalEnvironments.add(String(e).toLowerCase());
+				}
+			}
+		}
+	}
+	
+	for (const e of activeEnv) {
+		globalEnvironments.add(e);
+	}
+	return globalEnvironments;
+}
+
+function compileEnvRegexes(activeEnv: Set<string>): EnvRegexes[] {
+	return Array.from(activeEnv).map(env => ({
+		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
+		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
+		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i")
+	}));
 }
 
 function walkSource(
@@ -115,6 +144,7 @@ export async function build(
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<BuildResult> {
+
 	const modeCopy: RogenMode = { ...targetConfig };
 	if (cliArgs.output) {
 		modeCopy.output = path.resolve(process.cwd(), cliArgs.output);
@@ -127,6 +157,10 @@ export async function build(
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));
 	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
 
+	const activeEnv = new Set((modeCopy.env || []).map(e => e.toLowerCase()));
+	const environments = extractGlobalEnvironments(config, activeEnv);
+	const envRegexes = compileEnvRegexes(activeEnv);
+
 	const context: RouteContext = {
 		source: config.source || "src",
 		...modeCopy,
@@ -134,11 +168,13 @@ export async function build(
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name ?? "unknown",
 		routingMaps: generateRoutingMaps(config.aliases || {}),
-		fullNames: config.fullNames ?? false
+		fullNames: config.fullNames ?? false,
+		environments,
+		activeEnv,
+		envRegexes
 	};
 
 	const casing = config.casing ?? "camelCase";
-
 	const nodeOrigins = new WeakMap<RojoNode, { sourcePath: string, filepath: string }>();
 	const collisions: string[] = [];
 	let fileCount = 0;
@@ -162,7 +198,9 @@ export async function build(
 			const relativePath = path.relative(sourcePath, filepath);
 			const isKeep = isKeepFile(path.basename(filepath))
 
-			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, newContext);
+			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath, dropped } = resolveRoute(relativePath, isInit, newContext);
+
+			if (dropped) return;
 			
 			let current = rojoTree.tree;
 

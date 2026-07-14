@@ -13,6 +13,7 @@ export interface CliArgs {
 export interface RogenMode {
 	output: string;
 	build: string;
+	env?: string[];
 }
 
 export type Casing = "PascalCase" | "camelCase";
