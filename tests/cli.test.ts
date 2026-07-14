@@ -1,4 +1,5 @@
 import { parseCliArgs } from "../src/cli.js";
+import { jest } from "@jest/globals";
 
 describe("CLI Argument Parsing", () => {
 	it("should parse full flags correctly", () => {
@@ -42,5 +43,20 @@ describe("CLI Argument Parsing", () => {
 		const args2 = ["-i"];
 		const options2 = parseCliArgs(args2);
 		expect(options2.init).toBe(true);
+	});
+
+	it("should catch unknown arguments and exit gracefully with an error message", () => {
+		const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as any);
+		const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		const args = ["--unknown", "value"];
+		parseCliArgs(args);
+
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown option '--unknown'"));
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Run 'rogen --help'"));
+		expect(exitSpy).toHaveBeenCalledWith(1);
+
+		exitSpy.mockRestore();
+		errorSpy.mockRestore();
 	});
 });

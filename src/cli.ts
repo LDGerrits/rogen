@@ -8,12 +8,11 @@ Rogen - A tool for feature-based folder structures with Rojo.
 Usage:
   rogen [options]
 
-Actions:
+Options:
   -h, --help            Show this help menu.
   -i, --init            Generate a default .rogen.json config file.
   -w, --watch           Watch the source directory and regenerate automatically.
 
-Overrides:
   -c, --config <path>   Specify a custom Rogen config file path.
   -m, --mode <mode>     Specify the target mode (luau, ts, darklua, or custom).
   -s, --source <path>   Override the directory containing uncompiled code.
@@ -36,6 +35,30 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 		output: { type: "string" as const, short: "o" },
 	};
 
-	const { values } = parseArgs({ args, options, strict: false });
-	return values as CliArgs;
+	try {
+		const { values } = parseArgs({ args, options, strict: true });
+		return values as CliArgs;
+	} catch (error: unknown) {
+		let errCode: string | undefined;
+		let errMsg = String(error);
+
+		// Narrow down to a generic object
+		if (typeof error === 'object' && error !== null) {
+			const errObj = error as Record<string, unknown>;
+			errCode = typeof errObj.code === 'string' ? errObj.code : undefined;
+			errMsg = typeof errObj.message === 'string' ? errObj.message : String(error);
+		}
+		
+		// Duck type check due to instanceof issues using Jest
+		if (errCode === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || errMsg.includes('Unknown option')) {
+			const cleanMsg = errMsg.replace(/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/, '');
+			
+			console.error(`\n❌ CLI Error: ${cleanMsg}`);
+			console.error(`Run 'rogen --help' to see a list of available commands and flags.\n`);
+			process.exit(1);
+		}
+		
+		console.error(`\n❌ CLI Error: ${errMsg}\n`);
+		process.exit(1);
+	}
 }
