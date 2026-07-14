@@ -20,7 +20,6 @@ describe("Configuration Resolution", () => {
 
 		const result = loadAndValidateConfig("test.rogen.json");
 
-		expect(result.hasConfig).toBe(true);
 		expect(result.config.casing).toBe(casing);
 	});
 
@@ -31,7 +30,7 @@ describe("Configuration Resolution", () => {
 	});
 
 	it("should fallback to luau if no config exists and environment is standard", () => {
-		const modes = resolveActiveModes({}, false, undefined, defaultEnv);
+		const modes = resolveActiveModes(defaultConfig, undefined, defaultEnv);
 		
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe(defaultConfig.luau!.build);
@@ -39,31 +38,31 @@ describe("Configuration Resolution", () => {
 
 	it("should auto-detect TypeScript and use ts defaults", () => {
 		const tsEnv: Environment = { isTsProject: true, isDarkluaProject: false };
-		const modes = resolveActiveModes({}, false, undefined, tsEnv);
+		const modes = resolveActiveModes(defaultConfig, undefined, tsEnv);
 		
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe(defaultConfig.ts!.build);
 	});
 
 	it("should throw an error if a requested CLI mode does not exist", () => {
-		const customConfig: Config = { myCustomMode: { build: "dist", output: "custom.json" } };
+		const customConfig: Config = { ...defaultConfig, myCustomMode: { build: "dist", output: "custom.json", env: [], exclude: [] } };
 		
 		expect(() => {
-			resolveActiveModes(customConfig, true, "nonExistentMode", defaultEnv);
+			resolveActiveModes(customConfig, "nonExistentMode", defaultEnv);
 		}).toThrow('Mode "nonExistentMode" is not defined in your config file.');
 	});
 
 	it("should not treat casing as an output mode", () => {
-		const customConfig: Config = { casing: "PascalCase" };
+		const customConfig: Config = { ...defaultConfig, casing: "PascalCase" };
 
 		expect(() => {
-			resolveActiveModes(customConfig, true, "casing", defaultEnv);
+			resolveActiveModes(customConfig, "casing", defaultEnv);
 		}).toThrow('Mode "casing" is not defined in your config file.');
 	});
 
 	it("should successfully load a custom CLI mode", () => {
-		const customConfig: Config = { myCustomMode: { build: "dist", output: "custom.json" } };
-		const modes = resolveActiveModes(customConfig, true, "myCustomMode", defaultEnv);
+		const customConfig: Config = { ...defaultConfig, myCustomMode: { build: "dist", output: "custom.json" } };
+		const modes = resolveActiveModes(customConfig, "myCustomMode", defaultEnv);
 		
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe("dist");
@@ -73,8 +72,6 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ exclude: ["**/*.spec.luau", "ignore/"] });
 
 		const result = loadAndValidateConfig("test.rogen.json");
-
-		expect(result.hasConfig).toBe(true);
 		expect(result.config.exclude).toEqual(["**/*.spec.luau", "ignore/"]);
 	});
 
@@ -88,7 +85,6 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ lute: { build: "dist", output: "test.json" } });
 		
 		const result = loadAndValidateConfig("test.rogen.json");
-		expect(result.hasConfig).toBe(true);
 		expect(result.config.lute).toBeDefined();
 	});
 

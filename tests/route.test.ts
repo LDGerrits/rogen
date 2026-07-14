@@ -15,6 +15,8 @@ describe("Router Logic", () => {
 		environments: new Set(),
 		activeEnv: new Set(),
 		envRegexes: [],
+		env: [],
+		exclude: [],
 	};
 
 	it("should route to ServerScriptService based on suffix", () => {
@@ -150,6 +152,8 @@ describe("Marker File Routing", () => {
 		environments: new Set(),
 		activeEnv: new Set(),
 		envRegexes: [],
+		env: [],
+		exclude: [],
 	};
 
 	it("should route based on a root marker file", () => {
@@ -198,6 +202,8 @@ describe("Routing (Deepest Wins)", () => {
 		environments: new Set(),
 		activeEnv: new Set(),
 		envRegexes: [],
+		env: [],
+		exclude: [],
 	};
 
 	it("Deepest folder keyword wins over shallow folder keyword", () => {
@@ -290,7 +296,9 @@ describe("Environment Filtering", () => {
 		directoryMarkers: {},
 		environments,
 		activeEnv,
-		envRegexes
+		envRegexes,
+		env: [],
+		exclude: [],
 	};
 
 	it("should drop a file if it contains an inactive environment affix", () => {

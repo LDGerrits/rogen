@@ -70,12 +70,9 @@ function extractGlobalEnvironments(config: Config, activeEnv: Set<string>): Set<
 	const globalEnvironments = new Set<string>();
 	for (const key in config) {
 		const potentialMode = config[key];
-		if (typeof potentialMode === "object" && potentialMode !== null && !Array.isArray(potentialMode)) {
-			const modeEnv = (potentialMode as Record<string, unknown>).env;
-			if (Array.isArray(modeEnv)) {
-				for (const e of modeEnv) {
-					globalEnvironments.add(String(e).toLowerCase());
-				}
+		if (typeof potentialMode === "object" && potentialMode !== null && 'env' in potentialMode) {
+			for (const e of (potentialMode as Mode).env) {
+				globalEnvironments.add(String(e).toLowerCase());
 			}
 		}
 	}
@@ -190,8 +187,6 @@ export async function build(
 		envRegexes
 	};
 
-	const casing = config.casing ?? "camelCase";
-
 	const combinedExcludes = Array.from(new Set([
 		...(config.exclude || []),
 		...(modeCopy.exclude || [])
@@ -230,7 +225,7 @@ export async function build(
 				current = getOrCreateNode(current, serviceParents[targetService]);
 			}
 			current = getOrCreateNode(current, targetService);
-			current = getOrCreateNode(current, applyCasing(wrapperFolder, casing), "Folder");
+			current = getOrCreateNode(current, applyCasing(wrapperFolder, config.casing), "Folder");
 			for (const part of virtualParts) {
 				current = getOrCreateNode(current, part, "Folder");
 			}

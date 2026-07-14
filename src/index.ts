@@ -28,9 +28,9 @@ async function main(): Promise<void> {
 	}
 
 	const configPath = resolveConfigPath(cliArgs.config);
-	const { config, hasConfig, anchor } = loadAndValidateConfig(configPath);
+	const { config, anchor } = loadAndValidateConfig(configPath);
 	
-	const rawSources = cliArgs.source || config.source || ["src"];
+	const rawSources = cliArgs.source || config.source;
 	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
 	const resolveBase = cliArgs.source ? process.cwd() : anchor;
 
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
 	});
 
 	const env = getEnvironment(anchor, cliArgs.mode);
-	const activeModes = resolveActiveModes(config, hasConfig, cliArgs.mode, env);
+	const activeModes = resolveActiveModes(config, cliArgs.mode, env);
 	const baseProjectTree = loadProjectTree(anchor, cliArgs.template, config.template);
 
 	await execute(sourcePaths, env, activeModes, baseProjectTree, config, cliArgs, anchor);

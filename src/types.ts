@@ -13,22 +13,22 @@ export interface CliArgs {
 export interface Mode {
 	output: string;
 	build: string;
-	env?: string[];
-	exclude?: string[];
+	env: string[];
+	exclude: string[];
 }
 
 export type Casing = "PascalCase" | "camelCase";
 
 export interface Config {
-	source?: string | string[];
-	fullNames?: boolean;
-	casing?: Casing;
-	aliases?: Record<string, string>;
-	exclude?: string[];
-	luau?: Mode;
-	ts?: Mode;
-	darklua?: Mode;
-	template?: unknown;
+	source: string | string[];
+	fullNames: boolean;
+	casing: Casing;
+	aliases: Record<string, string>;
+	exclude: string[];
+	luau: Mode;
+	ts: Mode;
+	darklua: Mode;
+	template: unknown;
 	[key: string]: unknown;
 }
 

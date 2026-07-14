@@ -4,6 +4,7 @@ import { CliArgs, Environment, Config, Mode, RojoTree } from "../src/types.js";
 import { jest } from "@jest/globals";
 import path from "path";
 import { execute } from "../src/execute.js";
+import { defaultConfig } from "../src/constants.js";
 
 describe("Builder Integration", () => {
 	beforeEach(() => {
@@ -41,9 +42,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -87,9 +88,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: ["src/core", "src/chapter1"] };
+		const config: Config = { ...defaultConfig, source: ["src/core", "src/chapter1"] };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -120,9 +121,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "../../src" };
+		const config: Config = { ...defaultConfig, source: "../../src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -147,9 +148,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: true, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -182,9 +183,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -224,9 +225,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src", casing: "PascalCase" };
+		const config: Config = { ...defaultConfig, source: "src", casing: "PascalCase" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
 		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
@@ -263,9 +264,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 
 		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
@@ -278,9 +279,9 @@ describe("Builder Integration", () => {
 	it("should resolve CLI output relative to cwd, but config output relative to anchor", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(false); 
 
-		const targetConfig = { build: "out", output: "from-config.json" };
+		const targetConfig = { build: "out", output: "from-config.json", env: [], exclude: []};
 		const baseTree = { name: "test", tree: {} };
-		const config = { source: "src" };
+		const config = { ...defaultConfig, source: "src" };
 		const env = { isTsProject: false, isDarkluaProject: false };
 		const anchor = "/mock/custom/anchor/path";
 
@@ -322,7 +323,7 @@ describe("Builder Integration", () => {
 		const writeSpy = jest.spyOn(fs, "writeFileSync").mockImplementation(() => undefined as any);
 
 		const dummyEnv = { isTsProject: false, isDarkluaProject: false };
-		const dummyConfig = { source: "src", luau: { output: "test.json", build: "out" } };
+		const dummyConfig: Config = { ...defaultConfig, source: "src", luau: { output: "test.json", build: "out", env: [], exclude: [] } };
 		const baseTree = { name: "test", tree: {} };
 		const anchor = process.cwd();
 
@@ -353,9 +354,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -406,9 +407,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -457,9 +458,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -504,10 +505,10 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 
-		const config: Config = { source: "src", fullNames: false }; 
+		const config: Config = { ...defaultConfig, source: "src", fullNames: false }; 
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -542,9 +543,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src" };
+		const config: Config = { ...defaultConfig, source: "src" };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 		
@@ -575,9 +576,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: ["src/core", "src/hub"] };
+		const config: Config = { ...defaultConfig, source: ["src/core", "src/hub"] };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 		
@@ -610,9 +611,9 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json" };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: [] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { source: "src", exclude: ["**/*.spec.luau"] };
+		const config: Config = { ...defaultConfig, source: "src", exclude: ["**/*.spec.luau"] };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		const cliArgs: CliArgs = {};
 
@@ -645,10 +646,10 @@ describe("Builder Integration", () => {
 			return [];
 		});
 
-		const targetConfig: Mode = { build: "out", output: "test.project.json", exclude: ["**/*.story.luau"] };
+		const targetConfig: Mode = { build: "out", output: "test.project.json", env: [], exclude: ["**/*.story.luau"] };
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		
-		const config: Config = { source: "src", exclude: ["**/*.spec.luau"] };
+		const config: Config = { ...defaultConfig, source: "src", exclude: ["**/*.spec.luau"] };
 		const env: Environment = { isTsProject: false, isDarkluaProject: false };
 		
 		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());

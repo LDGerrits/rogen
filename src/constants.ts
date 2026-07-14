@@ -5,18 +5,25 @@ export const defaultConfig: Config = {
 	source: ["src"],
 	fullNames: false,
 	casing: "camelCase",
+	exclude: [],
 	aliases: {},
 	luau: { 
 		output: "default.project.json", 
-		build: "src"
+		build: "src",
+		env: [],
+		exclude: []
 	},
 	ts: { 
 		output: "default.project.json", 
-		build: "out"
+		build: "out",
+		env: [],
+		exclude: []
 	},
 	darklua: { 
 		output: "build.project.json", 
-		build: "dist" 
+		build: "dist",
+		env: [],
+		exclude: []
 	},
 	template: {
 		name: "roblox-project",

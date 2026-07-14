@@ -17,8 +17,9 @@ const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 
 const KEYS = Object.keys(CONFIG_KEYS_MAP);
 
-const LEGACY_KEYS: Record<string, string> = {
-	"keepRouteNames": "fullNames"
+const LEGACY_KEYS: Record<string, ConfigKeys> = {
+	"keepRouteNames": "fullNames",
+	"keepSuffixes": "fullNames",
 };
 
 function getClosestMatch(input: string, targets: string[], distanceThreshold: number): string | null {
@@ -85,28 +86,47 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 	return null;
 }
 
-export function loadAndValidateConfig(configPath: string | null): { config: Config; hasConfig: boolean; anchor: string } {
+export function loadAndValidateConfig(configPath: string | null): { config: Config; anchor: string } {
 	const anchor = configPath ? path.dirname(configPath) : process.cwd();
-	
+	const config: Config = JSON.parse(JSON.stringify(defaultConfig));
+
 	if (!configPath) {
-		return { config: JSON.parse(JSON.stringify(defaultConfig)), hasConfig: false, anchor };
+		return { config, anchor };
 	}
 
-	const config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Config;
+	const rawConfig = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Partial<Config>;
 
-	for (const key in config) {
-		if (!KEYS.includes(key)) {
+	for (const key in rawConfig) {
+		if (!KEYS.includes(key as ConfigKeys)) {
 			if (key in LEGACY_KEYS) {
 				throw new Error(`Configuration Error: The key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please update your configuration.`);
 			}
 
-			const value = config[key];
+			const value = rawConfig[key];
 			const isObject = typeof value === "object" && value !== null && !Array.isArray(value);
 			const modeData = isObject ? (value as Record<string, unknown>) : null;
+
+			// Default modes merging
+			if (isObject && (key === "luau" || key === "ts" || key === "darklua")) {
+				config[key] = { ...(config[key] as Mode), ...modeData } as Mode;
+				config[key].env = Array.isArray(config[key].env) ? config[key].env : [];
+				config[key].exclude = Array.isArray(config[key].exclude) ? config[key].exclude : [];
+				continue;
+			}
+
 			const looksLikeMode = modeData && typeof modeData.output === "string" && typeof modeData.build === "string";
 
-			if (looksLikeMode) continue;
-
+			// Custom modes merging
+			if (looksLikeMode) {
+				config[key] = {
+					output: modeData!.output as string,
+					build: modeData!.build as string,
+					env: Array.isArray(modeData!.env) ? modeData!.env : [],
+					exclude: Array.isArray(modeData!.exclude) ? modeData!.exclude : []
+				};
+				continue;
+			}
+			
 			const closestMatch = getClosestMatch(key, KEYS, 2);
 			if (closestMatch) {
 				throw new Error(`Configuration Error: Unknown key "${key}". Did you mean "${closestMatch}"?`);
@@ -122,20 +142,24 @@ export function loadAndValidateConfig(configPath: string | null): { config: Conf
 			} else {
 				throw new Error(`Configuration Error: Unknown configuration key "${key}".`);
 			}
-		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
-			throw new Error(`Configuration Error: 'source' must be a string or an array of strings.`);
-		} else if (key === "template" && typeof config[key] !== "object" && typeof config[key] !== "string") {
-			throw new Error(`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`);
-		} else if (key === "fullNames" && typeof config[key] !== "boolean") {
-			throw new Error(`Configuration Error: 'fullNames' must be a boolean.`);
-		} else if (key === "casing" && config[key] !== "PascalCase" && config[key] !== "camelCase") {
-			throw new Error(`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`);
-		} else if (key === "exclude" && !Array.isArray(config[key])) {
-			throw new Error(`Configuration Error: 'exclude' must be an array of strings.`);
+		} else {
+			// Validate keys
+			if (key === "source" && typeof rawConfig[key] !== "string" && !Array.isArray(rawConfig[key])) {
+				throw new Error(`Configuration Error: 'source' must be a string or an array of strings.`);
+			} else if (key === "template" && typeof rawConfig[key] !== "object" && typeof rawConfig[key] !== "string") {
+				throw new Error(`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`);
+			} else if (key === "fullNames" && typeof rawConfig[key] !== "boolean") {
+				throw new Error(`Configuration Error: 'fullNames' must be a boolean.`);
+			} else if (key === "casing" && rawConfig[key] !== "PascalCase" && rawConfig[key] !== "camelCase") {
+				throw new Error(`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`);
+			} else if (key === "exclude" && !Array.isArray(rawConfig[key])) {
+				throw new Error(`Configuration Error: 'exclude' must be an array of strings.`);
+			}
+			(config as Record<string, unknown>)[key] = rawConfig[key];
 		}
 	}
 
-	return { config, hasConfig: true, anchor };
+	return { config, anchor };
 }
 
 export function loadProjectTree(anchor: string, cliProjectArg?: string, configProjectField?: unknown): RojoTree {
@@ -173,42 +197,26 @@ export function getEnvironment(anchor: string, cliMode?: string): Environment {
 	return { isTsProject, isDarkluaProject };
 }
 
-export function resolveActiveModes(config: Config, hasConfig: boolean, cliMode: string | undefined, env: Environment): Mode[] {
-	const baseLanguage = env.isTsProject ? (config.ts || defaultConfig.ts!) : (config.luau || defaultConfig.luau!);
+export function resolveActiveModes(config: Config, cliMode: string | undefined, env: Environment): Mode[] {
 	const nonModeKeys = new Set(["source", "template", "aliases", "fullNames", "casing"]);
 	const activeModes: Mode[] = [];
 
-	if (hasConfig) {
-		if (cliMode) {
-			if (nonModeKeys.has(cliMode) || !config[cliMode]) {
-				throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
-			}
-			activeModes.push(config[cliMode] as Mode);
-		} else {
-			for (const key in config) {
-				if (!nonModeKeys.has(key) && typeof config[key] === "object" && !Array.isArray(config[key])) {
-					if (key === "luau" && env.isTsProject) continue;
-					if (key === "ts" && !env.isTsProject) continue;
-					if (key === "darklua" && !env.isDarkluaProject) continue;
-					activeModes.push(config[key] as Mode);
-				}
-			}
-			if (activeModes.length === 0) {
-				throw new Error("No output modes defined in configuration file. Add 'luau', 'ts', or custom modes.");
+	if (cliMode) {
+		if (nonModeKeys.has(cliMode) || !config[cliMode]) {
+			throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
+		}
+		activeModes.push(config[cliMode] as Mode);
+	} else {
+		for (const key in config) {
+			if (!nonModeKeys.has(key) && typeof config[key] === "object" && !Array.isArray(config[key])) {
+				if (key === "luau" && env.isTsProject) continue;
+				if (key === "ts" && !env.isTsProject) continue;
+				if (key === "darklua" && !env.isDarkluaProject) continue;
+				activeModes.push(config[key] as Mode);
 			}
 		}
-	} else {
-		if (cliMode) {
-			const fallbackMode = (defaultConfig as Record<string, Mode>)[cliMode];
-			if (!fallbackMode) {
-				throw new Error(`Mode "${cliMode}" is not defined in the fallback config.`);
-			}
-			activeModes.push({ ...baseLanguage, ...fallbackMode });
-		} else {
-			activeModes.push(baseLanguage);
-			if (env.isDarkluaProject) {
-				activeModes.push({ ...baseLanguage, ...(config.darklua || defaultConfig.darklua) });
-			}
+		if (activeModes.length === 0) {
+			throw new Error("No output modes defined in configuration file. Add 'luau', 'ts', or custom modes.");
 		}
 	}
 
