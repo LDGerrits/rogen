@@ -42,7 +42,7 @@ export interface RouteContext extends RogenMode {
 	name: string;
 	routingMaps: RoutingMaps;
 	fullNames: boolean;
-	directoryMarkers?: Record<string, string>;
+	directoryMarkers: Record<string, string[]>;
 	environments: Set<string>;
 	activeEnv: Set<string>;
 	envRegexes: EnvRegexes[];
@@ -78,20 +78,21 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 	const flags: SystemFlags = { isRaw: false, fullNames: false };
 
 	// Marker routing
-	if (directoryMarkers && directoryMarkers[""]) {
-		const marker = directoryMarkers[""];
-		
-		if (marker === "raw") {
+	const rootMarkers = directoryMarkers[""];
+	if (rootMarkers) {
+		if (rootMarkers.includes("raw")) {
 			flags.isRaw = true;
-		} else if (marker === "fullnames") {
-			flags.fullNames = true;
+		}
+		if (rootMarkers.includes("fullnames")) {
+			flags.fullNames = true;	
 		}
 
 		if (!flags.isRaw) {
-			targetService = lowerCaseMap[marker];
-			lastRouteKeyword = marker;
-			if (serviceAliases.has(marker)) {
-				environmentKeyword = marker;
+			const routingMarker = rootMarkers.find(m => lowerCaseMap[m]);
+			if (routingMarker) {
+				targetService = lowerCaseMap[routingMarker];
+				lastRouteKeyword = routingMarker;
+				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
 			}
 		}
 	}
@@ -101,12 +102,15 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
 		const lowerPart = part.toLowerCase();
-		const marker = directoryMarkers ? directoryMarkers[currentPath] : undefined;
+		const markers = directoryMarkers ? directoryMarkers[currentPath] : undefined;
 
-		if (marker === "raw") {
-			flags.isRaw = true;
-		} else if (marker === "fullnames") {
-			flags.fullNames = true;
+		if (markers) {
+			if (markers.includes("raw")) {
+				flags.isRaw = true;
+			}
+			if (markers.includes("fullnames")) {
+				flags.fullNames = true;
+			}
 		}
 
 		if (flags.isRaw) {
@@ -118,16 +122,21 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 
 		const matchedService = lowerCaseMap[lowerPart];
 
-		if (marker) {
-			targetService = lowerCaseMap[marker];
-			lastRouteKeyword = marker;
-			if (serviceAliases.has(marker)) {
-				environmentKeyword = marker;
+		if (markers) {
+			const routingMarker = markers.find(m => lowerCaseMap[m]);
+			if (routingMarker) {
+				targetService = lowerCaseMap[routingMarker];
+				lastRouteKeyword = routingMarker;
+				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
+				
+				if (!matchedService && !activeEnv.has(lowerPart)) {
+					virtualParts.push(part);
+				}
+				continue;
 			}
-			if (!matchedService && !activeEnv.has(lowerPart)) {
-				virtualParts.push(part);
-			}
-		} else if (matchedService) {
+		}
+		
+		if (matchedService) {
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;
 			if (serviceAliases.has(lowerPart)) {
@@ -205,19 +214,46 @@ function getWrapperFolder(targetService: string, environmentKeyword: string | nu
 }
 
 export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
-	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, environments, activeEnv, envRegexes } = context;
+	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, environments, activeEnv, envRegexes, directoryMarkers } = context;
 	const parts = relativePath.split(/[\\/]/);
 	const filename = parts.pop()!;
 	const rawBasename = path.basename(filename, path.extname(filename));
 
 	let dropped = false;
 	
-	// Check folder paths
+	// Check folder paths and folder marker files
+	let currentRel = "";
 	for (const part of parts) {
+		currentRel = currentRel ? `${currentRel}/${part}` : part;
 		const lowerPart = part.toLowerCase();
+		
+		// Drop if folder name is an inactive env
 		if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
 			dropped = true;
 			break;
+		}
+
+		// Drop if folder contains an inactive env marker file
+		const markers = directoryMarkers?.[currentRel];
+		if (markers) {
+			for (const m of markers) {
+				if (environments.has(m) && !activeEnv.has(m)) {
+					dropped = true;
+					break;
+				}
+			}
+		}
+		if (dropped) break;
+	}
+
+	// Check root directory markers for drops
+	const rootMarkers = directoryMarkers?.[""];
+	if (!dropped && rootMarkers) {
+		for (const m of rootMarkers) {
+			if (environments.has(m) && !activeEnv.has(m)) {
+				dropped = true;
+				break;
+			}
 		}
 	}
 	

@@ -11,6 +11,7 @@ describe("Router Logic", () => {
 		isTsProject: false,
 		fullNames: false,
 		routingMaps: generateRoutingMaps(),
+		directoryMarkers: {},
 		environments: new Set(),
 		activeEnv: new Set(),
 		envRegexes: [],
@@ -152,7 +153,7 @@ describe("Marker File Routing", () => {
 	};
 
 	it("should route based on a root marker file", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "": "server" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "": ["server"] } };
 		const result = resolveRoute("Combat.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
@@ -160,7 +161,7 @@ describe("Marker File Routing", () => {
 	});
 
 	it("should route based on a directory marker file and preserve the folder name", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "AntiCheat": "server" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "AntiCheat": ["server"] } };
 		const result = resolveRoute("AntiCheat/scanner.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
@@ -168,14 +169,14 @@ describe("Marker File Routing", () => {
 	});
 
 	it("should prioritize file suffix over a directory marker", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "network": "shared" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "network": ["shared"] } };
 		const result = resolveRoute("network/api.server.lua", false, context);
 		expect(result.targetService).toBe("ServerScriptService");
 		expect(result.wrapperFolder).toBe("server"); 
 	});
 
 	it("should prioritize directory marker over a routing folder name and strip the folder name", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "client": "server" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "client": ["server"] } };
 		const result = resolveRoute("client/main.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
@@ -209,7 +210,7 @@ describe("Routing (Deepest Wins)", () => {
 	it("Deep folder marker wins over shallow root marker", () => {
 		const context: RouteContext = { 
 			...baseContext, 
-			directoryMarkers: { "": "client", "systems": "server" } 
+			directoryMarkers: { "": ["client"], "systems": ["server"] } 
 		};
 		const result = resolveRoute("systems/main.lua", false, context);
 		
@@ -217,14 +218,14 @@ describe("Routing (Deepest Wins)", () => {
 	});
 
 	it("Folder marker wins over folder keyword", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "client": "server" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "client": ["server"] } };
 		const result = resolveRoute("client/main.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
 	});
 
 	it("File suffix wins over folder marker", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "network": "shared" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "network": ["shared"] } };
 		const result = resolveRoute("network/api.server.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
@@ -240,7 +241,7 @@ describe("Routing (Deepest Wins)", () => {
 	});
 
 	it("File prefix wins over root marker", () => {
-		const context: RouteContext = { ...baseContext, directoryMarkers: { "": "client" } };
+		const context: RouteContext = { ...baseContext, directoryMarkers: { "": ["client"] } };
 		const result = resolveRoute("server.combat.lua", false, context);
 		
 		expect(result.targetService).toBe("ServerScriptService");
@@ -286,6 +287,7 @@ describe("Environment Filtering", () => {
 		isTsProject: false,
 		fullNames: false,
 		routingMaps: generateRoutingMaps(),
+		directoryMarkers: {},
 		environments,
 		activeEnv,
 		envRegexes
@@ -363,5 +365,84 @@ describe("Environment Filtering", () => {
 		const result = resolveRoute("dev.lua", false, envContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("dev"); 
+	});
+
+	it("should drop a folder entirely if it contains an inactive environment marker file", () => {
+		const contextWithMarker: RouteContext = {
+			...envContext,
+			directoryMarkers: { "systems": ["prod"] }
+		};
+		const result = resolveRoute("systems/combat.lua", false, contextWithMarker);
+		expect(result.dropped).toBe(true);
+	});
+
+	it("should keep a folder if its environment marker file is active", () => {
+		const contextWithMarker: RouteContext = {
+			...envContext,
+			directoryMarkers: { "systems": ["dev"] }
+		};
+		const result = resolveRoute("systems/combat.lua", false, contextWithMarker);
+		expect(result.dropped).toBe(false);
+		expect(result.virtualParts).toContain("systems");
+	});
+
+	it("should process multi-markers (e.g. .dev AND .server) correctly", () => {
+		const contextWithMarkers: RouteContext = {
+			...envContext,
+			directoryMarkers: { "api": ["dev", "server"] } 
+		};
+		const result = resolveRoute("api/endpoint.lua", false, contextWithMarkers);
+		
+		expect(result.dropped).toBe(false);
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).toContain("api");
+	});
+
+	it("should drop a folder entirely if it contains an inactive environment AND a valid routing marker", () => {
+		const contextWithMarkers: RouteContext = {
+			...envContext,
+			directoryMarkers: { "api": ["prod", "server"] } 
+		};
+		const result = resolveRoute("api/endpoint.lua", false, contextWithMarkers);
+		
+		expect(result.dropped).toBe(true);
+	});
+
+	it("should route an environment folder via a marker, but still strip the environment folder name", () => {
+		const contextWithMarkers: RouteContext = {
+			...envContext,
+			directoryMarkers: { "dev": ["server"] }
+		};
+		const result = resolveRoute("dev/endpoint.lua", false, contextWithMarkers);
+		
+		expect(result.dropped).toBe(false);
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).not.toContain("dev");
+	});
+
+	it("should process a routing folder containing an active environment marker", () => {
+		const contextWithMarkers: RouteContext = {
+			...envContext,
+			directoryMarkers: { "server": ["dev"] }
+		};
+		const result = resolveRoute("server/endpoint.lua", false, contextWithMarkers);
+		
+		expect(result.dropped).toBe(false);
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.virtualParts).not.toContain("server");
+	});
+
+	it("should respect multi-markers at the root directory level", () => {
+		const contextWithMarkers: RouteContext = {
+			...envContext,
+			directoryMarkers: { "": ["dev", "client"] }
+		};
+		const result = resolveRoute("main.lua", false, contextWithMarkers);
+		
+		expect(result.dropped).toBe(false);
+		expect(result.targetService).toBe("StarterPlayerScripts");
+		expect(result.wrapperFolder).toBe("client");
 	});
 });
