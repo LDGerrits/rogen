@@ -10,7 +10,7 @@ export interface CliArgs {
 	watch?: boolean;
 }
 
-export interface RogenMode {
+export interface Mode {
 	output: string;
 	build: string;
 	env?: string[];
@@ -19,18 +19,22 @@ export interface RogenMode {
 
 export type Casing = "PascalCase" | "camelCase";
 
-export interface RogenConfig {
+export interface Config {
 	source?: string | string[];
 	fullNames?: boolean;
 	casing?: Casing;
 	aliases?: Record<string, string>;
 	exclude?: string[];
-	luau?: RogenMode;
-	ts?: RogenMode;
-	darklua?: RogenMode;
+	luau?: Mode;
+	ts?: Mode;
+	darklua?: Mode;
 	template?: unknown;
 	[key: string]: unknown;
 }
+
+export type ConfigKeys = keyof {
+	[K in keyof Config as string extends K ? never : number extends K ? never : K]: Config[K]
+};
 
 export interface Environment {
 	isTsProject: boolean;

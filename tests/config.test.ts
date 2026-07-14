@@ -2,7 +2,7 @@ import fs from "fs";
 import { jest } from "@jest/globals";
 import { getEnvironment, loadAndValidateConfig, resolveActiveModes } from "../src/config.js";
 import { defaultConfig } from "../src/constants.js";
-import { Environment, RogenConfig } from "../src/types.js";
+import { Environment, Config } from "../src/types.js";
 
 describe("Configuration Resolution", () => {
 	const defaultEnv: Environment = { isTsProject: false, isDarkluaProject: false };
@@ -46,7 +46,7 @@ describe("Configuration Resolution", () => {
 	});
 
 	it("should throw an error if a requested CLI mode does not exist", () => {
-		const customConfig: RogenConfig = { myCustomMode: { build: "dist", output: "custom.json" } };
+		const customConfig: Config = { myCustomMode: { build: "dist", output: "custom.json" } };
 		
 		expect(() => {
 			resolveActiveModes(customConfig, true, "nonExistentMode", defaultEnv);
@@ -54,7 +54,7 @@ describe("Configuration Resolution", () => {
 	});
 
 	it("should not treat casing as an output mode", () => {
-		const customConfig: RogenConfig = { casing: "PascalCase" };
+		const customConfig: Config = { casing: "PascalCase" };
 
 		expect(() => {
 			resolveActiveModes(customConfig, true, "casing", defaultEnv);
@@ -62,7 +62,7 @@ describe("Configuration Resolution", () => {
 	});
 
 	it("should successfully load a custom CLI mode", () => {
-		const customConfig: RogenConfig = { myCustomMode: { build: "dist", output: "custom.json" } };
+		const customConfig: Config = { myCustomMode: { build: "dist", output: "custom.json" } };
 		const modes = resolveActiveModes(customConfig, true, "myCustomMode", defaultEnv);
 		
 		expect(modes).toHaveLength(1);
@@ -82,6 +82,38 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ exclude });
 
 		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(/exclude/i);
+	});
+
+	it("should bypass the typo check entirely if an unknown key acts like a valid custom mode", () => {
+		mockConfigFile({ lute: { build: "dist", output: "test.json" } });
+		
+		const result = loadAndValidateConfig("test.rogen.json");
+		expect(result.hasConfig).toBe(true);
+		expect(result.config.lute).toBeDefined();
+	});
+
+	it("should throw a generic unknown key error for non-objects that are not typos", () => {
+		mockConfigFile({ ignoreFiles: ["**/*.txt"] }); 
+		
+		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+			'Configuration Error: Unknown configuration key "ignoreFiles".'
+		);
+	});
+
+	it("should still throw custom mode errors if a user attempts to define a mode but misses fields", () => {
+		mockConfigFile({ myCustomMode: { build: "out" } }); 
+		
+		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+			'Configuration Error: Custom mode "myCustomMode" is missing a valid "output" string.'
+		);
+	});
+
+	it("should throw a typo error if an object is passed but it resembles a core field", () => {
+		mockConfigFile({ tmeplate: { $className: "DataModel" } });
+		
+		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+			'Configuration Error: Unknown key "tmeplate". Did you mean "template"?'
+		);
 	});
 });
 

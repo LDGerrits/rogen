@@ -5,7 +5,7 @@ import {
 	clientContainers
 } from "./constants.js";
 import { toPosix } from "./tree.js";
-import { RogenMode } from "./types.js";
+import { Mode } from "./types.js";
 
 export interface SystemFlags {
 	isRaw: boolean;
@@ -35,7 +35,7 @@ export interface EnvRegexes {
 	middle: RegExp;
 }
 
-export interface RouteContext extends RogenMode {
+export interface RouteContext extends Mode {
 	source: string | string[];
 	isTsProject: boolean;
 	emitLegacyScripts: boolean;

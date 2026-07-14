@@ -1,9 +1,56 @@
 import fs from "fs";
 import path from "path";
 import { defaultConfig } from "./constants.js";
-import { Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
+import { Environment, Config, Mode, RojoTree, ConfigKeys } from "./types.js";
 
-const FIELDS = ["source", "template", "luau", "ts", "darklua", "aliases", "fullNames", "casing", "exclude"];
+const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
+	source: true,
+	fullNames: true,
+	casing: true,
+	aliases: true,
+	exclude: true,
+	luau: true,
+	ts: true,
+	darklua: true,
+	template: true,
+};
+
+const KEYS = Object.keys(CONFIG_KEYS_MAP);
+
+const LEGACY_KEYS: Record<string, string> = {
+	"keepRouteNames": "fullNames"
+};
+
+function getClosestMatch(input: string, targets: string[], distanceThreshold: number): string | null {
+	let closest: string | null = null;
+	let minDistance = Infinity;
+
+	for (const target of targets) {
+		const matrix = Array.from({ length: input.length + 1 }, () => Array(target.length + 1).fill(0));
+		
+		for (let i = 0; i <= input.length; i++) matrix[i][0] = i;
+		for (let j = 0; j <= target.length; j++) matrix[0][j] = j;
+		
+		for (let i = 1; i <= input.length; i++) {
+			for (let j = 1; j <= target.length; j++) {
+				const cost = input[i - 1] === target[j - 1] ? 0 : 1;
+				matrix[i][j] = Math.min(
+					matrix[i - 1][j] + 1, // deletion
+					matrix[i][j - 1] + 1, // insertion
+					matrix[i - 1][j - 1] + cost // substitution
+				);
+			}
+		}
+		
+		const distance = matrix[input.length][target.length];
+		if (distance < minDistance) {
+			minDistance = distance;
+			closest = target;
+		}
+	}
+
+	return minDistance <= distanceThreshold ? closest : null;
+}
 
 export function resolveConfigPath(customPathArg?: string): string | null {
 	const cwd = process.cwd();
@@ -38,28 +85,42 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 	return null;
 }
 
-export function loadAndValidateConfig(configPath: string | null): { config: RogenConfig; hasConfig: boolean; anchor: string } {
+export function loadAndValidateConfig(configPath: string | null): { config: Config; hasConfig: boolean; anchor: string } {
 	const anchor = configPath ? path.dirname(configPath) : process.cwd();
 	
 	if (!configPath) {
 		return { config: JSON.parse(JSON.stringify(defaultConfig)), hasConfig: false, anchor };
 	}
 
-	const config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as RogenConfig;
+	const config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Config;
 
 	for (const key in config) {
-		if (!FIELDS.includes(key)) {
-			const customMode = config[key];
-			if (typeof customMode !== "object" || customMode === null || Array.isArray(customMode)) {
-				throw new Error(`Configuration Error: Key "${key}" must be a valid object defining a mode.`);
+		if (!KEYS.includes(key)) {
+			if (key in LEGACY_KEYS) {
+				throw new Error(`Configuration Error: The key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please update your configuration.`);
 			}
 
-			const modeData = customMode as Record<string, unknown>;
-			if (!modeData.output || typeof modeData.output !== "string") {
-				throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`);
+			const value = config[key];
+			const isObject = typeof value === "object" && value !== null && !Array.isArray(value);
+			const modeData = isObject ? (value as Record<string, unknown>) : null;
+			const looksLikeMode = modeData && typeof modeData.output === "string" && typeof modeData.build === "string";
+
+			if (looksLikeMode) continue;
+
+			const closestMatch = getClosestMatch(key, KEYS, 2);
+			if (closestMatch) {
+				throw new Error(`Configuration Error: Unknown key "${key}". Did you mean "${closestMatch}"?`);
 			}
-			if (!modeData.build || typeof modeData.build !== "string") {
-				throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`);
+
+			if (isObject) {
+				if (!modeData!.output || typeof modeData!.output !== "string") {
+					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`);
+				}
+				if (!modeData!.build || typeof modeData!.build !== "string") {
+					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`);
+				}
+			} else {
+				throw new Error(`Configuration Error: Unknown configuration key "${key}".`);
 			}
 		} else if (key === "source" && typeof config[key] !== "string" && !Array.isArray(config[key])) {
 			throw new Error(`Configuration Error: 'source' must be a string or an array of strings.`);
@@ -112,24 +173,24 @@ export function getEnvironment(anchor: string, cliMode?: string): Environment {
 	return { isTsProject, isDarkluaProject };
 }
 
-export function resolveActiveModes(config: RogenConfig, hasConfig: boolean, cliMode: string | undefined, env: Environment): RogenMode[] {
+export function resolveActiveModes(config: Config, hasConfig: boolean, cliMode: string | undefined, env: Environment): Mode[] {
 	const baseLanguage = env.isTsProject ? (config.ts || defaultConfig.ts!) : (config.luau || defaultConfig.luau!);
 	const nonModeKeys = new Set(["source", "template", "aliases", "fullNames", "casing"]);
-	const activeModes: RogenMode[] = [];
+	const activeModes: Mode[] = [];
 
 	if (hasConfig) {
 		if (cliMode) {
 			if (nonModeKeys.has(cliMode) || !config[cliMode]) {
 				throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
 			}
-			activeModes.push(config[cliMode] as RogenMode);
+			activeModes.push(config[cliMode] as Mode);
 		} else {
 			for (const key in config) {
 				if (!nonModeKeys.has(key) && typeof config[key] === "object" && !Array.isArray(config[key])) {
 					if (key === "luau" && env.isTsProject) continue;
 					if (key === "ts" && !env.isTsProject) continue;
 					if (key === "darklua" && !env.isDarkluaProject) continue;
-					activeModes.push(config[key] as RogenMode);
+					activeModes.push(config[key] as Mode);
 				}
 			}
 			if (activeModes.length === 0) {
@@ -138,7 +199,7 @@ export function resolveActiveModes(config: RogenConfig, hasConfig: boolean, cliM
 		}
 	} else {
 		if (cliMode) {
-			const fallbackMode = (defaultConfig as Record<string, RogenMode>)[cliMode];
+			const fallbackMode = (defaultConfig as Record<string, Mode>)[cliMode];
 			if (!fallbackMode) {
 				throw new Error(`Mode "${cliMode}" is not defined in the fallback config.`);
 			}

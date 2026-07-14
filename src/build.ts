@@ -5,7 +5,7 @@ import picomatch from "picomatch";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath, toPosix } from "./tree.js";
 import { EnvRegexes, resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
-import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
+import { CliArgs, Environment, Config, Mode, RojoNode, RojoTree } from "./types.js";
 
 const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
 
@@ -66,7 +66,7 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	return listings;
 }
 
-function extractGlobalEnvironments(config: RogenConfig, activeEnv: Set<string>): Set<string> {
+function extractGlobalEnvironments(config: Config, activeEnv: Set<string>): Set<string> {
 	const globalEnvironments = new Set<string>();
 	for (const key in config) {
 		const potentialMode = config[key];
@@ -151,16 +151,16 @@ function walkSource(
 }
 
 export async function build(
-	targetConfig: RogenMode, 
+	targetConfig: Mode, 
 	baseProjectTree: RojoTree, 
-	config: RogenConfig, 
+	config: Config, 
 	env: Environment, 
 	sourcePaths: string[], 
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<BuildResult> {
 
-	const modeCopy: RogenMode = { ...targetConfig };
+	const modeCopy: Mode = { ...targetConfig };
 	if (cliArgs.output) {
 		modeCopy.output = path.resolve(process.cwd(), cliArgs.output);
 	} else {

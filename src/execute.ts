@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { build } from "./build.js";
-import { CliArgs, Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
+import { CliArgs, Environment, Config, Mode, RojoTree } from "./types.js";
 
 function getTimeStamp(): string {
 	const now = new Date();
@@ -14,9 +14,9 @@ function getTimeStamp(): string {
 export async function execute(
 	sourcePaths: string[], 
 	env: Environment, 
-	activeModes: RogenMode[], 
+	activeModes: Mode[], 
 	baseProjectTree: RojoTree, 
-	config: RogenConfig, 
+	config: Config, 
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<void> {
