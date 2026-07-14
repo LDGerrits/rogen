@@ -585,4 +585,79 @@ describe("Builder Integration", () => {
 		
 		expect(result.collisions.length).toBe(0);
 	});
+
+	it("should drop files matching the global exclude glob pattern", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "main.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "main.spec.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "utils", isDirectory: () => true, isFile: () => false },
+				] as fs.Dirent[];
+			}
+			
+			if (normalizedDir.endsWith("utils")) {
+				return [
+					{ name: "math.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "math.spec.luau", isDirectory: () => false, isFile: () => true },
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json" };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: RogenConfig = { source: "src", exclude: ["**/*.spec.luau"] };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(targetConfig, baseTree, config, env, ["src"], cliArgs, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2); 
+		
+		expect(resultTree.ReplicatedStorage.shared.main).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.utils.math).toBeDefined();
+		
+		expect(resultTree.ReplicatedStorage.shared["main.spec"]).toBeUndefined();
+		expect(resultTree.ReplicatedStorage.shared.utils["math.spec"]).toBeUndefined();
+	});
+
+	it("should combine global and mode-specific exclude patterns", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(jest.spyOn(fs.promises, "readdir") as jest.Mock<(dir: string) => Promise<any[]>>).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{ name: "main.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "main.spec.luau", isDirectory: () => false, isFile: () => true },
+					{ name: "main.story.luau", isDirectory: () => false, isFile: () => true },
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: RogenMode = { build: "out", output: "test.project.json", exclude: ["**/*.story.luau"] };
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		
+		const config: RogenConfig = { source: "src", exclude: ["**/*.spec.luau"] };
+		const env: Environment = { isTsProject: false, isDarkluaProject: false };
+		
+		const result = await build(targetConfig, baseTree, config, env, ["src"], {}, process.cwd());
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(1);
+		
+		expect(resultTree.ReplicatedStorage.shared.main).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared["main.spec"]).toBeUndefined();
+		expect(resultTree.ReplicatedStorage.shared["main.story"]).toBeUndefined();
+	});
 });

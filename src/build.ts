@@ -1,7 +1,8 @@
 import fs from "fs";
 import { promises as fsp } from "fs";
 import path from "path";
-import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath } from "./tree.js";
+import picomatch from "picomatch";
+import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath, toPosix } from "./tree.js";
 import { EnvRegexes, resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
@@ -190,6 +191,13 @@ export async function build(
 	};
 
 	const casing = config.casing ?? "camelCase";
+
+	const combinedExcludes = Array.from(new Set([
+		...(config.exclude || []),
+		...(modeCopy.exclude || [])
+	]));
+	const isExcluded = combinedExcludes.length > 0 ? picomatch(combinedExcludes) : () => false;
+
 	const nodeOrigins = new WeakMap<RojoNode, { sourcePath: string, filepath: string }>();
 	const collisions: string[] = [];
 	let fileCount = 0;
@@ -210,30 +218,27 @@ export async function build(
 
 		walkSource(sourcePath, sourcePath, listings, (filepath, isInit) => {
 			const relativePath = path.relative(sourcePath, filepath);
-			const isKeep = isKeepFile(path.basename(filepath))
+			if (isExcluded(toPosix(relativePath))) return;
 
 			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath, dropped } = resolveRoute(relativePath, isInit, newContext);
 
 			if (dropped) return;
-
 			fileCount++;
 			
 			let current = rojoTree.tree;
-
 			if (serviceParents[targetService]) {
 				current = getOrCreateNode(current, serviceParents[targetService]);
 			}
 			current = getOrCreateNode(current, targetService);
 			current = getOrCreateNode(current, applyCasing(wrapperFolder, casing), "Folder");
-
 			for (const part of virtualParts) {
 				current = getOrCreateNode(current, part, "Folder");
 			}
 
+			const isKeep = isKeepFile(path.basename(filepath))
 			if (isKeep) return;
 
 			const existingNodeRaw = current[nodeName] as RojoNode | undefined;
-		
 			if (existingNodeRaw && existingNodeRaw.$path) {
 				const origin = nodeOrigins.get(existingNodeRaw);
 				if (origin && origin.sourcePath === sourcePath) {
@@ -243,7 +248,6 @@ export async function build(
 
 			const existingNode = existingNodeRaw || {};
 			const newNode: RojoNode = { ...existingNode, $path: projectPath };
-			
 			if (newNode.$className === "Folder") {
 				delete newNode.$className;
 			}

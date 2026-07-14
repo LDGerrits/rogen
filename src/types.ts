@@ -14,6 +14,7 @@ export interface RogenMode {
 	output: string;
 	build: string;
 	env?: string[];
+	exclude?: string[];
 }
 
 export type Casing = "PascalCase" | "camelCase";
@@ -23,6 +24,7 @@ export interface RogenConfig {
 	fullNames?: boolean;
 	casing?: Casing;
 	aliases?: Record<string, string>;
+	exclude?: string[];
 	luau?: RogenMode;
 	ts?: RogenMode;
 	darklua?: RogenMode;

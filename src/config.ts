@@ -3,7 +3,7 @@ import path from "path";
 import { defaultConfig } from "./constants.js";
 import { Environment, RogenConfig, RogenMode, RojoTree } from "./types.js";
 
-const FIELDS = ["source", "template", "luau", "ts", "darklua", "aliases", "fullNames", "casing"];
+const FIELDS = ["source", "template", "luau", "ts", "darklua", "aliases", "fullNames", "casing", "exclude"];
 
 export function resolveConfigPath(customPathArg?: string): string | null {
 	const cwd = process.cwd();
@@ -69,6 +69,8 @@ export function loadAndValidateConfig(configPath: string | null): { config: Roge
 			throw new Error(`Configuration Error: 'fullNames' must be a boolean.`);
 		} else if (key === "casing" && config[key] !== "PascalCase" && config[key] !== "camelCase") {
 			throw new Error(`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`);
+		} else if (key === "exclude" && !Array.isArray(config[key])) {
+			throw new Error(`Configuration Error: 'exclude' must be an array of strings.`);
 		}
 	}
 

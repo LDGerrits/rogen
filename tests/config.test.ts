@@ -68,6 +68,21 @@ describe("Configuration Resolution", () => {
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe("dist");
 	});
+
+	it("should accept a valid exclude array", () => {
+		mockConfigFile({ exclude: ["**/*.spec.luau", "ignore/"] });
+
+		const result = loadAndValidateConfig("test.rogen.json");
+
+		expect(result.hasConfig).toBe(true);
+		expect(result.config.exclude).toEqual(["**/*.spec.luau", "ignore/"]);
+	});
+
+	it.each(["string_pattern", true, { pattern: "*" }, null])("should reject unsupported exclude value %p", (exclude) => {
+		mockConfigFile({ exclude });
+
+		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(/exclude/i);
+	});
 });
 
 describe("Environment Detection", () => {
