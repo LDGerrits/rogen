@@ -2,7 +2,7 @@ import fs from "fs";
 import { promises as fsp } from "fs";
 import path from "path";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath } from "./tree.js";
-import { resolveRoute, RouteContext, RoutingMaps } from "./route.js";
+import { EnvRegexes, resolveRoute, RouteContext, RoutingMaps } from "./route.js";
 import { serviceParents, generateRoutingMaps } from "./constants.js";
 import { CliArgs, Environment, RogenConfig, RogenMode, RojoNode, RojoTree } from "./types.js";
 
@@ -61,32 +61,75 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	}
 
 	await scan(dir);
+
 	return listings;
 }
 
+function extractGlobalEnvironments(config: RogenConfig, activeEnv: Set<string>): Set<string> {
+	const globalEnvironments = new Set<string>();
+	for (const key in config) {
+		const potentialMode = config[key];
+		if (typeof potentialMode === "object" && potentialMode !== null && !Array.isArray(potentialMode)) {
+			const modeEnv = (potentialMode as Record<string, unknown>).env;
+			if (Array.isArray(modeEnv)) {
+				for (const e of modeEnv) {
+					globalEnvironments.add(String(e).toLowerCase());
+				}
+			}
+		}
+	}
+	
+	for (const e of activeEnv) {
+		globalEnvironments.add(e);
+	}
+	return globalEnvironments;
+}
+
+function compileEnvRegexes(activeEnv: Set<string>): EnvRegexes[] {
+	return Array.from(activeEnv).map(env => ({
+		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
+		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
+		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i")
+	}));
+}
+
+function buildDirectoryMarkers(
+	sourcePath: string,
+	listings: Map<string, fs.Dirent[]>,
+	routingMaps: RoutingMaps,
+	environments: Set<string>
+): Record<string, string[]> {
+	const directoryMarkers: Record<string, string[]> = {};
+
+	for (const [dir, entries] of listings.entries()) {
+		const markers: string[] = [];
+		for (const entry of entries) {
+			if (entry.isFile() && entry.name.startsWith('.')) {
+				const possibleMarker = entry.name.slice(1).toLowerCase();
+				if (SYSTEM_MARKERS.has(possibleMarker) || routingMaps.lowerCaseMap[possibleMarker] || environments.has(possibleMarker)) {
+					markers.push(possibleMarker);
+				}
+			}
+		}
+		
+		if (markers.length > 0) {
+			let relDir = path.relative(sourcePath, dir);
+			relDir = relDir.split(path.sep).join("/");
+			directoryMarkers[relDir] = markers;
+		}
+	}
+
+	return directoryMarkers;
+}
+
 function walkSource(
-	dir: string, 
+	dir: string,
 	sourcePath: string, 
 	listings: Map<string, fs.Dirent[]>,
-	directoryMarkers: Record<string, string>, 
-	routingMaps: RoutingMaps, 
 	callback: (filepath: string, isInit: boolean) => void
 ): void {
 	const entries = listings.get(dir);
 	if (!entries) return;
-
-	// Scan for marker files
-	for (const entry of entries) {
-		if (entry.isFile() && entry.name.startsWith('.')) {
-			const possibleMarker = entry.name.slice(1).toLowerCase();
-			if (SYSTEM_MARKERS.has(possibleMarker) || routingMaps.lowerCaseMap[possibleMarker]) {
-				let relDir = path.relative(sourcePath, dir);
-				relDir = relDir.split(path.sep).join("/");
-				directoryMarkers[relDir] = possibleMarker;
-				break;
-			}
-		}
-	}
 	
 	// Rojo expects a specific structure for folders with an init.luau file that we cannot deviate from.
 	// Because of this, we must return early if an initialization file has been found.
@@ -99,7 +142,7 @@ function walkSource(
 	for (const entry of entries) {
 		const fullPath = path.join(dir, entry.name);
 		if (entry.isDirectory()) {
-			walkSource(fullPath, sourcePath, listings, directoryMarkers, routingMaps, callback);
+			walkSource(fullPath, sourcePath, listings, callback);
 		} else if (isValidSource(entry.name) || isKeepFile(entry.name)) {
 			callback(fullPath, false);
 		}
@@ -115,6 +158,7 @@ export async function build(
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<BuildResult> {
+
 	const modeCopy: RogenMode = { ...targetConfig };
 	if (cliArgs.output) {
 		modeCopy.output = path.resolve(process.cwd(), cliArgs.output);
@@ -127,6 +171,10 @@ export async function build(
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));
 	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
 
+	const activeEnv = new Set((modeCopy.env || []).map(e => e.toLowerCase()));
+	const environments = extractGlobalEnvironments(config, activeEnv);
+	const envRegexes = compileEnvRegexes(activeEnv);
+
 	const context: RouteContext = {
 		source: config.source || "src",
 		...modeCopy,
@@ -134,11 +182,14 @@ export async function build(
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name ?? "unknown",
 		routingMaps: generateRoutingMaps(config.aliases || {}),
-		fullNames: config.fullNames ?? false
+		fullNames: config.fullNames ?? false,
+		directoryMarkers: {},
+		environments,
+		activeEnv,
+		envRegexes
 	};
 
 	const casing = config.casing ?? "camelCase";
-
 	const nodeOrigins = new WeakMap<RojoNode, { sourcePath: string, filepath: string }>();
 	const collisions: string[] = [];
 	let fileCount = 0;
@@ -146,23 +197,26 @@ export async function build(
 	for (const sourcePath of sourcePaths) {
 		const relativePath = path.relative(anchor, sourcePath);
 		const subPath = buildSubPath(relativePath);
-		
-		const directoryMarkers: Record<string, string> = {};
+
+		const listings = await listTree(sourcePath);
+
+		const directoryMarkers = buildDirectoryMarkers(sourcePath, listings, context.routingMaps, environments);
+
 		const newContext: RouteContext = {
 			...context,
 			build: path.join(context.build, subPath),
 			directoryMarkers
 		};
 
-		const listings = await listTree(sourcePath);
-
-		walkSource(sourcePath, sourcePath, listings, directoryMarkers, context.routingMaps, (filepath, isInit) => {
-			fileCount++;
-
+		walkSource(sourcePath, sourcePath, listings, (filepath, isInit) => {
 			const relativePath = path.relative(sourcePath, filepath);
 			const isKeep = isKeepFile(path.basename(filepath))
 
-			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath } = resolveRoute(relativePath, isInit, newContext);
+			const { targetService, wrapperFolder, virtualParts, nodeName, projectPath, dropped } = resolveRoute(relativePath, isInit, newContext);
+
+			if (dropped) return;
+
+			fileCount++;
 			
 			let current = rojoTree.tree;
 
@@ -176,9 +230,7 @@ export async function build(
 				current = getOrCreateNode(current, part, "Folder");
 			}
 
-			if (isKeep) {
-				return; 
-			}
+			if (isKeep) return;
 
 			const existingNodeRaw = current[nodeName] as RojoNode | undefined;
 		

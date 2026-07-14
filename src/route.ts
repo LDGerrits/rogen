@@ -29,6 +29,12 @@ export interface RoutingMaps {
 	camelCasePrefixRegex: RegExp;
 }
 
+export interface EnvRegexes {
+	suffix: RegExp;
+	prefix: RegExp;
+	middle: RegExp;
+}
+
 export interface RouteContext extends RogenMode {
 	source: string | string[];
 	isTsProject: boolean;
@@ -36,7 +42,10 @@ export interface RouteContext extends RogenMode {
 	name: string;
 	routingMaps: RoutingMaps;
 	fullNames: boolean;
-	directoryMarkers?: Record<string, string>;
+	directoryMarkers: Record<string, string[]>;
+	environments: Set<string>;
+	activeEnv: Set<string>;
+	envRegexes: EnvRegexes[];
 }
 
 interface AffixResult {
@@ -53,10 +62,13 @@ interface RouteResolution {
 	virtualParts: string[];
 	nodeName: string;
 	projectPath: string;
+	dropped: boolean;
 }
 
-function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, string> | undefined, routingMaps: RoutingMaps): FolderRoutingResult {
+function resolveFolderRouting(parts: string[], context: RouteContext): FolderRoutingResult {
+	const { routingMaps, directoryMarkers, activeEnv } = context;
 	const { lowerCaseMap } = routingMaps;
+
 	const virtualParts: string[] = [];
 	
 	let targetService = "ReplicatedStorage";
@@ -66,20 +78,21 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 	const flags: SystemFlags = { isRaw: false, fullNames: false };
 
 	// Marker routing
-	if (directoryMarkers && directoryMarkers[""]) {
-		const marker = directoryMarkers[""];
-		
-		if (marker === "raw") {
+	const rootMarkers = directoryMarkers[""];
+	if (rootMarkers) {
+		if (rootMarkers.includes("raw")) {
 			flags.isRaw = true;
-		} else if (marker === "fullnames") {
-			flags.fullNames = true;
+		}
+		if (rootMarkers.includes("fullnames")) {
+			flags.fullNames = true;	
 		}
 
 		if (!flags.isRaw) {
-			targetService = lowerCaseMap[marker];
-			lastRouteKeyword = marker;
-			if (serviceAliases.has(marker)) {
-				environmentKeyword = marker;
+			const routingMarker = rootMarkers.find(m => lowerCaseMap[m]);
+			if (routingMarker) {
+				targetService = lowerCaseMap[routingMarker];
+				lastRouteKeyword = routingMarker;
+				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
 			}
 		}
 	}
@@ -89,39 +102,50 @@ function resolveFolderRouting(parts: string[], directoryMarkers: Record<string, 
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
 		const lowerPart = part.toLowerCase();
-		const marker = directoryMarkers ? directoryMarkers[currentPath] : undefined;
+		const markers = directoryMarkers ? directoryMarkers[currentPath] : undefined;
 
-		if (marker === "raw") {
-			flags.isRaw = true;
-		} else if (marker === "fullnames") {
-			flags.fullNames = true;
+		if (markers) {
+			if (markers.includes("raw")) {
+				flags.isRaw = true;
+			}
+			if (markers.includes("fullnames")) {
+				flags.fullNames = true;
+			}
 		}
 
 		if (flags.isRaw) {
-			virtualParts.push(part);
+			if (!activeEnv.has(lowerPart)) {
+				virtualParts.push(part);
+			}
 			continue;
 		}
 
 		const matchedService = lowerCaseMap[lowerPart];
 
-		if (marker) {
-			targetService = lowerCaseMap[marker];
-			lastRouteKeyword = marker;
-			if (serviceAliases.has(marker)) {
-				environmentKeyword = marker;
+		if (markers) {
+			const routingMarker = markers.find(m => lowerCaseMap[m]);
+			if (routingMarker) {
+				targetService = lowerCaseMap[routingMarker];
+				lastRouteKeyword = routingMarker;
+				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
+				
+				if (!matchedService && !activeEnv.has(lowerPart)) {
+					virtualParts.push(part);
+				}
+				continue;
 			}
-			// Strip if the folder name is also a routing keyword
-			if (!matchedService) {
-				virtualParts.push(part);
-			}
-		} else if (matchedService) {
+		}
+		
+		if (matchedService) {
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;
 			if (serviceAliases.has(lowerPart)) {
 				environmentKeyword = lowerPart;
 			}
 		} else {
-			virtualParts.push(part);
+			if (!activeEnv.has(lowerPart)) {
+				virtualParts.push(part);
+			}
 		}
 	}
 
@@ -190,14 +214,82 @@ function getWrapperFolder(targetService: string, environmentKeyword: string | nu
 }
 
 export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
-	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, directoryMarkers } = context;
-
+	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, environments, activeEnv, envRegexes, directoryMarkers } = context;
 	const parts = relativePath.split(/[\\/]/);
 	const filename = parts.pop()!;
-	const basename = path.basename(filename, path.extname(filename));
+	const rawBasename = path.basename(filename, path.extname(filename));
+
+	let dropped = false;
+	
+	// Check folder paths and folder marker files
+	let currentRel = "";
+	for (const part of parts) {
+		currentRel = currentRel ? `${currentRel}/${part}` : part;
+		const lowerPart = part.toLowerCase();
+		
+		// Drop if folder name is an inactive env
+		if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
+			dropped = true;
+			break;
+		}
+
+		// Drop if folder contains an inactive env marker file
+		const markers = directoryMarkers?.[currentRel];
+		if (markers) {
+			for (const m of markers) {
+				if (environments.has(m) && !activeEnv.has(m)) {
+					dropped = true;
+					break;
+				}
+			}
+		}
+		if (dropped) break;
+	}
+
+	// Check root directory markers for drops
+	const rootMarkers = directoryMarkers?.[""];
+	if (!dropped && rootMarkers) {
+		for (const m of rootMarkers) {
+			if (environments.has(m) && !activeEnv.has(m)) {
+				dropped = true;
+				break;
+			}
+		}
+	}
+	
+	// Check file affixes
+	if (!dropped) {
+		const delimiterSplit = rawBasename.split(/[.\-_]/);
+		for (const part of delimiterSplit) {
+			const lowerPart = part.toLowerCase();
+			if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
+				dropped = true;
+				break;
+			}
+		}
+	}
+
+	// Stop processing and flag for removal
+	if (dropped) {
+		return { targetService: "", wrapperFolder: "", virtualParts: [], nodeName: "", projectPath: "", dropped: true };
+	}
+
+	// Strip active environment affixes
+	let basename = rawBasename;
+	for (const regexSet of envRegexes) {
+		while (regexSet.suffix.test(basename)) {
+			basename = basename.replace(regexSet.suffix, "");
+		}
+		while (regexSet.prefix.test(basename)) {
+			basename = basename.replace(regexSet.prefix, "");
+		}
+		while (regexSet.middle.test(basename)) {
+			basename = basename.replace(regexSet.middle, "");
+		}
+	}
 
 	// Folder and marker routing
-	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv, flags } = resolveFolderRouting(parts, directoryMarkers, routingMaps);
+	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv, flags } = resolveFolderRouting(parts, context);
 
 	// Affix routing
 	const affix = flags.isRaw ? null : resolveAffixes(basename, isInit, routingMaps);
@@ -260,5 +352,5 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		} 
 	}
 
-	return { targetService, wrapperFolder, virtualParts, nodeName, projectPath };
+	return { targetService, wrapperFolder, virtualParts, nodeName, projectPath, dropped: false };
 }
