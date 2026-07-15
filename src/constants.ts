@@ -45,6 +45,10 @@ export const services: Record<string, string> = {
 	StarterPack: "StarterPack",
 	StarterPlayerScripts: "StarterPlayerScripts",
 	StarterCharacterScripts: "StarterCharacterScripts",
+	Workspace: "Workspace",
+	Lighting: "Lighting",
+	SoundService: "SoundService",
+	RobloxPluginGuiService: "RobloxPluginGuiService",
 };
 
 export const serviceParents: Record<string, string> = {
