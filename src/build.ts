@@ -4,8 +4,9 @@ import path from "path";
 import picomatch from "picomatch";
 import { applyCasing, getOrCreateNode, pruneObject, sortObject, findMissingPaths, RemovedPath, MissingPath, toPosix } from "./tree.js";
 import { EnvRegexes, resolveRoute, RouteContext, RoutingMaps } from "./route.js";
-import { serviceParents, generateRoutingMaps } from "./constants.js";
+import { serviceParents, generateRoutingMaps, baseNode } from "./constants.js";
 import { CliArgs, Environment, Config, Mode, RojoNode, RojoTree } from "./types.js";
+import { isMode } from "./config.js";
 
 const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
 
@@ -70,8 +71,8 @@ function extractGlobalEnvironments(config: Config, activeEnv: Set<string>): Set<
 	const globalEnvironments = new Set<string>();
 	for (const key in config) {
 		const potentialMode = config[key];
-		if (typeof potentialMode === "object" && potentialMode !== null && 'env' in potentialMode) {
-			for (const e of (potentialMode as Mode).env) {
+		if (isMode(potentialMode)) {
+			for (const e of potentialMode.env) {
 				globalEnvironments.add(String(e).toLowerCase());
 			}
 		}
@@ -164,10 +165,12 @@ export async function build(
 		modeCopy.output = path.resolve(anchor, targetConfig.output);
 	}
 
-	if (cliArgs.build) modeCopy.build = cliArgs.build;
+	if (cliArgs.build) {
+		modeCopy.build = cliArgs.build;
+	} 
 
 	const rojoTree: RojoTree = JSON.parse(JSON.stringify(baseProjectTree));
-	rojoTree.tree = rojoTree.tree || { $className: "DataModel" };
+	rojoTree.tree = rojoTree.tree || baseNode;
 
 	const activeEnv = new Set((modeCopy.env || []).map(e => e.toLowerCase()));
 	const environments = extractGlobalEnvironments(config, activeEnv);

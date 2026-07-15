@@ -49,7 +49,7 @@ describe("Configuration Resolution", () => {
 		
 		expect(() => {
 			resolveActiveModes(customConfig, "nonExistentMode", defaultEnv);
-		}).toThrow('Mode "nonExistentMode" is not defined in your config file.');
+		}).toThrow('Mode "nonExistentMode" is not defined or is invalid in your config file.');
 	});
 
 	it("should not treat casing as an output mode", () => {
@@ -57,7 +57,7 @@ describe("Configuration Resolution", () => {
 
 		expect(() => {
 			resolveActiveModes(customConfig, "casing", defaultEnv);
-		}).toThrow('Mode "casing" is not defined in your config file.');
+		}).toThrow('Mode "casing" is not defined or is invalid in your config file.');
 	});
 
 	it("should successfully load a custom CLI mode", () => {

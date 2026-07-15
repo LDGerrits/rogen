@@ -28,7 +28,7 @@ export interface Config {
 	luau: Mode;
 	ts: Mode;
 	darklua: Mode;
-	template: unknown;
+	template: RojoTree | string;
 	[key: string]: unknown;
 }
 
@@ -44,11 +44,19 @@ export interface Environment {
 export interface RojoNode {
 	$className?: string;
 	$path?: string;
+	$properties?: Record<string, unknown>;
+	$ignoreUnknownInstances?: boolean;
 	[key: string]: unknown;
 }
 
 export interface RojoTree {
-	name?: string;
-	emitLegacyScripts?: boolean;
+	name: string;
 	tree: RojoNode;
+	servePort?: number;
+	servePlaceIds?: number[];
+	placeId?: number;
+	gameId?: number;
+	serveAddress?: string;
+	globIgnorePaths?: string[];
+	emitLegacyScripts?: boolean;
 }

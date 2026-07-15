@@ -2,9 +2,9 @@ import fs from "fs";
 import path from "path";
 import chokidar from "chokidar";
 import { printHelp, parseCliArgs } from "./cli.js";
-import { resolveConfigPath, loadAndValidateConfig, loadProjectTree, getEnvironment, resolveActiveModes } from "./config.js";
+import { resolveConfigPath, loadAndValidateConfig, loadProjectTree, getEnvironment, resolveActiveModes, createFallbackConfig } from "./config.js";
 import { execute } from "./execute.js";
-import { defaultConfig } from "./constants.js";
+import { Config } from "./types.js";
 
 async function main(): Promise<void> {
 	const cliArgs = parseCliArgs();
@@ -15,14 +15,36 @@ async function main(): Promise<void> {
 	}
 
 	if (cliArgs.init) {
-		const targetPath = path.resolve(process.cwd(), ".rogen.json");
+		const cwd = process.cwd();
+		const targetPath = path.resolve(cwd, ".rogen.json");
 		
 		if (fs.existsSync(targetPath)) {
 			console.error(`\n❌ Initialization Failed: A .rogen.json file already exists in this directory.\n`);
 			process.exit(1);
 		}
 
-		fs.writeFileSync(targetPath, JSON.stringify(defaultConfig, null, '\t'));
+		const config = createFallbackConfig(cwd) as Partial<Config>;
+		
+		const isTs = fs.existsSync(path.join(cwd, "tsconfig.json"));
+		const isDarklua = fs.existsSync(path.join(cwd, ".darklua.json")) 
+			|| fs.existsSync(path.join(cwd, ".darklua.json5"));
+		
+		if (isTs) {
+			delete config.luau;
+		} else {
+			delete config.ts;
+		}
+		
+		if (!isDarklua) {
+			delete config.darklua;
+		}
+
+		delete config.exclude;
+		delete config.aliases;
+		delete config.fullNames;
+		delete config.casing;
+
+		fs.writeFileSync(targetPath, JSON.stringify(config, null, '\t'));
 		console.log(`\n✅ Successfully created .rogen.json in the current directory.\n\n`);
 		process.exit(0);
 	}

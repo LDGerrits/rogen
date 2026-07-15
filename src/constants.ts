@@ -1,5 +1,19 @@
 import { RoutingMaps } from "./route.js";
-import { Config } from "./types.js";
+import { Config, Mode, RojoNode, RojoTree } from "./types.js";
+
+export const baseNode: RojoNode = { $className: "DataModel" }
+
+export const defaultMode: Mode = {
+	output: "default.project.json", 
+	build: "src",
+	env: [],
+	exclude: []
+}
+
+export const defaultTemplate: RojoTree = {
+	name: "roblox-game",
+	tree: baseNode
+}
 
 export const defaultConfig: Config = {
 	source: ["src"],
@@ -25,35 +39,7 @@ export const defaultConfig: Config = {
 		env: [],
 		exclude: []
 	},
-	template: {
-		name: "roblox-project",
-		globIgnorePaths: [
-			"**/package.json",
-			"**/tsconfig.json"
-		],
-		tree: {
-			$className: "DataModel",
-			ServerScriptService: {
-				ServerPackages: {
-					$path: "ServerPackages"
-				}
-			},
-			ReplicatedStorage: {
-				rbxts_include: {
-					$path: "include",
-					node_modules: { 
-						$className: "Folder", 
-						"@rbxts": { 
-							$path: "node_modules/@rbxts" 
-						}
-					}
-				},
-				Packages: {
-					$path: "Packages"
-				}
-			}
-		}
-	}
+	template: defaultTemplate
 };
 
 export const services: Record<string, string> = {

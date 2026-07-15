@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { defaultConfig } from "./constants.js";
-import { Environment, Config, Mode, RojoTree, ConfigKeys } from "./types.js";
+import { Environment, Config, Mode, RojoTree, ConfigKeys, RojoNode } from "./types.js";
+import { defaultMode, defaultTemplate } from "./constants.js";
 
 const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
@@ -53,6 +53,16 @@ function getClosestMatch(input: string, targets: string[], distanceThreshold: nu
 	return minDistance <= distanceThreshold ? closest : null;
 }
 
+export function isMode(value: unknown): value is Mode {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		!Array.isArray(value) &&
+		typeof (value as Record<string, unknown>).output === "string" &&
+		typeof (value as Record<string, unknown>).build === "string"
+	);
+}
+
 export function resolveConfigPath(customPathArg?: string): string | null {
 	const cwd = process.cwd();
 	
@@ -86,20 +96,101 @@ export function resolveConfigPath(customPathArg?: string): string | null {
 	return null;
 }
 
+export function createFallbackConfig(cwd: string): Config {
+	const isTs = fs.existsSync(path.join(cwd, "tsconfig.json"));
+	const isWally = fs.existsSync(path.join(cwd, "wally.toml"));
+	const isPesde = fs.existsSync(path.join(cwd, "pesde.toml"));
+
+	const tree = defaultTemplate.tree;
+	const template: RojoTree = {
+		name: path.basename(cwd) || defaultTemplate.name,
+		tree: tree
+	};
+
+	if (isTs) {
+		template.globIgnorePaths = ["**/package.json", "**/tsconfig.json"];
+
+		const hasRbxts = fs.existsSync(path.join(cwd, "node_modules", "@rbxts"));
+		const hasFlamework = fs.existsSync(path.join(cwd, "node_modules", "@flamework"));
+		const hasRbxtsJs = fs.existsSync(path.join(cwd, "node_modules", "@rbxts-js"));
+
+		const rbxtsIncludeNode: RojoNode = { $path: "include" };
+
+		if (hasRbxts || hasFlamework || hasRbxtsJs) {
+			const nodeModulesNode: RojoNode = { $className: "Folder" };
+			
+			if (hasRbxts) nodeModulesNode["@rbxts"] = { $path: "node_modules/@rbxts" };
+			if (hasFlamework) nodeModulesNode["@flamework"] = { $path: "node_modules/@flamework" };
+			if (hasRbxtsJs) nodeModulesNode["@rbxts-js"] = { $path: "node_modules/@rbxts-js" };
+
+			rbxtsIncludeNode.node_modules = nodeModulesNode;
+		}
+
+		tree.ReplicatedStorage = {
+			...(tree.ReplicatedStorage || {}),
+			rbxts_include: rbxtsIncludeNode
+		};
+	}
+
+	if (isWally) {
+		if (fs.existsSync(path.join(cwd, "Packages"))) {
+			tree.ReplicatedStorage = {
+				...(tree.ReplicatedStorage || {}),
+				Packages: { $path: "Packages" }
+			};
+		}
+		if (fs.existsSync(path.join(cwd, "ServerPackages"))) {
+			tree.ServerScriptService = {
+				...(tree.ServerScriptService || {}),
+				ServerPackages: { $path: "ServerPackages" }
+			};
+		}
+	}
+
+	if (isPesde) {
+		if (fs.existsSync(path.join(cwd, "roblox_packages"))) {
+			tree.ReplicatedStorage = {
+				...(tree.ReplicatedStorage || {}),
+				Packages: { $path: "roblox_packages" }
+			};
+		}
+		if (fs.existsSync(path.join(cwd, "roblox_server_packages"))) {
+			tree.ServerScriptService = {
+				...(tree.ServerScriptService || {}),
+				ServerPackages: { $path: "roblox_server_packages" }
+			};
+		}
+	}
+	
+	const config: Config = {
+		source: ["src"],
+		fullNames: false,
+		casing: "camelCase",
+		exclude: [],
+		aliases: {},
+		luau: { output: "default.project.json", build: "src", env: [], exclude: [] },
+		ts: { output: "default.project.json", build: "out", env: [], exclude: [] },
+		darklua: { output: "build.project.json", build: "dist", env: [], exclude: [] },
+		template: template
+	};
+
+	return config;
+}
+
 export function loadAndValidateConfig(configPath: string | null): { config: Config; anchor: string } {
 	const anchor = configPath ? path.dirname(configPath) : process.cwd();
-	const config: Config = JSON.parse(JSON.stringify(defaultConfig));
-
+	const config = createFallbackConfig(anchor);
+	
 	if (!configPath) {
 		return { config, anchor };
 	}
-
+	
 	const rawConfig = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Partial<Config>;
 
 	for (const key in rawConfig) {
 		if (!KEYS.includes(key as ConfigKeys)) {
 			if (key in LEGACY_KEYS) {
-				throw new Error(`Configuration Error: The key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please update your configuration.`);
+				throw new Error(`Configuration Error: The key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please, update your configuration.`);
 			}
 
 			const value = rawConfig[key];
@@ -109,20 +200,32 @@ export function loadAndValidateConfig(configPath: string | null): { config: Conf
 			// Default modes merging
 			if (isObject && (key === "luau" || key === "ts" || key === "darklua")) {
 				config[key] = { ...(config[key] as Mode), ...modeData } as Mode;
-				config[key].env = Array.isArray(config[key].env) ? config[key].env : [];
-				config[key].exclude = Array.isArray(config[key].exclude) ? config[key].exclude : [];
+				config[key].env = Array.isArray(config[key].env) ? config[key].env : defaultMode.env;
+				config[key].exclude = Array.isArray(config[key].exclude) ? config[key].exclude : defaultMode.exclude;
 				continue;
 			}
 
-			const looksLikeMode = modeData && typeof modeData.output === "string" && typeof modeData.build === "string";
-
 			// Custom modes merging
-			if (looksLikeMode) {
+			const intendedAsMode = modeData && (
+				"output" in modeData || 
+				"build" in modeData || 
+				"env" in modeData || 
+				"exclude" in modeData
+			);
+
+			if (intendedAsMode) {
+				if (typeof modeData.output !== "string") {
+					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`);
+				}
+				if (typeof modeData.build !== "string") {
+					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`);
+				}
+
 				config[key] = {
-					output: modeData!.output as string,
-					build: modeData!.build as string,
-					env: Array.isArray(modeData!.env) ? modeData!.env : [],
-					exclude: Array.isArray(modeData!.exclude) ? modeData!.exclude : []
+					output: modeData.output,
+					build: modeData.build,
+					env: Array.isArray(modeData.env) ? modeData.env : defaultMode.env,
+					exclude: Array.isArray(modeData.exclude) ? modeData.exclude : defaultMode.exclude
 				};
 				continue;
 			}
@@ -132,16 +235,7 @@ export function loadAndValidateConfig(configPath: string | null): { config: Conf
 				throw new Error(`Configuration Error: Unknown key "${key}". Did you mean "${closestMatch}"?`);
 			}
 
-			if (isObject) {
-				if (!modeData!.output || typeof modeData!.output !== "string") {
-					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`);
-				}
-				if (!modeData!.build || typeof modeData!.build !== "string") {
-					throw new Error(`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`);
-				}
-			} else {
-				throw new Error(`Configuration Error: Unknown configuration key "${key}".`);
-			}
+			throw new Error(`Configuration Error: Unknown configuration key "${key}".`);
 		} else {
 			// Validate keys
 			if (key === "source" && typeof rawConfig[key] !== "string" && !Array.isArray(rawConfig[key])) {
@@ -155,7 +249,7 @@ export function loadAndValidateConfig(configPath: string | null): { config: Conf
 			} else if (key === "exclude" && !Array.isArray(rawConfig[key])) {
 				throw new Error(`Configuration Error: 'exclude' must be an array of strings.`);
 			}
-			(config as Record<string, unknown>)[key] = rawConfig[key];
+			config[key] = rawConfig[key];
 		}
 	}
 
@@ -181,7 +275,7 @@ export function loadProjectTree(anchor: string, cliProjectArg?: string, configPr
 		return configProjectField as RojoTree;
 	}
 	
-	return JSON.parse(JSON.stringify(defaultConfig.template));
+	return createFallbackConfig(anchor).template as RojoTree;
 }
 
 export function getEnvironment(anchor: string, cliMode?: string): Environment {
@@ -198,21 +292,24 @@ export function getEnvironment(anchor: string, cliMode?: string): Environment {
 }
 
 export function resolveActiveModes(config: Config, cliMode: string | undefined, env: Environment): Mode[] {
-	const nonModeKeys = new Set(["source", "template", "aliases", "fullNames", "casing"]);
 	const activeModes: Mode[] = [];
 
 	if (cliMode) {
-		if (nonModeKeys.has(cliMode) || !config[cliMode]) {
-			throw new Error(`Mode "${cliMode}" is not defined in your config file.`);
+		const requestedMode = config[cliMode];
+		if (!isMode(requestedMode)) {
+			throw new Error(`Mode "${cliMode}" is not defined or is invalid in your config file.`);
 		}
-		activeModes.push(config[cliMode] as Mode);
+		activeModes.push(requestedMode);
 	} else {
 		for (const key in config) {
-			if (!nonModeKeys.has(key) && typeof config[key] === "object" && !Array.isArray(config[key])) {
+			const potentialMode = config[key];
+
+			if (isMode(potentialMode)) {
 				if (key === "luau" && env.isTsProject) continue;
 				if (key === "ts" && !env.isTsProject) continue;
 				if (key === "darklua" && !env.isDarkluaProject) continue;
-				activeModes.push(config[key] as Mode);
+				
+				activeModes.push(potentialMode);
 			}
 		}
 		if (activeModes.length === 0) {

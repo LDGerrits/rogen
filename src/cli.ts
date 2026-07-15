@@ -1,6 +1,12 @@
 import { parseArgs } from "util";
 import { CliArgs } from "./types.js";
 
+interface CliArg {
+  type: "string" | "boolean";
+  short?: string;
+  multiple?: boolean;
+}
+
 export function printHelp(): void {
 	console.log(`
 Rogen - A tool for feature-based folder structures with Rojo.
@@ -23,7 +29,7 @@ Options:
 }
 
 export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
-	const options = {
+	const options: Record<keyof(CliArgs), CliArg> = {
 		help: { type: "boolean" as const, short: "h" },
 		init: { type: "boolean" as const, short: "i" },
 		watch: { type: "boolean" as const, short: "w" },
