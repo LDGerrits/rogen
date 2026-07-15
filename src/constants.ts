@@ -8,7 +8,7 @@ export const defaultTemplate: RojoTree = {
 
 export const defaultConfig: Config = {
 	source: ["src"],
-	fullNames: false,
+	verbatim: false,
 	casing: "camelCase",
 	exclude: [],
 	aliases: {},

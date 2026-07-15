@@ -9,7 +9,7 @@ describe("Router Logic", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		fullNames: false,
+		verbatim: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
 		environments: new Set(),
@@ -100,10 +100,10 @@ describe("Router Logic", () => {
 		expect(result2.nodeName).toBe("Combat");
 	});
 
-	it("should retain routing suffixes in nodeName when fullNames is true, except for .server and .client", () => {
+	it("should retain routing suffixes in nodeName when verbatim is true, except for .server and .client", () => {
 		const keepSuffixContext: RouteContext = {
 			...baseContext,
-			fullNames: true,
+			verbatim: true,
 		};
 
 		const result1 = resolveRoute(
@@ -203,7 +203,7 @@ describe("Marker File Routing", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		fullNames: false,
+		verbatim: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
 		environments: new Set(),
@@ -265,7 +265,7 @@ describe("Routing (Deepest Wins)", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		fullNames: false,
+		verbatim: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
 		environments: new Set(),
@@ -385,7 +385,7 @@ describe("Environment Filtering", () => {
 		name: "test-game",
 		emitLegacyScripts: true,
 		isTsProject: false,
-		fullNames: false,
+		verbatim: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
 		environments,

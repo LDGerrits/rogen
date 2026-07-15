@@ -21,7 +21,7 @@ export type Casing = "PascalCase" | "camelCase";
 
 export interface Config {
 	source: string | string[];
-	fullNames: boolean;
+	verbatim: boolean;
 	casing: Casing;
 	unwrap: boolean;
 	aliases: Record<string, string>;

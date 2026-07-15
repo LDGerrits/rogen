@@ -934,7 +934,7 @@ describe("Builder Integration", () => {
 		expect(resultTree.StarterPlayerScripts).toBeUndefined();
 	});
 
-	it("should preserve routing keywords in file names when encountering a .fullnames marker", async () => {
+	it("should preserve routing keywords in file names when encountering a .verbatim marker", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
 		(
@@ -957,7 +957,7 @@ describe("Builder Integration", () => {
 			if (normalizedDir.endsWith("systems")) {
 				return [
 					{
-						name: ".fullnames",
+						name: ".verbatim",
 						isDirectory: () => false,
 						isFile: () => true,
 					},
@@ -988,7 +988,7 @@ describe("Builder Integration", () => {
 		const config: Config = {
 			...defaultConfig,
 			source: "src",
-			fullNames: false,
+			verbatim: false,
 		};
 		const env: Environment = {
 			isTsProject: false,

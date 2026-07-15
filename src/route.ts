@@ -9,7 +9,7 @@ import { Mode } from "./types.js";
 
 export interface SystemMarkers {
 	raw: "raw";
-	fullnames: "fullnames";
+	verbatim: "verbatim";
 	unwrap: "unwrap";
 }
 
@@ -46,7 +46,7 @@ export interface RouteContext extends Mode {
 	emitLegacyScripts: boolean;
 	name: string;
 	routingMaps: RoutingMaps;
-	fullNames: boolean;
+	verbatim: boolean;
 	unwrap: boolean;
 	directoryMarkers: Record<string, string[]>;
 	environments: Set<string>;
@@ -85,7 +85,7 @@ function resolveFolderRouting(
 	let lastRouteKeyword: string | null = null;
 	let environmentKeyword: string | null = null;
 
-	const flags: SystemFlags = { raw: false, fullnames: false, unwrap: false };
+	const flags: SystemFlags = { raw: false, verbatim: false, unwrap: false };
 
 	// Marker routing
 	const rootMarkers = directoryMarkers[""];
@@ -93,8 +93,8 @@ function resolveFolderRouting(
 		if (rootMarkers.includes("raw")) {
 			flags.raw = true;
 		}
-		if (rootMarkers.includes("fullnames")) {
-			flags.fullnames = true;
+		if (rootMarkers.includes("verbatim")) {
+			flags.verbatim = true;
 		}
 		if (rootMarkers.includes("unwrap")) {
 			flags.unwrap = true;
@@ -124,8 +124,8 @@ function resolveFolderRouting(
 			if (markers.includes("raw")) {
 				flags.raw = true;
 			}
-			if (markers.includes("fullnames")) {
-				flags.fullnames = true;
+			if (markers.includes("verbatim")) {
+				flags.verbatim = true;
 			}
 			if (markers.includes("unwrap")) {
 				flags.unwrap = true;
@@ -267,7 +267,7 @@ export function resolveRoute(
 		isTsProject,
 		build,
 		routingMaps,
-		fullNames,
+		verbatim,
 		environments,
 		activeEnv,
 		envRegexes,
@@ -412,11 +412,11 @@ export function resolveRoute(
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
 		if (affix) {
-			const keepFullNames = fullNames || flags.fullnames;
+			const keepFullNames = verbatim || flags.verbatim;
 			let shouldStrip = !keepFullNames;
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
-			// Even if fullNames is true, we must strip these exact dot-prefixes.
+			// Even if verbatim is true, we must strip these exact dot-prefixes.
 			if (keepFullNames) {
 				const exactMatch = affix.exactMatch.toLowerCase();
 				if (exactMatch === ".server" || exactMatch === ".client") {

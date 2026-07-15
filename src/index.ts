@@ -50,7 +50,7 @@ async function main(): Promise<void> {
 
 		delete config.exclude;
 		delete config.aliases;
-		delete config.fullNames;
+		delete config.verbatim;
 		delete config.casing;
 		delete config.unwrap;
 

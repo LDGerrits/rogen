@@ -47,7 +47,7 @@ interface BuildResult {
 
 const SYSTEM_MARKERS: Record<keyof SystemMarkers, true> = {
 	raw: true,
-	fullnames: true,
+	verbatim: true,
 	unwrap: true,
 };
 
@@ -239,7 +239,7 @@ export async function build(
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name,
 		routingMaps: generateRoutingMaps(config.aliases || {}),
-		fullNames: config.fullNames ?? defaultConfig.fullNames,
+		verbatim: config.verbatim ?? defaultConfig.verbatim,
 		unwrap: config.unwrap ?? defaultConfig.unwrap,
 		directoryMarkers: {},
 		environments,

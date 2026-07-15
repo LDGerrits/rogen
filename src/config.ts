@@ -18,7 +18,7 @@ export interface ActiveMode {
 
 const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
-	fullNames: true,
+	verbatim: true,
 	casing: true,
 	unwrap: true,
 	aliases: true,
@@ -32,8 +32,8 @@ const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 const KEYS = Object.keys(CONFIG_KEYS_MAP);
 
 const LEGACY_KEYS: Record<string, ConfigKeys> = {
-	keepRouteNames: "fullNames",
-	keepSuffixes: "fullNames",
+	keepRouteNames: "verbatim",
+	keepSuffixes: "verbatim",
 };
 
 function getClosestMatch(
@@ -331,7 +331,7 @@ export function loadConfig(
 						`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`
 					);
 				} else if (
-					(key === "fullNames" || key === "unwrap") &&
+					(key === "verbatim" || key === "unwrap") &&
 					typeof rawConfig[key] !== "boolean"
 				) {
 					throw new Error(

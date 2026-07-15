@@ -1,25 +1,22 @@
 {
 	"source": ["src"],
 	"casing": "camelCase",
-	"fullNames": false,
-	"luau": { 
-		"output": "default.project.json", 
+	"verbatim": false,
+	"luau": {
+		"output": "default.project.json",
 		"build": "src"
 	},
-	"ts": { 
-		"output": "default.project.json", 
+	"ts": {
+		"output": "default.project.json",
 		"build": "out"
 	},
-	"darklua": { 
-		"output": "build.project.json", 
-		"build": "dist" 
+	"darklua": {
+		"output": "build.project.json",
+		"build": "dist"
 	},
 	"template": {
 		"name": "roblox-project",
-		"globIgnorePaths": [
-			"**/package.json",
-			"**/tsconfig.json"
-		],
+		"globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
 		"tree": {
 			"$className": "DataModel",
 			"ServerScriptService": {
@@ -30,10 +27,10 @@
 			"ReplicatedStorage": {
 				"rbxts_include": {
 					"$path": "include",
-					"node_modules": { 
-						"$className": "Folder", 
-						"@rbxts": { 
-							"$path": "node_modules/@rbxts" 
+					"node_modules": {
+						"$className": "Folder",
+						"@rbxts": {
+							"$path": "node_modules/@rbxts"
 						}
 					}
 				},
