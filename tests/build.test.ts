@@ -624,7 +624,7 @@ describe("Builder Integration", () => {
 		await execute(
 			["src"],
 			dummyEnv,
-			[dummyConfig.luau],
+			[{ name: "luau", config: dummyConfig.luau }],
 			baseTree,
 			dummyConfig,
 			{},
