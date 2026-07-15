@@ -7,10 +7,15 @@ import {
 import { toPosix } from "./tree.js";
 import { Mode } from "./types.js";
 
-export interface SystemFlags {
-	isRaw: boolean;
-	fullNames: boolean;
+export interface SystemMarkers {
+	raw: "raw";
+	fullnames: "fullnames";
+	unwrap: "unwrap";
 }
+
+export type SystemFlags = {
+	[K in keyof SystemMarkers]: boolean;
+};
 
 interface FolderRoutingResult {
 	targetService: string;
@@ -42,6 +47,7 @@ export interface RouteContext extends Mode {
 	name: string;
 	routingMaps: RoutingMaps;
 	fullNames: boolean;
+	unwrap: boolean;
 	directoryMarkers: Record<string, string[]>;
 	environments: Set<string>;
 	activeEnv: Set<string>;
@@ -63,6 +69,7 @@ interface RouteResolution {
 	nodeName: string;
 	projectPath: string;
 	dropped: boolean;
+	unwrap: boolean;
 }
 
 function resolveFolderRouting(
@@ -78,19 +85,22 @@ function resolveFolderRouting(
 	let lastRouteKeyword: string | null = null;
 	let environmentKeyword: string | null = null;
 
-	const flags: SystemFlags = { isRaw: false, fullNames: false };
+	const flags: SystemFlags = { raw: false, fullnames: false, unwrap: false };
 
 	// Marker routing
 	const rootMarkers = directoryMarkers[""];
 	if (rootMarkers) {
 		if (rootMarkers.includes("raw")) {
-			flags.isRaw = true;
+			flags.raw = true;
 		}
 		if (rootMarkers.includes("fullnames")) {
-			flags.fullNames = true;
+			flags.fullnames = true;
+		}
+		if (rootMarkers.includes("unwrap")) {
+			flags.unwrap = true;
 		}
 
-		if (!flags.isRaw) {
+		if (!flags.raw) {
 			const routingMarker = rootMarkers.find((m) => lowerCaseMap[m]);
 			if (routingMarker) {
 				targetService = lowerCaseMap[routingMarker];
@@ -112,14 +122,17 @@ function resolveFolderRouting(
 
 		if (markers) {
 			if (markers.includes("raw")) {
-				flags.isRaw = true;
+				flags.raw = true;
 			}
 			if (markers.includes("fullnames")) {
-				flags.fullNames = true;
+				flags.fullnames = true;
+			}
+			if (markers.includes("unwrap")) {
+				flags.unwrap = true;
 			}
 		}
 
-		if (flags.isRaw) {
+		if (flags.raw) {
 			if (!activeEnv.has(lowerPart)) {
 				virtualParts.push(part);
 			}
@@ -323,6 +336,7 @@ export function resolveRoute(
 			nodeName: "",
 			projectPath: "",
 			dropped: true,
+			unwrap: false,
 		};
 	}
 
@@ -350,7 +364,7 @@ export function resolveRoute(
 	} = resolveFolderRouting(parts, context);
 
 	// Affix routing
-	const affix = flags.isRaw
+	const affix = flags.raw
 		? null
 		: resolveAffixes(basename, isInit, routingMaps);
 
@@ -360,6 +374,9 @@ export function resolveRoute(
 
 	// Resolve namespace wrapper folder
 	const wrapperFolder = getWrapperFolder(targetService, environmentKeyword);
+
+	// Determine if the wrapper folder should be skipped
+	const unwrap = context.unwrap || flags.unwrap;
 
 	// Edge case: Scripts with non-legacy RunContext run incorrectly in StarterPlayer container,
 	// hence they need to be put in ReplicatedStorage.
@@ -395,7 +412,7 @@ export function resolveRoute(
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
 		if (affix) {
-			const keepFullNames = fullNames || flags.fullNames;
+			const keepFullNames = fullNames || flags.fullnames;
 			let shouldStrip = !keepFullNames;
 
 			// Rojo relies on '.server' and '.client' explicitly for script types.
@@ -424,5 +441,6 @@ export function resolveRoute(
 		nodeName,
 		projectPath,
 		dropped: false,
+		unwrap,
 	};
 }

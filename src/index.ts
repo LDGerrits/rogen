@@ -52,6 +52,7 @@ async function main(): Promise<void> {
 		delete config.aliases;
 		delete config.fullNames;
 		delete config.casing;
+		delete config.unwrap;
 
 		fs.writeFileSync(targetPath, JSON.stringify(config, null, "\t"));
 		console.log(

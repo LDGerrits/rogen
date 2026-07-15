@@ -1306,3 +1306,248 @@ describe("Builder Integration", () => {
 		).toBeUndefined();
 	});
 });
+
+describe("unwrap Routing Overrides", () => {
+	it("should skip wrapper folders globally when unwrap is true", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "combat.server.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "ui.client.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			env: [],
+			exclude: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			unwrap: true,
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.ServerScriptService.server).toBeUndefined();
+		expect(resultTree.ServerScriptService.combat).toBeDefined();
+		expect(resultTree.ServerScriptService.combat.$path).toBe(
+			"out/combat.server.lua"
+		);
+
+		expect(
+			resultTree.StarterPlayer.StarterPlayerScripts.client
+		).toBeUndefined();
+		expect(resultTree.StarterPlayer.StarterPlayerScripts.ui).toBeDefined();
+	});
+
+	it("should skip wrapper folders only for directories containing a .unwrap marker", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "FlatFeature",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+					{
+						name: "NormalFeature",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("FlatFeature")) {
+				return [
+					{
+						name: ".unwrap",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "api.server.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("NormalFeature")) {
+				return [
+					{
+						name: "data.server.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			env: [],
+			exclude: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			unwrap: false,
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.ServerScriptService.FlatFeature).toBeDefined();
+		expect(resultTree.ServerScriptService.FlatFeature.api).toBeDefined();
+
+		expect(
+			resultTree.ServerScriptService.server.NormalFeature
+		).toBeDefined();
+		expect(
+			resultTree.ServerScriptService.server.NormalFeature.data
+		).toBeDefined();
+	});
+
+	it("should cascade the .unwrap marker to nested subdirectories", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "ParentSystem",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("ParentSystem")) {
+				return [
+					{
+						name: ".unwrap",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "NestedSubsystem",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("NestedSubsystem")) {
+				return [
+					{
+						name: "deep.server.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			env: [],
+			exclude: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			unwrap: false,
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.ServerScriptService.server).toBeUndefined();
+		expect(
+			resultTree.ServerScriptService.ParentSystem.NestedSubsystem.deep
+		).toBeDefined();
+		expect(
+			resultTree.ServerScriptService.ParentSystem.NestedSubsystem.deep
+				.$path
+		).toBe("out/ParentSystem/NestedSubsystem/deep.server.lua");
+	});
+});

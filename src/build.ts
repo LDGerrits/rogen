@@ -17,8 +17,13 @@ import {
 	resolveRoute,
 	RouteContext,
 	RoutingMaps,
+	SystemMarkers,
 } from "./route.js";
-import { serviceParents, generateRoutingMaps } from "./constants.js";
+import {
+	serviceParents,
+	generateRoutingMaps,
+	defaultConfig,
+} from "./constants.js";
 import {
 	CliArgs,
 	Environment,
@@ -40,7 +45,11 @@ interface BuildResult {
 	fileCount: number;
 }
 
-const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
+const SYSTEM_MARKERS: Record<keyof SystemMarkers, true> = {
+	raw: true,
+	fullnames: true,
+	unwrap: true,
+};
 
 const isScript = (filename: string): boolean =>
 	/\.(tsx?|luau|lua)$/i.test(filename) &&
@@ -151,7 +160,7 @@ function buildDirectoryMarkers(
 			if (entry.isFile() && entry.name.startsWith(".")) {
 				const possibleMarker = entry.name.slice(1).toLowerCase();
 				if (
-					SYSTEM_MARKERS.has(possibleMarker) ||
+					possibleMarker in SYSTEM_MARKERS ||
 					routingMaps.lowerCaseMap[possibleMarker] ||
 					environments.has(possibleMarker)
 				) {
@@ -224,13 +233,14 @@ export async function build(
 	const envRegexes = compileEnvRegexes(activeEnv);
 
 	const context: RouteContext = {
-		source: config.source || "src",
+		source: config.source || structuredClone(defaultConfig.source),
 		...modeCopy,
 		isTsProject: env.isTsProject || cliArgs.mode === "ts",
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
-		name: rojoTree.name ?? "unknown",
+		name: rojoTree.name,
 		routingMaps: generateRoutingMaps(config.aliases || {}),
-		fullNames: config.fullNames ?? false,
+		fullNames: config.fullNames ?? defaultConfig.fullNames,
+		unwrap: config.unwrap ?? defaultConfig.unwrap,
 		directoryMarkers: {},
 		environments,
 		activeEnv,
@@ -280,6 +290,7 @@ export async function build(
 				nodeName,
 				projectPath,
 				dropped,
+				unwrap,
 			} = resolveRoute(relativePath, isInit, newContext);
 
 			if (dropped) return;
@@ -293,11 +304,15 @@ export async function build(
 				);
 			}
 			current = getOrCreateNode(current, targetService);
-			current = getOrCreateNode(
-				current,
-				applyCasing(wrapperFolder, config.casing),
-				"Folder"
-			);
+
+			if (!unwrap) {
+				current = getOrCreateNode(
+					current,
+					applyCasing(wrapperFolder, config.casing),
+					"Folder"
+				);
+			}
+
 			for (const part of virtualParts) {
 				current = getOrCreateNode(current, part, "Folder");
 			}

@@ -12,6 +12,7 @@ export const defaultConfig: Config = {
 	casing: "camelCase",
 	exclude: [],
 	aliases: {},
+	unwrap: false,
 	luau: {
 		output: "default.project.json",
 		build: "src",

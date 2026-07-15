@@ -1,14 +1,15 @@
 import fs from "fs";
 import path from "path";
-import {
-	Environment,
-	Config,
-	Mode,
-	RojoTree,
-	ConfigKeys,
-	RojoNode,
-} from "./types.js";
+import { Environment, Config, Mode, RojoTree, RojoNode } from "./types.js";
 import { defaultConfig, defaultTemplate } from "./constants.js";
+
+type ConfigKeys = keyof {
+	[K in keyof Config as string extends K
+		? never
+		: number extends K
+			? never
+			: K]: Config[K];
+};
 
 export interface ActiveMode {
 	name: string;
@@ -19,6 +20,7 @@ const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
 	fullNames: true,
 	casing: true,
+	unwrap: true,
 	aliases: true,
 	exclude: true,
 	luau: true,
@@ -329,11 +331,11 @@ export function loadConfig(
 						`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`
 					);
 				} else if (
-					key === "fullNames" &&
+					(key === "fullNames" || key === "unwrap") &&
 					typeof rawConfig[key] !== "boolean"
 				) {
 					throw new Error(
-						`Configuration Error: 'fullNames' must be a boolean.`
+						`Configuration Error: '${key}' must be a boolean.`
 					);
 				} else if (
 					key === "casing" &&

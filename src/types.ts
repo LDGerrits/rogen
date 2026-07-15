@@ -23,6 +23,7 @@ export interface Config {
 	source: string | string[];
 	fullNames: boolean;
 	casing: Casing;
+	unwrap: boolean;
 	aliases: Record<string, string>;
 	exclude: string[];
 	luau: Mode;
@@ -31,14 +32,6 @@ export interface Config {
 	template: RojoTree;
 	[key: string]: unknown;
 }
-
-export type ConfigKeys = keyof {
-	[K in keyof Config as string extends K
-		? never
-		: number extends K
-			? never
-			: K]: Config[K];
-};
 
 export interface Environment {
 	isTsProject: boolean;
