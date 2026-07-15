@@ -28,12 +28,16 @@ export interface Config {
 	luau: Mode;
 	ts: Mode;
 	darklua: Mode;
-	template: RojoTree | string;
+	template: RojoTree;
 	[key: string]: unknown;
 }
 
 export type ConfigKeys = keyof {
-	[K in keyof Config as string extends K ? never : number extends K ? never : K]: Config[K]
+	[K in keyof Config as string extends K
+		? never
+		: number extends K
+			? never
+			: K]: Config[K];
 };
 
 export interface Environment {

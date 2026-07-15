@@ -1,8 +1,8 @@
 import path from "path";
-import { 
-	serviceAliases, 
-	serverContainers, 
-	clientContainers
+import {
+	serviceAliases,
+	serverContainers,
+	clientContainers,
 } from "./constants.js";
 import { toPosix } from "./tree.js";
 import { Mode } from "./types.js";
@@ -65,12 +65,15 @@ interface RouteResolution {
 	dropped: boolean;
 }
 
-function resolveFolderRouting(parts: string[], context: RouteContext): FolderRoutingResult {
+function resolveFolderRouting(
+	parts: string[],
+	context: RouteContext
+): FolderRoutingResult {
 	const { routingMaps, directoryMarkers, activeEnv } = context;
 	const { lowerCaseMap } = routingMaps;
 
 	const virtualParts: string[] = [];
-	
+
 	let targetService = "ReplicatedStorage";
 	let lastRouteKeyword: string | null = null;
 	let environmentKeyword: string | null = null;
@@ -84,15 +87,16 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 			flags.isRaw = true;
 		}
 		if (rootMarkers.includes("fullnames")) {
-			flags.fullNames = true;	
+			flags.fullNames = true;
 		}
 
 		if (!flags.isRaw) {
-			const routingMarker = rootMarkers.find(m => lowerCaseMap[m]);
+			const routingMarker = rootMarkers.find((m) => lowerCaseMap[m]);
 			if (routingMarker) {
 				targetService = lowerCaseMap[routingMarker];
 				lastRouteKeyword = routingMarker;
-				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
+				if (serviceAliases.has(routingMarker))
+					environmentKeyword = routingMarker;
 			}
 		}
 	}
@@ -102,7 +106,9 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
 		const lowerPart = part.toLowerCase();
-		const markers = directoryMarkers ? directoryMarkers[currentPath] : undefined;
+		const markers = directoryMarkers
+			? directoryMarkers[currentPath]
+			: undefined;
 
 		if (markers) {
 			if (markers.includes("raw")) {
@@ -123,19 +129,20 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 		const matchedService = lowerCaseMap[lowerPart];
 
 		if (markers) {
-			const routingMarker = markers.find(m => lowerCaseMap[m]);
+			const routingMarker = markers.find((m) => lowerCaseMap[m]);
 			if (routingMarker) {
 				targetService = lowerCaseMap[routingMarker];
 				lastRouteKeyword = routingMarker;
-				if (serviceAliases.has(routingMarker)) environmentKeyword = routingMarker;
-				
+				if (serviceAliases.has(routingMarker))
+					environmentKeyword = routingMarker;
+
 				if (!matchedService && !activeEnv.has(lowerPart)) {
 					virtualParts.push(part);
 				}
 				continue;
 			}
 		}
-		
+
 		if (matchedService) {
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;
@@ -149,11 +156,28 @@ function resolveFolderRouting(parts: string[], context: RouteContext): FolderRou
 		}
 	}
 
-	return { targetService, virtualParts, lastRouteKeyword, environmentKeyword, flags };
+	return {
+		targetService,
+		virtualParts,
+		lastRouteKeyword,
+		environmentKeyword,
+		flags,
+	};
 }
 
-function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingMaps): AffixResult | null {
-	const { lowerCaseMap, mergedServices, separatorSuffixRegex, pascalCaseSuffixRegex, separatorPrefixRegex, camelCasePrefixRegex } = routingMaps;
+function resolveAffixes(
+	basename: string,
+	isInit: boolean,
+	routingMaps: RoutingMaps
+): AffixResult | null {
+	const {
+		lowerCaseMap,
+		mergedServices,
+		separatorSuffixRegex,
+		pascalCaseSuffixRegex,
+		separatorPrefixRegex,
+		camelCasePrefixRegex,
+	} = routingMaps;
 
 	let match = basename.match(separatorSuffixRegex);
 	if (match && match[0].length < basename.length) {
@@ -162,8 +186,9 @@ function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingM
 			mappedService: lowerCaseMap[suffix],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword: (!isInit && serviceAliases.has(suffix)) ? suffix : undefined,
-			isPrefix: false
+			environmentKeyword:
+				!isInit && serviceAliases.has(suffix) ? suffix : undefined,
+			isPrefix: false,
 		};
 	}
 
@@ -174,8 +199,9 @@ function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingM
 			mappedService: mergedServices[match[1]],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword: (!isInit && serviceAliases.has(suffix)) ? suffix : undefined,
-			isPrefix: false
+			environmentKeyword:
+				!isInit && serviceAliases.has(suffix) ? suffix : undefined,
+			isPrefix: false,
 		};
 	}
 
@@ -186,8 +212,9 @@ function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingM
 			mappedService: lowerCaseMap[prefix],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword: (!isInit && serviceAliases.has(prefix)) ? prefix : undefined,
-			isPrefix: true
+			environmentKeyword:
+				!isInit && serviceAliases.has(prefix) ? prefix : undefined,
+			isPrefix: true,
 		};
 	}
 
@@ -198,35 +225,53 @@ function resolveAffixes(basename: string, isInit: boolean, routingMaps: RoutingM
 			mappedService: lowerCaseMap[prefix],
 			matchedLength: match[1].length,
 			exactMatch: match[0],
-			environmentKeyword: (!isInit && serviceAliases.has(prefix)) ? prefix : undefined,
-			isPrefix: true
+			environmentKeyword:
+				!isInit && serviceAliases.has(prefix) ? prefix : undefined,
+			isPrefix: true,
 		};
 	}
 
 	return null;
 }
 
-function getWrapperFolder(targetService: string, environmentKeyword: string | null): string {
+function getWrapperFolder(
+	targetService: string,
+	environmentKeyword: string | null
+): string {
 	if (serverContainers.has(targetService)) return "server";
 	if (clientContainers.has(targetService)) return "client";
 	if (environmentKeyword) return environmentKeyword;
 	return "shared";
 }
 
-export function resolveRoute(relativePath: string, isInit: boolean, context: RouteContext): RouteResolution {
-	const { emitLegacyScripts, isTsProject, build, routingMaps, fullNames, environments, activeEnv, envRegexes, directoryMarkers } = context;
+export function resolveRoute(
+	relativePath: string,
+	isInit: boolean,
+	context: RouteContext
+): RouteResolution {
+	const {
+		emitLegacyScripts,
+		isTsProject,
+		build,
+		routingMaps,
+		fullNames,
+		environments,
+		activeEnv,
+		envRegexes,
+		directoryMarkers,
+	} = context;
 	const parts = relativePath.split(/[\\/]/);
 	const filename = parts.pop()!;
 	const rawBasename = path.basename(filename, path.extname(filename));
 
 	let dropped = false;
-	
+
 	// Check folder paths and folder marker files
 	let currentRel = "";
 	for (const part of parts) {
 		currentRel = currentRel ? `${currentRel}/${part}` : part;
 		const lowerPart = part.toLowerCase();
-		
+
 		// Drop if folder name is an inactive env
 		if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
 			dropped = true;
@@ -256,7 +301,7 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 			}
 		}
 	}
-	
+
 	// Check file affixes
 	if (!dropped) {
 		const delimiterSplit = rawBasename.split(/[.\-_]/);
@@ -271,7 +316,14 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 
 	// Stop processing and flag for removal
 	if (dropped) {
-		return { targetService: "", wrapperFolder: "", virtualParts: [], nodeName: "", projectPath: "", dropped: true };
+		return {
+			targetService: "",
+			wrapperFolder: "",
+			virtualParts: [],
+			nodeName: "",
+			projectPath: "",
+			dropped: true,
+		};
 	}
 
 	// Strip active environment affixes
@@ -289,10 +341,18 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 	}
 
 	// Folder and marker routing
-	const { targetService: folderTarget, virtualParts, lastRouteKeyword, environmentKeyword: folderEnv, flags } = resolveFolderRouting(parts, context);
+	const {
+		targetService: folderTarget,
+		virtualParts,
+		lastRouteKeyword,
+		environmentKeyword: folderEnv,
+		flags,
+	} = resolveFolderRouting(parts, context);
 
 	// Affix routing
-	const affix = flags.isRaw ? null : resolveAffixes(basename, isInit, routingMaps);
+	const affix = flags.isRaw
+		? null
+		: resolveAffixes(basename, isInit, routingMaps);
 
 	// Resolve overrides
 	let targetService = affix?.mappedService ?? folderTarget;
@@ -303,7 +363,9 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 
 	// Edge case: Scripts with non-legacy RunContext run incorrectly in StarterPlayer container,
 	// hence they need to be put in ReplicatedStorage.
-	const isStarterPlayerContainer = targetService === "StarterPlayerScripts" || targetService === "StarterCharacterScripts";
+	const isStarterPlayerContainer =
+		targetService === "StarterPlayerScripts" ||
+		targetService === "StarterCharacterScripts";
 	if (emitLegacyScripts === false && isStarterPlayerContainer) {
 		targetService = "ReplicatedStorage";
 	}
@@ -315,7 +377,7 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 	if (isInit) {
 		const folderRelativePath = path.dirname(relativePath);
 		projectPath = toPosix(path.join(build, folderRelativePath));
-		
+
 		if (virtualParts.length > 0) {
 			nodeName = virtualParts.pop()!;
 		} else {
@@ -325,7 +387,10 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 		let compiledRelativePath = relativePath;
 		if (isTsProject) {
 			const compiledFilename = filename.replace(/\.tsx?$/i, ".luau");
-			compiledRelativePath = path.join(path.dirname(relativePath), compiledFilename);
+			compiledRelativePath = path.join(
+				path.dirname(relativePath),
+				compiledFilename
+			);
 		}
 		projectPath = toPosix(path.join(build, compiledRelativePath));
 
@@ -346,11 +411,18 @@ export function resolveRoute(relativePath: string, isInit: boolean, context: Rou
 				if (affix.isPrefix) {
 					nodeName = basename.slice(affix.matchedLength);
 				} else {
-					nodeName = basename.slice(0, -affix.matchedLength); 
+					nodeName = basename.slice(0, -affix.matchedLength);
 				}
 			}
-		} 
+		}
 	}
 
-	return { targetService, wrapperFolder, virtualParts, nodeName, projectPath, dropped: false };
+	return {
+		targetService,
+		wrapperFolder,
+		virtualParts,
+		nodeName,
+		projectPath,
+		dropped: false,
+	};
 }

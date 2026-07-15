@@ -5,7 +5,7 @@ describe("CLI Argument Parsing", () => {
 	it("should parse full flags correctly", () => {
 		const args = ["--mode", "ts", "--source", "my_src", "--watch"];
 		const options = parseCliArgs(args);
-		
+
 		expect(options.mode).toBe("ts");
 		expect(options.source).toEqual(["my_src"]);
 		expect(options.watch).toBe(true);
@@ -14,7 +14,7 @@ describe("CLI Argument Parsing", () => {
 	it("should parse short aliases correctly", () => {
 		const args = ["-m", "luau", "-s", "other_src", "-w"];
 		const options = parseCliArgs(args);
-		
+
 		expect(options.mode).toBe("luau");
 		expect(options.source).toEqual(["other_src"]);
 		expect(options.watch).toBe(true);
@@ -23,14 +23,14 @@ describe("CLI Argument Parsing", () => {
 	it("should parse multiple source flags correctly", () => {
 		const args = ["-s", "src/core", "-s", "src/chapter1"];
 		const options = parseCliArgs(args);
-		
+
 		expect(options.source).toEqual(["src/core", "src/chapter1"]);
 	});
 
 	it("should return undefined for omitted flags", () => {
 		const args = ["--mode", "darklua"];
 		const options = parseCliArgs(args);
-		
+
 		expect(options.mode).toBe("darklua");
 		expect(options.watch).toBeUndefined();
 	});
@@ -46,14 +46,22 @@ describe("CLI Argument Parsing", () => {
 	});
 
 	it("should catch unknown arguments and exit gracefully with an error message", () => {
-		const exitSpy = jest.spyOn(process, "exit").mockImplementation((() => {}) as any);
-		const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+		const exitSpy = jest
+			.spyOn(process, "exit")
+			.mockImplementation((() => {}) as any);
+		const errorSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		const args = ["--unknown", "value"];
 		parseCliArgs(args);
 
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown option '--unknown'"));
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Run 'rogen --help'"));
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Unknown option '--unknown'")
+		);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Run 'rogen --help'")
+		);
 		expect(exitSpy).toHaveBeenCalledWith(1);
 
 		exitSpy.mockRestore();

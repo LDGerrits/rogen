@@ -5,38 +5,48 @@ import { CliArgs, Environment, Config, Mode, RojoTree } from "./types.js";
 
 function getTimeStamp(): string {
 	const now = new Date();
-	const h = String(now.getHours()).padStart(2, '0');
-	const m = String(now.getMinutes()).padStart(2, '0');
-	const s = String(now.getSeconds()).padStart(2, '0');
+	const h = String(now.getHours()).padStart(2, "0");
+	const m = String(now.getMinutes()).padStart(2, "0");
+	const s = String(now.getSeconds()).padStart(2, "0");
 	return `[${h}:${m}:${s}]`;
 }
 
 export async function execute(
-	sourcePaths: string[], 
-	env: Environment, 
-	activeModes: Mode[], 
-	baseProjectTree: RojoTree, 
-	config: Config, 
+	sourcePaths: string[],
+	env: Environment,
+	activeModes: Mode[],
+	baseProjectTree: RojoTree,
+	config: Config,
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<void> {
 	try {
 		for (const targetConfig of activeModes) {
-			const buildResult = await build(targetConfig, baseProjectTree, config, env, sourcePaths, cliArgs, anchor);
+			const buildResult = await build(
+				targetConfig,
+				baseProjectTree,
+				config,
+				env,
+				sourcePaths,
+				cliArgs,
+				anchor
+			);
 			const dropped: string[] = [];
-			
+
 			if (buildResult.missingPaths.length > 0) {
 				for (const item of buildResult.missingPaths) {
 					const ext = path.extname(item.absolutePath).toLowerCase();
-					if (ext === '.luau' || ext === '.lua') {
+					if (ext === ".luau" || ext === ".lua") {
 						const dir = path.dirname(item.absolutePath);
 						if (!fs.existsSync(dir)) {
 							fs.mkdirSync(dir, { recursive: true });
-						} 
+						}
 						fs.writeFileSync(item.absolutePath, "");
-					} else if (ext === "") { 
+					} else if (ext === "") {
 						if (!fs.existsSync(item.absolutePath)) {
-							fs.mkdirSync(item.absolutePath, { recursive: true });
+							fs.mkdirSync(item.absolutePath, {
+								recursive: true,
+							});
 						}
 					} else {
 						delete item.parent[item.key];
@@ -49,7 +59,10 @@ export async function execute(
 			let shouldWrite = true;
 
 			if (fs.existsSync(buildResult.output)) {
-				const existingContent = fs.readFileSync(buildResult.output, "utf-8");
+				const existingContent = fs.readFileSync(
+					buildResult.output,
+					"utf-8"
+				);
 				if (existingContent === finalContent) {
 					shouldWrite = false;
 				}
@@ -65,14 +78,21 @@ export async function execute(
 
 				const timeStamp = getTimeStamp();
 
-				const totalRemoved = buildResult.removed.length + dropped.length;
+				const totalRemoved =
+					buildResult.removed.length + dropped.length;
 				if (totalRemoved > 0) {
 					if (cliArgs.watch) {
-						console.log(`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`);
+						console.log(
+							`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`
+						);
 					} else {
-						console.log(`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`);
+						console.log(
+							`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`
+						);
 						for (const item of buildResult.removed) {
-							console.log(`   - ${item.treePath} ($path "${item.rojoPath}")`);
+							console.log(
+								`   - ${item.treePath} ($path "${item.rojoPath}")`
+							);
 						}
 						for (const item of dropped) {
 							console.log(`   - ${item}`);
@@ -88,10 +108,16 @@ export async function execute(
 
 				if (cliArgs.watch) {
 					const outputName = path.basename(buildResult.output);
-					console.log(`${timeStamp} ✅ Built "${buildResult.name}" (${buildResult.fileCount} files) -> ${outputName}`);
+					console.log(
+						`${timeStamp} ✅ Built "${buildResult.name}" (${buildResult.fileCount} files) -> ${outputName}`
+					);
 				} else {
-					console.log(`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`);
-					console.log(`   ▶ Processed: ${buildResult.fileCount} source files`);
+					console.log(
+						`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`
+					);
+					console.log(
+						`   ▶ Processed: ${buildResult.fileCount} source files`
+					);
 					console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
 					console.log(`   ▶ Output To: ${buildResult.output}\n`);
 				}

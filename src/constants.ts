@@ -1,19 +1,10 @@
 import { RoutingMaps } from "./route.js";
-import { Config, Mode, RojoNode, RojoTree } from "./types.js";
-
-export const baseNode: RojoNode = { $className: "DataModel" }
-
-export const defaultMode: Mode = {
-	output: "default.project.json", 
-	build: "src",
-	env: [],
-	exclude: []
-}
+import { Config, RojoTree } from "./types.js";
 
 export const defaultTemplate: RojoTree = {
 	name: "roblox-game",
-	tree: baseNode
-}
+	tree: { $className: "DataModel" },
+};
 
 export const defaultConfig: Config = {
 	source: ["src"],
@@ -21,25 +12,25 @@ export const defaultConfig: Config = {
 	casing: "camelCase",
 	exclude: [],
 	aliases: {},
-	luau: { 
-		output: "default.project.json", 
+	luau: {
+		output: "default.project.json",
 		build: "src",
 		env: [],
-		exclude: []
+		exclude: [],
 	},
-	ts: { 
-		output: "default.project.json", 
+	ts: {
+		output: "default.project.json",
 		build: "out",
 		env: [],
-		exclude: []
+		exclude: [],
 	},
-	darklua: { 
-		output: "build.project.json", 
+	darklua: {
+		output: "build.project.json",
 		build: "dist",
 		env: [],
-		exclude: []
+		exclude: [],
 	},
-	template: defaultTemplate
+	template: defaultTemplate,
 };
 
 export const services: Record<string, string> = {
@@ -62,47 +53,59 @@ export const serviceParents: Record<string, string> = {
 };
 
 export const serverContainers = new Set<string>([
-	"ServerScriptService", 
-	"ServerStorage"
+	"ServerScriptService",
+	"ServerStorage",
 ]);
 
 export const clientContainers = new Set<string>([
-	"StarterPlayer", 
-	"StarterPlayerScripts", 
-	"StarterCharacterScripts", 
-	"StarterGui", 
-	"StarterPack", 
-	"ReplicatedFirst"
+	"StarterPlayer",
+	"StarterPlayerScripts",
+	"StarterCharacterScripts",
+	"StarterGui",
+	"StarterPack",
+	"ReplicatedFirst",
 ]);
 
-export const serviceAliases = new Set<string>([
-	"server", 
-	"client", 
-	"shared"
-]);
+export const serviceAliases = new Set<string>(["server", "client", "shared"]);
 
-export function generateRoutingMaps(customAliases: Record<string, string> = {}): RoutingMaps {
+export function generateRoutingMaps(
+	customAliases: Record<string, string> = {}
+): RoutingMaps {
 	const mergedServices = { ...services, ...customAliases };
 	const lowerCaseMap = Object.fromEntries(
 		Object.entries(mergedServices).map(([k, v]) => [k.toLowerCase(), v])
 	);
 
-	const mergedKeys = Object.keys(mergedServices).sort((a, b) => b.length - a.length);
-	const lowerKeys = Object.keys(lowerCaseMap).sort((a, b) => b.length - a.length);
+	const mergedKeys = Object.keys(mergedServices).sort(
+		(a, b) => b.length - a.length
+	);
+	const lowerKeys = Object.keys(lowerCaseMap).sort(
+		(a, b) => b.length - a.length
+	);
 
-	const allPrefixKeys = Array.from(new Set([...lowerKeys, ...mergedKeys])).sort((a, b) => b.length - a.length);
+	const allPrefixKeys = Array.from(
+		new Set([...lowerKeys, ...mergedKeys])
+	).sort((a, b) => b.length - a.length);
 
-	const separatorSuffixRegex = new RegExp(`[\\.\\-_](${lowerKeys.join("|")})$`, "i");
+	const separatorSuffixRegex = new RegExp(
+		`[\\.\\-_](${lowerKeys.join("|")})$`,
+		"i"
+	);
 	const pascalCaseSuffixRegex = new RegExp(`(${mergedKeys.join("|")})$`);
-	const separatorPrefixRegex = new RegExp(`^(${lowerKeys.join("|")})([\\.\\-_])`, "i");
-	const camelCasePrefixRegex = new RegExp(`^(${allPrefixKeys.join("|")})(?=[A-Z])`);
+	const separatorPrefixRegex = new RegExp(
+		`^(${lowerKeys.join("|")})([\\.\\-_])`,
+		"i"
+	);
+	const camelCasePrefixRegex = new RegExp(
+		`^(${allPrefixKeys.join("|")})(?=[A-Z])`
+	);
 
-	return { 
-		mergedServices, 
-		lowerCaseMap, 
-		separatorSuffixRegex, 
-		pascalCaseSuffixRegex, 
+	return {
+		mergedServices,
+		lowerCaseMap,
+		separatorSuffixRegex,
+		pascalCaseSuffixRegex,
 		separatorPrefixRegex,
-		camelCasePrefixRegex
+		camelCasePrefixRegex,
 	};
 }

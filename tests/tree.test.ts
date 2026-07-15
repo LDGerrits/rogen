@@ -1,5 +1,11 @@
 import fs from "fs";
-import { applyCasing, getOrCreateNode, sortObject, pruneObject, findMissingPaths } from "../src/tree.js";
+import {
+	applyCasing,
+	getOrCreateNode,
+	sortObject,
+	pruneObject,
+	findMissingPaths,
+} from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
 import path from "path";
@@ -26,16 +32,24 @@ describe("Tree Utilities", () => {
 
 	describe("applyCasing", () => {
 		it("should uppercase the first character for PascalCase", () => {
-			expect(applyCasing("testServiceUtils", "PascalCase")).toBe("TestServiceUtils");
+			expect(applyCasing("testServiceUtils", "PascalCase")).toBe(
+				"TestServiceUtils"
+			);
 		});
 
 		it("should lowercase the first character for camelCase", () => {
-			expect(applyCasing("TestServiceUtils", "camelCase")).toBe("testServiceUtils");
+			expect(applyCasing("TestServiceUtils", "camelCase")).toBe(
+				"testServiceUtils"
+			);
 		});
 
 		it("should preserve capitalization after the first character", () => {
-			expect(applyCasing("testHTTPService", "PascalCase")).toBe("TestHTTPService");
-			expect(applyCasing("TestHTTPService", "camelCase")).toBe("testHTTPService");
+			expect(applyCasing("testHTTPService", "PascalCase")).toBe(
+				"TestHTTPService"
+			);
+			expect(applyCasing("TestHTTPService", "camelCase")).toBe(
+				"testHTTPService"
+			);
 		});
 
 		it.each<Casing>(["PascalCase", "camelCase"])(
@@ -50,11 +64,11 @@ describe("Tree Utilities", () => {
 		it("should recursively sort object keys alphabetically", () => {
 			const unsorted = {
 				Zebra: { B: 1, A: 2 },
-				Apple: { D: 4, C: 3 }
+				Apple: { D: 4, C: 3 },
 			};
-			
+
 			const sorted = sortObject(unsorted);
-			
+
 			expect(Object.keys(sorted)).toEqual(["Apple", "Zebra"]);
 			expect(Object.keys(sorted.Apple)).toEqual(["C", "D"]);
 			expect(Object.keys(sorted.Zebra)).toEqual(["A", "B"]);
@@ -70,18 +84,18 @@ describe("Tree Utilities", () => {
 			const tree: RojoNode = {
 				ValidInBuild: { $path: "out/valid" },
 				ValidExternal: { $path: "node_modules/@rbxts" },
-				InvalidExternal: { $path: "missing_folder/file" }
+				InvalidExternal: { $path: "missing_folder/file" },
 			};
 
-			jest.spyOn(fs, "existsSync").mockImplementation((pathStr) => 
+			jest.spyOn(fs, "existsSync").mockImplementation((pathStr) =>
 				String(pathStr).includes("@rbxts")
 			);
 
 			const pruned = pruneObject(tree, buildDir, outputDir, removed);
 
-			expect(pruned.ValidInBuild).toBeDefined(); 
-			expect(pruned.ValidExternal).toBeDefined(); 
-			expect(pruned.InvalidExternal).toBeUndefined(); 
+			expect(pruned.ValidInBuild).toBeDefined();
+			expect(pruned.ValidExternal).toBeDefined();
+			expect(pruned.InvalidExternal).toBeUndefined();
 		});
 	});
 
@@ -94,14 +108,17 @@ describe("Tree Utilities", () => {
 			const buildDir = "build";
 			const outputDir = "/root/rojo/generated";
 			const tree: RojoNode = {
-				System: { $path: "build/systems/Combat.luau" }
+				System: { $path: "build/systems/Combat.luau" },
 			};
 
 			jest.spyOn(fs, "existsSync").mockReturnValue(false);
 
 			const missing = findMissingPaths(tree, buildDir, outputDir);
 
-			const expectedAbsolutePath = path.resolve(outputDir, "build/systems/Combat.luau");
+			const expectedAbsolutePath = path.resolve(
+				outputDir,
+				"build/systems/Combat.luau"
+			);
 
 			expect(missing.length).toBe(1);
 			expect(missing[0].treePath).toBe("System");

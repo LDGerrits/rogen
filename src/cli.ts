@@ -2,9 +2,9 @@ import { parseArgs } from "util";
 import { CliArgs } from "./types.js";
 
 interface CliArg {
-  type: "string" | "boolean";
-  short?: string;
-  multiple?: boolean;
+	type: "string" | "boolean";
+	short?: string;
+	multiple?: boolean;
 }
 
 export function printHelp(): void {
@@ -29,7 +29,7 @@ Options:
 }
 
 export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
-	const options: Record<keyof(CliArgs), CliArg> = {
+	const options: Record<keyof CliArgs, CliArg> = {
 		help: { type: "boolean" as const, short: "h" },
 		init: { type: "boolean" as const, short: "i" },
 		watch: { type: "boolean" as const, short: "w" },
@@ -49,21 +49,32 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 		let errMsg = String(error);
 
 		// Narrow down to a generic object
-		if (typeof error === 'object' && error !== null) {
+		if (typeof error === "object" && error !== null) {
 			const errObj = error as Record<string, unknown>;
-			errCode = typeof errObj.code === 'string' ? errObj.code : undefined;
-			errMsg = typeof errObj.message === 'string' ? errObj.message : String(error);
+			errCode = typeof errObj.code === "string" ? errObj.code : undefined;
+			errMsg =
+				typeof errObj.message === "string"
+					? errObj.message
+					: String(error);
 		}
-		
+
 		// Duck type check due to instanceof issues using Jest
-		if (errCode === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || errMsg.includes('Unknown option')) {
-			const cleanMsg = errMsg.replace(/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/, '');
-			
+		if (
+			errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION" ||
+			errMsg.includes("Unknown option")
+		) {
+			const cleanMsg = errMsg.replace(
+				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
+				""
+			);
+
 			console.error(`\n❌ CLI Error: ${cleanMsg}`);
-			console.error(`Run 'rogen --help' to see a list of available commands and flags.\n`);
+			console.error(
+				`Run 'rogen --help' to see a list of available commands and flags.\n`
+			);
 			process.exit(1);
 		}
-		
+
 		console.error(`\n❌ CLI Error: ${errMsg}\n`);
 		process.exit(1);
 	}

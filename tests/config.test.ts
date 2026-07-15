@@ -1,11 +1,18 @@
 import fs from "fs";
 import { jest } from "@jest/globals";
-import { getEnvironment, loadAndValidateConfig, resolveActiveModes } from "../src/config.js";
+import {
+	getEnvironment,
+	loadConfig,
+	resolveActiveModes,
+} from "../src/config.js";
 import { defaultConfig } from "../src/constants.js";
 import { Environment, Config } from "../src/types.js";
 
 describe("Configuration Resolution", () => {
-	const defaultEnv: Environment = { isTsProject: false, isDarkluaProject: false };
+	const defaultEnv: Environment = {
+		isTsProject: false,
+		isDarkluaProject: false,
+	};
 
 	afterEach(() => {
 		jest.restoreAllMocks();
@@ -15,41 +22,60 @@ describe("Configuration Resolution", () => {
 		jest.spyOn(fs, "readFileSync").mockReturnValue(JSON.stringify(config));
 	}
 
-	it.each(["PascalCase", "camelCase"] as const)("should accept %s casing", (casing) => {
-		mockConfigFile({ casing });
+	it.each(["PascalCase", "camelCase"] as const)(
+		"should accept %s casing",
+		(casing) => {
+			mockConfigFile({ casing });
 
-		const result = loadAndValidateConfig("test.rogen.json");
+			const result = loadConfig("test.rogen.json");
 
-		expect(result.config.casing).toBe(casing);
-	});
+			expect(result.config.casing).toBe(casing);
+		}
+	);
 
-	it.each(["pascalCase", "snake_case", true, null])("should reject unsupported casing value %p", (casing) => {
-		mockConfigFile({ casing });
+	it.each(["pascalCase", "snake_case", true, null])(
+		"should reject unsupported casing value %p",
+		(casing) => {
+			mockConfigFile({ casing });
 
-		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(/casing/i);
-	});
+			expect(() => loadConfig("test.rogen.json")).toThrow(/casing/i);
+		}
+	);
 
 	it("should fallback to luau if no config exists and environment is standard", () => {
 		const modes = resolveActiveModes(defaultConfig, undefined, defaultEnv);
-		
+
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe(defaultConfig.luau!.build);
 	});
 
 	it("should auto-detect TypeScript and use ts defaults", () => {
-		const tsEnv: Environment = { isTsProject: true, isDarkluaProject: false };
+		const tsEnv: Environment = {
+			isTsProject: true,
+			isDarkluaProject: false,
+		};
 		const modes = resolveActiveModes(defaultConfig, undefined, tsEnv);
-		
+
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe(defaultConfig.ts!.build);
 	});
 
 	it("should throw an error if a requested CLI mode does not exist", () => {
-		const customConfig: Config = { ...defaultConfig, myCustomMode: { build: "dist", output: "custom.json", env: [], exclude: [] } };
-		
+		const customConfig: Config = {
+			...defaultConfig,
+			myCustomMode: {
+				build: "dist",
+				output: "custom.json",
+				env: [],
+				exclude: [],
+			},
+		};
+
 		expect(() => {
 			resolveActiveModes(customConfig, "nonExistentMode", defaultEnv);
-		}).toThrow('Mode "nonExistentMode" is not defined or is invalid in your config file.');
+		}).toThrow(
+			'Mode "nonExistentMode" is not defined or is invalid in your config file.'
+		);
 	});
 
 	it("should not treat casing as an output mode", () => {
@@ -57,13 +83,22 @@ describe("Configuration Resolution", () => {
 
 		expect(() => {
 			resolveActiveModes(customConfig, "casing", defaultEnv);
-		}).toThrow('Mode "casing" is not defined or is invalid in your config file.');
+		}).toThrow(
+			'Mode "casing" is not defined or is invalid in your config file.'
+		);
 	});
 
 	it("should successfully load a custom CLI mode", () => {
-		const customConfig: Config = { ...defaultConfig, myCustomMode: { build: "dist", output: "custom.json" } };
-		const modes = resolveActiveModes(customConfig, "myCustomMode", defaultEnv);
-		
+		const customConfig: Config = {
+			...defaultConfig,
+			myCustomMode: { build: "dist", output: "custom.json" },
+		};
+		const modes = resolveActiveModes(
+			customConfig,
+			"myCustomMode",
+			defaultEnv
+		);
+
 		expect(modes).toHaveLength(1);
 		expect(modes[0].build).toBe("dist");
 	});
@@ -71,43 +106,46 @@ describe("Configuration Resolution", () => {
 	it("should accept a valid exclude array", () => {
 		mockConfigFile({ exclude: ["**/*.spec.luau", "ignore/"] });
 
-		const result = loadAndValidateConfig("test.rogen.json");
+		const result = loadConfig("test.rogen.json");
 		expect(result.config.exclude).toEqual(["**/*.spec.luau", "ignore/"]);
 	});
 
-	it.each(["string_pattern", true, { pattern: "*" }, null])("should reject unsupported exclude value %p", (exclude) => {
-		mockConfigFile({ exclude });
+	it.each(["string_pattern", true, { pattern: "*" }, null])(
+		"should reject unsupported exclude value %p",
+		(exclude) => {
+			mockConfigFile({ exclude });
 
-		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(/exclude/i);
-	});
+			expect(() => loadConfig("test.rogen.json")).toThrow(/exclude/i);
+		}
+	);
 
 	it("should bypass the typo check entirely if an unknown key acts like a valid custom mode", () => {
 		mockConfigFile({ lute: { build: "dist", output: "test.json" } });
-		
-		const result = loadAndValidateConfig("test.rogen.json");
+
+		const result = loadConfig("test.rogen.json");
 		expect(result.config.lute).toBeDefined();
 	});
 
 	it("should throw a generic unknown key error for non-objects that are not typos", () => {
-		mockConfigFile({ ignoreFiles: ["**/*.txt"] }); 
-		
-		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+		mockConfigFile({ ignoreFiles: ["**/*.txt"] });
+
+		expect(() => loadConfig("test.rogen.json")).toThrow(
 			'Configuration Error: Unknown configuration key "ignoreFiles".'
 		);
 	});
 
 	it("should still throw custom mode errors if a user attempts to define a mode but misses fields", () => {
-		mockConfigFile({ myCustomMode: { build: "out" } }); 
-		
-		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+		mockConfigFile({ myCustomMode: { build: "out" } });
+
+		expect(() => loadConfig("test.rogen.json")).toThrow(
 			'Configuration Error: Custom mode "myCustomMode" is missing a valid "output" string.'
 		);
 	});
 
 	it("should throw a typo error if an object is passed but it resembles a core field", () => {
 		mockConfigFile({ tmeplate: { $className: "DataModel" } });
-		
-		expect(() => loadAndValidateConfig("test.rogen.json")).toThrow(
+
+		expect(() => loadConfig("test.rogen.json")).toThrow(
 			'Configuration Error: Unknown key "tmeplate". Did you mean "template"?'
 		);
 	});
@@ -119,7 +157,9 @@ describe("Environment Detection", () => {
 	});
 
 	it("should detect a TS project from a tsconfig.json marker when no mode is given", () => {
-		jest.spyOn(fs, "existsSync").mockImplementation((p) => String(p).endsWith("tsconfig.json"));
+		jest.spyOn(fs, "existsSync").mockImplementation((p) =>
+			String(p).endsWith("tsconfig.json")
+		);
 		expect(getEnvironment("/mock/anchor").isTsProject).toBe(true);
 	});
 
@@ -137,18 +177,18 @@ describe("Environment Detection", () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(false);
 
 		const env = getEnvironment("/mock/anchor", "ts");
-		
+
 		expect(env.isTsProject).toBe(true);
 		expect(env.isDarkluaProject).toBe(false);
 	});
 
 	it("should correctly detect environment via filesystem if no CLI mode is provided", () => {
-		jest.spyOn(fs, "existsSync").mockImplementation((pathStr) => 
+		jest.spyOn(fs, "existsSync").mockImplementation((pathStr) =>
 			String(pathStr).endsWith("tsconfig.json")
 		);
 
 		const env = getEnvironment("/mock/anchor");
-		
+
 		expect(env.isTsProject).toBe(true);
 		expect(env.isDarkluaProject).toBe(false);
 	});
