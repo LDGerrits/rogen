@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { build } from "./build.js";
-import { CliArgs, Environment, Config, Mode, RojoTree } from "./types.js";
+import { CliArgs, Environment, Config, RojoTree } from "./types.js";
+import { ActiveMode } from "./config.js";
 
 function getTimeStamp(): string {
 	const now = new Date();
@@ -14,14 +15,17 @@ function getTimeStamp(): string {
 export async function execute(
 	sourcePaths: string[],
 	env: Environment,
-	activeModes: Mode[],
+	activeModes: ActiveMode[],
 	baseProjectTree: RojoTree,
 	config: Config,
 	cliArgs: CliArgs,
 	anchor: string
 ): Promise<void> {
 	try {
-		for (const targetConfig of activeModes) {
+		for (const activeMode of activeModes) {
+			const targetConfig = activeMode.config;
+			const modeName = activeMode.name;
+
 			const buildResult = await build(
 				targetConfig,
 				baseProjectTree,
@@ -68,59 +72,67 @@ export async function execute(
 				}
 			}
 
-			if (shouldWrite) {
-				const outputDir = path.dirname(buildResult.output);
-				if (!fs.existsSync(outputDir)) {
-					fs.mkdirSync(outputDir, { recursive: true });
-				}
+			if (!shouldWrite) continue;
 
-				fs.writeFileSync(buildResult.output, finalContent);
+			const outputDir = path.dirname(buildResult.output);
+			if (!fs.existsSync(outputDir)) {
+				fs.mkdirSync(outputDir, { recursive: true });
+			}
 
-				const timeStamp = getTimeStamp();
+			fs.writeFileSync(buildResult.output, finalContent);
 
-				const totalRemoved =
-					buildResult.removed.length + dropped.length;
-				if (totalRemoved > 0) {
-					if (cliArgs.watch) {
-						console.log(
-							`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`
-						);
-					} else {
-						console.log(
-							`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`
-						);
-						for (const item of buildResult.removed) {
-							console.log(
-								`   - ${item.treePath} ($path "${item.rojoPath}")`
-							);
-						}
-						for (const item of dropped) {
-							console.log(`   - ${item}`);
-						}
-					}
-				}
+			const timeStamp = getTimeStamp();
 
-				if (buildResult.collisions.length > 0) {
-					for (const collision of buildResult.collisions) {
-						console.log(`${timeStamp} ⚠️ ${collision}`);
-					}
-				}
-
+			const totalRemoved = buildResult.removed.length + dropped.length;
+			if (totalRemoved > 0) {
 				if (cliArgs.watch) {
-					const outputName = path.basename(buildResult.output);
 					console.log(
-						`${timeStamp} ✅ Built "${buildResult.name}" (${buildResult.fileCount} files) -> ${outputName}`
+						`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`
 					);
 				} else {
 					console.log(
-						`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`
+						`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`
 					);
-					console.log(
-						`   ▶ Processed: ${buildResult.fileCount} source files`
-					);
-					console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
-					console.log(`   ▶ Output To: ${buildResult.output}\n`);
+					for (const item of buildResult.removed) {
+						console.log(
+							`   - ${item.treePath} ($path "${item.rojoPath}")`
+						);
+					}
+					for (const item of dropped) {
+						console.log(`   - ${item}`);
+					}
 				}
+			}
+
+			if (buildResult.collisions.length > 0) {
+				for (const collision of buildResult.collisions) {
+					console.log(`${timeStamp} ⚠️ ${collision}`);
+				}
+			}
+
+			if (cliArgs.watch) {
+				const outputName = path.basename(buildResult.output);
+				const envString =
+					targetConfig.env.length > 0
+						? ` (env: ${targetConfig.env.join(", ")})`
+						: "";
+				console.log(
+					`${timeStamp} ✅ Built "${buildResult.name}" [${modeName}]${envString} (${buildResult.fileCount} files) -> ${outputName}`
+				);
+			} else {
+				console.log(
+					`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`
+				);
+				console.log(
+					`   ▶ Processed: ${buildResult.fileCount} source files`
+				);
+				console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
+				if (targetConfig.env.length > 0) {
+					console.log(
+						`   ▶ Environments: ${targetConfig.env.join(", ")}`
+					);
+				}
+				console.log(`   ▶ Output To: ${buildResult.output}\n`);
 			}
 		}
 	} catch (error) {

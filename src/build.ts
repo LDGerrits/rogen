@@ -29,8 +29,6 @@ import {
 } from "./types.js";
 import { isMode } from "./config.js";
 
-const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
-
 interface BuildResult {
 	output: string;
 	tree: RojoTree;
@@ -41,6 +39,8 @@ interface BuildResult {
 	buildDir: string;
 	fileCount: number;
 }
+
+const SYSTEM_MARKERS = new Set(["raw", "fullnames"]);
 
 const isScript = (filename: string): boolean =>
 	/\.(tsx?|luau|lua)$/i.test(filename) &&

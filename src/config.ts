@@ -10,6 +10,11 @@ import {
 } from "./types.js";
 import { defaultConfig, defaultTemplate } from "./constants.js";
 
+export interface ActiveMode {
+	name: string;
+	config: Mode;
+}
+
 const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
 	fullNames: true,
@@ -398,8 +403,8 @@ export function resolveActiveModes(
 	config: Config,
 	cliMode: string | undefined,
 	env: Environment
-): Mode[] {
-	const activeModes: Mode[] = [];
+): ActiveMode[] {
+	const activeModes: ActiveMode[] = [];
 
 	if (cliMode) {
 		const requestedMode = config[cliMode];
@@ -408,7 +413,7 @@ export function resolveActiveModes(
 				`Mode "${cliMode}" is not defined or is invalid in your config file.`
 			);
 		}
-		activeModes.push(requestedMode);
+		activeModes.push({ name: cliMode, config: requestedMode });
 	} else {
 		for (const key in config) {
 			const potentialMode = config[key];
@@ -418,7 +423,7 @@ export function resolveActiveModes(
 				if (key === "ts" && !env.isTsProject) continue;
 				if (key === "darklua" && !env.isDarkluaProject) continue;
 
-				activeModes.push(potentialMode);
+				activeModes.push({ name: key, config: potentialMode });
 			}
 		}
 		if (activeModes.length === 0) {

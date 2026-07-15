@@ -46,7 +46,7 @@ describe("Configuration Resolution", () => {
 		const modes = resolveActiveModes(defaultConfig, undefined, defaultEnv);
 
 		expect(modes).toHaveLength(1);
-		expect(modes[0].build).toBe(defaultConfig.luau!.build);
+		expect(modes[0].config.build).toBe(defaultConfig.luau!.build);
 	});
 
 	it("should auto-detect TypeScript and use ts defaults", () => {
@@ -57,7 +57,7 @@ describe("Configuration Resolution", () => {
 		const modes = resolveActiveModes(defaultConfig, undefined, tsEnv);
 
 		expect(modes).toHaveLength(1);
-		expect(modes[0].build).toBe(defaultConfig.ts!.build);
+		expect(modes[0].config.build).toBe(defaultConfig.ts!.build);
 	});
 
 	it("should throw an error if a requested CLI mode does not exist", () => {
@@ -100,7 +100,7 @@ describe("Configuration Resolution", () => {
 		);
 
 		expect(modes).toHaveLength(1);
-		expect(modes[0].build).toBe("dist");
+		expect(modes[0].config.build).toBe("dist");
 	});
 
 	it("should accept a valid exclude array", () => {
