@@ -288,6 +288,14 @@ export function resolveRoute(
 	const filename = parts.pop()!;
 	const rawBasename = path.basename(filename, path.extname(filename));
 
+	// Detect and strip the hoisting prefix
+	let isHoisted = false;
+	let cleanBasename = rawBasename;
+	if (cleanBasename.startsWith("^")) {
+		isHoisted = true;
+		cleanBasename = cleanBasename.slice(1);
+	}
+
 	let dropped = false;
 
 	// Check folder paths and folder marker files
@@ -328,7 +336,7 @@ export function resolveRoute(
 
 	// Check file affixes
 	if (!dropped) {
-		const delimiterSplit = rawBasename.split(/[.\-_+]/);
+		const delimiterSplit = cleanBasename.split(/[.\-_+]/);
 		for (const part of delimiterSplit) {
 			const lowerPart = part.toLowerCase();
 			if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {
@@ -352,7 +360,7 @@ export function resolveRoute(
 	}
 
 	// Strip active environment affixes
-	let basename = rawBasename;
+	let basename = cleanBasename;
 	for (const regexSet of envRegexes) {
 		while (regexSet.suffix.test(basename)) {
 			basename = basename.replace(regexSet.suffix, "");
@@ -373,6 +381,11 @@ export function resolveRoute(
 		environmentKeyword: folderEnv,
 		flags,
 	} = resolveFolderRouting(parts, context);
+
+	// Apply hoisting
+	if (isHoisted) {
+		virtualParts.length = 0;
+	}
 
 	// Affix routing
 	const affix = flags.raw

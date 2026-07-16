@@ -665,3 +665,95 @@ describe("Invisible Folders (Route Groups)", () => {
 		expect(result.nodeName).toBe("controller");
 	});
 });
+
+describe("Global Entry Scripts (Hoisting via ^)", () => {
+	const baseContext: RouteContext = {
+		source: "src",
+		build: "src",
+		output: "test.project.json",
+		name: "test-game",
+		emitLegacyScripts: true,
+		isTsProject: false,
+		verbatim: false,
+		unwrap: false,
+		routingMaps: generateRoutingMaps(),
+		directoryMarkers: {},
+		knownEnvs: new Set(),
+		activeEnvs: new Set(),
+		envRegexes: [],
+		env: [],
+		globIgnorePaths: [],
+	};
+
+	it("should clear virtual parts and hoist to the root of the target service container", () => {
+		const result = resolveRoute(
+			"core/boot/^main.server.luau",
+			false,
+			baseContext
+		);
+
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).toEqual([]);
+		expect(result.nodeName).toBe("main");
+	});
+
+	it("should hoist client scripts to the client root simultaneously", () => {
+		const result = resolveRoute(
+			"core/boot/^main.client.ts",
+			false,
+			baseContext
+		);
+
+		expect(result.targetService).toBe("StarterPlayerScripts");
+		expect(result.wrapperFolder).toBe("client");
+		expect(result.virtualParts).toEqual([]);
+		expect(result.nodeName).toBe("main");
+	});
+
+	it("should properly strip active environments even if hoisted", () => {
+		const contextWithEnv: RouteContext = {
+			...baseContext,
+			activeEnvs: new Set(["dev"]),
+			knownEnvs: new Set(["dev", "prod"]),
+			envRegexes: [
+				{
+					suffix: /[.\-_+]dev$/i,
+					prefix: /^dev[.\-_+]/i,
+					middle: /[.\-_+]dev(?=[.\-_+])/i,
+				},
+			],
+		};
+
+		const result = resolveRoute(
+			"core/^main.dev.server.luau",
+			false,
+			contextWithEnv
+		);
+
+		expect(result.dropped).toBe(false);
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.virtualParts).toEqual([]);
+		expect(result.nodeName).toBe("main");
+	});
+
+	it("should not affect routing if the file is already at the root", () => {
+		const result = resolveRoute("^app.server.luau", false, baseContext);
+
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).toEqual([]);
+		expect(result.nodeName).toBe("app");
+	});
+
+	it("should ignore caret symbols that are NOT at the absolute start of the filename", () => {
+		const result = resolveRoute(
+			"core/boot/main^system.server.luau",
+			false,
+			baseContext
+		);
+
+		expect(result.virtualParts).toEqual(["core", "boot"]);
+		expect(result.nodeName).toBe("main^system");
+	});
+});
