@@ -21,7 +21,7 @@ Options:
   -w, --watch           Watch the source directory and regenerate automatically.
 
   -c, --config <path>   Specify a custom Rogen config file path.
-  -m, --mode <mode>     Specify the target mode (luau, ts, darklua, or custom).
+  -m, --mode <mode>     Specify the target modes (luau, ts, darklua, or custom).
   -s, --source <path>   Override the directory containing uncompiled code.
   -e, --env <env>       Specify active environments.
   -t, --template <path> Specify a path to a base Rojo tree JSON template.
@@ -37,7 +37,7 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 		init: { type: "boolean" as const, short: "i" },
 		watch: { type: "boolean" as const, short: "w" },
 		config: { type: "string" as const, short: "c" },
-		mode: { type: "string" as const, short: "m" },
+		mode: { type: "string" as const, short: "m", multiple: true },
 		source: { type: "string" as const, short: "s", multiple: true },
 		env: { type: "string" as const, short: "e", multiple: true },
 		template: { type: "string" as const, short: "t" },

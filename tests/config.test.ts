@@ -72,7 +72,7 @@ describe("Configuration Resolution", () => {
 		};
 
 		expect(() => {
-			resolveActiveModes(customConfig, "nonExistentMode", defaultEnv);
+			resolveActiveModes(customConfig, ["nonExistentMode"], defaultEnv);
 		}).toThrow(
 			'Mode "nonExistentMode" is not defined or is invalid in your config file.'
 		);
@@ -82,7 +82,7 @@ describe("Configuration Resolution", () => {
 		const customConfig: Config = { ...defaultConfig, casing: "PascalCase" };
 
 		expect(() => {
-			resolveActiveModes(customConfig, "casing", defaultEnv);
+			resolveActiveModes(customConfig, ["casing"], defaultEnv);
 		}).toThrow(
 			'Mode "casing" is not defined or is invalid in your config file.'
 		);
@@ -95,7 +95,7 @@ describe("Configuration Resolution", () => {
 		};
 		const modes = resolveActiveModes(
 			customConfig,
-			"myCustomMode",
+			["myCustomMode"],
 			defaultEnv
 		);
 
@@ -165,18 +165,20 @@ describe("Environment Detection", () => {
 
 	it("should treat an explicit --mode ts as a TS project even without a tsconfig.json in the cwd", () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(false);
-		expect(getEnvironment("/mock/anchor", "ts").isTsProject).toBe(true);
+		expect(getEnvironment("/mock/anchor", ["ts"]).isTsProject).toBe(true);
 	});
 
 	it("should treat an explicit non-ts --mode as authoritative over a tsconfig.json marker", () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
-		expect(getEnvironment("/mock/anchor", "luau").isTsProject).toBe(false);
+		expect(getEnvironment("/mock/anchor", ["luau"]).isTsProject).toBe(
+			false
+		);
 	});
 
 	it("should prioritize CLI mode over filesystem markers", () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(false);
 
-		const env = getEnvironment("/mock/anchor", "ts");
+		const env = getEnvironment("/mock/anchor", ["ts"]);
 
 		expect(env.isTsProject).toBe(true);
 		expect(env.isDarkluaProject).toBe(false);

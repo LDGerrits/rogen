@@ -387,11 +387,14 @@ export function loadConfig(
 	return { config, anchor };
 }
 
-export function getEnvironment(anchor: string, cliMode?: string): Environment {
-	if (cliMode) {
+export function getEnvironment(
+	anchor: string,
+	cliModes?: string[]
+): Environment {
+	if (cliModes && cliModes.length > 0) {
 		return {
-			isTsProject: cliMode === "ts",
-			isDarkluaProject: cliMode === "darklua",
+			isTsProject: cliModes.includes("ts"),
+			isDarkluaProject: cliModes.includes("darklua"),
 		};
 	}
 	const isTsProject = fs.existsSync(path.join(anchor, "tsconfig.json"));
@@ -403,19 +406,21 @@ export function getEnvironment(anchor: string, cliMode?: string): Environment {
 
 export function resolveActiveModes(
 	config: Config,
-	cliMode: string | undefined,
+	cliModes: string[] | undefined,
 	env: Environment
 ): ActiveMode[] {
 	const activeModes: ActiveMode[] = [];
 
-	if (cliMode) {
-		const requestedMode = config[cliMode];
-		if (!isMode(requestedMode)) {
-			throw new Error(
-				`Mode "${cliMode}" is not defined or is invalid in your config file.`
-			);
+	if (cliModes && cliModes.length > 0) {
+		for (const cliMode of cliModes) {
+			const requestedMode = config[cliMode];
+			if (!isMode(requestedMode)) {
+				throw new Error(
+					`Mode "${cliMode}" is not defined or is invalid in your config file.`
+				);
+			}
+			activeModes.push({ name: cliMode, config: requestedMode });
 		}
-		activeModes.push({ name: cliMode, config: requestedMode });
 	} else {
 		for (const key in config) {
 			const potentialMode = config[key];

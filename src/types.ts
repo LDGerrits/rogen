@@ -3,7 +3,7 @@ export interface CliArgs {
 	version?: boolean;
 	init?: boolean;
 	config?: string;
-	mode?: string;
+	mode?: string[];
 	source?: string[];
 	env?: string[];
 	template?: string;

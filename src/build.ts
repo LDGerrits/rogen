@@ -238,7 +238,7 @@ export async function build(
 	const context: RouteContext = {
 		source: config.source || structuredClone(defaultConfig.source),
 		...modeCopy,
-		isTsProject: env.isTsProject || cliArgs.mode === "ts",
+		isTsProject: env.isTsProject || (cliArgs.mode?.includes("ts") ?? false),
 		emitLegacyScripts: rojoTree.emitLegacyScripts ?? true,
 		name: rojoTree.name,
 		routingMaps: generateRoutingMaps(config.aliases || {}),

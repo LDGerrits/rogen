@@ -6,7 +6,7 @@ describe("CLI Argument Parsing", () => {
 		const args = ["--mode", "ts", "--source", "my_src", "--watch"];
 		const options = parseCliArgs(args);
 
-		expect(options.mode).toBe("ts");
+		expect(options.mode).toEqual(["ts"]);
 		expect(options.source).toEqual(["my_src"]);
 		expect(options.watch).toBe(true);
 	});
@@ -15,7 +15,7 @@ describe("CLI Argument Parsing", () => {
 		const args = ["-m", "luau", "-s", "other_src", "-w"];
 		const options = parseCliArgs(args);
 
-		expect(options.mode).toBe("luau");
+		expect(options.mode).toEqual(["luau"]);
 		expect(options.source).toEqual(["other_src"]);
 		expect(options.watch).toBe(true);
 	});
@@ -31,7 +31,7 @@ describe("CLI Argument Parsing", () => {
 		const args = ["--mode", "darklua"];
 		const options = parseCliArgs(args);
 
-		expect(options.mode).toBe("darklua");
+		expect(options.mode).toEqual(["darklua"]);
 		expect(options.watch).toBeUndefined();
 	});
 
