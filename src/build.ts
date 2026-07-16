@@ -140,9 +140,9 @@ function extractGlobalknownEnvs(
 
 function compileEnvRegexes(activeEnvs: Set<string>): EnvRegexes[] {
 	return Array.from(activeEnvs).map((env) => ({
-		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
-		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
-		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i"),
+		suffix: new RegExp(`[\\.\\-_\\+]${env}$`, "i"),
+		prefix: new RegExp(`^${env}[\\.\\-_\\+]`, "i"),
+		middle: new RegExp(`[\\.\\-_\\+]${env}(?=[\\.\\-_\\+])`, "i"),
 	}));
 }
 

@@ -328,7 +328,7 @@ export function resolveRoute(
 
 	// Check file affixes
 	if (!dropped) {
-		const delimiterSplit = rawBasename.split(/[.\-_]/);
+		const delimiterSplit = rawBasename.split(/[.\-_+]/);
 		for (const part of delimiterSplit) {
 			const lowerPart = part.toLowerCase();
 			if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {

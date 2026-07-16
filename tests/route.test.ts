@@ -117,12 +117,12 @@ describe("Router Logic", () => {
 		expect(result1.wrapperFolder).toBe("server");
 
 		const result2 = resolveRoute(
-			"systems/Combat_server.lua",
+			"systems/Combat+server.lua",
 			false,
 			keepSuffixContext
 		);
 		expect(result2.targetService).toBe("ServerScriptService");
-		expect(result2.nodeName).toBe("Combat_server");
+		expect(result2.nodeName).toBe("Combat+server");
 
 		const customContext: RouteContext = {
 			...keepSuffixContext,
@@ -165,7 +165,7 @@ describe("Router Logic", () => {
 
 	it("should strip both prefix and separator from the node name", () => {
 		const result = resolveRoute(
-			"systems/server_Combat.lua",
+			"systems/server+Combat.lua",
 			false,
 			baseContext
 		);

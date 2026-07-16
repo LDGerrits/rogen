@@ -95,12 +95,12 @@ export function generateRoutingMaps(
 	).sort((a, b) => b.length - a.length);
 
 	const separatorSuffixRegex = new RegExp(
-		`[\\.\\-_](${lowerKeys.join("|")})$`,
+		`[\\.\\-_\\+](${lowerKeys.join("|")})$`,
 		"i"
 	);
 	const pascalCaseSuffixRegex = new RegExp(`(${mergedKeys.join("|")})$`);
 	const separatorPrefixRegex = new RegExp(
-		`^(${lowerKeys.join("|")})([\\.\\-_])`,
+		`^(${lowerKeys.join("|")})([\\.\\-_\\+])`,
 		"i"
 	);
 	const camelCasePrefixRegex = new RegExp(
