@@ -9,24 +9,25 @@ interface CliArg {
 
 export function printHelp(): void {
 	console.log(`
-Rogen - A tool for feature-based folder structures with Rojo.
+Rogen - A tool for feature-based folder structures with Rojo
 
 Usage:
-  rogen [options]
+  rogen [command] [options]
+
+Commands:
+  init                  Generate a .rogen.json config file
+  watch                 Watch the source and generate automatically
 
 Options:
-  -h, --help            Show this help menu.
-  -v, --version         Show the version number.
-  -i, --init            Generate a default .rogen.json config file.
-  -w, --watch           Watch the source directory and regenerate automatically.
-
-  -c, --config <path>   Specify a custom Rogen config file path.
-  -m, --mode <mode>     Specify the target modes (luau, ts, darklua, or custom).
-  -s, --source <path>   Override the directory containing uncompiled code.
-  -e, --env <env>       Specify active environments.
-  -t, --template <path> Specify a path to a base Rojo tree JSON template.
-  -b, --build <path>    Override the output directory for transpiled code.
-  -o, --output <path>   Override the final generated Rojo project file path.
+  -c, --config <path>   Specify custom config file
+  -t, --template <path> Specify path to the Rojo tree JSON template
+  -e, --env <env>       Activate environments
+  -m, --mode <mode>     Override modes (luau, ts, darklua, or custom)
+  -s, --source <path>   Override the directory containing uncompiled code
+  -b, --build <path>    Override output directory for transpiled code
+  -o, --output <path>   Override path of Rojo project file
+  -h, --help            Print help
+  -v, --version         Print version
 	`);
 }
 
@@ -46,8 +47,37 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 	};
 
 	try {
-		const { values } = parseArgs({ args, options, strict: true });
-		return values as CliArgs;
+		const { values, positionals } = parseArgs({
+			args,
+			options,
+			allowPositionals: true,
+			strict: true,
+		});
+
+		const parsedArgs = values as CliArgs;
+		if (positionals.length > 0) {
+			const subcommand = positionals[0].toLowerCase();
+
+			if (subcommand === "init") {
+				parsedArgs.init = true;
+			} else if (subcommand === "watch") {
+				parsedArgs.watch = true;
+			} else if (subcommand === "help") {
+				parsedArgs.help = true;
+			} else if (subcommand === "version") {
+				parsedArgs.version = true;
+			} else {
+				console.error(
+					`\n❌ CLI Error: Unknown subcommand or option "${positionals[0]}".`
+				);
+				console.error(
+					`Run 'rogen --help' to see a list of available commands.\n`
+				);
+				process.exit(1);
+			}
+		}
+
+		return parsedArgs;
 	} catch (error: unknown) {
 		let errCode: string | undefined;
 		let errMsg = String(error);
@@ -74,7 +104,7 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 
 			console.error(`\n❌ CLI Error: ${cleanMsg}`);
 			console.error(
-				`Run 'rogen --help' to see a list of available commands and flags.\n`
+				`Run 'rogen --help' to see a list of available commands and options.\n`
 			);
 			process.exit(1);
 		}
