@@ -5,6 +5,7 @@ export interface CliArgs {
 	config?: string;
 	mode?: string;
 	source?: string[];
+	env?: string[];
 	template?: string;
 	output?: string;
 	build?: string;

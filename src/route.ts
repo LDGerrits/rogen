@@ -49,8 +49,8 @@ export interface RouteContext extends Mode {
 	verbatim: boolean;
 	unwrap: boolean;
 	directoryMarkers: Record<string, string[]>;
-	environments: Set<string>;
-	activeEnv: Set<string>;
+	knownEnvs: Set<string>;
+	activeEnvs: Set<string>;
 	envRegexes: EnvRegexes[];
 }
 
@@ -76,7 +76,7 @@ function resolveFolderRouting(
 	parts: string[],
 	context: RouteContext
 ): FolderRoutingResult {
-	const { routingMaps, directoryMarkers, activeEnv } = context;
+	const { routingMaps, directoryMarkers, activeEnvs } = context;
 	const { lowerCaseMap } = routingMaps;
 
 	const virtualParts: string[] = [];
@@ -133,7 +133,7 @@ function resolveFolderRouting(
 		}
 
 		if (flags.raw) {
-			if (!activeEnv.has(lowerPart)) {
+			if (!activeEnvs.has(lowerPart)) {
 				virtualParts.push(part);
 			}
 			continue;
@@ -149,7 +149,7 @@ function resolveFolderRouting(
 				if (serviceAliases.has(routingMarker))
 					environmentKeyword = routingMarker;
 
-				if (!matchedService && !activeEnv.has(lowerPart)) {
+				if (!matchedService && !activeEnvs.has(lowerPart)) {
 					virtualParts.push(part);
 				}
 				continue;
@@ -163,7 +163,7 @@ function resolveFolderRouting(
 				environmentKeyword = lowerPart;
 			}
 		} else {
-			if (!activeEnv.has(lowerPart)) {
+			if (!activeEnvs.has(lowerPart)) {
 				virtualParts.push(part);
 			}
 		}
@@ -268,8 +268,8 @@ export function resolveRoute(
 		build,
 		routingMaps,
 		verbatim,
-		environments,
-		activeEnv,
+		knownEnvs,
+		activeEnvs,
 		envRegexes,
 		directoryMarkers,
 	} = context;
@@ -286,7 +286,7 @@ export function resolveRoute(
 		const lowerPart = part.toLowerCase();
 
 		// Drop if folder name is an inactive env
-		if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
+		if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {
 			dropped = true;
 			break;
 		}
@@ -295,7 +295,7 @@ export function resolveRoute(
 		const markers = directoryMarkers?.[currentRel];
 		if (markers) {
 			for (const m of markers) {
-				if (environments.has(m) && !activeEnv.has(m)) {
+				if (knownEnvs.has(m) && !activeEnvs.has(m)) {
 					dropped = true;
 					break;
 				}
@@ -308,7 +308,7 @@ export function resolveRoute(
 	const rootMarkers = directoryMarkers?.[""];
 	if (!dropped && rootMarkers) {
 		for (const m of rootMarkers) {
-			if (environments.has(m) && !activeEnv.has(m)) {
+			if (knownEnvs.has(m) && !activeEnvs.has(m)) {
 				dropped = true;
 				break;
 			}
@@ -320,7 +320,7 @@ export function resolveRoute(
 		const delimiterSplit = rawBasename.split(/[.\-_]/);
 		for (const part of delimiterSplit) {
 			const lowerPart = part.toLowerCase();
-			if (environments.has(lowerPart) && !activeEnv.has(lowerPart)) {
+			if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {
 				dropped = true;
 				break;
 			}

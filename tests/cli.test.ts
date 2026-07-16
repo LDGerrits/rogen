@@ -55,6 +55,13 @@ describe("CLI Argument Parsing", () => {
 		expect(options2.version).toBe(true);
 	});
 
+	it("should parse multiple env flags correctly", () => {
+		const args = ["-e", "dev", "--env", "debug"];
+		const options = parseCliArgs(args);
+
+		expect(options.env).toEqual(["dev", "debug"]);
+	});
+
 	it("should catch unknown arguments and exit gracefully with an error message", () => {
 		const exitSpy = jest
 			.spyOn(process, "exit")

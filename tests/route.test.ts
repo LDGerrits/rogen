@@ -13,8 +13,8 @@ describe("Router Logic", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		environments: new Set(),
-		activeEnv: new Set(),
+		knownEnvs: new Set(),
+		activeEnvs: new Set(),
 		envRegexes: [],
 		env: [],
 		exclude: [],
@@ -208,8 +208,8 @@ describe("Marker File Routing", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		environments: new Set(),
-		activeEnv: new Set(),
+		knownEnvs: new Set(),
+		activeEnvs: new Set(),
 		envRegexes: [],
 		env: [],
 		exclude: [],
@@ -271,8 +271,8 @@ describe("Routing (Deepest Wins)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		environments: new Set(),
-		activeEnv: new Set(),
+		knownEnvs: new Set(),
+		activeEnvs: new Set(),
 		envRegexes: [],
 		env: [],
 		exclude: [],
@@ -373,9 +373,9 @@ describe("Routing (Deepest Wins)", () => {
 });
 
 describe("Environment Filtering", () => {
-	const activeEnv = new Set(["dev", "debug"]);
-	const environments = new Set(["dev", "prod", "debug"]);
-	const envRegexes = Array.from(activeEnv).map((env) => ({
+	const activeEnvs = new Set(["dev", "debug"]);
+	const knownEnvs = new Set(["dev", "prod", "debug"]);
+	const envRegexes = Array.from(activeEnvs).map((env) => ({
 		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
 		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
 		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i"),
@@ -392,8 +392,8 @@ describe("Environment Filtering", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		environments,
-		activeEnv,
+		knownEnvs,
+		activeEnvs,
 		envRegexes,
 		env: [],
 		exclude: [],

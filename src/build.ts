@@ -118,28 +118,28 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	return listings;
 }
 
-function extractGlobalEnvironments(
+function extractGlobalknownEnvs(
 	config: Config,
-	activeEnv: Set<string>
+	activeEnvs: Set<string>
 ): Set<string> {
-	const globalEnvironments = new Set<string>();
+	const globalknownEnvs = new Set<string>();
 	for (const key in config) {
 		const potentialMode = config[key];
 		if (isMode(potentialMode)) {
 			for (const e of potentialMode.env) {
-				globalEnvironments.add(String(e).toLowerCase());
+				globalknownEnvs.add(String(e).toLowerCase());
 			}
 		}
 	}
 
-	for (const e of activeEnv) {
-		globalEnvironments.add(e);
+	for (const e of activeEnvs) {
+		globalknownEnvs.add(e);
 	}
-	return globalEnvironments;
+	return globalknownEnvs;
 }
 
-function compileEnvRegexes(activeEnv: Set<string>): EnvRegexes[] {
-	return Array.from(activeEnv).map((env) => ({
+function compileEnvRegexes(activeEnvs: Set<string>): EnvRegexes[] {
+	return Array.from(activeEnvs).map((env) => ({
 		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
 		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
 		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i"),
@@ -150,7 +150,7 @@ function buildDirectoryMarkers(
 	sourcePath: string,
 	listings: Map<string, fs.Dirent[]>,
 	routingMaps: RoutingMaps,
-	environments: Set<string>
+	knownEnvs: Set<string>
 ): Record<string, string[]> {
 	const directoryMarkers: Record<string, string[]> = {};
 
@@ -162,7 +162,7 @@ function buildDirectoryMarkers(
 				if (
 					possibleMarker in SYSTEM_MARKERS ||
 					routingMaps.lowerCaseMap[possibleMarker] ||
-					environments.has(possibleMarker)
+					knownEnvs.has(possibleMarker)
 				) {
 					markers.push(possibleMarker);
 				}
@@ -226,11 +226,14 @@ export async function build(
 		modeCopy.build = cliArgs.build;
 	}
 
-	const rojoTree: RojoTree = structuredClone(baseProjectTree);
+	const rojoTree = structuredClone(baseProjectTree);
 
-	const activeEnv = new Set((modeCopy.env || []).map((e) => e.toLowerCase()));
-	const environments = extractGlobalEnvironments(config, activeEnv);
-	const envRegexes = compileEnvRegexes(activeEnv);
+	const configEnvs = (modeCopy.env || []).map((e) => e.toLowerCase());
+	const cliEnvs = (cliArgs.env || []).map((e) => e.toLowerCase());
+
+	const activeEnvs = new Set([...configEnvs, ...cliEnvs]);
+	const knownEnvs = extractGlobalknownEnvs(config, activeEnvs);
+	const envRegexes = compileEnvRegexes(activeEnvs);
 
 	const context: RouteContext = {
 		source: config.source || structuredClone(defaultConfig.source),
@@ -242,8 +245,8 @@ export async function build(
 		verbatim: config.verbatim ?? defaultConfig.verbatim,
 		unwrap: config.unwrap ?? defaultConfig.unwrap,
 		directoryMarkers: {},
-		environments,
-		activeEnv,
+		knownEnvs,
+		activeEnvs,
 		envRegexes,
 	};
 
@@ -270,7 +273,7 @@ export async function build(
 			sourcePath,
 			listings,
 			context.routingMaps,
-			environments
+			knownEnvs
 		);
 
 		const newContext: RouteContext = {

@@ -129,7 +129,7 @@ export async function execute(
 				console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
 				if (targetConfig.env.length > 0) {
 					console.log(
-						`   ▶ Environments: ${targetConfig.env.join(", ")}`
+						`   ▶ knownEnvs: ${targetConfig.env.join(", ")}`
 					);
 				}
 				console.log(`   ▶ Output To: ${buildResult.output}\n`);

@@ -1550,4 +1550,58 @@ describe("unwrap Routing Overrides", () => {
 				.$path
 		).toBe("out/ParentSystem/NestedSubsystem/deep.server.lua");
 	});
+
+	it("should merge CLI environments and rescue files that would otherwise drop", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "api.experimental.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			env: ["prod"],
+			exclude: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = { ...defaultConfig, source: "src" };
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const cliArgs: CliArgs = { env: ["experimental"] };
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			cliArgs,
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.ReplicatedStorage.shared.api).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.api.$path).toBe(
+			"out/api.experimental.lua"
+		);
+	});
 });
