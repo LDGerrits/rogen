@@ -115,7 +115,14 @@ function resolveFolderRouting(
 	let currentPath = "";
 	for (const part of parts) {
 		currentPath = currentPath ? `${currentPath}/${part}` : part;
-		const lowerPart = part.toLowerCase();
+		let lowerPart = part.toLowerCase();
+
+		let isInvisible = false;
+		if (lowerPart.startsWith("(") && lowerPart.endsWith(")")) {
+			isInvisible = true;
+			lowerPart = lowerPart.slice(1, -1);
+		}
+
 		const markers = directoryMarkers
 			? directoryMarkers[currentPath]
 			: undefined;
@@ -149,7 +156,11 @@ function resolveFolderRouting(
 				if (serviceAliases.has(routingMarker))
 					environmentKeyword = routingMarker;
 
-				if (!matchedService && !activeEnvs.has(lowerPart)) {
+				if (
+					!matchedService &&
+					!activeEnvs.has(lowerPart) &&
+					!isInvisible
+				) {
 					virtualParts.push(part);
 				}
 				continue;
@@ -163,7 +174,7 @@ function resolveFolderRouting(
 				environmentKeyword = lowerPart;
 			}
 		} else {
-			if (!activeEnvs.has(lowerPart)) {
+			if (!activeEnvs.has(lowerPart) && !isInvisible) {
 				virtualParts.push(part);
 			}
 		}

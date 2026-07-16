@@ -580,3 +580,88 @@ describe("Environment Filtering", () => {
 		expect(result.wrapperFolder).toBe("client");
 	});
 });
+
+describe("Invisible Folders (Route Groups)", () => {
+	const baseContext: RouteContext = {
+		source: "src",
+		build: "src",
+		output: "test.project.json",
+		name: "test-game",
+		emitLegacyScripts: true,
+		isTsProject: false,
+		verbatim: false,
+		unwrap: false,
+		routingMaps: generateRoutingMaps(),
+		directoryMarkers: {},
+		knownEnvs: new Set(),
+		activeEnvs: new Set(),
+		envRegexes: [],
+		env: [],
+		globIgnorePaths: [],
+	};
+
+	it("should completely omit invisible folders from virtualParts", () => {
+		const result = resolveRoute(
+			"features/(inventory)/controller.lua",
+			false,
+			baseContext
+		);
+
+		expect(result.targetService).toBe("ReplicatedStorage");
+		expect(result.wrapperFolder).toBe("shared");
+		expect(result.virtualParts).toEqual(["features"]);
+		expect(result.nodeName).toBe("controller");
+	});
+
+	it("should respect routing keywords even when wrapped in parens", () => {
+		const result = resolveRoute(
+			"systems/(server)/combat.lua",
+			false,
+			baseContext
+		);
+
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).toEqual(["systems"]);
+		expect(result.nodeName).toBe("combat");
+	});
+
+	it("should omit multiple consecutive invisible folders", () => {
+		const result = resolveRoute(
+			"(core)/(character)/movement.lua",
+			false,
+			baseContext
+		);
+
+		expect(result.targetService).toBe("ReplicatedStorage");
+		expect(result.wrapperFolder).toBe("shared");
+		expect(result.virtualParts).toEqual([]);
+		expect(result.nodeName).toBe("movement");
+	});
+
+	it("should NOT treat partially wrapped folder names as invisible", () => {
+		const result = resolveRoute("(api)v2/endpoint.lua", false, baseContext);
+
+		expect(result.targetService).toBe("ReplicatedStorage");
+		expect(result.wrapperFolder).toBe("shared");
+		expect(result.virtualParts).toEqual(["(api)v2"]);
+		expect(result.nodeName).toBe("endpoint");
+	});
+
+	it("should respect invisible folder markers passed from directoryMarkers", () => {
+		const contextWithMarker: RouteContext = {
+			...baseContext,
+			directoryMarkers: { "features/(inventory)": ["server"] },
+		};
+		const result = resolveRoute(
+			"features/(inventory)/controller.lua",
+			false,
+			contextWithMarker
+		);
+
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.wrapperFolder).toBe("server");
+		expect(result.virtualParts).toEqual(["features"]);
+		expect(result.nodeName).toBe("controller");
+	});
+});
