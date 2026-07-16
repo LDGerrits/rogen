@@ -75,7 +75,7 @@ Rogen is distributed as a standalone CLI tool. Install it into your project usin
 
 ```toml
 [tools]
-rogen = "ldgerrits/rogen@1.3.1"
+rogen = "ldgerrits/rogen@1.4.0"
 ```
 
 ### 2. Configuration (.rogen.json)

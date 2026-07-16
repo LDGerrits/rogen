@@ -45,6 +45,16 @@ describe("CLI Argument Parsing", () => {
 		expect(options2.init).toBe(true);
 	});
 
+	it("should parse version flag correctly", () => {
+		const args1 = ["--version"];
+		const options1 = parseCliArgs(args1);
+		expect(options1.version).toBe(true);
+
+		const args2 = ["-v"];
+		const options2 = parseCliArgs(args2);
+		expect(options2.version).toBe(true);
+	});
+
 	it("should catch unknown arguments and exit gracefully with an error message", () => {
 		const exitSpy = jest
 			.spyOn(process, "exit")

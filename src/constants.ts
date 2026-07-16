@@ -1,6 +1,8 @@
 import { RoutingMaps } from "./route.js";
 import { Config, RojoTree } from "./types.js";
 
+export const version = "1.4.0";
+
 export const defaultTemplate: RojoTree = {
 	name: "roblox-game",
 	tree: { $className: "DataModel" },

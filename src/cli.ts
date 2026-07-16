@@ -16,6 +16,7 @@ Usage:
 
 Options:
   -h, --help            Show this help menu.
+  -v, --version         Show the version number.
   -i, --init            Generate a default .rogen.json config file.
   -w, --watch           Watch the source directory and regenerate automatically.
 
@@ -31,6 +32,7 @@ Options:
 export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 	const options: Record<keyof CliArgs, CliArg> = {
 		help: { type: "boolean" as const, short: "h" },
+		version: { type: "boolean" as const, short: "v" },
 		init: { type: "boolean" as const, short: "i" },
 		watch: { type: "boolean" as const, short: "w" },
 		config: { type: "string" as const, short: "c" },

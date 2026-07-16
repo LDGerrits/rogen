@@ -1,5 +1,6 @@
 export interface CliArgs {
 	help?: boolean;
+	version?: boolean;
 	init?: boolean;
 	config?: string;
 	mode?: string;

@@ -11,12 +11,18 @@ import {
 } from "./config.js";
 import { execute } from "./execute.js";
 import { Config } from "./types.js";
+import { version } from "./constants.js";
 
 async function main(): Promise<void> {
 	const cliArgs = parseCliArgs();
 
 	if (cliArgs.help) {
 		printHelp();
+		process.exit(0);
+	}
+
+	if (cliArgs.version) {
+		console.log(`rogen ${version}`);
 		process.exit(0);
 	}
 
