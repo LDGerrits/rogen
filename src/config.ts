@@ -22,7 +22,7 @@ const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	casing: true,
 	unwrap: true,
 	aliases: true,
-	exclude: true,
+	globIgnorePaths: true,
 	luau: true,
 	ts: true,
 	darklua: true,
@@ -265,8 +265,10 @@ export function loadConfig(
 					config[key].env = Array.isArray(config[key].env)
 						? config[key].env
 						: [];
-					config[key].exclude = Array.isArray(config[key].exclude)
-						? config[key].exclude
+					config[key].globIgnorePaths = Array.isArray(
+						config[key].globIgnorePaths
+					)
+						? config[key].globIgnorePaths
 						: [];
 					continue;
 				}
@@ -277,7 +279,7 @@ export function loadConfig(
 					("output" in modeData ||
 						"build" in modeData ||
 						"env" in modeData ||
-						"exclude" in modeData);
+						"globIgnorePaths" in modeData);
 
 				if (intendedAsMode) {
 					if (typeof modeData.output !== "string") {
@@ -295,8 +297,8 @@ export function loadConfig(
 						output: modeData.output,
 						build: modeData.build,
 						env: Array.isArray(modeData.env) ? modeData.env : [],
-						exclude: Array.isArray(modeData.exclude)
-							? modeData.exclude
+						globIgnorePaths: Array.isArray(modeData.globIgnorePaths)
+							? modeData.globIgnorePaths
 							: [],
 					};
 					continue;
@@ -346,11 +348,11 @@ export function loadConfig(
 						`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`
 					);
 				} else if (
-					key === "exclude" &&
+					key === "globIgnorePaths" &&
 					!Array.isArray(rawConfig[key])
 				) {
 					throw new Error(
-						`Configuration Error: 'exclude' must be an array of strings.`
+						`Configuration Error: 'globIgnorePaths' must be an array of strings.`
 					);
 				}
 				config[key] = rawConfig[key];

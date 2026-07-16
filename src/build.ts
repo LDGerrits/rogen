@@ -250,11 +250,16 @@ export async function build(
 		envRegexes,
 	};
 
-	const combinedExcludes = Array.from(
-		new Set([...(config.exclude || []), ...(modeCopy.exclude || [])])
+	const combinedGlobIgnorePaths = Array.from(
+		new Set([
+			...(config.globIgnorePaths || []),
+			...(modeCopy.globIgnorePaths || []),
+		])
 	);
-	const isExcluded =
-		combinedExcludes.length > 0 ? picomatch(combinedExcludes) : () => false;
+	const isIgnored =
+		combinedGlobIgnorePaths.length > 0
+			? picomatch(combinedGlobIgnorePaths)
+			: () => false;
 
 	const nodeOrigins = new WeakMap<
 		RojoNode,
@@ -284,7 +289,7 @@ export async function build(
 
 		walkSource(sourcePath, sourcePath, listings, (filepath, isInit) => {
 			const relativePath = path.relative(sourcePath, filepath);
-			if (isExcluded(toPosix(relativePath))) return;
+			if (isIgnored(toPosix(relativePath))) return;
 
 			const {
 				targetService,

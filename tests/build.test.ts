@@ -78,7 +78,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -160,7 +160,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -224,7 +224,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "../../src" };
@@ -277,7 +277,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -342,7 +342,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -420,7 +420,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -496,7 +496,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -528,7 +528,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "from-config.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree = { name: "test", tree: {} };
 		const config = { ...defaultConfig, source: "src" };
@@ -616,7 +616,12 @@ describe("Builder Integration", () => {
 		const dummyConfig: Config = {
 			...defaultConfig,
 			source: "src",
-			luau: { output: "test.json", build: "out", env: [], exclude: [] },
+			luau: {
+				output: "test.json",
+				build: "out",
+				env: [],
+				globIgnorePaths: [],
+			},
 		};
 		const baseTree = { name: "test", tree: {} };
 		const anchor = process.cwd();
@@ -686,7 +691,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -793,7 +798,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -894,7 +899,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -981,7 +986,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 
@@ -1056,7 +1061,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };
@@ -1117,7 +1122,7 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -1143,7 +1148,7 @@ describe("Builder Integration", () => {
 		expect(result.collisions.length).toBe(0);
 	});
 
-	it("should drop files matching the global exclude glob pattern", async () => {
+	it("should drop files matching the global globIgnorePaths glob pattern", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
 		(
@@ -1195,13 +1200,13 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
 			...defaultConfig,
 			source: "src",
-			exclude: ["**/*.spec.luau"],
+			globIgnorePaths: ["**/*.spec.luau"],
 		};
 		const env: Environment = {
 			isTsProject: false,
@@ -1233,7 +1238,7 @@ describe("Builder Integration", () => {
 		).toBeUndefined();
 	});
 
-	it("should combine global and mode-specific exclude patterns", async () => {
+	it("should combine global and mode-specific globIgnorePaths patterns", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
 		(
@@ -1270,14 +1275,14 @@ describe("Builder Integration", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: ["**/*.story.luau"],
+			globIgnorePaths: ["**/*.story.luau"],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 
 		const config: Config = {
 			...defaultConfig,
 			source: "src",
-			exclude: ["**/*.spec.luau"],
+			globIgnorePaths: ["**/*.spec.luau"],
 		};
 		const env: Environment = {
 			isTsProject: false,
@@ -1339,7 +1344,7 @@ describe("unwrap Routing Overrides", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -1431,7 +1436,7 @@ describe("unwrap Routing Overrides", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -1517,7 +1522,7 @@ describe("unwrap Routing Overrides", () => {
 			build: "out",
 			output: "test.project.json",
 			env: [],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = {
@@ -1577,7 +1582,7 @@ describe("unwrap Routing Overrides", () => {
 			build: "out",
 			output: "test.project.json",
 			env: ["prod"],
-			exclude: [],
+			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
 		const config: Config = { ...defaultConfig, source: "src" };

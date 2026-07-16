@@ -16,7 +16,7 @@ export interface Mode {
 	output: string;
 	build: string;
 	env: string[];
-	exclude: string[];
+	globIgnorePaths: string[];
 }
 
 export type Casing = "PascalCase" | "camelCase";
@@ -27,7 +27,7 @@ export interface Config {
 	casing: Casing;
 	unwrap: boolean;
 	aliases: Record<string, string>;
-	exclude: string[];
+	globIgnorePaths: string[];
 	luau: Mode;
 	ts: Mode;
 	darklua: Mode;

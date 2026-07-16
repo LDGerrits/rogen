@@ -67,7 +67,7 @@ describe("Configuration Resolution", () => {
 				build: "dist",
 				output: "custom.json",
 				env: [],
-				exclude: [],
+				globIgnorePaths: [],
 			},
 		};
 
@@ -103,19 +103,24 @@ describe("Configuration Resolution", () => {
 		expect(modes[0].config.build).toBe("dist");
 	});
 
-	it("should accept a valid exclude array", () => {
-		mockConfigFile({ exclude: ["**/*.spec.luau", "ignore/"] });
+	it("should accept a valid globIgnorePaths array", () => {
+		mockConfigFile({ globIgnorePaths: ["**/*.spec.luau", "ignore/"] });
 
 		const result = loadConfig("test.rogen.json");
-		expect(result.config.exclude).toEqual(["**/*.spec.luau", "ignore/"]);
+		expect(result.config.globIgnorePaths).toEqual([
+			"**/*.spec.luau",
+			"ignore/",
+		]);
 	});
 
 	it.each(["string_pattern", true, { pattern: "*" }, null])(
-		"should reject unsupported exclude value %p",
-		(exclude) => {
-			mockConfigFile({ exclude });
+		"should reject unsupported globIgnorePaths value %p",
+		(globIgnorePaths) => {
+			mockConfigFile({ globIgnorePaths });
 
-			expect(() => loadConfig("test.rogen.json")).toThrow(/exclude/i);
+			expect(() => loadConfig("test.rogen.json")).toThrow(
+				/globIgnorePaths/i
+			);
 		}
 	);
 

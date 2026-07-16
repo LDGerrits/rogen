@@ -54,7 +54,7 @@ async function main(): Promise<void> {
 			delete config.darklua;
 		}
 
-		delete config.exclude;
+		delete config.globIgnorePaths;
 		delete config.aliases;
 		delete config.verbatim;
 		delete config.casing;
