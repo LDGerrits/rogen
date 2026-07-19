@@ -4,9 +4,8 @@ import { createFileProvider } from "./providers/file.js";
 import { createCliProvider } from "./providers/cli.js";
 import { IFileSystem } from "../fs/file-system.js";
 import { err, Result } from "../../base/result.js";
-import { WorkspaceContext, validateConfig } from "./schema.js";
-import { ResolvedConfig, UserConfig } from "./config.js";
-import { DEFAULT_CONFIG } from "./defaults.js";
+import { WorkspaceContext, validateConfig } from "./validate.js";
+import { DEFAULT_CONFIG, ResolvedConfig, UserConfig } from "./config.js";
 import { CliArgs } from "../cli/args.js";
 import { mergeDeep } from "../../base/object.js";
 

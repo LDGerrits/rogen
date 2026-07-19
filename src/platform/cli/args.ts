@@ -70,7 +70,7 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 		}
 
 		return ok(parsedArgs);
-	} catch (error: unknown) {
+	} catch (error) {
 		let errCode: string | undefined;
 		let errMsg = String(error);
 

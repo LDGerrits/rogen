@@ -1,5 +1,5 @@
 import path from "path";
-import { ConfigProvider, WorkspaceContext } from "../schema.js";
+import { ConfigProvider, WorkspaceContext } from "../validate.js";
 import { ok, Result } from "../../../base/result.js";
 import { UserConfig, Mode } from "../config.js";
 import { CliArgs } from "../../cli/args.js";

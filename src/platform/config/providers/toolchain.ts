@@ -1,6 +1,6 @@
 import path from "path";
 import { IFileSystem } from "../../fs/file-system.js";
-import { ConfigProvider, WorkspaceContext } from "../schema.js";
+import { ConfigProvider, WorkspaceContext } from "../validate.js";
 import { ok, Result } from "../../../base/result.js";
 import { UserConfig } from "../config.js";
 import { RojoTree, RojoNode } from "../../rojo/tree.js";
