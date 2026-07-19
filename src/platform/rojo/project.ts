@@ -1,95 +1,60 @@
-import { IFileSystem } from "../fs/file-system.js";
 import { RojoNode, RojoTree } from "./tree.js";
 
 export class RojoProject {
 	private tree: RojoTree;
 
 	constructor(initialTree: RojoTree) {
-		this.tree = JSON.parse(JSON.stringify(initialTree));
+		this.tree = structuredClone(initialTree);
 	}
 
 	getTree(): RojoTree {
 		return this.tree;
 	}
 
-	insertNode(pathKeys: string[], nodeData: RojoNode): void {
+	getNode(path: readonly string[]): RojoNode | undefined {
+		let current: RojoNode | undefined = this.tree.tree;
+
+		for (const segment of path) {
+			if (!current || typeof current !== "object") return undefined;
+			current = current[segment] as RojoNode | undefined;
+		}
+
+		return current;
+	}
+
+	/**
+	 * Atomic write operation. Ensures all parent folders exist, inserts/merges
+	 * the leaf data, and automatically enforces domain safety rules.
+	 */
+	insertNode(path: readonly string[], data: Partial<RojoNode>): void {
+		if (path.length === 0) return;
+
+		const parentPath = path.slice(0, -1);
+		const leafName = path[path.length - 1];
+
+		const parent = this.ensureNode(parentPath);
+		const existing = (parent[leafName] as RojoNode) || {};
+
+		const updated = { ...existing, ...data };
+
+		// Physical paths override Folder class
+		if (updated.$path && updated.$className === "Folder") {
+			delete updated.$className;
+		}
+
+		parent[leafName] = updated;
+	}
+
+	private ensureNode(path: readonly string[]): RojoNode {
 		let current = this.tree.tree;
 
-		for (let i = 0; i < pathKeys.length; i++) {
-			const key = pathKeys[i];
-			const isLast = i === pathKeys.length - 1;
-
-			if (!current[key]) {
-				current[key] = isLast ? {} : { $className: "Folder" };
+		for (const segment of path) {
+			if (!current[segment]) {
+				current[segment] = { $className: "Folder" };
 			}
-
-			if (isLast) {
-				const existing = current[key] as RojoNode;
-				current[key] = { ...existing, ...nodeData };
-
-				if (
-					nodeData.$path &&
-					(current[key] as RojoNode).$className === "Folder"
-				) {
-					delete (current[key] as RojoNode).$className;
-				}
-			} else {
-				current = current[key] as RojoNode;
-			}
+			current = current[segment] as RojoNode;
 		}
-	}
 
-	async pruneDeadPaths(
-		fs: IFileSystem,
-		outputDir: string,
-		buildDir: string
-	): Promise<string[]> {
-		const removed: string[] = [];
-		await this.traverseAndPrune(
-			this.tree.tree,
-			fs,
-			outputDir,
-			buildDir,
-			removed
-		);
-		return removed;
-	}
-
-	private async traverseAndPrune(
-		node: RojoNode,
-		fs: IFileSystem,
-		outputDir: string,
-		buildDir: string,
-		removed: string[]
-	): Promise<void> {
-		for (const key of Object.keys(node)) {
-			const child = node[key];
-
-			if (typeof child === "object" && child !== null) {
-				const childNode = child as RojoNode;
-
-				if (childNode.$path) {
-					// Assume paths are kept during memory build
-					if (childNode.$path.startsWith(buildDir + "/")) continue;
-
-					const exists = await fs.exists(
-						`${outputDir}/${childNode.$path}`
-					);
-					if (!exists) {
-						delete node[key];
-						removed.push(childNode.$path);
-						continue;
-					}
-				}
-
-				await this.traverseAndPrune(
-					childNode,
-					fs,
-					outputDir,
-					buildDir,
-					removed
-				);
-			}
-		}
+		return current;
 	}
 }

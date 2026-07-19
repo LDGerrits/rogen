@@ -1,5 +1,4 @@
 import { RojoProject } from "../project.js";
-import { MemoryFileSystem } from "../../fs/memory-file-system.js";
 import { RojoNode, RojoTree } from "../tree.js";
 
 describe("RojoProject", () => {
@@ -52,25 +51,5 @@ describe("RojoProject", () => {
 
 		expect(map.$className).toBeUndefined();
 		expect(map.$path).toBe("map.rbxm");
-	});
-
-	it("should prune dead paths that do not exist physically", async () => {
-		const fs = new MemoryFileSystem();
-		const project = new RojoProject({
-			name: "test",
-			tree: {
-				KeepMe: { $path: "src/valid.luau" },
-				DeleteMe: { $path: "src/invalid.luau" },
-			},
-		});
-
-		await fs.writeFile("src/valid.luau", "print('hello')");
-		const removed = await project.pruneDeadPaths(fs, ".", "out");
-
-		const tree = project.getTree().tree;
-
-		expect(removed).toEqual(["src/invalid.luau"]);
-		expect(tree["KeepMe"]).toBeDefined();
-		expect(tree["DeleteMe"]).toBeUndefined();
 	});
 });
