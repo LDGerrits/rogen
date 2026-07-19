@@ -9,16 +9,38 @@ export interface Mode {
 	globIgnorePaths: string[];
 }
 
-export interface Config {
-	source: string | string[];
+export interface UserConfig {
+	source?: string | string[];
+	verbatim?: boolean;
+	casing?: CasingStyle;
+	unwrap?: boolean;
+	aliases?: Record<string, string>;
+	globIgnorePaths?: string[];
+	luau?: Partial<Mode>;
+	ts?: Partial<Mode>;
+	darklua?: Partial<Mode>;
+	template?: RojoTree | string;
+	[key: string]: unknown; // For custom modes
+}
+
+export interface ResolvedConfig {
+	source: string[];
 	verbatim: boolean;
 	casing: CasingStyle;
 	unwrap: boolean;
 	aliases: Record<string, string>;
 	globIgnorePaths: string[];
-	luau: Mode;
-	ts: Mode;
-	darklua: Mode;
+	luau?: Mode;
+	ts?: Mode;
+	darklua?: Mode;
 	template: RojoTree;
 	[key: string]: unknown;
 }
+
+export type CoreConfigKeys = keyof {
+	[K in keyof ResolvedConfig as string extends K
+		? never
+		: number extends K
+			? never
+			: K]: ResolvedConfig[K];
+};

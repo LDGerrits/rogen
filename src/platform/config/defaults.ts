@@ -1,12 +1,12 @@
 import { RojoTree } from "../rojo/tree.js";
-import { Config } from "./config.js";
+import { ResolvedConfig } from "./config.js";
 
 export const DEFAULT_TEMPLATE: RojoTree = {
 	name: "roblox-game",
 	tree: { $className: "DataModel" },
 };
 
-export const DEFAULT_CONFIG: Config = {
+export const DEFAULT_CONFIG: ResolvedConfig = {
 	source: ["src"],
 	globIgnorePaths: [],
 	aliases: {},

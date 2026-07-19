@@ -1,15 +1,15 @@
 import path from "path";
 import { IFileSystem } from "../../fs/file-system.js";
-import { ConfigProvider, ConfigContext } from "../schema.js";
+import { ConfigProvider, WorkspaceContext } from "../schema.js";
 import { ok, Result } from "../../../base/result.js";
-import { Config } from "../config.js";
+import { UserConfig } from "../config.js";
 import { RojoTree, RojoNode } from "../../rojo/tree.js";
 import { detectToolchain } from "../toolchain.js";
 
 export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 	return async (
-		ctx: ConfigContext
-	): Promise<Result<Partial<Config>, Error>> => {
+		ctx: WorkspaceContext
+	): Promise<Result<UserConfig, Error>> => {
 		const toolchain = await detectToolchain(ctx.cwd, fs);
 
 		const tree: RojoNode = { $className: "DataModel" };
@@ -90,6 +90,6 @@ export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 			}
 		}
 
-		return ok({ template } as Partial<Config>);
+		return ok({ template });
 	};
 };

@@ -1,75 +1,109 @@
 import { Result, ok, err } from "../../base/result.js";
 import { getClosestMatch } from "../../base/string.js";
-import { CliArgs } from "../cli/args.js";
-import { Config } from "./config.js";
+import { RojoTree } from "../rojo/tree.js";
+import { CoreConfigKeys, ResolvedConfig, UserConfig } from "./config.js";
 
-export interface ConfigContext {
+export interface WorkspaceContext {
 	cwd: string;
-	cliArgs: CliArgs;
+	configPath?: string;
 }
 
 export type ConfigProvider = (
-	ctx: ConfigContext
-) => Promise<Result<Partial<Config>, Error>>;
+	ctx: WorkspaceContext
+) => Promise<Result<UserConfig, Error>>;
 
-// TODO can we create this from the type, or, like, in a way that it will give a typeError if it does not have exactly the same keys as Config?
-const VALID_KEYS = [
-	"source",
-	"verbatim",
-	"casing",
-	"unwrap",
-	"aliases",
-	"globIgnorePaths",
-	"luau",
-	"ts",
-	"darklua",
-	"template",
-];
+const VALID_KEYS_MAP: Record<CoreConfigKeys, true> = {
+	source: true,
+	verbatim: true,
+	casing: true,
+	unwrap: true,
+	aliases: true,
+	globIgnorePaths: true,
+	luau: true,
+	ts: true,
+	darklua: true,
+	template: true,
+};
+
+const VALID_KEYS = Object.keys(VALID_KEYS_MAP);
+
+const LEGACY_KEYS: Record<string, CoreConfigKeys> = {
+	keepRouteNames: "verbatim",
+	keepSuffixes: "verbatim",
+};
+
+export function isValidRojoTree(value: unknown): value is RojoTree {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		return false;
+	}
+
+	const record = value as Record<string, unknown>;
+
+	return (
+		typeof record.name === "string" &&
+		typeof record.tree === "object" &&
+		record.tree !== null &&
+		!Array.isArray(record.tree)
+	);
+}
 
 /**
- * Validates the completely merged state of the configuration, enforcing types
- * and checking for spelling mistakes in keys.
+ * Validates the configuration, enforcing types and checking for spelling mistakes in keys.
  */
-export function validateFinalConfig(
+export function validateConfig(
 	raw: Record<string, unknown>
-): Result<Config, Error> {
+): Result<ResolvedConfig, Error> {
 	for (const key of Object.keys(raw)) {
 		if (!VALID_KEYS.includes(key)) {
-			// Catch legacy updates gracefully
-			if (key === "keepRouteNames" || key === "keepSuffixes") {
+			// Catch legacy updates
+			if (key in LEGACY_KEYS) {
+				const modernKey = LEGACY_KEYS[key];
 				return err(
 					new Error(
-						`The key "${key}" has been renamed to "verbatim". Please, update your configuration.`
+						`The key "${key}" has been renamed to "${modernKey}". Please, update your configuration.`
 					)
 				);
 			}
 
-			// Support for custom modes
-			if (
+			// Validate custom modes versus typos
+			const isObject =
 				typeof raw[key] === "object" &&
 				raw[key] !== null &&
-				!Array.isArray(raw[key])
-			) {
-				const modeData = raw[key] as Record<string, unknown>;
-				if (
-					typeof modeData.output !== "string" ||
-					typeof modeData.build !== "string"
-				) {
-					return err(
-						new Error(
-							`Custom mode "${key}" is missing a valid "output" or "build" string.`
-						)
-					);
-				}
+				!Array.isArray(raw[key]);
+			const modeData = isObject
+				? (raw[key] as Record<string, unknown>)
+				: null;
+			const isValidMode =
+				modeData &&
+				typeof modeData.output === "string" &&
+				typeof modeData.build === "string";
+
+			if (isValidMode) {
 				continue;
 			}
 
-			// Typo detection
+			// Check for typos
 			const closestMatch = getClosestMatch(key, VALID_KEYS, 2);
 			if (closestMatch) {
 				return err(
 					new Error(
 						`Unknown key "${key}". Did you mean "${closestMatch}"?`
+					)
+				);
+			}
+
+			// It has mode characteristics but is missing keys
+			const intendedAsMode =
+				modeData &&
+				("output" in modeData ||
+					"build" in modeData ||
+					"env" in modeData ||
+					"globIgnorePaths" in modeData);
+
+			if (intendedAsMode) {
+				return err(
+					new Error(
+						`Custom mode "${key}" is missing a valid "output" or "build" string.`
 					)
 				);
 			}
@@ -91,15 +125,9 @@ export function validateFinalConfig(
 			if (typeof raw[key] !== "boolean")
 				return err(new Error(`'${key}' must be a boolean.`));
 		}
-		if (
-			key === "casing" &&
-			raw[key] !== "PascalCase" &&
-			raw[key] !== "camelCase"
-		) {
+		if (key === "casing" && raw[key] !== "pascal" && raw[key] !== "camel") {
 			return err(
-				new Error(
-					`'casing' must be either "PascalCase" or "camelCase".`
-				)
+				new Error(`'casing' must be either "pascal" or "camel".`)
 			);
 		}
 		if (key === "globIgnorePaths" && !Array.isArray(raw[key])) {
@@ -108,11 +136,15 @@ export function validateFinalConfig(
 			);
 		}
 		if (key === "template" && typeof raw[key] !== "object") {
-			return err(
-				new Error(`'template' must be a valid Rojo Tree object.`)
-			);
+			if (!isValidRojoTree(raw[key])) {
+				return err(
+					new Error(
+						`'template' must be a valid Rojo Project containing a 'name' string and a 'tree' object.`
+					)
+				);
+			}
 		}
 	}
 
-	return ok(raw as Config);
+	return ok(raw as ResolvedConfig);
 }

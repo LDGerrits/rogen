@@ -1,43 +1,19 @@
 import path from "path";
-import { IFileSystem } from "../../fs/file-system.js";
-import { ConfigProvider, ConfigContext } from "../schema.js";
-import { ok, err, Result } from "../../../base/result.js";
-import { Config, Mode } from "../config.js";
-import { RojoTree } from "../../rojo/tree.js";
+import { ConfigProvider, WorkspaceContext } from "../schema.js";
+import { ok, Result } from "../../../base/result.js";
+import { UserConfig, Mode } from "../config.js";
+import { CliArgs } from "../../cli/args.js";
 
-export const createCliProvider = (fs: IFileSystem): ConfigProvider => {
+export const createCliProvider = (cliArgs: CliArgs): ConfigProvider => {
 	return async (
-		ctx: ConfigContext
-	): Promise<Result<Partial<Config>, Error>> => {
-		const { cliArgs, cwd } = ctx;
-		const overrides: Partial<Config> = {};
+		ctx: WorkspaceContext
+	): Promise<Result<UserConfig, Error>> => {
+		const overrides: UserConfig = {};
 
 		if (cliArgs.source) overrides.source = cliArgs.source;
 
-		// Resolve path to template into RojoTree
 		if (cliArgs.template) {
-			const templatePath = path.resolve(cwd, cliArgs.template);
-
-			if (!(await fs.exists(templatePath))) {
-				return err(
-					new Error(
-						`Specified template file not found at ${templatePath}`
-					)
-				);
-			}
-
-			try {
-				const templateContent = await fs.readFile(templatePath);
-				overrides.template = JSON.parse(templateContent) as RojoTree;
-			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error);
-				return err(
-					new Error(
-						`Failed to parse template JSON at ${templatePath}: ${message}`
-					)
-				);
-			}
+			overrides.template = path.resolve(ctx.cwd, cliArgs.template);
 		}
 
 		if (cliArgs.build || cliArgs.output || cliArgs.env) {
