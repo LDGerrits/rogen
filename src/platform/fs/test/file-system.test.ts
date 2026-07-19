@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import { FileType } from "../file-system.js";
 import { MemoryFileSystem } from "../memory-file-system.js";
+import { walkDirectory } from "../walk.js";
 
 describe("FileSystem: walkDirectory", () => {
 	let memFs: MemoryFileSystem;
@@ -16,7 +17,7 @@ describe("FileSystem: walkDirectory", () => {
 		await memFs.writeFile("src/main.ts", "console.log('init');");
 		await memFs.writeFile("src/core/utils.ts", "export const x = 1;");
 
-		const listings = await memFs.walkDirectory(srcPath);
+		const listings = await walkDirectory(memFs, srcPath);
 
 		expect(listings.has(srcPath)).toBe(true);
 		expect(listings.has(corePath)).toBe(true);
@@ -35,7 +36,7 @@ describe("FileSystem: walkDirectory", () => {
 	it("should gracefully handle empty or nonexistent directories without crashing", async () => {
 		const targetPath = "src/core/empty-folder";
 
-		const listings = await memFs.walkDirectory(targetPath);
+		const listings = await walkDirectory(memFs, targetPath);
 
 		expect(listings.has(targetPath)).toBe(true);
 		expect(listings.get(targetPath)).toHaveLength(0);
@@ -46,7 +47,7 @@ describe("FileSystem: walkDirectory", () => {
 			Object.assign(new Error("File not found"), { code: "ENOENT" })
 		);
 
-		const listings = await memFs.walkDirectory("missing-root");
+		const listings = await walkDirectory(memFs, "missing-root");
 		expect(listings.size).toBe(0);
 	});
 });

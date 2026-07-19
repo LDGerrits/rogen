@@ -26,10 +26,6 @@ export interface IFileSystem {
 	): Promise<void>;
 
 	readJson<T>(filePath: string): Promise<T>;
-	walkDirectory(
-		dir: string,
-		listings: Map<string, [string, FileType][]>
-	): Promise<Map<string, [string, FileType][]>>;
 }
 
 export class LocalFileSystem implements IFileSystem {
@@ -61,8 +57,7 @@ export class LocalFileSystem implements IFileSystem {
 	}
 
 	/**
-	 * Scans a target path and maps structural entry tokens into localized name/type tuples.
-	 * Symlinks, sockets, and complex OS nodes fallback explicitly to an Unknown type assignment.
+	 * Scans given path and maps structural entries into name/type tuples.
 	 */
 	async readDirectory(filePath: string): Promise<[string, FileType][]> {
 		const dirents = await fs.promises.readdir(filePath, {
@@ -115,35 +110,4 @@ export class LocalFileSystem implements IFileSystem {
 		const content = await this.readFile(filePath);
 		return JSON.parse(content) as T;
 	}
-
-	async walkDirectory(
-		dir: string,
-		listings = new Map<string, [string, FileType][]>()
-	): Promise<Map<string, [string, FileType][]>> {
-		try {
-			const entries = await this.readDirectory(dir);
-			listings.set(dir, entries);
-
-			const subdirs = entries
-				.filter(([_, type]) => type === FileType.Directory)
-				.map(([name]) => path.join(dir, name));
-
-			await Promise.all(
-				subdirs.map((subdir) => this.walkDirectory(subdir, listings))
-			);
-
-			return listings;
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				"code" in error &&
-				error.code === "ENOENT"
-			) {
-				return listings;
-			}
-			throw error;
-		}
-	}
 }
-
-export const fileSystem = new LocalFileSystem();

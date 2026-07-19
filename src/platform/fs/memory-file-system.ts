@@ -84,33 +84,4 @@ export class MemoryFileSystem implements IFileSystem {
 		const content = await this.readFile(filePath);
 		return JSON.parse(content) as T;
 	}
-
-	async walkDirectory(
-		dir: string,
-		listings = new Map<string, [string, FileType][]>()
-	): Promise<Map<string, [string, FileType][]>> {
-		try {
-			const entries = await this.readDirectory(dir);
-			listings.set(dir, entries);
-
-			const subdirs = entries
-				.filter(([_, type]) => type === FileType.Directory)
-				.map(([name]) => this.normalize(path.join(dir, name)));
-
-			await Promise.all(
-				subdirs.map((subdir) => this.walkDirectory(subdir, listings))
-			);
-
-			return listings;
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				"code" in error &&
-				error.code === "ENOENT"
-			) {
-				return listings;
-			}
-			throw error;
-		}
-	}
 }
