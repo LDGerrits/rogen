@@ -1,5 +1,5 @@
 import { parseArgs as nodeParseArgs } from "util";
-import { logger } from "../log/logger.js";
+import { Result, ok, err } from "../../base/result.js";
 
 export interface CliArgs {
 	// Command
@@ -21,7 +21,7 @@ export interface CliArgs {
 	trace?: boolean;
 }
 
-export function parseArgs(args: string[]): CliArgs {
+export function parseArgs(args: string[]): Result<CliArgs, Error> {
 	const options = {
 		help: { type: "boolean" as const, short: "h" },
 		version: { type: "boolean" as const, short: "v" },
@@ -61,17 +61,15 @@ export function parseArgs(args: string[]): CliArgs {
 			} else if (subcommand === "version") {
 				parsedArgs.version = true;
 			} else {
-				logger.error(
-					`Unknown subcommand or option "${positionals[0]}".`
+				return err(
+					new Error(
+						`Unknown subcommand or option "${positionals[0]}".\nRun 'rogen --help' to see a list of available commands.`
+					)
 				);
-				logger.info(
-					"Run 'rogen --help' to see a list of available commands."
-				);
-				process.exit(1);
 			}
 		}
 
-		return parsedArgs;
+		return ok(parsedArgs);
 	} catch (error: unknown) {
 		let errCode: string | undefined;
 		let errMsg = String(error);
@@ -93,15 +91,13 @@ export function parseArgs(args: string[]): CliArgs {
 				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
 				""
 			);
-
-			logger.error(cleanMsg);
-			logger.info(
-				"Run 'rogen --help' to see a list of available commands and options."
+			return err(
+				new Error(
+					`${cleanMsg}\nRun 'rogen --help' to see a list of available commands and options.`
+				)
 			);
-			process.exit(1);
 		}
 
-		logger.error(errMsg);
-		process.exit(1);
+		return err(new Error(errMsg));
 	}
 }
