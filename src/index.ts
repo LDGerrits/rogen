@@ -1,142 +1,68 @@
-import fs from "fs";
-import path from "path";
-import chokidar from "chokidar";
-import { printHelp, parseCliArgs } from "./cli.js";
-import {
-	resolveConfigPath,
-	loadConfig,
-	getEnvironment,
-	resolveActiveModes,
-	createFallbackConfig,
-} from "./config.js";
-import { execute } from "./execute.js";
-import { Config } from "./types.js";
-import { version } from "./constants.js";
+import { LocalFileSystem } from "./platform/fs/file-system.js";
+import { runInitCommand } from "./commands/init.js";
+import { parseArgs } from "./platform/cli/args.js";
+import { runHelpCommand } from "./commands/help.js";
+import { runVersionCommand } from "./commands/version.js";
+import { ConsoleLogger, LogLevel } from "./platform/log/logger.js";
+import { getRawArgs, getCwd } from "./base/process.js";
+
+const fs = new LocalFileSystem();
+const logger = new ConsoleLogger();
 
 async function main(): Promise<void> {
-	const cliArgs = parseCliArgs();
+	const rawArgs = getRawArgs();
+	const argsResult = parseArgs(rawArgs);
+
+	if (argsResult.isErr()) {
+		logger.error(argsResult.error.message);
+		process.exit(1);
+	}
+
+	const cliArgs = argsResult.unwrap();
+
+	// Set global logger level
+	if (cliArgs.quiet) {
+		logger.setLevel(LogLevel.Off);
+	} else if (cliArgs.trace) {
+		logger.setLevel(LogLevel.Trace);
+	} else if (cliArgs.verbose) {
+		logger.setLevel(LogLevel.Debug);
+	}
 
 	if (cliArgs.help) {
-		printHelp();
+		runHelpCommand(logger);
 		process.exit(0);
 	}
 
 	if (cliArgs.version) {
-		console.log(`rogen ${version}`);
+		runVersionCommand(logger);
 		process.exit(0);
 	}
 
-	if (cliArgs.init) {
-		const cwd = process.cwd();
-		const targetPath = path.resolve(cwd, ".rogen.json");
+	const cwd = getCwd();
 
-		if (fs.existsSync(targetPath)) {
-			console.error(
-				`\n❌ Initialization Failed: A .rogen.json file already exists in this directory.\n`
-			);
+	if (cliArgs.init) {
+		const initResult = await runInitCommand(cwd, fs);
+
+		if (initResult.isErr()) {
+			logger.error(initResult.error.message);
 			process.exit(1);
 		}
 
-		const config = createFallbackConfig(cwd) as Partial<Config>;
-
-		const isTs = fs.existsSync(path.join(cwd, "tsconfig.json"));
-		const isDarklua =
-			fs.existsSync(path.join(cwd, ".darklua.json")) ||
-			fs.existsSync(path.join(cwd, ".darklua.json5"));
-
-		if (isTs) {
-			delete config.luau;
-		} else {
-			delete config.ts;
-		}
-
-		if (!isDarklua) {
-			delete config.darklua;
-		}
-
-		delete config.globIgnorePaths;
-		delete config.aliases;
-		delete config.verbatim;
-		delete config.casing;
-		delete config.unwrap;
-
-		fs.writeFileSync(targetPath, JSON.stringify(config, null, "\t"));
-		console.log(
-			`\n✅ Successfully created .rogen.json in the current directory.\n\n`
+		logger.info(
+			"Successfully created .rogen.json in the current directory."
 		);
 		process.exit(0);
 	}
 
-	const configPath = resolveConfigPath(cliArgs.config);
-	const { config, anchor } = loadConfig(configPath, cliArgs.template);
+	// TODO implement other commands
 
-	const rawSources = cliArgs.source || config.source;
-	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
-	const resolveBase = cliArgs.source ? process.cwd() : anchor;
-
-	const sourcePaths = sourceDirs.map((s) => {
-		const sourcePath = path.resolve(resolveBase, s);
-		if (!fs.existsSync(sourcePath)) {
-			throw new Error(`Source directory not found: ${sourcePath}`);
-		}
-		return sourcePath;
-	});
-
-	const env = getEnvironment(anchor, cliArgs.mode);
-	const activeModes = resolveActiveModes(config, cliArgs.mode, env);
-
-	await execute(
-		sourcePaths,
-		env,
-		activeModes,
-		config.template,
-		config,
-		cliArgs,
-		anchor
-	);
-
-	if (cliArgs.watch) {
-		console.log(
-			`\n👀 Watching for file changes in: "${sourceDirs.join(", ")}" (Press Ctrl+C to stop)...\n`
-		);
-
-		const watcher = chokidar.watch(sourcePaths, {
-			persistent: true,
-			ignoreInitial: true,
-		});
-
-		let debounceTimeout: NodeJS.Timeout;
-
-		watcher.on("all", () => {
-			clearTimeout(debounceTimeout);
-			debounceTimeout = setTimeout(() => {
-				execute(
-					sourcePaths,
-					env,
-					activeModes,
-					config.template,
-					config,
-					cliArgs,
-					anchor
-				).catch((err) => {
-					console.error(
-						`\n❌ Watcher Error: ${err instanceof Error ? err.message : String(err)}\n`
-					);
-				});
-			}, 100);
-		});
-
-		watcher.on("error", (error) =>
-			console.error(`\n❌ Watcher Error: ${error}\n`)
-		);
-
-		await new Promise(() => {}); // Keep alive
-	}
+	process.exit(0);
 }
 
 export default function run(): void {
 	main().catch((error) => {
-		console.error(`\n❌ Fatal Error: ${error.message}\n`);
+		logger.error(error);
 		process.exit(1);
 	});
 }
