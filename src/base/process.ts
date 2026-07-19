@@ -4,7 +4,7 @@ export function getCwd(): string {
 	return process.cwd();
 }
 
-export function getArgs(): string[] {
+export function getRawArgs(): string[] {
 	return process.argv.slice(2);
 }
 
