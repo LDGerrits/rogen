@@ -77,13 +77,12 @@ async function main(): Promise<void> {
 
 	const configService = new ConfigService(resolver)
 		.addProvider(new ToolchainProvider(workspaceService))
-		.addProvider(new FileConfigProvider(fileSystemService))
-		.addProvider(new CliConfigProvider(cliArgs));
+		.addProvider(
+			new FileConfigProvider(cwd, fileSystemService, cliArgs.config)
+		)
+		.addProvider(new CliConfigProvider(cwd, cliArgs));
 
-	const configResult = await configService.load({
-		cwd,
-		configPath: cliArgs.config,
-	});
+	const configResult = await configService.resolve();
 
 	if (configResult.isErr()) {
 		logService.error(`Config Error: ${configResult.error.message}`);
