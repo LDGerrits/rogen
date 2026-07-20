@@ -1,7 +1,12 @@
-import { LogService } from "../platform/log/log-service.js";
+import { Command } from "../command.js";
+import { LogService } from "../../platform/log/log-service.js";
+import { Result, ok } from "../../base/result.js";
 
-export function runHelpCommand(logService: LogService): void {
-	logService.info(`
+export class HelpCommand implements Command {
+	constructor(private readonly logService: LogService) {}
+
+	execute(): Result<void, Error> {
+		this.logService.info(`
 Rogen - A tool for feature-based folder structures with Rojo
 
 Usage:
@@ -21,5 +26,8 @@ Options:
   -o, --output <path>   Override path of Rojo project file
   -h, --help            Print help
   -v, --version         Print version
-	`);
+		`);
+
+		return ok(undefined);
+	}
 }
