@@ -1,5 +1,6 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, ok, err } from "../../base/result.js";
+import { ErrorUtils } from "../../base/errors.js";
 
 export interface CliArgs {
 	// Command
@@ -71,23 +72,15 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 
 		return ok(parsedArgs);
 	} catch (error) {
-		let errCode: string | undefined;
-		let errMsg = String(error);
-
-		if (typeof error === "object" && error !== null) {
-			const errObj = error as Record<string, unknown>;
-			errCode = typeof errObj.code === "string" ? errObj.code : undefined;
-			errMsg =
-				typeof errObj.message === "string"
-					? errObj.message
-					: String(error);
-		}
+		const normalizedError = ErrorUtils.fromUnknown(error);
+		const errCode = (normalizedError as unknown as Record<string, unknown>)
+			.code;
 
 		if (
 			errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION" ||
-			errMsg.includes("Unknown option")
+			normalizedError.message.includes("Unknown option")
 		) {
-			const cleanMsg = errMsg.replace(
+			const cleanMsg = normalizedError.message.replace(
 				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
 				""
 			);
@@ -98,6 +91,6 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 			);
 		}
 
-		return err(new Error(errMsg));
+		return err(normalizedError);
 	}
 }

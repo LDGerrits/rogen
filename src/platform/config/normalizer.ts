@@ -2,6 +2,7 @@ import { FileSystemService } from "../fs/file-system-service.js";
 import { err, ok, Result } from "../../base/result.js";
 import { RojoTree } from "../rojo/tree.js";
 import { UserConfig } from "./config.js";
+import { ErrorUtils } from "../../base/errors.js";
 
 export class ConfigNormalizer {
 	constructor(private readonly fileSystemService: FileSystemService) {}
@@ -31,7 +32,7 @@ export class ConfigNormalizer {
 			} catch (error) {
 				return err(
 					new Error(
-						`Failed to parse template JSON: ${error instanceof Error ? error.message : String(error)}`
+						`Failed to parse template JSON: ${ErrorUtils.fromUnknown(error).message}`
 					)
 				);
 			}

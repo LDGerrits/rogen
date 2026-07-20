@@ -3,6 +3,7 @@ import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
 import { UserConfig } from "../config.js";
 import { IConfigProvider, WorkspaceContext } from "./provider.js";
+import { ErrorUtils } from "../../../base/errors.js";
 
 export class FileConfigProvider implements IConfigProvider {
 	readonly name = "FileProvider";
@@ -40,7 +41,7 @@ export class FileConfigProvider implements IConfigProvider {
 		} catch (error) {
 			return err(
 				new Error(
-					`Failed to read or parse config file: ${error instanceof Error ? error.message : String(error)}`
+					`Failed to read or parse config file: ${ErrorUtils.fromUnknown(error).message}`
 				)
 			);
 		}
