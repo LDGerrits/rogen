@@ -1,7 +1,14 @@
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
-		if (error instanceof Error) {
-			return error;
+		// Use the object string instead of instanceof to
+		// bypass the instanceof memory-reference trap
+		if (
+			error instanceof Error ||
+			(typeof error === "object" &&
+				error !== null &&
+				Object.prototype.toString.call(error) === "[object Error]")
+		) {
+			return error as Error;
 		}
 		if (typeof error === "string") {
 			return new Error(error);

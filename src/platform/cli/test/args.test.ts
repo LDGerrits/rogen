@@ -65,20 +65,26 @@ describe("CLI Argument Parsing", () => {
 			const result = parseArgs(["invalidCommand"]);
 
 			expect(result.isErr()).toBe(true);
-			if (result.isErr()) {
-				expect(result.error.message).toContain(
-					'Unknown subcommand or option "invalidCommand"'
-				);
+
+			if (!result.isErr()) {
+				throw new Error("Expected an error result but got ok.");
 			}
+
+			expect(result.error.message).toContain(
+				'Unknown subcommand or option "invalidCommand"'
+			);
 		});
 
 		it("should return an error on unknown flags", () => {
 			const result = parseArgs(["--unknown-flag"]);
 
 			expect(result.isErr()).toBe(true);
-			if (result.isErr()) {
-				expect(result.error.message).toContain("Unknown option");
+
+			if (!result.isErr()) {
+				throw new Error("Expected an error result but got ok.");
 			}
+
+			expect(result.error.message).toContain("Unknown option");
 		});
 	});
 });
