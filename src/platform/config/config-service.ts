@@ -1,17 +1,14 @@
 import { mergeDeep } from "../../base/object.js";
-import { err, Result } from "../../base/result.js";
-import { DEFAULT_CONFIG, ResolvedConfig, UserConfig } from "./config.js";
-import { ConfigNormalizer } from "./normalizer.js";
+import { err, ok, Result } from "../../base/result.js";
+import { ConfigSchema, ResolvedConfig } from "./schema.js";
+import { ConfigResolver } from "./resolver.js";
 import { IConfigProvider, WorkspaceContext } from "./providers/provider.js";
-import { ConfigValidator } from "./validator.js";
+import { DEFAULT_CONFIG } from "./config.js";
 
 export class ConfigService {
 	private providers: IConfigProvider[] = [];
 
-	constructor(
-		private readonly normalizer: ConfigNormalizer,
-		private readonly validator: ConfigValidator
-	) {}
+	constructor(private readonly resolver: ConfigResolver) {}
 
 	addProvider(provider: IConfigProvider): this {
 		this.providers.push(provider);
@@ -19,8 +16,10 @@ export class ConfigService {
 	}
 
 	async load(ctx: WorkspaceContext): Promise<Result<ResolvedConfig, Error>> {
-		let mergedUserConfig: UserConfig = structuredClone(DEFAULT_CONFIG);
+		let mergedRawConfig: Record<string, unknown> =
+			structuredClone(DEFAULT_CONFIG);
 
+		// Sequential merge
 		for (const provider of this.providers) {
 			const result = await provider.read(ctx);
 
@@ -32,16 +31,27 @@ export class ConfigService {
 				);
 			}
 
-			mergedUserConfig = mergeDeep(mergedUserConfig, result.unwrap());
+			mergedRawConfig = mergeDeep(mergedRawConfig, result.unwrap());
 		}
 
-		const normalizationResult =
-			await this.normalizer.normalize(mergedUserConfig);
+		// Resolve external dependencies
+		const resolutionResult =
+			await this.resolver.resolveDependencies(mergedRawConfig);
 
-		if (normalizationResult.isErr()) {
-			return err(normalizationResult.error);
+		if (resolutionResult.isErr()) {
+			return err(resolutionResult.error);
 		}
 
-		return this.validator.validate(normalizationResult.unwrap());
+		// Validate and normalize
+		const parseResult = ConfigSchema.safeParse(resolutionResult.unwrap());
+
+		if (!parseResult.success) {
+			const issues = parseResult.error.issues
+				.map((i) => `${i.path.join(".")}: ${i.message}`)
+				.join(", ");
+			return err(new Error(`Configuration validation failed: ${issues}`));
+		}
+
+		return ok(parseResult.data);
 	}
 }

@@ -1,16 +1,18 @@
 import path from "path";
 import { ok, Result } from "../../../base/result.js";
-import { UserConfig, Mode } from "../config.js";
 import { CliArgs } from "../../cli/args.js";
 import { IConfigProvider, WorkspaceContext } from "./provider.js";
+import { Mode } from "../schema.js";
 
 export class CliConfigProvider implements IConfigProvider {
 	readonly name = "CliProvider";
 
 	constructor(private readonly cliArgs: CliArgs) {}
 
-	async read(ctx: WorkspaceContext): Promise<Result<UserConfig, Error>> {
-		const overrides: UserConfig = {};
+	async read(
+		ctx: WorkspaceContext
+	): Promise<Result<Record<string, unknown>, Error>> {
+		const overrides: Record<string, unknown> = {};
 
 		if (this.cliArgs.source) overrides.source = this.cliArgs.source;
 

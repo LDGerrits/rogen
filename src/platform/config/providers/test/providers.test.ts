@@ -5,7 +5,7 @@ import { FileConfigProvider } from "../file.js";
 
 describe("Config Providers", () => {
 	describe("CliConfigProvider", () => {
-		it("should map CLI arguments to a UserConfig object", async () => {
+		it("should map CLI arguments to a raw config object", async () => {
 			const cliArgs = { source: ["cli-src"], build: "cli-out" };
 			const provider = new CliConfigProvider(cliArgs);
 
@@ -13,7 +13,12 @@ describe("Config Providers", () => {
 
 			expect(result.isOk()).toBe(true);
 
-			const config = result.unwrap();
+			const config = result.unwrap() as {
+				source?: string[];
+				luau?: { build?: string };
+				ts?: { build?: string };
+			};
+
 			expect(config.source).toEqual(["cli-src"]);
 			expect(config.luau?.build).toBe("cli-out");
 			expect(config.ts?.build).toBe("cli-out");
