@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { FileType, FileSystemService } from "./file-system-service.js";
 
-export class LocalFileSystemService implements FileSystemService {
+export class DiskFileSystemService implements FileSystemService {
 	async exists(filePath: string): Promise<boolean> {
 		try {
 			await fs.promises.access(filePath);
