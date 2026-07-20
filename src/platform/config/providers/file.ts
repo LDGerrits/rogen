@@ -1,16 +1,18 @@
 import path from "path";
 import { IFileSystem } from "../../fs/file-system.js";
-import { ConfigProvider, WorkspaceContext } from "../validate.js";
 import { ok, err, Result } from "../../../base/result.js";
 import { UserConfig } from "../config.js";
+import { IConfigProvider, WorkspaceContext } from "./provider.js";
 
-export const createFileProvider = (fs: IFileSystem): ConfigProvider => {
-	return async (
-		ctx: WorkspaceContext
-	): Promise<Result<UserConfig, Error>> => {
+export class FileConfigProvider implements IConfigProvider {
+	readonly name = "FileProvider";
+
+	constructor(private readonly fs: IFileSystem) {}
+
+	async read(ctx: WorkspaceContext): Promise<Result<UserConfig, Error>> {
 		const configPath = ctx.configPath || path.join(ctx.cwd, ".rogen.json");
 
-		const exists = await fs.exists(configPath);
+		const exists = await this.fs.exists(configPath);
 
 		if (ctx.configPath && !exists) {
 			return err(
@@ -23,7 +25,7 @@ export const createFileProvider = (fs: IFileSystem): ConfigProvider => {
 		}
 
 		try {
-			const rawContent = await fs.readFile(configPath);
+			const rawContent = await this.fs.readFile(configPath);
 			const parsed = JSON.parse(rawContent) as UserConfig;
 
 			if (typeof parsed.template === "string") {
@@ -41,5 +43,5 @@ export const createFileProvider = (fs: IFileSystem): ConfigProvider => {
 				)
 			);
 		}
-	};
-};
+	}
+}

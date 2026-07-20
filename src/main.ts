@@ -5,11 +5,17 @@ import { runHelpCommand } from "./commands/help.js";
 import { runVersionCommand } from "./commands/version.js";
 import { ConsoleLogger, LogLevel } from "./platform/log/logger.js";
 import { getRawArgs, getCwd } from "./base/process.js";
+import { ConfigBuilder } from "./platform/config/resolver.js";
+import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
+import { FileConfigProvider } from "./platform/config/providers/file.js";
+import { CliConfigProvider } from "./platform/config/providers/cli.js";
+import { ResolvedConfig } from "./platform/config/config.js";
 
 const fs = new LocalFileSystem();
 const logger = new ConsoleLogger();
 
 async function main(): Promise<void> {
+	// Get CLI args
 	const rawArgs = getRawArgs();
 	const argsResult = parseArgs(rawArgs);
 
@@ -54,6 +60,27 @@ async function main(): Promise<void> {
 		);
 		process.exit(0);
 	}
+
+	// Resolve config
+	const configBuilder = new ConfigBuilder()
+		.addProvider(new ToolchainProvider(fs))
+		.addProvider(new FileConfigProvider(fs))
+		.addProvider(new CliConfigProvider(cliArgs));
+
+	const configResult = await configBuilder.build(fs, {
+		cwd,
+		configPath: cliArgs.config,
+	});
+
+	if (configResult.isErr()) {
+		logger.error(`Configuration Error: ${configResult.error.message}`);
+		process.exit(1);
+	}
+
+	const config: ResolvedConfig = configResult.unwrap();
+	logger.debug(
+		`Configuration successfully resolved: ${JSON.stringify(config)}`
+	);
 
 	// TODO implement other commands
 

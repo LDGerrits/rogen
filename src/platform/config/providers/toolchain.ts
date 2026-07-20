@@ -1,16 +1,18 @@
 import path from "path";
 import { IFileSystem } from "../../fs/file-system.js";
-import { ConfigProvider, WorkspaceContext } from "../validate.js";
 import { ok, Result } from "../../../base/result.js";
 import { UserConfig } from "../config.js";
 import { RojoTree, RojoNode } from "../../rojo/tree.js";
+import { IConfigProvider, WorkspaceContext } from "./provider.js";
 import { detectToolchain } from "../toolchain.js";
 
-export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
-	return async (
-		ctx: WorkspaceContext
-	): Promise<Result<UserConfig, Error>> => {
-		const toolchain = await detectToolchain(ctx.cwd, fs);
+export class ToolchainProvider implements IConfigProvider {
+	readonly name = "ToolchainProvider";
+
+	constructor(private readonly fs: IFileSystem) {}
+
+	async read(ctx: WorkspaceContext): Promise<Result<UserConfig, Error>> {
+		const toolchain = await detectToolchain(ctx.cwd, this.fs);
 
 		const tree: RojoNode = { $className: "DataModel" };
 		const template: RojoTree = {
@@ -25,13 +27,13 @@ export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 				"**/tsconfig.json"
 			);
 
-			const hasRbxts = await fs.exists(
+			const hasRbxts = await this.fs.exists(
 				path.join(ctx.cwd, "node_modules", "@rbxts")
 			);
-			const hasFlamework = await fs.exists(
+			const hasFlamework = await this.fs.exists(
 				path.join(ctx.cwd, "node_modules", "@flamework")
 			);
-			const hasRbxtsJs = await fs.exists(
+			const hasRbxtsJs = await this.fs.exists(
 				path.join(ctx.cwd, "node_modules", "@rbxts-js")
 			);
 
@@ -61,13 +63,13 @@ export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 		}
 
 		if (toolchain.isWally) {
-			if (await fs.exists(path.join(ctx.cwd, "Packages"))) {
+			if (await this.fs.exists(path.join(ctx.cwd, "Packages"))) {
 				tree.ReplicatedStorage = {
 					...((tree.ReplicatedStorage as RojoNode) || {}),
 					Packages: { $path: "Packages" },
 				};
 			}
-			if (await fs.exists(path.join(ctx.cwd, "ServerPackages"))) {
+			if (await this.fs.exists(path.join(ctx.cwd, "ServerPackages"))) {
 				tree.ServerScriptService = {
 					...((tree.ServerScriptService as RojoNode) || {}),
 					ServerPackages: { $path: "ServerPackages" },
@@ -76,13 +78,17 @@ export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 		}
 
 		if (toolchain.isPesde) {
-			if (await fs.exists(path.join(ctx.cwd, "roblox_packages"))) {
+			if (await this.fs.exists(path.join(ctx.cwd, "roblox_packages"))) {
 				tree.ReplicatedStorage = {
 					...((tree.ReplicatedStorage as RojoNode) || {}),
 					Packages: { $path: "roblox_packages" },
 				};
 			}
-			if (await fs.exists(path.join(ctx.cwd, "roblox_server_packages"))) {
+			if (
+				await this.fs.exists(
+					path.join(ctx.cwd, "roblox_server_packages")
+				)
+			) {
 				tree.ServerScriptService = {
 					...((tree.ServerScriptService as RojoNode) || {}),
 					ServerPackages: { $path: "roblox_server_packages" },
@@ -91,5 +97,5 @@ export const createToolchainProvider = (fs: IFileSystem): ConfigProvider => {
 		}
 
 		return ok({ template });
-	};
-};
+	}
+}
