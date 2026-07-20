@@ -1,5 +1,5 @@
 import path from "path";
-import { IFileSystem } from "../fs/file-system.js";
+import { FileSystemService } from "../fs/file-system-service.js";
 
 export interface ToolchainProfile {
 	isTs: boolean;
@@ -10,15 +10,15 @@ export interface ToolchainProfile {
 
 export async function detectToolchain(
 	cwd: string,
-	fs: IFileSystem
+	fileSystemService: FileSystemService
 ): Promise<ToolchainProfile> {
 	const [isTs, isWally, isPesde, hasDarkluaJson, hasDarkluaJson5] =
 		await Promise.all([
-			fs.exists(path.join(cwd, "tsconfig.json")),
-			fs.exists(path.join(cwd, "wally.toml")),
-			fs.exists(path.join(cwd, "pesde.toml")),
-			fs.exists(path.join(cwd, ".darklua.json")),
-			fs.exists(path.join(cwd, ".darklua.json5")),
+			fileSystemService.exists(path.join(cwd, "tsconfig.json")),
+			fileSystemService.exists(path.join(cwd, "wally.toml")),
+			fileSystemService.exists(path.join(cwd, "pesde.toml")),
+			fileSystemService.exists(path.join(cwd, ".darklua.json")),
+			fileSystemService.exists(path.join(cwd, ".darklua.json5")),
 		]);
 
 	return {

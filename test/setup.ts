@@ -1,4 +1,5 @@
-import { ConsoleLogger, LogLevel } from "../src/platform/log/logger.js";
+import { ConsoleLogService } from "../src/platform/log/console-log-service.js";
+import { LogLevel } from "../src/platform/log/log-service.js";
 
-export const logger = new ConsoleLogger();
-logger.setLevel(LogLevel.Off);
+export const logService = new ConsoleLogService();
+logService.setLevel(LogLevel.Off);

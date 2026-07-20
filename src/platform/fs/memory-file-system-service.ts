@@ -1,7 +1,7 @@
 import * as path from "path";
-import { FileType, IFileSystem } from "./file-system.js";
+import { FileType, FileSystemService } from "./file-system-service.js";
 
-export class MemoryFileSystem implements IFileSystem {
+export class MemoryFileSystemService implements FileSystemService {
 	files = new Map<string, string>();
 
 	private normalize(p: string) {

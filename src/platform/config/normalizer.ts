@@ -1,17 +1,19 @@
-import { IFileSystem } from "../fs/file-system.js";
+import { FileSystemService } from "../fs/file-system-service.js";
 import { err, ok, Result } from "../../base/result.js";
 import { RojoTree } from "../rojo/tree.js";
 import { UserConfig } from "./config.js";
 
 export class ConfigNormalizer {
-	constructor(private readonly fs: IFileSystem) {}
+	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	async normalize(
 		mergedConfig: UserConfig
 	): Promise<Result<Record<string, unknown>, Error>> {
 		// Template must be an object
 		if (typeof mergedConfig.template === "string") {
-			const templateExists = await this.fs.exists(mergedConfig.template);
+			const templateExists = await this.fileSystemService.exists(
+				mergedConfig.template
+			);
 
 			if (!templateExists) {
 				return err(
@@ -22,7 +24,7 @@ export class ConfigNormalizer {
 			}
 
 			try {
-				const templateContent = await this.fs.readFile(
+				const templateContent = await this.fileSystemService.readFile(
 					mergedConfig.template
 				);
 				mergedConfig.template = JSON.parse(templateContent) as RojoTree;

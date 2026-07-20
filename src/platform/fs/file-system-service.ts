@@ -4,7 +4,7 @@ export enum FileType {
 	Directory = 2,
 }
 
-export interface IFileSystem {
+export interface FileSystemService {
 	exists(filePath: string): Promise<boolean>;
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;

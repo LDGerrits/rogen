@@ -1,7 +1,7 @@
-import { ILogger } from "../platform/log/logger.js";
+import { LogService } from "../platform/log/log-service.js";
 
-export function runHelpCommand(logger: ILogger): void {
-	logger.info(`
+export function runHelpCommand(logService: LogService): void {
+	logService.info(`
 Rogen - A tool for feature-based folder structures with Rojo
 
 Usage:

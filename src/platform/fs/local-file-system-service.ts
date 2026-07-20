@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
-import { FileType, IFileSystem } from "./file-system.js";
+import { FileType, FileSystemService } from "./file-system-service.js";
 
-export class LocalFileSystem implements IFileSystem {
+export class LocalFileSystemService implements FileSystemService {
 	async exists(filePath: string): Promise<boolean> {
 		try {
 			await fs.promises.access(filePath);

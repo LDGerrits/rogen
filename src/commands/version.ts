@@ -1,7 +1,7 @@
 import { getVersion } from "../platform/cli/version.js";
-import { ILogger } from "../platform/log/logger.js";
+import { LogService } from "../platform/log/log-service.js";
 
-export function runVersionCommand(logger: ILogger): void {
+export function runVersionCommand(logService: LogService): void {
 	const version = getVersion();
-	logger.info(`rogen ${version}`);
+	logService.info(`rogen ${version}`);
 }

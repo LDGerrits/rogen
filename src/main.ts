@@ -1,9 +1,9 @@
-import { LocalFileSystem } from "./platform/fs/local-file-system.js";
+import { LocalFileSystemService } from "./platform/fs/local-file-system-service.js";
 import { runInitCommand } from "./commands/init.js";
 import { parseArgs } from "./platform/cli/args.js";
 import { runHelpCommand } from "./commands/help.js";
 import { runVersionCommand } from "./commands/version.js";
-import { ConsoleLogger, LogLevel } from "./platform/log/logger.js";
+import { LogLevel } from "./platform/log/log-service.js";
 import { getRawArgs, getCwd } from "./base/process.js";
 import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
@@ -15,9 +15,10 @@ import { EnforceTypeRule } from "./platform/config/rules/enforce-type.js";
 import { UnknownKeyRule } from "./platform/config/rules/unknown-key.js";
 import { ConfigNormalizer } from "./platform/config/normalizer.js";
 import { ConfigService } from "./platform/config/config-service.js";
+import { ConsoleLogService } from "./platform/log/console-log-service.js";
 
-const fs = new LocalFileSystem();
-const logger = new ConsoleLogger();
+const fileSystemService = new LocalFileSystemService();
+const logService = new ConsoleLogService();
 
 async function main(): Promise<void> {
 	// Validate args
@@ -25,42 +26,42 @@ async function main(): Promise<void> {
 	const argsResult = parseArgs(rawArgs);
 
 	if (argsResult.isErr()) {
-		logger.error(argsResult.error.message);
+		logService.error(argsResult.error.message);
 		process.exit(1);
 	}
 
 	const cliArgs = argsResult.unwrap();
 
-	// Set global logger level
+	// Set global logService level
 	if (cliArgs.quiet) {
-		logger.setLevel(LogLevel.Off);
+		logService.setLevel(LogLevel.Off);
 	} else if (cliArgs.trace) {
-		logger.setLevel(LogLevel.Trace);
+		logService.setLevel(LogLevel.Trace);
 	} else if (cliArgs.verbose) {
-		logger.setLevel(LogLevel.Debug);
+		logService.setLevel(LogLevel.Debug);
 	}
 
 	if (cliArgs.help) {
-		runHelpCommand(logger);
+		runHelpCommand(logService);
 		process.exit(0);
 	}
 
 	if (cliArgs.version) {
-		runVersionCommand(logger);
+		runVersionCommand(logService);
 		process.exit(0);
 	}
 
 	const cwd = getCwd();
 
 	if (cliArgs.init) {
-		const initResult = await runInitCommand(cwd, fs);
+		const initResult = await runInitCommand(cwd, fileSystemService);
 
 		if (initResult.isErr()) {
-			logger.error(initResult.error.message);
+			logService.error(initResult.error.message);
 			process.exit(1);
 		}
 
-		logger.info(
+		logService.info(
 			"Successfully created .rogen.json in the current directory."
 		);
 		process.exit(0);
@@ -73,11 +74,11 @@ async function main(): Promise<void> {
 		.addRule(new EnforceTypeRule())
 		.addRule(new UnknownKeyRule());
 
-	const normalizer = new ConfigNormalizer(fs);
+	const normalizer = new ConfigNormalizer(fileSystemService);
 
 	const configService = new ConfigService(normalizer, validator)
-		.addProvider(new ToolchainProvider(fs))
-		.addProvider(new FileConfigProvider(fs))
+		.addProvider(new ToolchainProvider(fileSystemService))
+		.addProvider(new FileConfigProvider(fileSystemService))
 		.addProvider(new CliConfigProvider(cliArgs));
 
 	const configResult = await configService.load({
@@ -86,12 +87,12 @@ async function main(): Promise<void> {
 	});
 
 	if (configResult.isErr()) {
-		logger.error(`Config Error: ${configResult.error.message}`);
+		logService.error(`Config Error: ${configResult.error.message}`);
 		process.exit(1);
 	}
 
 	const config = configResult.unwrap();
-	logger.debug(`Config successfully resolved: ${JSON.stringify(config)}`);
+	logService.debug(`Config successfully resolved: ${JSON.stringify(config)}`);
 
 	// TODO implement other commands
 
@@ -100,7 +101,7 @@ async function main(): Promise<void> {
 
 export default function run(): void {
 	main().catch((error) => {
-		logger.error(error);
+		logService.error(error);
 		process.exit(1);
 	});
 }

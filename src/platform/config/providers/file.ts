@@ -1,5 +1,5 @@
 import path from "path";
-import { IFileSystem } from "../../fs/file-system.js";
+import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
 import { UserConfig } from "../config.js";
 import { IConfigProvider, WorkspaceContext } from "./provider.js";
@@ -7,12 +7,12 @@ import { IConfigProvider, WorkspaceContext } from "./provider.js";
 export class FileConfigProvider implements IConfigProvider {
 	readonly name = "FileProvider";
 
-	constructor(private readonly fs: IFileSystem) {}
+	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	async read(ctx: WorkspaceContext): Promise<Result<UserConfig, Error>> {
 		const configPath = ctx.configPath || path.join(ctx.cwd, ".rogen.json");
 
-		const exists = await this.fs.exists(configPath);
+		const exists = await this.fileSystemService.exists(configPath);
 
 		if (ctx.configPath && !exists) {
 			return err(
@@ -25,7 +25,8 @@ export class FileConfigProvider implements IConfigProvider {
 		}
 
 		try {
-			const rawContent = await this.fs.readFile(configPath);
+			const rawContent =
+				await this.fileSystemService.readFile(configPath);
 			const parsed = JSON.parse(rawContent) as UserConfig;
 
 			if (typeof parsed.template === "string") {
