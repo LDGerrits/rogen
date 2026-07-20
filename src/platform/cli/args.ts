@@ -1,26 +1,26 @@
 import { parseArgs as nodeParseArgs } from "util";
+import { z } from "zod";
 import { Result, ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 
-export interface CliArgs {
-	// Command
-	help?: boolean;
-	version?: boolean;
-	init?: boolean;
-	watch?: boolean;
-	// Overrides
-	config?: string;
-	mode?: string[];
-	source?: string[];
-	env?: string[];
-	template?: string;
-	build?: string;
-	output?: string;
-	// Log levels
-	verbose?: boolean;
-	quiet?: boolean;
-	trace?: boolean;
-}
+export const CliArgsSchema = z.object({
+	help: z.boolean().optional(),
+	version: z.boolean().optional(),
+	init: z.boolean().optional(),
+	watch: z.boolean().optional(),
+	config: z.string().optional(),
+	mode: z.array(z.string()).optional(),
+	source: z.array(z.string()).optional(),
+	env: z.array(z.string()).optional(),
+	template: z.string().optional(),
+	build: z.string().optional(),
+	output: z.string().optional(),
+	verbose: z.boolean().optional(),
+	quiet: z.boolean().optional(),
+	trace: z.boolean().optional(),
+});
+
+export type CliArgs = z.infer<typeof CliArgsSchema>;
 
 export function parseArgs(args: string[]): Result<CliArgs, Error> {
 	const options = {
@@ -48,19 +48,17 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 			strict: true,
 		});
 
-		const parsedArgs = values as CliArgs;
-
 		// Subcommand positional mappings
 		if (positionals.length > 0) {
 			const subcommand = positionals[0].toLowerCase();
 			if (subcommand === "init") {
-				parsedArgs.init = true;
+				values.init = true;
 			} else if (subcommand === "watch") {
-				parsedArgs.watch = true;
+				values.watch = true;
 			} else if (subcommand === "help") {
-				parsedArgs.help = true;
+				values.help = true;
 			} else if (subcommand === "version") {
-				parsedArgs.version = true;
+				values.version = true;
 			} else {
 				return err(
 					new Error(
@@ -69,6 +67,8 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 				);
 			}
 		}
+
+		const parsedArgs = CliArgsSchema.parse(values);
 
 		return ok(parsedArgs);
 	} catch (error) {
