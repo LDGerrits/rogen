@@ -5,7 +5,7 @@ export interface WorkspaceContext {
 	configPath?: string;
 }
 
-export interface IConfigProvider {
+export interface ConfigProvider {
 	readonly name: string;
 	read(
 		ctx: WorkspaceContext

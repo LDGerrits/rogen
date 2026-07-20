@@ -2,15 +2,15 @@ import { mergeDeep } from "../../base/object.js";
 import { err, ok, Result } from "../../base/result.js";
 import { ConfigSchema, ResolvedConfig } from "./schema.js";
 import { ConfigResolver } from "./resolver.js";
-import { IConfigProvider, WorkspaceContext } from "./providers/provider.js";
+import { ConfigProvider, WorkspaceContext } from "./providers/provider.js";
 import { DEFAULT_CONFIG } from "./config.js";
 
 export class ConfigService {
-	private providers: IConfigProvider[] = [];
+	private providers: ConfigProvider[] = [];
 
 	constructor(private readonly resolver: ConfigResolver) {}
 
-	addProvider(provider: IConfigProvider): this {
+	addProvider(provider: ConfigProvider): this {
 		this.providers.push(provider);
 		return this;
 	}

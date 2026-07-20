@@ -1,10 +1,10 @@
 import path from "path";
 import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
-import { IConfigProvider, WorkspaceContext } from "./provider.js";
+import { ConfigProvider, WorkspaceContext } from "./provider.js";
 import { ErrorUtils } from "../../../base/errors.js";
 
-export class FileConfigProvider implements IConfigProvider {
+export class FileConfigProvider implements ConfigProvider {
 	readonly name = "FileProvider";
 
 	constructor(private readonly fileSystemService: FileSystemService) {}

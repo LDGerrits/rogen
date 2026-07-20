@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import { ok, err, ResultError } from "../../../base/result.js";
 import { ConfigResolver } from "../resolver.js";
-import { IConfigProvider } from "../providers/provider.js";
+import { ConfigProvider } from "../providers/provider.js";
 import { ConfigService } from "../config-service.js";
 
 describe("ConfigService", () => {
@@ -12,12 +12,12 @@ describe("ConfigService", () => {
 			),
 		} as unknown as ConfigResolver;
 
-		const provider1: IConfigProvider = {
+		const provider1: ConfigProvider = {
 			name: "Provider1",
 			read: async () => ok({ source: ["src1"], casing: "PascalCase" }),
 		};
 
-		const provider2: IConfigProvider = {
+		const provider2: ConfigProvider = {
 			name: "Provider2",
 			read: async () => ok({ source: ["src2"], verbatim: true }),
 		};
@@ -41,7 +41,7 @@ describe("ConfigService", () => {
 			resolveDependencies: jest.fn(),
 		} as unknown as ConfigResolver;
 
-		const failingProvider: IConfigProvider = {
+		const failingProvider: ConfigProvider = {
 			name: "FailingProvider",
 			read: async () => err(new Error("Disk read failed")),
 		};
@@ -66,7 +66,7 @@ describe("ConfigService", () => {
 			),
 		} as unknown as ConfigResolver;
 
-		const badProvider: IConfigProvider = {
+		const badProvider: ConfigProvider = {
 			name: "BadProvider",
 			read: async () => ok({ verbatim: "yes-please" }), // TS is perfectly happy with this now
 		};

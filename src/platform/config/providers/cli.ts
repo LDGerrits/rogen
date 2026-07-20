@@ -1,10 +1,10 @@
 import path from "path";
 import { ok, Result } from "../../../base/result.js";
 import { CliArgs } from "../../cli/args.js";
-import { IConfigProvider, WorkspaceContext } from "./provider.js";
+import { ConfigProvider, WorkspaceContext } from "./provider.js";
 import { Mode } from "../schema.js";
 
-export class CliConfigProvider implements IConfigProvider {
+export class CliConfigProvider implements ConfigProvider {
 	readonly name = "CliProvider";
 
 	constructor(private readonly cliArgs: CliArgs) {}
