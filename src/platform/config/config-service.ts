@@ -2,7 +2,7 @@ import { mergeDeep } from "../../base/object.js";
 import { err, ok, Result } from "../../base/result.js";
 import { ConfigSchema, ResolvedConfig } from "./schema.js";
 import { ConfigResolver } from "./resolver.js";
-import { ConfigProvider, WorkspaceContext } from "./providers/provider.js";
+import { ConfigProvider } from "./providers/provider.js";
 import { DEFAULT_CONFIG } from "./config.js";
 
 export class ConfigService {
@@ -15,13 +15,13 @@ export class ConfigService {
 		return this;
 	}
 
-	async load(ctx: WorkspaceContext): Promise<Result<ResolvedConfig, Error>> {
+	async resolve(): Promise<Result<ResolvedConfig, Error>> {
 		let mergedRawConfig: Record<string, unknown> =
 			structuredClone(DEFAULT_CONFIG);
 
 		// Sequential merge
 		for (const provider of this.providers) {
-			const result = await provider.read(ctx);
+			const result = await provider.load();
 
 			if (result.isErr()) {
 				return err(

@@ -1,23 +1,24 @@
 import path from "path";
 import { ok, Result } from "../../../base/result.js";
 import { CliArgs } from "../../cli/args.js";
-import { ConfigProvider, WorkspaceContext } from "./provider.js";
+import { ConfigProvider } from "./provider.js";
 import { Mode } from "../schema.js";
 
 export class CliConfigProvider implements ConfigProvider {
 	readonly name = "CliProvider";
 
-	constructor(private readonly cliArgs: CliArgs) {}
+	constructor(
+		private readonly cwd: string,
+		private readonly cliArgs: CliArgs
+	) {}
 
-	async read(
-		ctx: WorkspaceContext
-	): Promise<Result<Record<string, unknown>, Error>> {
+	async load(): Promise<Result<Record<string, unknown>, Error>> {
 		const overrides: Record<string, unknown> = {};
 
 		if (this.cliArgs.source) overrides.source = this.cliArgs.source;
 
 		if (this.cliArgs.template) {
-			overrides.template = path.resolve(ctx.cwd, this.cliArgs.template);
+			overrides.template = path.resolve(this.cwd, this.cliArgs.template);
 		}
 
 		if (this.cliArgs.build || this.cliArgs.output || this.cliArgs.env) {

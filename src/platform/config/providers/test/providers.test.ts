@@ -7,9 +7,9 @@ describe("Config Providers", () => {
 	describe("CliConfigProvider", () => {
 		it("should map CLI arguments to a raw config object", async () => {
 			const cliArgs = { source: ["cli-src"], build: "cli-out" };
-			const provider = new CliConfigProvider(cliArgs);
+			const provider = new CliConfigProvider("/mock", cliArgs);
 
-			const result = await provider.read({ cwd: "/mock" });
+			const result = await provider.load();
 
 			expect(result.isOk()).toBe(true);
 
@@ -41,11 +41,13 @@ describe("Config Providers", () => {
 				JSON.stringify({ casing: "PascalCase" })
 			);
 
-			const provider = new FileConfigProvider(mockFs);
-			const result = await provider.read({
-				cwd: "/mock",
-				configPath: "/mock/.rogen.json",
-			});
+			const provider = new FileConfigProvider(
+				"/mock",
+				mockFs,
+				"/mock/.rogen.json"
+			);
+
+			const result = await provider.load();
 
 			expect(result.isOk()).toBe(true);
 			expect(result.unwrap().casing).toBe("PascalCase");
@@ -54,8 +56,8 @@ describe("Config Providers", () => {
 		it("should yield an empty object if no config file exists and none was explicitly requested", async () => {
 			mockFs.exists.mockResolvedValue(false);
 
-			const provider = new FileConfigProvider(mockFs);
-			const result = await provider.read({ cwd: "/mock" });
+			const provider = new FileConfigProvider("/mock", mockFs);
+			const result = await provider.load();
 
 			expect(result.isOk()).toBe(true);
 			expect(result.unwrap()).toEqual({});
@@ -64,11 +66,12 @@ describe("Config Providers", () => {
 		it("should return an error if an explicitly requested config file does not exist", async () => {
 			mockFs.exists.mockResolvedValue(false);
 
-			const provider = new FileConfigProvider(mockFs);
-			const result = await provider.read({
-				cwd: "/mock",
-				configPath: "required.json",
-			});
+			const provider = new FileConfigProvider(
+				"/mock",
+				mockFs,
+				"required.json"
+			);
+			const result = await provider.load();
 
 			expect(result.isErr()).toBe(true);
 		});

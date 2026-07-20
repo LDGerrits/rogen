@@ -14,19 +14,19 @@ describe("ConfigService", () => {
 
 		const provider1: ConfigProvider = {
 			name: "Provider1",
-			read: async () => ok({ source: ["src1"], casing: "PascalCase" }),
+			load: async () => ok({ source: ["src1"], casing: "PascalCase" }),
 		};
 
 		const provider2: ConfigProvider = {
 			name: "Provider2",
-			read: async () => ok({ source: ["src2"], verbatim: true }),
+			load: async () => ok({ source: ["src2"], verbatim: true }),
 		};
 
 		const service = new ConfigService(mockResolver)
 			.addProvider(provider1)
 			.addProvider(provider2);
 
-		const result = await service.load({ cwd: "/mock" });
+		const result = await service.resolve();
 
 		expect(result.isOk()).toBe(true);
 
@@ -43,18 +43,18 @@ describe("ConfigService", () => {
 
 		const failingProvider: ConfigProvider = {
 			name: "FailingProvider",
-			read: async () => err(new Error("Disk read failed")),
+			load: async () => err(new Error("Disk load failed")),
 		};
 
 		const service = new ConfigService(mockResolver).addProvider(
 			failingProvider
 		);
 
-		const result = await service.load({ cwd: "/mock" });
+		const result = await service.resolve();
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
-			"[FailingProvider] failed: Disk read failed"
+			"[FailingProvider] failed: Disk load failed"
 		);
 		expect(mockResolver.resolveDependencies).not.toHaveBeenCalled();
 	});
@@ -68,14 +68,14 @@ describe("ConfigService", () => {
 
 		const badProvider: ConfigProvider = {
 			name: "BadProvider",
-			read: async () => ok({ verbatim: "yes-please" }), // TS is perfectly happy with this now
+			load: async () => ok({ verbatim: "yes-please" }),
 		};
 
 		const service = new ConfigService(mockResolver).addProvider(
 			badProvider
 		);
 
-		const result = await service.load({ cwd: "/mock" });
+		const result = await service.resolve();
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(

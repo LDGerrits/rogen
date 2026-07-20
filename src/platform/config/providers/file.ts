@@ -1,39 +1,39 @@
 import path from "path";
 import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
-import { ConfigProvider, WorkspaceContext } from "./provider.js";
 import { ErrorUtils } from "../../../base/errors.js";
+import { ConfigProvider } from "./provider.js";
 
 export class FileConfigProvider implements ConfigProvider {
 	readonly name = "FileProvider";
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		private readonly cwd: string,
+		private readonly fileSystemService: FileSystemService,
+		private readonly configPath?: string
+	) {}
 
-	async read(
-		ctx: WorkspaceContext
-	): Promise<Result<Record<string, unknown>, Error>> {
-		const configPath = ctx.configPath || path.join(ctx.cwd, ".rogen.json");
+	async load(): Promise<Result<Record<string, unknown>, Error>> {
+		const targetPath =
+			this.configPath || path.join(this.cwd, ".rogen.json");
+		const exists = await this.fileSystemService.exists(targetPath);
 
-		const exists = await this.fileSystemService.exists(configPath);
-
-		if (ctx.configPath && !exists) {
+		if (this.configPath && !exists) {
 			return err(
-				new Error(`Specified config file not found: ${configPath}`)
+				new Error(`Specified config file not found: ${targetPath}`)
 			);
 		}
 
-		if (!exists) {
-			return ok({});
-		}
+		if (!exists) return ok({});
 
 		try {
 			const rawContent =
-				await this.fileSystemService.readFile(configPath);
+				await this.fileSystemService.readFile(targetPath);
 			const parsed = JSON.parse(rawContent) as Record<string, unknown>;
 
 			if (typeof parsed.template === "string") {
 				parsed.template = path.resolve(
-					path.dirname(configPath),
+					path.dirname(targetPath),
 					parsed.template
 				);
 			}
