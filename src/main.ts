@@ -11,9 +11,10 @@ import { ConsoleLogService } from "./platform/log/console-log-service.js";
 import { ConfigResolver } from "./platform/config/resolver.js";
 import { VersionCommand } from "./commands/version/version.js";
 import { HelpCommand } from "./commands/help/help.js";
+import { WorkspaceService } from "./platform/workspace/workspace-service.js";
 
-const fileSystemService = new LocalFileSystemService();
 const logService = new ConsoleLogService();
+const fileSystemService = new LocalFileSystemService();
 
 async function main(): Promise<void> {
 	// Validate args
@@ -36,6 +37,10 @@ async function main(): Promise<void> {
 		logService.setLevel(LogLevel.Debug);
 	}
 
+	const cwd = getCwd();
+
+	const workspaceService = new WorkspaceService(cwd, fileSystemService);
+
 	if (cliArgs.help) {
 		const command = new HelpCommand(logService);
 		command.execute();
@@ -48,10 +53,12 @@ async function main(): Promise<void> {
 		process.exit(0);
 	}
 
-	const cwd = getCwd();
-
 	if (cliArgs.init) {
-		const command = new InitCommand(cwd, fileSystemService);
+		const command = new InitCommand(
+			cwd,
+			fileSystemService,
+			workspaceService
+		);
 		const result = await command.execute();
 
 		if (result.isErr()) {
@@ -69,7 +76,7 @@ async function main(): Promise<void> {
 	const resolver = new ConfigResolver(fileSystemService);
 
 	const configService = new ConfigService(resolver)
-		.addProvider(new ToolchainProvider(fileSystemService))
+		.addProvider(new ToolchainProvider(workspaceService))
 		.addProvider(new FileConfigProvider(fileSystemService))
 		.addProvider(new CliConfigProvider(cliArgs));
 

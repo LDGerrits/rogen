@@ -1,7 +1,8 @@
 import { jest } from "@jest/globals";
+import { WorkspaceService } from "../../../platform/workspace/workspace-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
-import { InitCommand } from "../init.js";
 import { ResultError } from "../../../base/result.js";
+import { InitCommand } from "../init.js";
 
 describe("InitCommand", () => {
 	let mockFs: jest.Mocked<FileSystemService>;
@@ -18,7 +19,9 @@ describe("InitCommand", () => {
 			String(p).endsWith(".rogen.json")
 		);
 
-		const command = new InitCommand("/mock/cwd", mockFs);
+		const cwd = "/mock/cwd";
+		const workspaceService = new WorkspaceService(cwd, mockFs);
+		const command = new InitCommand(cwd, mockFs, workspaceService);
 		const result = await command.execute();
 
 		expect(result.isErr()).toBe(true);
@@ -31,7 +34,9 @@ describe("InitCommand", () => {
 	it("should generate a clean Luau config when no toolchains are detected", async () => {
 		mockFs.exists.mockResolvedValue(false);
 
-		const command = new InitCommand("/mock/my-game", mockFs);
+		const cwd = "/mock/my-game";
+		const workspaceService = new WorkspaceService(cwd, mockFs);
+		const command = new InitCommand(cwd, mockFs, workspaceService);
 		const result = await command.execute();
 
 		expect(result.isOk()).toBe(true);
@@ -64,7 +69,9 @@ describe("InitCommand", () => {
 			return false;
 		});
 
-		const command = new InitCommand("/mock/ts-game", mockFs);
+		const cwd = "/mock/ts-game";
+		const workspaceService = new WorkspaceService(cwd, mockFs);
+		const command = new InitCommand(cwd, mockFs, workspaceService);
 		const result = await command.execute();
 
 		expect(result.isOk()).toBe(true);
@@ -91,7 +98,9 @@ describe("InitCommand", () => {
 		mockFs.exists.mockResolvedValue(false);
 		mockFs.writeFile.mockRejectedValue(new Error("Permission denied"));
 
-		const command = new InitCommand("/mock/cwd", mockFs);
+		const cwd = "/mock/cwd";
+		const workspaceService = new WorkspaceService(cwd, mockFs);
+		const command = new InitCommand(cwd, mockFs, workspaceService);
 		const result = await command.execute();
 
 		expect(result.isErr()).toBe(true);

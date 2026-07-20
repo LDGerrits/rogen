@@ -3,16 +3,16 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
 import { DEFAULT_CONFIG } from "../../platform/config/config.js";
-import { detectToolchain } from "../../platform/config/toolchain.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { RojoNode } from "../../platform/rojo/tree.js";
 import path from "path";
-import { injectWorkspacePackages } from "../../platform/rojo/packages.js";
+import { WorkspaceService } from "../../platform/workspace/workspace-service.js";
 
 export class InitCommand implements Command {
 	constructor(
 		private readonly cwd: string,
-		private readonly fileSystemService: FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		private readonly workspaceService: WorkspaceService
 	) {}
 
 	async execute(): Promise<Result<void, Error>> {
@@ -26,18 +26,10 @@ export class InitCommand implements Command {
 			);
 		}
 
-		const toolchain = await detectToolchain(
-			this.cwd,
-			this.fileSystemService
-		);
+		const toolchain = await this.workspaceService.detectToolchain();
 		const baseTreeNode: RojoNode = { $className: "DataModel" };
 
-		await injectWorkspacePackages(
-			baseTreeNode,
-			toolchain,
-			this.cwd,
-			this.fileSystemService
-		);
+		await this.workspaceService.injectPackages(baseTreeNode, toolchain);
 
 		const smartConfig = mergeDeep<Record<string, unknown>>(DEFAULT_CONFIG, {
 			template: {

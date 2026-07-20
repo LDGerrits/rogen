@@ -1,21 +1,16 @@
-import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, Result } from "../../../base/result.js";
-import { IConfigProvider, WorkspaceContext } from "./provider.js";
-import { detectToolchain } from "../toolchain.js";
+import { ConfigProvider, WorkspaceContext } from "./provider.js";
+import { WorkspaceService } from "../../workspace/workspace-service.js";
 
-export class ToolchainProvider implements IConfigProvider {
+export class ToolchainProvider implements ConfigProvider {
 	readonly name = "ToolchainProvider";
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly workspaceService: WorkspaceService) {}
 
 	async read(
-		ctx: WorkspaceContext
+		_ctx: WorkspaceContext
 	): Promise<Result<Record<string, unknown>, Error>> {
-		const toolchain = await detectToolchain(
-			ctx.cwd,
-			this.fileSystemService
-		);
-
+		const toolchain = await this.workspaceService.detectToolchain();
 		return ok({ toolchain });
 	}
 }
