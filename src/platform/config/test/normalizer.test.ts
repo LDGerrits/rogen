@@ -1,16 +1,17 @@
 import { jest } from "@jest/globals";
-import { IFileSystem } from "../../fs/file-system.js";
+import { FileSystemService } from "../../fs/file-system-service.js";
 import { ConfigNormalizer } from "../normalizer.js";
+import { RojoTree } from "../../rojo/tree.js";
 
 describe("ConfigNormalizer", () => {
-	let mockFs: jest.Mocked<IFileSystem>;
+	let mockFs: jest.Mocked<FileSystemService>;
 	let normalizer: ConfigNormalizer;
 
 	beforeEach(() => {
 		mockFs = {
 			exists: jest.fn(),
 			readFile: jest.fn(),
-		} as unknown as jest.Mocked<IFileSystem>;
+		} as unknown as jest.Mocked<FileSystemService>;
 
 		normalizer = new ConfigNormalizer(mockFs);
 	});
@@ -36,10 +37,9 @@ describe("ConfigNormalizer", () => {
 		});
 
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			const config = result.unwrap();
-			expect((config.template as any).name).toBe("resolved-tree");
-		}
+
+		const config = result.unwrap();
+		expect((config.template as RojoTree).name).toBe("resolved-tree");
 	});
 
 	it("should return an error if a string template file does not exist", async () => {

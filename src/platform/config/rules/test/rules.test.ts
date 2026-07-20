@@ -14,10 +14,12 @@ describe("Config Rules", () => {
 
 		it("should return an error instructing the user to update their config", () => {
 			const result = rule.validate("keepRouteNames", true);
-			expect(result.isErr()).toBe(true);
-			if (result.isErr()) {
-				expect(result.error.message).toContain('renamed to "verbatim"');
+
+			if (!result.isErr()) {
+				throw new Error("Expected validation to return an error.");
 			}
+
+			expect(result.error.message).toContain('renamed to "verbatim"');
 		});
 	});
 
@@ -40,10 +42,12 @@ describe("Config Rules", () => {
 
 		it("should return an error for a broken custom mode", () => {
 			const result = rule.validate("lute", { output: "a.json" });
-			expect(result.isErr()).toBe(true);
-			if (result.isErr()) {
-				expect(result.error.message).toContain("missing a valid");
+
+			if (!result.isErr()) {
+				throw new Error("Expected validation to return an error.");
 			}
+
+			expect(result.error.message).toContain("missing a valid");
 		});
 	});
 
@@ -83,12 +87,12 @@ describe("Config Rules", () => {
 
 		it("should suggest typos", () => {
 			const result = rule.validate("templat", null);
-			expect(result.isErr()).toBe(true);
-			if (result.isErr()) {
-				expect(result.error.message).toContain(
-					'Did you mean "template"?'
-				);
+
+			if (!result.isErr()) {
+				throw new Error("Expected validation to return an error.");
 			}
+
+			expect(result.error.message).toContain('Did you mean "template"?');
 		});
 	});
 });

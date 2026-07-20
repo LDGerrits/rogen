@@ -32,13 +32,10 @@ describe("ConfigService", () => {
 		const result = await service.load({ cwd: "/mock" });
 
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			const finalConfig = result.unwrap();
 
-			expect(finalConfig.source).toEqual(["src2"]);
-
-			expect(finalConfig.casing).toBe("pascal");
-			expect(finalConfig.verbatim).toBe(true);
-		}
+		const finalConfig = result.unwrap();
+		expect(finalConfig.source).toEqual(["src2"]);
+		expect(finalConfig.casing).toBe("pascal");
+		expect(finalConfig.verbatim).toBe(true);
 	});
 });

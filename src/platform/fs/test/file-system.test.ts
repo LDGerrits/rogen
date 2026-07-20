@@ -1,13 +1,13 @@
 import { jest } from "@jest/globals";
-import { FileType } from "../file-system.js";
-import { MemoryFileSystem } from "../memory-file-system.js";
+import { FileType } from "../file-system-service.js";
+import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { walkDirectory } from "../walk.js";
 
-describe("FileSystem: walkDirectory", () => {
-	let memFs: MemoryFileSystem;
+describe("FileSystemService: walkDirectory", () => {
+	let memFs: MemoryFileSystemService;
 
 	beforeEach(() => {
-		memFs = new MemoryFileSystem();
+		memFs = new MemoryFileSystemService();
 	});
 
 	it("should map a directory tree recursively and structure the listings map", async () => {
