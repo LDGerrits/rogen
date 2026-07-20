@@ -1,21 +1,26 @@
-import { LocalFileSystem } from "./platform/fs/file-system.js";
+import { LocalFileSystem } from "./platform/fs/local-file-system.js";
 import { runInitCommand } from "./commands/init.js";
 import { parseArgs } from "./platform/cli/args.js";
 import { runHelpCommand } from "./commands/help.js";
 import { runVersionCommand } from "./commands/version.js";
 import { ConsoleLogger, LogLevel } from "./platform/log/logger.js";
 import { getRawArgs, getCwd } from "./base/process.js";
-import { ConfigBuilder } from "./platform/config/resolver.js";
 import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
 import { CliConfigProvider } from "./platform/config/providers/cli.js";
-import { ResolvedConfig } from "./platform/config/config.js";
+import { ConfigValidator } from "./platform/config/validator.js";
+import { LegacyKeyRule } from "./platform/config/rules/legacy-key.js";
+import { CustomModeRule } from "./platform/config/rules/custom-mode.js";
+import { EnforceTypeRule } from "./platform/config/rules/enforce-type.js";
+import { UnknownKeyRule } from "./platform/config/rules/unknown-key.js";
+import { ConfigNormalizer } from "./platform/config/normalizer.js";
+import { ConfigService } from "./platform/config/config-service.js";
 
 const fs = new LocalFileSystem();
 const logger = new ConsoleLogger();
 
 async function main(): Promise<void> {
-	// Get CLI args
+	// Validate args
 	const rawArgs = getRawArgs();
 	const argsResult = parseArgs(rawArgs);
 
@@ -62,25 +67,31 @@ async function main(): Promise<void> {
 	}
 
 	// Resolve config
-	const configBuilder = new ConfigBuilder()
+	const validator = new ConfigValidator()
+		.addRule(new LegacyKeyRule())
+		.addRule(new CustomModeRule())
+		.addRule(new EnforceTypeRule())
+		.addRule(new UnknownKeyRule());
+
+	const normalizer = new ConfigNormalizer(fs);
+
+	const configService = new ConfigService(normalizer, validator)
 		.addProvider(new ToolchainProvider(fs))
 		.addProvider(new FileConfigProvider(fs))
 		.addProvider(new CliConfigProvider(cliArgs));
 
-	const configResult = await configBuilder.build(fs, {
+	const configResult = await configService.load({
 		cwd,
 		configPath: cliArgs.config,
 	});
 
 	if (configResult.isErr()) {
-		logger.error(`Configuration Error: ${configResult.error.message}`);
+		logger.error(`Config Error: ${configResult.error.message}`);
 		process.exit(1);
 	}
 
-	const config: ResolvedConfig = configResult.unwrap();
-	logger.debug(
-		`Configuration successfully resolved: ${JSON.stringify(config)}`
-	);
+	const config = configResult.unwrap();
+	logger.debug(`Config successfully resolved: ${JSON.stringify(config)}`);
 
 	// TODO implement other commands
 
