@@ -8,7 +8,7 @@ export class CustomModeRule implements IValidationRule {
 			typeof value === "object" &&
 			value !== null &&
 			!Array.isArray(value);
-		return !(key in VALID_KEYS) && isObject;
+		return !VALID_KEYS.includes(key) && isObject;
 	}
 
 	validate(key: string, value: unknown): Result<void, Error> {

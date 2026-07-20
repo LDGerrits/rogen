@@ -8,11 +8,11 @@ export class LegacyKeyRule implements IValidationRule {
 		keepSuffixes: "verbatim",
 	};
 
-	canHandle(key: string): boolean {
+	canHandle(key: string, _value: unknown): boolean {
 		return key in this.legacyMap;
 	}
 
-	validate(key: string): Result<void, Error> {
+	validate(key: string, _value: unknown): Result<void, Error> {
 		const modernKey = this.legacyMap[key];
 		return err(
 			new Error(

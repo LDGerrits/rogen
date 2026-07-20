@@ -3,8 +3,8 @@ import { err, ok, Result } from "../../../base/result.js";
 import { isValidRojoTree, VALID_KEYS } from "../validator.js";
 
 export class EnforceTypeRule implements IValidationRule {
-	canHandle(key: string): boolean {
-		return key in VALID_KEYS;
+	canHandle(key: string, _value: unknown): boolean {
+		return VALID_KEYS.includes(key);
 	}
 
 	validate(key: string, value: unknown): Result<void, Error> {

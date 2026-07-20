@@ -4,11 +4,11 @@ import { getClosestMatch } from "../../../base/string.js";
 import { VALID_KEYS } from "../validator.js";
 
 export class UnknownKeyRule implements IValidationRule {
-	canHandle(): boolean {
+	canHandle(_key: string, _value: unknown): boolean {
 		return true;
 	}
 
-	validate(key: string): Result<void, Error> {
+	validate(key: string, _value: unknown): Result<void, Error> {
 		const closestMatch = getClosestMatch(key, VALID_KEYS, 2);
 
 		if (closestMatch) {
