@@ -1,8 +1,7 @@
-import { LocalFileSystemService } from "./platform/fs/local-file-system-service.js";
+import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { InitCommand } from "./commands/init/init.js";
 import { parseArgs } from "./platform/cli/args.js";
 import { LogLevel } from "./platform/log/log-service.js";
-import { getRawArgs, getCwd } from "./base/process.js";
 import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
 import { CliConfigProvider } from "./platform/config/providers/cli.js";
@@ -14,16 +13,17 @@ import { HelpCommand } from "./commands/help/help.js";
 import { WorkspaceService } from "./platform/workspace/workspace-service.js";
 
 const logService = new ConsoleLogService();
-const fileSystemService = new LocalFileSystemService();
+const fileSystemService = new DiskFileSystemService();
 
 async function main(): Promise<void> {
 	// Validate args
-	const rawArgs = getRawArgs();
+	const rawArgs = process.argv.slice(2);
 	const argsResult = parseArgs(rawArgs);
 
 	if (argsResult.isErr()) {
 		logService.error(argsResult.error.message);
-		process.exit(1);
+		process.exitCode = 1;
+		return;
 	}
 
 	const cliArgs = argsResult.unwrap();
@@ -37,20 +37,21 @@ async function main(): Promise<void> {
 		logService.setLevel(LogLevel.Debug);
 	}
 
-	const cwd = getCwd();
-
+	const cwd = process.cwd();
 	const workspaceService = new WorkspaceService(cwd, fileSystemService);
 
 	if (cliArgs.help) {
 		const command = new HelpCommand(logService);
 		command.execute();
-		process.exit(0);
+		process.exitCode = 0;
+		return;
 	}
 
 	if (cliArgs.version) {
 		const command = new VersionCommand(logService);
 		command.execute();
-		process.exit(0);
+		process.exitCode = 0;
+		return;
 	}
 
 	if (cliArgs.init) {
@@ -63,13 +64,15 @@ async function main(): Promise<void> {
 
 		if (result.isErr()) {
 			logService.error(result.error.message);
-			process.exit(1);
+			process.exitCode = 1;
+			return;
 		}
 
 		logService.info(
 			"Successfully created .rogen.json in the current directory."
 		);
-		process.exit(0);
+		process.exitCode = 0;
+		return;
 	}
 
 	// Resolve config
@@ -86,7 +89,8 @@ async function main(): Promise<void> {
 
 	if (configResult.isErr()) {
 		logService.error(`Config Error: ${configResult.error.message}`);
-		process.exit(1);
+		process.exitCode = 1;
+		return;
 	}
 
 	const config = configResult.unwrap();
@@ -94,12 +98,12 @@ async function main(): Promise<void> {
 
 	// TODO implement other commands
 
-	process.exit(0);
+	process.exitCode = 0;
 }
 
 export default function run(): void {
 	main().catch((error) => {
 		logService.error(error);
-		process.exit(1);
+		process.exitCode = 1;
 	});
 }
