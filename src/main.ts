@@ -1,21 +1,16 @@
 import { LocalFileSystemService } from "./platform/fs/local-file-system-service.js";
-import { runInitCommand } from "./commands/init.js";
+import { InitCommand } from "./commands/init/init.js";
 import { parseArgs } from "./platform/cli/args.js";
-import { runHelpCommand } from "./commands/help.js";
-import { runVersionCommand } from "./commands/version.js";
 import { LogLevel } from "./platform/log/log-service.js";
 import { getRawArgs, getCwd } from "./base/process.js";
 import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
 import { CliConfigProvider } from "./platform/config/providers/cli.js";
-import { ConfigValidator } from "./platform/config/validator.js";
-import { LegacyKeyRule } from "./platform/config/rules/legacy-key.js";
-import { CustomModeRule } from "./platform/config/rules/custom-mode.js";
-import { EnforceTypeRule } from "./platform/config/rules/enforce-type.js";
-import { UnknownKeyRule } from "./platform/config/rules/unknown-key.js";
-import { ConfigNormalizer } from "./platform/config/normalizer.js";
 import { ConfigService } from "./platform/config/config-service.js";
 import { ConsoleLogService } from "./platform/log/console-log-service.js";
+import { ConfigResolver } from "./platform/config/resolver.js";
+import { VersionCommand } from "./commands/version/version.js";
+import { HelpCommand } from "./commands/help/help.js";
 
 const fileSystemService = new LocalFileSystemService();
 const logService = new ConsoleLogService();
@@ -42,22 +37,25 @@ async function main(): Promise<void> {
 	}
 
 	if (cliArgs.help) {
-		runHelpCommand(logService);
+		const command = new HelpCommand(logService);
+		command.execute();
 		process.exit(0);
 	}
 
 	if (cliArgs.version) {
-		runVersionCommand(logService);
+		const command = new VersionCommand(logService);
+		command.execute();
 		process.exit(0);
 	}
 
 	const cwd = getCwd();
 
 	if (cliArgs.init) {
-		const initResult = await runInitCommand(cwd, fileSystemService);
+		const command = new InitCommand(cwd, fileSystemService);
+		const result = await command.execute();
 
-		if (initResult.isErr()) {
-			logService.error(initResult.error.message);
+		if (result.isErr()) {
+			logService.error(result.error.message);
 			process.exit(1);
 		}
 
@@ -68,15 +66,9 @@ async function main(): Promise<void> {
 	}
 
 	// Resolve config
-	const validator = new ConfigValidator()
-		.addRule(new LegacyKeyRule())
-		.addRule(new CustomModeRule())
-		.addRule(new EnforceTypeRule())
-		.addRule(new UnknownKeyRule());
+	const resolver = new ConfigResolver(fileSystemService);
 
-	const normalizer = new ConfigNormalizer(fileSystemService);
-
-	const configService = new ConfigService(normalizer, validator)
+	const configService = new ConfigService(resolver)
 		.addProvider(new ToolchainProvider(fileSystemService))
 		.addProvider(new FileConfigProvider(fileSystemService))
 		.addProvider(new CliConfigProvider(cliArgs));
