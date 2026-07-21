@@ -11,17 +11,30 @@ export default defineConfig(
 	},
 	{
 		files: ["src/**/*.ts", "src/**/*.js"],
+		languageOptions: {
+			parser: tseslint.parser,
+			parserOptions: {
+				ecmaVersion: "latest",
+				sourceType: "module",
+			},
+		},
 		rules: {
 			"@typescript-eslint/no-explicit-any": "warn",
 			"@typescript-eslint/no-unused-vars": [
 				"error",
-				{ argsIgnorePattern: "^_" },
+				{
+					argsIgnorePattern: "^_",
+					varsIgnorePattern: "^_",
+				},
 			],
 		},
 	},
 	{
 		files: ["src/**/*.test.ts", "tests/**/*.spec.ts"],
 		...jestPlugin.configs["flat/recommended"],
+		languageOptions: {
+			parser: tseslint.parser,
+		},
 		rules: {
 			...jestPlugin.configs["flat/recommended"].rules,
 		},
