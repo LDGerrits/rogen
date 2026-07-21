@@ -8,50 +8,38 @@ import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js"
 describe("MemoryWatcher", () => {
 	let memoryFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
-	let logger: ConsoleLogService;
+	let logService: ConsoleLogService;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+
 		memoryFs = new MemoryFileSystemService();
-		logger = new ConsoleLogService();
-		logger.setLevel(LogLevel.Off);
-		watcher = new MemoryWatcher(memoryFs, logger);
+		logService = new ConsoleLogService();
+		logService.setLevel(LogLevel.Off);
+		watcher = new MemoryWatcher(memoryFs, logService);
 	});
 
 	afterEach(async () => {
 		await watcher.stop();
+		jest.runOnlyPendingTimers();
+		jest.useRealTimers();
 	});
 
-	it("should catch ADDED and UPDATED events when files are written", async () => {
+	it("should catch ADDED and UPDATED events batched together", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
 		await watcher.watch([{ path: "src", recursive: true }]);
 
 		await memoryFs.writeFile("src/init.lua", "-- added");
-
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.ADDED, path: "src/init.lua" },
-		]);
-
 		await memoryFs.writeFile("src/init.lua", "-- updated");
+
+		jest.runAllTimers();
 
 		expect(listener).toHaveBeenCalledWith([
 			{ type: FileChangeType.UPDATED, path: "src/init.lua" },
 		]);
-	});
-
-	it("should catch DELETED events when single files are removed", async () => {
-		const listener = jest.fn();
-		await memoryFs.writeFile("src/temp.lua", "-- temp");
-
-		watcher.onDidChangeFile(listener);
-		await watcher.watch([{ path: "src", recursive: true }]);
-
-		await memoryFs.delete("src/temp.lua");
-
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.DELETED, path: "src/temp.lua" },
-		]);
+		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
 	it("should catch multiple DELETED events when a directory is removed recursively", async () => {
@@ -65,26 +53,22 @@ describe("MemoryWatcher", () => {
 
 		await memoryFs.delete("src/components", true);
 
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.DELETED, path: "src/components" },
-		]);
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.DELETED, path: "src/components/button.lua" },
-		]);
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.DELETED, path: "src/components/card.lua" },
-		]);
-	});
+		jest.runAllTimers();
 
-	it("should ignore file mutations outside of the active watch requests", async () => {
-		const listener = jest.fn();
-		watcher.onDidChangeFile(listener);
-
-		await watcher.watch([{ path: "src", recursive: true }]);
-
-		await memoryFs.writeFile("ignored/test.lua", "-- outside scope");
-
-		expect(listener).not.toHaveBeenCalled();
+		expect(listener).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				{ type: FileChangeType.DELETED, path: "src/components" },
+				{
+					type: FileChangeType.DELETED,
+					path: "src/components/button.lua",
+				},
+				{
+					type: FileChangeType.DELETED,
+					path: "src/components/card.lua",
+				},
+			])
+		);
+		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
 	it("should respect non-recursive watch requests", async () => {
@@ -92,26 +76,77 @@ describe("MemoryWatcher", () => {
 		watcher.onDidChangeFile(listener);
 
 		await watcher.watch([{ path: "package.json", recursive: false }]);
-
 		await memoryFs.writeFile("package.json", "{}");
+
+		jest.runAllTimers();
 		expect(listener).toHaveBeenCalledTimes(1);
+
+		listener.mockClear();
 
 		await memoryFs.writeFile("package-lock.json", "{}");
+		await memoryFs.writeFile("ignored-folder/fake-nested.txt", "...");
 
-		await memoryFs.writeFile("package.json/fake-nested.txt", "...");
+		jest.runAllTimers();
 
-		expect(listener).toHaveBeenCalledTimes(1);
+		expect(listener).toHaveBeenCalledTimes(0);
 	});
 
-	it("should stop receiving events after stop() is called", async () => {
+	it("should handle multiple active watch paths simultaneously", async () => {
+		const listener = jest.fn();
+		watcher.onDidChangeFile(listener);
+
+		await watcher.watch([
+			{ path: "src", recursive: true },
+			{ path: "tests", recursive: true },
+		]);
+
+		await memoryFs.writeFile("src/main.ts", "");
+		await memoryFs.writeFile("tests/main.test.ts", "");
+		await memoryFs.writeFile("ignored/other.ts", "");
+
+		jest.runAllTimers();
+
+		expect(listener).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				{ type: FileChangeType.ADDED, path: "src/main.ts" },
+				{ type: FileChangeType.ADDED, path: "tests/main.test.ts" },
+			])
+		);
+		const calls = listener.mock.calls[0][0];
+		expect(calls).toHaveLength(2);
+	});
+
+	it("should gracefully stop emitting events after stop() is called", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
 		await watcher.watch([{ path: "src", recursive: true }]);
+
 		await watcher.stop();
 
-		await memoryFs.writeFile("src/file.lua", "data");
+		await memoryFs.writeFile("src/should-be-ignored.ts", "");
+
+		jest.runAllTimers();
 
 		expect(listener).not.toHaveBeenCalled();
+	});
+
+	it("should collapse rapid ADD -> UPDATE -> DELETE for the same file into a single final state", async () => {
+		const listener = jest.fn();
+		watcher.onDidChangeFile(listener);
+
+		await watcher.watch([{ path: "cache", recursive: true }]);
+
+		await memoryFs.writeFile("cache/temp.txt", "init");
+		await memoryFs.writeFile("cache/temp.txt", "update 1");
+		await memoryFs.writeFile("cache/temp.txt", "update 2");
+		await memoryFs.delete("cache/temp.txt");
+
+		jest.runAllTimers();
+
+		expect(listener).toHaveBeenCalledWith([
+			{ type: FileChangeType.DELETED, path: "cache/temp.txt" },
+		]);
+		expect(listener).toHaveBeenCalledTimes(1);
 	});
 });

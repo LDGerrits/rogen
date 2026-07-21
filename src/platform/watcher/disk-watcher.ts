@@ -12,14 +12,14 @@ export class DiskWatcher implements Watcher {
 
 	private watcher: chokidar.FSWatcher | null = null;
 
-	constructor(private readonly logger: LogService) {}
+	constructor(private readonly logService: LogService) {}
 
 	async watch(requests: WatchRequest[]): Promise<void> {
 		await this.stop();
 
 		const targetPaths = requests.map((r) => r.path);
-		this.logger.debug(
-			`Starting OS file watcher on: ${targetPaths.join(", ")}`
+		this.logService.debug(
+			`Starting disk file watcher on: ${targetPaths.join(", ")}`
 		);
 
 		this.watcher = chokidar.watch(targetPaths, {
@@ -39,7 +39,7 @@ export class DiskWatcher implements Watcher {
 		);
 
 		this.watcher.on("error", (error) => {
-			this.logger.error(`Watcher crashed: ${error.message}`);
+			this.logService.error(`Watcher crashed: ${error.message}`);
 			this._onDidError.fire(error);
 		});
 	}

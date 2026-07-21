@@ -30,9 +30,6 @@ export class DiskFileSystemService implements FileSystemService {
 		}
 	}
 
-	/**
-	 * Scans given path and maps structural entries into name/type tuples.
-	 */
 	async readDirectory(filePath: string): Promise<[string, FileType][]> {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
