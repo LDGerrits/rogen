@@ -4,6 +4,7 @@ import { FileChangeType } from "../files.js";
 import { ConsoleLogService } from "../../log/console-log-service.js";
 import { LogLevel } from "../../log/log-service.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
+import { FileType } from "../../fs/file-system-service.js";
 
 describe("MemoryWatcher", () => {
 	let memoryFs: MemoryFileSystemService;
@@ -25,7 +26,7 @@ describe("MemoryWatcher", () => {
 		jest.useRealTimers();
 	});
 
-	it("should catch ADDED and UPDATED events batched together", async () => {
+	it("should normalize ADDED and UPDATED events batched together into a single ADDED event", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
@@ -37,12 +38,16 @@ describe("MemoryWatcher", () => {
 		jest.runAllTimers();
 
 		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.UPDATED, path: "src/init.lua" },
+			{
+				type: FileChangeType.ADDED,
+				path: "src/init.lua",
+				fileType: FileType.File,
+			},
 		]);
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
-	it("should catch multiple DELETED events when a directory is removed recursively", async () => {
+	it("should catch multiple DELETED events with accurate fileTypes when a directory is removed recursively", async () => {
 		const listener = jest.fn();
 
 		await memoryFs.writeFile("src/components/button.lua", "");
@@ -57,14 +62,20 @@ describe("MemoryWatcher", () => {
 
 		expect(listener).toHaveBeenCalledWith(
 			expect.arrayContaining([
-				{ type: FileChangeType.DELETED, path: "src/components" },
+				{
+					type: FileChangeType.DELETED,
+					path: "src/components",
+					fileType: FileType.Directory,
+				},
 				{
 					type: FileChangeType.DELETED,
 					path: "src/components/button.lua",
+					fileType: FileType.File,
 				},
 				{
 					type: FileChangeType.DELETED,
 					path: "src/components/card.lua",
+					fileType: FileType.File,
 				},
 			])
 		);
@@ -108,11 +119,19 @@ describe("MemoryWatcher", () => {
 
 		expect(listener).toHaveBeenCalledWith(
 			expect.arrayContaining([
-				{ type: FileChangeType.ADDED, path: "src/main.ts" },
-				{ type: FileChangeType.ADDED, path: "tests/main.test.ts" },
+				{
+					type: FileChangeType.ADDED,
+					path: "src/main.ts",
+					fileType: FileType.File,
+				},
+				{
+					type: FileChangeType.ADDED,
+					path: "tests/main.test.ts",
+					fileType: FileType.File,
+				},
 			])
 		);
-		const calls = listener.mock.calls[0][0];
+		const calls = listener.mock.calls[0][0] as unknown[];
 		expect(calls).toHaveLength(2);
 	});
 
@@ -131,7 +150,7 @@ describe("MemoryWatcher", () => {
 		expect(listener).not.toHaveBeenCalled();
 	});
 
-	it("should collapse rapid ADD -> UPDATE -> DELETE for the same file into a single final state", async () => {
+	it("should cancel out rapid ADD -> UPDATE -> DELETE for the same file and emit nothing", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
@@ -144,9 +163,6 @@ describe("MemoryWatcher", () => {
 
 		jest.runAllTimers();
 
-		expect(listener).toHaveBeenCalledWith([
-			{ type: FileChangeType.DELETED, path: "cache/temp.txt" },
-		]);
-		expect(listener).toHaveBeenCalledTimes(1);
+		expect(listener).not.toHaveBeenCalled();
 	});
 });

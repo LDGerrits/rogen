@@ -1,5 +1,11 @@
-import { Watcher, WatchRequest, FileChange } from "./files.js";
+import {
+	Watcher,
+	WatchRequest,
+	FileChange,
+	normalizeFileChanges,
+} from "./files.js";
 import { Emitter, Event } from "../../base/event.js";
+import { Disposable } from "../../base/disposable.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
@@ -13,8 +19,10 @@ export class MemoryWatcher implements Watcher {
 
 	private activeRequests: WatchRequest[] = [];
 	private fileSystemSubscription: Disposable | null = null;
+
+	private batchedChanges: FileChange[] = [];
 	private batchTimer: ReturnType<typeof setTimeout> | null = null;
-	private batchedChanges = new Map<string, FileChange>();
+	private readonly BATCH_DELAY_MS = 50;
 
 	constructor(
 		private readonly memoryFs: MemoryFileSystemService,
@@ -29,7 +37,7 @@ export class MemoryWatcher implements Watcher {
 
 		const targetPaths = requests.map((r) => r.path);
 		this.logService.debug(
-			`Starting memory file watcher on: ${targetPaths.join(", ")}`
+			`Started watching paths: ${targetPaths.join(", ")}`
 		);
 
 		if (!this.fileSystemSubscription) {
@@ -51,6 +59,7 @@ export class MemoryWatcher implements Watcher {
 						this.queueChange({
 							type: change.type,
 							path: normalizedChangePath,
+							fileType: change.fileType,
 						});
 					}
 				}
@@ -58,21 +67,14 @@ export class MemoryWatcher implements Watcher {
 		}
 	}
 
-	async stop(): Promise<void> {
-		if (this.fileSystemSubscription) {
-			this.fileSystemSubscription[Symbol.dispose]();
-			this.fileSystemSubscription = null;
-		}
-		this.activeRequests = [];
-		this.flushChanges();
-	}
-
 	private queueChange(change: FileChange) {
-		this.batchedChanges.set(change.path, change);
+		this.batchedChanges.push(change);
 
 		if (!this.batchTimer) {
-			// Batch events over a tick for emulation
-			this.batchTimer = setTimeout(() => this.flushChanges(), 0);
+			this.batchTimer = setTimeout(
+				() => this.flushChanges(),
+				this.BATCH_DELAY_MS
+			);
 		}
 	}
 
@@ -82,10 +84,26 @@ export class MemoryWatcher implements Watcher {
 			this.batchTimer = null;
 		}
 
-		if (this.batchedChanges.size > 0) {
-			const changes = Array.from(this.batchedChanges.values());
-			this.batchedChanges.clear();
-			this._onDidChangeFile.fire(changes);
+		if (this.batchedChanges.length > 0) {
+			const normalized = normalizeFileChanges(this.batchedChanges);
+			this.batchedChanges = [];
+
+			if (normalized.length > 0) {
+				this._onDidChangeFile.fire(normalized);
+			}
 		}
+	}
+
+	async stop(): Promise<void> {
+		if (this.fileSystemSubscription) {
+			this.fileSystemSubscription[Symbol.dispose]();
+			this.fileSystemSubscription = null;
+		}
+		if (this.batchTimer) {
+			clearTimeout(this.batchTimer);
+			this.batchTimer = null;
+		}
+		this.activeRequests = [];
+		this.batchedChanges = [];
 	}
 }
