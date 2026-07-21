@@ -1,9 +1,3 @@
-/**
- * An attempt to rework VSCode's 'InMemoryFileSystemProvider' to use the
- * 'FileSystemService' interface. It emulates a real file system in order to
- * make testing easier, safer and more powerful.
- */
-
 import { FileType, FileSystemService } from "./file-system-service.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "../watcher/files.js";
@@ -140,6 +134,7 @@ export class MemoryFileSystemService implements FileSystemService {
 				this._onDidMutateFile.fire({
 					type: FileChangeType.ADDED,
 					path: currentPath,
+					fileType: FileType.Directory,
 				});
 			} else if (child.type === FileType.File) {
 				throw mockFsError(
@@ -177,7 +172,11 @@ export class MemoryFileSystemService implements FileSystemService {
 		}
 
 		parent.entries.set(name, new FileNode(content));
-		this._onDidMutateFile.fire({ type, path: toPosix(filePath) });
+		this._onDidMutateFile.fire({
+			type,
+			path: toPosix(filePath),
+			fileType: FileType.File,
+		});
 	}
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
@@ -197,7 +196,6 @@ export class MemoryFileSystemService implements FileSystemService {
 		parent.entries.delete(name);
 
 		const emitDeletes = (node: Node, currentPath: string) => {
-			// Safe property check to ensure it works properly in Jest
 			if (node.type === FileType.Directory) {
 				for (const [childName, childNode] of (node as DirectoryNode)
 					.entries) {
@@ -207,6 +205,7 @@ export class MemoryFileSystemService implements FileSystemService {
 			this._onDidMutateFile.fire({
 				type: FileChangeType.DELETED,
 				path: currentPath,
+				fileType: node.type,
 			});
 		};
 
