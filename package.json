@@ -1,5 +1,8 @@
 {
 	"name": "rogen",
+	"workspaces": [
+		"docs"
+	],
 	"version": "1.4.0",
 	"description": "A tool for feature-based folder structures with Rojo.",
 	"type": "module",
