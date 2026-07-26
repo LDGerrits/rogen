@@ -9,6 +9,15 @@ const config = {
 	turbopack: {
 		root: path.join(import.meta.dirname, ".."),
 	},
+	async redirects() {
+		return [
+			{
+				source: "/docs",
+				destination: "/docs/v1",
+				permanent: false,
+			},
+		];
+	},
 };
 
 export default withMDX(config);
