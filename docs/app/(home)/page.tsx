@@ -19,9 +19,12 @@ import {
 } from "react-icons/fa";
 import { SiRoblox, SiTypescript } from "react-icons/si";
 
+type ViewState = "folders" | "filenames" | "markers";
+
 export default function HomePage() {
 	const [copied, setCopied] = useState(false);
 	const [version, setVersion] = useState<string>("1.3.1");
+	const [activeView, setActiveView] = useState<ViewState>("folders");
 
 	useEffect(() => {
 		let isMounted = true;
@@ -61,15 +64,14 @@ export default function HomePage() {
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
         }
-        .code-snippet {
-          background: linear-gradient(180deg, #111, #050505);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
       `}</style>
 
 			<div className="relative z-20">
+				{/* Hero Section */}
 				<section className="flex flex-col items-center justify-center pt-32 pb-24 px-6 relative">
 					<div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
+						<div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+
 						<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
 							Group your code
 							<br />
@@ -89,14 +91,14 @@ export default function HomePage() {
 									Quick Start
 								</button>
 							</Link>
-							<Link href="#features">
+							<Link href="#demo">
 								<button className="w-full sm:w-auto px-8 py-3.5 border border-white/20 bg-transparent rounded-lg font-medium text-white hover:bg-white/5 transition-all active:scale-95">
-									Read Features
+									View Demo
 								</button>
 							</Link>
 						</div>
 
-						<div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-400 shadow-sm backdrop-blur-md mb-24 w-max">
+						<div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-400 shadow-sm backdrop-blur-md w-max">
 							<div className="flex items-center gap-2">
 								<FaFileCode className="text-blue-300" />
 								<span>Luau</span>
@@ -107,54 +109,152 @@ export default function HomePage() {
 								<span>TypeScript</span>
 							</div>
 						</div>
+					</div>
+				</section>
 
-						<div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-stretch justify-center gap-4 relative text-left">
-							<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
+				{/* Preview Section */}
+				<section id="demo" className="py-24 px-6 relative">
+					<div className="max-w-6xl mx-auto relative z-10">
+						<div className="absolute top-20 left-25 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+
+						<div className="text-left mb-12">
+							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+								Preview
+							</h2>
+							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+								See how Rogen routes your files into Roblox
+								Studio
+							</p>
+						</div>
+
+						{/* Control */}
+						<div className="w-full flex justify-start mb-8 relative z-20">
+							<div className="flex p-1 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl backdrop-blur-md">
+								{[
+									{ id: "folders", label: "Folder Names" },
+									{ id: "filenames", label: "File Names" },
+									{ id: "markers", label: "Marker Files" },
+								].map((tab) => (
+									<button
+										key={tab.id}
+										onClick={() =>
+											setActiveView(tab.id as ViewState)
+										}
+										className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+											activeView === tab.id
+												? "bg-white/10 text-white shadow-sm"
+												: "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+										}`}
+									>
+										{tab.label}
+									</button>
+								))}
+							</div>
+						</div>
+
+						<div className="w-full flex flex-col md:flex-row items-stretch justify-start gap-4 relative text-left">
+							<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl transition-all">
 								<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
 									<FaTerminal className="text-gray-500 text-sm" />
 									<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
 										File System
 									</span>
 								</div>
-								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto">
-									<div className="flex items-center gap-2">
-										<FaFolder className="text-gray-600" />{" "}
-										src
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolderOpen className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Inventory
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										client
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryController.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										server
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryService.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										shared
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryTypes.luau
-									</div>
+								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
+									{activeView === "folders" && (
+										<>
+											<div className="flex items-center gap-2">
+												<FaFolder className="text-gray-600" />{" "}
+												src
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolderOpen className="text-white" />{" "}
+												<span className="text-white font-medium">
+													Inventory
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8 opacity-50">
+												<FaFolder className="text-gray-500" />{" "}
+												client
+											</div>
+											<div className="flex items-center gap-2 ml-12">
+												<FaFileCode className="text-white" />{" "}
+												InventoryController.luau
+											</div>
+											<div className="flex items-center gap-2 ml-8 opacity-50">
+												<FaFolder className="text-gray-500" />{" "}
+												server
+											</div>
+											<div className="flex items-center gap-2 ml-12">
+												<FaFileCode className="text-white" />{" "}
+												InventoryService.luau
+											</div>
+											<div className="flex items-center gap-2 ml-8 opacity-50">
+												<FaFolder className="text-gray-500" />{" "}
+												shared
+											</div>
+											<div className="flex items-center gap-2 ml-12">
+												<FaFileCode className="text-white" />{" "}
+												InventoryTypes.luau
+											</div>
+										</>
+									)}
+									{activeView === "filenames" && (
+										<>
+											<div className="flex items-center gap-2">
+												<FaFolder className="text-gray-600" />{" "}
+												src
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolderOpen className="text-white" />{" "}
+												<span className="text-white font-medium">
+													Combat
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileCode className="text-white" />{" "}
+												CombatController.client.luau
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileCode className="text-white" />{" "}
+												CombatService.server.luau
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileCode className="text-white" />{" "}
+												CombatTypes.shared.luau
+											</div>
+										</>
+									)}
+									{activeView === "markers" && (
+										<>
+											<div className="flex items-center gap-2">
+												<FaFolder className="text-gray-600" />{" "}
+												src
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolderOpen className="text-white" />{" "}
+												<span className="text-white font-medium">
+													anti-cheat
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8 opacity-50">
+												<FaFileAlt className="text-gray-500" />{" "}
+												.server
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileCode className="text-white" />{" "}
+												AntiCheat.luau
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileCode className="text-white" />{" "}
+												Monitor.luau
+											</div>
+										</>
+									)}
 								</div>
 							</div>
 
-							<div className="flex items-center justify-center z-20 py-8 md:py-0">
+							<div className="flex items-center justify-center z-20 py-8 md:py-0 px-4 md:px-6">
 								<svg
 									className="text-gray-500 md:rotate-0 rotate-90 transition-colors duration-300 hover:text-white"
 									fill="none"
@@ -172,90 +272,264 @@ export default function HomePage() {
 								</svg>
 							</div>
 
-							<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
+							<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl transition-all">
 								<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
 									<SiRoblox className="text-gray-400 text-sm" />
 									<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
 										Roblox Studio
 									</span>
 								</div>
-								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto">
-									<div className="flex items-center gap-2">
-										<FaBox className="text-gray-600" />{" "}
-										ReplicatedStorage
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Inventory
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										InventoryTypes
-									</div>
+								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
+									{(activeView === "folders" ||
+										activeView === "filenames") && (
+										<>
+											<div className="flex items-center gap-2">
+												<FaBox className="text-gray-600" />{" "}
+												ReplicatedStorage
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolder className="text-white" />{" "}
+												<span className="text-white font-medium">
+													{activeView === "filenames"
+														? "Combat"
+														: "Inventory"}
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileAlt className="text-gray-400" />{" "}
+												{activeView === "filenames"
+													? "CombatTypes"
+													: "InventoryTypes"}
+											</div>
 
-									<div className="flex items-center gap-2 mt-3">
-										<FaServer className="text-gray-600" />{" "}
-										ServerScriptService
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Inventory
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										InventoryService
-									</div>
+											<div className="flex items-center gap-2 mt-3">
+												<FaServer className="text-gray-600" />{" "}
+												ServerScriptService
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolder className="text-white" />{" "}
+												<span className="text-white font-medium">
+													{activeView === "filenames"
+														? "Combat"
+														: "Inventory"}
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileAlt className="text-gray-400" />{" "}
+												{activeView === "filenames"
+													? "CombatService"
+													: "InventoryService"}
+											</div>
 
-									<div className="flex items-center gap-2 mt-3">
-										<FaUser className="text-gray-600" />{" "}
-										StarterPlayerScripts
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Inventory
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										InventoryController
-									</div>
+											<div className="flex items-center gap-2 mt-3">
+												<FaUser className="text-gray-600" />{" "}
+												StarterPlayerScripts
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolder className="text-white" />{" "}
+												<span className="text-white font-medium">
+													{activeView === "filenames"
+														? "Combat"
+														: "Inventory"}
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileAlt className="text-gray-400" />{" "}
+												{activeView === "filenames"
+													? "CombatController"
+													: "InventoryController"}
+											</div>
+										</>
+									)}
+									{activeView === "markers" && (
+										<>
+											<div className="flex items-center gap-2">
+												<FaServer className="text-gray-600" />{" "}
+												ServerScriptService
+											</div>
+											<div className="flex items-center gap-2 ml-4">
+												<FaFolder className="text-white" />{" "}
+												<span className="text-white font-medium">
+													anti-cheat
+												</span>
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileAlt className="text-gray-400" />{" "}
+												AntiCheat
+											</div>
+											<div className="flex items-center gap-2 ml-8">
+												<FaFileAlt className="text-gray-400" />{" "}
+												Monitor
+											</div>
+										</>
+									)}
 								</div>
 							</div>
 						</div>
 					</div>
 				</section>
 
-				<section className="py-24 px-6 border-t border-white/10 bg-[#000]">
-					<div className="max-w-6xl mx-auto">
-						<div className="text-left mb-16">
+				{/* Feature Section */}
+				<section id="features" className="py-24 px-6 relative">
+					<div className="max-w-6xl mx-auto relative z-10">
+						<div className="absolute top-20 right-55 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
+
+						<div className="flex flex-col items-end text-right mb-16">
+							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+								Group files by feature
+							</h2>
+							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+								Stop jumping between folders. Keep all code for
+								a feature in one place
+							</p>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-right">
+							{[
+								{
+									title: "Build by feature",
+									desc: "Keep UI and scripts for one tool in one folder",
+									icon: (
+										<FaLayerGroup className="text-white" />
+									),
+								},
+								{
+									title: "Smart sorting",
+									desc: "Send files to any Roblox service using just their names",
+									icon: (
+										<FaPuzzlePiece className="text-white" />
+									),
+								},
+								{
+									title: "Multi-place setups",
+									desc: "Share core code across multiple places by merging folders",
+									icon: (
+										<FaFolderOpen className="text-white" />
+									),
+								},
+								{
+									title: "Environment filtering",
+									desc: "Exclude test files and folders from production builds automatically",
+									icon: <FaBox className="text-white" />,
+								},
+								{
+									title: "TS and Darklua",
+									desc: "Tell Rogen where compiled code goes before it syncs",
+									icon: (
+										<SiTypescript className="text-white" />
+									),
+								},
+								{
+									title: "Strict rules",
+									desc: "Override folder rules with file rules to stay in control",
+									icon: <FaFileCode className="text-white" />,
+								},
+							].map((feature, i) => (
+								<div
+									key={i}
+									className="glass-card flex flex-col items-end p-8 rounded-xl cursor-default"
+								>
+									<div className="mb-6 h-6 flex items-center justify-end text-xl w-full">
+										{feature.icon}
+									</div>
+									<h3 className="text-base font-semibold text-white mb-2">
+										{feature.title}
+									</h3>
+									<p className="text-gray-400 text-sm leading-relaxed">
+										{feature.desc}
+									</p>
+								</div>
+							))}
+						</div>
+					</div>
+				</section>
+
+				{/* Rules Section */}
+				<section className="py-24 px-6 relative">
+					<div className="max-w-6xl mx-auto relative z-10">
+						<div className="absolute top-20 left-30 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+
+						<div className="flex flex-col items-start text-left mb-16">
+							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+								Simple file rules
+							</h2>
+							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+								Rogen reads your folders to place files in the
+								right spot
+							</p>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+							{[
+								{
+									title: "Folder Names",
+									desc: "Name a folder 'client' or 'StarterGui' to send files to that exact service",
+									example: "src/combat/client/...",
+								},
+								{
+									title: "Marker Files",
+									desc: "Place a blank '.server' file in a folder to set its target",
+									example: "anti-cheat/.server",
+								},
+								{
+									title: "Name Tags",
+									desc: "Add target words to the start or end of a file name",
+									example: "input-client.ts",
+								},
+							].map((rule, i) => (
+								<div
+									key={i}
+									className="flex flex-col items-start h-full p-8 rounded-xl glass-card cursor-default"
+								>
+									<h3 className="text-base font-semibold text-white mb-2">
+										{rule.title}
+									</h3>
+									<p className="text-gray-400 text-sm mb-8 flex-grow leading-relaxed">
+										{rule.desc}
+									</p>
+									<div className="mt-auto flex justify-start w-full">
+										<code className="inline-block text-xs text-gray-400 bg-[#0a0a0a] border border-white/10 px-4 py-3 rounded-md font-mono">
+											{rule.example}
+										</code>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				</section>
+
+				{/* Top Developers Section */}
+				<section className="py-24 px-6 relative">
+					<div className="max-w-6xl mx-auto relative z-10">
+						<div className="absolute top-20 right-50 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
+
+						<div className="flex flex-col items-end text-right mb-16">
 							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 								Top developers use Rogen
 							</h2>
+							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+								Top studios trust Rogen as they grow
+							</p>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-right">
 							{[
 								{
-									quote: "Very grateful for your work on this. It has been a game changer for my team and I.",
+									quote: "Very grateful for your work on this. It has been a game changer for my team and I",
 									author: "Acecateer",
 									role: "Technical Director, Wonder Works Studio",
 								},
 								{
-									quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it.",
+									quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
 									author: "Zack (boatbomber) Williams",
 									role: "CEO, Torpedo Software",
 								},
 							].map((testimonial, i) => (
 								<div
 									key={i}
-									className="p-8 rounded-xl glass-card flex flex-col justify-between border-l-2 hover:border-l-white border-l-transparent"
+									className="p-8 rounded-xl glass-card flex flex-col items-end justify-between border-r-2 hover:border-r-white border-r-transparent cursor-default"
 								>
-									<FaQuoteLeft className="text-white/10 text-xl mb-4" />
+									<FaQuoteLeft className="text-white/10 text-xl mb-4 transform scale-x-[-1]" />
 									<p className="text-gray-300 text-[15px] mb-8 leading-relaxed">
 										&quot;{testimonial.quote}&quot;
 									</p>
@@ -273,151 +547,17 @@ export default function HomePage() {
 					</div>
 				</section>
 
-				<section className="py-24 px-6 border-t border-white/10 bg-[#000]">
-					<div className="max-w-6xl mx-auto">
-						<div className="flex flex-col items-end text-right mb-16">
-							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-								Simple file rules
-							</h2>
-							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Rogen reads your folders to place files in the
-								right spot
-							</p>
-						</div>
-
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-right">
-							{[
-								{
-									title: "Folder Names",
-									desc: "Name a folder &apos;client&apos; or &apos;StarterGui&apos; to send files to that exact service",
-									example: "src/combat/client/...",
-								},
-								{
-									title: "Marker Files",
-									desc: "Place a blank &apos;.server&apos; file in a folder to set its target",
-									example: "anti-cheat/.server",
-								},
-								{
-									title: "Name Tags",
-									desc: "Add target words to the start or end of a file name",
-									example: "input-client.ts",
-								},
-							].map((rule, i) => (
-								<div
-									key={i}
-									className="flex flex-col items-end h-full p-8 rounded-xl glass-card"
-								>
-									<h3 className="text-base font-semibold text-white mb-2">
-										{rule.title}
-									</h3>
-									<p className="text-gray-400 text-sm mb-8 flex-grow leading-relaxed">
-										{rule.desc}
-									</p>
-									<div className="mt-auto flex justify-end w-full">
-										<code className="inline-block text-xs text-gray-400 bg-[#0a0a0a] border border-white/10 px-4 py-3 rounded-md font-mono">
-											{rule.example}
-										</code>
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-				</section>
-
-				<section
-					id="features"
-					className="py-24 px-6 border-t border-white/10 bg-[#000]"
-				>
-					<div className="max-w-6xl mx-auto">
-						<div className="text-left mb-16">
-							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-								Group files by feature
-							</h2>
-							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Stop jumping between folders
-								<br />
-								Keep all scripts for one feature in one place
-							</p>
-						</div>
-
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-							{[
-								{
-									title: "Build by feature",
-									desc: "Keep UI and scripts for one tool in one folder",
-									icon: (
-										<FaLayerGroup className="text-white" />
-									),
-								},
-								{
-									title: "Smart sorting",
-									desc: "Send files to any Roblox service like ReplicatedFirst using just their names",
-									icon: (
-										<FaPuzzlePiece className="text-white" />
-									),
-								},
-								{
-									title: "Merge folders",
-									desc: "Combine many folders into one workspace to share core code",
-									icon: (
-										<FaFolderOpen className="text-white" />
-									),
-								},
-								{
-									title: "Live updates",
-									desc: "Rogen updates Studio the moment you save a file",
-									icon: (
-										<Image
-											src="/icon.png"
-											alt="Rogen Icon"
-											width={20}
-											height={20}
-											className="w-5 h-5 object-contain"
-										/>
-									),
-								},
-								{
-									title: "TS and Darklua",
-									desc: "Tell Rogen where compiled code goes before it syncs",
-									icon: (
-										<SiTypescript className="text-white" />
-									),
-								},
-								{
-									title: "Strict rules",
-									desc: "File rules beat folder rules so you stay in charge",
-									icon: <FaFileCode className="text-white" />,
-								},
-							].map((feature, i) => (
-								<div
-									key={i}
-									className="glass-card p-8 rounded-xl"
-								>
-									<div className="mb-6 h-6 flex items-center text-xl">
-										{feature.icon}
-									</div>
-									<h3 className="text-base font-semibold text-white mb-2">
-										{feature.title}
-									</h3>
-									<p className="text-gray-400 text-sm leading-relaxed">
-										{feature.desc}
-									</p>
-								</div>
-							))}
-						</div>
-					</div>
-				</section>
-
-				<section className="py-32 px-6 border-t border-white/10">
+				{/* CTA Section */}
+				<section className="py-32 px-6">
 					<div className="max-w-2xl mx-auto text-center relative flex flex-col items-center">
 						<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 							Upgrade your codebase
 						</h2>
 						<p className="text-gray-400 mb-10 tracking-tight text-lg">
-							Install Rogen with Rokit and build faster today
+							Install Rogen with Rokit and build faster
 						</p>
 
-						<div className="w-full max-w-md text-left code-snippet rounded-lg p-4 mb-6 shadow-xl relative group">
+						<div className="w-full max-w-md text-left bg-[#0a0a0a] border border-white/10 rounded-lg p-4 mb-6 shadow-2xl relative group">
 							<div className="text-xs text-gray-500 mb-2 font-mono uppercase tracking-wider">
 								rokit.toml
 							</div>
@@ -452,7 +592,8 @@ export default function HomePage() {
 					</div>
 				</section>
 
-				<footer className="py-12 px-6 border-t border-white/10 bg-[#000]">
+				{/* Footer */}
+				<footer className="py-12 px-6 border-t border-white/5 relative z-10">
 					<div className="max-w-6xl mx-auto">
 						<div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
 							<div className="md:col-span-2 flex flex-col h-full">
