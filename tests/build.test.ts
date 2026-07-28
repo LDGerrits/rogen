@@ -197,7 +197,7 @@ describe("Builder Integration", () => {
 		);
 	});
 
-	it("should treat a source reached via parent-dir navigation as a root without corrupting the build path", async () => {
+	it("should correctly calculate build paths for deeply nested multiple sources", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
 		(
@@ -207,10 +207,20 @@ describe("Builder Integration", () => {
 		).mockImplementation(async (dir: string) => {
 			const normalizedDir = String(dir).replace(/\\/g, "/");
 
-			if (normalizedDir.endsWith("src")) {
+			if (normalizedDir.endsWith("src/places/hub")) {
 				return [
 					{
-						name: "Combat.lua",
+						name: "HubMain.server.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("src/places/minigame")) {
+				return [
+					{
+						name: "MinigameMain.server.lua",
 						isDirectory: () => false,
 						isFile: () => true,
 					},
@@ -227,7 +237,10 @@ describe("Builder Integration", () => {
 			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { ...defaultConfig, source: "../../src" };
+		const config: Config = {
+			...defaultConfig,
+			source: ["src/places/hub", "src/places/minigame"],
+		};
 		const env: Environment = {
 			isTsProject: false,
 			isDarkluaProject: false,
@@ -239,15 +252,202 @@ describe("Builder Integration", () => {
 			baseTree,
 			config,
 			env,
-			["../../src"],
+			["src/places/hub", "src/places/minigame"],
 			cliArgs,
 			process.cwd()
 		);
 		const resultTree = result.tree.tree as any;
 
-		expect(resultTree.ReplicatedStorage.shared.Combat.$path).toBe(
-			"out/Combat.lua"
+		expect(result.fileCount).toBe(2);
+
+		expect(resultTree.ServerScriptService.server.HubMain).toBeDefined();
+		expect(resultTree.ServerScriptService.server.HubMain.$path).toBe(
+			"out/places/hub/HubMain.server.lua"
 		);
+
+		expect(
+			resultTree.ServerScriptService.server.MinigameMain
+		).toBeDefined();
+		expect(resultTree.ServerScriptService.server.MinigameMain.$path).toBe(
+			"out/places/minigame/MinigameMain.server.lua"
+		);
+	});
+
+	it("should successfully merge identical virtual folder structures across multiple sources", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src/core")) {
+				return [
+					{
+						name: "ui",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+			if (normalizedDir.endsWith("src/core/ui")) {
+				return [
+					{
+						name: "Button.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("src/plugins")) {
+				return [
+					{
+						name: "ui",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+			if (normalizedDir.endsWith("src/plugins/ui")) {
+				return [
+					{
+						name: "Card.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			activeFlags: [],
+			globIgnorePaths: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: ["src/core", "src/plugins"],
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+		const cliArgs: CliArgs = {};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src/core", "src/plugins"],
+			cliArgs,
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2);
+
+		expect(resultTree.ReplicatedStorage.shared.ui).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.ui.Button).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.ui.Card).toBeDefined();
+
+		expect(resultTree.ReplicatedStorage.shared.ui.Button.$path).toBe(
+			"out/core/ui/Button.lua"
+		);
+		expect(resultTree.ReplicatedStorage.shared.ui.Card.$path).toBe(
+			"out/plugins/ui/Card.lua"
+		);
+	});
+
+	it("should apply environment flag filtering correctly across multiple source directories", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src/shared")) {
+				return [
+					{
+						name: "MathUtils.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("src/hub")) {
+				return [
+					{
+						name: "HubManager.prod.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "HubManager.dev.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "src",
+			output: "test.project.json",
+			activeFlags: ["dev"],
+			globIgnorePaths: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: ["src/shared", "src/hub"],
+			flags: ["dev", "prod"],
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+		const cliArgs: CliArgs = {};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src/shared", "src/hub"],
+			cliArgs,
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2);
+
+		expect(resultTree.ReplicatedStorage.shared.MathUtils).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.MathUtils.$path).toBe(
+			"src/shared/MathUtils.lua"
+		);
+
+		expect(resultTree.ReplicatedStorage.shared.HubManager).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.HubManager.$path).toBe(
+			"src/hub/HubManager.dev.lua"
+		);
+
+		expect(
+			resultTree.ReplicatedStorage.shared["HubManager.prod"]
+		).toBeUndefined();
 	});
 
 	it("should compile TypeScript sources to .luau paths when the environment is a TS project", async () => {
