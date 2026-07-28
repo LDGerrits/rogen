@@ -33,9 +33,15 @@
 		"typescript-eslint": "^8.62.1"
 	},
 	"dependencies": {
+		"@fumadocs/base-ui": "^16.12.1",
 		"chokidar": "^3.6.0",
+		"cnfast": "^0.0.8",
 		"framer-motion": "^12.42.2",
+		"fumadocs-core": "^16.12.1",
+		"fumadocs-ui": "npm:@fumadocs/base-ui@^16.12.1",
+		"lucide-react": "^1.27.0",
 		"picomatch": "^4.0.5",
+		"react": "^19.2.8",
 		"react-icons": "^5.7.0"
 	}
 }

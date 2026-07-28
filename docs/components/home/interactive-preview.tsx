@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import {
-	FaFolderOpen,
-	FaFileCode,
-	FaFolder,
-	FaBox,
-	FaServer,
-	FaFileAlt,
-	FaTerminal,
-	FaUser,
-} from "react-icons/fa";
-import { SiRoblox } from "react-icons/si";
+	PreviewGroup,
+	PreviewArrow,
+	SystemWindow,
+	StudioWindow,
+	TreeFolder,
+	TreeFile,
+	TreeService,
+	StudioFile,
+} from "../file-tree-preview";
 
 type ViewState = "folders" | "filenames" | "markers";
 
@@ -20,7 +19,7 @@ export function InteractivePreview() {
 
 	return (
 		<section id="demo" className="py-24 px-6 relative overflow-hidden">
-			<div className="absolute top-1/2 left-0 w-[600px] h-[600px] bg-white opacity-[0.075] blur-[100px] rounded-full pointer-events-none z-0 -translate-x-1/2 -translate-y-1/2" />
+			<div className="absolute top-1/2 left-0 w-150 h-150 bg-white opacity-[0.075] blur-[100px] rounded-full pointer-events-none z-0 -translate-x-1/2 -translate-y-1/2" />
 
 			<div className="max-w-6xl mx-auto relative z-10">
 				<div className="text-left mb-12">
@@ -56,220 +55,165 @@ export function InteractivePreview() {
 					</div>
 				</div>
 
-				<div className="w-full flex flex-col md:flex-row items-stretch justify-start gap-4 relative text-left">
-					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl transition-all">
-						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-							<FaTerminal className="text-gray-500 text-sm" />
-							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
-								File System
-							</span>
-						</div>
-						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
-							{activeView === "folders" && (
-								<>
-									<div className="flex items-center gap-2">
-										<FaFolder className="text-gray-600" />{" "}
-										src
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolderOpen className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Inventory
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										client
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryController.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										server
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryService.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFolder className="text-gray-500" />{" "}
-										shared
-									</div>
-									<div className="flex items-center gap-2 ml-12">
-										<FaFileCode className="text-white" />{" "}
-										InventoryTypes.luau
-									</div>
-								</>
-							)}
-							{activeView === "filenames" && (
-								<>
-									<div className="flex items-center gap-2">
-										<FaFolder className="text-gray-600" />{" "}
-										src
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolderOpen className="text-white" />{" "}
-										<span className="text-white font-medium">
-											Combat
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileCode className="text-white" />{" "}
-										CombatController.client.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileCode className="text-white" />{" "}
-										CombatService.server.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileCode className="text-white" />{" "}
-										CombatTypes.shared.luau
-									</div>
-								</>
-							)}
-							{activeView === "markers" && (
-								<>
-									<div className="flex items-center gap-2">
-										<FaFolder className="text-gray-600" />{" "}
-										src
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolderOpen className="text-white" />{" "}
-										<span className="text-white font-medium">
-											anti-cheat
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8 opacity-50">
-										<FaFileAlt className="text-gray-500" />{" "}
-										.server
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileCode className="text-white" />{" "}
-										AntiCheat.luau
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileCode className="text-white" />{" "}
-										Monitor.luau
-									</div>
-								</>
-							)}
-						</div>
-					</div>
+				<PreviewGroup>
+					<SystemWindow>
+						{activeView === "folders" && (
+							<>
+								<TreeFolder name="src" />
+								<TreeFolder
+									name="Inventory"
+									level={1}
+									open
+									highlight
+								/>
+								<TreeFolder name="client" level={2} dim />
+								<TreeFile
+									name="InventoryController.luau"
+									level={3}
+								/>
+								<TreeFolder name="server" level={2} dim />
+								<TreeFile
+									name="InventoryService.luau"
+									level={3}
+								/>
+								<TreeFolder name="shared" level={2} dim />
+								<TreeFile
+									name="InventoryTypes.luau"
+									level={3}
+								/>
+							</>
+						)}
+						{activeView === "filenames" && (
+							<>
+								<TreeFolder name="src" />
+								<TreeFolder
+									name="Combat"
+									level={1}
+									open
+									highlight
+								/>
+								<TreeFile
+									name="CombatController.client.luau"
+									level={2}
+								/>
+								<TreeFile
+									name="CombatService.server.luau"
+									level={2}
+								/>
+								<TreeFile
+									name="CombatTypes.shared.luau"
+									level={2}
+								/>
+							</>
+						)}
+						{activeView === "markers" && (
+							<>
+								<TreeFolder name="src" />
+								<TreeFolder
+									name="anti-cheat"
+									level={1}
+									open
+									highlight
+								/>
+								<TreeFile name=".server" level={2} marker />
+								<TreeFile name="AntiCheat.luau" level={2} />
+								<TreeFile name="Monitor.luau" level={2} />
+							</>
+						)}
+					</SystemWindow>
 
-					<div className="flex items-center justify-center z-20 py-8 md:py-0 px-4 md:px-6">
-						<svg
-							className="text-gray-500 md:rotate-0 rotate-90 transition-colors duration-300 hover:text-white"
-							fill="none"
-							height="32"
-							shapeRendering="geometricPrecision"
-							stroke="currentColor"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth="1"
-							viewBox="0 0 24 24"
-							width="32"
-						>
-							<path d="M5 12h14"></path>
-							<path d="M12 5l7 7-7 7"></path>
-						</svg>
-					</div>
+					<PreviewArrow />
 
-					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl transition-all">
-						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-							<SiRoblox className="text-gray-400 text-sm" />
-							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
-								Roblox Studio
-							</span>
-						</div>
-						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
-							{(activeView === "folders" ||
-								activeView === "filenames") && (
-								<>
-									<div className="flex items-center gap-2">
-										<FaBox className="text-gray-600" />{" "}
-										ReplicatedStorage
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											{activeView === "filenames"
-												? "Combat"
-												: "Inventory"}
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										{activeView === "filenames"
+					<StudioWindow>
+						{(activeView === "folders" ||
+							activeView === "filenames") && (
+							<>
+								<TreeService
+									name="ReplicatedStorage"
+									type="replicated"
+								/>
+								<TreeFolder
+									name={
+										activeView === "filenames"
+											? "Combat"
+											: "Inventory"
+									}
+									level={1}
+									highlight
+								/>
+								<StudioFile
+									name={
+										activeView === "filenames"
 											? "CombatTypes"
-											: "InventoryTypes"}
-									</div>
+											: "InventoryTypes"
+									}
+									level={2}
+								/>
 
-									<div className="flex items-center gap-2 mt-3">
-										<FaServer className="text-gray-600" />{" "}
-										ServerScriptService
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											{activeView === "filenames"
-												? "Combat"
-												: "Inventory"}
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										{activeView === "filenames"
+								<TreeService
+									name="ServerScriptService"
+									type="server"
+									mt
+								/>
+								<TreeFolder
+									name={
+										activeView === "filenames"
+											? "Combat"
+											: "Inventory"
+									}
+									level={1}
+									highlight
+								/>
+								<StudioFile
+									name={
+										activeView === "filenames"
 											? "CombatService"
-											: "InventoryService"}
-									</div>
+											: "InventoryService"
+									}
+									level={2}
+								/>
 
-									<div className="flex items-center gap-2 mt-3">
-										<FaUser className="text-gray-600" />{" "}
-										StarterPlayerScripts
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											{activeView === "filenames"
-												? "Combat"
-												: "Inventory"}
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										{activeView === "filenames"
+								<TreeService
+									name="StarterPlayerScripts"
+									type="player"
+									mt
+								/>
+								<TreeFolder
+									name={
+										activeView === "filenames"
+											? "Combat"
+											: "Inventory"
+									}
+									level={1}
+									highlight
+								/>
+								<StudioFile
+									name={
+										activeView === "filenames"
 											? "CombatController"
-											: "InventoryController"}
-									</div>
-								</>
-							)}
-							{activeView === "markers" && (
-								<>
-									<div className="flex items-center gap-2">
-										<FaServer className="text-gray-600" />{" "}
-										ServerScriptService
-									</div>
-									<div className="flex items-center gap-2 ml-4">
-										<FaFolder className="text-white" />{" "}
-										<span className="text-white font-medium">
-											anti-cheat
-										</span>
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										AntiCheat
-									</div>
-									<div className="flex items-center gap-2 ml-8">
-										<FaFileAlt className="text-gray-400" />{" "}
-										Monitor
-									</div>
-								</>
-							)}
-						</div>
-					</div>
-				</div>
+											: "InventoryController"
+									}
+									level={2}
+								/>
+							</>
+						)}
+						{activeView === "markers" && (
+							<>
+								<TreeService
+									name="ServerScriptService"
+									type="server"
+								/>
+								<TreeFolder
+									name="anti-cheat"
+									level={1}
+									highlight
+								/>
+								<StudioFile name="AntiCheat" level={2} />
+								<StudioFile name="Monitor" level={2} />
+							</>
+						)}
+					</StudioWindow>
+				</PreviewGroup>
 			</div>
 		</section>
 	);

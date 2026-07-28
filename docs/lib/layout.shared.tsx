@@ -1,18 +1,27 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { appName, gitConfig } from "./shared";
+import Image from "next/image";
 
 export function baseOptions(): BaseLayoutProps {
 	return {
 		nav: {
-			title: appName,
+			title: (
+				<div className="flex items-center gap-2">
+					<Image
+						src="/icon.png"
+						alt="Rogen Icon"
+						width={24}
+						height={24}
+						className="w-6 h-6 object-contain"
+					/>
+					<span className="font-bold tracking-tighter">
+						{appName}
+					</span>
+				</div>
+			),
 		},
 		githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
 		links: [
-			{
-				text: "Documentation",
-				url: "/docs/v1",
-				active: "nested-url",
-			},
 			{
 				type: "icon",
 				url: "https://discord.com/channels/385151591524597761/1503801029232295996",

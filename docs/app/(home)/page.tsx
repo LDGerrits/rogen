@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
 	FaFolderOpen,
 	FaFileCode,
@@ -16,6 +16,7 @@ import {
 	FaQuoteLeft,
 	FaTerminal,
 	FaUser,
+	FaGithub,
 } from "react-icons/fa";
 import { SiRoblox, SiTypescript } from "react-icons/si";
 
@@ -68,9 +69,9 @@ export default function HomePage() {
 
 			<div className="relative z-20">
 				{/* Hero Section */}
-				<section className="flex flex-col items-center justify-center pt-32 pb-24 px-6 relative">
+				<section className="flex flex-col items-center justify-center pt-48 pb-24 px-6 relative">
 					<div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
-						<div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+						<div className="absolute top-1/2 left-1/2 w-125 h-125 bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
 						<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
 							Group your code
@@ -86,26 +87,31 @@ export default function HomePage() {
 						</p>
 
 						<div className="flex flex-col sm:flex-row gap-4 mb-6 w-full sm:w-auto">
-							<Link href={"/docs/v1/introduction"}>
-								<button className="w-full sm:w-auto px-8 py-3.5 bg-white text-black rounded-lg font-bold transition-all hover:bg-gray-200 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+							<Link href="/docs/v1">
+								<button className="w-full sm:w-auto px-8 py-3.5 bg-white text-black rounded-lg font-bold transition-all duration-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:-translate-y-0.5 active:scale-95 active:translate-y-0 shadow-[0_0_20px_rgba(255,255,255,0.15)]">
 									Quick Start
 								</button>
 							</Link>
-							<Link href="#demo">
-								<button className="w-full sm:w-auto px-8 py-3.5 border border-white/20 bg-transparent rounded-lg font-medium text-white hover:bg-white/5 transition-all active:scale-95">
-									View Demo
+							<a
+								href="https://github.com/LDGerrits/rogen"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<button className="w-full sm:w-auto px-8 py-3.5 flex items-center justify-center gap-2 border border-white/20 bg-transparent rounded-lg font-medium text-white transition-all duration-200 hover:bg-white/10 hover:border-white/40 hover:-translate-y-0.5 active:scale-95 active:translate-y-0">
+									<FaGithub className="text-lg" />
+									GitHub
 								</button>
-							</Link>
+							</a>
 						</div>
 
 						<div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-gray-400 shadow-sm backdrop-blur-md w-max">
 							<div className="flex items-center gap-2">
-								<FaFileCode className="text-blue-300" />
+								<FaFileCode className="text-white" />
 								<span>Luau</span>
 							</div>
 							<span className="text-white/20">|</span>
 							<div className="flex items-center gap-2">
-								<SiTypescript className="text-blue-400" />
+								<SiTypescript className="text-white" />
 								<span>TypeScript</span>
 							</div>
 						</div>
@@ -115,9 +121,9 @@ export default function HomePage() {
 				{/* Preview Section */}
 				<section id="demo" className="py-24 px-6 relative">
 					<div className="max-w-6xl mx-auto relative z-10">
-						<div className="absolute top-20 left-25 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+						<div className="absolute top-20 left-25 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
-						<div className="text-left mb-12">
+						<div className="flex flex-col items-start text-left mb-12">
 							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 								Preview
 							</h2>
@@ -127,7 +133,6 @@ export default function HomePage() {
 							</p>
 						</div>
 
-						{/* Control */}
 						<div className="w-full flex justify-start mb-8 relative z-20">
 							<div className="flex p-1 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl backdrop-blur-md">
 								{[
@@ -160,7 +165,7 @@ export default function HomePage() {
 										File System
 									</span>
 								</div>
-								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
+								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-70">
 									{activeView === "folders" && (
 										<>
 											<div className="flex items-center gap-2">
@@ -213,15 +218,15 @@ export default function HomePage() {
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileCode className="text-white" />{" "}
-												CombatController.client.luau
+												CombatControllerClient.luau
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileCode className="text-white" />{" "}
-												CombatService.server.luau
+												CombatServiceServer.luau
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileCode className="text-white" />{" "}
-												CombatTypes.shared.luau
+												CombatTypes.luau
 											</div>
 										</>
 									)}
@@ -234,7 +239,7 @@ export default function HomePage() {
 											<div className="flex items-center gap-2 ml-4">
 												<FaFolderOpen className="text-white" />{" "}
 												<span className="text-white font-medium">
-													anti-cheat
+													AntiCheat
 												</span>
 											</div>
 											<div className="flex items-center gap-2 ml-8 opacity-50">
@@ -243,7 +248,7 @@ export default function HomePage() {
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileCode className="text-white" />{" "}
-												AntiCheat.luau
+												AntiCheatService.luau
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileCode className="text-white" />{" "}
@@ -279,7 +284,7 @@ export default function HomePage() {
 										Roblox Studio
 									</span>
 								</div>
-								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-[280px]">
+								<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-70">
 									{(activeView === "folders" ||
 										activeView === "filenames") && (
 										<>
@@ -350,12 +355,12 @@ export default function HomePage() {
 											<div className="flex items-center gap-2 ml-4">
 												<FaFolder className="text-white" />{" "}
 												<span className="text-white font-medium">
-													anti-cheat
+													AntiCheat
 												</span>
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileAlt className="text-gray-400" />{" "}
-												AntiCheat
+												AntiCheatService
 											</div>
 											<div className="flex items-center gap-2 ml-8">
 												<FaFileAlt className="text-gray-400" />{" "}
@@ -372,19 +377,18 @@ export default function HomePage() {
 				{/* Feature Section */}
 				<section id="features" className="py-24 px-6 relative">
 					<div className="max-w-6xl mx-auto relative z-10">
-						<div className="absolute top-20 right-55 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
+						<div className="absolute top-20 right-55 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
 
 						<div className="flex flex-col items-end text-right mb-16">
 							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 								Group files by feature
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Stop jumping between folders. Keep all code for
-								a feature in one place
+								Keep everything for a feature in one place
 							</p>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-right">
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
 							{[
 								{
 									title: "Build by feature",
@@ -427,9 +431,9 @@ export default function HomePage() {
 							].map((feature, i) => (
 								<div
 									key={i}
-									className="glass-card flex flex-col items-end p-8 rounded-xl cursor-default"
+									className="glass-card flex flex-col items-start p-8 rounded-xl cursor-default"
 								>
-									<div className="mb-6 h-6 flex items-center justify-end text-xl w-full">
+									<div className="mb-6 h-6 flex items-center justify-start text-xl w-full">
 										{feature.icon}
 									</div>
 									<h3 className="text-base font-semibold text-white mb-2">
@@ -447,15 +451,15 @@ export default function HomePage() {
 				{/* Rules Section */}
 				<section className="py-24 px-6 relative">
 					<div className="max-w-6xl mx-auto relative z-10">
-						<div className="absolute top-20 left-30 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+						<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
 						<div className="flex flex-col items-start text-left mb-16">
 							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-								Simple file rules
+								Simple routing rules
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Rogen reads your folders to place files in the
-								right spot
+								Control exactly where your code goes in Roblox
+								Studio
 							</p>
 						</div>
 
@@ -463,18 +467,18 @@ export default function HomePage() {
 							{[
 								{
 									title: "Folder Names",
-									desc: "Name a folder 'client' or 'StarterGui' to send files to that exact service",
+									desc: "Name a folder 'client' or 'ReplicatedFirst' to send files to that exact service",
 									example: "src/combat/client/...",
+								},
+								{
+									title: "File Names",
+									desc: "Add target words to the start or end of a file name",
+									example: "InputClient.luau",
 								},
 								{
 									title: "Marker Files",
 									desc: "Place a blank '.server' file in a folder to set its target",
 									example: "anti-cheat/.server",
-								},
-								{
-									title: "Name Tags",
-									desc: "Add target words to the start or end of a file name",
-									example: "input-client.ts",
 								},
 							].map((rule, i) => (
 								<div
@@ -484,7 +488,7 @@ export default function HomePage() {
 									<h3 className="text-base font-semibold text-white mb-2">
 										{rule.title}
 									</h3>
-									<p className="text-gray-400 text-sm mb-8 flex-grow leading-relaxed">
+									<p className="text-gray-400 text-sm mb-8 grow leading-relaxed">
 										{rule.desc}
 									</p>
 									<div className="mt-auto flex justify-start w-full">
@@ -501,18 +505,18 @@ export default function HomePage() {
 				{/* Top Developers Section */}
 				<section className="py-24 px-6 relative">
 					<div className="max-w-6xl mx-auto relative z-10">
-						<div className="absolute top-20 right-50 w-[400px] h-[400px] bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
+						<div className="absolute top-20 right-50 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
 
 						<div className="flex flex-col items-end text-right mb-16">
 							<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 								Top developers use Rogen
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Top studios trust Rogen as they grow
+								See what they say
 							</p>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-right">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
 							{[
 								{
 									quote: "Very grateful for your work on this. It has been a game changer for my team and I",
@@ -527,9 +531,9 @@ export default function HomePage() {
 							].map((testimonial, i) => (
 								<div
 									key={i}
-									className="p-8 rounded-xl glass-card flex flex-col items-end justify-between border-r-2 hover:border-r-white border-r-transparent cursor-default"
+									className="p-8 rounded-xl glass-card flex flex-col items-start justify-between border-l-2 hover:border-l-white border-l-transparent cursor-default"
 								>
-									<FaQuoteLeft className="text-white/10 text-xl mb-4 transform scale-x-[-1]" />
+									<FaQuoteLeft className="text-white/10 text-xl mb-4" />
 									<p className="text-gray-300 text-[15px] mb-8 leading-relaxed">
 										&quot;{testimonial.quote}&quot;
 									</p>
@@ -631,7 +635,7 @@ export default function HomePage() {
 									</li>
 									<li>
 										<Link
-											href="/docs/v1/quick-start"
+											href="/docs/v1/installation"
 											className="text-gray-500 hover:text-white transition-colors"
 										>
 											Quick Start
