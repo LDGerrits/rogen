@@ -125,3 +125,105 @@ export function findMissingPaths(
 	}
 	return missing;
 }
+
+const ROJO_SAFE_EXTENSIONS = new Set([
+	".lua",
+	".luau",
+	".server.lua",
+	".server.luau",
+	".client.lua",
+	".client.luau",
+	".json",
+	".toml",
+	".yaml",
+	".yml",
+	".csv",
+	".txt",
+	".md",
+	".msgpack",
+	".rbxm",
+	".rbxmx",
+]);
+
+export function collapseFolders(
+	node: RojoNode,
+	buildDir: string,
+	outputDir: string
+): void {
+	let childCount = 0;
+	let canCollapse = true;
+	let commonDir: string | null = null;
+
+	for (const key in node) {
+		if (key.startsWith("$")) continue;
+
+		const val = node[key];
+		if (typeof val !== "object" || val === null) continue;
+
+		const childNode = val as RojoNode;
+
+		// Process deepest nested children first
+		collapseFolders(childNode, buildDir, outputDir);
+
+		childCount++;
+
+		if (!childNode.$path) {
+			canCollapse = false;
+		} else {
+			const childAbsPath = path.resolve(outputDir, childNode.$path);
+			const parentDir = path.dirname(childAbsPath);
+
+			// All children should share the same directory
+			if (commonDir === null) {
+				commonDir = parentDir;
+			} else if (commonDir !== parentDir) {
+				canCollapse = false;
+			}
+
+			const fileName = path.basename(childAbsPath);
+			if (fileName !== key) {
+				let matchedExt = false;
+				for (const ext of ROJO_SAFE_EXTENSIONS) {
+					if (fileName === key + ext) {
+						matchedExt = true;
+						break;
+					}
+				}
+				// If the name doesn't match the key perfectly, do not collapse
+				if (!matchedExt) {
+					canCollapse = false;
+				}
+			}
+		}
+	}
+
+	if (childCount === 0 || !canCollapse || commonDir === null) {
+		return;
+	}
+
+	const absoluteBuildDir = path.resolve(outputDir, buildDir);
+	if (!hasPathPrefix(toPosix(commonDir), toPosix(absoluteBuildDir))) {
+		return;
+	}
+
+	try {
+		const diskItems = fs.readdirSync(commonDir);
+		if (diskItems.length !== childCount) {
+			return;
+		}
+	} catch {
+		return;
+	}
+
+	// Replace all child files with a single folder $path
+	const relativeCommonDir = toPosix(path.relative(outputDir, commonDir));
+
+	for (const key in node) {
+		if (!key.startsWith("$")) {
+			delete node[key];
+		}
+	}
+
+	node.$path = relativeCommonDir;
+	delete node.$className;
+}

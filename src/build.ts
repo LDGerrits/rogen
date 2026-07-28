@@ -11,6 +11,7 @@ import {
 	RemovedPath,
 	MissingPath,
 	toPosix,
+	collapseFolders,
 } from "./tree.js";
 import {
 	FlagRegexes,
@@ -345,7 +346,11 @@ export async function build(
 		outputDir,
 		removed
 	);
+
+	collapseFolders(prunedTree, context.build, outputDir);
+
 	rojoTree.tree = prunedTree;
+
 	const sortedTree = sortObject(rojoTree);
 	const missingPaths = findMissingPaths(
 		sortedTree.tree,

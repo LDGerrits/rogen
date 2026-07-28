@@ -5,6 +5,7 @@ import {
 	sortObject,
 	pruneObject,
 	findMissingPaths,
+	collapseFolders,
 } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
@@ -124,5 +125,248 @@ describe("Tree Utilities", () => {
 			expect(missing[0].treePath).toBe("System");
 			expect(missing[0].absolutePath).toBe(expectedAbsolutePath);
 		});
+	});
+});
+
+describe("collapseFolders", () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	it("should collapse a pure folder perfectly matching the disk structure", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			MathUtils: {
+				Add: { $path: "out/MathUtils/Add.luau" },
+				Subtract: { $path: "out/MathUtils/Subtract.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("MathUtils"))
+				return ["Add.luau", "Subtract.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const mathUtils = tree.MathUtils as RojoNode;
+		expect(mathUtils.$path).toBe("out/MathUtils");
+		expect(mathUtils.Add).toBeUndefined();
+		expect(mathUtils.Subtract).toBeUndefined();
+	});
+
+	it("should NOT collapse a folder if Rogen dropped a file (Count Check fails)", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			MathUtils: {
+				Add: { $path: "out/MathUtils/Add.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("MathUtils"))
+				return ["Add.luau", "Subtract.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const mathUtils = tree.MathUtils as RojoNode;
+		expect(mathUtils.$path).toBeUndefined();
+		expect(mathUtils.Add).toBeDefined();
+	});
+
+	it("should NOT collapse a folder if Rogen altered a file name (Name Check fails)", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Systems: {
+				Combat: { $path: "out/Systems/Combat.dev.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("Systems")) return ["Combat.dev.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const systems = tree.Systems as RojoNode;
+		expect(systems.$path).toBeUndefined();
+		expect(systems.Combat).toBeDefined();
+	});
+
+	it("should safely handle Rojo's script type extensions during the Name Check", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			ServerLogic: {
+				Main: { $path: "out/ServerLogic/Main.server.lua" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("ServerLogic")) return ["Main.server.lua"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const serverLogic = tree.ServerLogic as RojoNode;
+		expect(serverLogic.$path).toBe("out/ServerLogic");
+		expect(serverLogic.Main).toBeUndefined();
+	});
+
+	it("should NOT collapse a folder if its children come from different physical directories (Multi-source)", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			UI: {
+				Button: { $path: "out/core/ui/Button.luau" },
+				Card: { $path: "out/plugins/ui/Card.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const d = String(dir).replace(/\\/g, "/");
+			if (d.endsWith("core/ui")) return ["Button.luau"];
+			if (d.endsWith("plugins/ui")) return ["Card.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const ui = tree.UI as RojoNode;
+
+		expect(ui.$path).toBeUndefined();
+		expect(ui.Button).toBeDefined();
+		expect(ui.Card).toBeDefined();
+	});
+
+	it("should NOT collapse nodes that contain virtual wrappers without a native $path", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			ServerScriptService: {
+				server: {
+					Main: { $path: "out/server/Main.server.lua" },
+				},
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const d = String(dir).replace(/\\/g, "/");
+			if (d.endsWith("server")) return ["Main.server.lua"];
+			if (d.endsWith("ServerScriptService")) return ["server"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const sss = tree.ServerScriptService as RojoNode;
+		expect(sss.$path).toBeUndefined();
+		expect(sss.server).toBeDefined();
+	});
+
+	it("should NOT collapse folders outside of the specified build directory (Proximity Check)", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Packages: {
+				Runtime: { $path: "node_modules/@rbxts/Runtime.lua" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const d = String(dir).replace(/\\/g, "/");
+			if (d.endsWith("node_modules/@rbxts")) return ["Runtime.lua"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const packages = tree.Packages as RojoNode;
+		expect(packages.$path).toBeUndefined();
+		expect(packages.Runtime).toBeDefined();
+	});
+
+	it("should recursively collapse pure, deeply nested folders", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Systems: {
+				Combat: {
+					Melee: { $path: "out/Systems/Combat/Melee.luau" },
+					Ranged: { $path: "out/Systems/Combat/Ranged.luau" },
+				},
+				Core: { $path: "out/Systems/Core.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const d = String(dir).replace(/\\/g, "/");
+			if (d.endsWith("Systems/Combat"))
+				return ["Melee.luau", "Ranged.luau"];
+			if (d.endsWith("Systems")) return ["Combat", "Core.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const systems = tree.Systems as RojoNode;
+		expect(systems.$path).toBe("out/Systems");
+		expect(systems.Combat).toBeUndefined();
+		expect(systems.Core).toBeUndefined();
+	});
+
+	it("should abort gracefully and not crash if the target directory does not exist yet", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			MathUtils: {
+				Add: { $path: "out/MathUtils/Add.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(() => {
+			throw new Error("ENOENT: no such file or directory");
+		});
+
+		expect(() => {
+			collapseFolders(tree, buildDir, outputDir);
+		}).not.toThrow();
+
+		const mathUtils = tree.MathUtils as RojoNode;
+		expect(mathUtils.$path).toBeUndefined();
+		expect(mathUtils.Add).toBeDefined();
 	});
 });
