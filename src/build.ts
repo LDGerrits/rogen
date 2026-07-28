@@ -60,8 +60,6 @@ const isData = (filename: string): boolean =>
 	/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
 const isValidSource = (filename: string): boolean =>
 	isScript(filename) || isModel(filename) || isData(filename);
-const isKeepFile = (filename: string): boolean =>
-	/^\.(git)?keep(me)?$/i.test(filename);
 const isInitFile = (filename: string): boolean =>
 	isScript(filename) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(filename);
 
@@ -200,7 +198,7 @@ function walkSource(
 		const fullPath = path.join(dir, entry.name);
 		if (entry.isDirectory()) {
 			walkSource(fullPath, sourcePath, listings, callback);
-		} else if (isValidSource(entry.name) || isKeepFile(entry.name)) {
+		} else if (isValidSource(entry.name)) {
 			callback(fullPath, false);
 		}
 	}
@@ -324,9 +322,6 @@ export async function build(
 			for (const part of virtualParts) {
 				current = getOrCreateNode(current, part, "Folder");
 			}
-
-			const isKeep = isKeepFile(path.basename(filepath));
-			if (isKeep) return;
 
 			const existingNodeRaw = current[nodeName] as RojoNode | undefined;
 			if (existingNodeRaw && existingNodeRaw.$path) {
