@@ -209,7 +209,7 @@ export async function build(
 	for (const flag of activeFlags) {
 		if (!knownFlags.has(flag)) {
 			throw new Error(
-				`Configuration Error: The active flag "${flag}" is not declared in the "flags" array.`
+				`active flag "${flag}" is not declared in the "flags" array.`
 			);
 		}
 	}

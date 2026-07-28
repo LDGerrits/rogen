@@ -302,7 +302,12 @@ export function resolveRoute(
 	let currentRel = "";
 	for (const part of parts) {
 		currentRel = currentRel ? `${currentRel}/${part}` : part;
-		const lowerPart = part.toLowerCase();
+		let lowerPart = part.toLowerCase();
+
+		// Strip invisible folder syntax for drop checks
+		if (lowerPart.startsWith("(") && lowerPart.endsWith(")")) {
+			lowerPart = lowerPart.slice(1, -1);
+		}
 
 		// Drop if folder name is an inactive env
 		if (knownFlags.has(lowerPart) && !activeFlags.has(lowerPart)) {

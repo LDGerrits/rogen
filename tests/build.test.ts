@@ -5,6 +5,9 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { execute } from "../src/execute.js";
 import { defaultConfig } from "../src/constants.js";
+import { NullLogger } from "../src/logger.js";
+
+const logger = new NullLogger();
 
 describe("Builder Integration", () => {
 	beforeEach(() => {
@@ -833,7 +836,8 @@ describe("Builder Integration", () => {
 			baseTree,
 			dummyConfig,
 			{},
-			anchor
+			anchor,
+			logger
 		);
 
 		const expectedDirPath = path.resolve(anchor, "out/MissingInitFolder");

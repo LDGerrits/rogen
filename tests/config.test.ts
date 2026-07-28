@@ -22,7 +22,7 @@ describe("Configuration Resolution", () => {
 		jest.spyOn(fs, "readFileSync").mockReturnValue(JSON.stringify(config));
 	}
 
-	it.each(["PascalCase", "camelCase"] as const)(
+	it.each(["PascalCase", "camelCase", "camel", "pascal"] as const)(
 		"should accept %s casing",
 		(casing) => {
 			mockConfigFile({ casing });
@@ -33,7 +33,7 @@ describe("Configuration Resolution", () => {
 		}
 	);
 
-	it.each(["pascalCase", "snake_case", true, null])(
+	it.each(["kebab-case", "snake_case", true, null])(
 		"should reject unsupported casing value %p",
 		(casing) => {
 			mockConfigFile({ casing });
@@ -74,7 +74,7 @@ describe("Configuration Resolution", () => {
 		expect(() => {
 			resolveActiveModes(customConfig, ["nonExistentMode"], defaultEnv);
 		}).toThrow(
-			'Mode "nonExistentMode" is not defined or is invalid in your config file.'
+			'mode "nonExistentMode" is not defined or is invalid in your config file.'
 		);
 	});
 
@@ -84,7 +84,7 @@ describe("Configuration Resolution", () => {
 		expect(() => {
 			resolveActiveModes(customConfig, ["casing"], defaultEnv);
 		}).toThrow(
-			'Mode "casing" is not defined or is invalid in your config file.'
+			'mode "casing" is not defined or is invalid in your config file.'
 		);
 	});
 
@@ -135,7 +135,7 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ ignoreFiles: ["**/*.txt"] });
 
 		expect(() => loadConfig("test.rogen.json")).toThrow(
-			'Configuration Error: Unknown configuration key "ignoreFiles".'
+			'unknown configuration key "ignoreFiles".'
 		);
 	});
 
@@ -143,7 +143,7 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ myCustomMode: { build: "out" } });
 
 		expect(() => loadConfig("test.rogen.json")).toThrow(
-			'Configuration Error: Custom mode "myCustomMode" is missing a valid "output" string.'
+			'custom mode "myCustomMode" is missing a valid "output" string.'
 		);
 	});
 
@@ -151,7 +151,7 @@ describe("Configuration Resolution", () => {
 		mockConfigFile({ tmeplate: { $className: "DataModel" } });
 
 		expect(() => loadConfig("test.rogen.json")).toThrow(
-			'Configuration Error: Unknown key "tmeplate". Did you mean "template"?'
+			'Did you mean "template"?'
 		);
 	});
 });

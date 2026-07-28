@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Environment, Config, Mode, RojoTree, RojoNode } from "./types.js";
 import { defaultConfig, defaultTemplate } from "./constants.js";
+import { Logger } from "./logger.js";
 
 type ConfigKeys = keyof {
 	[K in keyof Config as string extends K
@@ -97,14 +98,17 @@ export function isMode(value: unknown): value is Mode {
 	);
 }
 
-export function resolveConfigPath(customPathArg?: string): string | undefined {
+export function resolveConfigPath(
+	customPathArg?: string,
+	logger?: Logger
+): string | undefined {
 	const cwd = process.cwd();
 
 	if (customPathArg) {
 		const resolvedPath = path.resolve(cwd, customPathArg);
 		if (!fs.existsSync(resolvedPath)) {
 			throw new Error(
-				`Specified config file not found: ${customPathArg}`
+				`specified config file not found: ${customPathArg}`
 			);
 		}
 		return resolvedPath;
@@ -124,14 +128,11 @@ export function resolveConfigPath(customPathArg?: string): string | undefined {
 			return path.resolve(cwd, matchedConfig);
 		}
 	} catch (error) {
-		if (error instanceof Error) {
-			console.error(
-				`❌ Configuration Error: Failed to scan directory for .rogen.json - ${error.message}\n`
-			);
+		const msg = error instanceof Error ? error.message : "Unknown Error";
+		if (logger) {
+			logger.error(`failed to scan directory for .rogen.json - ${msg}`);
 		} else {
-			console.error(
-				`❌ Configuration Error: Failed to scan directory for .rogen.json - Unknown Error\n`
-			);
+			console.error(`failed to scan directory for .rogen.json - ${msg}`);
 		}
 	}
 
@@ -241,7 +242,7 @@ export function loadConfig(
 			if (!KEYS.includes(key as ConfigKeys)) {
 				if (key in LEGACY_KEYS) {
 					throw new Error(
-						`Configuration Error: The key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please, update your configuration.`
+						`key "${key}" has been renamed to "${LEGACY_KEYS[key]}". Please, update your configuration.`
 					);
 				}
 
@@ -290,12 +291,12 @@ export function loadConfig(
 				if (intendedAsMode) {
 					if (typeof modeData.output !== "string") {
 						throw new Error(
-							`Configuration Error: Custom mode "${key}" is missing a valid "output" string.`
+							`custom mode "${key}" is missing a valid "output" string.`
 						);
 					}
 					if (typeof modeData.build !== "string") {
 						throw new Error(
-							`Configuration Error: Custom mode "${key}" is missing a valid "build" string.`
+							`custom mode "${key}" is missing a valid "build" string.`
 						);
 					}
 
@@ -315,13 +316,11 @@ export function loadConfig(
 				const closestMatch = getClosestMatch(key, KEYS, 2);
 				if (closestMatch) {
 					throw new Error(
-						`Configuration Error: Unknown key "${key}". Did you mean "${closestMatch}"?`
+						`unknown key "${key}". Did you mean "${closestMatch}"?`
 					);
 				}
 
-				throw new Error(
-					`Configuration Error: Unknown configuration key "${key}".`
-				);
+				throw new Error(`unknown configuration key "${key}".`);
 			} else {
 				// Validate keys
 				if (
@@ -330,7 +329,7 @@ export function loadConfig(
 					!Array.isArray(rawConfig[key])
 				) {
 					throw new Error(
-						`Configuration Error: 'source' must be a string or an array of strings.`
+						`'source' must be a string or an array of strings.`
 					);
 				} else if (
 					key === "template" &&
@@ -338,30 +337,37 @@ export function loadConfig(
 					typeof rawConfig[key] !== "string"
 				) {
 					throw new Error(
-						`Configuration Error: 'template' must be an inline object or a string path to a JSON file.`
+						`'template' must be an inline object or a string path to a JSON file.`
 					);
 				} else if (
 					(key === "verbatim" || key === "unwrap") &&
 					typeof rawConfig[key] !== "boolean"
 				) {
-					throw new Error(
-						`Configuration Error: '${key}' must be a boolean.`
-					);
-				} else if (
-					key === "casing" &&
-					rawConfig[key] !== "PascalCase" &&
-					rawConfig[key] !== "camelCase"
-				) {
-					throw new Error(
-						`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`
-					);
+					throw new Error(`'${key}' must be a boolean.`);
+				} else if (key === "casing") {
+					if (typeof rawConfig[key] !== "string") {
+						throw new Error(`'casing' must be a string.`);
+					}
+					const casingVal = rawConfig[key]
+						.toLowerCase()
+						.replace(/[-_\s]/g, "");
+					if (casingVal === "pascal" || casingVal === "pascalcase") {
+						config.casing = "PascalCase";
+					} else if (
+						casingVal === "camel" ||
+						casingVal === "camelcase"
+					) {
+						config.casing = "camelCase";
+					} else {
+						throw new Error(
+							`'casing' must be either "PascalCase" or "camelCase".`
+						);
+					}
 				} else if (
 					(key === "globIgnorePaths" || key === "flags") &&
 					!Array.isArray(rawConfig[key])
 				) {
-					throw new Error(
-						`Configuration Error: '${key}' must be an array of strings.`
-					);
+					throw new Error(`'${key}' must be an array of strings.`);
 				}
 				config[key] = rawConfig[key];
 			}
@@ -373,7 +379,7 @@ export function loadConfig(
 		const templatePath = path.resolve(process.cwd(), templatePathArg);
 		if (!fs.existsSync(templatePath)) {
 			throw new Error(
-				`CLI Error: Specified template file not found: ${templatePath}`
+				`specified template file not found: ${templatePath}`
 			);
 		}
 		config.template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
@@ -381,7 +387,7 @@ export function loadConfig(
 		const templatePath = path.resolve(anchor, config.template);
 		if (!fs.existsSync(templatePath)) {
 			throw new Error(
-				`Configuration Error: Specified template file not found: ${templatePath}`
+				`specified template file not found: ${templatePath}`
 			);
 		}
 		config.template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
@@ -389,7 +395,7 @@ export function loadConfig(
 
 	if (!isValidRojoTree(config.template)) {
 		throw new Error(
-			"Configuration Error: The provided template is not a valid Rojo project. " +
+			"provided template is not a valid Rojo project. " +
 				"It must be a JSON object containing a 'name' and 'tree' property."
 		);
 	}
@@ -426,7 +432,7 @@ export function resolveActiveModes(
 			const requestedMode = config[cliMode];
 			if (!isMode(requestedMode)) {
 				throw new Error(
-					`Mode "${cliMode}" is not defined or is invalid in your config file.`
+					`mode "${cliMode}" is not defined or is invalid in your config file.`
 				);
 			}
 			activeModes.push({ name: cliMode, config: requestedMode });
@@ -445,7 +451,7 @@ export function resolveActiveModes(
 		}
 		if (activeModes.length === 0) {
 			throw new Error(
-				"No output modes defined in configuration file. Add 'luau', 'ts', or custom modes."
+				"no output modes defined in configuration file. Add 'luau', 'ts', or custom modes."
 			);
 		}
 	}

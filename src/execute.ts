@@ -3,14 +3,7 @@ import path from "path";
 import { build } from "./build.js";
 import { CliArgs, Environment, Config, RojoTree } from "./types.js";
 import { ActiveMode } from "./config.js";
-
-function getTimeStamp(): string {
-	const now = new Date();
-	const h = String(now.getHours()).padStart(2, "0");
-	const m = String(now.getMinutes()).padStart(2, "0");
-	const s = String(now.getSeconds()).padStart(2, "0");
-	return `[${h}:${m}:${s}]`;
-}
+import { Logger, ConsoleLogger } from "./logger.js";
 
 export async function execute(
 	sourcePaths: string[],
@@ -19,12 +12,17 @@ export async function execute(
 	baseProjectTree: RojoTree,
 	config: Config,
 	cliArgs: CliArgs,
-	anchor: string
-): Promise<void> {
+	anchor: string,
+	logger: Logger = new ConsoleLogger()
+): Promise<boolean> {
 	try {
 		for (const activeMode of activeModes) {
 			const targetConfig = activeMode.config;
 			const modeName = activeMode.name;
+
+			logger.debug(
+				`Executing build for mode "${modeName}" (Output: ${targetConfig.output}, Build: ${targetConfig.build})`
+			);
 
 			const buildResult = await build(
 				targetConfig,
@@ -59,7 +57,7 @@ export async function execute(
 				}
 			}
 
-			const finalContent = JSON.stringify(buildResult.tree, null, 2);
+			const finalContent = JSON.stringify(buildResult.tree, null, "\t");
 			let shouldWrite = true;
 
 			if (fs.existsSync(buildResult.output)) {
@@ -72,7 +70,12 @@ export async function execute(
 				}
 			}
 
-			if (!shouldWrite) continue;
+			if (!shouldWrite) {
+				logger.debug(
+					`Skipping write for "${buildResult.output}" because content was unchanged.`
+				);
+				continue;
+			}
 
 			const outputDir = path.dirname(buildResult.output);
 			if (!fs.existsSync(outputDir)) {
@@ -81,67 +84,59 @@ export async function execute(
 
 			fs.writeFileSync(buildResult.output, finalContent);
 
-			const timeStamp = getTimeStamp();
-
 			const totalRemoved = buildResult.removed.length + dropped.length;
 			if (totalRemoved > 0) {
 				if (cliArgs.watch) {
-					console.log(
-						`${timeStamp} ⚠️ Pruned ${totalRemoved} unresolvable paths.`
-					);
+					logger.warn(`Pruned ${totalRemoved} unresolvable paths.`);
 				} else {
-					console.log(
-						`\n${timeStamp} ⚠️ Removed entries whose paths do not exist (checked relative to ${path.dirname(buildResult.output)}):`
-					);
+					logger.warn(`Removed entries whose paths do not exist}):`);
 					for (const item of buildResult.removed) {
-						console.log(
-							`   - ${item.treePath} ($path "${item.rojoPath}")`
+						logger.info(
+							`  - ${item.treePath} ($path "${item.rojoPath}")`
 						);
 					}
 					for (const item of dropped) {
-						console.log(`   - ${item}`);
+						logger.info(`  - ${item}`);
 					}
 				}
 			}
 
 			if (buildResult.collisions.length > 0) {
 				for (const collision of buildResult.collisions) {
-					console.log(`${timeStamp} ⚠️ ${collision}`);
+					logger.warn(collision);
 				}
 			}
 
 			if (cliArgs.watch) {
 				const outputName = path.basename(buildResult.output);
-				const envString =
-					targetConfig.activeFlags.length > 0
-						? ` (env: ${targetConfig.activeFlags.join(", ")})`
+				const flagString =
+					targetConfig.activeFlags?.length > 0
+						? ` (active flags: ${targetConfig.activeFlags.join(", ")})`
 						: "";
-				console.log(
-					`${timeStamp} ✅ Built "${buildResult.name}" [${modeName}]${envString} (${buildResult.fileCount} files) -> ${outputName}`
+				logger.success(
+					`Built "${buildResult.name}" [${modeName}]${flagString} -> ${outputName}`
 				);
 			} else {
-				console.log(
-					`\n${timeStamp} ✅ Successfully generated Rojo tree for "${buildResult.name}"`
+				logger.success(`Generated Rojo tree for "${buildResult.name}"`);
+				logger.info(
+					`  Processed: ${buildResult.fileCount} source files`
 				);
-				console.log(
-					`   ▶ Processed: ${buildResult.fileCount} source files`
-				);
-				console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
-				if (targetConfig.activeFlags.length > 0) {
-					console.log(
-						`   ▶ knownEnvs: ${targetConfig.activeFlags.join(", ")}`
+				logger.info(`  Build dir: ${buildResult.buildDir}`);
+				if (targetConfig.activeFlags?.length > 0) {
+					logger.info(
+						`  Flags: ${targetConfig.activeFlags.join(", ")}`
 					);
 				}
-				console.log(`   ▶ Output To: ${buildResult.output}\n`);
+				logger.info(`  Output to: ${buildResult.output}`);
 			}
 		}
+		return true;
 	} catch (error) {
-		const timeStamp = getTimeStamp();
-
 		if (error instanceof Error) {
-			console.error(`\n${timeStamp} ❌ Build Failed: ${error.message}\n`);
+			logger.error(`failed to execute build - ${error.message}`);
 		} else {
-			console.error(`\n${timeStamp} ❌ Build Failed: Unknown Error\n`);
+			logger.error(`failed to execute build due to an unknown error`);
 		}
+		return false;
 	}
 }

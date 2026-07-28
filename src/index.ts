@@ -10,19 +10,21 @@ import {
 	createFallbackConfig,
 } from "./config.js";
 import { execute } from "./execute.js";
-import { Config } from "./types.js";
+import { Config, Mode } from "./types.js";
 import { version } from "./constants.js";
+import { ConsoleLogger } from "./logger.js";
 
 async function main(): Promise<void> {
-	const cliArgs = parseCliArgs();
+	const logger = new ConsoleLogger();
+	const cliArgs = parseCliArgs(process.argv.slice(2), logger);
 
 	if (cliArgs.help) {
-		printHelp();
+		printHelp(logger);
 		process.exit(0);
 	}
 
 	if (cliArgs.version) {
-		console.log(`rogen ${version}`);
+		logger.info(`rogen ${version}`);
 		process.exit(0);
 	}
 
@@ -31,8 +33,8 @@ async function main(): Promise<void> {
 		const targetPath = path.resolve(cwd, ".rogen.json");
 
 		if (fs.existsSync(targetPath)) {
-			console.error(
-				`\n❌ Initialization Failed: A .rogen.json file already exists in this directory.\n`
+			logger.error(
+				`Initialization Failed: A .rogen.json file already exists in this directory.`
 			);
 			process.exit(1);
 		}
@@ -54,21 +56,29 @@ async function main(): Promise<void> {
 			delete config.darklua;
 		}
 
+		for (const mode of ["luau", "ts", "darklua"] as const) {
+			if (config[mode]) {
+				delete (config[mode] as Partial<Mode>).activeFlags;
+				delete (config[mode] as Partial<Mode>).globIgnorePaths;
+			}
+		}
+
 		delete config.globIgnorePaths;
+		delete config.flags;
 		delete config.aliases;
 		delete config.verbatim;
 		delete config.casing;
 		delete config.unwrap;
 
 		fs.writeFileSync(targetPath, JSON.stringify(config, null, "\t"));
-		console.log(
-			`\n✅ Successfully created .rogen.json in the current directory.\n\n`
-		);
+		logger.success(`Created .rogen.json in the current directory.`);
 		process.exit(0);
 	}
 
-	const configPath = resolveConfigPath(cliArgs.config);
+	const configPath = resolveConfigPath(cliArgs.config, logger);
 	const { config, anchor } = loadConfig(configPath, cliArgs.template);
+
+	logger.debug(`Config loaded from ${configPath ?? "defaults"}`);
 
 	const rawSources = cliArgs.source || config.source;
 	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
@@ -85,19 +95,24 @@ async function main(): Promise<void> {
 	const env = getEnvironment(anchor, cliArgs.mode);
 	const activeModes = resolveActiveModes(config, cliArgs.mode, env);
 
-	await execute(
+	const success = await execute(
 		sourcePaths,
 		env,
 		activeModes,
 		config.template,
 		config,
 		cliArgs,
-		anchor
+		anchor,
+		logger
 	);
 
+	if (!success) {
+		process.exit(1);
+	}
+
 	if (cliArgs.watch) {
-		console.log(
-			`\n👀 Watching for file changes in: "${sourceDirs.join(", ")}" (Press Ctrl+C to stop)...\n`
+		logger.info(
+			`Watching for file changes in: "${sourceDirs.join(", ")}" (Ctrl+C to stop)`
 		);
 
 		const watcher = chokidar.watch(sourcePaths, {
@@ -106,37 +121,45 @@ async function main(): Promise<void> {
 		});
 
 		let debounceTimeout: NodeJS.Timeout;
+		let isBuilding = false;
 
-		watcher.on("all", () => {
+		watcher.on("all", (event, filePath) => {
+			logger.trace(`File change detected (${event}): ${filePath}`);
 			clearTimeout(debounceTimeout);
+
 			debounceTimeout = setTimeout(() => {
-				execute(
-					sourcePaths,
-					env,
-					activeModes,
-					config.template,
-					config,
-					cliArgs,
-					anchor
-				).catch((err) => {
-					console.error(
-						`\n❌ Watcher Error: ${err instanceof Error ? err.message : String(err)}\n`
+				if (isBuilding) return;
+
+				isBuilding = true;
+				try {
+					execute(
+						sourcePaths,
+						env,
+						activeModes,
+						config.template,
+						config,
+						cliArgs,
+						anchor,
+						logger
 					);
-				});
+				} catch (err) {
+					logger.error(err instanceof Error ? err : String(err));
+				} finally {
+					isBuilding = false;
+				}
 			}, 100);
 		});
 
-		watcher.on("error", (error) =>
-			console.error(`\n❌ Watcher Error: ${error}\n`)
-		);
+		watcher.on("error", (error) => logger.error(`${error}`));
 
 		await new Promise(() => {}); // Keep alive
 	}
 }
 
 export default function run(): void {
+	const logger = new ConsoleLogger();
 	main().catch((error) => {
-		console.error(`\n❌ Fatal Error: ${error.message}\n`);
+		logger.error(`${error.message}`);
 		process.exit(1);
 	});
 }

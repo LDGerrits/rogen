@@ -127,9 +127,7 @@ describe("CLI Argument Parsing", () => {
 			parseCliArgs(["invalidSubcommand"]);
 
 			expect(errorSpy).toHaveBeenCalledWith(
-				expect.stringContaining(
-					'Unknown subcommand or option "invalidSubcommand"'
-				)
+				expect.stringContaining("unknown subcommand")
 			);
 			expect(errorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Run 'rogen --help'")

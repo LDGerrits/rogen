@@ -1,5 +1,6 @@
 import { parseArgs } from "util";
 import { CliArgs } from "./types.js";
+import { Logger } from "./logger.js";
 
 interface CliArg {
 	type: "string" | "boolean";
@@ -7,8 +8,8 @@ interface CliArg {
 	multiple?: boolean;
 }
 
-export function printHelp(): void {
-	console.log(`
+export function printHelp(logger?: Logger): void {
+	const helpText = `
 Rogen - A tool for feature-based folder structures with Rojo
 
 Usage:
@@ -28,10 +29,19 @@ Options:
   -o, --output <path>   Override path of Rojo project file
   -h, --help            Print help
   -v, --version         Print version
-	`);
+	`;
+
+	if (logger) {
+		logger.info(helpText);
+	} else {
+		console.log(helpText);
+	}
 }
 
-export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
+export function parseCliArgs(
+	args: string[] = process.argv.slice(2),
+	logger?: Logger
+): CliArgs {
 	const options: Record<keyof CliArgs, CliArg> = {
 		help: { type: "boolean" as const, short: "h" },
 		version: { type: "boolean" as const, short: "v" },
@@ -67,12 +77,12 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 			} else if (subcommand === "version") {
 				parsedArgs.version = true;
 			} else {
-				console.error(
-					`\n❌ CLI Error: Unknown subcommand or option "${positionals[0]}".`
-				);
-				console.error(
-					`Run 'rogen --help' to see a list of available commands.\n`
-				);
+				const errorMsg = `unknown subcommand or option "${positionals[0]}".\nRun 'rogen --help' to see a list of available commands.`;
+				if (logger) {
+					logger.error(errorMsg);
+				} else {
+					console.error(errorMsg);
+				}
 				process.exit(1);
 			}
 		}
@@ -82,7 +92,6 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 		let errCode: string | undefined;
 		let errMsg = String(error);
 
-		// Narrow down to a generic object
 		if (typeof error === "object" && error !== null) {
 			const errObj = error as Record<string, unknown>;
 			errCode = typeof errObj.code === "string" ? errObj.code : undefined;
@@ -92,7 +101,6 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 					: String(error);
 		}
 
-		// Duck type check due to instanceof issues using Jest
 		if (
 			errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION" ||
 			errMsg.includes("Unknown option")
@@ -101,15 +109,20 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
 				""
 			);
-
-			console.error(`\n❌ CLI Error: ${cleanMsg}`);
-			console.error(
-				`Run 'rogen --help' to see a list of available commands and options.\n`
-			);
+			const errorMsg = `${cleanMsg}\nRun 'rogen --help' to see a list of available commands and options.`;
+			if (logger) {
+				logger.error(errorMsg);
+			} else {
+				console.error(errorMsg);
+			}
 			process.exit(1);
 		}
 
-		console.error(`\n❌ CLI Error: ${errMsg}\n`);
+		if (logger) {
+			logger.error(errMsg);
+		} else {
+			console.error(errMsg);
+		}
 		process.exit(1);
 	}
 }
