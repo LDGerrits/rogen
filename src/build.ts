@@ -13,7 +13,7 @@ import {
 	toPosix,
 } from "./tree.js";
 import {
-	EnvRegexes,
+	FlagRegexes,
 	resolveRoute,
 	RouteContext,
 	RoutingMaps,
@@ -32,7 +32,6 @@ import {
 	RojoNode,
 	RojoTree,
 } from "./types.js";
-import { isMode } from "./config.js";
 
 interface BuildResult {
 	output: string;
@@ -116,27 +115,25 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	return listings;
 }
 
-function extractGlobalknownEnvs(
+function extractGlobalKnownFlags(
 	config: Config,
-	activeEnvs: Set<string>
+	activeFlags: Set<string>
 ): Set<string> {
-	const globalknownEnvs = new Set<string>();
-	for (const key in config) {
-		const potentialMode = config[key];
-		if (isMode(potentialMode)) {
-			for (const e of potentialMode.env) {
-				globalknownEnvs.add(String(e).toLowerCase());
-			}
+	const globalKnownFlags = new Set<string>();
+
+	if (config.flags) {
+		for (const f of config.flags) {
+			globalKnownFlags.add(String(f).toLowerCase());
 		}
 	}
 
-	for (const e of activeEnvs) {
-		globalknownEnvs.add(e);
+	for (const f of activeFlags) {
+		globalKnownFlags.add(f);
 	}
-	return globalknownEnvs;
+	return globalKnownFlags;
 }
 
-function compileEnvRegexes(activeEnvs: Set<string>): EnvRegexes[] {
+function compileFlagRegexes(activeEnvs: Set<string>): FlagRegexes[] {
 	return Array.from(activeEnvs).map((env) => ({
 		suffix: new RegExp(`[\\.\\-_\\+]${env}$`, "i"),
 		prefix: new RegExp(`^${env}[\\.\\-_\\+]`, "i"),
@@ -148,7 +145,7 @@ function buildDirectoryMarkers(
 	sourcePath: string,
 	listings: Map<string, fs.Dirent[]>,
 	routingMaps: RoutingMaps,
-	knownEnvs: Set<string>
+	knownFlags: Set<string>
 ): Record<string, string[]> {
 	const directoryMarkers: Record<string, string[]> = {};
 
@@ -160,7 +157,7 @@ function buildDirectoryMarkers(
 				if (
 					possibleMarker in SYSTEM_MARKERS ||
 					routingMaps.lowerCaseMap[possibleMarker] ||
-					knownEnvs.has(possibleMarker)
+					knownFlags.has(possibleMarker)
 				) {
 					markers.push(possibleMarker);
 				}
@@ -226,12 +223,23 @@ export async function build(
 
 	const rojoTree = structuredClone(baseProjectTree);
 
-	const configEnvs = (modeCopy.env || []).map((e) => e.toLowerCase());
-	const cliEnvs = (cliArgs.env || []).map((e) => e.toLowerCase());
+	const configFlags = (modeCopy.activeFlags || []).map((f) =>
+		f.toLowerCase()
+	);
+	const cliFlags = (cliArgs.flag || []).map((f) => f.toLowerCase());
 
-	const activeEnvs = new Set([...configEnvs, ...cliEnvs]);
-	const knownEnvs = extractGlobalknownEnvs(config, activeEnvs);
-	const envRegexes = compileEnvRegexes(activeEnvs);
+	const activeFlags = new Set([...configFlags, ...cliFlags]);
+	const knownFlags = extractGlobalKnownFlags(config, activeFlags);
+
+	for (const flag of activeFlags) {
+		if (!knownFlags.has(flag)) {
+			throw new Error(
+				`Configuration Error: The active flag "${flag}" is not declared in the "flags" array.`
+			);
+		}
+	}
+
+	const flagRegexes = compileFlagRegexes(activeFlags);
 
 	const context: RouteContext = {
 		source: config.source || structuredClone(defaultConfig.source),
@@ -243,9 +251,9 @@ export async function build(
 		verbatim: config.verbatim ?? defaultConfig.verbatim,
 		unwrap: config.unwrap ?? defaultConfig.unwrap,
 		directoryMarkers: {},
-		knownEnvs,
-		activeEnvs,
-		envRegexes,
+		knownFlags,
+		activeFlags,
+		flagRegexes,
 	};
 
 	const combinedGlobIgnorePaths = Array.from(
@@ -276,7 +284,7 @@ export async function build(
 			sourcePath,
 			listings,
 			context.routingMaps,
-			knownEnvs
+			knownFlags
 		);
 
 		const newContext: RouteContext = {

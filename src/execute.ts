@@ -113,8 +113,8 @@ export async function execute(
 			if (cliArgs.watch) {
 				const outputName = path.basename(buildResult.output);
 				const envString =
-					targetConfig.env.length > 0
-						? ` (env: ${targetConfig.env.join(", ")})`
+					targetConfig.activeFlags.length > 0
+						? ` (env: ${targetConfig.activeFlags.join(", ")})`
 						: "";
 				console.log(
 					`${timeStamp} ✅ Built "${buildResult.name}" [${modeName}]${envString} (${buildResult.fileCount} files) -> ${outputName}`
@@ -127,9 +127,9 @@ export async function execute(
 					`   ▶ Processed: ${buildResult.fileCount} source files`
 				);
 				console.log(`   ▶ Build Dir: ${buildResult.buildDir}`);
-				if (targetConfig.env.length > 0) {
+				if (targetConfig.activeFlags.length > 0) {
 					console.log(
-						`   ▶ knownEnvs: ${targetConfig.env.join(", ")}`
+						`   ▶ knownEnvs: ${targetConfig.activeFlags.join(", ")}`
 					);
 				}
 				console.log(`   ▶ Output To: ${buildResult.output}\n`);

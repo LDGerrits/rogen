@@ -21,7 +21,7 @@ Commands:
 Options:
   -c, --config <path>   Specify custom config file
   -t, --template <path> Specify path to the Rojo tree JSON template
-  -e, --env <env>       Activate environments
+  -f, --flag <flag>     Activate environment flags
   -m, --mode <mode>     Override modes (luau, ts, darklua, or custom)
   -s, --source <path>   Override the directory containing uncompiled code
   -b, --build <path>    Override output directory for transpiled code
@@ -40,7 +40,7 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
 		config: { type: "string" as const, short: "c" },
 		mode: { type: "string" as const, short: "m", multiple: true },
 		source: { type: "string" as const, short: "s", multiple: true },
-		env: { type: "string" as const, short: "e", multiple: true },
+		flag: { type: "string" as const, short: "f", multiple: true },
 		template: { type: "string" as const, short: "t" },
 		build: { type: "string" as const, short: "b" },
 		output: { type: "string" as const, short: "o" },

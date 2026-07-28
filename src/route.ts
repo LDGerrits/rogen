@@ -21,7 +21,7 @@ interface FolderRoutingResult {
 	targetService: string;
 	virtualParts: string[];
 	lastRouteKeyword: string | null;
-	environmentKeyword: string | null;
+	flagKeyword: string | null;
 	flags: SystemFlags;
 }
 
@@ -34,13 +34,13 @@ export interface RoutingMaps {
 	camelCasePrefixRegex: RegExp;
 }
 
-export interface EnvRegexes {
+export interface FlagRegexes {
 	suffix: RegExp;
 	prefix: RegExp;
 	middle: RegExp;
 }
 
-export interface RouteContext extends Mode {
+export interface RouteContext extends Omit<Mode, "activeFlags"> {
 	source: string | string[];
 	isTsProject: boolean;
 	emitLegacyScripts: boolean;
@@ -49,16 +49,16 @@ export interface RouteContext extends Mode {
 	verbatim: boolean;
 	unwrap: boolean;
 	directoryMarkers: Record<string, string[]>;
-	knownEnvs: Set<string>;
-	activeEnvs: Set<string>;
-	envRegexes: EnvRegexes[];
+	knownFlags: Set<string>;
+	activeFlags: Set<string>;
+	flagRegexes: FlagRegexes[];
 }
 
 interface AffixResult {
 	mappedService: string;
 	matchedLength: number;
 	exactMatch: string;
-	environmentKeyword?: string;
+	flagKeyword?: string;
 	isPrefix: boolean;
 }
 
@@ -76,14 +76,14 @@ function resolveFolderRouting(
 	parts: string[],
 	context: RouteContext
 ): FolderRoutingResult {
-	const { routingMaps, directoryMarkers, activeEnvs } = context;
+	const { routingMaps, directoryMarkers, activeFlags } = context;
 	const { lowerCaseMap } = routingMaps;
 
 	const virtualParts: string[] = [];
 
 	let targetService = "ReplicatedStorage";
 	let lastRouteKeyword: string | null = null;
-	let environmentKeyword: string | null = null;
+	let flagKeyword: string | null = null;
 
 	const flags: SystemFlags = { raw: false, verbatim: false, unwrap: false };
 
@@ -106,7 +106,7 @@ function resolveFolderRouting(
 				targetService = lowerCaseMap[routingMarker];
 				lastRouteKeyword = routingMarker;
 				if (serviceAliases.has(routingMarker))
-					environmentKeyword = routingMarker;
+					flagKeyword = routingMarker;
 			}
 		}
 	}
@@ -140,7 +140,7 @@ function resolveFolderRouting(
 		}
 
 		if (flags.raw) {
-			if (!activeEnvs.has(lowerPart)) {
+			if (!activeFlags.has(lowerPart)) {
 				virtualParts.push(part);
 			}
 			continue;
@@ -154,11 +154,11 @@ function resolveFolderRouting(
 				targetService = lowerCaseMap[routingMarker];
 				lastRouteKeyword = routingMarker;
 				if (serviceAliases.has(routingMarker))
-					environmentKeyword = routingMarker;
+					flagKeyword = routingMarker;
 
 				if (
 					!matchedService &&
-					!activeEnvs.has(lowerPart) &&
+					!activeFlags.has(lowerPart) &&
 					!isInvisible
 				) {
 					virtualParts.push(part);
@@ -171,10 +171,10 @@ function resolveFolderRouting(
 			targetService = matchedService;
 			lastRouteKeyword = lowerPart;
 			if (serviceAliases.has(lowerPart)) {
-				environmentKeyword = lowerPart;
+				flagKeyword = lowerPart;
 			}
 		} else {
-			if (!activeEnvs.has(lowerPart) && !isInvisible) {
+			if (!activeFlags.has(lowerPart) && !isInvisible) {
 				virtualParts.push(part);
 			}
 		}
@@ -184,7 +184,7 @@ function resolveFolderRouting(
 		targetService,
 		virtualParts,
 		lastRouteKeyword,
-		environmentKeyword,
+		flagKeyword,
 		flags,
 	};
 }
@@ -210,7 +210,7 @@ function resolveAffixes(
 			mappedService: lowerCaseMap[suffix],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword:
+			flagKeyword:
 				!isInit && serviceAliases.has(suffix) ? suffix : undefined,
 			isPrefix: false,
 		};
@@ -223,7 +223,7 @@ function resolveAffixes(
 			mappedService: mergedServices[match[1]],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword:
+			flagKeyword:
 				!isInit && serviceAliases.has(suffix) ? suffix : undefined,
 			isPrefix: false,
 		};
@@ -236,7 +236,7 @@ function resolveAffixes(
 			mappedService: lowerCaseMap[prefix],
 			matchedLength: match[0].length,
 			exactMatch: match[0],
-			environmentKeyword:
+			flagKeyword:
 				!isInit && serviceAliases.has(prefix) ? prefix : undefined,
 			isPrefix: true,
 		};
@@ -249,7 +249,7 @@ function resolveAffixes(
 			mappedService: lowerCaseMap[prefix],
 			matchedLength: match[1].length,
 			exactMatch: match[0],
-			environmentKeyword:
+			flagKeyword:
 				!isInit && serviceAliases.has(prefix) ? prefix : undefined,
 			isPrefix: true,
 		};
@@ -260,11 +260,11 @@ function resolveAffixes(
 
 function getWrapperFolder(
 	targetService: string,
-	environmentKeyword: string | null
+	flagKeyword: string | null
 ): string {
 	if (serverContainers.has(targetService)) return "server";
 	if (clientContainers.has(targetService)) return "client";
-	if (environmentKeyword) return environmentKeyword;
+	if (flagKeyword) return flagKeyword;
 	return "shared";
 }
 
@@ -279,9 +279,9 @@ export function resolveRoute(
 		build,
 		routingMaps,
 		verbatim,
-		knownEnvs,
-		activeEnvs,
-		envRegexes,
+		knownFlags,
+		activeFlags,
+		flagRegexes,
 		directoryMarkers,
 	} = context;
 	const parts = relativePath.split(/[\\/]/);
@@ -305,7 +305,7 @@ export function resolveRoute(
 		const lowerPart = part.toLowerCase();
 
 		// Drop if folder name is an inactive env
-		if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {
+		if (knownFlags.has(lowerPart) && !activeFlags.has(lowerPart)) {
 			dropped = true;
 			break;
 		}
@@ -314,7 +314,7 @@ export function resolveRoute(
 		const markers = directoryMarkers?.[currentRel];
 		if (markers) {
 			for (const m of markers) {
-				if (knownEnvs.has(m) && !activeEnvs.has(m)) {
+				if (knownFlags.has(m) && !activeFlags.has(m)) {
 					dropped = true;
 					break;
 				}
@@ -327,7 +327,7 @@ export function resolveRoute(
 	const rootMarkers = directoryMarkers?.[""];
 	if (!dropped && rootMarkers) {
 		for (const m of rootMarkers) {
-			if (knownEnvs.has(m) && !activeEnvs.has(m)) {
+			if (knownFlags.has(m) && !activeFlags.has(m)) {
 				dropped = true;
 				break;
 			}
@@ -339,7 +339,7 @@ export function resolveRoute(
 		const delimiterSplit = cleanBasename.split(/[.\-_+]/);
 		for (const part of delimiterSplit) {
 			const lowerPart = part.toLowerCase();
-			if (knownEnvs.has(lowerPart) && !activeEnvs.has(lowerPart)) {
+			if (knownFlags.has(lowerPart) && !activeFlags.has(lowerPart)) {
 				dropped = true;
 				break;
 			}
@@ -361,7 +361,7 @@ export function resolveRoute(
 
 	// Strip active environment affixes
 	let basename = cleanBasename;
-	for (const regexSet of envRegexes) {
+	for (const regexSet of flagRegexes) {
 		while (regexSet.suffix.test(basename)) {
 			basename = basename.replace(regexSet.suffix, "");
 		}
@@ -378,7 +378,7 @@ export function resolveRoute(
 		targetService: folderTarget,
 		virtualParts,
 		lastRouteKeyword,
-		environmentKeyword: folderEnv,
+		flagKeyword: folderFlag,
 		flags,
 	} = resolveFolderRouting(parts, context);
 
@@ -394,10 +394,10 @@ export function resolveRoute(
 
 	// Resolve overrides
 	let targetService = affix?.mappedService ?? folderTarget;
-	const environmentKeyword = affix?.environmentKeyword ?? folderEnv;
+	const flagKeyword = affix?.flagKeyword ?? folderFlag;
 
 	// Resolve namespace wrapper folder
-	const wrapperFolder = getWrapperFolder(targetService, environmentKeyword);
+	const wrapperFolder = getWrapperFolder(targetService, flagKeyword);
 
 	// Determine if the wrapper folder should be skipped
 	const unwrap = context.unwrap || flags.unwrap;

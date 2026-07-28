@@ -13,10 +13,9 @@ describe("Router Logic", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs: new Set(),
-		activeEnvs: new Set(),
-		envRegexes: [],
-		env: [],
+		knownFlags: new Set(),
+		activeFlags: new Set(),
+		flagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -208,10 +207,9 @@ describe("Marker File Routing", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs: new Set(),
-		activeEnvs: new Set(),
-		envRegexes: [],
-		env: [],
+		knownFlags: new Set(),
+		activeFlags: new Set(),
+		flagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -271,10 +269,9 @@ describe("Routing (Deepest Wins)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs: new Set(),
-		activeEnvs: new Set(),
-		envRegexes: [],
-		env: [],
+		knownFlags: new Set(),
+		activeFlags: new Set(),
+		flagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -372,16 +369,16 @@ describe("Routing (Deepest Wins)", () => {
 	});
 });
 
-describe("Environment Filtering", () => {
-	const activeEnvs = new Set(["dev", "debug"]);
-	const knownEnvs = new Set(["dev", "prod", "debug"]);
-	const envRegexes = Array.from(activeEnvs).map((env) => ({
-		suffix: new RegExp(`[\\.\\-_]${env}$`, "i"),
-		prefix: new RegExp(`^${env}[\\.\\-_]`, "i"),
-		middle: new RegExp(`[\\.\\-_]${env}(?=[\\.\\-_])`, "i"),
+describe("Flag Filtering", () => {
+	const activeFlags = new Set(["dev", "debug"]);
+	const knownFlags = new Set(["dev", "prod", "debug"]);
+	const flagRegexes = Array.from(activeFlags).map((flag) => ({
+		suffix: new RegExp(`[\\.\\-_]${flag}$`, "i"),
+		prefix: new RegExp(`^${flag}[\\.\\-_]`, "i"),
+		middle: new RegExp(`[\\.\\-_]${flag}(?=[\\.\\-_])`, "i"),
 	}));
 
-	const envContext: RouteContext = {
+	const flagContext: RouteContext = {
 		source: "src",
 		build: "src",
 		output: "test.project.json",
@@ -392,94 +389,93 @@ describe("Environment Filtering", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs,
-		activeEnvs,
-		envRegexes,
-		env: [],
+		knownFlags,
+		activeFlags,
+		flagRegexes,
 		globIgnorePaths: [],
 	};
 
-	it("should drop a file if it contains an inactive environment affix", () => {
-		const result = resolveRoute("api.prod.lua", false, envContext);
+	it("should drop a file if it contains an inactive flag affix", () => {
+		const result = resolveRoute("api.prod.lua", false, flagContext);
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should drop a folder if it is named after an inactive environment", () => {
-		const result = resolveRoute("prod/api.lua", false, envContext);
+	it("should drop a folder if it is named after an inactive flag", () => {
+		const result = resolveRoute("prod/api.lua", false, flagContext);
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should keep a file and strip the affix if the environment is active", () => {
-		const result = resolveRoute("api.dev.lua", false, envContext);
+	it("should keep a file and strip the affix if the flag is active", () => {
+		const result = resolveRoute("api.dev.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ReplicatedStorage");
 	});
 
 	it("should keep a file, strip the affix, and apply proper script routing if chained", () => {
-		const result = resolveRoute("api.dev.server.lua", false, envContext);
+		const result = resolveRoute("api.dev.server.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ServerScriptService");
 	});
 
-	it("should handle mixed delimiters when stripping environment tags", () => {
-		const result = resolveRoute("api-dev_server.lua", false, envContext);
+	it("should handle mixed delimiters when stripping flag tags", () => {
+		const result = resolveRoute("api-dev_server.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ServerScriptService");
 	});
 
-	it("should strip multiple chained active environments correctly", () => {
-		const result = resolveRoute("core.dev.debug.lua", false, envContext);
+	it("should strip multiple chained active flags correctly", () => {
+		const result = resolveRoute("core.dev.debug.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("core");
 	});
 
-	it("should keep a file and handle prefix environment stripping", () => {
-		const result = resolveRoute("debug-logger.lua", false, envContext);
+	it("should keep a file and handle prefix flag stripping", () => {
+		const result = resolveRoute("debug-logger.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("logger");
 	});
 
-	it("should keep a folder but strip its name from virtualParts if it matches an active environment", () => {
+	it("should keep a folder but strip its name from virtualParts if it matches an active flag", () => {
 		const result = resolveRoute(
 			"dev/systems/combat.lua",
 			false,
-			envContext
+			flagContext
 		);
 		expect(result.dropped).toBe(false);
 		expect(result.virtualParts).not.toContain("dev");
 		expect(result.virtualParts).toContain("systems");
 	});
 
-	it("should NOT strip environment tags if they are part of a larger word", () => {
-		const result = resolveRoute("device.lua", false, envContext);
+	it("should NOT strip flag tags if they are part of a larger word", () => {
+		const result = resolveRoute("device.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("device"); // 'dev' is inside 'device'
 	});
 
-	it("should NOT drop a file if the inactive environment tag is part of a larger word", () => {
-		const result = resolveRoute("production.lua", false, envContext);
+	it("should NOT drop a file if the inactive flag tag is part of a larger word", () => {
+		const result = resolveRoute("production.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("production"); // 'prod' is inactive, but inside 'production'
 	});
 
-	it("should NOT drop a folder if the inactive environment tag is part of a larger folder name", () => {
-		const result = resolveRoute("production/api.lua", false, envContext);
+	it("should NOT drop a folder if the inactive flag tag is part of a larger folder name", () => {
+		const result = resolveRoute("production/api.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.virtualParts).toContain("production");
 	});
 
-	it("should safely handle a file named exactly after an active environment", () => {
-		const result = resolveRoute("dev.lua", false, envContext);
+	it("should safely handle a file named exactly after an active flag", () => {
+		const result = resolveRoute("dev.lua", false, flagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("dev");
 	});
 
-	it("should drop a folder entirely if it contains an inactive environment marker file", () => {
+	it("should drop a folder entirely if it contains an inactive flag marker file", () => {
 		const contextWithMarker: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { systems: ["prod"] },
 		};
 		const result = resolveRoute(
@@ -490,9 +486,9 @@ describe("Environment Filtering", () => {
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should keep a folder if its environment marker file is active", () => {
+	it("should keep a folder if its flag marker file is active", () => {
 		const contextWithMarker: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { systems: ["dev"] },
 		};
 		const result = resolveRoute(
@@ -506,7 +502,7 @@ describe("Environment Filtering", () => {
 
 	it("should process multi-markers (e.g. .dev AND .server) correctly", () => {
 		const contextWithMarkers: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { api: ["dev", "server"] },
 		};
 		const result = resolveRoute(
@@ -521,9 +517,9 @@ describe("Environment Filtering", () => {
 		expect(result.virtualParts).toContain("api");
 	});
 
-	it("should drop a folder entirely if it contains an inactive environment AND a valid routing marker", () => {
+	it("should drop a folder entirely if it contains an inactive flag AND a valid routing marker", () => {
 		const contextWithMarkers: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { api: ["prod", "server"] },
 		};
 		const result = resolveRoute(
@@ -535,9 +531,9 @@ describe("Environment Filtering", () => {
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should route an environment folder via a marker, but still strip the environment folder name", () => {
+	it("should route a flag folder via a marker, but still strip the flag folder name", () => {
 		const contextWithMarkers: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { dev: ["server"] },
 		};
 		const result = resolveRoute(
@@ -552,9 +548,9 @@ describe("Environment Filtering", () => {
 		expect(result.virtualParts).not.toContain("dev");
 	});
 
-	it("should process a routing folder containing an active environment marker", () => {
+	it("should process a routing folder containing an active flag marker", () => {
 		const contextWithMarkers: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { server: ["dev"] },
 		};
 		const result = resolveRoute(
@@ -570,7 +566,7 @@ describe("Environment Filtering", () => {
 
 	it("should respect multi-markers at the root directory level", () => {
 		const contextWithMarkers: RouteContext = {
-			...envContext,
+			...flagContext,
 			directoryMarkers: { "": ["dev", "client"] },
 		};
 		const result = resolveRoute("main.lua", false, contextWithMarkers);
@@ -593,10 +589,9 @@ describe("Invisible Folders (Route Groups)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs: new Set(),
-		activeEnvs: new Set(),
-		envRegexes: [],
-		env: [],
+		knownFlags: new Set(),
+		activeFlags: new Set(),
+		flagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -678,10 +673,9 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownEnvs: new Set(),
-		activeEnvs: new Set(),
-		envRegexes: [],
-		env: [],
+		knownFlags: new Set(),
+		activeFlags: new Set(),
+		flagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -711,12 +705,12 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		expect(result.nodeName).toBe("main");
 	});
 
-	it("should properly strip active environments even if hoisted", () => {
-		const contextWithEnv: RouteContext = {
+	it("should properly strip active flags even if hoisted", () => {
+		const contextWithFlag: RouteContext = {
 			...baseContext,
-			activeEnvs: new Set(["dev"]),
-			knownEnvs: new Set(["dev", "prod"]),
-			envRegexes: [
+			activeFlags: new Set(["dev"]),
+			knownFlags: new Set(["dev", "prod"]),
+			flagRegexes: [
 				{
 					suffix: /[.\-_+]dev$/i,
 					prefix: /^dev[.\-_+]/i,
@@ -728,7 +722,7 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		const result = resolveRoute(
 			"core/^main.dev.server.luau",
 			false,
-			contextWithEnv
+			contextWithFlag
 		);
 
 		expect(result.dropped).toBe(false);

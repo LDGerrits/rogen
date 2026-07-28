@@ -10,6 +10,7 @@ export const defaultTemplate: RojoTree = {
 
 export const defaultConfig: Config = {
 	source: ["src"],
+	flags: [],
 	verbatim: false,
 	casing: "camelCase",
 	globIgnorePaths: [],
@@ -18,19 +19,19 @@ export const defaultConfig: Config = {
 	luau: {
 		output: "default.project.json",
 		build: "src",
-		env: [],
+		activeFlags: [],
 		globIgnorePaths: [],
 	},
 	ts: {
 		output: "default.project.json",
 		build: "out",
-		env: [],
+		activeFlags: [],
 		globIgnorePaths: [],
 	},
 	darklua: {
 		output: "build.project.json",
 		build: "dist",
-		env: [],
+		activeFlags: [],
 		globIgnorePaths: [],
 	},
 	template: defaultTemplate,

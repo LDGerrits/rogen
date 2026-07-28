@@ -18,6 +18,7 @@ export interface ActiveMode {
 
 const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
+	flags: true,
 	verbatim: true,
 	casing: true,
 	unwrap: true,
@@ -262,14 +263,19 @@ export function loadConfig(
 						...(config[key] as Mode),
 						...modeData,
 					} as Mode;
-					config[key].env = Array.isArray(config[key].env)
-						? config[key].env
+
+					config[key].activeFlags = Array.isArray(
+						config[key].activeFlags
+					)
+						? config[key].activeFlags
 						: [];
+
 					config[key].globIgnorePaths = Array.isArray(
 						config[key].globIgnorePaths
 					)
 						? config[key].globIgnorePaths
 						: [];
+
 					continue;
 				}
 
@@ -278,7 +284,7 @@ export function loadConfig(
 					modeData &&
 					("output" in modeData ||
 						"build" in modeData ||
-						"env" in modeData ||
+						"activeFlags" in modeData ||
 						"globIgnorePaths" in modeData);
 
 				if (intendedAsMode) {
@@ -296,7 +302,9 @@ export function loadConfig(
 					config[key] = {
 						output: modeData.output,
 						build: modeData.build,
-						env: Array.isArray(modeData.env) ? modeData.env : [],
+						activeFlags: Array.isArray(modeData.activeFlags)
+							? modeData.activeFlags
+							: [],
 						globIgnorePaths: Array.isArray(modeData.globIgnorePaths)
 							? modeData.globIgnorePaths
 							: [],
@@ -348,11 +356,11 @@ export function loadConfig(
 						`Configuration Error: 'casing' must be either "PascalCase" or "camelCase".`
 					);
 				} else if (
-					key === "globIgnorePaths" &&
+					(key === "globIgnorePaths" || key === "flags") &&
 					!Array.isArray(rawConfig[key])
 				) {
 					throw new Error(
-						`Configuration Error: 'globIgnorePaths' must be an array of strings.`
+						`Configuration Error: '${key}' must be an array of strings.`
 					);
 				}
 				config[key] = rawConfig[key];
