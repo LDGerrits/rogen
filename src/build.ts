@@ -12,6 +12,8 @@ import {
 	MissingPath,
 	toPosix,
 	collapseFolders,
+	isInitFile,
+	isValidSource,
 } from "./tree.js";
 import {
 	FlagRegexes,
@@ -50,18 +52,6 @@ const SYSTEM_MARKERS: Record<keyof SystemMarkers, true> = {
 	verbatim: true,
 	unwrap: true,
 };
-
-const isScript = (filename: string): boolean =>
-	/\.(tsx?|luau|lua)$/i.test(filename) &&
-	!filename.toLowerCase().endsWith(".d.ts");
-const isModel = (filename: string): boolean =>
-	/\.(rbxm|rbxmx)$/i.test(filename);
-const isData = (filename: string): boolean =>
-	/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
-const isValidSource = (filename: string): boolean =>
-	isScript(filename) || isModel(filename) || isData(filename);
-const isInitFile = (filename: string): boolean =>
-	isScript(filename) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(filename);
 
 function buildSubPath(sourceRel: string): string {
 	const segments = sourceRel.split(/[\\/]/).filter(Boolean);

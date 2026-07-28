@@ -126,24 +126,36 @@ export function findMissingPaths(
 	return missing;
 }
 
-const ROJO_SAFE_EXTENSIONS = new Set([
-	".lua",
-	".luau",
-	".server.lua",
-	".server.luau",
-	".client.lua",
-	".client.luau",
-	".json",
-	".toml",
-	".yaml",
-	".yml",
-	".csv",
-	".txt",
-	".md",
-	".msgpack",
-	".rbxm",
-	".rbxmx",
-]);
+const isScript = (filename: string): boolean =>
+	/\.(tsx?|luau|lua)$/i.test(filename) &&
+	!filename.toLowerCase().endsWith(".d.ts");
+
+const isModel = (filename: string): boolean =>
+	/\.(rbxm|rbxmx)$/i.test(filename);
+
+const isData = (filename: string): boolean =>
+	/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
+
+export const isValidSource = (filename: string): boolean =>
+	isScript(filename) || isModel(filename) || isData(filename);
+
+export const isInitFile = (filename: string): boolean =>
+	isScript(filename) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(filename);
+
+function getRojoBaseName(filename: string): string {
+	if (isScript(filename)) {
+		return filename
+			.replace(/\.(server|client)\.(luau?|lua|tsx?)$/i, "")
+			.replace(/\.(luau?|lua|tsx?)$/i, "");
+	}
+	if (isModel(filename)) {
+		return filename.replace(/\.(rbxmx?)$/i, "");
+	}
+	if (isData(filename)) {
+		return filename.replace(/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i, "");
+	}
+	return filename;
+}
 
 export function collapseFolders(
 	node: RojoNode,
@@ -181,18 +193,8 @@ export function collapseFolders(
 			}
 
 			const fileName = path.basename(childAbsPath);
-			if (fileName !== key) {
-				let matchedExt = false;
-				for (const ext of ROJO_SAFE_EXTENSIONS) {
-					if (fileName === key + ext) {
-						matchedExt = true;
-						break;
-					}
-				}
-				// If the name doesn't match the key perfectly, do not collapse
-				if (!matchedExt) {
-					canCollapse = false;
-				}
+			if (getRojoBaseName(fileName) !== key) {
+				canCollapse = false;
 			}
 		}
 	}
