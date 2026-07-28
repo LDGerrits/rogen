@@ -115,24 +115,6 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	return listings;
 }
 
-function extractGlobalKnownFlags(
-	config: Config,
-	activeFlags: Set<string>
-): Set<string> {
-	const globalKnownFlags = new Set<string>();
-
-	if (config.flags) {
-		for (const f of config.flags) {
-			globalKnownFlags.add(String(f).toLowerCase());
-		}
-	}
-
-	for (const f of activeFlags) {
-		globalKnownFlags.add(f);
-	}
-	return globalKnownFlags;
-}
-
 function compileFlagRegexes(activeEnvs: Set<string>): FlagRegexes[] {
 	return Array.from(activeEnvs).map((env) => ({
 		suffix: new RegExp(`[\\.\\-_\\+]${env}$`, "i"),
@@ -229,7 +211,9 @@ export async function build(
 	const cliFlags = (cliArgs.flag || []).map((f) => f.toLowerCase());
 
 	const activeFlags = new Set([...configFlags, ...cliFlags]);
-	const knownFlags = extractGlobalKnownFlags(config, activeFlags);
+	const knownFlags = new Set(
+		(config.flags || []).map((f) => String(f).toLowerCase())
+	);
 
 	for (const flag of activeFlags) {
 		if (!knownFlags.has(flag)) {

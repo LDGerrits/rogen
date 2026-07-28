@@ -1474,7 +1474,11 @@ describe("unwrap Routing Overrides", () => {
 			globIgnorePaths: [],
 		};
 		const baseTree: RojoTree = { name: "test-game", tree: {} };
-		const config: Config = { ...defaultConfig, source: "src" };
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			flags: ["prod", "experimental"],
+		};
 		const env: Environment = {
 			isTsProject: false,
 			isDarkluaProject: false,
