@@ -1,0 +1,70 @@
+---
+title: Darklua Setup
+description: Step-by-step setup guide for Darklua projects.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Darklua Setup
+
+Darklua processes your raw code, applies rules, and outputs it to a build directory. Rogen integrates directly with this workflow.
+
+Rogen detects Darklua automatically if it finds a `.darklua.json` or `.darklua.json5` file in your root directory.
+
+<Steps>
+
+<Step>
+### Define your Build Directory
+
+Assume your Darklua configuration takes files from `src/` and outputs them to `dist/`.
+
+</Step>
+
+<Step>
+### Configure Rogen
+
+Initialize your Rogen config using the command line:
+
+```bash
+rogen --init
+```
+
+Because Rogen detects Darklua, it adds a `darklua` mode to your `.rogen.json` file. Ensure the `build` path matches your Darklua output folder.
+
+```json title=".rogen.json"
+{
+	"source": ["src"],
+	"darklua": {
+		"output": "build.project.json",
+		"build": "dist"
+	},
+	"template": {
+		"name": "my-darklua-game",
+		"tree": {
+			"$className": "DataModel"
+		}
+	}
+}
+```
+
+Rogen reads your `src` folder for routing rules, but maps the final paths to your `dist` folder.
+
+</Step>
+
+<Step>
+### Start the Pipeline
+
+Run your Darklua watcher to process files from `src` to `dist`. Then, run Rogen in watch mode.
+
+```bash
+darklua process src dist --watch
+```
+
+```bash
+rogen -w
+```
+
+</Step>
+
+</Steps>

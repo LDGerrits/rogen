@@ -1,0 +1,81 @@
+---
+title: Multi-place Setup
+description: Share core code across multiple places by merging folders.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Multi-place Setup
+
+Rogen merges multiple source folders into a single Rojo project. This lets you share core code across places without duplicating logic.
+
+<Steps>
+
+<Step>
+### Structure your Repository
+
+Create separate directories for your shared systems, and place-specific code.
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder level={1} name="core" />
+	<TreeFolder level={1} name="lobby" />
+	<TreeFolder level={1} name="match" />
+</SystemWindow>
+
+</Step>
+
+<Step>
+### Configure the Lobby Place
+
+Create a config file for the Lobby place. Use the `source` array to supply multiple inputs.
+
+```json title="lobby.rogen.json"
+{
+	"source": ["core", "lobby"],
+	"luau": {
+		"output": "lobby.project.json",
+		"build": ""
+	}
+}
+```
+
+Rogen reads all three folders and merges them cleanly into `ReplicatedStorage` and `ServerScriptService`.
+
+</Step>
+
+<Step>
+### Configure the Match Place
+
+Create a second config file for the Match place.
+
+```json title="match.rogen.json"
+{
+	"source": ["core", "match"],
+	"luau": {
+		"output": "match.project.json",
+		"build": ""
+	}
+}
+```
+
+</Step>
+
+<Step>
+### Run the Watcher
+
+Specify the config file you want to build using the `--config` flag.
+
+```bash
+rogen -w --config lobby.rogen.json
+```
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+	If Rogen finds identical file names at the same path, the directory listed
+	last in the `source` array overwrites the previous one.
+</Callout>

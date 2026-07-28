@@ -1,17 +1,64 @@
 ---
 title: Installation
-description: Best document ever
+description: Install Rogen and set up your project.
 ---
 
-## Code Block
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { FileCode2, Code2, Terminal, FolderTree } from "lucide-react";
+import InstallCodeBlock from "@/components/install-code-block";
 
-```js
-console.log("Hello World");
+# Installation
+
+Rogen is a command line tool. Install it using **Rokit**.
+
+<Callout type="info">
+	**Prerequisite:** You must install
+	<a
+		href="[https://rojo.space/](https://rojo.space/)"
+		target="_blank"
+		rel="noreferrer"
+	>
+		Rojo
+	</a>
+	. Rogen generates Rojo
+	<code>.project.json</code> files.
+</Callout>
+
+<Steps>
+
+<Step>
+### Add Rogen to your Toolchain
+
+Open your `rokit.toml` file and add Rogen.
+
+<InstallCodeBlock />
+
+</Step>
+
+<Step>
+### Install the Tool
+
+Run the installation command.
+
+```bash
+rokit install
 ```
 
-## Cards
+</Step>
 
-<Cards>
-	<Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-	<Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+<Step>
+### Verify Installation
+
+Check the Rogen version.
+
+```bash
+rogen --version
+```
+
+If the command prints a version number, you are ready.
+
+</Step>
+
+</Steps>

@@ -1,0 +1,86 @@
+---
+title: Configuration
+description: The complete guide to the .rogen.json configuration file.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Configuration
+
+The `.rogen.json` file controls your project. Place it in your root directory to define your source folders, routing preferences, and Rojo tree templates.
+
+```json title=".rogen.json"
+{
+	"source": ["src"],
+	"casing": "camelCase",
+	"verbatim": false,
+	"unwrap": false,
+	"luau": {
+		"output": "default.project.json",
+		"build": "src",
+		"env": ["dev"]
+	},
+	"aliases": {
+		"Controller": "StarterPlayerScripts",
+		"Service": "ServerScriptService"
+	},
+	"template": {
+		"name": "my-game",
+		"tree": {
+			"$className": "DataModel"
+		}
+	}
+}
+```
+
+---
+
+## Fields
+
+### `source`
+
+_(Required)_ A string or an array of strings. It defines the directories where your uncompiled code lives. Rogen scans these folders to generate the map. Passing an array merges multiple folders.
+
+### `casing`
+
+_(Optional)_ Defines the capitalization of generated wrapper folders (like `server` or `client`). Accepts `"camelCase"` (default) or `"PascalCase"`.
+
+### `verbatim`
+
+_(Optional)_ A boolean flag. When `true`, Rogen keeps routing suffixes in the final script names instead of removing them. Defaults to `false`.
+
+### `unwrap`
+
+_(Optional)_ A boolean flag. When `true`, Rogen skips nesting files inside default wrapper folders like `server`, `client`, or `shared` globally.
+
+### `aliases`
+
+_(Optional)_ An object that lets you define custom routing maps. You can register new suffixes or overwrite Rogen's default service routing.
+
+### `template`
+
+_(Optional)_ Defines your base Rojo tree. It accepts an inline JSON object or a string path to an external JSON file. Rogen merges its generated paths directly into this template.
+
+---
+
+## Modes
+
+You define mode-specific pipelines for different workflows, such as `luau`, `ts`, or `darklua`. You can also create custom modes.
+
+A mode object requires an `output` (the generated Rojo file path) and a `build` (the directory containing transpiled code).
+
+You can also specify active environments and ignore paths per mode:
+
+- `env`: An array of strings. Rogen keeps files matching these environment tags and drops inactive ones.
+- `globIgnorePaths`: An array of glob patterns to ignore specific files.
+
+```json title=".rogen.json"
+{
+	"prod": {
+		"output": "prod.project.json",
+		"build": "src",
+		"env": ["production"],
+		"globIgnorePaths": ["**/*.spec.luau"]
+	}
+}
+```

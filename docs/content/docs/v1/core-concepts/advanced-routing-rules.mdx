@@ -1,0 +1,37 @@
+---
+title: Advanced Routing
+description: Control your file paths with invisible folders, hoisting, and advanced markers.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Advanced Routing
+
+Rogen provides advanced tools to control exactly how it builds your project tree.
+
+## Wrapper Folders
+
+By default, Rogen places your files into wrapper folders named `server`, `client`, or `shared` inside the target Roblox service. This keeps your output organized.
+
+If you want files to sit directly inside the service without these folders, you can use the `unwrap` setting in your `.rogen.json` file or place an `.unwrap` marker inside a specific directory.
+
+## Invisible Folders
+
+You can group files locally without changing their final path in Roblox Studio.
+
+Wrap a folder name in parentheses, like `(inventory)`. Rogen routes the files inside but drops the folder name from the final Rojo path.
+
+## File Hoisting
+
+You can push a file directly to the root of its target service, bypassing all intermediate folders.
+
+Add a caret (`^`) to the start of the file name, like `^main.server.luau`. Rogen skips the virtual folders and places the file at the base of the service.
+
+## Advanced Marker Files
+
+You place empty files inside a folder to change how Rogen reads it.
+
+- `.raw`: Stops all routing and environment logic for the folder. Rogen reads and outputs the exact local structure.
+- `.unwrap`: Stops Rogen from placing files inside default wrapper folders (`server`, `client`, `shared`) for that specific directory.
+- `.verbatim`: Forces Rogen to keep routing keywords in the final file names.
+- `.keep` or `.gitkeep`: Tells Rogen to create an empty folder in the final project.

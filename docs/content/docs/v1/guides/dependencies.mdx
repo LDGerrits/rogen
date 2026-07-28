@@ -1,0 +1,30 @@
+---
+title: Packages & Dependencies
+description: How Rogen handles external packages from Wally, Pesde, and npm.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Packages & Dependencies
+
+Rogen manages external dependencies seamlessly. Because Rogen builds the tree map for you, it detects standard package managers automatically and updates the template.
+
+## Automatic Package Routing
+
+When Rogen runs, it checks your working directory for configuration files like `wally.toml`, `pesde.toml`, or `tsconfig.json`. It then automatically creates a base Rojo tree that maps standard package folders to the correct services.
+
+For example, if Rogen detects Wally, it alters the tree template:
+
+- `Packages` maps to `ReplicatedStorage`.
+- `ServerPackages` maps to `ServerScriptService`.
+
+If Rogen detects a roblox-ts project, it maps `node_modules/@rbxts` and `include` paths to `ReplicatedStorage`.
+
+## Customizing Paths
+
+If you use custom package directory names, you can override Rogen's automatic detection. You add standard Rojo `tree` definitions directly into the `template` object inside your `.rogen.json` configuration file. Rogen safely merges your manual paths with its auto-generated paths.
+
+<Callout type="info">
+	You can also place a path string in the `template` field to link a separate
+	JSON file containing your base Rojo tree.
+</Callout>

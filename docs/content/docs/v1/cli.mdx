@@ -1,0 +1,80 @@
+---
+title: CLI Reference
+description: The complete command-line interface for Rogen.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# CLI Reference
+
+The Rogen command-line interface lets you build and watch your projects.
+
+To run a single, one-off build of your `.project.json` file, run the tool without any flags:
+
+```bash
+rogen
+```
+
+## Options
+
+You use flags to change Rogen's behavior or override configurations.
+
+### `-w, --watch`
+
+Watches your source directories and regenerates the map automatically when files change.
+
+```bash
+rogen -w
+```
+
+### `-i, --init`
+
+Generates a default `.rogen.json` config file in your current directory. It detects your project type (Luau, TS, or Darklua) automatically.
+
+```bash
+rogen --init
+```
+
+### `-c, --config <path>`
+
+Specifies a custom config file path. This helps manage multi-place setups.
+
+```bash
+rogen -w -c lobby.rogen.json
+```
+
+### `-m, --mode <mode>`
+
+Overrides the target mode (e.g., `luau`, `ts`, `darklua`, or custom modes). If omitted, Rogen detects the mode from your configuration file.
+
+```bash
+rogen -m prod
+```
+
+### `-s, --source <path>`
+
+Overrides the source directories defined in your config. You can pass it multiple times to merge multiple directories.
+
+```bash
+rogen -s src/core -s src/hub
+```
+
+### `-t, --template <path>`
+
+Overrides the Rojo tree template path.
+
+### `-b, --build <path>`
+
+Overrides the output directory for transpiled code.
+
+### `-o, --output <path>`
+
+Overrides the file path of the generated Rojo project file.
+
+### `-h, --help`
+
+Prints the help menu with all available options.
+
+### `-v, --version`
+
+Prints the installed version of Rogen.
