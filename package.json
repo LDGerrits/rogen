@@ -43,5 +43,10 @@
 		"picomatch": "^4.0.5",
 		"react": "^19.2.8",
 		"react-icons": "^5.7.0"
+	},
+	"allowScripts": {
+		"esbuild@0.28.1": true,
+		"sharp@0.34.5": true,
+		"unrs-resolver@1.12.2": true
 	}
 }
