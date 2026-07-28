@@ -255,6 +255,26 @@ describe("Marker File Routing", () => {
 		expect(result.targetService).toBe("ServerScriptService");
 		expect(result.virtualParts).not.toContain("client");
 	});
+
+	it("should correctly route an init folder using a custom alias marker file and preserve its name", () => {
+		const context: RouteContext = {
+			...baseContext,
+			routingMaps: generateRoutingMaps({
+				Provider: "ServerScriptService",
+			}),
+			directoryMarkers: { "persistence/rootProvider": ["provider"] },
+		};
+
+		const result = resolveRoute(
+			"persistence/rootProvider/init.lua",
+			true,
+			context
+		);
+
+		expect(result.targetService).toBe("ServerScriptService");
+		expect(result.nodeName).toBe("rootProvider");
+		expect(result.projectPath).toBe("src/persistence/rootProvider");
+	});
 });
 
 describe("Routing (Deepest Wins)", () => {
