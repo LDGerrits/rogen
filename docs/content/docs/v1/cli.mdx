@@ -1,15 +1,13 @@
 ---
-title: CLI Reference
+title: CLI
 description: The complete command-line interface for Rogen.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-# CLI Reference
+The Rogen command-line interface builds and watches projects.
 
-The Rogen command-line interface lets you build and watch your projects.
-
-To run a single, one-off build of your `.project.json` file, run the tool without any flags:
+Run the tool without any flags to execute a single build of the `.project.json` file:
 
 ```bash
 rogen
@@ -17,51 +15,35 @@ rogen
 
 ## Options
 
-You use flags to change Rogen's behavior or override configurations.
+Use flags to change Rogen behavior or override configurations.
 
 ### `-w, --watch`
 
-Watches your source directories and regenerates the map automatically when files change.
-
-```bash
-rogen -w
-```
+Watches source directories and regenerates the map automatically upon file changes.
 
 ### `-i, --init`
 
-Generates a default `.rogen.json` config file in your current directory. It detects your project type (Luau, TS, or Darklua) automatically.
-
-```bash
-rogen --init
-```
+Generates a default `.rogen.json` configuration file in the current directory.
 
 ### `-c, --config <path>`
 
-Specifies a custom config file path. This helps manage multi-place setups.
-
-```bash
-rogen -w -c lobby.rogen.json
-```
+Specifies a custom configuration file path.
 
 ### `-m, --mode <mode>`
 
-Overrides the target mode (e.g., `luau`, `ts`, `darklua`, or custom modes). If omitted, Rogen detects the mode from your configuration file.
-
-```bash
-rogen -m prod
-```
+Overrides the target mode (e.g., `luau`, `ts`, `darklua`, or custom modes). Rogen detects the mode from the configuration file if omitted.
 
 ### `-s, --source <path>`
 
-Overrides the source directories defined in your config. You can pass it multiple times to merge multiple directories.
+Overrides the source directories defined in the configuration. Pass the flag multiple times to merge multiple directories.
 
-```bash
-rogen -s src/core -s src/hub
-```
+### `-t, --tag <tag>`
 
-### `-t, --template <path>`
+Activates specific tags. Pass the flag multiple times to activate multiple tags.
 
-Overrides the Rojo tree template path.
+### `-p, --project <path>`
+
+Overrides the `project` object by specifying a path to a project file.
 
 ### `-b, --build <path>`
 

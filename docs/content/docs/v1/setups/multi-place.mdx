@@ -1,0 +1,92 @@
+---
+title: Multi-Place
+description: Step-by-step setup guide for sharing code across multiple places.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rogen merges multiple source directories into a single Rojo project. This feature allows developers to share core code across places without duplicating logic.
+
+<Steps>
+
+<Step>
+### Structure the Repository
+
+Create separate directories for shared and place-specific code.
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder level="{1}" name="core" />
+	<TreeFolder level="{1}" name="lobby" />
+	<TreeFolder level="{1}" name="match" />
+</SystemWindow>
+
+</Step>
+
+<Step>
+### Configure the Lobby Place
+
+Create a configuration file for the Lobby place. Use the `source` array to supply multiple inputs.
+
+```json title="lobby.rogen.json"
+{
+	"source": ["core", "lobby"],
+	"luau": {
+		"output": "lobby.project.json",
+		"build": "src"
+	},
+	"project": {
+		"name": "lobby",
+		"tree": {
+			"$className": "DataModel"
+		}
+	}
+}
+```
+
+Rogen reads all listed directories and merges files cleanly into `ReplicatedStorage` and `ServerScriptService`.
+
+</Step>
+
+<Step>
+### Configure the Match Place
+
+Create a second configuration file for the Match place.
+
+```json title="match.rogen.json"
+{
+	"source": ["core", "match"],
+	"luau": {
+		"output": "match.project.json",
+		"build": "src"
+	},
+	"project": {
+		"name": "match",
+		"tree": {
+			"$className": "DataModel"
+		}
+	}
+}
+```
+
+</Step>
+
+<Step>
+### Start Watching
+
+Specify the configuration file to build using the `-c` or `--config` flag.
+
+```bash
+rogen watch --config lobby.rogen.json
+```
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+	If Rogen finds identical file names at the exact same path, the directory
+	listed last in the `source` array overwrites previous files. This can be a
+	powerful feature.
+</Callout>

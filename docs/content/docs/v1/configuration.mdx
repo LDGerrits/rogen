@@ -5,9 +5,7 @@ description: The complete guide to the .rogen.json configuration file.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-# Configuration
-
-The `.rogen.json` file controls your project. Place it in your root directory to define your source folders, routing preferences, and Rojo tree templates.
+The `.rogen.json` file controls the project. Place the file in the root directory to define source folders, routing preferences, and the base project tree.
 
 ```json title=".rogen.json"
 {
@@ -15,16 +13,19 @@ The `.rogen.json` file controls your project. Place it in your root directory to
 	"casing": "camelCase",
 	"verbatim": false,
 	"unwrap": false,
+	"tags": {
+		"dev": false,
+		"prod": true
+	},
 	"luau": {
 		"output": "default.project.json",
-		"build": "src",
-		"env": ["dev"]
+		"build": "src"
 	},
 	"aliases": {
 		"Controller": "StarterPlayerScripts",
 		"Service": "ServerScriptService"
 	},
-	"template": {
+	"project": {
 		"name": "my-game",
 		"tree": {
 			"$className": "DataModel"
@@ -39,7 +40,11 @@ The `.rogen.json` file controls your project. Place it in your root directory to
 
 ### `source`
 
-_(Required)_ A string or an array of strings. It defines the directories where your uncompiled code lives. Rogen scans these folders to generate the map. Passing an array merges multiple folders.
+_(Required)_ A string or an array of strings. Defines the directories containing uncompiled code. Rogen scans these folders to generate the map. Passing an array merges multiple folders.
+
+### `tags`
+
+_(Optional)_ A key-value object mapping tag names to booleans. Assign `true` to keep associated files, or `false` to drop associated files.
 
 ### `casing`
 
@@ -47,39 +52,55 @@ _(Optional)_ Defines the capitalization of generated wrapper folders (like `serv
 
 ### `verbatim`
 
-_(Optional)_ A boolean flag. When `true`, Rogen keeps routing suffixes in the final script names instead of removing them. Defaults to `false`.
+_(Optional)_ A boolean flag. Set to `true` to keep routing affixes in the final script names instead of removing them. Defaults to `false`.
 
 ### `unwrap`
 
-_(Optional)_ A boolean flag. When `true`, Rogen skips nesting files inside default wrapper folders like `server`, `client`, or `shared` globally.
+_(Optional)_ A boolean flag. Set to `true` to not have global wrapper folders like `server`, `client`, or `shared` at the root of each service in Roblox Studio.
 
 ### `aliases`
 
-_(Optional)_ An object that lets you define custom routing maps. You can register new suffixes or overwrite Rogen's default service routing.
+_(Optional)_ An object defining custom routing maps. Register new affixes or overwrite default service routing.
 
-### `template`
+### `globIgnorePaths`
 
-_(Optional)_ Defines your base Rojo tree. It accepts an inline JSON object or a string path to an external JSON file. Rogen merges its generated paths directly into this template.
+_(Optional)_ An array of glob string patterns. Matches file or directory paths to ignore entirely.
+
+### `project`
+
+_(Optional)_ Defines the base Rojo tree. Accepts an inline JSON object or a string path to an external JSON file. Rogen merges generated paths directly into this object.
 
 ---
 
 ## Modes
 
-You define mode-specific pipelines for different workflows, such as `luau`, `ts`, or `darklua`. You can also create custom modes.
+Define mode-specific pipelines for different workflows, such as `luau`, `ts`, or `darklua`. It is possible to define custom modes as well!
 
-A mode object requires an `output` (the generated Rojo file path) and a `build` (the directory containing transpiled code).
+### `output`
 
-You can also specify active environments and ignore paths per mode:
+_(Required)_ A string path defining the Rojo project file location.
 
-- `env`: An array of strings. Rogen keeps files matching these environment tags and drops inactive ones.
-- `globIgnorePaths`: An array of glob patterns to ignore specific files.
+### `build`
+
+_(Required)_ A string path defining the directory containing the code that is synced to Roblox Studio.
+
+### `tags`
+
+_(Optional)_ A key-value object mapping tag names to booleans. Assign `true` to keep associated files, or `false` to drop associated files.
+
+### `globIgnorePaths`
+
+_(Optional)_ An array of glob string patterns. Matches file or directory paths to ignore entirely.
 
 ```json title=".rogen.json"
 {
-	"prod": {
-		"output": "prod.project.json",
+	"dev": {
+		"output": "dev.project.json",
 		"build": "src",
-		"env": ["production"],
+		"tags": {
+			"dev": true,
+			"prod": false
+		},
 		"globIgnorePaths": ["**/*.spec.luau"]
 	}
 }

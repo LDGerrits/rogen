@@ -9,27 +9,17 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 import { FileCode2, Code2, Terminal, FolderTree } from "lucide-react";
 import InstallCodeBlock from "@/components/install-code-block";
 
-# Installation
-
-Rogen is a command line tool. Install it using **Rokit**.
+Install Rogen using **Rokit**.
 
 <Callout type="info">
-	**Prerequisite:** You must install
-	<a
-		href="[https://rojo.space/](https://rojo.space/)"
-		target="_blank"
-		rel="noreferrer"
-	>
-		Rojo
-	</a>
-	. Rogen generates Rojo
-	<code>.project.json</code> files.
+	**Prerequisite:** Install [Rojo](https://github.com/rojo-rbx/rojo) or
+	[Argon](https://github.com/argon-rbx/argon) to sync code to Roblox Studio.
 </Callout>
 
 <Steps>
 
 <Step>
-### Add Rogen to your Toolchain
+### Add Rogen to your toolchain
 
 Open your `rokit.toml` file and add Rogen.
 
@@ -54,7 +44,7 @@ rokit install
 Check the Rogen version.
 
 ```bash
-rogen --version
+rogen version
 ```
 
 If the command prints a version number, you are ready.

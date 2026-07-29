@@ -6,81 +6,61 @@ description: Learn how Rogen routes files using File Names, Marker Files, and Fo
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-# Routing Rules
-
-Rogen determines where a file belongs by looking at your file names, marker files, and folder structure.
-
-When multiple rules apply to the same file, Rogen follows one strict principle: **the deepest routing instruction wins**.
-
-<Callout type="warn">
-	**Rule Hierarchy:** File names override Marker Files, and Marker Files
-	override Folder Names. Rogen applies the most specific rule nearest to the
-	file.
-</Callout>
+Rogen uses naming rules to send files into correct Roblox service containers like `ServerScriptService` or `StarterPlayerScripts`.
+There are 3 primary ways to route code: **Folder Names**, **File Names**, and **Marker Files**.
 
 <Steps>
 
 <Step>
-### 1. File Names (Affixes)
+### Folder Names
 
-To route a specific file differently than its parent folder, use a routing prefix or suffix. File affixes are absolute.
-
-- `Combat.client.luau` routes to `StarterPlayerScripts`.
-- `Combat.server.luau` routes to `ServerScriptService`.
-- `CombatClient.ts` routes to `StarterPlayerScripts`.
-
-**Tag Rules:**
-
-- You can use separators like dots, hyphens, or underscores (`.`, `-`, `_`).
-- You can prepend or append keywords using CamelCase or PascalCase.
-- Rogen strips the routing keyword from the final script name unless you enable the `--verbatim` flag.
-
-</Step>
-
-<Step>
-### 2. Marker Files
-
-To route an entire folder without changing its name in the Roblox tree, place an empty marker file inside the directory.
-
-<Callout type="info">
-	Because `.server` exists inside the `AntiCheat` folder, Rogen routes the
-	folder to `ServerScriptService/server/antiCheat`.
-</Callout>
-
-**Supported Markers:**
-
-- `.server` - Routes the folder to `ServerScriptService`.
-- `.client` - Routes the folder to `StarterPlayerScripts`.
-- `.shared` - Routes the folder to `ReplicatedStorage`.
-
-</Step>
-
-<Step>
-### 3. Folder Names
-
-If you name a folder after a routing keyword (`server`, `client`, `shared`) or a specific Roblox service, all files inside it inherit that destination.
+Name a folder after a routing keyword (`server`, `client`, `shared`) or a specific Roblox service, and all files inside it inherit that destination.
 
 - Naming a folder `client` sends files to `StarterPlayerScripts`.
 - Naming a folder `ReplicatedFirst` maps exactly to that service.
 
-Rogen consumes the routing keyword and strips it from the final generated path.
+Rogen will consume these folders and strip them from the final path but not its contents.
+
+</Step>
+
+<Step>
+
+### File Names (Affixes)
+
+To route a specific file differently than its parent folder, use a routing prefix or suffix like so:
+
+- `CombatClient.luau` routes to `StarterPlayerScripts`.
+- `Combat_Server.luau` routes to `ServerScriptService`.
+- `Combat-ReplicatedFirst.ts` routes to `ReplicatedFirst`.
+
+The formatting is as follows:
+
+- Use separators like dots, hyphens, underscores or plusses (`.`, `-`, `_`, `+`).
+- Prepend or append keywords using CamelCase or PascalCase.
+
+Moreover, the routing keywords are stripped from the final script name.
+
+</Step>
+
+<Step>
+
+## Marker Files
+
+Place an empty file named after a service (like `.server` or `.client`) inside a directory.
+This routes the entire folder to that service.
+Unlike folder names, marker files preserve the original folder name in the final tree.
 
 </Step>
 
 </Steps>
 
----
+<Callout type="warn" title="The Deepest Rule Wins">
+	When multiple rules apply to a single path, Rogen always prioritizes the
+	deepest specific routing rule. File names represent the final level in any
+	path. Because of this, file name routing always overrides folder routing.
+</Callout>
 
-## Initialization Files
-
-If a folder contains an initialization file like `init.luau` or `index.ts`, Rogen routes the folder itself. However, it strictly stops routing any nested contents inside that folder. This ensures full compatibility with how Rojo handles modules.
-
-## Assets and Data Files
-
-Rogen builds your structure for more than just scripts. It routes models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.md`) using the exact same rules.
-
-## Aliases & Default Fallback
-
-**Aliases:** You define custom rules in your `.rogen.json` file. If you want a `.Controller` suffix to route to `StarterPlayerScripts`, map it using the `aliases` object. This overwrites default service routing.
-
-**Default Fallback:** If Rogen finds no routing rules or keywords anywhere in the path, it sends the file to `ReplicatedStorage` by default.
+<Callout type="info" title="Default Fallback">
+	If no routing rule is applied anywhere in a file's path, Rogen automatically
+	places it in `ReplicatedStorage`.
+</Callout>

@@ -1,0 +1,59 @@
+---
+title: Tags
+description: Filter test and development scripts from production builds.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Projects often contain code meant only for testing, mock data, or development tools. Rogen can filter these files using tags.
+
+<Steps>
+
+<Step>
+### Using Tags
+
+Define tags inside the `.rogen.json` file or via the CLI. Add these tags to file names, folder names, or marker files.
+
+Tag entire folders by naming the folder after the tag (e.g., `dev`), or by placing an empty marker file (like `.dev`) inside the directory.
+It is also possible to append tags to file names just like the routing keywords:
+
+- `InventoryService.spec.luau`
+- `TeleportDev.luau`
+
+</Step>
+
+<Step>
+### Build Rules
+
+When a tag has been found in the folder or file name, it follows these rules:
+
+1. **Inactive Tags:** Rogen drops the item from the build entirely.
+2. **Active Tags:** Rogen keeps the file and strips the tag from the name.
+
+</Step>
+
+<Step>
+### Build-Time Dependency Injection
+
+When a folder has an active tag, the folder becomes invisible in Roblox Studio, but the contents remain.
+This behavior allows developers to swap scripts based on the tag without altering `require` paths.
+
+To showcase this, create a folder named `prod` and a folder named `dev`. Place an `AnalyticsService.luau` inside both folders.
+
+- `src/core/prod/AnalyticsService.luau`
+- `src/core/dev/AnalyticsService.luau`
+
+Build the project with the `dev` tag active. Rogen will drop the `prod` folder entirely.
+Rogen strips the `dev` folder name, placing the mock `AnalyticsService` directly at `core/AnalyticsService`.
+
+</Step>
+
+</Steps>
+
+<Callout type="info" title="Configuration">
+	Configure tags inside the `.rogen.json` file using a key-value object of
+	booleans. Assign `true` to activate a tag, or `false` to deactivate the tag.
+	Set tags globally, or override tags per build mode (like `luau` or `ts`).
+	See the **Configuration** section for exact details.
+</Callout>

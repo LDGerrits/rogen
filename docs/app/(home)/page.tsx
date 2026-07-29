@@ -7,7 +7,6 @@ import {
 	FaFolderOpen,
 	FaFileCode,
 	FaLayerGroup,
-	FaPuzzlePiece,
 	FaFolder,
 	FaBox,
 	FaServer,
@@ -17,6 +16,10 @@ import {
 	FaTerminal,
 	FaUser,
 	FaGithub,
+	FaMapSigns,
+	FaTags,
+	FaCodeBranch,
+	FaPuzzlePiece,
 } from "react-icons/fa";
 import { SiRoblox, SiTypescript } from "react-icons/si";
 
@@ -73,16 +76,27 @@ export default function HomePage() {
 					<div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
 						<div className="absolute top-1/2 left-1/2 w-125 h-125 bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
+						<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/3 border border-white/10 text-xs md:text-sm font-medium text-gray-300 shadow-lg backdrop-blur-md mb-8 transition-all duration-200">
+							<span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+							<span className="text-white font-semibold">
+								Notice:
+							</span>
+							<span className="text-gray-400">
+								Rojo 7.7.0 introduced a bug. Downgrade to 7.6.1
+								until patch arrives
+							</span>
+						</div>
+
 						<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
-							Group your code
+							Group code
 							<br />
 							by feature
 						</h1>
 
 						<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
-							Put client, server and shared code side by side
+							Place client, server and shared code side by side
 							<br />
-							Rogen sends every file to the right place
+							Rogen sends every file to the correct place
 							automatically
 						</p>
 
@@ -128,8 +142,7 @@ export default function HomePage() {
 								Preview
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								See how Rogen routes your files into Roblox
-								Studio
+								See how Rogen routes files into Roblox Studio
 							</p>
 						</div>
 
@@ -384,49 +397,47 @@ export default function HomePage() {
 								Group files by feature
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								Keep everything for a feature in one place
+								Keep related code in one place
 							</p>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
 							{[
 								{
-									title: "Build by feature",
-									desc: "Keep UI and scripts for one tool in one folder",
-									icon: (
-										<FaLayerGroup className="text-white" />
-									),
+									title: "Feature Folders",
+									desc: "Store UI, server scripts, and types inside one folder.",
+									icon: <FaFolder className="text-white" />,
 								},
 								{
-									title: "Smart sorting",
-									desc: "Send files to any Roblox service using just their names",
+									title: "Auto-Routing",
+									desc: "Map files to Roblox services using exact naming rules.",
+									icon: <FaMapSigns className="text-white" />,
+								},
+								{
+									title: "Merged Sources",
+									desc: "Combine multiple folders to share code across different places.",
 									icon: (
 										<FaPuzzlePiece className="text-white" />
 									),
 								},
 								{
-									title: "Multi-place setups",
-									desc: "Share core code across multiple places by merging folders",
+									title: "Environment Tags",
+									desc: "Drop test scripts and mock data from live builds.",
+									icon: <FaTags className="text-white" />,
+								},
+								{
+									title: "Custom Pathing",
+									desc: "Hide local folders or move scripts using special symbols.",
 									icon: (
-										<FaFolderOpen className="text-white" />
+										<FaCodeBranch className="text-white" />
 									),
 								},
 								{
-									title: "Environment filtering",
-									desc: "Exclude test files and folders from production builds automatically",
-									icon: <FaBox className="text-white" />,
-								},
-								{
-									title: "TS and Darklua",
-									desc: "Tell Rogen where compiled code goes before it syncs",
+									title: "Modern Tooling",
+									desc: "Direct integration with Luau, roblox-ts, and Darklua",
 									icon: (
-										<SiTypescript className="text-white" />
+										<FaLayerGroup className="text-white" />
 									),
-								},
-								{
-									title: "Strict rules",
-									desc: "Override folder rules with file rules to stay in control",
-									icon: <FaFileCode className="text-white" />,
 								},
 							].map((feature, i) => (
 								<div

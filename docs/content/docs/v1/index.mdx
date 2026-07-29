@@ -1,75 +1,85 @@
 ---
-title: What is Rogen
-description: Rogen is a tool that helps you build Roblox games using feature-based folders instead of splitting code by environment.
+title: Introduction
+description: Rogen is a command line tool that brings feature-based architecture to Roblox development
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { BookOpen, Rocket, Settings2 } from "lucide-react";
 
-# Introduction
+A bad folder structure slows development. Remembering where the related pieces are increases cognitive load. And finding files wastes time.
 
-**Rogen** is a command line tool that brings feature-based architecture to Roblox development.
+## The Problem: Layer-Based Architecture
 
-Instead of splitting your code into separate client, shared, and server folders at the root level, you group your code by domain. Rogen watches your files and dynamically generates your `default.project.json` map for Rojo. It sorts your code into the correct Roblox services automatically.
+Typical Roblox projects structure their codebases in two ways:
 
-## Type-Based vs. Feature-Based
+1. **By Environment:** Split code at the root into `server`, `client`, and `shared` folders.
+2. **By Type:** Inside the roots, group files by technical role (like `Controllers`, `Services`, or `Utils`).
 
-Traditional Roblox projects use a **type-based** structure. You split your code based on the environment where the code runs. If you build an `Inventory` feature, you place files in three different root folders. This forces you to switch context constantly to work on one feature.
+The layout may clean at the beginning but it gets messy in large codebases. Folders grow rapidly. Related files live far apart. Navigating the project becomes slow.
+Updating an **Inventory** system forces developers to search through massive file trees just to gather the related pieces.
 
 <PreviewGroup>
 	<SystemWindow>
 		<TreeFolder name="src" open />
 		<TreeFolder name="client" level={1} open />
-		<TreeFolder name="Controllers" level={2} highlight />
-		<TreeFile name="InventoryController.luau" level={3} />
+		<TreeFolder name="Controllers" level={2} open />
+		<TreeFile name="InventoryController.luau" level={3} highlight />
 
     	<TreeFolder name="server" level={1} open mt />
-    	<TreeFolder name="Services" level={2} highlight />
-    	<TreeFile name="InventoryService.luau" level={3} />
+    	<TreeFolder name="Services" level={2} open />
+    	<TreeFile name="InventoryService.luau" level={3} highlight />
 
     	<TreeFolder name="shared" level={1} open mt />
-    	<TreeFolder name="Types" level={2} highlight />
-    	<TreeFile name="InventoryTypes.luau" level={3} />
+    	<TreeFolder name="Types" level={2} open />
+    	<TreeFile name="InventoryTypes.luau" level={3} highlight />
     </SystemWindow>
 
 </PreviewGroup>
 
-Rogen introduces a **feature-based** structure. You keep all code for a feature inside one folder. This removes the need to navigate up and down your file tree.
+<Callout type="warn">
+	**The Friction:** Context switching. Working on one feature requires
+	navigating through unrelated systems just to find the right server script.
+</Callout>
 
-Rogen reads your folder structure, marker files, and file names. It then maps your organized source code into the exact structure Roblox Studio expects.
+## The Solution: Feature-Based Architecture
+
+Place all code for a specific feature (e.g. server logic, client scripts, and shared utilities) inside a single folder.
+Every feature now becomes a self-contained folder. Finding files has just become a whole lot faster. And this approach is much more scalable.
+
+Rogen makes this structure possible by reading the folder layout and file names, and automatically places the code into the appropriate Roblox services.
 
 <PreviewGroup>
-  <SystemWindow>
-    <TreeFolder name="src" open />
-    <TreeFolder name="Inventory" level={1} open highlight />
-    <TreeFolder name="client" level={2} dim />
-    <TreeFile name="InventoryController.luau" level={3} />
-    <TreeFolder name="server" level={2} dim />
-    <TreeFile name="InventoryService.luau" level={3} />
-    <TreeFolder name="shared" level={2} dim />
-    <TreeFile name="InventoryTypes.luau" level={3} />
-  </SystemWindow>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="Inventory" level={1} open highlight />
+		<TreeFolder name="client" level={2} dim />
+		<TreeFile name="InventoryController.luau" level={3} />
+		<TreeFolder name="server" level={2} dim />
+		<TreeFile name="InventoryService.luau" level={3} />
+		<TreeFolder name="shared" level={2} dim />
+		<TreeFile name="InventoryTypes.luau" level={3} />
+	</SystemWindow>
 
-<PreviewArrow />
+    <PreviewArrow />
 
-  <StudioWindow>
-    <TreeService name="ReplicatedStorage" type="replicated" />
-    <TreeFolder name="Inventory" level={1} highlight />
-    <StudioFile name="InventoryTypes" level={2} />
+    <StudioWindow>
+    	<TreeService name="ReplicatedStorage" type="replicated" />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryTypes" level={2} />
 
-    <TreeService name="ServerScriptService" type="server" mt />
-    <TreeFolder name="Inventory" level={1} highlight />
-    <StudioFile name="InventoryService" level={2} />
+    	<TreeService name="ServerScriptService" type="server" mt />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryService" level={2} />
 
-    <TreeService name="StarterPlayerScripts" type="player" mt />
-    <TreeFolder name="Inventory" level={1} highlight />
-    <StudioFile name="InventoryController" level={2} />
+    	<TreeService name="StarterPlayerScripts" type="player" mt />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryController" level={2} />
+    </StudioWindow>
 
-  </StudioWindow>
 </PreviewGroup>
 
 <Callout type="info">
-	**The Result:** You maintain an organized local file system, and Roblox
-	Studio receives the standard structure it requires.
+	**The Result:** Developers maintain a clean repository, while Roblox Studio
+	receives the scripts in the right containers.
 </Callout>
