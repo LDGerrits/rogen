@@ -76,7 +76,7 @@ async function main(): Promise<void> {
 	}
 
 	const configPath = resolveConfigPath(cliArgs.config, logger);
-	const { config, anchor } = loadConfig(configPath, cliArgs.template);
+	const { config, anchor } = loadConfig(configPath, cliArgs.project);
 
 	logger.debug(`Config loaded from ${configPath ?? "defaults"}`);
 
@@ -99,7 +99,7 @@ async function main(): Promise<void> {
 		sourcePaths,
 		env,
 		activeModes,
-		config.template,
+		config.project,
 		config,
 		cliArgs,
 		anchor,
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
 						sourcePaths,
 						env,
 						activeModes,
-						config.template,
+						config.project,
 						config,
 						cliArgs,
 						anchor,

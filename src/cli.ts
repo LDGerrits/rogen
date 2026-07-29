@@ -20,15 +20,15 @@ Commands:
   watch                 Watch the source and generate automatically
 
 Options:
-  -c, --config <path>   Specify custom config file
-  -t, --template <path> Specify path to the Rojo tree JSON template
-  -g  --tag <tag>       Activate environment tags
-  -m, --mode <mode>     Override modes (luau, ts, darklua, or custom)
-  -s, --source <path>   Override the directory containing uncompiled code
-  -b, --build <path>    Override output directory for transpiled code
-  -o, --output <path>   Override path of Rojo project file
-  -h, --help            Print help
-  -v, --version         Print version
+  -c, --config <path>  Specify custom config file
+  -p, --project <path> Specify path to Rojo project
+  -t  --tag <tag>      Activate environment tags
+  -m, --mode <mode>    Override modes (luau, ts, darklua, or custom)
+  -s, --source <path>  Override the directory containing uncompiled code
+  -b, --build <path>   Override output directory for transpiled code
+  -o, --output <path>  Override path of Rojo project file
+  -h, --help           Print help
+  -v, --version        Print version
 	`;
 
 	if (logger) {
@@ -50,8 +50,8 @@ export function parseCliArgs(
 		config: { type: "string" as const, short: "c" },
 		mode: { type: "string" as const, short: "m", multiple: true },
 		source: { type: "string" as const, short: "s", multiple: true },
-		tag: { type: "string" as const, short: "g", multiple: true },
-		template: { type: "string" as const, short: "t" },
+		tag: { type: "string" as const, short: "t", multiple: true },
+		project: { type: "string" as const, short: "p" },
 		build: { type: "string" as const, short: "b" },
 		output: { type: "string" as const, short: "o" },
 	};

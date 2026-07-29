@@ -148,10 +148,10 @@ describe("Configuration Resolution", () => {
 	});
 
 	it("should throw a typo error if an object is passed but it resembles a core field", () => {
-		mockConfigFile({ tmeplate: { $className: "DataModel" } });
+		mockConfigFile({ prjoect: { $className: "DataModel" } });
 
 		expect(() => loadConfig("test.rogen.json")).toThrow(
-			'Did you mean "template"?'
+			'Did you mean "project"?'
 		);
 	});
 

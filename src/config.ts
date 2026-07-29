@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Environment, Config, Mode, RojoTree, RojoNode } from "./types.js";
-import { defaultConfig, defaultTemplate } from "./constants.js";
+import { defaultConfig, defaultProject } from "./constants.js";
 import { Logger } from "./logger.js";
 
 type ConfigKeys = keyof {
@@ -28,7 +28,7 @@ const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	luau: true,
 	ts: true,
 	darklua: true,
-	template: true,
+	project: true,
 };
 
 const KEYS = Object.keys(CONFIG_KEYS_MAP);
@@ -36,6 +36,7 @@ const KEYS = Object.keys(CONFIG_KEYS_MAP);
 const LEGACY_KEYS: Record<string, ConfigKeys> = {
 	keepRouteNames: "verbatim",
 	keepSuffixes: "verbatim",
+	template: "project",
 };
 
 function getClosestMatch(
@@ -144,14 +145,14 @@ export function createFallbackConfig(cwd: string): Config {
 	const isWally = fs.existsSync(path.join(cwd, "wally.toml"));
 	const isPesde = fs.existsSync(path.join(cwd, "pesde.toml"));
 
-	const tree = structuredClone(defaultTemplate.tree);
-	const template: RojoTree = {
-		name: path.basename(cwd) || defaultTemplate.name,
+	const tree = structuredClone(defaultProject.tree);
+	const project: RojoTree = {
+		name: path.basename(cwd) || defaultProject.name,
 		tree: tree,
 	};
 
 	if (isTs) {
-		template.globIgnorePaths = ["**/package.json", "**/tsconfig.json"];
+		project.globIgnorePaths = ["**/package.json", "**/tsconfig.json"];
 
 		const hasRbxts = fs.existsSync(
 			path.join(cwd, "node_modules", "@rbxts")
@@ -220,7 +221,7 @@ export function createFallbackConfig(cwd: string): Config {
 
 	const config: Config = {
 		...structuredClone(defaultConfig),
-		template: template,
+		project: project,
 	};
 
 	return config;
@@ -228,7 +229,7 @@ export function createFallbackConfig(cwd: string): Config {
 
 export function loadConfig(
 	configPath?: string,
-	templatePathArg?: string
+	projectPathArg?: string
 ): { config: Config; anchor: string } {
 	const anchor = configPath ? path.dirname(configPath) : process.cwd();
 	const config = createFallbackConfig(anchor);
@@ -337,12 +338,12 @@ export function loadConfig(
 						`'source' must be a string or an array of strings.`
 					);
 				} else if (
-					key === "template" &&
+					key === "project" &&
 					typeof rawConfig[key] !== "object" &&
 					typeof rawConfig[key] !== "string"
 				) {
 					throw new Error(
-						`'template' must be an inline object or a string path to a JSON file.`
+						`'project' must be an inline object or a string path to a JSON file.`
 					);
 				} else if (
 					(key === "verbatim" || key === "unwrap") &&
@@ -403,28 +404,24 @@ export function loadConfig(
 		}
 	}
 
-	// Template handling
-	if (templatePathArg) {
-		const templatePath = path.resolve(process.cwd(), templatePathArg);
-		if (!fs.existsSync(templatePath)) {
-			throw new Error(
-				`specified template file not found: ${templatePath}`
-			);
+	// Project handling
+	if (projectPathArg) {
+		const projectPath = path.resolve(process.cwd(), projectPathArg);
+		if (!fs.existsSync(projectPath)) {
+			throw new Error(`specified project file not found: ${projectPath}`);
 		}
-		config.template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
-	} else if (typeof config.template === "string") {
-		const templatePath = path.resolve(anchor, config.template);
-		if (!fs.existsSync(templatePath)) {
-			throw new Error(
-				`specified template file not found: ${templatePath}`
-			);
+		config.project = JSON.parse(fs.readFileSync(projectPath, "utf-8"));
+	} else if (typeof config.project === "string") {
+		const projectPath = path.resolve(anchor, config.project);
+		if (!fs.existsSync(projectPath)) {
+			throw new Error(`specified project file not found: ${projectPath}`);
 		}
-		config.template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+		config.project = JSON.parse(fs.readFileSync(projectPath, "utf-8"));
 	}
 
-	if (!isValidRojoTree(config.template)) {
+	if (!isValidRojoTree(config.project)) {
 		throw new Error(
-			"provided template is not a valid Rojo project. " +
+			"provided project is not a valid Rojo project. " +
 				"It must be a JSON object containing a 'name' and 'tree' property."
 		);
 	}

@@ -6,7 +6,7 @@ export interface CliArgs {
 	mode?: string[];
 	source?: string[];
 	tag?: string[];
-	template?: string;
+	project?: string;
 	output?: string;
 	build?: string;
 	watch?: boolean;
@@ -32,7 +32,7 @@ export interface Config {
 	luau: Mode;
 	ts: Mode;
 	darklua: Mode;
-	template: RojoTree;
+	project: RojoTree;
 	[key: string]: unknown;
 }
 

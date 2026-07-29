@@ -1,20 +1,11 @@
 {
 	"source": ["src"],
 	"casing": "camelCase",
-	"verbatim": false,
-	"luau": {
-		"output": "default.project.json",
-		"build": "src"
-	},
 	"ts": {
 		"output": "default.project.json",
 		"build": "out"
 	},
-	"darklua": {
-		"output": "build.project.json",
-		"build": "dist"
-	},
-	"template": {
+	"project": {
 		"name": "roblox-project",
 		"globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
 		"tree": {

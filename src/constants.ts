@@ -3,7 +3,7 @@ import { Config, RojoTree } from "./types.js";
 
 export const version = "1.4.0";
 
-export const defaultTemplate: RojoTree = {
+export const defaultProject: RojoTree = {
 	name: "roblox-game",
 	tree: { $className: "DataModel" },
 };
@@ -34,7 +34,7 @@ export const defaultConfig: Config = {
 		tags: {},
 		globIgnorePaths: [],
 	},
-	template: defaultTemplate,
+	project: defaultProject,
 };
 
 export const services: Record<string, string> = {
