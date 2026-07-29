@@ -89,7 +89,7 @@ export async function execute(
 				if (cliArgs.watch) {
 					logger.warn(`Pruned ${totalRemoved} unresolvable paths.`);
 				} else {
-					logger.warn(`Removed entries whose paths do not exist}):`);
+					logger.warn(`Removed entries whose paths do not exist:`);
 					for (const item of buildResult.removed) {
 						logger.info(
 							`  - ${item.treePath} ($path "${item.rojoPath}")`
@@ -109,18 +109,12 @@ export async function execute(
 
 			if (cliArgs.watch) {
 				const outputName = path.basename(buildResult.output);
-				const flagString =
-					targetConfig.activeFlags?.length > 0
-						? ` (active flags: ${targetConfig.activeFlags.join(", ")})`
-						: "";
 				logger.success(
-					`Built "${buildResult.name}" [${modeName}]${flagString} -> ${outputName}`
+					` [${modeName}] Rebuilt "${buildResult.name}" -> ${outputName}`
 				);
 			} else {
 				logger.success(`Generated Rojo tree for "${buildResult.name}"`);
-				logger.info(
-					`  Processed: ${buildResult.fileCount} source files`
-				);
+				logger.info(`  Processed: ${buildResult.fileCount} files`);
 				logger.info(`  Build dir: ${buildResult.buildDir}`);
 				if (targetConfig.activeFlags?.length > 0) {
 					logger.info(
