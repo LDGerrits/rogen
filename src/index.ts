@@ -58,13 +58,13 @@ async function main(): Promise<void> {
 
 		for (const mode of ["luau", "ts", "darklua"] as const) {
 			if (config[mode]) {
-				delete (config[mode] as Partial<Mode>).activeFlags;
+				delete (config[mode] as Partial<Mode>).tags;
 				delete (config[mode] as Partial<Mode>).globIgnorePaths;
 			}
 		}
 
 		delete config.globIgnorePaths;
-		delete config.flags;
+		delete config.tags;
 		delete config.aliases;
 		delete config.verbatim;
 		delete config.casing;

@@ -13,9 +13,9 @@ describe("Router Logic", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags: new Set(),
-		activeFlags: new Set(),
-		flagRegexes: [],
+		knownTags: new Set(),
+		activeTags: new Set(),
+		tagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -207,9 +207,9 @@ describe("Marker File Routing", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags: new Set(),
-		activeFlags: new Set(),
-		flagRegexes: [],
+		knownTags: new Set(),
+		activeTags: new Set(),
+		tagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -289,9 +289,9 @@ describe("Routing (Deepest Wins)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags: new Set(),
-		activeFlags: new Set(),
-		flagRegexes: [],
+		knownTags: new Set(),
+		activeTags: new Set(),
+		tagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -389,16 +389,16 @@ describe("Routing (Deepest Wins)", () => {
 	});
 });
 
-describe("Flag Filtering", () => {
-	const activeFlags = new Set(["dev", "debug"]);
-	const knownFlags = new Set(["dev", "prod", "debug"]);
-	const flagRegexes = Array.from(activeFlags).map((flag) => ({
-		suffix: new RegExp(`[\\.\\-_]${flag}$`, "i"),
-		prefix: new RegExp(`^${flag}[\\.\\-_]`, "i"),
-		middle: new RegExp(`[\\.\\-_]${flag}(?=[\\.\\-_])`, "i"),
+describe("Tag Filtering", () => {
+	const activeTags = new Set(["dev", "debug"]);
+	const knownTags = new Set(["dev", "prod", "debug"]);
+	const tagRegexes = Array.from(activeTags).map((tag) => ({
+		suffix: new RegExp(`[\\.\\-_]${tag}$`, "i"),
+		prefix: new RegExp(`^${tag}[\\.\\-_]`, "i"),
+		middle: new RegExp(`[\\.\\-_]${tag}(?=[\\.\\-_])`, "i"),
 	}));
 
-	const flagContext: RouteContext = {
+	const tagContext: RouteContext = {
 		source: "src",
 		build: "src",
 		output: "test.project.json",
@@ -409,93 +409,93 @@ describe("Flag Filtering", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags,
-		activeFlags,
-		flagRegexes,
+		knownTags,
+		activeTags,
+		tagRegexes,
 		globIgnorePaths: [],
 	};
 
-	it("should drop a file if it contains an inactive flag affix", () => {
-		const result = resolveRoute("api.prod.lua", false, flagContext);
+	it("should drop a file if it contains an inactive tag affix", () => {
+		const result = resolveRoute("api.prod.lua", false, tagContext);
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should drop a folder if it is named after an inactive flag", () => {
-		const result = resolveRoute("prod/api.lua", false, flagContext);
+	it("should drop a folder if it is named after an inactive tag", () => {
+		const result = resolveRoute("prod/api.lua", false, tagContext);
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should keep a file and strip the affix if the flag is active", () => {
-		const result = resolveRoute("api.dev.lua", false, flagContext);
+	it("should keep a file and strip the affix if the tag is active", () => {
+		const result = resolveRoute("api.dev.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ReplicatedStorage");
 	});
 
 	it("should keep a file, strip the affix, and apply proper script routing if chained", () => {
-		const result = resolveRoute("api.dev.server.lua", false, flagContext);
+		const result = resolveRoute("api.dev.server.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ServerScriptService");
 	});
 
-	it("should handle mixed delimiters when stripping flag tags", () => {
-		const result = resolveRoute("api-dev_server.lua", false, flagContext);
+	it("should handle mixed delimiters when stripping tag tags", () => {
+		const result = resolveRoute("api-dev_server.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("api");
 		expect(result.targetService).toBe("ServerScriptService");
 	});
 
-	it("should strip multiple chained active flags correctly", () => {
-		const result = resolveRoute("core.dev.debug.lua", false, flagContext);
+	it("should strip multiple chained active tags correctly", () => {
+		const result = resolveRoute("core.dev.debug.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("core");
 	});
 
-	it("should keep a file and handle prefix flag stripping", () => {
-		const result = resolveRoute("debug-logger.lua", false, flagContext);
+	it("should keep a file and handle prefix tag stripping", () => {
+		const result = resolveRoute("debug-logger.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("logger");
 	});
 
-	it("should keep a folder but strip its name from virtualParts if it matches an active flag", () => {
+	it("should keep a folder but strip its name from virtualParts if it matches an active tag", () => {
 		const result = resolveRoute(
 			"dev/systems/combat.lua",
 			false,
-			flagContext
+			tagContext
 		);
 		expect(result.dropped).toBe(false);
 		expect(result.virtualParts).not.toContain("dev");
 		expect(result.virtualParts).toContain("systems");
 	});
 
-	it("should NOT strip flag tags if they are part of a larger word", () => {
-		const result = resolveRoute("device.lua", false, flagContext);
+	it("should NOT strip tag tags if they are part of a larger word", () => {
+		const result = resolveRoute("device.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("device"); // 'dev' is inside 'device'
 	});
 
-	it("should NOT drop a file if the inactive flag tag is part of a larger word", () => {
-		const result = resolveRoute("production.lua", false, flagContext);
+	it("should NOT drop a file if the inactive tag tag is part of a larger word", () => {
+		const result = resolveRoute("production.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("production"); // 'prod' is inactive, but inside 'production'
 	});
 
-	it("should NOT drop a folder if the inactive flag tag is part of a larger folder name", () => {
-		const result = resolveRoute("production/api.lua", false, flagContext);
+	it("should NOT drop a folder if the inactive tag tag is part of a larger folder name", () => {
+		const result = resolveRoute("production/api.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.virtualParts).toContain("production");
 	});
 
-	it("should safely handle a file named exactly after an active flag", () => {
-		const result = resolveRoute("dev.lua", false, flagContext);
+	it("should safely handle a file named exactly after an active tag", () => {
+		const result = resolveRoute("dev.lua", false, tagContext);
 		expect(result.dropped).toBe(false);
 		expect(result.nodeName).toBe("dev");
 	});
 
-	it("should drop a folder entirely if it contains an inactive flag marker file", () => {
+	it("should drop a folder entirely if it contains an inactive tag marker file", () => {
 		const contextWithMarker: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { systems: ["prod"] },
 		};
 		const result = resolveRoute(
@@ -506,9 +506,9 @@ describe("Flag Filtering", () => {
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should keep a folder if its flag marker file is active", () => {
+	it("should keep a folder if its tag marker file is active", () => {
 		const contextWithMarker: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { systems: ["dev"] },
 		};
 		const result = resolveRoute(
@@ -522,7 +522,7 @@ describe("Flag Filtering", () => {
 
 	it("should process multi-markers (e.g. .dev AND .server) correctly", () => {
 		const contextWithMarkers: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { api: ["dev", "server"] },
 		};
 		const result = resolveRoute(
@@ -537,9 +537,9 @@ describe("Flag Filtering", () => {
 		expect(result.virtualParts).toContain("api");
 	});
 
-	it("should drop a folder entirely if it contains an inactive flag AND a valid routing marker", () => {
+	it("should drop a folder entirely if it contains an inactive tag AND a valid routing marker", () => {
 		const contextWithMarkers: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { api: ["prod", "server"] },
 		};
 		const result = resolveRoute(
@@ -551,9 +551,9 @@ describe("Flag Filtering", () => {
 		expect(result.dropped).toBe(true);
 	});
 
-	it("should route a flag folder via a marker, but still strip the flag folder name", () => {
+	it("should route a tag folder via a marker, but still strip the tag folder name", () => {
 		const contextWithMarkers: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { dev: ["server"] },
 		};
 		const result = resolveRoute(
@@ -568,9 +568,9 @@ describe("Flag Filtering", () => {
 		expect(result.virtualParts).not.toContain("dev");
 	});
 
-	it("should process a routing folder containing an active flag marker", () => {
+	it("should process a routing folder containing an active tag marker", () => {
 		const contextWithMarkers: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { server: ["dev"] },
 		};
 		const result = resolveRoute(
@@ -586,7 +586,7 @@ describe("Flag Filtering", () => {
 
 	it("should respect multi-markers at the root directory level", () => {
 		const contextWithMarkers: RouteContext = {
-			...flagContext,
+			...tagContext,
 			directoryMarkers: { "": ["dev", "client"] },
 		};
 		const result = resolveRoute("main.lua", false, contextWithMarkers);
@@ -609,9 +609,9 @@ describe("Invisible Folders (Route Groups)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags: new Set(),
-		activeFlags: new Set(),
-		flagRegexes: [],
+		knownTags: new Set(),
+		activeTags: new Set(),
+		tagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -693,9 +693,9 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		unwrap: false,
 		routingMaps: generateRoutingMaps(),
 		directoryMarkers: {},
-		knownFlags: new Set(),
-		activeFlags: new Set(),
-		flagRegexes: [],
+		knownTags: new Set(),
+		activeTags: new Set(),
+		tagRegexes: [],
 		globIgnorePaths: [],
 	};
 
@@ -725,12 +725,12 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		expect(result.nodeName).toBe("main");
 	});
 
-	it("should properly strip active flags even if hoisted", () => {
-		const contextWithFlag: RouteContext = {
+	it("should properly strip active tags even if hoisted", () => {
+		const contextWithTag: RouteContext = {
 			...baseContext,
-			activeFlags: new Set(["dev"]),
-			knownFlags: new Set(["dev", "prod"]),
-			flagRegexes: [
+			activeTags: new Set(["dev"]),
+			knownTags: new Set(["dev", "prod"]),
+			tagRegexes: [
 				{
 					suffix: /[.\-_+]dev$/i,
 					prefix: /^dev[.\-_+]/i,
@@ -742,7 +742,7 @@ describe("Global Entry Scripts (Hoisting via ^)", () => {
 		const result = resolveRoute(
 			"core/^main.dev.server.luau",
 			false,
-			contextWithFlag
+			contextWithTag
 		);
 
 		expect(result.dropped).toBe(false);

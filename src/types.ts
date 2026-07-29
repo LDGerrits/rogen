@@ -5,7 +5,7 @@ export interface CliArgs {
 	config?: string;
 	mode?: string[];
 	source?: string[];
-	flag?: string[];
+	tag?: string[];
 	template?: string;
 	output?: string;
 	build?: string;
@@ -15,7 +15,7 @@ export interface CliArgs {
 export interface Mode {
 	output: string;
 	build: string;
-	activeFlags: string[];
+	tags: Record<string, boolean>;
 	globIgnorePaths: string[];
 }
 
@@ -23,7 +23,7 @@ export type Casing = "PascalCase" | "camelCase";
 
 export interface Config {
 	source: string | string[];
-	flags: string[];
+	tags: Record<string, boolean>;
 	verbatim: boolean;
 	casing: Casing;
 	unwrap: boolean;

@@ -154,6 +154,24 @@ describe("Configuration Resolution", () => {
 			'Did you mean "template"?'
 		);
 	});
+
+	it("should reject the tags key if it is not a boolean key-value object", () => {
+		jest.spyOn(fs, "readFileSync").mockReturnValue(
+			JSON.stringify({ tags: ["dev", "prod"] })
+		);
+
+		expect(() => loadConfig("test.rogen.json")).toThrow(
+			"'tags' must be a key-value object of booleans."
+		);
+
+		jest.spyOn(fs, "readFileSync").mockReturnValue(
+			JSON.stringify({ tags: { dev: "true" } })
+		);
+
+		expect(() => loadConfig("test.rogen.json")).toThrow(
+			'value for tag "dev" must be a boolean.'
+		);
+	});
 });
 
 describe("Environment Detection", () => {

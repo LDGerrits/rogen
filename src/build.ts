@@ -16,7 +16,7 @@ import {
 	isValidSource,
 } from "./tree.js";
 import {
-	FlagRegexes,
+	TagRegexes,
 	resolveRoute,
 	RouteContext,
 	RoutingMaps,
@@ -106,7 +106,7 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 	return listings;
 }
 
-function compileFlagRegexes(activeEnvs: Set<string>): FlagRegexes[] {
+function compileTagRegexes(activeEnvs: Set<string>): TagRegexes[] {
 	return Array.from(activeEnvs).map((env) => ({
 		suffix: new RegExp(`[\\.\\-_\\+]${env}$`, "i"),
 		prefix: new RegExp(`^${env}[\\.\\-_\\+]`, "i"),
@@ -196,25 +196,31 @@ export async function build(
 
 	const rojoTree = structuredClone(baseProjectTree);
 
-	const configFlags = (modeCopy.activeFlags || []).map((f) =>
-		f.toLowerCase()
-	);
-	const cliFlags = (cliArgs.flag || []).map((f) => f.toLowerCase());
-
-	const activeFlags = new Set([...configFlags, ...cliFlags]);
-	const knownFlags = new Set(
-		(config.flags || []).map((f) => String(f).toLowerCase())
+	const mergedTags = { ...(config.tags || {}), ...(modeCopy.tags || {}) };
+	const knownTags = new Set(
+		Object.keys(config.tags || {}).map((t) => t.toLowerCase())
 	);
 
-	for (const flag of activeFlags) {
-		if (!knownFlags.has(flag)) {
+	const activeTags = new Set(
+		Object.keys(mergedTags)
+			.filter((t) => mergedTags[t])
+			.map((t) => t.toLowerCase())
+	);
+
+	const cliTags = (cliArgs.tag || []).map((t) => t.toLowerCase());
+	for (const tag of cliTags) {
+		activeTags.add(tag);
+	}
+
+	for (const tag of activeTags) {
+		if (!knownTags.has(tag)) {
 			throw new Error(
-				`active flag "${flag}" is not declared in the "flags" array.`
+				`active tag "${tag}" is not declared in the root "tags" object.`
 			);
 		}
 	}
 
-	const flagRegexes = compileFlagRegexes(activeFlags);
+	const tagRegexes = compileTagRegexes(activeTags);
 
 	const context: RouteContext = {
 		source: config.source || structuredClone(defaultConfig.source),
@@ -226,9 +232,9 @@ export async function build(
 		verbatim: config.verbatim ?? defaultConfig.verbatim,
 		unwrap: config.unwrap ?? defaultConfig.unwrap,
 		directoryMarkers: {},
-		knownFlags,
-		activeFlags,
-		flagRegexes,
+		knownTags,
+		activeTags,
+		tagRegexes,
 	};
 
 	const combinedGlobIgnorePaths = Array.from(
@@ -259,7 +265,7 @@ export async function build(
 			sourcePath,
 			listings,
 			context.routingMaps,
-			knownFlags
+			knownTags
 		);
 
 		const newContext: RouteContext = {

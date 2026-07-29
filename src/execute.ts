@@ -116,10 +116,11 @@ export async function execute(
 				logger.success(`Generated Rojo tree for "${buildResult.name}"`);
 				logger.info(`  Processed: ${buildResult.fileCount} files`);
 				logger.info(`  Build dir: ${buildResult.buildDir}`);
-				if (targetConfig.activeFlags?.length > 0) {
-					logger.info(
-						`  Flags: ${targetConfig.activeFlags.join(", ")}`
-					);
+				const activeTags = Object.keys(targetConfig.tags || {}).filter(
+					(t) => targetConfig.tags[t]
+				);
+				if (activeTags.length > 0) {
+					logger.info(`  Tags: ${activeTags.join(", ")}`);
 				}
 				logger.info(`  Output to: ${buildResult.output}`);
 			}

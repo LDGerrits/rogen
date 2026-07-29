@@ -41,10 +41,10 @@ describe("CLI Argument Parsing", () => {
 		});
 
 		it("should parse multiple active environment flags correctly", () => {
-			const args = ["-f", "dev", "--flag", "debug"];
+			const args = ["-g", "dev", "--tag", "debug"];
 			const options = parseCliArgs(args);
 
-			expect(options.flag).toEqual(["dev", "debug"]);
+			expect(options.tag).toEqual(["dev", "debug"]);
 		});
 
 		it("should parse build directory overrides correctly", () => {
@@ -88,10 +88,10 @@ describe("CLI Argument Parsing", () => {
 		});
 
 		it("should support combining a subcommand positional with options", () => {
-			const options = parseCliArgs(["watch", "-b", "dist", "-f", "prod"]);
+			const options = parseCliArgs(["watch", "-b", "dist", "-g", "prod"]);
 			expect(options.watch).toBe(true);
 			expect(options.build).toBe("dist");
-			expect(options.flag).toEqual(["prod"]);
+			expect(options.tag).toEqual(["prod"]);
 		});
 	});
 

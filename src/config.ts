@@ -19,7 +19,7 @@ export interface ActiveMode {
 
 const CONFIG_KEYS_MAP: Record<ConfigKeys, true> = {
 	source: true,
-	flags: true,
+	tags: true,
 	verbatim: true,
 	casing: true,
 	unwrap: true,
@@ -265,11 +265,13 @@ export function loadConfig(
 						...modeData,
 					} as Mode;
 
-					config[key].activeFlags = Array.isArray(
-						config[key].activeFlags
-					)
-						? config[key].activeFlags
-						: [];
+					config[key].tags =
+						modeData &&
+						typeof modeData.tags === "object" &&
+						modeData.tags !== null &&
+						!Array.isArray(modeData.tags)
+							? (modeData.tags as Record<string, boolean>)
+							: {};
 
 					config[key].globIgnorePaths = Array.isArray(
 						config[key].globIgnorePaths
@@ -285,7 +287,7 @@ export function loadConfig(
 					modeData &&
 					("output" in modeData ||
 						"build" in modeData ||
-						"activeFlags" in modeData ||
+						"tags" in modeData ||
 						"globIgnorePaths" in modeData);
 
 				if (intendedAsMode) {
@@ -303,9 +305,12 @@ export function loadConfig(
 					config[key] = {
 						output: modeData.output,
 						build: modeData.build,
-						activeFlags: Array.isArray(modeData.activeFlags)
-							? modeData.activeFlags
-							: [],
+						tags:
+							typeof modeData.tags === "object" &&
+							modeData.tags !== null &&
+							!Array.isArray(modeData.tags)
+								? modeData.tags
+								: {},
 						globIgnorePaths: Array.isArray(modeData.globIgnorePaths)
 							? modeData.globIgnorePaths
 							: [],
@@ -364,10 +369,34 @@ export function loadConfig(
 						);
 					}
 				} else if (
-					(key === "globIgnorePaths" || key === "flags") &&
+					key === "globIgnorePaths" &&
 					!Array.isArray(rawConfig[key])
 				) {
 					throw new Error(`'${key}' must be an array of strings.`);
+				} else if (key === "tags") {
+					if (
+						typeof rawConfig[key] !== "object" ||
+						rawConfig[key] === null ||
+						Array.isArray(rawConfig[key])
+					) {
+						throw new Error(
+							`'tags' must be a key-value object of booleans.`
+						);
+					}
+					for (const tagKey in rawConfig[key] as Record<
+						string,
+						unknown
+					>) {
+						if (
+							typeof (rawConfig[key] as Record<string, unknown>)[
+								tagKey
+							] !== "boolean"
+						) {
+							throw new Error(
+								`value for tag "${tagKey}" must be a boolean.`
+							);
+						}
+					}
 				}
 				config[key] = rawConfig[key];
 			}
