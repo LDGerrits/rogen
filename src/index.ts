@@ -34,7 +34,7 @@ async function main(): Promise<void> {
 
 		if (fs.existsSync(targetPath)) {
 			logger.error(
-				`Initialization Failed: A .rogen.json file already exists in this directory.`
+				`a .rogen.json file already exists in this directory.`
 			);
 			process.exit(1);
 		}
