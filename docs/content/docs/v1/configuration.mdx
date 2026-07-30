@@ -5,7 +5,9 @@ description: The complete guide to the .rogen.json configuration file.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-The `.rogen.json` file controls the project. Place the file in the root directory to define source folders, routing preferences, and the base project tree.
+The `.rogen.json` file controls the project. Store the file in the root directory to define source folders, routing preferences, and the base project tree.
+
+Below is an verbose example configuration that demonstrates some top-level options and mode-specific overrides:
 
 ```json title=".rogen.json"
 {
@@ -13,17 +15,23 @@ The `.rogen.json` file controls the project. Place the file in the root director
 	"casing": "camelCase",
 	"verbatim": false,
 	"unwrap": false,
+	"globIgnorePaths": ["**/_drafts/**"],
 	"tags": {
 		"dev": false,
 		"prod": true
 	},
-	"luau": {
-		"output": "default.project.json",
-		"build": "src"
-	},
 	"aliases": {
 		"Controller": "StarterPlayerScripts",
 		"Service": "ServerScriptService"
+	},
+	"luau": {
+		"output": "default.project.json",
+		"build": "src",
+		"tags": {
+			"dev": true,
+			"prod": false
+		},
+		"globIgnorePaths": ["**/*.spec.luau"]
 	},
 	"project": {
 		"name": "my-game",

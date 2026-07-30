@@ -44,10 +44,10 @@ Updating an **Inventory** system forces developers to search through massive fil
 
 ## The Solution: Feature-Based Architecture
 
-Place all code for a specific feature (e.g. server logic, client scripts, and shared utilities) inside a single folder.
-Every feature now becomes a self-contained folder. Finding files has just become a whole lot faster. And this approach is much more scalable.
+Keep all code for a specific feature (e.g. client, server, and shared code) inside a single, self-contained folder.
 
-Rogen makes this structure possible by reading the folder layout and file names, and automatically places the code into the appropriate Roblox services.
+Rogen routes every file to its target Roblox service automatically based on the folder structure and naming rules.
+Repositories stay clean and localized while Roblox Studio receives scripts in the expected service containers.
 
 <PreviewGroup>
 	<SystemWindow>

@@ -19,7 +19,7 @@ import {
 	FaMapSigns,
 	FaTags,
 	FaCodeBranch,
-	FaPuzzlePiece,
+	FaFolderPlus,
 } from "react-icons/fa";
 import { SiRoblox, SiTypescript } from "react-icons/si";
 
@@ -88,16 +88,17 @@ export default function HomePage() {
 						</div>
 
 						<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
-							Group code
+							Bring feature-first
 							<br />
-							by feature
+							architecture to Roblox
 						</h1>
 
 						<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
-							Place client, server and shared code side by side
+							Build self-contained systems with client, server,
+							and shared code in one place
 							<br />
-							Rogen sends every file to the correct place
-							automatically
+							Rogen routes every file to the correct Roblox
+							service automatically
 						</p>
 
 						<div className="flex flex-col sm:flex-row gap-4 mb-6 w-full sm:w-auto">
@@ -405,36 +406,36 @@ export default function HomePage() {
 							{[
 								{
 									title: "Feature Folders",
-									desc: "Store UI, server scripts, and types inside one folder.",
+									desc: "Store related client, server and shared scripts inside a single folder",
 									icon: <FaFolder className="text-white" />,
 								},
 								{
 									title: "Auto-Routing",
-									desc: "Map files to Roblox services using exact naming rules.",
+									desc: "Route files to Roblox services automatically using Rojo or Argon",
 									icon: <FaMapSigns className="text-white" />,
 								},
 								{
-									title: "Merged Sources",
-									desc: "Combine multiple folders to share code across different places.",
+									title: "Multi-Place Support",
+									desc: "Merge multiple source directories to share core systems across different places",
 									icon: (
-										<FaPuzzlePiece className="text-white" />
+										<FaFolderPlus className="text-white" />
 									),
 								},
 								{
 									title: "Environment Tags",
-									desc: "Drop test scripts and mock data from live builds.",
+									desc: "Filter test files and inject mock files at build time using tags",
 									icon: <FaTags className="text-white" />,
 								},
 								{
 									title: "Custom Pathing",
-									desc: "Hide local folders or move scripts using special symbols.",
+									desc: "Control the final output structure using invisible folders and marker files",
 									icon: (
 										<FaCodeBranch className="text-white" />
 									),
 								},
 								{
 									title: "Modern Tooling",
-									desc: "Direct integration with Luau, roblox-ts, and Darklua",
+									desc: "Support Luau, roblox-ts, and Darklua pipelines out of the box",
 									icon: (
 										<FaLayerGroup className="text-white" />
 									),
@@ -523,14 +524,14 @@ export default function HomePage() {
 								Top developers use Rogen
 							</h2>
 							<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-								See what they say
+								See what they have to say
 							</p>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
 							{[
 								{
-									quote: "Very grateful for your work on this. It has been a game changer for my team and I",
+									quote: "It has been a game changer for my team and I",
 									author: "Acecateer",
 									role: "Technical Director, Wonder Works Studio",
 								},
