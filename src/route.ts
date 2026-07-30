@@ -8,7 +8,7 @@ import { toPosix } from "./tree.js";
 import { Mode } from "./types.js";
 
 export interface SystemMarkers {
-	raw: "raw";
+	structure: "structure";
 	verbatim: "verbatim";
 	unwrap: "unwrap";
 }
@@ -85,13 +85,17 @@ function resolveFolderRouting(
 	let lastRouteKeyword: string | null = null;
 	let tagKeyword: string | null = null;
 
-	const flags: SystemFlags = { raw: false, verbatim: false, unwrap: false };
+	const flags: SystemFlags = {
+		structure: false,
+		verbatim: false,
+		unwrap: false,
+	};
 
 	// Marker routing
 	const rootMarkers = directoryMarkers[""];
 	if (rootMarkers) {
-		if (rootMarkers.includes("raw")) {
-			flags.raw = true;
+		if (rootMarkers.includes("structure")) {
+			flags.structure = true;
 		}
 		if (rootMarkers.includes("verbatim")) {
 			flags.verbatim = true;
@@ -100,7 +104,7 @@ function resolveFolderRouting(
 			flags.unwrap = true;
 		}
 
-		if (!flags.raw) {
+		if (!flags.structure) {
 			const routingMarker = rootMarkers.find((m) => lowerCaseMap[m]);
 			if (routingMarker) {
 				targetService = lowerCaseMap[routingMarker];
@@ -128,8 +132,8 @@ function resolveFolderRouting(
 			: undefined;
 
 		if (markers) {
-			if (markers.includes("raw")) {
-				flags.raw = true;
+			if (markers.includes("structure")) {
+				flags.structure = true;
 			}
 			if (markers.includes("verbatim")) {
 				flags.verbatim = true;
@@ -139,7 +143,7 @@ function resolveFolderRouting(
 			}
 		}
 
-		if (flags.raw) {
+		if (flags.structure) {
 			if (!activeTags.has(lowerPart)) {
 				virtualParts.push(part);
 			}
@@ -393,7 +397,7 @@ export function resolveRoute(
 	}
 
 	// Affix routing
-	const affix = flags.raw
+	const affix = flags.structure
 		? null
 		: resolveAffixes(basename, isInit, routingMaps);
 

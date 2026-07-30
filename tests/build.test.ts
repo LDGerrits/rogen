@@ -935,7 +935,7 @@ describe("Builder Integration", () => {
 		);
 	});
 
-	it("should completely halt routing logic when encountering a .raw marker file", async () => {
+	it("should completely halt routing logic when encountering a .structure marker file", async () => {
 		jest.spyOn(fs, "existsSync").mockReturnValue(true);
 
 		(
@@ -958,7 +958,7 @@ describe("Builder Integration", () => {
 			if (normalizedDir.endsWith("vendor")) {
 				return [
 					{
-						name: ".raw",
+						name: ".structure",
 						isDirectory: () => false,
 						isFile: () => true,
 					},

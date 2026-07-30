@@ -50,7 +50,7 @@ interface BuildResult {
 }
 
 const SYSTEM_MARKERS: Record<keyof SystemMarkers, true> = {
-	raw: true,
+	structure: true,
 	verbatim: true,
 	unwrap: true,
 };

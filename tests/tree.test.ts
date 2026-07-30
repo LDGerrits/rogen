@@ -386,7 +386,12 @@ describe("collapseFolders", () => {
 			dir: fs.PathLike
 		) => {
 			if (String(dir).endsWith("Vendor"))
-				return ["Main.server.lua", "Client.lua", ".raw", ".verbatim"];
+				return [
+					"Main.server.lua",
+					"Client.lua",
+					".structure",
+					".verbatim",
+				];
 			return [];
 		}) as any);
 
