@@ -1,12 +1,20 @@
 {
 	"name": "rogen",
+	"version": "1.4.0",
+	"description": "Feature-based folder routing for Roblox",
+	"author": "ldgerrits",
+	"license": "MIT",
+	"type": "module",
 	"workspaces": [
 		"docs"
 	],
-	"version": "1.4.0",
-	"description": "A tool for feature-based folder structures with Rojo.",
-	"type": "module",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE.md"
+	],
 	"scripts": {
+		"prepare": "npm run bundle",
 		"build": "tsc",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
@@ -17,7 +25,7 @@
 	},
 	"main": "dist/src/index.js",
 	"bin": {
-		"rogen": "./dist/bin/rogen.js"
+		"rogen": "./dist/bundle.cjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -33,16 +41,8 @@
 		"typescript-eslint": "^8.62.1"
 	},
 	"dependencies": {
-		"@fumadocs/base-ui": "^16.12.1",
 		"chokidar": "^3.6.0",
-		"cnfast": "^0.0.8",
-		"framer-motion": "^12.42.2",
-		"fumadocs-core": "^16.12.1",
-		"fumadocs-ui": "npm:@fumadocs/base-ui@^16.12.1",
-		"lucide-react": "^1.27.0",
-		"picomatch": "^4.0.5",
-		"react": "^19.2.8",
-		"react-icons": "^5.7.0"
+		"picomatch": "^4.0.5"
 	},
 	"allowScripts": {
 		"esbuild@0.28.1": true,
