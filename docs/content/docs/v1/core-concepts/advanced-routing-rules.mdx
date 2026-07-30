@@ -37,7 +37,8 @@ Need a specific script to sit at the root of a Roblox service? Just **hoist** it
 
 Place an empty file inside a folder to change how Rogen processes it. It applies to the folder and all of its subfolders.
 
-- **`.structure`:** Stops Rogen from applying any rules, while still applying tag filtering. Files are pushed exactly as they are structured locally.
+- **`.structure`:** Preserves the exact folder layout by disabling the routing rules, but continues to apply tag filtering.
+- **`.sync`:** Halts file traversal and syncs the folder exactly as it is, bypassing all routing and tag filtering.
 - **`.verbatim`:** Forces Rogen to keep routing keywords in file names (e.g., a file named `InputClient` will not have `Client` stripped).
 - **`.unwrap`:** Stops wrapper folder (i.e. `server`, `client`, and `shared`) from appearing in Roblox Studio.
 

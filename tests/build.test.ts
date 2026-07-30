@@ -1596,6 +1596,78 @@ describe("Builder Integration", () => {
 			expect.stringContaining("Skipping project file generation")
 		);
 	});
+
+	it("should treat a .sync folder as a black box, halting traversal and mapping the folder natively", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "Packages",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("Packages")) {
+				return [
+					{
+						name: ".sync",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "leak.dev.lua",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = { ...defaultConfig, source: "src" };
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+		const cliArgs: CliArgs = {};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			cliArgs,
+			process.cwd()
+		);
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(1);
+
+		const packagesFolder = resultTree.ReplicatedStorage.shared.Packages;
+		expect(packagesFolder).toBeDefined();
+		expect(packagesFolder.$path).toBe("out/Packages");
+
+		expect(packagesFolder["leak"]).toBeUndefined();
+	});
 });
 
 describe("unwrap Routing Overrides", () => {

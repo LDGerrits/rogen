@@ -86,7 +86,10 @@ async function listTree(dir: string): Promise<Map<string, fs.Dirent[]>> {
 			const hasInit = entries.some(
 				(e) => e.isFile() && isInitFile(e.name)
 			);
-			if (hasInit) return;
+			const hasSync = entries.some(
+				(e) => e.isFile() && e.name === ".sync"
+			);
+			if (hasInit || hasSync) return;
 
 			const subdirs = entries
 				.filter((e) => e.isDirectory())
@@ -153,16 +156,22 @@ function walkSource(
 	dir: string,
 	sourcePath: string,
 	listings: Map<string, fs.Dirent[]>,
-	callback: (filepath: string, isInit: boolean) => void
+	callback: (filepath: string, isInit: boolean, isSync: boolean) => void
 ): void {
 	const entries = listings.get(dir);
 	if (!entries) return;
 
 	// Rojo expects a specific structure for folders with an init.luau file that we cannot deviate from.
 	// Because of this, we must return early if an initialization file has been found.
+	const syncFile = entries.find((e) => e.isFile() && e.name === ".sync");
+	if (syncFile) {
+		callback(dir, false, true);
+		return;
+	}
+
 	const initFile = entries.find((e) => e.isFile() && isInitFile(e.name));
 	if (initFile) {
-		callback(path.join(dir, initFile.name), true);
+		callback(path.join(dir, initFile.name), true, false);
 		return;
 	}
 
@@ -171,7 +180,7 @@ function walkSource(
 		if (entry.isDirectory()) {
 			walkSource(fullPath, sourcePath, listings, callback);
 		} else if (isValidSource(entry.name)) {
-			callback(fullPath, false);
+			callback(fullPath, false, false);
 		}
 	}
 }
@@ -276,63 +285,76 @@ export async function build(
 			directoryMarkers,
 		};
 
-		walkSource(sourcePath, sourcePath, listings, (filepath, isInit) => {
-			const relativePath = path.relative(sourcePath, filepath);
-			if (isIgnored(toPosix(relativePath))) return;
+		walkSource(
+			sourcePath,
+			sourcePath,
+			listings,
+			(filepath, isInit, isSync) => {
+				const relativePath = path.relative(sourcePath, filepath);
+				if (relativePath && isIgnored(toPosix(relativePath))) return;
 
-			const {
-				targetService,
-				wrapperFolder,
-				virtualParts,
-				nodeName,
-				projectPath,
-				dropped,
-				unwrap,
-			} = resolveRoute(relativePath, isInit, newContext);
+				const {
+					targetService,
+					wrapperFolder,
+					virtualParts,
+					nodeName,
+					projectPath,
+					dropped,
+					unwrap,
+				} = resolveRoute(relativePath, isInit, newContext, isSync);
 
-			if (dropped) return;
-			fileCount++;
+				if (dropped) return;
+				fileCount++;
 
-			let current = rojoTree.tree;
-			if (serviceParents[targetService]) {
-				current = getOrCreateNode(
-					current,
-					serviceParents[targetService]
-				);
-			}
-			current = getOrCreateNode(current, targetService);
-
-			if (!unwrap) {
-				current = getOrCreateNode(
-					current,
-					applyCasing(wrapperFolder, config.casing),
-					"Folder"
-				);
-			}
-
-			for (const part of virtualParts) {
-				current = getOrCreateNode(current, part, "Folder");
-			}
-
-			const existingNodeRaw = current[nodeName] as RojoNode | undefined;
-			if (existingNodeRaw && existingNodeRaw.$path) {
-				const origin = nodeOrigins.get(existingNodeRaw);
-				if (origin && origin.sourcePath === sourcePath) {
-					collisions.push(
-						`Name collision: "${origin.filepath}" and "${relativePath}" both map to the node "${nodeName}".`
+				let current = rojoTree.tree;
+				if (serviceParents[targetService]) {
+					current = getOrCreateNode(
+						current,
+						serviceParents[targetService]
 					);
 				}
-			}
+				current = getOrCreateNode(current, targetService);
 
-			const existingNode = existingNodeRaw || {};
-			const newNode: RojoNode = { ...existingNode, $path: projectPath };
-			if (newNode.$className === "Folder") {
-				delete newNode.$className;
-			}
+				if (!unwrap) {
+					current = getOrCreateNode(
+						current,
+						applyCasing(wrapperFolder, config.casing),
+						"Folder"
+					);
+				}
 
-			current[nodeName] = newNode;
-			nodeOrigins.set(newNode, { sourcePath, filepath: relativePath });
-		});
+				for (const part of virtualParts) {
+					current = getOrCreateNode(current, part, "Folder");
+				}
+
+				const existingNodeRaw = current[nodeName] as
+					| RojoNode
+					| undefined;
+				if (existingNodeRaw && existingNodeRaw.$path) {
+					const origin = nodeOrigins.get(existingNodeRaw);
+					if (origin && origin.sourcePath === sourcePath) {
+						collisions.push(
+							`Name collision: "${origin.filepath}" and "${relativePath}" both map to the node "${nodeName}".`
+						);
+					}
+				}
+
+				const existingNode = existingNodeRaw || {};
+				const newNode: RojoNode = {
+					...existingNode,
+					$path: projectPath,
+				};
+				if (newNode.$className === "Folder") {
+					delete newNode.$className;
+				}
+
+				current[nodeName] = newNode;
+				nodeOrigins.set(newNode, {
+					sourcePath,
+					filepath: relativePath,
+				});
+			}
+		);
 	}
 
 	const outputDir = path.dirname(modeCopy.output);

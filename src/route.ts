@@ -275,7 +275,8 @@ function getWrapperFolder(
 export function resolveRoute(
 	relativePath: string,
 	isInit: boolean,
-	context: RouteContext
+	context: RouteContext,
+	isSync = false
 ): RouteResolution {
 	const {
 		emitLegacyScripts,
@@ -288,9 +289,20 @@ export function resolveRoute(
 		tagRegexes,
 		directoryMarkers,
 	} = context;
-	const parts = relativePath.split(/[\\/]/);
-	const filename = parts.pop()!;
-	const rawBasename = path.basename(filename, path.extname(filename));
+
+	const parts = relativePath ? relativePath.split(/[\\/]/) : [];
+	let filename = "";
+	let rawBasename = "";
+
+	if (isSync) {
+		filename = parts.length > 0 ? parts[parts.length - 1] : "";
+		rawBasename = filename;
+	} else {
+		filename = parts.length > 0 ? parts.pop()! : "";
+		rawBasename = filename
+			? path.basename(filename, path.extname(filename))
+			: "";
+	}
 
 	// Detect and strip the hoisting prefix
 	let isHoisted = false;
@@ -344,7 +356,7 @@ export function resolveRoute(
 	}
 
 	// Check file affixes
-	if (!dropped) {
+	if (!dropped && !isSync && cleanBasename) {
 		const delimiterSplit = cleanBasename.split(/[.\-_+]/);
 		for (const part of delimiterSplit) {
 			const lowerPart = part.toLowerCase();
@@ -370,15 +382,17 @@ export function resolveRoute(
 
 	// Strip active environment affixes
 	let basename = cleanBasename;
-	for (const regexSet of tagRegexes) {
-		while (regexSet.suffix.test(basename)) {
-			basename = basename.replace(regexSet.suffix, "");
-		}
-		while (regexSet.prefix.test(basename)) {
-			basename = basename.replace(regexSet.prefix, "");
-		}
-		while (regexSet.middle.test(basename)) {
-			basename = basename.replace(regexSet.middle, "");
+	if (!isSync) {
+		for (const regexSet of tagRegexes) {
+			while (regexSet.suffix.test(basename)) {
+				basename = basename.replace(regexSet.suffix, "");
+			}
+			while (regexSet.prefix.test(basename)) {
+				basename = basename.replace(regexSet.prefix, "");
+			}
+			while (regexSet.middle.test(basename)) {
+				basename = basename.replace(regexSet.middle, "");
+			}
 		}
 	}
 
@@ -397,9 +411,10 @@ export function resolveRoute(
 	}
 
 	// Affix routing
-	const affix = flags.structure
-		? null
-		: resolveAffixes(basename, isInit, routingMaps);
+	const affix =
+		flags.structure || isSync
+			? null
+			: resolveAffixes(basename, isInit, routingMaps);
 
 	// Resolve overrides
 	let targetService = affix?.mappedService ?? folderTarget;
@@ -424,7 +439,16 @@ export function resolveRoute(
 	let nodeName = basename;
 	let projectPath: string;
 
-	if (isInit) {
+	if (isSync) {
+		projectPath = toPosix(path.join(build, relativePath));
+		if (virtualParts.length > 0) {
+			nodeName = virtualParts.pop()!;
+		} else {
+			nodeName = lastRouteKeyword
+				? lastRouteKeyword
+				: filename || "source";
+		}
+	} else if (isInit) {
 		const folderRelativePath = path.dirname(relativePath);
 		projectPath = toPosix(path.join(build, folderRelativePath));
 
