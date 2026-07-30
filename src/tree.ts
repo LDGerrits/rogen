@@ -133,8 +133,13 @@ const isScript = (filename: string): boolean =>
 const isModel = (filename: string): boolean =>
 	/\.(rbxm|rbxmx)$/i.test(filename);
 
-export const isData = (filename: string): boolean =>
-	/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
+export function isData(filename: string): boolean {
+	if (isScript(filename) || isModel(filename)) return false;
+
+	if (filename.startsWith(".")) return false;
+
+	return /\.[a-z0-9]+$/i.test(filename);
+}
 
 export const isValidSource = (filename: string): boolean =>
 	isScript(filename) || isModel(filename) || isData(filename);
@@ -152,7 +157,7 @@ function getRojoBaseName(filename: string): string {
 		return filename.replace(/\.(rbxmx?)$/i, "");
 	}
 	if (isData(filename)) {
-		return filename.replace(/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i, "");
+		return filename.replace(/\.[a-z0-9]+$/i, "");
 	}
 	return filename;
 }

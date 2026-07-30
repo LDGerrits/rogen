@@ -37,7 +37,7 @@ describe("Builder Integration", () => {
 						isFile: () => false,
 					},
 					{
-						name: "ignoreMe.png",
+						name: "LICENSE",
 						isDirectory: () => false,
 						isFile: () => true,
 					},
