@@ -6,24 +6,24 @@ This document outlines how to report bugs, suggest features, and submit code cha
 
 ### Reporting Bugs
 
-Check existing issues before opening a new one. If you find a new bug, open an issue and include:
+Check existing issues before opening a new one. If a new bug is found, open an issue and include:
 
 - A summary of the problem.
 - Steps to reproduce the bug.
-- Your `.rogen.json` file and folder structure, if applicable.
-- Expected behavior versus what happened.
+- The `.rogen.json` file and folder structure, if applicable.
+- Expected behavior versus actual results.
 
 ### Suggesting Features
 
 To suggest an improvement or new feature:
 
 - Open a feature request issue.
-- Explain the problem your idea solves.
+- Explain the problem the idea solves.
 - Describe how the feature should work.
 
 ### Submitting Code Changes
 
-Fork the repository, create a feature branch, and write unit tests for your changes. Make sure that `npm test` and `npm run lint` pass before opening a Pull Request against `main`.
+Fork the repository, create a feature branch, and write unit tests for any changes. Ensure that `npm test` and `npm run lint` pass before opening a Pull Request against `main`.
 
 ## Local Development
 
@@ -31,7 +31,7 @@ Follow these steps to set up Rogen locally and make changes.
 
 ### 1. Prerequisites
 
-Install Node.js on your computer.
+Install Node.js on the system.
 
 ### 2. Setup
 
@@ -71,7 +71,7 @@ npm run lint:fix
 
 ## Building Release Binaries
 
-Rogen bundles its code with `esbuild` and packages standalone executables for Windows, Linux, and macOS using `pkg`.
+Rogen bundles source code with `esbuild` and packages standalone executables for Windows, Linux, and macOS using `pkg`.
 
 ### Creating a Local Release Build
 
