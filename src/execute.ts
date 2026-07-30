@@ -48,7 +48,7 @@ export async function execute(
 						`  - Cannot resolve data type "${ext}" for: "${exposedPath}"`
 					);
 					logger.info(
-						`    Fix: Wrap it in a folder (e.g., move it to "${dirName}/${baseName}/${fileName}")`
+						`    Fix: Wrap it in a folder (e.g., move it to "${dirName}/${baseName}/data${ext}")`
 					);
 				}
 				continue;
