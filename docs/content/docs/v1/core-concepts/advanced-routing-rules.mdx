@@ -8,8 +8,13 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warning" title="Initialization Files">
 	If a folder contains an initialization file (`init.luau`, `index.ts`), it
-	routes the folder itself based on the rules. However, it halts any further
-	routing logic for its nested contents for compatibility with Rojo.
+	will apply the routing rules like normal. However, no more routing rules
+	will be applied to that folder's contents.
+</Callout>
+
+<Callout type="warning" title="Data & Asset Files">
+	Rogen cannot generate direct paths for files like `.json` or `.toml`. Rogen
+	will notify you in the console if a file needs to be wrapped in a folder.
 </Callout>
 
 <Steps>
@@ -18,14 +23,14 @@ import { Callout } from "fumadocs-ui/components/callout";
 ### Invisible Folders
 
 Group files locally without changing their final path in Roblox Studio.
-Wrap a folder name in parentheses like `(inventory)`, and Rogen will leave out the folder but not its contents.
+Wrap a folder name in parentheses like `(inventory)`, and Rogen will leave out the folder but not its contents in Roblox Studio.
 
 </Step>
 
 <Step>
 ### File Hoisting
 
-Need a specific script to sit at the root of a Roblox service? Just **hoist** it by prefixing the file name with a `^` symbol!
+Need a specific script to sit at the root of a Roblox service? Hoist it by prefixing the file name with a `^` symbol!
 
 - File: `src/core/physics/server/^collision-service.ts`
 - Result: Placed directly at the root of `ServerScriptService`.
