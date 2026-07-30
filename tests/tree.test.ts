@@ -370,6 +370,33 @@ describe("collapseFolders", () => {
 		expect(mathUtils.$path).toBeUndefined();
 		expect(mathUtils.Add).toBeDefined();
 	});
+
+	it("should collapse a folder even if it contains a marker file (e.g., starting with '.')", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Vendor: {
+				Main: { $path: "out/Vendor/Main.server.lua" },
+				Client: { $path: "out/Vendor/Client.lua" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("Vendor"))
+				return ["Main.server.lua", "Client.lua", ".raw", ".verbatim"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const vendor = tree.Vendor as RojoNode;
+		expect(vendor.$path).toBe("out/Vendor");
+		expect(vendor.Main).toBeUndefined();
+		expect(vendor.Client).toBeUndefined();
+	});
 });
 
 describe("findExposedDataFiles", () => {

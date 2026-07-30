@@ -215,7 +215,11 @@ export function collapseFolders(
 
 	try {
 		const diskItems = fs.readdirSync(commonDir);
-		if (diskItems.length !== childCount) {
+		// filter out marker files so they do not prevent folders from collapsing
+		const visibleDiskItems = diskItems.filter(
+			(item) => !item.startsWith(".")
+		);
+		if (visibleDiskItems.length !== childCount) {
 			return;
 		}
 	} catch {
