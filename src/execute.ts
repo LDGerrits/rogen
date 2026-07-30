@@ -20,10 +20,6 @@ export async function execute(
 			const targetConfig = activeMode.config;
 			const modeName = activeMode.name;
 
-			logger.debug(
-				`Executing build for mode "${modeName}" (Output: ${targetConfig.output}, Build: ${targetConfig.build})`
-			);
-
 			const buildResult = await build(
 				targetConfig,
 				baseProjectTree,
@@ -71,9 +67,6 @@ export async function execute(
 			}
 
 			if (!shouldWrite) {
-				logger.debug(
-					`Skipping write for "${buildResult.output}" because content was unchanged.`
-				);
 				continue;
 			}
 

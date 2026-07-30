@@ -78,8 +78,6 @@ async function main(): Promise<void> {
 	const configPath = resolveConfigPath(cliArgs.config, logger);
 	const { config, anchor } = loadConfig(configPath, cliArgs.project);
 
-	logger.debug(`Config loaded from ${configPath ?? "defaults"}`);
-
 	const rawSources = cliArgs.source || config.source;
 	const sourceDirs = Array.isArray(rawSources) ? rawSources : [rawSources];
 	const resolveBase = cliArgs.source ? process.cwd() : anchor;
