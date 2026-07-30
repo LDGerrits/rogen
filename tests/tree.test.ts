@@ -6,6 +6,7 @@ import {
 	pruneObject,
 	findMissingPaths,
 	collapseFolders,
+	findExposedDataFiles,
 } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
@@ -368,5 +369,36 @@ describe("collapseFolders", () => {
 		const mathUtils = tree.MathUtils as RojoNode;
 		expect(mathUtils.$path).toBeUndefined();
 		expect(mathUtils.Add).toBeDefined();
+	});
+});
+
+describe("findExposedDataFiles", () => {
+	it("should return an array of paths that point directly to data files", () => {
+		const tree: RojoNode = {
+			ValidScript: { $path: "out/script.luau" },
+			RawData: { $path: "out/data.json" },
+			Nested: {
+				Config: { $path: "out/nested/config.toml" },
+				ValidFolder: { $path: "out/nested" },
+			},
+		};
+
+		const exposed = findExposedDataFiles(tree);
+
+		expect(exposed).toHaveLength(2);
+		expect(exposed).toContain("out/data.json");
+		expect(exposed).toContain("out/nested/config.toml");
+	});
+
+	it("should return an empty array if no data files are exposed", () => {
+		const tree: RojoNode = {
+			System: { $path: "out/systems/Combat.luau" },
+			DataFolder: { $path: "out/data" },
+			EmptyNode: { $className: "Folder" },
+		};
+
+		const exposed = findExposedDataFiles(tree);
+
+		expect(exposed).toHaveLength(0);
 	});
 });

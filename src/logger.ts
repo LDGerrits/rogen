@@ -65,7 +65,7 @@ export abstract class AbstractLogger implements Logger {
 	abstract trace(message: string, ...args: unknown[]): void;
 }
 
-function getTimeStamp(wrapInBrackets = true): string {
+export function getTimeStamp(wrapInBrackets = true): string {
 	const now = new Date();
 	const h = String(now.getHours()).padStart(2, "0");
 	const m = String(now.getMinutes()).padStart(2, "0");

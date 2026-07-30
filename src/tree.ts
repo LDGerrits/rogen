@@ -133,7 +133,7 @@ const isScript = (filename: string): boolean =>
 const isModel = (filename: string): boolean =>
 	/\.(rbxm|rbxmx)$/i.test(filename);
 
-const isData = (filename: string): boolean =>
+export const isData = (filename: string): boolean =>
 	/\.(json|toml|ya?ml|msgpack|md|txt|csv)$/i.test(filename);
 
 export const isValidSource = (filename: string): boolean =>
@@ -228,4 +228,26 @@ export function collapseFolders(
 
 	node.$path = relativeCommonDir;
 	delete node.$className;
+}
+
+export function findExposedDataFiles(
+	node: RojoNode,
+	exposed: string[] = []
+): string[] {
+	for (const key in node) {
+		if (key.startsWith("$")) continue;
+
+		const val = node[key];
+		if (typeof val !== "object" || val === null) continue;
+
+		const childNode = val as RojoNode;
+
+		// Check if the current node exposes a raw data file path
+		if (childNode.$path && isData(childNode.$path)) {
+			exposed.push(childNode.$path);
+		}
+
+		findExposedDataFiles(childNode, exposed);
+	}
+	return exposed;
 }

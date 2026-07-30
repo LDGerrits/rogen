@@ -3,7 +3,7 @@ import path from "path";
 import { build } from "./build.js";
 import { CliArgs, Environment, Config, RojoTree } from "./types.js";
 import { ActiveMode } from "./config.js";
-import { Logger, ConsoleLogger } from "./logger.js";
+import { Logger, ConsoleLogger, getTimeStamp } from "./logger.js";
 
 export async function execute(
 	sourcePaths: string[],
@@ -30,6 +30,29 @@ export async function execute(
 				anchor
 			);
 			const dropped: string[] = [];
+
+			if (buildResult.exposedDataFiles.length > 0) {
+				logger.warn(
+					`${getTimeStamp()} [${modeName}] Skipping project file generation. Rogen cannot map data files directly.`
+				);
+				for (const exposedPath of buildResult.exposedDataFiles) {
+					const ext = path.extname(exposedPath);
+					const fileName = path.basename(exposedPath);
+					const baseName = fileName.substring(
+						0,
+						fileName.length - ext.length
+					);
+					const dirName = path.dirname(exposedPath);
+
+					logger.info(
+						`  - Cannot resolve data type "${ext}" for: "${exposedPath}"`
+					);
+					logger.info(
+						`    Fix: Wrap it in a folder (e.g., move it to "${dirName}/${baseName}/${fileName}")`
+					);
+				}
+				continue;
+			}
 
 			if (buildResult.missingPaths.length > 0) {
 				for (const item of buildResult.missingPaths) {
@@ -103,7 +126,7 @@ export async function execute(
 			if (cliArgs.watch) {
 				const outputName = path.basename(buildResult.output);
 				logger.success(
-					` [${modeName}] Rebuilt "${buildResult.name}" -> ${outputName}`
+					`[${modeName}] Rebuilt "${buildResult.name}" -> ${outputName}`
 				);
 			} else {
 				logger.success(`Generated Rojo tree for "${buildResult.name}"`);

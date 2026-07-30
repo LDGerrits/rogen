@@ -14,6 +14,7 @@ import {
 	collapseFolders,
 	isInitFile,
 	isValidSource,
+	findExposedDataFiles,
 } from "./tree.js";
 import {
 	TagRegexes,
@@ -42,6 +43,7 @@ interface BuildResult {
 	missingPaths: MissingPath[];
 	removed: RemovedPath[];
 	collisions: string[];
+	exposedDataFiles: string[];
 	name: string;
 	buildDir: string;
 	fileCount: number;
@@ -353,6 +355,7 @@ export async function build(
 		context.build,
 		outputDir
 	);
+	const exposedDataFiles = findExposedDataFiles(sortedTree.tree);
 
 	return {
 		output: modeCopy.output,
@@ -360,6 +363,7 @@ export async function build(
 		missingPaths,
 		removed,
 		collisions,
+		exposedDataFiles,
 		name: context.name,
 		buildDir: context.build,
 		fileCount,

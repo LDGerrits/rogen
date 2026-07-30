@@ -1482,6 +1482,120 @@ describe("Builder Integration", () => {
 			"out/Logger.experimental.lua"
 		);
 	});
+
+	it("should detect and return exposed data files in the BuildResult", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "config.json",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "main.luau",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = { ...defaultConfig, source: "src" };
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+
+		expect(result.exposedDataFiles).toBeDefined();
+		expect(result.exposedDataFiles).toHaveLength(1);
+		expect(result.exposedDataFiles[0]).toBe("out/config.json");
+	});
+
+	it("should skip writing the project file and log a warning if data files are exposed", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "data.toml",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+			return [];
+		});
+
+		const writeSpy = jest
+			.spyOn(fs, "writeFileSync")
+			.mockImplementation(() => undefined as any);
+
+		const warnSpy = jest.spyOn(logger, "warn");
+
+		const dummyEnv = { isTsProject: false, isDarkluaProject: false };
+		const dummyConfig: Config = {
+			...defaultConfig,
+			source: "src",
+			luau: {
+				output: "test.json",
+				build: "out",
+				tags: {},
+				globIgnorePaths: [],
+			},
+		};
+		const baseTree = { name: "test", tree: {} };
+
+		await execute(
+			["src"],
+			dummyEnv,
+			[{ name: "luau", config: dummyConfig.luau }],
+			baseTree,
+			dummyConfig,
+			{},
+			process.cwd(),
+			logger
+		);
+
+		expect(writeSpy).not.toHaveBeenCalled();
+
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Skipping project file generation")
+		);
+	});
 });
 
 describe("unwrap Routing Overrides", () => {
