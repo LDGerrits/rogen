@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { HomeLayout } from "fumadocs-ui/layouts/home";
 import { baseOptions } from "@/lib/layout.shared";
-import { BookOpenCheck, History, ChevronDown } from "lucide-react";
+import { BookText, Telescope, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import {
 	NavbarMenu,
@@ -40,32 +40,31 @@ export default function Layout({ children }: { children: ReactNode }) {
 					children: (
 						<NavbarMenu>
 							<NavbarMenuTrigger className="flex items-center gap-1">
-								Resources
+								Versions
 								<ChevronDown className="w-4 h-4 opacity-50" />
 							</NavbarMenuTrigger>
 							<NavbarMenuContent>
-								<NavbarMenuLink href="/docs/v2">
-									<BookOpenCheck className="mr-3 h-5 w-5 text-blue-500" />
+								<NavbarMenuLink href="/docs/v1">
+									<BookText className="mr-3 h-5 w-5 text-white" />
 									<div className="flex flex-col">
-										<span className="font-medium">
-											Rogen v2 (Coming Soon)
+										<span className="font-medium text-white">
+											Rogen v1 (latest)
 										</span>
 										<span className="text-sm text-muted-foreground">
-											The upcoming documentation, setup,
-											and features.
+											Documentation for the latest version
+											of Rogen
 										</span>
 									</div>
 								</NavbarMenuLink>
 
-								<NavbarMenuLink href="/docs/v1">
-									<History className="mr-3 h-5 w-5 text-gray-400" />
+								<NavbarMenuLink href="/docs/v2">
+									<Telescope className="mr-3 h-5 w-5 opacity-50" />
 									<div className="flex flex-col">
-										<span className="font-medium">
-											Rogen v1 (Latest)
+										<span className="font-medium opacity-50">
+											Rogen v2 (coming soon)
 										</span>
-										<span className="text-sm text-muted-foreground">
-											Documentation for the latest version
-											of Rogen.
+										<span className="text-sm opacity-50">
+											Upcoming documentation
 										</span>
 									</div>
 								</NavbarMenuLink>

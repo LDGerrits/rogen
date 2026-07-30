@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { FaCopy } from "react-icons/fa";
 
-export function CtaSection() {
+export function Cta() {
 	const [copied, setCopied] = useState(false);
 	const [version, setVersion] = useState<string>("1.3.1");
 
@@ -34,7 +34,7 @@ export function CtaSection() {
 	};
 
 	return (
-		<section className="py-32 px-6">
+		<section className="py-24 px-6">
 			<div className="max-w-2xl mx-auto text-center relative flex flex-col items-center">
 				<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 					Upgrade your codebase
