@@ -17,7 +17,7 @@
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"build": "tsc",
 		"bundle": "esbuild bin/rogen.ts --bundle --platform=node --format=cjs --external:*.node --outfile=dist/bundle.cjs",
-		"prepare": "npm run clean && npm run build && npm run bundle",
+		"prepublishOnly": "npm run clean && npm run build && npm run bundle",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
 		"lint": "eslint .",
