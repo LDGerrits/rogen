@@ -2,7 +2,7 @@
 	"name": "rogen",
 	"version": "1.4.0",
 	"description": "Feature-based folder routing for Roblox",
-	"author": "ldgerrits",
+	"author": "@ldgerrits/rogen",
 	"license": "MIT",
 	"type": "module",
 	"workspaces": [
