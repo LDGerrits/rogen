@@ -1,8 +1,8 @@
 {
-	"name": "rogen",
+	"name": "@ldgerrits/rogen",
 	"version": "1.4.0",
 	"description": "Feature-based folder routing for Roblox",
-	"author": "@ldgerrits/rogen",
+	"author": "ldgerrits",
 	"license": "MIT",
 	"type": "module",
 	"workspaces": [
