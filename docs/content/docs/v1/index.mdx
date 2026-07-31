@@ -1,0 +1,85 @@
+---
+title: Introduction
+description: A command line tool that brings feature-based architecture to Roblox
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
+import { BookOpen, Rocket, Settings2 } from "lucide-react";
+
+A bad folder structure slows development. Remembering where the related pieces are increases cognitive load. And finding files wastes time.
+
+## The Problem: Layer-Based Architecture
+
+Typical Roblox projects structure their codebases in two ways:
+
+1. **By Environment:** Split code at the root into `server`, `client`, and `shared` folders.
+2. **By Type:** Inside the roots, group files by technical role (like `Controllers`, `Services`, or `Utils`).
+
+The layout may clean at the beginning but it gets messy in large codebases. Folders grow rapidly. Related files live far apart. Navigating the project becomes slow.
+Updating an **Inventory** system forces developers to search through massive file trees just to gather the related pieces.
+
+<PreviewGroup>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="client" level={1} open />
+		<TreeFolder name="Controllers" level={2} open />
+		<TreeFile name="InventoryController.luau" level={3} highlight />
+
+    	<TreeFolder name="server" level={1} open mt />
+    	<TreeFolder name="Services" level={2} open />
+    	<TreeFile name="InventoryService.luau" level={3} highlight />
+
+    	<TreeFolder name="shared" level={1} open mt />
+    	<TreeFolder name="Types" level={2} open />
+    	<TreeFile name="InventoryTypes.luau" level={3} highlight />
+    </SystemWindow>
+
+</PreviewGroup>
+
+<Callout type="warn">
+	**The Friction:** Context switching. Working on one feature requires
+	navigating through unrelated systems just to find the right server script.
+</Callout>
+
+## The Solution: Feature-Based Architecture
+
+Keep all code for a specific feature (e.g. client, server, and shared code) inside a single, self-contained folder.
+
+Rogen routes every file to its target Roblox service automatically based on the folder structure and naming rules.
+Repositories stay clean and localized while Roblox Studio receives scripts in the expected service containers.
+
+<PreviewGroup>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="Inventory" level={1} open highlight />
+		<TreeFolder name="client" level={2} dim />
+		<TreeFile name="InventoryController.luau" level={3} />
+		<TreeFolder name="server" level={2} dim />
+		<TreeFile name="InventoryService.luau" level={3} />
+		<TreeFolder name="shared" level={2} dim />
+		<TreeFile name="InventoryTypes.luau" level={3} />
+	</SystemWindow>
+
+    <PreviewArrow />
+
+    <StudioWindow>
+    	<TreeService name="ReplicatedStorage" type="replicated" />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryTypes" level={2} />
+
+    	<TreeService name="ServerScriptService" type="server" mt />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryService" level={2} />
+
+    	<TreeService name="StarterPlayerScripts" type="player" mt />
+    	<TreeFolder name="Inventory" level={1} highlight />
+    	<StudioFile name="InventoryController" level={2} />
+    </StudioWindow>
+
+</PreviewGroup>
+
+<Callout type="info">
+	**The Result:** Developers maintain a clean repository, while Roblox Studio
+	receives the scripts in the right containers.
+</Callout>

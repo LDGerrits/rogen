@@ -1,0 +1,5 @@
+{
+	"title": "Guides",
+	"description": "Step-by-step setup guides for different tech stacks.",
+	"pages": ["luau", "roblox-ts", "darklua", "multi-place", "tags"]
+}

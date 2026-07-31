@@ -1,3 +1,5 @@
 releases/
 node_modules/
 dist/
+.vscode/
+.npmrc

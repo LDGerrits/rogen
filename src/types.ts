@@ -1,29 +1,38 @@
 export interface CliArgs {
 	help?: boolean;
+	version?: boolean;
 	init?: boolean;
 	config?: string;
-	mode?: string;
+	mode?: string[];
 	source?: string[];
-	template?: string;
+	tag?: string[];
+	project?: string;
 	output?: string;
 	build?: string;
 	watch?: boolean;
-	keepRouteNames?: boolean;
 }
 
-export interface RogenMode {
+export interface Mode {
 	output: string;
 	build: string;
+	tags: Record<string, boolean>;
+	globIgnorePaths: string[];
 }
 
-export interface RogenConfig {
-	source?: string | string[];
-	keepRouteNames?: boolean;
-	aliases?: Record<string, string>;
-	luau?: RogenMode;
-	ts?: RogenMode;
-	darklua?: RogenMode;
-	template?: unknown;
+export type Casing = "PascalCase" | "camelCase";
+
+export interface Config {
+	source: string | string[];
+	tags: Record<string, boolean>;
+	verbatim: boolean;
+	casing: Casing;
+	unwrap: boolean;
+	aliases: Record<string, string>;
+	globIgnorePaths: string[];
+	luau: Mode;
+	ts: Mode;
+	darklua: Mode;
+	project: RojoTree;
 	[key: string]: unknown;
 }
 
@@ -32,48 +41,22 @@ export interface Environment {
 	isDarkluaProject: boolean;
 }
 
-export interface RoutingMaps {
-	mergedServices: Record<string, string>;
-	lowerCaseMap: Record<string, string>;
-	separatorSuffixRegex: RegExp;
-	pascalCaseSuffixRegex: RegExp;
-	prefixRegex: RegExp;
-}
-
-export interface RouteContext extends RogenMode {
-	source: string | string[];
-	isTsProject: boolean;
-	emitLegacyScripts: boolean;
-	name: string;
-	routingMaps: RoutingMaps;
-	keepRouteNames: boolean;
-	directoryMarkers?: Record<string, string>;
-}
-
 export interface RojoNode {
 	$className?: string;
 	$path?: string;
+	$properties?: Record<string, unknown>;
+	$ignoreUnknownInstances?: boolean;
 	[key: string]: unknown;
 }
 
 export interface RojoTree {
-	name?: string;
-	emitLegacyScripts?: boolean;
-	tree: RojoNode;
-}
-
-export interface MissingPath {
-	parent: RojoNode;
-	key: string;
-	path: string;
-	absolutePath: string;
-}
-
-export interface BuildResult {
-	output: string;
-	tree: RojoTree;
-	missingPaths: MissingPath[];
 	name: string;
-	buildDir: string;
-	fileCount: number;
+	tree: RojoNode;
+	servePort?: number;
+	servePlaceIds?: number[];
+	placeId?: number;
+	gameId?: number;
+	serveAddress?: string;
+	globIgnorePaths?: string[];
+	emitLegacyScripts?: boolean;
 }
