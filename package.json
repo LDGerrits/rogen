@@ -1,6 +1,9 @@
 {
 	"name": "@ldgerrits/rogen",
 	"version": "1.4.0",
+	"publishConfig": {
+		"access": "public"
+	},
 	"description": "Feature-based folder routing for Roblox",
 	"author": "ldgerrits",
 	"license": "MIT",
