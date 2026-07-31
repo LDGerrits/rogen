@@ -291,8 +291,8 @@ export function resolveRoute(
 	} = context;
 
 	const parts = relativePath ? relativePath.split(/[\\/]/) : [];
-	let filename = "";
-	let rawBasename = "";
+	let filename: string;
+	let rawBasename: string;
 
 	if (isSync) {
 		filename = parts.length > 0 ? parts[parts.length - 1] : "";
