@@ -10,7 +10,7 @@
 
 ---
 
-Bring feature-based architecture to Roblox.
+Feature-based folder routing for Roblox.
 Build self-contained systems with client, server, and shared code in one place.
 Rogen routes every file to the correct Roblox service automatically.
 

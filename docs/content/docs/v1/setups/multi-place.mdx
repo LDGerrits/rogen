@@ -6,7 +6,7 @@ description: Step-by-step setup guide for sharing code across multiple places.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen merges multiple source directories into a single Rojo project. This feature allows developers to share core code across places without duplicating logic.
+Combine multiple directories into one project. Seamlessly share core code across places.
 
 <Steps>
 
@@ -87,6 +87,5 @@ rogen watch --config lobby.rogen.json
 
 <Callout type="info">
 	If Rogen finds identical file names at the exact same path, the directory
-	listed last in the `source` array overwrites previous files. This can be a
-	powerful feature.
+	listed last in the `source` array overwrites previous files.
 </Callout>

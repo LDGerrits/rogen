@@ -5,50 +5,81 @@ description: Install Rogen and set up the project.
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Steps, Step } from "fumadocs-ui/components/steps";
-import { Cards, Card } from "fumadocs-ui/components/card";
-import { FileCode2, Code2, Terminal, FolderTree } from "lucide-react";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 import InstallCodeBlock from "@/components/install-code-block";
 
-Install Rogen using **Rokit**.
+Install Rogen using **Rokit** or **npm**.
 
 <Callout type="info">
 	**Prerequisite:** Install [Rojo](https://github.com/rojo-rbx/rojo) or
 	[Argon](https://github.com/argon-rbx/argon) to sync code to Roblox Studio.
 </Callout>
 
-<Steps>
+<Tabs items={["Rokit", "npm"]}>
+  <Tab value="Rokit">
+    <Steps>
+      <Step>
+        ### Add Rogen to the toolchain
 
-<Step>
-### Add Rogen to the toolchain
+        Open the `rokit.toml` file and add Rogen.
 
-Open `rokit.toml` file and add Rogen.
+        <InstallCodeBlock />
 
-<InstallCodeBlock />
+      </Step>
 
-</Step>
+      <Step>
+        ### Install the Tool
 
-<Step>
-### Install the Tool
+        Run the installation command.
 
-Run the installation command.
+        ```bash
+        rokit install
+        ```
 
-```bash
-rokit install
-```
+      </Step>
 
-</Step>
+      <Step>
+        ### Verify Installation
 
-<Step>
-### Verify Installation
+        Check the Rogen version.
 
-Check the Rogen version.
+        ```bash
+        rogen version
+        ```
 
-```bash
-rogen version
-```
+        If the command prints a version number, the install was successful.
 
-If the command prints a version number, the install was succesful.
+      </Step>
+    </Steps>
 
-</Step>
+  </Tab>
 
-</Steps>
+  <Tab value="npm">
+    <Steps>
+      <Step>
+        ### Install the Tool
+
+        Run the installation command in your terminal to add Rogen to your project.
+
+        ```bash
+        npm i @ldgerrits/rogen
+        ```
+
+      </Step>
+
+      <Step>
+        ### Verify Installation
+
+        Check the Rogen version using `npx` to execute the locally installed package.
+
+        ```bash
+        npx rogen version
+        ```
+
+        If the command prints a version number, the install was successful.
+
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>
