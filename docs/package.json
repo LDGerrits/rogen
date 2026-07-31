@@ -19,7 +19,7 @@
 		"next": "16.2.11",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"@fumadocs/base-ui": "^16.12.1",
+		"@fumadocs/base-ui": "16.12.1",
 		"framer-motion": "^12.42.2",
 		"react-icons": "^5.7.0"
 	},
