@@ -15,6 +15,7 @@ import {
 	isInitFile,
 	isValidSource,
 	findExposedDataFiles,
+	ExposedDataFile,
 } from "./tree.js";
 import {
 	TagRegexes,
@@ -43,7 +44,7 @@ interface BuildResult {
 	missingPaths: MissingPath[];
 	removed: RemovedPath[];
 	collisions: string[];
-	exposedDataFiles: string[];
+	exposedDataFiles: ExposedDataFile[];
 	name: string;
 	buildDir: string;
 	fileCount: number;

@@ -1,10 +1,10 @@
 {
 	"name": "@ldgerrits/rogen",
-	"version": "1.4.0",
+	"version": "1.4.1",
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "Feature-based folder routing for Roblox",
+	"description": "A CLI tool enabling feature-based architecture through automated routing of client, server, and shared code to Roblox services",
 	"author": "ldgerrits",
 	"license": "MIT",
 	"type": "module",

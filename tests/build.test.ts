@@ -1535,11 +1535,15 @@ describe("Builder Integration", () => {
 
 		expect(result.exposedDataFiles).toBeDefined();
 		expect(result.exposedDataFiles).toHaveLength(1);
-		expect(result.exposedDataFiles[0]).toBe("out/config.json");
+		expect(result.exposedDataFiles[0].path).toBe("out/config.json");
 	});
 
-	it("should skip writing the project file and log a warning if data files are exposed", async () => {
-		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+	it("should drop exposed data files and NOT skip writing the project file", async () => {
+		jest.spyOn(fs, "existsSync").mockImplementation((p) => {
+			const pathStr = String(p).replace(/\\/g, "/");
+			if (pathStr.endsWith("test.json")) return false;
+			return true;
+		});
 
 		(
 			jest.spyOn(fs.promises, "readdir") as jest.Mock<
@@ -1590,10 +1594,10 @@ describe("Builder Integration", () => {
 			logger
 		);
 
-		expect(writeSpy).not.toHaveBeenCalled();
+		expect(writeSpy).toHaveBeenCalled();
 
 		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("Skipping project file generation")
+			expect.stringContaining("Ignored 1 exposed data file(s)")
 		);
 	});
 

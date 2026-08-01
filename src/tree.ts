@@ -15,6 +15,12 @@ export interface MissingPath {
 	treePath: string;
 }
 
+export interface ExposedDataFile {
+	parent: RojoNode;
+	key: string;
+	path: string;
+}
+
 function hasPathPrefix(p: string, dir: string): boolean {
 	return p === dir || p.startsWith(dir + "/");
 }
@@ -168,7 +174,7 @@ export function collapseFolders(
 	outputDir: string
 ): void {
 	let childCount = 0;
-	let canCollapse = true;
+	let canCollapse = node.$path === undefined; // Prevent overwriting a folder with an explicit $path
 	let commonDir: string | null = null;
 
 	for (const key in node) {
@@ -241,8 +247,8 @@ export function collapseFolders(
 
 export function findExposedDataFiles(
 	node: RojoNode,
-	exposed: string[] = []
-): string[] {
+	exposed: ExposedDataFile[] = []
+): ExposedDataFile[] {
 	for (const key in node) {
 		if (key.startsWith("$")) continue;
 
@@ -253,10 +259,11 @@ export function findExposedDataFiles(
 
 		// Check if the current node exposes a raw data file path
 		if (childNode.$path && isData(childNode.$path)) {
-			exposed.push(childNode.$path);
+			exposed.push({ parent: node, key, path: childNode.$path });
 		}
 
 		findExposedDataFiles(childNode, exposed);
 	}
+
 	return exposed;
 }

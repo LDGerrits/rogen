@@ -20,7 +20,7 @@ export function Hero() {
 				<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
 					Feature-based
 					<br />
-					folder routing for Roblox
+					architecture for Roblox
 				</h1>
 
 				<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">

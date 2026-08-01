@@ -402,10 +402,104 @@ describe("collapseFolders", () => {
 		expect(vendor.Main).toBeUndefined();
 		expect(vendor.Client).toBeUndefined();
 	});
+
+	it("should NOT collapse a node if it already has its own $path", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Packages: {
+				$path: "Packages",
+				Fusion: { $path: "out/PackagesCustom/Fusion" },
+				DataStore2: { $path: "out/PackagesCustom/DataStore2" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("PackagesCustom"))
+				return ["Fusion", "DataStore2"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const packages = tree.Packages as RojoNode;
+		expect(packages.$path).toBe("Packages");
+		expect(packages.Fusion).toBeDefined();
+		expect(packages.DataStore2).toBeDefined();
+	});
+
+	it("should recursively collapse deep children even if the parent refuses due to a pre-existing $path", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Packages: {
+				$path: "Packages",
+				ForkedLib: { $path: "out/Custom/ForkedLib.luau" },
+				DeepFolder: {
+					Math: { $path: "out/DeepFolder/Math.luau" },
+					String: { $path: "out/DeepFolder/String.luau" },
+				},
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const d = String(dir).replace(/\\/g, "/");
+			if (d.endsWith("DeepFolder")) return ["Math.luau", "String.luau"];
+			if (d.endsWith("Custom")) return ["ForkedLib.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const packages = tree.Packages as RojoNode;
+
+		expect(packages.$path).toBe("Packages");
+		expect(packages.ForkedLib).toBeDefined();
+
+		const deepFolder = packages.DeepFolder as RojoNode;
+		expect(deepFolder.$path).toBe("out/DeepFolder");
+		expect(deepFolder.Math).toBeUndefined();
+		expect(deepFolder.String).toBeUndefined();
+	});
+
+	it("should not wipe children if a user manually sets the parent $path to the exact same directory as the children", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			Shared: {
+				$path: "out/Shared",
+				Utils: { $path: "out/Shared/Utils.luau" },
+				Constants: { $path: "out/Shared/Constants.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("Shared"))
+				return ["Utils.luau", "Constants.luau"];
+			return [];
+		}) as any);
+
+		collapseFolders(tree, buildDir, outputDir);
+
+		const shared = tree.Shared as RojoNode;
+
+		expect(shared.$path).toBe("out/Shared");
+		expect(shared.Utils).toBeDefined();
+		expect(shared.Constants).toBeDefined();
+	});
 });
 
 describe("findExposedDataFiles", () => {
-	it("should return an array of paths that point directly to data files", () => {
+	it("should return an array of objects that point directly to data files", () => {
 		const tree: RojoNode = {
 			ValidScript: { $path: "out/script.luau" },
 			RawData: { $path: "out/data.json" },
@@ -418,8 +512,8 @@ describe("findExposedDataFiles", () => {
 		const exposed = findExposedDataFiles(tree);
 
 		expect(exposed).toHaveLength(2);
-		expect(exposed).toContain("out/data.json");
-		expect(exposed).toContain("out/nested/config.toml");
+		expect(exposed[0].path).toBe("out/data.json");
+		expect(exposed[1].path).toBe("out/nested/config.toml");
 	});
 
 	it("should return an empty array if no data files are exposed", () => {

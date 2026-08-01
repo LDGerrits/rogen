@@ -1,7 +1,7 @@
 <div>&nbsp;</div>
 
 <div align="center">
-	<img src="docs/public/icon.png" alt="Rogen" width="100" />
+	<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" alt="Rogen" width="100" />
 </div>
 
 <div align="center">
@@ -10,9 +10,7 @@
 
 ---
 
-Feature-based folder routing for Roblox.
-Build self-contained systems with client, server, and shared code in one place.
-Rogen routes every file to the correct Roblox service automatically.
+A CLI tool enabling feature-based architecture through automated routing of client, server, and shared code to Roblox services.
 
 ## Features
 

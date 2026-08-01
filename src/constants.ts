@@ -1,7 +1,7 @@
 import { RoutingMaps } from "./route.js";
 import { Config, RojoTree } from "./types.js";
 
-export const version = "1.4.0";
+export const version = "1.4.1";
 
 export const defaultProject: RojoTree = {
 	name: "roblox-game",
