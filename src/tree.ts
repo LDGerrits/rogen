@@ -168,7 +168,7 @@ export function collapseFolders(
 	outputDir: string
 ): void {
 	let childCount = 0;
-	let canCollapse = true;
+	let canCollapse = node.$path === undefined; // Prevent overwriting a folder with an explicit $path
 	let commonDir: string | null = null;
 
 	for (const key in node) {
