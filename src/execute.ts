@@ -29,13 +29,15 @@ export async function execute(
 				cliArgs,
 				anchor
 			);
+
 			const dropped: string[] = [];
 
 			if (buildResult.exposedDataFiles.length > 0) {
 				logger.warn(
-					`${getTimeStamp()} [${modeName}] Skipping project file generation. Rogen cannot map data files directly.`
+					`${getTimeStamp()} [${modeName}] Ignored ${buildResult.exposedDataFiles.length} exposed data file(s). Rogen cannot map data files directly.`
 				);
-				for (const exposedPath of buildResult.exposedDataFiles) {
+				for (const exposed of buildResult.exposedDataFiles) {
+					const exposedPath = exposed.path;
 					const ext = path.extname(exposedPath);
 					const fileName = path.basename(exposedPath);
 					const baseName = fileName.substring(
@@ -48,10 +50,12 @@ export async function execute(
 						`  - Cannot resolve data type "${ext}" for: "${exposedPath}"`
 					);
 					logger.info(
-						`    Fix: Wrap it in a folder (e.g., move it to "${dirName}/${baseName}/data${ext}")`
+						`    Fix: Wrap it in a folder (e.g., move it to "${dirName}/${baseName}/data${ext}") or add it to 'globIgnorePaths' to suppress this warning.`
 					);
+
+					delete exposed.parent[exposed.key];
+					dropped.push(`${exposed.key} ($path "${exposedPath}")`);
 				}
-				continue;
 			}
 
 			if (buildResult.missingPaths.length > 0) {

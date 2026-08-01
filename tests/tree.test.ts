@@ -499,7 +499,7 @@ describe("collapseFolders", () => {
 });
 
 describe("findExposedDataFiles", () => {
-	it("should return an array of paths that point directly to data files", () => {
+	it("should return an array of objects that point directly to data files", () => {
 		const tree: RojoNode = {
 			ValidScript: { $path: "out/script.luau" },
 			RawData: { $path: "out/data.json" },
@@ -512,8 +512,8 @@ describe("findExposedDataFiles", () => {
 		const exposed = findExposedDataFiles(tree);
 
 		expect(exposed).toHaveLength(2);
-		expect(exposed).toContain("out/data.json");
-		expect(exposed).toContain("out/nested/config.toml");
+		expect(exposed[0].path).toBe("out/data.json");
+		expect(exposed[1].path).toBe("out/nested/config.toml");
 	});
 
 	it("should return an empty array if no data files are exposed", () => {
