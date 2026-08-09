@@ -171,7 +171,8 @@ function getRojoBaseName(filename: string): string {
 export function collapseFolders(
 	node: RojoNode,
 	buildDir: string,
-	outputDir: string
+	outputDir: string,
+	isIgnored: (path: string) => boolean = () => false
 ): void {
 	let childCount = 0;
 	let canCollapse = node.$path === undefined; // Prevent overwriting a folder with an explicit $path
@@ -186,7 +187,7 @@ export function collapseFolders(
 		const childNode = val as RojoNode;
 
 		// Process deepest nested children first
-		collapseFolders(childNode, buildDir, outputDir);
+		collapseFolders(childNode, buildDir, outputDir, isIgnored);
 
 		childCount++;
 
@@ -219,11 +220,15 @@ export function collapseFolders(
 		return;
 	}
 
+	const relativeCommonDir = toPosix(path.relative(outputDir, commonDir));
+
 	try {
 		const diskItems = fs.readdirSync(commonDir);
-		// filter out marker files so they do not prevent folders from collapsing
+		// filter out marker files and ignored files so they do not prevent folders from collapsing
 		const visibleDiskItems = diskItems.filter(
-			(item) => !item.startsWith(".")
+			(item) =>
+				!item.startsWith(".") &&
+				!isIgnored(toPosix(path.join(relativeCommonDir, item)))
 		);
 		if (visibleDiskItems.length !== childCount) {
 			return;
@@ -233,8 +238,6 @@ export function collapseFolders(
 	}
 
 	// Replace all child files with a single folder $path
-	const relativeCommonDir = toPosix(path.relative(outputDir, commonDir));
-
 	for (const key in node) {
 		if (!key.startsWith("$")) {
 			delete node[key];

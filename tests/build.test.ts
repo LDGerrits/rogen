@@ -1672,6 +1672,169 @@ describe("Builder Integration", () => {
 
 		expect(packagesFolder["leak"]).toBeUndefined();
 	});
+
+	it("should inject globIgnorePaths into the Rojo tree and successfully collapse folders containing ignored files", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "utils",
+						isDirectory: () => true,
+						isFile: () => false,
+					},
+				] as fs.Dirent[];
+			}
+
+			if (normalizedDir.endsWith("utils")) {
+				return [
+					{
+						name: "math.luau",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "math.spec.luau",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			if (normalizedDir.endsWith("utils")) {
+				return ["math.luau", "math.spec.luau"];
+			}
+			return [];
+		}) as any);
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: ["**/*.spec.luau"],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			globIgnorePaths: ["**/*.test.luau"],
+		};
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+		const cliArgs: CliArgs = {};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			cliArgs,
+			process.cwd()
+		);
+		const resultTree = result.tree as RojoTree;
+		const tree = resultTree.tree as any;
+
+		expect(result.fileCount).toBe(1);
+
+		expect(resultTree.globIgnorePaths).toBeDefined();
+		expect(resultTree.globIgnorePaths).toContain("**/*.spec.luau");
+		expect(resultTree.globIgnorePaths).toContain("**/*.test.luau");
+
+		expect(tree.ReplicatedStorage.shared.utils).toBeDefined();
+		expect(tree.ReplicatedStorage.shared.utils.$path).toBe("out/utils");
+		expect(tree.ReplicatedStorage.shared.utils.math).toBeUndefined();
+	});
+
+	it("should evaluate globIgnorePaths against the compiled projectPath, successfully handling TS extension swaps", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "math.ts",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "math.spec.ts",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+			if (normalizedDir.endsWith("out")) {
+				return ["math.luau", "math.spec.luau", "prevent-collapse.txt"];
+			}
+			return [];
+		}) as any);
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: ["**/*.spec.luau"],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = { ...defaultConfig, source: "src" };
+
+		const env: Environment = { isTsProject: true, isDarkluaProject: false };
+		const cliArgs: CliArgs = {};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			cliArgs,
+			process.cwd()
+		);
+
+		const resultTree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(1);
+
+		expect(resultTree.ReplicatedStorage.shared.math).toBeDefined();
+		expect(resultTree.ReplicatedStorage.shared.math.$path).toBe(
+			"out/math.luau"
+		);
+
+		expect(
+			resultTree.ReplicatedStorage.shared["math.spec"]
+		).toBeUndefined();
+	});
 });
 
 describe("unwrap Routing Overrides", () => {

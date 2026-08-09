@@ -251,6 +251,7 @@ export async function build(
 
 	const combinedGlobIgnorePaths = Array.from(
 		new Set([
+			...(rojoTree.globIgnorePaths || []),
 			...(config.globIgnorePaths || []),
 			...(modeCopy.globIgnorePaths || []),
 		])
@@ -292,7 +293,6 @@ export async function build(
 			listings,
 			(filepath, isInit, isSync) => {
 				const relativePath = path.relative(sourcePath, filepath);
-				if (relativePath && isIgnored(toPosix(relativePath))) return;
 
 				const {
 					targetService,
@@ -304,7 +304,8 @@ export async function build(
 					unwrap,
 				} = resolveRoute(relativePath, isInit, newContext, isSync);
 
-				if (dropped) return;
+				if (dropped || (projectPath && isIgnored(toPosix(projectPath))))
+					return;
 				fileCount++;
 
 				let current = rojoTree.tree;
@@ -368,9 +369,13 @@ export async function build(
 		removed
 	);
 
-	collapseFolders(prunedTree, context.build, outputDir);
+	collapseFolders(prunedTree, context.build, outputDir, isIgnored);
 
 	rojoTree.tree = prunedTree;
+
+	if (combinedGlobIgnorePaths.length > 0) {
+		rojoTree.globIgnorePaths = combinedGlobIgnorePaths;
+	}
 
 	const sortedTree = sortObject(rojoTree);
 	const missingPaths = findMissingPaths(

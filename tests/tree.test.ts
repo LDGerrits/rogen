@@ -496,6 +496,35 @@ describe("collapseFolders", () => {
 		expect(shared.Utils).toBeDefined();
 		expect(shared.Constants).toBeDefined();
 	});
+
+	it("should collapse a folder when an unmapped file is explicitly ignored by isIgnored", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			MathUtils: {
+				Add: { $path: "out/MathUtils/Add.luau" },
+				Subtract: { $path: "out/MathUtils/Subtract.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("MathUtils"))
+				return ["Add.luau", "Subtract.luau", "ignoreMe.spec.luau"];
+			return [];
+		}) as any);
+
+		const isIgnored = (p: string) => p.endsWith("ignoreMe.spec.luau");
+
+		collapseFolders(tree, buildDir, outputDir, isIgnored);
+
+		const mathUtils = tree.MathUtils as RojoNode;
+		expect(mathUtils.$path).toBe("out/MathUtils");
+		expect(mathUtils.Add).toBeUndefined();
+		expect(mathUtils.Subtract).toBeUndefined();
+	});
 });
 
 describe("findExposedDataFiles", () => {
