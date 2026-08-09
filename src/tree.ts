@@ -142,6 +142,8 @@ const isModel = (filename: string): boolean =>
 export function isData(filename: string): boolean {
 	if (isScript(filename) || isModel(filename)) return false;
 
+	if (filename.toLowerCase().endsWith(".d.ts")) return false;
+
 	if (filename.startsWith(".")) return false;
 
 	return /\.[a-z0-9]+$/i.test(filename);

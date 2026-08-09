@@ -7,6 +7,8 @@ import {
 	findMissingPaths,
 	collapseFolders,
 	findExposedDataFiles,
+	isValidSource,
+	isData,
 } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
@@ -555,5 +557,31 @@ describe("findExposedDataFiles", () => {
 		const exposed = findExposedDataFiles(tree);
 
 		expect(exposed).toHaveLength(0);
+	});
+});
+
+describe("File Classification (isValidSource & isData)", () => {
+	it("should explicitly return false for .d.ts files so they are completely ignored", () => {
+		expect(isValidSource("index.d.ts")).toBe(false);
+		expect(isData("index.d.ts")).toBe(false);
+
+		expect(isValidSource("types/globals.d.ts")).toBe(false);
+		expect(isData("types/globals.d.ts")).toBe(false);
+	});
+
+	it("should return true for .d.luau and .d.lua files, treating them as valid scripts to match Rojo", () => {
+		expect(isValidSource("types.d.luau")).toBe(true);
+		expect(isValidSource("globals.d.lua")).toBe(true);
+
+		expect(isData("types.d.luau")).toBe(false);
+		expect(isData("globals.d.lua")).toBe(false);
+	});
+
+	it("should return true for valid scripts and standard data files", () => {
+		expect(isValidSource("main.luau")).toBe(true);
+		expect(isValidSource("config.json")).toBe(true);
+
+		expect(isData("config.json")).toBe(true);
+		expect(isData("main.luau")).toBe(false);
 	});
 });

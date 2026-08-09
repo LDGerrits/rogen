@@ -1835,6 +1835,76 @@ describe("Builder Integration", () => {
 			resultTree.ReplicatedStorage.shared["math.spec"]
 		).toBeUndefined();
 	});
+
+	it("should automatically ignore .d.ts files without needing globIgnorePaths configuration", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async (dir: string) => {
+			const normalizedDir = String(dir).replace(/\\/g, "/");
+
+			if (normalizedDir.endsWith("src")) {
+				return [
+					{
+						name: "main.ts",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "types.d.ts",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+					{
+						name: "data.json",
+						isDirectory: () => false,
+						isFile: () => true,
+					},
+				] as fs.Dirent[];
+			}
+
+			return [];
+		});
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: [],
+		};
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+		const config: Config = { ...defaultConfig, source: "src" };
+		const env: Environment = { isTsProject: true, isDarkluaProject: false };
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+		const tree = result.tree.tree as any;
+
+		expect(result.fileCount).toBe(2);
+
+		expect(tree.ReplicatedStorage.shared.main).toBeDefined();
+		expect(tree.ReplicatedStorage.shared.data).toBeDefined();
+
+		expect(tree.ReplicatedStorage.shared.types).toBeUndefined();
+
+		const dtsWarning = result.exposedDataFiles.find((e) =>
+			e.path.includes(".d.ts")
+		);
+		expect(dtsWarning).toBeUndefined();
+
+		expect(result.exposedDataFiles).toHaveLength(1);
+		expect(result.exposedDataFiles[0].path).toContain("data.json");
+	});
 });
 
 describe("unwrap Routing Overrides", () => {
