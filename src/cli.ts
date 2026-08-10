@@ -10,14 +10,15 @@ interface CliArg {
 
 export function printHelp(logger?: Logger): void {
 	const helpText = `
-Rogen - Feature-based folder routing for Roblox
+Rogen - Feature-based architecture for Roblox
 
 Usage:
   rogen [command] [options]
 
 Commands:
   init                 Generate a .rogen.json config file
-  watch                Watch the source and generate automatically
+  build                Build the project
+  watch                Watch the source and build automatically
 
 Options:
   -c, --config <path>  Specify custom config file
@@ -76,6 +77,8 @@ export function parseCliArgs(
 				parsedArgs.help = true;
 			} else if (subcommand === "version") {
 				parsedArgs.version = true;
+			} else if (subcommand === "build") {
+				// build is the default command, so it falls through cleanly
 			} else {
 				const errorMsg = `unknown subcommand "${positionals[0]}".\nRun 'rogen --help' to see a list of available commands.`;
 				if (logger) {
