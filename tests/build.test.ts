@@ -113,17 +113,21 @@ describe("Builder Integration", () => {
 		expect(
 			resultTree.ServerScriptService.server.systems.Combat
 		).toBeDefined();
-		expect(resultTree.ServerScriptService.server.systems.Combat.$path).toBe(
-			"out/systems/Combat.server.lua"
-		);
+		expect(
+			resultTree.ServerScriptService.server.systems.Combat.$path
+		).toEqual({
+			optional: "out/systems/Combat.server.lua",
+		});
 
 		expect(resultTree.ReplicatedStorage.shared.Weapon).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe(
-			"out/Weapon.rbxm"
-		);
+		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toEqual({
+			optional: "out/Weapon.rbxm",
+		});
 
 		expect(resultTree.ReplicatedStorage.shared.ui).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.ui.$path).toBe("out/ui");
+		expect(resultTree.ReplicatedStorage.shared.ui.$path).toEqual({
+			optional: "out/ui",
+		});
 	});
 
 	it("should successfully merge files from multiple source directories into single containers", async () => {
@@ -192,12 +196,12 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.CoreMath).toBeDefined();
 		expect(resultTree.ReplicatedStorage.shared.LevelData).toBeDefined();
 
-		expect(resultTree.ReplicatedStorage.shared.CoreMath.$path).toBe(
-			"out/core/CoreMath.lua"
-		);
-		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toBe(
-			"out/chapter1/LevelData.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.CoreMath.$path).toEqual({
+			optional: "out/core/CoreMath.lua",
+		});
+		expect(resultTree.ReplicatedStorage.shared.LevelData.$path).toEqual({
+			optional: "out/chapter1/LevelData.lua",
+		});
 	});
 
 	it("should correctly calculate build paths for deeply nested multiple sources", async () => {
@@ -264,16 +268,18 @@ describe("Builder Integration", () => {
 		expect(result.fileCount).toBe(2);
 
 		expect(resultTree.ServerScriptService.server.HubMain).toBeDefined();
-		expect(resultTree.ServerScriptService.server.HubMain.$path).toBe(
-			"out/places/hub/HubMain.server.lua"
-		);
+		expect(resultTree.ServerScriptService.server.HubMain.$path).toEqual({
+			optional: "out/places/hub/HubMain.server.lua",
+		});
 
 		expect(
 			resultTree.ServerScriptService.server.MinigameMain
 		).toBeDefined();
-		expect(resultTree.ServerScriptService.server.MinigameMain.$path).toBe(
-			"out/places/minigame/MinigameMain.server.lua"
-		);
+		expect(
+			resultTree.ServerScriptService.server.MinigameMain.$path
+		).toEqual({
+			optional: "out/places/minigame/MinigameMain.server.lua",
+		});
 	});
 
 	it("should successfully merge identical virtual folder structures across multiple sources", async () => {
@@ -361,12 +367,12 @@ describe("Builder Integration", () => {
 		expect(resultTree.ReplicatedStorage.shared.ui.Button).toBeDefined();
 		expect(resultTree.ReplicatedStorage.shared.ui.Card).toBeDefined();
 
-		expect(resultTree.ReplicatedStorage.shared.ui.Button.$path).toBe(
-			"out/core/ui/Button.lua"
-		);
-		expect(resultTree.ReplicatedStorage.shared.ui.Card.$path).toBe(
-			"out/plugins/ui/Card.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.ui.Button.$path).toEqual({
+			optional: "out/core/ui/Button.lua",
+		});
+		expect(resultTree.ReplicatedStorage.shared.ui.Card.$path).toEqual({
+			optional: "out/plugins/ui/Card.lua",
+		});
 	});
 
 	it("should apply environment flag filtering correctly across multiple source directories", async () => {
@@ -439,14 +445,14 @@ describe("Builder Integration", () => {
 		expect(result.fileCount).toBe(2);
 
 		expect(resultTree.ReplicatedStorage.shared.MathUtils).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.MathUtils.$path).toBe(
-			"src/shared/MathUtils.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.MathUtils.$path).toEqual({
+			optional: "src/shared/MathUtils.lua",
+		});
 
 		expect(resultTree.ReplicatedStorage.shared.HubManager).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.HubManager.$path).toBe(
-			"src/hub/HubManager.dev.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.HubManager.$path).toEqual({
+			optional: "src/hub/HubManager.dev.lua",
+		});
 
 		expect(
 			resultTree.ReplicatedStorage.shared["HubManager.prod"]
@@ -498,9 +504,9 @@ describe("Builder Integration", () => {
 		);
 		const resultTree = result.tree.tree as any;
 
-		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toBe(
-			"out/Weapon.luau"
-		);
+		expect(resultTree.ReplicatedStorage.shared.Weapon.$path).toEqual({
+			optional: "out/Weapon.luau",
+		});
 	});
 
 	it("should route files based on marker files instead of folder names", async () => {
@@ -571,9 +577,11 @@ describe("Builder Integration", () => {
 		expect(
 			resultTree.ServerScriptService.server.Database.query
 		).toBeDefined();
-		expect(resultTree.ServerScriptService.server.Database.query.$path).toBe(
-			"out/Database/query.lua"
-		);
+		expect(
+			resultTree.ServerScriptService.server.Database.query.$path
+		).toEqual({
+			optional: "out/Database/query.lua",
+		});
 	});
 
 	it("should generate PascalCase tree names without changing source paths", async () => {
@@ -649,7 +657,9 @@ describe("Builder Integration", () => {
 			.test.testServiceUtils;
 
 		expect(node).toBeDefined();
-		expect(node.$path).toBe("out/features/test/testServiceUtils.luau");
+		expect(node.$path).toEqual({
+			optional: "out/features/test/testServiceUtils.luau",
+		});
 	});
 
 	it("should generate camelCase tree names by default without changing source paths", async () => {
@@ -721,7 +731,9 @@ describe("Builder Integration", () => {
 			.Test.TestServiceUtils;
 
 		expect(node).toBeDefined();
-		expect(node.$path).toBe("out/Features/Test/TestServiceUtils.luau");
+		expect(node.$path).toEqual({
+			optional: "out/Features/Test/TestServiceUtils.luau",
+		});
 	});
 
 	it("should resolve CLI output relative to cwd, but config output relative to anchor", async () => {
@@ -971,21 +983,21 @@ describe("Builder Integration", () => {
 
 		expect(result.fileCount).toBe(5);
 
-		expect(resultTree.ReplicatedStorage.shared.config.$path).toBe(
-			"out/config.toml"
-		);
-		expect(resultTree.ReplicatedStorage.shared.data.$path).toBe(
-			"out/data.json"
-		);
-		expect(resultTree.ReplicatedStorage.shared.locales.$path).toBe(
-			"out/locales.csv"
-		);
-		expect(resultTree.ReplicatedStorage.shared.notes.$path).toBe(
-			"out/notes.txt"
-		);
-		expect(resultTree.ReplicatedStorage.shared.README.$path).toBe(
-			"out/README.md"
-		);
+		expect(resultTree.ReplicatedStorage.shared.config.$path).toEqual({
+			optional: "out/config.toml",
+		});
+		expect(resultTree.ReplicatedStorage.shared.data.$path).toEqual({
+			optional: "out/data.json",
+		});
+		expect(resultTree.ReplicatedStorage.shared.locales.$path).toEqual({
+			optional: "out/locales.csv",
+		});
+		expect(resultTree.ReplicatedStorage.shared.notes.$path).toEqual({
+			optional: "out/notes.txt",
+		});
+		expect(resultTree.ReplicatedStorage.shared.README.$path).toEqual({
+			optional: "out/README.md",
+		});
 	});
 
 	it("should completely halt routing logic when encountering a .structure marker file", async () => {
@@ -1072,14 +1084,14 @@ describe("Builder Integration", () => {
 		expect(vendorFolder).toBeDefined();
 
 		expect(vendorFolder["main.server"]).toBeDefined();
-		expect(vendorFolder["main.server"].$path).toBe(
-			"out/vendor/main.server.lua"
-		);
+		expect(vendorFolder["main.server"].$path).toEqual({
+			optional: "out/vendor/main.server.lua",
+		});
 
 		expect(vendorFolder.Client["apiClient"]).toBeDefined();
-		expect(vendorFolder.Client["apiClient"].$path).toBe(
-			"out/vendor/Client/apiClient.lua"
-		);
+		expect(vendorFolder.Client["apiClient"].$path).toEqual({
+			optional: "out/vendor/Client/apiClient.lua",
+		});
 
 		expect(resultTree.ServerScriptService).toBeUndefined();
 		expect(resultTree.StarterPlayerScripts).toBeUndefined();
@@ -1162,18 +1174,18 @@ describe("Builder Integration", () => {
 		expect(serverSystems).toBeDefined();
 
 		expect(serverSystems["combatServer"]).toBeDefined();
-		expect(serverSystems["combatServer"].$path).toBe(
-			"out/systems/combatServer.lua"
-		);
+		expect(serverSystems["combatServer"].$path).toEqual({
+			optional: "out/systems/combatServer.lua",
+		});
 
 		const clientSystems =
 			resultTree.StarterPlayer.StarterPlayerScripts.client.systems;
 		expect(clientSystems).toBeDefined();
 
 		expect(clientSystems["combat"]).toBeDefined();
-		expect(clientSystems["combat"].$path).toBe(
-			"out/systems/combat.client.lua"
-		);
+		expect(clientSystems["combat"].$path).toEqual({
+			optional: "out/systems/combat.client.lua",
+		});
 	});
 
 	it("should detect and report same-source collisions", async () => {
@@ -1526,14 +1538,14 @@ describe("Builder Integration", () => {
 		expect(result.fileCount).toBe(2);
 
 		expect(resultTree.ReplicatedStorage.shared.Database).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.Database.$path).toBe(
-			"out/Database.prod.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.Database.$path).toEqual({
+			optional: "out/Database.prod.lua",
+		});
 
 		expect(resultTree.ReplicatedStorage.shared.Logger).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.Logger.$path).toBe(
-			"out/Logger.experimental.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.Logger.$path).toEqual({
+			optional: "out/Logger.experimental.lua",
+		});
 	});
 
 	it("should detect and return exposed data files in the BuildResult", async () => {
@@ -1723,7 +1735,7 @@ describe("Builder Integration", () => {
 
 		const packagesFolder = resultTree.ReplicatedStorage.shared.Packages;
 		expect(packagesFolder).toBeDefined();
-		expect(packagesFolder.$path).toBe("out/Packages");
+		expect(packagesFolder.$path).toEqual({ optional: "out/Packages" });
 
 		expect(packagesFolder["leak"]).toBeUndefined();
 	});
@@ -1813,7 +1825,9 @@ describe("Builder Integration", () => {
 		expect(resultTree.globIgnorePaths).toContain("**/*.test.luau");
 
 		expect(tree.ReplicatedStorage.shared.utils).toBeDefined();
-		expect(tree.ReplicatedStorage.shared.utils.$path).toBe("out/utils");
+		expect(tree.ReplicatedStorage.shared.utils.$path).toEqual({
+			optional: "out/utils",
+		});
 		expect(tree.ReplicatedStorage.shared.utils.math).toBeUndefined();
 	});
 
@@ -1882,9 +1896,9 @@ describe("Builder Integration", () => {
 		expect(result.fileCount).toBe(1);
 
 		expect(resultTree.ReplicatedStorage.shared.math).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.math.$path).toBe(
-			"out/math.luau"
-		);
+		expect(resultTree.ReplicatedStorage.shared.math.$path).toEqual({
+			optional: "out/math.luau",
+		});
 
 		expect(
 			resultTree.ReplicatedStorage.shared["math.spec"]
@@ -2020,13 +2034,13 @@ describe("unwrap Routing Overrides", () => {
 
 		expect(resultTree.ServerScriptService.server).toBeUndefined();
 		expect(resultTree.ServerScriptService.combat).toBeDefined();
-		expect(resultTree.ServerScriptService.combat.$path).toBe(
-			"out/combat.server.lua"
-		);
+		expect(resultTree.ServerScriptService.combat.$path).toEqual({
+			optional: "out/combat.server.lua",
+		});
 
-		expect(
-			resultTree.StarterPlayer.StarterPlayerScripts.client
-		).toBeUndefined();
+		expect(resultTree.StarterPlayer.StarterPlayerScripts.ui.$path).toEqual({
+			optional: "out/ui.client.lua",
+		});
 		expect(resultTree.StarterPlayer.StarterPlayerScripts.ui).toBeDefined();
 	});
 
@@ -2203,7 +2217,9 @@ describe("unwrap Routing Overrides", () => {
 		expect(
 			resultTree.ServerScriptService.ParentSystem.NestedSubsystem.deep
 				.$path
-		).toBe("out/ParentSystem/NestedSubsystem/deep.server.lua");
+		).toEqual({
+			optional: "out/ParentSystem/NestedSubsystem/deep.server.lua",
+		});
 	});
 
 	it("should merge CLI flags and rescue files that would otherwise drop", async () => {
@@ -2259,8 +2275,8 @@ describe("unwrap Routing Overrides", () => {
 		const resultTree = result.tree.tree as any;
 
 		expect(resultTree.ReplicatedStorage.shared.api).toBeDefined();
-		expect(resultTree.ReplicatedStorage.shared.api.$path).toBe(
-			"out/api.experimental.lua"
-		);
+		expect(resultTree.ReplicatedStorage.shared.api.$path).toEqual({
+			optional: "out/api.experimental.lua",
+		});
 	});
 });

@@ -158,7 +158,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const mathUtils = tree.MathUtils as RojoNode;
-		expect(mathUtils.$path).toBe("out/MathUtils");
+		expect(mathUtils.$path).toEqual({ optional: "out/MathUtils" });
 		expect(mathUtils.Add).toBeUndefined();
 		expect(mathUtils.Subtract).toBeUndefined();
 	});
@@ -232,7 +232,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const serverLogic = tree.ServerLogic as RojoNode;
-		expect(serverLogic.$path).toBe("out/ServerLogic");
+		expect(serverLogic.$path).toEqual({ optional: "out/ServerLogic" });
 		expect(serverLogic.Main).toBeUndefined();
 	});
 
@@ -345,7 +345,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const systems = tree.Systems as RojoNode;
-		expect(systems.$path).toBe("out/Systems");
+		expect(systems.$path).toEqual({ optional: "out/Systems" });
 		expect(systems.Combat).toBeUndefined();
 		expect(systems.Core).toBeUndefined();
 	});
@@ -400,7 +400,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const vendor = tree.Vendor as RojoNode;
-		expect(vendor.$path).toBe("out/Vendor");
+		expect(vendor.$path).toEqual({ optional: "out/Vendor" });
 		expect(vendor.Main).toBeUndefined();
 		expect(vendor.Client).toBeUndefined();
 	});
@@ -465,7 +465,7 @@ describe("collapseFolders", () => {
 		expect(packages.ForkedLib).toBeDefined();
 
 		const deepFolder = packages.DeepFolder as RojoNode;
-		expect(deepFolder.$path).toBe("out/DeepFolder");
+		expect(deepFolder.$path).toEqual({ optional: "out/DeepFolder" });
 		expect(deepFolder.Math).toBeUndefined();
 		expect(deepFolder.String).toBeUndefined();
 	});
@@ -523,7 +523,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir, isIgnored);
 
 		const mathUtils = tree.MathUtils as RojoNode;
-		expect(mathUtils.$path).toBe("out/MathUtils");
+		expect(mathUtils.$path).toEqual({ optional: "out/MathUtils" });
 		expect(mathUtils.Add).toBeUndefined();
 		expect(mathUtils.Subtract).toBeUndefined();
 	});

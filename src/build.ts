@@ -344,10 +344,13 @@ export async function build(
 				const existingNode = existingNodeRaw || {};
 				const newNode: RojoNode = {
 					...existingNode,
-					$path: projectPath,
+					$path: { optional: projectPath },
 				};
 				if (newNode.$className === "Folder") {
 					delete newNode.$className;
+					if (newNode.$ignoreUnknownInstances === false) {
+						delete newNode.$ignoreUnknownInstances;
+					}
 				}
 
 				current[nodeName] = newNode;
