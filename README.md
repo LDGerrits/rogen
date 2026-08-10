@@ -5,12 +5,14 @@
 </div>
 
 <div align="center">
-    <a href="https://rogen-playfully.vercel.app"><strong>Documentation</strong></a>
+    <a href="https://rogen-playfully.vercel.app"><strong>documentation</strong></a>
 </div>
 
 ---
 
-A CLI tool that enables feature-based architecture for Roblox.
+<div align="center">
+    A CLI tool that enables feature-based architecture for Roblox
+</div>
 
 ## Features
 
