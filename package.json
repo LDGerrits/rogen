@@ -1,10 +1,20 @@
 {
 	"name": "@ldgerrits/rogen",
 	"version": "1.4.2",
+	"description": "A CLI tool enabling feature-based architecture for Roblox",
 	"publishConfig": {
 		"access": "public"
 	},
-	"description": "A CLI tool enabling feature-based architecture through automated routing of client, server, and shared code to Roblox services",
+	"homepage": "https://rogen-playfully.vercel.app/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/LDGerrits/rogen.git"
+	},
+	"keywords": [
+		"roblox",
+		"organization",
+		"feature-based architecture"
+	],
 	"author": "ldgerrits",
 	"license": "MIT",
 	"type": "module",
