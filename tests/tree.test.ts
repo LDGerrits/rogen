@@ -7,6 +7,8 @@ import {
 	findMissingPaths,
 	collapseFolders,
 	findExposedDataFiles,
+	isValidSource,
+	isData,
 } from "../src/tree.js";
 import { Casing, RojoNode } from "../src/types.js";
 import { jest } from "@jest/globals";
@@ -156,7 +158,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const mathUtils = tree.MathUtils as RojoNode;
-		expect(mathUtils.$path).toBe("out/MathUtils");
+		expect(mathUtils.$path).toEqual({ optional: "out/MathUtils" });
 		expect(mathUtils.Add).toBeUndefined();
 		expect(mathUtils.Subtract).toBeUndefined();
 	});
@@ -230,7 +232,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const serverLogic = tree.ServerLogic as RojoNode;
-		expect(serverLogic.$path).toBe("out/ServerLogic");
+		expect(serverLogic.$path).toEqual({ optional: "out/ServerLogic" });
 		expect(serverLogic.Main).toBeUndefined();
 	});
 
@@ -343,7 +345,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const systems = tree.Systems as RojoNode;
-		expect(systems.$path).toBe("out/Systems");
+		expect(systems.$path).toEqual({ optional: "out/Systems" });
 		expect(systems.Combat).toBeUndefined();
 		expect(systems.Core).toBeUndefined();
 	});
@@ -398,7 +400,7 @@ describe("collapseFolders", () => {
 		collapseFolders(tree, buildDir, outputDir);
 
 		const vendor = tree.Vendor as RojoNode;
-		expect(vendor.$path).toBe("out/Vendor");
+		expect(vendor.$path).toEqual({ optional: "out/Vendor" });
 		expect(vendor.Main).toBeUndefined();
 		expect(vendor.Client).toBeUndefined();
 	});
@@ -463,7 +465,7 @@ describe("collapseFolders", () => {
 		expect(packages.ForkedLib).toBeDefined();
 
 		const deepFolder = packages.DeepFolder as RojoNode;
-		expect(deepFolder.$path).toBe("out/DeepFolder");
+		expect(deepFolder.$path).toEqual({ optional: "out/DeepFolder" });
 		expect(deepFolder.Math).toBeUndefined();
 		expect(deepFolder.String).toBeUndefined();
 	});
@@ -496,6 +498,35 @@ describe("collapseFolders", () => {
 		expect(shared.Utils).toBeDefined();
 		expect(shared.Constants).toBeDefined();
 	});
+
+	it("should collapse a folder when an unmapped file is explicitly ignored by isIgnored", () => {
+		const buildDir = "out";
+		const outputDir = "/mock/project/dir";
+
+		const tree: RojoNode = {
+			MathUtils: {
+				Add: { $path: "out/MathUtils/Add.luau" },
+				Subtract: { $path: "out/MathUtils/Subtract.luau" },
+			},
+		};
+
+		jest.spyOn(fs, "readdirSync").mockImplementation(((
+			dir: fs.PathLike
+		) => {
+			if (String(dir).endsWith("MathUtils"))
+				return ["Add.luau", "Subtract.luau", "ignoreMe.spec.luau"];
+			return [];
+		}) as any);
+
+		const isIgnored = (p: string) => p.endsWith("ignoreMe.spec.luau");
+
+		collapseFolders(tree, buildDir, outputDir, isIgnored);
+
+		const mathUtils = tree.MathUtils as RojoNode;
+		expect(mathUtils.$path).toEqual({ optional: "out/MathUtils" });
+		expect(mathUtils.Add).toBeUndefined();
+		expect(mathUtils.Subtract).toBeUndefined();
+	});
 });
 
 describe("findExposedDataFiles", () => {
@@ -526,5 +557,31 @@ describe("findExposedDataFiles", () => {
 		const exposed = findExposedDataFiles(tree);
 
 		expect(exposed).toHaveLength(0);
+	});
+});
+
+describe("File Classification (isValidSource & isData)", () => {
+	it("should explicitly return false for .d.ts files so they are completely ignored", () => {
+		expect(isValidSource("index.d.ts")).toBe(false);
+		expect(isData("index.d.ts")).toBe(false);
+
+		expect(isValidSource("types/globals.d.ts")).toBe(false);
+		expect(isData("types/globals.d.ts")).toBe(false);
+	});
+
+	it("should return true for .d.luau and .d.lua files, treating them as valid scripts to match Rojo", () => {
+		expect(isValidSource("types.d.luau")).toBe(true);
+		expect(isValidSource("globals.d.lua")).toBe(true);
+
+		expect(isData("types.d.luau")).toBe(false);
+		expect(isData("globals.d.lua")).toBe(false);
+	});
+
+	it("should return true for valid scripts and standard data files", () => {
+		expect(isValidSource("main.luau")).toBe(true);
+		expect(isValidSource("config.json")).toBe(true);
+
+		expect(isData("config.json")).toBe(true);
+		expect(isData("main.luau")).toBe(false);
 	});
 });

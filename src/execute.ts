@@ -13,7 +13,8 @@ export async function execute(
 	config: Config,
 	cliArgs: CliArgs,
 	anchor: string,
-	logger: Logger = new ConsoleLogger()
+	logger: Logger = new ConsoleLogger(),
+	isInitialRun: boolean = false
 ): Promise<boolean> {
 	try {
 		for (const activeMode of activeModes) {
@@ -59,15 +60,24 @@ export async function execute(
 			}
 
 			if (buildResult.missingPaths.length > 0) {
+				// Only synthesize placeholder stubs/dirs for compiled projects (ts/darklua),
+				// where the build output legitimately does not exist yet at generation time. For a luau
+				// project the build dir IS the source, so a missing path means the file was removed —
+				// recreating it would fight an in-progress delete and desync Rojo. Drop the stale node instead.
+				const isCompiledProject =
+					env.isTsProject || env.isDarkluaProject;
 				for (const item of buildResult.missingPaths) {
 					const ext = path.extname(item.absolutePath).toLowerCase();
-					if (ext === ".luau" || ext === ".lua") {
+					if (
+						isCompiledProject &&
+						(ext === ".luau" || ext === ".lua")
+					) {
 						const dir = path.dirname(item.absolutePath);
 						if (!fs.existsSync(dir)) {
 							fs.mkdirSync(dir, { recursive: true });
 						}
 						fs.writeFileSync(item.absolutePath, "");
-					} else if (ext === "") {
+					} else if (isCompiledProject && ext === "") {
 						if (!fs.existsSync(item.absolutePath)) {
 							fs.mkdirSync(item.absolutePath, {
 								recursive: true,
@@ -93,16 +103,22 @@ export async function execute(
 				}
 			}
 
-			if (!shouldWrite) {
+			if (!shouldWrite && cliArgs.watch && !isInitialRun) {
 				continue;
 			}
 
-			const outputDir = path.dirname(buildResult.output);
-			if (!fs.existsSync(outputDir)) {
-				fs.mkdirSync(outputDir, { recursive: true });
-			}
+			if (shouldWrite) {
+				const outputDir = path.dirname(buildResult.output);
+				if (!fs.existsSync(outputDir)) {
+					fs.mkdirSync(outputDir, { recursive: true });
+				}
 
-			fs.writeFileSync(buildResult.output, finalContent);
+				// Write atomically (temp + rename) so a watcher (e.g. Rojo) never reads a
+				// half-written project file during rapid regenerations.
+				const tempOutput = `${buildResult.output}.tmp`;
+				fs.writeFileSync(tempOutput, finalContent);
+				fs.renameSync(tempOutput, buildResult.output);
+			}
 
 			const totalRemoved = buildResult.removed.length + dropped.length;
 			if (totalRemoved > 0) {
@@ -127,22 +143,30 @@ export async function execute(
 				}
 			}
 
-			if (cliArgs.watch) {
+			if (!isInitialRun) {
 				const outputName = path.basename(buildResult.output);
 				logger.success(
 					`[${modeName}] Rebuilt "${buildResult.name}" -> ${outputName}`
 				);
 			} else {
-				logger.success(`Generated Rojo tree for "${buildResult.name}"`);
-				logger.info(`  Processed: ${buildResult.fileCount} files`);
-				logger.info(`  Build dir: ${buildResult.buildDir}`);
-				const activeTags = Object.keys(targetConfig.tags || {}).filter(
-					(t) => targetConfig.tags[t]
-				);
-				if (activeTags.length > 0) {
-					logger.info(`  Tags: ${activeTags.join(", ")}`);
+				if (shouldWrite) {
+					logger.success(
+						`Generated Rojo tree for "${buildResult.name}"`
+					);
+					logger.info(`  Processed: ${buildResult.fileCount} files`);
+					logger.info(`  Build dir: ${buildResult.buildDir}`);
+					const activeTags = Object.keys(
+						targetConfig.tags || {}
+					).filter((t) => targetConfig.tags[t]);
+					if (activeTags.length > 0) {
+						logger.info(`  Tags: ${activeTags.join(", ")}`);
+					}
+					logger.info(`  Output to: ${buildResult.output}`);
+				} else {
+					logger.success(
+						`Rojo tree for "${buildResult.name}" is already up to date`
+					);
 				}
-				logger.info(`  Output to: ${buildResult.output}`);
 			}
 		}
 		return true;

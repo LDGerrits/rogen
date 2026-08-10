@@ -72,6 +72,12 @@ describe("CLI Argument Parsing", () => {
 			expect(options.init).toBe(true);
 		});
 
+		it("should parse the 'build' subcommand positional correctly as the default", () => {
+			const options = parseCliArgs(["build"]);
+			expect(options.init).toBeUndefined();
+			expect(options.watch).toBeUndefined();
+		});
+
 		it("should parse the 'watch' subcommand positional correctly", () => {
 			const options = parseCliArgs(["watch"]);
 			expect(options.watch).toBe(true);

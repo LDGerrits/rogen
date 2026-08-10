@@ -1,7 +1,7 @@
 import { RoutingMaps } from "./route.js";
 import { Config, RojoTree } from "./types.js";
 
-export const version = "1.4.1";
+export const version = "1.4.2";
 
 export const defaultProject: RojoTree = {
 	name: "roblox-game",
@@ -59,6 +59,11 @@ export const serviceParents: Record<string, string> = {
 	StarterPlayerScripts: "StarterPlayer",
 	StarterCharacterScripts: "StarterPlayer",
 };
+
+export const combinedServices = new Set<string>([
+	...Object.values(services),
+	...Object.values(serviceParents),
+]);
 
 export const serverContainers = new Set<string>([
 	"ServerScriptService",

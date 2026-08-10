@@ -101,7 +101,8 @@ async function main(): Promise<void> {
 		config,
 		cliArgs,
 		anchor,
-		logger
+		logger,
+		true
 	);
 
 	if (!success) {
@@ -113,9 +114,15 @@ async function main(): Promise<void> {
 			`Watching for file changes in: "${sourceDirs.join(", ")}" (Ctrl+C to stop)`
 		);
 
+		const isWindows = process.platform === "win32";
+
 		const watcher = chokidar.watch(sourcePaths, {
 			persistent: true,
 			ignoreInitial: true,
+			// Use polling on Windows to avoid "folder in use" locks
+			usePolling: isWindows,
+			interval: isWindows ? 400 : undefined,
+			binaryInterval: isWindows ? 800 : undefined,
 		});
 
 		let debounceTimeout: NodeJS.Timeout;
@@ -138,7 +145,8 @@ async function main(): Promise<void> {
 						config,
 						cliArgs,
 						anchor,
-						logger
+						logger,
+						false
 					);
 				} catch (err) {
 					logger.error(err instanceof Error ? err : String(err));

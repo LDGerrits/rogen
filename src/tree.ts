@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Casing, RojoNode } from "./types.js";
+import { combinedServices } from "./constants.js";
 
 export interface RemovedPath {
 	treePath: string;
@@ -37,13 +38,43 @@ export function applyCasing(value: string, casing: Casing): string {
 	return firstCharacter + value.slice(1);
 }
 
+export function getPathString(node: RojoNode): string | undefined {
+	const p = node.$path;
+	if (typeof p === "string") return p;
+	if (p && typeof p === "object" && typeof p.optional === "string")
+		return p.optional;
+	return undefined;
+}
+
 export function getOrCreateNode(
 	parent: RojoNode,
 	key: string,
 	className?: string
 ): RojoNode {
+	const isRootService =
+		combinedServices.has(key) ||
+		(className && combinedServices.has(className));
+
 	if (!parent[key]) {
-		parent[key] = className == null ? {} : { $className: className };
+		parent[key] =
+			className == null
+				? {}
+				: {
+						$className: className,
+						...(isRootService
+							? {}
+							: { $ignoreUnknownInstances: false }),
+					};
+	} else if (className != null) {
+		const existing = parent[key] as RojoNode;
+		if (
+			existing.$ignoreUnknownInstances === undefined &&
+			existing.$path === undefined
+		) {
+			if (!isRootService) {
+				existing.$ignoreUnknownInstances = false;
+			}
+		}
 	}
 	return parent[key] as RojoNode;
 }
@@ -62,17 +93,23 @@ export function pruneObject(
 		const childTreePath = treePath ? `${treePath}.${key}` : key;
 		const childNode = val as RojoNode;
 
-		if (childNode.$path) {
-			if (hasPathPrefix(childNode.$path, buildDir)) continue;
+		const childPath = getPathString(childNode);
+		if (childPath) {
+			if (hasPathPrefix(childPath, buildDir)) continue;
 
-			const absolutePath = path.resolve(outputDir, childNode.$path);
-			if (!fs.existsSync(absolutePath)) {
-				delete node[key];
-				removed.push({
-					treePath: childTreePath,
-					rojoPath: childNode.$path,
-				});
-				continue;
+			// Optional paths are allowed to be absent so only required (string) template
+			// paths are pruned when missing.
+			const isOptional = typeof childNode.$path === "object";
+			if (!isOptional) {
+				const absolutePath = path.resolve(outputDir, childPath);
+				if (!fs.existsSync(absolutePath)) {
+					delete node[key];
+					removed.push({
+						treePath: childTreePath,
+						rojoPath: childPath,
+					});
+					continue;
+				}
 			}
 		}
 		pruneObject(childNode, buildDir, outputDir, removed, childTreePath);
@@ -109,14 +146,15 @@ export function findMissingPaths(
 		const childTreePath = treePath ? `${treePath}.${key}` : key;
 		const childNode = val as RojoNode;
 
-		if (childNode.$path && hasPathPrefix(childNode.$path, buildDir)) {
-			const absolutePath = path.resolve(outputDir, childNode.$path);
+		const childPath = getPathString(childNode);
+		if (childPath && hasPathPrefix(childPath, buildDir)) {
+			const absolutePath = path.resolve(outputDir, childPath);
 			if (!fs.existsSync(absolutePath)) {
 				missing.push({
 					parent: node,
 					key,
 					treePath: childTreePath,
-					path: childNode.$path,
+					path: childPath,
 					absolutePath,
 				});
 			}
@@ -141,6 +179,8 @@ const isModel = (filename: string): boolean =>
 
 export function isData(filename: string): boolean {
 	if (isScript(filename) || isModel(filename)) return false;
+
+	if (filename.toLowerCase().endsWith(".d.ts")) return false;
 
 	if (filename.startsWith(".")) return false;
 
@@ -171,7 +211,8 @@ function getRojoBaseName(filename: string): string {
 export function collapseFolders(
 	node: RojoNode,
 	buildDir: string,
-	outputDir: string
+	outputDir: string,
+	isIgnored: (path: string) => boolean = () => false
 ): void {
 	let childCount = 0;
 	let canCollapse = node.$path === undefined; // Prevent overwriting a folder with an explicit $path
@@ -186,14 +227,15 @@ export function collapseFolders(
 		const childNode = val as RojoNode;
 
 		// Process deepest nested children first
-		collapseFolders(childNode, buildDir, outputDir);
+		collapseFolders(childNode, buildDir, outputDir, isIgnored);
 
 		childCount++;
 
-		if (!childNode.$path) {
+		const childPath = getPathString(childNode);
+		if (!childPath) {
 			canCollapse = false;
 		} else {
-			const childAbsPath = path.resolve(outputDir, childNode.$path);
+			const childAbsPath = path.resolve(outputDir, childPath);
 			const parentDir = path.dirname(childAbsPath);
 
 			// All children should share the same directory
@@ -219,11 +261,15 @@ export function collapseFolders(
 		return;
 	}
 
+	const relativeCommonDir = toPosix(path.relative(outputDir, commonDir));
+
 	try {
 		const diskItems = fs.readdirSync(commonDir);
-		// filter out marker files so they do not prevent folders from collapsing
+		// filter out marker files and ignored files so they do not prevent folders from collapsing
 		const visibleDiskItems = diskItems.filter(
-			(item) => !item.startsWith(".")
+			(item) =>
+				!item.startsWith(".") &&
+				!isIgnored(toPosix(path.join(relativeCommonDir, item)))
 		);
 		if (visibleDiskItems.length !== childCount) {
 			return;
@@ -233,15 +279,13 @@ export function collapseFolders(
 	}
 
 	// Replace all child files with a single folder $path
-	const relativeCommonDir = toPosix(path.relative(outputDir, commonDir));
-
 	for (const key in node) {
 		if (!key.startsWith("$")) {
 			delete node[key];
 		}
 	}
 
-	node.$path = relativeCommonDir;
+	node.$path = { optional: relativeCommonDir };
 	delete node.$className;
 }
 
@@ -256,10 +300,11 @@ export function findExposedDataFiles(
 		if (typeof val !== "object" || val === null) continue;
 
 		const childNode = val as RojoNode;
+		const childPath = getPathString(childNode);
 
 		// Check if the current node exposes a raw data file path
-		if (childNode.$path && isData(childNode.$path)) {
-			exposed.push({ parent: node, key, path: childNode.$path });
+		if (childPath && isData(childPath)) {
+			exposed.push({ parent: node, key, path: childPath });
 		}
 
 		findExposedDataFiles(childNode, exposed);

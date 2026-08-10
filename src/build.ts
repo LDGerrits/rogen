@@ -28,6 +28,7 @@ import {
 	serviceParents,
 	generateRoutingMaps,
 	defaultConfig,
+	services,
 } from "./constants.js";
 import {
 	CliArgs,
@@ -208,6 +209,27 @@ export async function build(
 
 	const rojoTree = structuredClone(baseProjectTree);
 
+	// Pre-populate all routing containers to prevent desync issues
+	for (const targetService of Object.values(services)) {
+		let current = rojoTree.tree;
+		if (serviceParents[targetService]) {
+			current = getOrCreateNode(current, serviceParents[targetService]);
+		}
+		getOrCreateNode(current, targetService);
+	}
+
+	if (config.aliases) {
+		for (const aliasPath of Object.values(config.aliases)) {
+			if (typeof aliasPath === "string") {
+				const parts = aliasPath.split(".");
+				let current = rojoTree.tree;
+				for (const part of parts) {
+					current = getOrCreateNode(current, part);
+				}
+			}
+		}
+	}
+
 	const mergedTags = { ...(config.tags || {}), ...(modeCopy.tags || {}) };
 	const knownTags = new Set(
 		Object.keys(config.tags || {}).map((t) => t.toLowerCase())
@@ -251,6 +273,7 @@ export async function build(
 
 	const combinedGlobIgnorePaths = Array.from(
 		new Set([
+			...(rojoTree.globIgnorePaths || []),
 			...(config.globIgnorePaths || []),
 			...(modeCopy.globIgnorePaths || []),
 		])
@@ -292,7 +315,6 @@ export async function build(
 			listings,
 			(filepath, isInit, isSync) => {
 				const relativePath = path.relative(sourcePath, filepath);
-				if (relativePath && isIgnored(toPosix(relativePath))) return;
 
 				const {
 					targetService,
@@ -304,7 +326,8 @@ export async function build(
 					unwrap,
 				} = resolveRoute(relativePath, isInit, newContext, isSync);
 
-				if (dropped) return;
+				if (dropped || (projectPath && isIgnored(toPosix(projectPath))))
+					return;
 				fileCount++;
 
 				let current = rojoTree.tree;
@@ -343,10 +366,13 @@ export async function build(
 				const existingNode = existingNodeRaw || {};
 				const newNode: RojoNode = {
 					...existingNode,
-					$path: projectPath,
+					$path: { optional: projectPath },
 				};
 				if (newNode.$className === "Folder") {
 					delete newNode.$className;
+					if (newNode.$ignoreUnknownInstances === false) {
+						delete newNode.$ignoreUnknownInstances;
+					}
 				}
 
 				current[nodeName] = newNode;
@@ -368,9 +394,13 @@ export async function build(
 		removed
 	);
 
-	collapseFolders(prunedTree, context.build, outputDir);
+	collapseFolders(prunedTree, context.build, outputDir, isIgnored);
 
 	rojoTree.tree = prunedTree;
+
+	if (combinedGlobIgnorePaths.length > 0) {
+		rojoTree.globIgnorePaths = combinedGlobIgnorePaths;
+	}
 
 	const sortedTree = sortObject(rojoTree);
 	const missingPaths = findMissingPaths(

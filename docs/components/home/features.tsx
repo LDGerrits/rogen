@@ -15,10 +15,10 @@ export function Features() {
 
 				<div className="flex flex-col items-end text-right mb-16">
 					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-						Group files by feature
+						Organize code by feature
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Keep related code in one place
+						Make your codebase easier to work with
 					</p>
 				</div>
 
@@ -26,12 +26,12 @@ export function Features() {
 					{[
 						{
 							title: "Feature Folders",
-							desc: "Store related client, server and shared scripts inside a single folder",
+							desc: "Keep related client, server, and shared code inside a single folder",
 							icon: <FaFolder className="text-white" />,
 						},
 						{
 							title: "Auto-Routing",
-							desc: "Route files to Roblox services automatically using Rojo or Argon",
+							desc: "Map files to Roblox services automatically using Rojo or Argon",
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
@@ -41,12 +41,12 @@ export function Features() {
 						},
 						{
 							title: "Environment Tags",
-							desc: "Filter test files and inject mock files at build time using tags",
+							desc: "Filter test files and inject mock dependencies at build time using tags",
 							icon: <FaTags className="text-white" />,
 						},
 						{
-							title: "Custom Pathing",
-							desc: "Control the final output structure using invisible folders and marker files",
+							title: "Granular Control",
+							desc: "Shape the project tree using invisible folders, hoisting, and marker files",
 							icon: <FaCodeBranch className="text-white" />,
 						},
 						{

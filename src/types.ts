@@ -43,7 +43,9 @@ export interface Environment {
 
 export interface RojoNode {
 	$className?: string;
-	$path?: string;
+	// Generated entries use Rojo's optional form so a deleted file/folder never leaves
+	// the project referencing a required path that no longer exists.
+	$path?: string | { optional: string };
 	$properties?: Record<string, unknown>;
 	$ignoreUnknownInstances?: boolean;
 	[key: string]: unknown;
