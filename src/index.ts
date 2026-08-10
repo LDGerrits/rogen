@@ -101,7 +101,8 @@ async function main(): Promise<void> {
 		config,
 		cliArgs,
 		anchor,
-		logger
+		logger,
+		true
 	);
 
 	if (!success) {
@@ -144,7 +145,8 @@ async function main(): Promise<void> {
 						config,
 						cliArgs,
 						anchor,
-						logger
+						logger,
+						false
 					);
 				} catch (err) {
 					logger.error(err instanceof Error ? err : String(err));

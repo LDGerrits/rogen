@@ -13,7 +13,8 @@ export async function execute(
 	config: Config,
 	cliArgs: CliArgs,
 	anchor: string,
-	logger: Logger = new ConsoleLogger()
+	logger: Logger = new ConsoleLogger(),
+	isInitialRun: boolean = false
 ): Promise<boolean> {
 	try {
 		for (const activeMode of activeModes) {
@@ -102,20 +103,22 @@ export async function execute(
 				}
 			}
 
-			if (!shouldWrite) {
+			if (!shouldWrite && cliArgs.watch && !isInitialRun) {
 				continue;
 			}
 
-			const outputDir = path.dirname(buildResult.output);
-			if (!fs.existsSync(outputDir)) {
-				fs.mkdirSync(outputDir, { recursive: true });
-			}
+			if (shouldWrite) {
+				const outputDir = path.dirname(buildResult.output);
+				if (!fs.existsSync(outputDir)) {
+					fs.mkdirSync(outputDir, { recursive: true });
+				}
 
-			// Write atomically (temp + rename) so a watcher (e.g. Rojo) never reads a
-			// half-written project file during rapid regenerations.
-			const tempOutput = `${buildResult.output}.tmp`;
-			fs.writeFileSync(tempOutput, finalContent);
-			fs.renameSync(tempOutput, buildResult.output);
+				// Write atomically (temp + rename) so a watcher (e.g. Rojo) never reads a
+				// half-written project file during rapid regenerations.
+				const tempOutput = `${buildResult.output}.tmp`;
+				fs.writeFileSync(tempOutput, finalContent);
+				fs.renameSync(tempOutput, buildResult.output);
+			}
 
 			const totalRemoved = buildResult.removed.length + dropped.length;
 			if (totalRemoved > 0) {
@@ -140,22 +143,30 @@ export async function execute(
 				}
 			}
 
-			if (cliArgs.watch) {
+			if (!isInitialRun) {
 				const outputName = path.basename(buildResult.output);
 				logger.success(
 					`[${modeName}] Rebuilt "${buildResult.name}" -> ${outputName}`
 				);
 			} else {
-				logger.success(`Generated Rojo tree for "${buildResult.name}"`);
-				logger.info(`  Processed: ${buildResult.fileCount} files`);
-				logger.info(`  Build dir: ${buildResult.buildDir}`);
-				const activeTags = Object.keys(targetConfig.tags || {}).filter(
-					(t) => targetConfig.tags[t]
-				);
-				if (activeTags.length > 0) {
-					logger.info(`  Tags: ${activeTags.join(", ")}`);
+				if (shouldWrite) {
+					logger.success(
+						`Generated Rojo tree for "${buildResult.name}"`
+					);
+					logger.info(`  Processed: ${buildResult.fileCount} files`);
+					logger.info(`  Build dir: ${buildResult.buildDir}`);
+					const activeTags = Object.keys(
+						targetConfig.tags || {}
+					).filter((t) => targetConfig.tags[t]);
+					if (activeTags.length > 0) {
+						logger.info(`  Tags: ${activeTags.join(", ")}`);
+					}
+					logger.info(`  Output to: ${buildResult.output}`);
+				} else {
+					logger.success(
+						`Rojo tree for "${buildResult.name}" is already up to date`
+					);
 				}
-				logger.info(`  Output to: ${buildResult.output}`);
 			}
 		}
 		return true;
