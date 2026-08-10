@@ -59,15 +59,24 @@ export async function execute(
 			}
 
 			if (buildResult.missingPaths.length > 0) {
+				// Only synthesize placeholder stubs/dirs for compiled projects (ts/darklua),
+				// where the build output legitimately does not exist yet at generation time. For a luau
+				// project the build dir IS the source, so a missing path means the file was removed —
+				// recreating it would fight an in-progress delete and desync Rojo. Drop the stale node instead.
+				const isCompiledProject =
+					env.isTsProject || env.isDarkluaProject;
 				for (const item of buildResult.missingPaths) {
 					const ext = path.extname(item.absolutePath).toLowerCase();
-					if (ext === ".luau" || ext === ".lua") {
+					if (
+						isCompiledProject &&
+						(ext === ".luau" || ext === ".lua")
+					) {
 						const dir = path.dirname(item.absolutePath);
 						if (!fs.existsSync(dir)) {
 							fs.mkdirSync(dir, { recursive: true });
 						}
 						fs.writeFileSync(item.absolutePath, "");
-					} else if (ext === "") {
+					} else if (isCompiledProject && ext === "") {
 						if (!fs.existsSync(item.absolutePath)) {
 							fs.mkdirSync(item.absolutePath, {
 								recursive: true,
@@ -102,7 +111,11 @@ export async function execute(
 				fs.mkdirSync(outputDir, { recursive: true });
 			}
 
-			fs.writeFileSync(buildResult.output, finalContent);
+			// Write atomically (temp + rename) so a watcher (e.g. Rojo) never reads a
+			// half-written project file during rapid regenerations.
+			const tempOutput = `${buildResult.output}.tmp`;
+			fs.writeFileSync(tempOutput, finalContent);
+			fs.renameSync(tempOutput, buildResult.output);
 
 			const totalRemoved = buildResult.removed.length + dropped.length;
 			if (totalRemoved > 0) {
