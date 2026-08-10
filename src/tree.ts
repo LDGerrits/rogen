@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Casing, RojoNode } from "./types.js";
+import { combinedServices } from "./constants.js";
 
 export interface RemovedPath {
 	treePath: string;
@@ -50,18 +51,29 @@ export function getOrCreateNode(
 	key: string,
 	className?: string
 ): RojoNode {
+	const isRootService =
+		combinedServices.has(key) ||
+		(className && combinedServices.has(className));
+
 	if (!parent[key]) {
 		parent[key] =
 			className == null
 				? {}
-				: { $className: className, $ignoreUnknownInstances: false };
+				: {
+						$className: className,
+						...(isRootService
+							? {}
+							: { $ignoreUnknownInstances: false }),
+					};
 	} else if (className != null) {
 		const existing = parent[key] as RojoNode;
 		if (
 			existing.$ignoreUnknownInstances === undefined &&
 			existing.$path === undefined
 		) {
-			existing.$ignoreUnknownInstances = false;
+			if (!isRootService) {
+				existing.$ignoreUnknownInstances = false;
+			}
 		}
 	}
 	return parent[key] as RojoNode;

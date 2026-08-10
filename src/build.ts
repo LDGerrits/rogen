@@ -28,6 +28,7 @@ import {
 	serviceParents,
 	generateRoutingMaps,
 	defaultConfig,
+	services,
 } from "./constants.js";
 import {
 	CliArgs,
@@ -207,6 +208,27 @@ export async function build(
 	}
 
 	const rojoTree = structuredClone(baseProjectTree);
+
+	// Pre-populate all routing containers to prevent desync issues
+	for (const targetService of Object.values(services)) {
+		let current = rojoTree.tree;
+		if (serviceParents[targetService]) {
+			current = getOrCreateNode(current, serviceParents[targetService]);
+		}
+		getOrCreateNode(current, targetService);
+	}
+
+	if (config.aliases) {
+		for (const aliasPath of Object.values(config.aliases)) {
+			if (typeof aliasPath === "string") {
+				const parts = aliasPath.split(".");
+				let current = rojoTree.tree;
+				for (const part of parts) {
+					current = getOrCreateNode(current, part);
+				}
+			}
+		}
+	}
 
 	const mergedTags = { ...(config.tags || {}), ...(modeCopy.tags || {}) };
 	const knownTags = new Set(

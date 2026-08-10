@@ -60,6 +60,11 @@ export const serviceParents: Record<string, string> = {
 	StarterCharacterScripts: "StarterPlayer",
 };
 
+export const combinedServices = new Set<string>([
+	...Object.values(services),
+	...Object.values(serviceParents),
+]);
+
 export const serverContainers = new Set<string>([
 	"ServerScriptService",
 	"ServerStorage",

@@ -1093,8 +1093,10 @@ describe("Builder Integration", () => {
 			optional: "out/vendor/Client/apiClient.lua",
 		});
 
-		expect(resultTree.ServerScriptService).toBeUndefined();
-		expect(resultTree.StarterPlayerScripts).toBeUndefined();
+		expect(resultTree.ServerScriptService.server).toBeUndefined();
+		expect(
+			resultTree.StarterPlayer.StarterPlayerScripts.client
+		).toBeUndefined();
 	});
 
 	it("should preserve routing keywords in file names when encountering a .verbatim marker", async () => {
