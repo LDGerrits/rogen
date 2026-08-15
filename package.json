@@ -1,6 +1,6 @@
 {
 	"name": "@ldgerrits/rogen",
-	"version": "1.4.2",
+	"version": "1.4.3",
 	"description": "A CLI tool that enables feature-based architecture for Roblox",
 	"publishConfig": {
 		"access": "public"
