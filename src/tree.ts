@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Casing, RojoNode } from "./types.js";
-import { combinedServices } from "./constants.js";
+import { combinedServices, dataExtensions } from "./constants.js";
 
 export interface RemovedPath {
 	treePath: string;
@@ -184,7 +184,8 @@ export function isData(filename: string): boolean {
 
 	if (filename.startsWith(".")) return false;
 
-	return /\.[a-z0-9]+$/i.test(filename);
+	const ext = path.extname(filename).toLowerCase();
+	return dataExtensions.has(ext);
 }
 
 export const isValidSource = (filename: string): boolean =>

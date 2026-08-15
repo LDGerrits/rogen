@@ -3,6 +3,17 @@ import { Config, RojoTree } from "./types.js";
 
 export const version = "1.4.2";
 
+export const dataExtensions = new Set([
+	".csv",
+	".txt",
+	".json",
+	".toml",
+	".yaml",
+	".yml",
+	".msgpack",
+	".md",
+]);
+
 export const defaultProject: RojoTree = {
 	name: "roblox-game",
 	tree: { $className: "DataModel" },

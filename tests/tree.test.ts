@@ -580,8 +580,17 @@ describe("File Classification (isValidSource & isData)", () => {
 	it("should return true for valid scripts and standard data files", () => {
 		expect(isValidSource("main.luau")).toBe(true);
 		expect(isValidSource("config.json")).toBe(true);
+		expect(isValidSource("table.csv")).toBe(true);
 
 		expect(isData("config.json")).toBe(true);
+		expect(isData("table.csv")).toBe(true);
 		expect(isData("main.luau")).toBe(false);
+	});
+
+	it("should return false for unknown extensions and folder version suffixes", () => {
+		expect(isData("sleitnick_signal@2.0.3")).toBe(false);
+		expect(isData("package@1.0.0")).toBe(false);
+		expect(isData("folder.name.123")).toBe(false);
+		expect(isData("unknown.data")).toBe(false);
 	});
 });
