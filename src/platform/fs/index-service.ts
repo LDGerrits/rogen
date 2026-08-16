@@ -1,8 +1,8 @@
 import path from "path";
 import { FileSystemService, FileType } from "./file-system-service.js";
-import { FileChange, FileChangeType } from "../watcher/files.js";
 import { toPosix } from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
+import { FileChange, FileChangeType } from "./file-events.js";
 
 export class IndexService {
 	private readonly tree = new Map<string, Map<string, FileType>>();

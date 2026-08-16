@@ -1,5 +1,4 @@
-import { Event } from "../../base/event.js";
-import { FileType } from "../fs/file-system-service.js";
+import { FileType } from "./file-system-service.js";
 
 export enum FileChangeType {
 	ADDED = 1,
@@ -11,19 +10,6 @@ export interface FileChange {
 	readonly type: FileChangeType;
 	readonly path: string;
 	readonly fileType: FileType;
-}
-
-export interface WatchRequest {
-	readonly path: string;
-	readonly recursive: boolean;
-}
-
-export interface Watcher {
-	readonly onDidChangeFile: Event<FileChange[]>;
-	readonly onDidError: Event<Error>;
-
-	watch(requests: WatchRequest[]): Promise<void>;
-	stop(): Promise<void>;
 }
 
 /**

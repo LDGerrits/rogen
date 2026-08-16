@@ -1,9 +1,9 @@
 import { jest } from "@jest/globals";
 import { MemoryWatcher } from "../memory-watcher.js";
-import { FileChangeType } from "../files.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { FileType } from "../../fs/file-system-service.js";
-import { NullLogService } from "../../log/null-log-service.js";
+import { NullLogService } from "../../log/log-service.js";
+import { FileChangeType } from "../../fs/file-events.js";
 
 describe("MemoryWatcher", () => {
 	let memoryFs: MemoryFileSystemService;

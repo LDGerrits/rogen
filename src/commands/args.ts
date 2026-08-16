@@ -22,7 +22,12 @@ export const CliArgsSchema = z.object({
 
 export type CliArgs = z.infer<typeof CliArgsSchema>;
 
-export function parseArgs(args: string[]): Result<CliArgs, Error> {
+export interface ParsedCli {
+	command: string;
+	options: CliArgs;
+}
+
+export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 	const options = {
 		help: { type: "boolean" as const, short: "h" },
 		version: { type: "boolean" as const, short: "v" },
@@ -48,29 +53,19 @@ export function parseArgs(args: string[]): Result<CliArgs, Error> {
 			strict: true,
 		});
 
-		// Subcommand positional mappings
-		if (positionals.length > 0) {
-			const subcommand = positionals[0].toLowerCase();
-			if (subcommand === "init") {
-				values.init = true;
-			} else if (subcommand === "watch") {
-				values.watch = true;
-			} else if (subcommand === "help") {
-				values.help = true;
-			} else if (subcommand === "version") {
-				values.version = true;
-			} else {
-				return err(
-					new Error(
-						`Unknown subcommand or option "${positionals[0]}".\nRun 'rogen --help' to see a list of available commands.`
-					)
-				);
-			}
+		let command = "help";
+
+		if (values.version) {
+			command = "version";
+		} else if (values.help) {
+			command = "help";
+		} else if (positionals.length > 0) {
+			command = positionals[0].toLowerCase();
 		}
 
 		const parsedArgs = CliArgsSchema.parse(values);
 
-		return ok(parsedArgs);
+		return ok({ command, options: parsedArgs });
 	} catch (error) {
 		const normalizedError = ErrorUtils.fromUnknown(error);
 		const errCode = (normalizedError as unknown as Record<string, unknown>)

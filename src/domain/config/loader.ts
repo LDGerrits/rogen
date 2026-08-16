@@ -1,8 +1,7 @@
 import { err, ok, Result } from "../../base/result.js";
 import { ConfigService } from "../../platform/config/config-service.js";
 import { ConfigResolver } from "./resolver.js";
-import { ConfigSchema, ResolvedConfig } from "./schema.js";
-import { DEFAULT_CONFIG } from "./config.js";
+import { ConfigSchema, DEFAULT_CONFIG, ResolvedConfig } from "./schema.js";
 
 export class ConfigLoader {
 	constructor(

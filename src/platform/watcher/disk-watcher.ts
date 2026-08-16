@@ -1,15 +1,14 @@
 import chokidar from "chokidar";
-import {
-	Watcher,
-	WatchRequest,
-	FileChange,
-	FileChangeType,
-	normalizeFileChanges,
-} from "./files.js";
 import { FileType } from "../fs/file-system-service.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
+import {
+	FileChange,
+	FileChangeType,
+	normalizeFileChanges,
+} from "../fs/file-events.js";
+import { Watcher, WatchRequest } from "./watcher.js";
 
 export class DiskWatcher implements Watcher {
 	private readonly _onDidChangeFile = new Emitter<FileChange[]>();

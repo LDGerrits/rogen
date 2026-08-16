@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
 import { FileType } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
-import { FileChangeType } from "../../watcher/files.js";
 import { IndexService } from "../index-service.js";
+import { FileChangeType } from "../file-events.js";
 
 describe("IndexService", () => {
 	let memoryFs: MemoryFileSystemService;

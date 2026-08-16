@@ -4,12 +4,15 @@ import { ResultError } from "../../../base/result.js";
 import { InitCommand } from "../init.js";
 import path from "path";
 import { WorkspaceService } from "../../../domain/workspace/workspace-service.js";
+import { NullLogService } from "../../../platform/log/log-service.js";
 
 describe("InitCommand", () => {
 	let memFs: MemoryFileSystemService;
+	let logService: NullLogService;
 
 	beforeEach(() => {
 		memFs = new MemoryFileSystemService();
+		logService = new NullLogService();
 	});
 
 	it("should return an error if .rogen.json already exists", async () => {
@@ -18,7 +21,12 @@ describe("InitCommand", () => {
 		await memFs.writeFile(targetPath, "{}");
 
 		const workspaceService = new WorkspaceService(cwd, memFs);
-		const command = new InitCommand(cwd, memFs, workspaceService);
+		const command = new InitCommand(
+			cwd,
+			memFs,
+			workspaceService,
+			logService
+		);
 		const result = await command.execute();
 
 		expect(result.isErr()).toBe(true);
@@ -32,7 +40,12 @@ describe("InitCommand", () => {
 		await memFs.createDirectory(cwd);
 
 		const workspaceService = new WorkspaceService(cwd, memFs);
-		const command = new InitCommand(cwd, memFs, workspaceService);
+		const command = new InitCommand(
+			cwd,
+			memFs,
+			workspaceService,
+			logService
+		);
 		const result = await command.execute();
 
 		expect(result.isOk()).toBe(true);
@@ -61,7 +74,12 @@ describe("InitCommand", () => {
 		await memFs.createDirectory(path.join(cwd, "Packages"));
 
 		const workspaceService = new WorkspaceService(cwd, memFs);
-		const command = new InitCommand(cwd, memFs, workspaceService);
+		const command = new InitCommand(
+			cwd,
+			memFs,
+			workspaceService,
+			logService
+		);
 		const result = await command.execute();
 
 		expect(result.isOk()).toBe(true);
@@ -90,7 +108,12 @@ describe("InitCommand", () => {
 		);
 
 		const workspaceService = new WorkspaceService(cwd, memFs);
-		const command = new InitCommand(cwd, memFs, workspaceService);
+		const command = new InitCommand(
+			cwd,
+			memFs,
+			workspaceService,
+			logService
+		);
 		const result = await command.execute();
 
 		expect(result.isErr()).toBe(true);

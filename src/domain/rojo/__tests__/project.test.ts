@@ -1,5 +1,4 @@
-import { RojoProject } from "../project.js";
-import { RojoNode, RojoTree } from "../tree.js";
+import { RojoNode, RojoTree, RojoProject } from "../project.js";
 
 describe("RojoProject", () => {
 	let baseTree: RojoTree;

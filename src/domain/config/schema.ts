@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RojoTree } from "../rojo/tree.js";
+import { RojoTree } from "../rojo/project.js";
 
 const ModeSchema = z.object({
 	output: z.string(),
@@ -108,3 +108,36 @@ export const ConfigSchema = z
 
 export type ResolvedConfig = z.infer<typeof ConfigSchema>;
 export type Mode = z.infer<typeof ModeSchema>;
+
+export const DEFAULT_TEMPLATE: RojoTree = {
+	name: "roblox-game",
+	tree: { $className: "DataModel" },
+};
+
+export const DEFAULT_CONFIG: ResolvedConfig = {
+	source: ["src"],
+	globIgnorePaths: [],
+	aliases: {},
+	unwrap: false,
+	verbatim: false,
+	casing: "camelCase",
+	luau: {
+		output: "default.project.json",
+		build: "src",
+		env: [],
+		globIgnorePaths: [],
+	},
+	ts: {
+		output: "default.project.json",
+		build: "out",
+		env: [],
+		globIgnorePaths: [],
+	},
+	darklua: {
+		output: "build.project.json",
+		build: "dist",
+		env: [],
+		globIgnorePaths: [],
+	},
+	template: DEFAULT_TEMPLATE,
+};

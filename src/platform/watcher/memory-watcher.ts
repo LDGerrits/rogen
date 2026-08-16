@@ -1,14 +1,10 @@
-import {
-	Watcher,
-	WatchRequest,
-	FileChange,
-	normalizeFileChanges,
-} from "./files.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Disposable } from "../../base/disposable.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
+import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
+import { Watcher, WatchRequest } from "./watcher.js";
 
 export class MemoryWatcher implements Watcher {
 	private readonly _onDidChangeFile = new Emitter<FileChange[]>();

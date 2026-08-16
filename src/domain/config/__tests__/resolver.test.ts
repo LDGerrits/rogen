@@ -1,8 +1,8 @@
 import { ConfigResolver } from "../resolver.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { RojoTree } from "../../rojo/tree.js";
 import { ResultError } from "../../../base/result.js";
 import path from "path";
+import { RojoTree } from "../../rojo/project.js";
 
 describe("ConfigResolver (Domain)", () => {
 	let memFs: MemoryFileSystemService;

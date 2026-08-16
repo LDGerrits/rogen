@@ -1,5 +1,5 @@
 import { WorkspaceService, ToolchainProfile } from "../workspace-service.js";
-import { RojoNode } from "../../rojo/tree.js";
+import { RojoNode } from "../../rojo/project.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 
 describe("WorkspaceService", () => {

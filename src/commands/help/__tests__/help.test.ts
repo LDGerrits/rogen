@@ -15,7 +15,7 @@ describe("HelpCommand", () => {
 		expect(mockLogService.info).toHaveBeenCalledTimes(1);
 		expect(mockLogService.info).toHaveBeenCalledWith(
 			expect.stringContaining(
-				"Rogen - A tool for feature-based folder structures"
+				"Rogen - Feature-based architecture for Roblox"
 			)
 		);
 	});

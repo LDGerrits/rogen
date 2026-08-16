@@ -2,17 +2,19 @@ import { Command } from "../command.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
-import { DEFAULT_CONFIG } from "../../domain/config/config.js";
+import { DEFAULT_CONFIG } from "../../domain/config/schema.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { RojoNode } from "../../domain/rojo/tree.js";
+import { RojoNode } from "../../domain/rojo/project.js";
 import path from "path";
 import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
+import { LogService } from "../../platform/log/log-service.js";
 
 export class InitCommand implements Command {
 	constructor(
 		private readonly cwd: string,
 		private readonly fileSystemService: FileSystemService,
-		private readonly workspaceService: WorkspaceService
+		private readonly workspaceService: WorkspaceService,
+		private readonly logService: LogService
 	) {}
 
 	async execute(): Promise<Result<void, Error>> {
@@ -42,14 +44,9 @@ export class InitCommand implements Command {
 		});
 
 		// Prune config
-		if (toolchain.isTs) {
-			delete smartConfig.luau;
-		} else {
-			delete smartConfig.ts;
-		}
-		if (!toolchain.isDarklua) {
-			delete smartConfig.darklua;
-		}
+		if (toolchain.isTs) delete smartConfig.luau;
+		else delete smartConfig.ts;
+		if (!toolchain.isDarklua) delete smartConfig.darklua;
 
 		delete smartConfig.globIgnorePaths;
 		delete smartConfig.aliases;
@@ -61,6 +58,11 @@ export class InitCommand implements Command {
 		try {
 			const content = JSON.stringify(smartConfig, null, "\t");
 			await this.fileSystemService.writeFile(targetPath, content);
+
+			this.logService.info(
+				"Successfully created .rogen.json in the current directory."
+			);
+
 			return ok(undefined);
 		} catch (error) {
 			return err(

@@ -1,7 +1,7 @@
-import { FileChange, normalizeFileChanges } from "./files.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
 import { Disposable } from "../../base/disposable.js";
+import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
 
 export interface ReconciliationOptions {
 	readonly burstThreshold: number;

@@ -1,7 +1,7 @@
 import { FileType, FileSystemService } from "./file-system-service.js";
 import { Emitter, Event } from "../../base/event.js";
-import { FileChange, FileChangeType } from "../watcher/files.js";
 import { toPosix } from "../../base/path.js";
+import { FileChange, FileChangeType } from "./file-events.js";
 
 class FileNode {
 	readonly type = FileType.File;
