@@ -1,25 +1,21 @@
 import { mergeDeep } from "../../base/object.js";
 import { err, ok, Result } from "../../base/result.js";
-import { ConfigSchema, ResolvedConfig } from "./schema.js";
-import { ConfigResolver } from "./resolver.js";
-import { ConfigProvider } from "./providers/provider.js";
-import { DEFAULT_CONFIG } from "./config.js";
+import { ConfigProvider } from "./provider.js";
 
 export class ConfigService {
 	private providers: ConfigProvider[] = [];
-
-	constructor(private readonly resolver: ConfigResolver) {}
 
 	addProvider(provider: ConfigProvider): this {
 		this.providers.push(provider);
 		return this;
 	}
 
-	async resolve(): Promise<Result<ResolvedConfig, Error>> {
+	async resolve(
+		initialConfig: Record<string, unknown> = {}
+	): Promise<Result<Record<string, unknown>, Error>> {
 		let mergedRawConfig: Record<string, unknown> =
-			structuredClone(DEFAULT_CONFIG);
+			structuredClone(initialConfig);
 
-		// Sequential merge
 		for (const provider of this.providers) {
 			const result = await provider.load();
 
@@ -34,24 +30,6 @@ export class ConfigService {
 			mergedRawConfig = mergeDeep(mergedRawConfig, result.unwrap());
 		}
 
-		// Resolve external dependencies
-		const resolutionResult =
-			await this.resolver.resolveDependencies(mergedRawConfig);
-
-		if (resolutionResult.isErr()) {
-			return err(resolutionResult.error);
-		}
-
-		// Validate and normalize
-		const parseResult = ConfigSchema.safeParse(resolutionResult.unwrap());
-
-		if (!parseResult.success) {
-			const issues = parseResult.error.issues
-				.map((i) => `${i.path.join(".")}: ${i.message}`)
-				.join(", ");
-			return err(new Error(`Configuration validation failed: ${issues}`));
-		}
-
-		return ok(parseResult.data);
+		return ok(mergedRawConfig);
 	}
 }

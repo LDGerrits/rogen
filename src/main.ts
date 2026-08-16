@@ -1,16 +1,18 @@
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { InitCommand } from "./commands/init/init.js";
-import { parseArgs } from "./platform/cli/args.js";
+import { parseArgs } from "./commands/args.js";
 import { LogLevel } from "./platform/log/log-service.js";
-import { ToolchainProvider } from "./platform/config/providers/toolchain.js";
+import { ToolchainProvider } from "./domain/config/providers/toolchain.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
-import { CliConfigProvider } from "./platform/config/providers/cli.js";
-import { ConfigService } from "./platform/config/config-service.js";
+import { CliConfigProvider } from "./domain/config/providers/cli.js";
 import { ConsoleLogService } from "./platform/log/console-log-service.js";
-import { ConfigResolver } from "./platform/config/resolver.js";
+import { ConfigResolver } from "./domain/config/resolver.js";
 import { VersionCommand } from "./commands/version/version.js";
 import { HelpCommand } from "./commands/help/help.js";
-import { WorkspaceService } from "./platform/workspace/workspace-service.js";
+import { WorkspaceService } from "./domain/workspace/workspace-service.js";
+import { ConfigService } from "./platform/config/config-service.js";
+import { ConfigLoader } from "./domain/config/loader.js";
+import path from "path";
 
 const logService = new ConsoleLogService();
 const fileSystemService = new DiskFileSystemService();
@@ -37,9 +39,6 @@ async function main(): Promise<void> {
 		logService.setLevel(LogLevel.Debug);
 	}
 
-	const cwd = process.cwd();
-	const workspaceService = new WorkspaceService(cwd, fileSystemService);
-
 	if (cliArgs.help) {
 		const command = new HelpCommand(logService);
 		command.execute();
@@ -53,6 +52,12 @@ async function main(): Promise<void> {
 		process.exitCode = 0;
 		return;
 	}
+
+	const cwd = process.cwd();
+	const workspaceService = new WorkspaceService(cwd, fileSystemService);
+	const configPath = cliArgs.config
+		? path.resolve(cwd, cliArgs.config)
+		: path.join(cwd, ".rogen.json");
 
 	if (cliArgs.init) {
 		const command = new InitCommand(
@@ -76,16 +81,20 @@ async function main(): Promise<void> {
 	}
 
 	// Resolve config
-	const resolver = new ConfigResolver(fileSystemService);
-
-	const configService = new ConfigService(resolver)
+	const configService = new ConfigService()
 		.addProvider(new ToolchainProvider(workspaceService))
 		.addProvider(
-			new FileConfigProvider(cwd, fileSystemService, cliArgs.config)
+			new FileConfigProvider(
+				fileSystemService,
+				configPath,
+				!cliArgs.config
+			)
 		)
 		.addProvider(new CliConfigProvider(cwd, cliArgs));
 
-	const configResult = await configService.resolve();
+	const resolver = new ConfigResolver(fileSystemService);
+	const configLoader = new ConfigLoader(configService, resolver, cwd);
+	const configResult = await configLoader.load();
 
 	if (configResult.isErr()) {
 		logService.error(`Config Error: ${configResult.error.message}`);

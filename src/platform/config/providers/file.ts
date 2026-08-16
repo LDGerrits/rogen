@@ -1,44 +1,32 @@
-import path from "path";
 import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
 import { ErrorUtils } from "../../../base/errors.js";
-import { ConfigProvider } from "./provider.js";
+import { ConfigProvider } from "../provider.js";
 
 export class FileConfigProvider implements ConfigProvider {
 	readonly name = "FileProvider";
 
 	constructor(
-		private readonly cwd: string,
 		private readonly fileSystemService: FileSystemService,
-		private readonly configPath?: string
+		private readonly configPath: string,
+		private readonly isOptional: boolean = false
 	) {}
 
 	async load(): Promise<Result<Record<string, unknown>, Error>> {
-		const targetPath =
-			this.configPath || path.join(this.cwd, ".rogen.json");
-		const exists = await this.fileSystemService.exists(targetPath);
+		const exists = await this.fileSystemService.exists(this.configPath);
 
-		if (this.configPath && !exists) {
+		if (!exists) {
+			if (this.isOptional) return ok({});
 			return err(
-				new Error(`Specified config file not found: ${targetPath}`)
+				new Error(`Specified config file not found: ${this.configPath}`)
 			);
 		}
 
-		if (!exists) return ok({});
-
 		try {
-			const rawContent =
-				await this.fileSystemService.readFile(targetPath);
-			const parsed = JSON.parse(rawContent) as Record<string, unknown>;
-
-			if (typeof parsed.template === "string") {
-				parsed.template = path.resolve(
-					path.dirname(targetPath),
-					parsed.template
-				);
-			}
-
-			return ok(parsed);
+			const rawContent = await this.fileSystemService.readFile(
+				this.configPath
+			);
+			return ok(JSON.parse(rawContent) as Record<string, unknown>);
 		} catch (error) {
 			return err(
 				new Error(

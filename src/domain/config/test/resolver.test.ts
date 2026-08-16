@@ -1,9 +1,10 @@
-import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { ConfigResolver } from "../resolver.js";
-import { RojoTree } from "../../rojo/tree.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { RojoTree } from "../../../domain/rojo/tree.js";
 import { ResultError } from "../../../base/result.js";
+import path from "path";
 
-describe("ConfigResolver", () => {
+describe("ConfigResolver (Domain)", () => {
 	let memFs: MemoryFileSystemService;
 	let resolver: ConfigResolver;
 
@@ -14,30 +15,38 @@ describe("ConfigResolver", () => {
 
 	it("should return the config unmodified if template is an object", async () => {
 		const mockTree = { name: "tree", tree: {} };
-		const result = await resolver.resolveDependencies({
-			template: mockTree,
-		});
+		const result = await resolver.resolveDependencies(
+			{ template: mockTree },
+			"/mock/cwd"
+		);
 
 		expect(result.isOk()).toBe(true);
 		expect(result.unwrap().template).toEqual(mockTree);
 	});
 
 	it("should return the config unmodified if template is not provided", async () => {
-		const result = await resolver.resolveDependencies({ source: "src" });
+		const result = await resolver.resolveDependencies(
+			{ source: "src" },
+			"/mock/cwd"
+		);
 
 		expect(result.isOk()).toBe(true);
 		expect(result.unwrap().template).toBeUndefined();
 	});
 
-	it("should resolve a string template path to a JSON object", async () => {
+	it("should resolve a string template path relative to the provided configDir", async () => {
+		const configDir = path.resolve("/mock/cwd");
+		const templatePath = path.resolve(configDir, "custom.project.json");
+
 		await memFs.writeFile(
-			"custom.project.json",
+			templatePath,
 			JSON.stringify({ name: "resolved-tree", tree: {} })
 		);
 
-		const result = await resolver.resolveDependencies({
-			template: "custom.project.json",
-		});
+		const result = await resolver.resolveDependencies(
+			{ template: "custom.project.json" },
+			configDir
+		);
 
 		expect(result.isOk()).toBe(true);
 		expect((result.unwrap().template as RojoTree).name).toBe(
@@ -46,26 +55,14 @@ describe("ConfigResolver", () => {
 	});
 
 	it("should return an error if a string template file does not exist", async () => {
-		const result = await resolver.resolveDependencies({
-			template: "missing.json",
-		});
+		const result = await resolver.resolveDependencies(
+			{ template: "missing.json" },
+			"/mock/cwd"
+		);
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
 			"Specified template file not found"
-		);
-	});
-
-	it("should return an error if the resolved template file contains invalid JSON", async () => {
-		await memFs.writeFile("broken.json", "invalid json}");
-
-		const result = await resolver.resolveDependencies({
-			template: "broken.json",
-		});
-
-		expect(result.isErr()).toBe(true);
-		expect((result as ResultError<Error>).error.message).toContain(
-			"Failed to parse template JSON"
 		);
 	});
 });

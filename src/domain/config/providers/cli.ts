@@ -1,7 +1,7 @@
 import path from "path";
 import { ok, Result } from "../../../base/result.js";
-import { CliArgs } from "../../cli/args.js";
-import { ConfigProvider } from "./provider.js";
+import { CliArgs } from "../../../commands/args.js";
+import { ConfigProvider } from "../../../platform/config/provider.js";
 import { Mode } from "../schema.js";
 
 export class CliConfigProvider implements ConfigProvider {

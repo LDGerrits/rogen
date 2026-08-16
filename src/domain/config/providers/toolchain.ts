@@ -1,6 +1,6 @@
 import { ok, Result } from "../../../base/result.js";
-import { ConfigProvider } from "./provider.js";
 import { WorkspaceService } from "../../workspace/workspace-service.js";
+import { ConfigProvider } from "../../../platform/config/provider.js";
 
 export class ToolchainProvider implements ConfigProvider {
 	readonly name = "ToolchainProvider";

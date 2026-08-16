@@ -1,4 +1,4 @@
-import { Result } from "../../../base/result.js";
+import { Result } from "../../base/result.js";
 
 export interface ConfigProvider {
 	readonly name: string;

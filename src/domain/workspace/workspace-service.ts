@@ -1,6 +1,6 @@
 import path from "path";
-import { FileSystemService } from "../fs/file-system-service.js";
-import { RojoNode } from "../rojo/tree.js";
+import { RojoNode } from "../../domain/rojo/tree.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface ToolchainProfile {
 	isTs: boolean;

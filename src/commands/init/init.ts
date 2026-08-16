@@ -2,9 +2,9 @@ import { Command } from "../command.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
-import { DEFAULT_CONFIG } from "../../platform/config/config.js";
+import { DEFAULT_CONFIG } from "../../domain/config/config.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { RojoNode } from "../../platform/rojo/tree.js";
+import { RojoNode } from "../../domain/rojo/tree.js";
 import path from "path";
 import { WorkspaceService } from "../../platform/workspace/workspace-service.js";
 

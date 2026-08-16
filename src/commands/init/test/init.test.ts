@@ -1,9 +1,9 @@
 import { jest } from "@jest/globals";
-import { WorkspaceService } from "../../../platform/workspace/workspace-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResultError } from "../../../base/result.js";
 import { InitCommand } from "../init.js";
 import path from "path";
+import { WorkspaceService } from "../../../domain/workspace/workspace-service.js";
 
 describe("InitCommand", () => {
 	let memFs: MemoryFileSystemService;

@@ -1,6 +1,6 @@
 import { WorkspaceService, ToolchainProfile } from "../workspace-service.js";
-import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
-import { RojoNode } from "../../rojo/tree.js";
+import { RojoNode } from "../../../domain/rojo/tree.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 
 describe("WorkspaceService", () => {
 	let memFs: MemoryFileSystemService;
