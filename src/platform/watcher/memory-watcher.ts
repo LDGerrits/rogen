@@ -39,7 +39,7 @@ export class MemoryWatcher implements Watcher {
 		if (!this.watchDisposables) {
 			this.watchDisposables = new DisposableStore();
 
-			const subscription = this.memoryFs.onDidMutateFile((change) => {
+			this.memoryFs.onDidMutateFile((change) => {
 				const normalizedChangePath = toPosix(change.path);
 
 				const isWatched = this.activeRequests.some((req) => {
@@ -59,9 +59,7 @@ export class MemoryWatcher implements Watcher {
 						fileType: change.fileType,
 					});
 				}
-			});
-
-			this.watchDisposables.add(subscription);
+			}, this.watchDisposables);
 		}
 	}
 

@@ -1,18 +1,27 @@
+import { DisposableStore } from "./disposable.js";
+
 export interface Event<T> {
-	(listener: (e: T) => void): Disposable;
+	(listener: (e: T) => void, disposables?: DisposableStore): Disposable;
 }
 
 export class Emitter<T> implements Disposable {
 	private listeners = new Set<(e: T) => void>();
 
 	get event(): Event<T> {
-		return (listener: (e: T) => void) => {
+		return (listener: (e: T) => void, disposables?: DisposableStore) => {
 			this.listeners.add(listener);
-			return {
+
+			const disposable = {
 				[Symbol.dispose]: () => {
 					this.listeners.delete(listener);
 				},
 			};
+
+			if (disposables) {
+				disposables.add(disposable);
+			}
+
+			return disposable;
 		};
 	}
 
