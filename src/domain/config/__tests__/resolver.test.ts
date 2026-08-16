@@ -1,6 +1,6 @@
 import { ConfigResolver } from "../resolver.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { RojoTree } from "../../../domain/rojo/tree.js";
+import { RojoTree } from "../../rojo/tree.js";
 import { ResultError } from "../../../base/result.js";
 import path from "path";
 

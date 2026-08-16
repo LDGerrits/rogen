@@ -6,7 +6,7 @@ import { DEFAULT_CONFIG } from "../../domain/config/config.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { RojoNode } from "../../domain/rojo/tree.js";
 import path from "path";
-import { WorkspaceService } from "../../platform/workspace/workspace-service.js";
+import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
 
 export class InitCommand implements Command {
 	constructor(
