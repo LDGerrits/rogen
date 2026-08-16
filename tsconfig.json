@@ -12,6 +12,6 @@
 		"types": ["jest", "node"],
 		"isolatedModules": true
 	},
-	"include": ["src/**/*", "bin/**/*", "test/**/*"],
+	"include": ["src/**/*", "bin/**/*"],
 	"exclude": ["node_modules", "dist", "examples"]
 }

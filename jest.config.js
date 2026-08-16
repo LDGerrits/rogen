@@ -12,7 +12,6 @@ export default {
 			},
 		],
 	},
-	setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 	testMatch: [
 		"<rootDir>/test/**/*.test.ts",
