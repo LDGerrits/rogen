@@ -1,3 +1,5 @@
+import { safeStringify } from "./json.js";
+
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
 		// Use the object string instead of instanceof to
@@ -14,7 +16,7 @@ export const ErrorUtils = {
 			return new Error(error);
 		}
 		return new Error(
-			`An unexpected error occurred: ${JSON.stringify(error)}`
+			`An unexpected error occurred: ${safeStringify(error)}`
 		);
 	},
 
