@@ -1,7 +1,6 @@
-import { jest } from "@jest/globals";
-import { FileSystemService } from "../../../fs/file-system-service.js";
 import { CliConfigProvider } from "../cli.js";
 import { FileConfigProvider } from "../file.js";
+import { MemoryFileSystemService } from "../../../fs/memory-file-system-service.js";
 
 describe("Config Providers", () => {
 	describe("CliConfigProvider", () => {
@@ -26,27 +25,23 @@ describe("Config Providers", () => {
 	});
 
 	describe("FileConfigProvider", () => {
-		let mockFs: jest.Mocked<FileSystemService>;
+		let memFs: MemoryFileSystemService;
 
 		beforeEach(() => {
-			mockFs = {
-				exists: jest.fn(),
-				readFile: jest.fn(),
-			} as unknown as jest.Mocked<FileSystemService>;
+			memFs = new MemoryFileSystemService();
 		});
 
 		it("should parse a valid JSON config file", async () => {
-			mockFs.exists.mockResolvedValue(true);
-			mockFs.readFile.mockResolvedValue(
+			await memFs.writeFile(
+				"/mock/.rogen.json",
 				JSON.stringify({ casing: "PascalCase" })
 			);
 
 			const provider = new FileConfigProvider(
 				"/mock",
-				mockFs,
+				memFs,
 				"/mock/.rogen.json"
 			);
-
 			const result = await provider.load();
 
 			expect(result.isOk()).toBe(true);
@@ -54,9 +49,7 @@ describe("Config Providers", () => {
 		});
 
 		it("should yield an empty object if no config file exists and none was explicitly requested", async () => {
-			mockFs.exists.mockResolvedValue(false);
-
-			const provider = new FileConfigProvider("/mock", mockFs);
+			const provider = new FileConfigProvider("/mock", memFs);
 			const result = await provider.load();
 
 			expect(result.isOk()).toBe(true);
@@ -64,11 +57,9 @@ describe("Config Providers", () => {
 		});
 
 		it("should return an error if an explicitly requested config file does not exist", async () => {
-			mockFs.exists.mockResolvedValue(false);
-
 			const provider = new FileConfigProvider(
 				"/mock",
-				mockFs,
+				memFs,
 				"required.json"
 			);
 			const result = await provider.load();

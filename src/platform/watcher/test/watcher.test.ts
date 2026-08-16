@@ -1,22 +1,20 @@
 import { jest } from "@jest/globals";
 import { MemoryWatcher } from "../memory-watcher.js";
 import { FileChangeType } from "../files.js";
-import { ConsoleLogService } from "../../log/console-log-service.js";
-import { LogLevel } from "../../log/log-service.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { FileType } from "../../fs/file-system-service.js";
+import { NullLogService } from "../../log/null-log-service.js";
 
 describe("MemoryWatcher", () => {
 	let memoryFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
-	let logService: ConsoleLogService;
+	let logService: NullLogService;
 
 	beforeEach(() => {
 		jest.useFakeTimers();
 
 		memoryFs = new MemoryFileSystemService();
-		logService = new ConsoleLogService();
-		logService.setLevel(LogLevel.Off);
+		logService = new NullLogService();
 		watcher = new MemoryWatcher(memoryFs, logService);
 	});
 

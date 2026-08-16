@@ -1,26 +1,21 @@
-import { jest } from "@jest/globals";
 import { WorkspaceService, ToolchainProfile } from "../workspace-service.js";
-import { FileSystemService } from "../../fs/file-system-service.js";
+import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { RojoNode } from "../../rojo/tree.js";
 
 describe("WorkspaceService", () => {
-	let mockFs: jest.Mocked<FileSystemService>;
+	let memFs: MemoryFileSystemService;
 	let workspaceService: WorkspaceService;
-	const cwd = "/mock/workspace";
+	const cwd = "mock/workspace";
 
-	beforeEach(() => {
-		mockFs = {
-			exists: jest.fn(),
-		} as unknown as jest.Mocked<FileSystemService>;
-		workspaceService = new WorkspaceService(cwd, mockFs);
+	beforeEach(async () => {
+		memFs = new MemoryFileSystemService();
+		await memFs.createDirectory(cwd);
+		workspaceService = new WorkspaceService(cwd, memFs);
 	});
 
 	describe("detectToolchain", () => {
 		it("should return false for all flags when no marker files exist", async () => {
-			mockFs.exists.mockResolvedValue(false);
-
 			const profile = await workspaceService.detectToolchain();
-
 			expect(profile).toEqual({
 				isTs: false,
 				isWally: false,
@@ -30,14 +25,9 @@ describe("WorkspaceService", () => {
 		});
 
 		it("should detect active toolchains based on marker files", async () => {
-			mockFs.exists.mockImplementation(async (p) => {
-				const pathStr = String(p);
-				return (
-					pathStr.endsWith("tsconfig.json") ||
-					pathStr.endsWith("pesde.toml") ||
-					pathStr.endsWith(".darklua.json5")
-				);
-			});
+			await memFs.writeFile(`${cwd}/tsconfig.json`, "");
+			await memFs.writeFile(`${cwd}/pesde.toml`, "");
+			await memFs.writeFile(`${cwd}/.darklua.json5`, "");
 
 			const profile = await workspaceService.detectToolchain();
 
@@ -56,12 +46,14 @@ describe("WorkspaceService", () => {
 		});
 
 		it("should inject TS node_modules into ReplicatedStorage when present", async () => {
-			mockFs.exists.mockImplementation(async (p) => {
-				const pathStr = String(p);
-				return (
-					pathStr.endsWith("@rbxts") || pathStr.endsWith("@flamework")
-				);
-			});
+			await memFs.writeFile(
+				`${cwd}/node_modules/@rbxts/package.json`,
+				""
+			);
+			await memFs.writeFile(
+				`${cwd}/node_modules/@flamework/package.json`,
+				""
+			);
 
 			const toolchain: ToolchainProfile = {
 				isTs: true,
@@ -76,11 +68,9 @@ describe("WorkspaceService", () => {
 			expect(replicatedStorage).toBeDefined();
 
 			const includeNode = replicatedStorage.rbxts_include as RojoNode;
-			expect(includeNode).toBeDefined();
 			expect(includeNode.$path).toBe("include");
 
 			const nodeModules = includeNode.node_modules as RojoNode;
-			expect(nodeModules).toBeDefined();
 			expect(nodeModules["@rbxts"]).toEqual({
 				$path: "node_modules/@rbxts",
 			});
@@ -91,13 +81,8 @@ describe("WorkspaceService", () => {
 		});
 
 		it("should inject Wally packages into ReplicatedStorage and ServerScriptService", async () => {
-			mockFs.exists.mockImplementation(async (p) => {
-				const pathStr = String(p);
-				return (
-					pathStr.endsWith("Packages") ||
-					pathStr.endsWith("ServerPackages")
-				);
-			});
+			await memFs.createDirectory(`${cwd}/Packages`);
+			await memFs.createDirectory(`${cwd}/ServerPackages`);
 
 			const toolchain: ToolchainProfile = {
 				isTs: false,
@@ -113,19 +98,12 @@ describe("WorkspaceService", () => {
 			});
 			expect(
 				(rootNode.ServerScriptService as RojoNode).ServerPackages
-			).toEqual({
-				$path: "ServerPackages",
-			});
+			).toEqual({ $path: "ServerPackages" });
 		});
 
 		it("should inject pesde packages into ReplicatedStorage and ServerScriptService", async () => {
-			mockFs.exists.mockImplementation(async (p) => {
-				const pathStr = String(p);
-				return (
-					pathStr.endsWith("roblox_packages") ||
-					pathStr.endsWith("roblox_server_packages")
-				);
-			});
+			await memFs.createDirectory(`${cwd}/roblox_packages`);
+			await memFs.createDirectory(`${cwd}/roblox_server_packages`);
 
 			const toolchain: ToolchainProfile = {
 				isTs: false,
@@ -141,14 +119,10 @@ describe("WorkspaceService", () => {
 			});
 			expect(
 				(rootNode.ServerScriptService as RojoNode).ServerPackages
-			).toEqual({
-				$path: "roblox_server_packages",
-			});
+			).toEqual({ $path: "roblox_server_packages" });
 		});
 
 		it("should not inject nodes if the required package folders do not physically exist on disk", async () => {
-			mockFs.exists.mockResolvedValue(false);
-
 			const toolchain: ToolchainProfile = {
 				isTs: true,
 				isWally: true,
@@ -167,7 +141,6 @@ describe("WorkspaceService", () => {
 						.rbxts_include as RojoNode
 				).node_modules
 			).toBeUndefined();
-
 			expect(
 				(rootNode.ReplicatedStorage as RojoNode).Packages
 			).toBeUndefined();

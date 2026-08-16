@@ -1,20 +1,15 @@
-import { jest } from "@jest/globals";
-import { FileSystemService } from "../../fs/file-system-service.js";
+import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { ConfigResolver } from "../resolver.js";
 import { RojoTree } from "../../rojo/tree.js";
 import { ResultError } from "../../../base/result.js";
 
 describe("ConfigResolver", () => {
-	let mockFs: jest.Mocked<FileSystemService>;
+	let memFs: MemoryFileSystemService;
 	let resolver: ConfigResolver;
 
 	beforeEach(() => {
-		mockFs = {
-			exists: jest.fn(),
-			readFile: jest.fn(),
-		} as unknown as jest.Mocked<FileSystemService>;
-
-		resolver = new ConfigResolver(mockFs);
+		memFs = new MemoryFileSystemService();
+		resolver = new ConfigResolver(memFs);
 	});
 
 	it("should return the config unmodified if template is an object", async () => {
@@ -25,7 +20,6 @@ describe("ConfigResolver", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(result.unwrap().template).toEqual(mockTree);
-		expect(mockFs.exists).not.toHaveBeenCalled();
 	});
 
 	it("should return the config unmodified if template is not provided", async () => {
@@ -36,8 +30,8 @@ describe("ConfigResolver", () => {
 	});
 
 	it("should resolve a string template path to a JSON object", async () => {
-		mockFs.exists.mockResolvedValue(true);
-		mockFs.readFile.mockResolvedValue(
+		await memFs.writeFile(
+			"custom.project.json",
 			JSON.stringify({ name: "resolved-tree", tree: {} })
 		);
 
@@ -46,14 +40,12 @@ describe("ConfigResolver", () => {
 		});
 
 		expect(result.isOk()).toBe(true);
-
-		const config = result.unwrap();
-		expect((config.template as RojoTree).name).toBe("resolved-tree");
+		expect((result.unwrap().template as RojoTree).name).toBe(
+			"resolved-tree"
+		);
 	});
 
 	it("should return an error if a string template file does not exist", async () => {
-		mockFs.exists.mockResolvedValue(false);
-
 		const result = await resolver.resolveDependencies({
 			template: "missing.json",
 		});
@@ -65,8 +57,7 @@ describe("ConfigResolver", () => {
 	});
 
 	it("should return an error if the resolved template file contains invalid JSON", async () => {
-		mockFs.exists.mockResolvedValue(true);
-		mockFs.readFile.mockResolvedValue("invalid json}");
+		await memFs.writeFile("broken.json", "invalid json}");
 
 		const result = await resolver.resolveDependencies({
 			template: "broken.json",

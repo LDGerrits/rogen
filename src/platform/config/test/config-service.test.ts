@@ -3,15 +3,18 @@ import { ok, err, ResultError } from "../../../base/result.js";
 import { ConfigResolver } from "../resolver.js";
 import { ConfigProvider } from "../providers/provider.js";
 import { ConfigService } from "../config-service.js";
+import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 
 describe("ConfigService", () => {
-	it("should merge providers sequentially and return the validated config", async () => {
-		const mockResolver = {
-			resolveDependencies: (jest.fn() as jest.Mock).mockImplementation(
-				async (config) => ok(config)
-			),
-		} as unknown as ConfigResolver;
+	let memFs: MemoryFileSystemService;
+	let resolver: ConfigResolver;
 
+	beforeEach(() => {
+		memFs = new MemoryFileSystemService();
+		resolver = new ConfigResolver(memFs);
+	});
+
+	it("should merge providers sequentially and return the validated config", async () => {
 		const provider1: ConfigProvider = {
 			name: "Provider1",
 			load: async () => ok({ source: ["src1"], casing: "PascalCase" }),
@@ -22,7 +25,7 @@ describe("ConfigService", () => {
 			load: async () => ok({ source: ["src2"], verbatim: true }),
 		};
 
-		const service = new ConfigService(mockResolver)
+		const service = new ConfigService(resolver)
 			.addProvider(provider1)
 			.addProvider(provider2);
 
@@ -37,16 +40,14 @@ describe("ConfigService", () => {
 	});
 
 	it("should fail early if a provider returns an error", async () => {
-		const mockResolver = {
-			resolveDependencies: jest.fn(),
-		} as unknown as ConfigResolver;
+		const spy = jest.spyOn(resolver, "resolveDependencies");
 
 		const failingProvider: ConfigProvider = {
 			name: "FailingProvider",
 			load: async () => err(new Error("Disk load failed")),
 		};
 
-		const service = new ConfigService(mockResolver).addProvider(
+		const service = new ConfigService(resolver).addProvider(
 			failingProvider
 		);
 
@@ -56,24 +57,16 @@ describe("ConfigService", () => {
 		expect((result as ResultError<Error>).error.message).toContain(
 			"[FailingProvider] failed: Disk load failed"
 		);
-		expect(mockResolver.resolveDependencies).not.toHaveBeenCalled();
+		expect(spy).not.toHaveBeenCalled();
 	});
 
 	it("should fail if Zod schema validation fails (e.g., invalid type from provider)", async () => {
-		const mockResolver = {
-			resolveDependencies: (jest.fn() as jest.Mock).mockImplementation(
-				async (config) => ok(config)
-			),
-		} as unknown as ConfigResolver;
-
 		const badProvider: ConfigProvider = {
 			name: "BadProvider",
 			load: async () => ok({ verbatim: "yes-please" }),
 		};
 
-		const service = new ConfigService(mockResolver).addProvider(
-			badProvider
-		);
+		const service = new ConfigService(resolver).addProvider(badProvider);
 
 		const result = await service.resolve();
 

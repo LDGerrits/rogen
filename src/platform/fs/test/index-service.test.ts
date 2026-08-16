@@ -33,13 +33,10 @@ describe("IndexService", () => {
 		});
 
 		it("should silently ignore directories that throw ENOENT during traversal", async () => {
-			jest.spyOn(memoryFs, "readDirectory").mockRejectedValueOnce(
-				Object.assign(new Error("Not found"), { code: "ENOENT" })
-			);
-
 			await expect(
 				indexService.initialize(["missing-root"])
 			).resolves.not.toThrow();
+
 			expect(indexService.hasEntry("missing-root", "anything")).toBe(
 				false
 			);

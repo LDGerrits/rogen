@@ -2,13 +2,15 @@ import { jest } from "@jest/globals";
 import { ReconciliationService } from "../reconciliation-service.js";
 import { FileChangeType } from "../files.js";
 import { FileType } from "../../fs/file-system-service.js";
-import { logService } from "../../../../test/setup.js";
+import { NullLogService } from "../../log/null-log-service.js";
 
 describe("ReconciliationService", () => {
 	let service: ReconciliationService;
+	let logService: NullLogService;
 
 	beforeEach(() => {
 		jest.useFakeTimers();
+		logService = new NullLogService();
 		service = new ReconciliationService(logService, {
 			burstThreshold: 5,
 			debounceMs: 100,
@@ -72,8 +74,6 @@ describe("ReconciliationService", () => {
 	});
 
 	it("should not crash on massive arrays", () => {
-		const spy = jest.spyOn(logService, "warn").mockImplementation(() => {});
-
 		const massiveArray = Array.from({ length: 150000 }).map(() => ({
 			type: FileChangeType.ADDED,
 			path: "src/spam.ts",
@@ -81,8 +81,6 @@ describe("ReconciliationService", () => {
 		}));
 
 		expect(() => service.queueEvents(massiveArray)).not.toThrow();
-
-		spy.mockRestore();
 	});
 
 	it("should lock event processing safely via the acquireLock Disposable", () => {
