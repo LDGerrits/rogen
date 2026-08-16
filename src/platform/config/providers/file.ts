@@ -1,7 +1,7 @@
 import { FileSystemService } from "../../fs/file-system-service.js";
 import { ok, err, Result } from "../../../base/result.js";
 import { ErrorUtils } from "../../../base/errors.js";
-import { ConfigProvider } from "../provider.js";
+import { ConfigProvider } from "../config-provider.js";
 
 export class FileConfigProvider implements ConfigProvider {
 	readonly name = "FileProvider";

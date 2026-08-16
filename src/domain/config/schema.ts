@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RojoTree } from "../rojo/project.js";
+import { RojoTree } from "../rojo/rojo-project.js";
 
 const ModeSchema = z.object({
 	output: z.string(),
@@ -26,74 +26,36 @@ const RojoProjectSchema = z.custom<RojoTree>((val) => {
 	);
 }, "Invalid Rojo Project");
 
-const CORE_KEYS = new Set([
-	"source",
-	"verbatim",
-	"unwrap",
-	"casing",
-	"aliases",
-	"globIgnorePaths",
-	"luau",
-	"ts",
-	"darklua",
-	"template",
-	"toolchain",
-	"keepRouteNames",
-	"keepSuffixes",
-]);
+const BaseConfigSchema = z.object({
+	source: z
+		.union([z.string(), z.array(z.string())])
+		.transform((val) => (Array.isArray(val) ? val : [val]))
+		.default(["src"]),
+	verbatim: z.boolean().default(false),
+	unwrap: z.boolean().default(false),
+	casing: z
+		.enum(["camelCase", "PascalCase", "camel", "pascal"])
+		.transform((val) =>
+			val === "camel"
+				? "camelCase"
+				: val === "pascal"
+					? "PascalCase"
+					: val
+		)
+		.default("camelCase"),
+	aliases: z.record(z.string(), z.string()).default({}),
+	globIgnorePaths: z.array(z.string()).default([]),
+	luau: ModeSchema.optional(),
+	ts: ModeSchema.optional(),
+	darklua: ModeSchema.optional(),
+	template: z.union([z.string(), RojoProjectSchema]).optional(),
+	toolchain: ToolchainProfileSchema.optional(),
+});
 
-export const ConfigSchema = z
-	.object({
-		source: z
-			.union([z.string(), z.array(z.string())])
-			.transform((val) => (Array.isArray(val) ? val : [val]))
-			.default(["src"]),
-		verbatim: z.boolean().default(false),
-		unwrap: z.boolean().default(false),
-		casing: z
-			.enum(["camelCase", "PascalCase", "camel", "pascal"])
-			.transform((val) =>
-				val === "camel"
-					? "camelCase"
-					: val === "pascal"
-						? "PascalCase"
-						: val
-			)
-			.default("camelCase"),
-		aliases: z.record(z.string(), z.string()).default({}),
-		globIgnorePaths: z.array(z.string()).default([]),
-		luau: ModeSchema.optional(),
-		ts: ModeSchema.optional(),
-		darklua: ModeSchema.optional(),
-		template: z.union([z.string(), RojoProjectSchema]).optional(),
-		toolchain: ToolchainProfileSchema.optional(),
-		// Legacy keys
-		keepRouteNames: z.unknown().optional(),
-		keepSuffixes: z.unknown().optional(),
-	})
-	// Custom modes
-	.catchall(z.unknown())
-	.superRefine((data, ctx) => {
-		if (data.keepRouteNames !== undefined) {
-			ctx.addIssue({
-				code: "custom",
-				message:
-					'The key "keepRouteNames" has been renamed to "verbatim". Please update your configuration.',
-				path: ["keepRouteNames"],
-			});
-		}
-
-		if (data.keepSuffixes !== undefined) {
-			ctx.addIssue({
-				code: "custom",
-				message:
-					'The key "keepSuffixes" has been renamed to "verbatim". Please update your configuration.',
-				path: ["keepSuffixes"],
-			});
-		}
-
+export const ConfigSchema = BaseConfigSchema.catchall(z.unknown()).superRefine(
+	(data, ctx) => {
 		for (const [key, value] of Object.entries(data)) {
-			if (!CORE_KEYS.has(key)) {
+			if (!(key in BaseConfigSchema.shape)) {
 				const modeResult = ModeSchema.safeParse(value);
 				if (!modeResult.success) {
 					ctx.addIssue({
@@ -104,17 +66,18 @@ export const ConfigSchema = z
 				}
 			}
 		}
-	});
+	}
+);
 
 export type ResolvedConfig = z.infer<typeof ConfigSchema>;
 export type Mode = z.infer<typeof ModeSchema>;
 
-export const DEFAULT_TEMPLATE: RojoTree = {
+export const defaultTemplate: RojoTree = {
 	name: "roblox-game",
 	tree: { $className: "DataModel" },
 };
 
-export const DEFAULT_CONFIG: ResolvedConfig = {
+export const defaultConfig: ResolvedConfig = {
 	source: ["src"],
 	globIgnorePaths: [],
 	aliases: {},
@@ -139,5 +102,5 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
 		env: [],
 		globIgnorePaths: [],
 	},
-	template: DEFAULT_TEMPLATE,
+	template: defaultTemplate,
 };

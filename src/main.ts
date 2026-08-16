@@ -7,11 +7,10 @@ import { VersionCommand } from "./commands/version/version.js";
 import { HelpCommand } from "./commands/help/help.js";
 import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import { DisposableStore } from "./base/disposable.js";
-import { ConfigLoader } from "./domain/config/loader.js";
-import { ConfigResolver } from "./domain/config/resolver.js";
+import { ConfigLoader } from "./domain/config/config-loader.js";
+import { ConfigResolver } from "./domain/config/config-resolver.js";
 import { CliConfigProvider } from "./domain/config/providers/cli.js";
 import { FileConfigProvider } from "./platform/config/providers/file.js";
-import { ToolchainProvider } from "./domain/config/providers/toolchain.js";
 import { ConfigService } from "./platform/config/config-service.js";
 import path from "path";
 import { BuildCommand } from "./commands/build/build.js";
@@ -55,7 +54,6 @@ async function main(): Promise<void> {
 		const configDir = path.dirname(configPath);
 
 		const configService = new ConfigService(logService)
-			.addProvider(new ToolchainProvider(workspaceService))
 			.addProvider(
 				new FileConfigProvider(
 					fileSystemService,
@@ -69,6 +67,7 @@ async function main(): Promise<void> {
 		const configLoader = new ConfigLoader(
 			configService,
 			resolver,
+			workspaceService,
 			configDir
 		);
 

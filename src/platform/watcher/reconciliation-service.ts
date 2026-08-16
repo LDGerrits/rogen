@@ -8,7 +8,7 @@ export interface ReconciliationOptions {
 	readonly debounceMs: number;
 }
 
-export const DEFAULT_RECONCILIATION_OPTIONS: ReconciliationOptions = {
+export const defaultReconciliationOptions: ReconciliationOptions = {
 	burstThreshold: 200,
 	debounceMs: 100,
 };
@@ -34,7 +34,7 @@ export class ReconciliationService implements Disposable {
 
 	constructor(
 		private readonly logService: LogService,
-		private readonly options: ReconciliationOptions = DEFAULT_RECONCILIATION_OPTIONS
+		private readonly options: ReconciliationOptions = defaultReconciliationOptions
 	) {}
 
 	queueEvents(changes: FileChange[]): void {

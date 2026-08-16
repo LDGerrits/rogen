@@ -1,5 +1,5 @@
 import path from "path";
-import { RojoNode } from "../../domain/rojo/project.js";
+import { RojoNode } from "../rojo/rojo-project.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface ToolchainProfile {

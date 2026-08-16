@@ -1,28 +1,35 @@
 import { err, ok, Result } from "../../base/result.js";
 import { ConfigService } from "../../platform/config/config-service.js";
-import { ConfigResolver } from "./resolver.js";
-import { ConfigSchema, DEFAULT_CONFIG, ResolvedConfig } from "./schema.js";
+import { WorkspaceService } from "../workspace/workspace-service.js";
+import { ConfigResolver } from "./config-resolver.js";
+import { ConfigSchema, defaultConfig, ResolvedConfig } from "./schema.js";
 
 export class ConfigLoader {
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly resolver: ConfigResolver,
+		private readonly configResolver: ConfigResolver,
+		private readonly workspaceService: WorkspaceService,
 		private readonly configDir: string
 	) {}
 
 	async load(): Promise<Result<ResolvedConfig, Error>> {
 		// Merge
 		const mergeResult = await this.configService.resolve(
-			DEFAULT_CONFIG as Record<string, unknown>
+			defaultConfig as Record<string, unknown>
 		);
 
 		if (mergeResult.isErr()) {
 			return err(mergeResult.error);
 		}
 
+		const rawConfig = mergeResult.unwrap();
+
+		const toolchain = await this.workspaceService.detectToolchain();
+		rawConfig.toolchain = toolchain;
+
 		// Resolve
-		const resolutionResult = await this.resolver.resolveDependencies(
-			mergeResult.unwrap(),
+		const resolutionResult = await this.configResolver.resolveDependencies(
+			rawConfig,
 			this.configDir
 		);
 

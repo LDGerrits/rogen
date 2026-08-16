@@ -1,5 +1,5 @@
 import { ConfigService } from "../config-service.js";
-import { ConfigProvider } from "../provider.js";
+import { ConfigProvider } from "../config-provider.js";
 import { ok, err, ResultError } from "../../../base/result.js";
 
 describe("ConfigService", () => {

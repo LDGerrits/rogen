@@ -1,6 +1,6 @@
 import { mergeDeep } from "../../base/object.js";
 import { err, ok, Result } from "../../base/result.js";
-import { ConfigProvider } from "./provider.js";
+import { ConfigProvider } from "./config-provider.js";
 import { LogService } from "../log/log-service.js";
 
 interface LoadedConfig {

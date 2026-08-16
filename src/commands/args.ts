@@ -67,25 +67,34 @@ export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 
 		return ok({ command, options: parsedArgs });
 	} catch (error) {
-		const normalizedError = ErrorUtils.fromUnknown(error);
-		const errCode = (normalizedError as unknown as Record<string, unknown>)
-			.code;
+		const rawError = error as Record<string, unknown>;
+		const errCode =
+			typeof rawError.code === "string" ? rawError.code : "UNKNOWN_ERR";
 
-		if (
-			errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION" ||
-			normalizedError.message.includes("Unknown option")
-		) {
-			const cleanMsg = normalizedError.message.replace(
+		if (errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+			const cleanMsg = (error as Error).message.replace(
 				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
 				""
 			);
+
 			return err(
-				new Error(
-					`${cleanMsg}\nRun 'rogen --help' to see a list of available commands and options.`
+				new ParseArgumentError(
+					`${cleanMsg}\nRun 'rogen --help' to see a list of available commands and options.`,
+					errCode
 				)
 			);
 		}
 
-		return err(normalizedError);
+		return err(ErrorUtils.fromUnknown(error));
+	}
+}
+
+class ParseArgumentError extends Error {
+	constructor(
+		message: string,
+		public readonly code: string
+	) {
+		super(message);
+		this.name = "ParseArgumentError";
 	}
 }

@@ -65,14 +65,4 @@ describe("ConfigSchema", () => {
 		);
 		expect(result.error?.issues[0]?.path).toEqual(["lute"]);
 	});
-
-	it("should inject custom issue messages for legacy keys", () => {
-		const result = ConfigSchema.safeParse({ keepRouteNames: true });
-
-		expect(result.success).toBe(false);
-		expect(result.error?.issues[0]?.message).toContain(
-			'renamed to "verbatim"'
-		);
-		expect(result.error?.issues[0]?.path).toEqual(["keepRouteNames"]);
-	});
 });

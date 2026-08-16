@@ -2,7 +2,7 @@ import { Command } from "../command.js";
 import { CliArgs } from "../args.js";
 import { Result, ok, err } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ConfigLoader } from "../../domain/config/loader.js";
+import { ConfigLoader } from "../../domain/config/config-loader.js";
 
 export class BuildCommand implements Command {
 	constructor(

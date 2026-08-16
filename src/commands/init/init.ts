@@ -2,9 +2,9 @@ import { Command } from "../command.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
-import { DEFAULT_CONFIG } from "../../domain/config/schema.js";
+import { defaultConfig } from "../../domain/config/schema.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { RojoNode } from "../../domain/rojo/project.js";
+import { RojoNode } from "../../domain/rojo/rojo-project.js";
 import path from "path";
 import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -33,7 +33,7 @@ export class InitCommand implements Command {
 
 		await this.workspaceService.injectPackages(baseTreeNode, toolchain);
 
-		const smartConfig = mergeDeep<Record<string, unknown>>(DEFAULT_CONFIG, {
+		const smartConfig = mergeDeep<Record<string, unknown>>(defaultConfig, {
 			template: {
 				name: path.basename(this.cwd) || "roblox-game",
 				tree: baseTreeNode,

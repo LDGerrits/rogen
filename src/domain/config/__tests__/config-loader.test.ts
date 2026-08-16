@@ -1,19 +1,22 @@
 import { ConfigService } from "../../../platform/config/config-service.js";
-import { ConfigResolver } from "../resolver.js";
+import { ConfigResolver } from "../config-resolver.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ConfigProvider } from "../../../platform/config/provider.js";
+import { ConfigProvider } from "../../../platform/config/config-provider.js";
 import { ok, ResultError } from "../../../base/result.js";
-import { ConfigLoader } from "../loader.js";
+import { ConfigLoader } from "../config-loader.js";
+import { WorkspaceService } from "../../workspace/workspace-service.js";
 
 describe("RogenConfigLoader", () => {
 	let memFs: MemoryFileSystemService;
 	let resolver: ConfigResolver;
 	let configService: ConfigService;
+	let workspaceService: WorkspaceService;
 
 	beforeEach(() => {
 		memFs = new MemoryFileSystemService();
 		resolver = new ConfigResolver(memFs);
 		configService = new ConfigService();
+		workspaceService = new WorkspaceService("/mock", memFs);
 	});
 
 	it("should load, resolve dependencies, and validate against the Zod schema successfully", async () => {
@@ -23,7 +26,12 @@ describe("RogenConfigLoader", () => {
 		};
 		configService.addProvider(mockProvider);
 
-		const loader = new ConfigLoader(configService, resolver, "/mock");
+		const loader = new ConfigLoader(
+			configService,
+			resolver,
+			workspaceService,
+			"/mock"
+		);
 		const result = await loader.load();
 
 		expect(result.isOk()).toBe(true);
@@ -41,7 +49,12 @@ describe("RogenConfigLoader", () => {
 		};
 		configService.addProvider(badProvider);
 
-		const loader = new ConfigLoader(configService, resolver, "/mock");
+		const loader = new ConfigLoader(
+			configService,
+			resolver,
+			workspaceService,
+			"/mock"
+		);
 		const result = await loader.load();
 
 		expect(result.isErr()).toBe(true);
