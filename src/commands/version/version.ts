@@ -1,6 +1,6 @@
 import { Command } from "../command.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { getVersion } from "../../platform/cli/version.js";
+import { getVersion } from "./get-version.js";
 import { Result, ok } from "../../base/result.js";
 
 export class VersionCommand implements Command {

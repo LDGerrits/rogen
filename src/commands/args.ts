@@ -1,7 +1,7 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { z } from "zod";
-import { Result, ok, err } from "../../base/result.js";
-import { ErrorUtils } from "../../base/errors.js";
+import { Result, ok, err } from "../base/result.js";
+import { ErrorUtils } from "../base/errors.js";
 
 export const CliArgsSchema = z.object({
 	help: z.boolean().optional(),
