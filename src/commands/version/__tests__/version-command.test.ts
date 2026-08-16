@@ -1,22 +1,20 @@
 import { jest } from "@jest/globals";
+import { VersionCommand } from "../version-command.js";
 import { LogService } from "../../../platform/log/log-service.js";
-import { HelpCommand } from "../help.js";
 
-describe("HelpCommand", () => {
-	it("should output the help instructions via the log service", () => {
+describe("VersionCommand", () => {
+	it("should output the version text via log service", () => {
 		const mockLogService = {
 			info: jest.fn(),
 		} as unknown as LogService;
 
-		const command = new HelpCommand(mockLogService);
+		const command = new VersionCommand(mockLogService);
 		const result = command.execute();
 
 		expect(result.isOk()).toBe(true);
 		expect(mockLogService.info).toHaveBeenCalledTimes(1);
 		expect(mockLogService.info).toHaveBeenCalledWith(
-			expect.stringContaining(
-				"Rogen - Feature-based architecture for Roblox"
-			)
+			expect.stringContaining("rogen")
 		);
 	});
 });

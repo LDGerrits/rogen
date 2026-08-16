@@ -2,7 +2,7 @@ import path from "path";
 import { ok, Result } from "../../../base/result.js";
 import { CliArgs } from "../../../commands/args.js";
 import { ConfigProvider } from "../../../platform/config/config-provider.js";
-import { Mode } from "../schema.js";
+import { Mode } from "../config-schema.js";
 
 export class CliConfigProvider implements ConfigProvider {
 	readonly name = "CliProvider";

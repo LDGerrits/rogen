@@ -2,7 +2,7 @@ import { Command } from "../command.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
-import { defaultConfig } from "../../domain/config/schema.js";
+import { defaultConfig } from "../../domain/config/config-schema.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { RojoNode } from "../../domain/rojo/rojo-project.js";
 import path from "path";

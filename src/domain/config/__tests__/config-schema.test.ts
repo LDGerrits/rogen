@@ -1,4 +1,4 @@
-import { ConfigSchema } from "../schema.js";
+import { ConfigSchema } from "../config-schema.js";
 
 describe("ConfigSchema", () => {
 	it("should populate default values when parsing an empty object", () => {

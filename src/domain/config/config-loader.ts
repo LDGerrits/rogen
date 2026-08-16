@@ -2,7 +2,11 @@ import { err, ok, Result } from "../../base/result.js";
 import { ConfigService } from "../../platform/config/config-service.js";
 import { WorkspaceService } from "../workspace/workspace-service.js";
 import { ConfigResolver } from "./config-resolver.js";
-import { ConfigSchema, defaultConfig, ResolvedConfig } from "./schema.js";
+import {
+	ConfigSchema,
+	defaultConfig,
+	ResolvedConfig,
+} from "./config-schema.js";
 
 export class ConfigLoader {
 	constructor(

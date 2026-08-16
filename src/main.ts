@@ -1,19 +1,19 @@
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
-import { InitCommand } from "./commands/init/init.js";
+import { InitCommand } from "./commands/init/init-command.js";
 import { parseArgs } from "./commands/args.js";
 import { LogLevel } from "./platform/log/log-service.js";
 import { ConsoleLogService } from "./platform/log/log-service.js";
-import { VersionCommand } from "./commands/version/version.js";
-import { HelpCommand } from "./commands/help/help.js";
+import { VersionCommand } from "./commands/version/version-command.js";
+import { HelpCommand } from "./commands/help/help-command.js";
 import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import { DisposableStore } from "./base/disposable.js";
 import { ConfigLoader } from "./domain/config/config-loader.js";
 import { ConfigResolver } from "./domain/config/config-resolver.js";
-import { CliConfigProvider } from "./domain/config/providers/cli.js";
-import { FileConfigProvider } from "./platform/config/providers/file.js";
+import { CliConfigProvider } from "./domain/config/providers/cli-provider.js";
+import { FileConfigProvider } from "./platform/config/providers/file-provider.js";
 import { ConfigService } from "./platform/config/config-service.js";
 import path from "path";
-import { BuildCommand } from "./commands/build/build.js";
+import { BuildCommand } from "./commands/build/build-command.js";
 import { CommandRegistry } from "./commands/command.js";
 
 export default function run(): void {
