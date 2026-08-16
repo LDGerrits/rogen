@@ -1,5 +1,5 @@
 import { Emitter, Event } from "../../base/event.js";
-import { Disposable } from "../../base/disposable.js";
+import { DisposableStore } from "../../base/disposable.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
@@ -14,7 +14,7 @@ export class MemoryWatcher implements Watcher {
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private activeRequests: WatchRequest[] = [];
-	private fileSystemSubscription: Disposable | null = null;
+	private watchDisposables: DisposableStore | null = null;
 
 	private batchedChanges: FileChange[] = [];
 	private batchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -36,30 +36,32 @@ export class MemoryWatcher implements Watcher {
 			`Started watching paths: ${targetPaths.join(", ")}`
 		);
 
-		if (!this.fileSystemSubscription) {
-			this.fileSystemSubscription = this.memoryFs.onDidMutateFile(
-				(change) => {
-					const normalizedChangePath = toPosix(change.path);
+		if (!this.watchDisposables) {
+			this.watchDisposables = new DisposableStore();
 
-					const isWatched = this.activeRequests.some((req) => {
-						if (req.recursive) {
-							return (
-								normalizedChangePath === req.path ||
-								normalizedChangePath.startsWith(req.path + "/")
-							);
-						}
-						return normalizedChangePath === req.path;
-					});
+			const subscription = this.memoryFs.onDidMutateFile((change) => {
+				const normalizedChangePath = toPosix(change.path);
 
-					if (isWatched) {
-						this.queueChange({
-							type: change.type,
-							path: normalizedChangePath,
-							fileType: change.fileType,
-						});
+				const isWatched = this.activeRequests.some((req) => {
+					if (req.recursive) {
+						return (
+							normalizedChangePath === req.path ||
+							normalizedChangePath.startsWith(req.path + "/")
+						);
 					}
+					return normalizedChangePath === req.path;
+				});
+
+				if (isWatched) {
+					this.queueChange({
+						type: change.type,
+						path: normalizedChangePath,
+						fileType: change.fileType,
+					});
 				}
-			);
+			});
+
+			this.watchDisposables.add(subscription);
 		}
 	}
 
@@ -91,9 +93,9 @@ export class MemoryWatcher implements Watcher {
 	}
 
 	async stop(): Promise<void> {
-		if (this.fileSystemSubscription) {
-			this.fileSystemSubscription[Symbol.dispose]();
-			this.fileSystemSubscription = null;
+		if (this.watchDisposables) {
+			this.watchDisposables[Symbol.dispose]();
+			this.watchDisposables = null;
 		}
 		if (this.batchTimer) {
 			clearTimeout(this.batchTimer);

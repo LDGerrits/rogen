@@ -1,6 +1,6 @@
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
-import { Disposable } from "../../base/disposable.js";
+import { DisposableStore, Disposable } from "../../base/disposable.js";
 import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
 
 export interface ReconciliationOptions {
@@ -18,11 +18,17 @@ export class ReconciliationService implements Disposable {
 	private flushTimer: ReturnType<typeof setTimeout> | null = null;
 	private isLocked = false;
 
-	private readonly _onDidEmitChanges = new Emitter<FileChange[]>();
+	private readonly disposables = new DisposableStore();
+
+	private readonly _onDidEmitChanges = this.disposables.add(
+		new Emitter<FileChange[]>()
+	);
 	readonly onDidEmitChanges: Event<FileChange[]> =
 		this._onDidEmitChanges.event;
 
-	private readonly _onDidRequestReconciliation = new Emitter<void>();
+	private readonly _onDidRequestReconciliation = this.disposables.add(
+		new Emitter<void>()
+	);
 	readonly onDidRequestReconciliation: Event<void> =
 		this._onDidRequestReconciliation.event;
 
@@ -129,7 +135,6 @@ export class ReconciliationService implements Disposable {
 
 	[Symbol.dispose](): void {
 		this.clearBuffer();
-		this._onDidEmitChanges[Symbol.dispose]();
-		this._onDidRequestReconciliation[Symbol.dispose]();
+		this.disposables[Symbol.dispose]();
 	}
 }
