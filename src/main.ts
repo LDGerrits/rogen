@@ -1,20 +1,18 @@
+import path from "path";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { InitCommand } from "./commands/init/init-command.js";
 import { parseArgs } from "./commands/args.js";
-import { LogLevel } from "./platform/log/log-service.js";
-import { ConsoleLogService } from "./platform/log/log-service.js";
+import { LogLevel, ConsoleLogService } from "./platform/log/log-service.js";
 import { VersionCommand } from "./commands/version/version-command.js";
 import { HelpCommand } from "./commands/help/help-command.js";
 import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import { DisposableStore } from "./base/disposable.js";
-import { ConfigLoader } from "./domain/config/config-loader.js";
-import { ConfigResolver } from "./domain/config/config-resolver.js";
-import { CliConfigProvider } from "./domain/config/providers/cli-provider.js";
-import { FileConfigProvider } from "./platform/config/providers/file-provider.js";
-import { ConfigService } from "./platform/config/config-service.js";
-import path from "path";
 import { BuildCommand } from "./commands/build/build-command.js";
 import { CommandRegistry } from "./commands/command.js";
+import { ConfigReader } from "./platform/config/config-reader.js";
+import { ConfigParser } from "./domain/config/config-parser.js";
+import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
+import { WatchCommand } from "./commands/watch/watch-command.js";
 
 export default function run(): void {
 	main().catch((error) => {
@@ -39,6 +37,7 @@ async function main(): Promise<void> {
 
 		const { command, options: cliArgs } = argsResult.unwrap();
 
+		// Logging levels
 		if (cliArgs.quiet) logService.setLevel(LogLevel.Off);
 		else if (cliArgs.trace) logService.setLevel(LogLevel.Trace);
 		else if (cliArgs.verbose) logService.setLevel(LogLevel.Debug);
@@ -47,29 +46,52 @@ async function main(): Promise<void> {
 		const fileSystemService = new DiskFileSystemService();
 		const workspaceService = new WorkspaceService(cwd, fileSystemService);
 
-		// Process config
+		// Populate overrides
+		const overrides: Record<string, unknown> = {};
+		if (cliArgs.source) overrides.source = cliArgs.source;
+		if (cliArgs.build || cliArgs.output || cliArgs.env) {
+			const targetModes = cliArgs.mode || ["luau", "ts", "darklua"];
+			for (const mode of targetModes) {
+				overrides[mode] = {
+					...(cliArgs.build && { build: cliArgs.build }),
+					...(cliArgs.output && { output: cliArgs.output }),
+					...(cliArgs.env && { env: cliArgs.env }),
+				};
+			}
+		}
+
+		// Config processing
 		const configPath = cliArgs.config
 			? path.resolve(cwd, cliArgs.config)
 			: path.join(cwd, ".rogen.json");
 		const configDir = path.dirname(configPath);
 
-		const configService = new ConfigService(logService)
-			.addProvider(
-				new FileConfigProvider(
-					fileSystemService,
-					configPath,
-					!cliArgs.config
-				)
-			)
-			.addProvider(new CliConfigProvider(cwd, cliArgs));
+		const configReader = new ConfigReader(fileSystemService);
+		const rawConfigResult = await configReader.read({
+			configPath,
+			isOptional: !cliArgs.config,
+			overrides,
+		});
 
-		const resolver = new ConfigResolver(fileSystemService);
-		const configLoader = new ConfigLoader(
-			configService,
-			resolver,
-			workspaceService,
-			configDir
+		if (rawConfigResult.isErr()) {
+			logService.error(rawConfigResult.error.message);
+			process.exitCode = 1;
+			return;
+		}
+
+		const configResult = await ConfigParser.parse(
+			rawConfigResult.unwrap(),
+			configDir,
+			fileSystemService
 		);
+
+		if (configResult.isErr()) {
+			logService.error(configResult.error.message);
+			process.exitCode = 1;
+			return;
+		}
+
+		const resolvedConfig = configResult.unwrap();
 
 		// Initialize commands
 		const registry = new CommandRegistry();
@@ -85,10 +107,21 @@ async function main(): Promise<void> {
 					logService
 				)
 		);
-		// TODO
 		registry.register(
 			"build",
-			() => new BuildCommand(logService, configLoader)
+			() => new BuildCommand(logService, resolvedConfig)
+		);
+		registry.register(
+			"watch",
+			() =>
+				new WatchCommand(
+					logService,
+					new DiskWatcher(logService),
+					fileSystemService,
+					configPath,
+					overrides,
+					resolvedConfig
+				)
 		);
 
 		// Execute command

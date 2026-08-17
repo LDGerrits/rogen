@@ -8,13 +8,6 @@ const ModeSchema = z.object({
 	globIgnorePaths: z.array(z.string()).default([]),
 });
 
-const ToolchainProfileSchema = z.object({
-	isTs: z.boolean().default(false),
-	isWally: z.boolean().default(false),
-	isPesde: z.boolean().default(false),
-	isDarklua: z.boolean().default(false),
-});
-
 const RojoProjectSchema = z.custom<RojoTree>((val) => {
 	if (typeof val !== "object" || val === null || Array.isArray(val))
 		return false;
@@ -49,7 +42,6 @@ const BaseConfigSchema = z.object({
 	ts: ModeSchema.optional(),
 	darklua: ModeSchema.optional(),
 	template: z.union([z.string(), RojoProjectSchema]).optional(),
-	toolchain: ToolchainProfileSchema.optional(),
 });
 
 export const ConfigSchema = BaseConfigSchema.catchall(z.unknown()).superRefine(
