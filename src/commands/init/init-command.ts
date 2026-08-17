@@ -54,16 +54,11 @@ export class InitCommand implements Command {
 		delete smartConfig.casing;
 		delete smartConfig.unwrap;
 
+		const content = JSON.stringify(smartConfig, null, "\t");
+
 		// Write to disk
 		try {
-			const content = JSON.stringify(smartConfig, null, "\t");
 			await this.fileSystemService.writeFile(targetPath, content);
-
-			this.logService.info(
-				"Successfully created .rogen.json in the current directory."
-			);
-
-			return ok(undefined);
 		} catch (error) {
 			return err(
 				new Error(
@@ -71,5 +66,11 @@ export class InitCommand implements Command {
 				)
 			);
 		}
+
+		this.logService.info(
+			"Successfully created .rogen.json in the current directory."
+		);
+
+		return ok(undefined);
 	}
 }

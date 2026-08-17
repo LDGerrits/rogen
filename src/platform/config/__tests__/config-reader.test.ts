@@ -73,7 +73,7 @@ describe("ConfigReader", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
-			"Failed to parse config JSON"
+			"Syntax Error in config JSON"
 		);
 	});
 });

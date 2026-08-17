@@ -15,23 +15,38 @@ export class ConfigReader {
 	async read(
 		options: ConfigReaderOptions
 	): Promise<Result<Record<string, unknown>, Error>> {
-		let fileConfig: Record<string, unknown> = {};
+		const exists = await this.fs.exists(options.configPath);
 
-		if (await this.fs.exists(options.configPath)) {
-			try {
-				const content = await this.fs.readFile(options.configPath);
-				fileConfig = JSON.parse(content);
-			} catch (error) {
-				return err(
-					new Error(
-						`Failed to parse config JSON: ${ErrorUtils.fromUnknown(error).message}`
-					)
-				);
+		if (!exists) {
+			if (options.isOptional) {
+				return ok(options.overrides || {});
 			}
-		} else if (!options.isOptional) {
 			return err(
 				new Error(
 					`Specified config file not found: ${options.configPath}`
+				)
+			);
+		}
+
+		let content: string;
+
+		try {
+			content = await this.fs.readFile(options.configPath);
+		} catch (error) {
+			return err(
+				new Error(
+					`IO Error while reading config: ${ErrorUtils.fromUnknown(error).message}`
+				)
+			);
+		}
+
+		let fileConfig: Record<string, unknown>;
+		try {
+			fileConfig = JSON.parse(content);
+		} catch (error) {
+			return err(
+				new Error(
+					`Syntax Error in config JSON: ${ErrorUtils.fromUnknown(error).message}`
 				)
 			);
 		}
