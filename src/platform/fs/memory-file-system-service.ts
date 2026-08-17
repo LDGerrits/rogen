@@ -37,7 +37,7 @@ export class MemoryFileSystemService implements FileSystemService {
 
 		for (const part of parts) {
 			if (current.type === FileType.Directory) {
-				const child = (current as DirectoryNode).entries.get(part);
+				const child: Node | undefined = current.entries.get(part);
 				if (!child) {
 					if (!silent)
 						throw mockFsError(
