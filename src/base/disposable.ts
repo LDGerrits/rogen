@@ -25,3 +25,24 @@ export class DisposableStore implements Disposable {
 		this.disposables.clear();
 	}
 }
+
+/**
+ * Abstract base class for a disposable object.
+ *
+ * Subclasses can `_register` disposables that will be automatically
+ * cleaned up when this object is disposed of.
+ */
+export abstract class AbstractDisposable implements Disposable {
+	protected readonly _store = new DisposableStore();
+
+	[Symbol.dispose](): void {
+		this._store[Symbol.dispose]();
+	}
+
+	protected _register<T extends Disposable>(o: T): T {
+		if ((o as unknown as AbstractDisposable) === this) {
+			throw new Error("Cannot register a disposable on itself!");
+		}
+		return this._store.add(o);
+	}
+}

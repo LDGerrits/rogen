@@ -12,7 +12,7 @@ import { WatchCommand } from "./commands/watch/watch-command.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { parseArgs } from "./platform/environment/args.js";
 import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
-import { RogenConfigService } from "./domain/config/config-service.js";
+import { ConfigService } from "./platform/config/config-service.js";
 
 export default function run(): void {
 	main().catch((error) => {
@@ -56,19 +56,20 @@ async function main(): Promise<void> {
 			fileSystemService
 		);
 
-		// Resolve Configuration Asynchronously
-		const configResult = await RogenConfigService.create(
-			fileSystemService,
-			environment
-		);
+		// Resolve config
+		const configService = new ConfigService(fileSystemService, environment);
 
-		if (configResult.isErr()) {
-			logService.error(configResult.error.message);
+		try {
+			await configService.initialize();
+		} catch (error) {
+			logService.error(
+				error instanceof Error ? error.message : String(error)
+			);
 			process.exitCode = 1;
 			return;
 		}
 
-		const configService = configResult.unwrap();
+		disposables.add(configService);
 
 		// Initialize commands
 		const registry = new CommandRegistry();

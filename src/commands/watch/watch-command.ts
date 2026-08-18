@@ -8,7 +8,8 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Sequencer } from "../../base/async.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+import { ConfigService } from "../../platform/config/config-service.js";
+import { ResolvedConfig } from "../../domain/config/config.js";
 
 export class WatchCommand implements Command {
 	private readonly buildQueue = new Sequencer();
@@ -18,7 +19,7 @@ export class WatchCommand implements Command {
 		private readonly watcher: Watcher,
 		private readonly reconciliationService: ReconciliationService,
 		private readonly configService: ConfigService,
-		private readonly NativeEnvironmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {}
 
 	async execute(_args: ParsedArgs): Promise<Result<void, Error>> {
@@ -26,24 +27,29 @@ export class WatchCommand implements Command {
 
 		this.triggerRebuild();
 
-		const config = this.configService.getValue();
+		const config = this.configService.getValue<ResolvedConfig>();
 
 		const sourcePaths = config.source.map((src) => ({
-			path: path.resolve(this.NativeEnvironmentService.cwd, src),
+			path: path.resolve(this.environmentService.cwd, src),
 			recursive: true,
 		}));
 
-		const configPath = this.NativeEnvironmentService.args.config
+		const configPath = this.environmentService.args.config
 			? path.resolve(
-					this.NativeEnvironmentService.cwd,
-					this.NativeEnvironmentService.args.config
+					this.environmentService.cwd,
+					this.environmentService.args.config
 				)
-			: path.join(this.NativeEnvironmentService.cwd, ".rogen.json");
+			: path.join(this.environmentService.cwd, ".rogen.json");
 
 		await this.watcher.watch([
 			{ path: configPath, recursive: false },
 			...sourcePaths,
 		]);
+
+		this.configService.onDidChangeConfiguration(() => {
+			this.logService.info("Configuration updated successfully.");
+			this.triggerRebuild();
+		});
 
 		this.watcher.onDidChangeFile((rawChanges) => {
 			this.reconciliationService.queueEvents(rawChanges);
@@ -60,17 +66,11 @@ export class WatchCommand implements Command {
 						"Configuration change detected. Reloading..."
 					);
 
-					// Delegate the heavy lifting to the configuration domain
-					const reloadResult = await this.configService.reload();
-
-					if (reloadResult.isOk()) {
-						this.logService.info(
-							"Configuration updated successfully."
-						);
-						this.triggerRebuild();
-					} else {
+					try {
+						await this.configService.reloadConfiguration();
+					} catch (error) {
 						this.logService.warn(
-							`Invalid configuration change ignored: ${reloadResult.error.message}`
+							`Invalid configuration change ignored: ${error instanceof Error ? error.message : String(error)}`
 						);
 					}
 				} else {
@@ -91,7 +91,7 @@ export class WatchCommand implements Command {
 	}
 
 	private triggerRebuild(): void {
-		const config = this.configService.getValue();
+		const config = this.configService.getValue<ResolvedConfig>();
 		this.logService.debug(
 			`Triggering full rebuild with config: ${config.casing}`
 		);
