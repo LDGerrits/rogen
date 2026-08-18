@@ -1,9 +1,10 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { z } from "zod";
-import { Result, ok, err } from "../base/result.js";
-import { ErrorUtils } from "../base/errors.js";
+import { Result, err, ok } from "../../base/result.js";
+import { ErrorUtils } from "../../base/errors.js";
 
-export const CliArgsSchema = z.object({
+export const ParsedArgsSchema = z.object({
+	_: z.array(z.string()).default([]),
 	help: z.boolean().optional(),
 	version: z.boolean().optional(),
 	init: z.boolean().optional(),
@@ -20,11 +21,11 @@ export const CliArgsSchema = z.object({
 	trace: z.boolean().optional(),
 });
 
-export type CliArgs = z.infer<typeof CliArgsSchema>;
+export type ParsedArgs = z.infer<typeof ParsedArgsSchema>;
 
 export interface ParsedCli {
 	command: string;
-	options: CliArgs;
+	options: ParsedArgs;
 }
 
 export function parseArgs(args: string[]): Result<ParsedCli, Error> {
@@ -47,44 +48,37 @@ export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 
 	try {
 		const { values, positionals } = nodeParseArgs({
-			args,
+			args: args,
 			options,
 			allowPositionals: true,
 			strict: true,
 		});
 
 		let command = "help";
+		if (values.version) command = "version";
+		else if (values.help) command = "help";
+		else if (positionals.length > 0) command = positionals[0].toLowerCase();
 
-		if (values.version) {
-			command = "version";
-		} else if (values.help) {
-			command = "help";
-		} else if (positionals.length > 0) {
-			command = positionals[0].toLowerCase();
-		}
-
-		const parsedArgs = CliArgsSchema.parse(values);
+		const parsedArgs = ParsedArgsSchema.parse({
+			...values,
+			_: positionals,
+		});
 
 		return ok({ command, options: parsedArgs });
 	} catch (error) {
 		const rawError = error as Record<string, unknown>;
-		const errCode =
-			typeof rawError.code === "string" ? rawError.code : "UNKNOWN_ERR";
-
-		if (errCode === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+		if (rawError.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
 			const cleanMsg = (error as Error).message.replace(
 				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
 				""
 			);
-
 			return err(
 				new ParseArgumentError(
-					`${cleanMsg}\nRun 'rogen --help' to see a list of available commands and options.`,
-					errCode
+					`${cleanMsg}\nRun 'rogen --help' to see available commands.`,
+					rawError.code as string
 				)
 			);
 		}
-
 		return err(ErrorUtils.fromUnknown(error));
 	}
 }

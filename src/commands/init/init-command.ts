@@ -1,24 +1,26 @@
+import path from "path";
 import { Command } from "../command.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { mergeDeep } from "../../base/object.js";
-import { defaultConfig } from "../../domain/config/config-schema.js";
+import { defaultConfig } from "../../domain/config/config.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { RojoNode } from "../../domain/rojo/rojo-project.js";
-import path from "path";
 import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
 
 export class InitCommand implements Command {
 	constructor(
-		private readonly cwd: string,
+		private readonly NativeEnvironmentService: EnvironmentService,
 		private readonly fileSystemService: FileSystemService,
 		private readonly workspaceService: WorkspaceService,
 		private readonly logService: LogService
 	) {}
 
 	async execute(): Promise<Result<void, Error>> {
-		const targetPath = path.resolve(this.cwd, ".rogen.json");
+		const cwd = this.NativeEnvironmentService.cwd;
+		const targetPath = path.resolve(cwd, ".rogen.json");
 
 		if (await this.fileSystemService.exists(targetPath)) {
 			return err(
@@ -35,7 +37,7 @@ export class InitCommand implements Command {
 
 		const smartConfig = mergeDeep<Record<string, unknown>>(defaultConfig, {
 			template: {
-				name: path.basename(this.cwd) || "roblox-game",
+				name: path.basename(cwd) || "roblox-game",
 				tree: baseTreeNode,
 				globIgnorePaths: toolchain.isTs
 					? ["**/package.json", "**/tsconfig.json"]

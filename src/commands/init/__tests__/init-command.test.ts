@@ -5,10 +5,14 @@ import { InitCommand } from "../init-command.js";
 import path from "path";
 import { WorkspaceService } from "../../../domain/workspace/workspace-service.js";
 import { NullLogService } from "../../../platform/log/log-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
 
 describe("InitCommand", () => {
 	let memFs: MemoryFileSystemService;
 	let logService: NullLogService;
+
+	const createEnvironment = (cwd: string) =>
+		new NativeEnvironmentService({ _: [] }, cwd);
 
 	beforeEach(() => {
 		memFs = new MemoryFileSystemService();
@@ -20,9 +24,11 @@ describe("InitCommand", () => {
 		const targetPath = path.resolve(cwd, ".rogen.json");
 		await memFs.writeFile(targetPath, "{}");
 
-		const workspaceService = new WorkspaceService(cwd, memFs);
+		const environment = createEnvironment(cwd);
+		const workspaceService = new WorkspaceService(environment, memFs);
+
 		const command = new InitCommand(
-			cwd,
+			environment,
 			memFs,
 			workspaceService,
 			logService
@@ -31,7 +37,7 @@ describe("InitCommand", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
-			"A .rogen.json file already exists in this directory."
+			"already exists in this directory"
 		);
 	});
 
@@ -39,9 +45,11 @@ describe("InitCommand", () => {
 		const cwd = path.resolve("/mock/my-game");
 		await memFs.createDirectory(cwd);
 
-		const workspaceService = new WorkspaceService(cwd, memFs);
+		const environment = createEnvironment(cwd);
+		const workspaceService = new WorkspaceService(environment, memFs);
+
 		const command = new InitCommand(
-			cwd,
+			environment,
 			memFs,
 			workspaceService,
 			logService
@@ -73,9 +81,11 @@ describe("InitCommand", () => {
 		);
 		await memFs.createDirectory(path.join(cwd, "Packages"));
 
-		const workspaceService = new WorkspaceService(cwd, memFs);
+		const environment = createEnvironment(cwd);
+		const workspaceService = new WorkspaceService(environment, memFs);
+
 		const command = new InitCommand(
-			cwd,
+			environment,
 			memFs,
 			workspaceService,
 			logService
@@ -107,9 +117,11 @@ describe("InitCommand", () => {
 			new Error("Permission denied")
 		);
 
-		const workspaceService = new WorkspaceService(cwd, memFs);
+		const environment = createEnvironment(cwd);
+		const workspaceService = new WorkspaceService(environment, memFs);
+
 		const command = new InitCommand(
-			cwd,
+			environment,
 			memFs,
 			workspaceService,
 			logService

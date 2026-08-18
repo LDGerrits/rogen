@@ -1,16 +1,20 @@
 import { WorkspaceService, ToolchainProfile } from "../workspace-service.js";
 import { RojoNode } from "../../rojo/rojo-project.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
 
 describe("WorkspaceService", () => {
 	let memFs: MemoryFileSystemService;
 	let workspaceService: WorkspaceService;
+	let environment: NativeEnvironmentService;
 	const cwd = "mock/workspace";
 
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
 		await memFs.createDirectory(cwd);
-		workspaceService = new WorkspaceService(cwd, memFs);
+
+		environment = new NativeEnvironmentService({ _: [] }, cwd);
+		workspaceService = new WorkspaceService(environment, memFs);
 	});
 
 	describe("detectToolchain", () => {

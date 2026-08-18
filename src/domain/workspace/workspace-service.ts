@@ -1,6 +1,7 @@
 import path from "path";
 import { RojoNode } from "../rojo/rojo-project.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
 
 export interface ToolchainProfile {
 	isTs: boolean;
@@ -11,18 +12,20 @@ export interface ToolchainProfile {
 
 export class WorkspaceService {
 	constructor(
-		private readonly cwd: string,
+		private readonly NativeEnvironmentService: EnvironmentService,
 		private readonly fileSystem: FileSystemService
 	) {}
 
 	async detectToolchain(): Promise<ToolchainProfile> {
+		const cwd = this.NativeEnvironmentService.cwd;
+
 		const [isTs, isWally, isPesde, hasDarkluaJson, hasDarkluaJson5] =
 			await Promise.all([
-				this.fileSystem.exists(path.join(this.cwd, "tsconfig.json")),
-				this.fileSystem.exists(path.join(this.cwd, "wally.toml")),
-				this.fileSystem.exists(path.join(this.cwd, "pesde.toml")),
-				this.fileSystem.exists(path.join(this.cwd, ".darklua.json")),
-				this.fileSystem.exists(path.join(this.cwd, ".darklua.json5")),
+				this.fileSystem.exists(path.join(cwd, "tsconfig.json")),
+				this.fileSystem.exists(path.join(cwd, "wally.toml")),
+				this.fileSystem.exists(path.join(cwd, "pesde.toml")),
+				this.fileSystem.exists(path.join(cwd, ".darklua.json")),
+				this.fileSystem.exists(path.join(cwd, ".darklua.json5")),
 			]);
 
 		return {
@@ -37,16 +40,18 @@ export class WorkspaceService {
 		rootNode: RojoNode,
 		toolchain: ToolchainProfile
 	): Promise<void> {
+		const cwd = this.NativeEnvironmentService.cwd;
+
 		if (toolchain.isTs) {
 			const [hasRbxts, hasFlamework, hasRbxtsJs] = await Promise.all([
 				this.fileSystem.exists(
-					path.join(this.cwd, "node_modules", "@rbxts")
+					path.join(cwd, "node_modules", "@rbxts")
 				),
 				this.fileSystem.exists(
-					path.join(this.cwd, "node_modules", "@flamework")
+					path.join(cwd, "node_modules", "@flamework")
 				),
 				this.fileSystem.exists(
-					path.join(this.cwd, "node_modules", "@rbxts-js")
+					path.join(cwd, "node_modules", "@rbxts-js")
 				),
 			]);
 
@@ -77,16 +82,14 @@ export class WorkspaceService {
 		}
 
 		if (toolchain.isWally) {
-			if (await this.fileSystem.exists(path.join(this.cwd, "Packages"))) {
+			if (await this.fileSystem.exists(path.join(cwd, "Packages"))) {
 				rootNode.ReplicatedStorage = {
 					...((rootNode.ReplicatedStorage as RojoNode) || {}),
 					Packages: { $path: "Packages" },
 				};
 			}
 			if (
-				await this.fileSystem.exists(
-					path.join(this.cwd, "ServerPackages")
-				)
+				await this.fileSystem.exists(path.join(cwd, "ServerPackages"))
 			) {
 				rootNode.ServerScriptService = {
 					...((rootNode.ServerScriptService as RojoNode) || {}),
@@ -97,9 +100,7 @@ export class WorkspaceService {
 
 		if (toolchain.isPesde) {
 			if (
-				await this.fileSystem.exists(
-					path.join(this.cwd, "roblox_packages")
-				)
+				await this.fileSystem.exists(path.join(cwd, "roblox_packages"))
 			) {
 				rootNode.ReplicatedStorage = {
 					...((rootNode.ReplicatedStorage as RojoNode) || {}),
@@ -108,7 +109,7 @@ export class WorkspaceService {
 			}
 			if (
 				await this.fileSystem.exists(
-					path.join(this.cwd, "roblox_server_packages")
+					path.join(cwd, "roblox_server_packages")
 				)
 			) {
 				rootNode.ServerScriptService = {

@@ -1,8 +1,10 @@
-import { CliArgs } from "./args.js";
 import { Result, err } from "../base/result.js";
+import { ParsedArgs } from "../platform/environment/args.js";
 
 export interface Command {
-	execute(args: CliArgs): Promise<Result<void, Error>> | Result<void, Error>;
+	execute(
+		args: ParsedArgs
+	): Promise<Result<void, Error>> | Result<void, Error>;
 }
 
 export type CommandFactory = () => Command;
@@ -14,7 +16,10 @@ export class CommandRegistry {
 		this.commands.set(name.toLowerCase(), factory);
 	}
 
-	async execute(name: string, args: CliArgs): Promise<Result<void, Error>> {
+	async execute(
+		name: string,
+		args: ParsedArgs
+	): Promise<Result<void, Error>> {
 		const factory = this.commands.get(name.toLowerCase());
 
 		if (!factory) {
