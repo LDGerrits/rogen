@@ -3,7 +3,7 @@ import { DisposableStore } from "../../base/disposable.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
-import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
+import { FileChange } from "../fs/file-events.js";
 import { Watcher, WatchRequest } from "./watcher.js";
 
 export class MemoryWatcher implements Watcher {
@@ -15,10 +15,6 @@ export class MemoryWatcher implements Watcher {
 
 	private activeRequests: WatchRequest[] = [];
 	private watchDisposables: DisposableStore | null = null;
-
-	private batchedChanges: FileChange[] = [];
-	private batchTimer: ReturnType<typeof setTimeout> | null = null;
-	private readonly BATCH_DELAY_MS = 50;
 
 	constructor(
 		private readonly memoryFs: MemoryFileSystemService,
@@ -53,40 +49,15 @@ export class MemoryWatcher implements Watcher {
 				});
 
 				if (isWatched) {
-					this.queueChange({
-						type: change.type,
-						path: normalizedChangePath,
-						fileType: change.fileType,
-					});
+					this._onDidChangeFile.fire([
+						{
+							type: change.type,
+							path: normalizedChangePath,
+							fileType: change.fileType,
+						},
+					]);
 				}
 			}, this.watchDisposables);
-		}
-	}
-
-	private queueChange(change: FileChange) {
-		this.batchedChanges.push(change);
-
-		if (!this.batchTimer) {
-			this.batchTimer = setTimeout(
-				() => this.flushChanges(),
-				this.BATCH_DELAY_MS
-			);
-		}
-	}
-
-	private flushChanges() {
-		if (this.batchTimer) {
-			clearTimeout(this.batchTimer);
-			this.batchTimer = null;
-		}
-
-		if (this.batchedChanges.length > 0) {
-			const normalized = normalizeFileChanges(this.batchedChanges);
-			this.batchedChanges = [];
-
-			if (normalized.length > 0) {
-				this._onDidChangeFile.fire(normalized);
-			}
 		}
 	}
 
@@ -95,11 +66,6 @@ export class MemoryWatcher implements Watcher {
 			this.watchDisposables[Symbol.dispose]();
 			this.watchDisposables = null;
 		}
-		if (this.batchTimer) {
-			clearTimeout(this.batchTimer);
-			this.batchTimer = null;
-		}
 		this.activeRequests = [];
-		this.batchedChanges = [];
 	}
 }

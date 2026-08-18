@@ -3,11 +3,7 @@ import { FileType } from "../fs/file-system-service.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
-import {
-	FileChange,
-	FileChangeType,
-	normalizeFileChanges,
-} from "../fs/file-events.js";
+import { FileChange, FileChangeType } from "../fs/file-events.js";
 import { Watcher, WatchRequest } from "./watcher.js";
 
 export class DiskWatcher implements Watcher {
@@ -18,10 +14,6 @@ export class DiskWatcher implements Watcher {
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private watcher: chokidar.FSWatcher | null = null;
-
-	private batchedChanges: FileChange[] = [];
-	private batchTimer: ReturnType<typeof setTimeout> | null = null;
-	private readonly BATCH_DELAY_MS = 50;
 
 	constructor(private readonly logService: LogService) {}
 
@@ -41,19 +33,19 @@ export class DiskWatcher implements Watcher {
 		});
 
 		this.watcher.on("add", (p) =>
-			this.queueEvent(FileChangeType.ADDED, p, FileType.File)
+			this.fireEvent(FileChangeType.ADDED, p, FileType.File)
 		);
 		this.watcher.on("addDir", (p) =>
-			this.queueEvent(FileChangeType.ADDED, p, FileType.Directory)
+			this.fireEvent(FileChangeType.ADDED, p, FileType.Directory)
 		);
 		this.watcher.on("change", (p) =>
-			this.queueEvent(FileChangeType.UPDATED, p, FileType.File)
+			this.fireEvent(FileChangeType.UPDATED, p, FileType.File)
 		);
 		this.watcher.on("unlink", (p) =>
-			this.queueEvent(FileChangeType.DELETED, p, FileType.File)
+			this.fireEvent(FileChangeType.DELETED, p, FileType.File)
 		);
 		this.watcher.on("unlinkDir", (p) =>
-			this.queueEvent(FileChangeType.DELETED, p, FileType.Directory)
+			this.fireEvent(FileChangeType.DELETED, p, FileType.Directory)
 		);
 
 		this.watcher.on("error", (error) => {
@@ -62,44 +54,17 @@ export class DiskWatcher implements Watcher {
 		});
 	}
 
-	private queueEvent(
+	private fireEvent(
 		type: FileChangeType,
 		rawPath: string,
 		fileType: FileType
 	): void {
-		this.batchedChanges.push({ type, path: toPosix(rawPath), fileType });
-
-		if (!this.batchTimer) {
-			this.batchTimer = setTimeout(
-				() => this.flushEvents(),
-				this.BATCH_DELAY_MS
-			);
-		}
-	}
-
-	private flushEvents(): void {
-		if (this.batchTimer) {
-			clearTimeout(this.batchTimer);
-			this.batchTimer = null;
-		}
-
-		if (this.batchedChanges.length > 0) {
-			const normalized = normalizeFileChanges(this.batchedChanges);
-			this.batchedChanges = [];
-
-			if (normalized.length > 0) {
-				this._onDidChangeFile.fire(normalized);
-			}
-		}
+		this._onDidChangeFile.fire([
+			{ type, path: toPosix(rawPath), fileType },
+		]);
 	}
 
 	async stop(): Promise<void> {
-		if (this.batchTimer) {
-			clearTimeout(this.batchTimer);
-			this.batchTimer = null;
-		}
-		this.batchedChanges = [];
-
 		if (this.watcher) {
 			await this.watcher.close();
 			this.watcher = null;

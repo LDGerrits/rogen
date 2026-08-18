@@ -11,8 +11,6 @@ describe("MemoryWatcher", () => {
 	let logService: NullLogService;
 
 	beforeEach(() => {
-		jest.useFakeTimers();
-
 		memoryFs = new MemoryFileSystemService();
 		logService = new NullLogService();
 		watcher = new MemoryWatcher(memoryFs, logService);
@@ -20,11 +18,9 @@ describe("MemoryWatcher", () => {
 
 	afterEach(async () => {
 		await watcher.stop();
-		jest.runOnlyPendingTimers();
-		jest.useRealTimers();
 	});
 
-	it("should normalize ADDED and UPDATED events batched together into a single ADDED event", async () => {
+	it("should emit ADDED and UPDATED events immediately without batching", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
@@ -33,16 +29,21 @@ describe("MemoryWatcher", () => {
 		await memoryFs.writeFile("src/init.lua", "-- added");
 		await memoryFs.writeFile("src/init.lua", "-- updated");
 
-		jest.runAllTimers();
-
-		expect(listener).toHaveBeenCalledWith([
+		expect(listener).toHaveBeenCalledTimes(2);
+		expect(listener).toHaveBeenNthCalledWith(1, [
 			{
 				type: FileChangeType.ADDED,
 				path: "src/init.lua",
 				fileType: FileType.File,
 			},
 		]);
-		expect(listener).toHaveBeenCalledTimes(1);
+		expect(listener).toHaveBeenNthCalledWith(2, [
+			{
+				type: FileChangeType.UPDATED,
+				path: "src/init.lua",
+				fileType: FileType.File,
+			},
+		]);
 	});
 
 	it("should catch multiple DELETED events with accurate fileTypes when a directory is removed recursively", async () => {
@@ -56,28 +57,28 @@ describe("MemoryWatcher", () => {
 
 		await memoryFs.delete("src/components", true);
 
-		jest.runAllTimers();
-
-		expect(listener).toHaveBeenCalledWith(
-			expect.arrayContaining([
-				{
-					type: FileChangeType.DELETED,
-					path: "src/components",
-					fileType: FileType.Directory,
-				},
-				{
-					type: FileChangeType.DELETED,
-					path: "src/components/button.lua",
-					fileType: FileType.File,
-				},
-				{
-					type: FileChangeType.DELETED,
-					path: "src/components/card.lua",
-					fileType: FileType.File,
-				},
-			])
-		);
-		expect(listener).toHaveBeenCalledTimes(1);
+		expect(listener).toHaveBeenCalledTimes(3);
+		expect(listener).toHaveBeenCalledWith([
+			{
+				type: FileChangeType.DELETED,
+				path: "src/components/button.lua",
+				fileType: FileType.File,
+			},
+		]);
+		expect(listener).toHaveBeenCalledWith([
+			{
+				type: FileChangeType.DELETED,
+				path: "src/components/card.lua",
+				fileType: FileType.File,
+			},
+		]);
+		expect(listener).toHaveBeenCalledWith([
+			{
+				type: FileChangeType.DELETED,
+				path: "src/components",
+				fileType: FileType.Directory,
+			},
+		]);
 	});
 
 	it("should respect non-recursive watch requests", async () => {
@@ -87,15 +88,12 @@ describe("MemoryWatcher", () => {
 		await watcher.watch([{ path: "package.json", recursive: false }]);
 		await memoryFs.writeFile("package.json", "{}");
 
-		jest.runAllTimers();
 		expect(listener).toHaveBeenCalledTimes(1);
 
 		listener.mockClear();
 
 		await memoryFs.writeFile("package-lock.json", "{}");
 		await memoryFs.writeFile("ignored-folder/fake-nested.txt", "...");
-
-		jest.runAllTimers();
 
 		expect(listener).toHaveBeenCalledTimes(0);
 	});
@@ -113,24 +111,7 @@ describe("MemoryWatcher", () => {
 		await memoryFs.writeFile("tests/main.test.ts", "");
 		await memoryFs.writeFile("ignored/other.ts", "");
 
-		jest.runAllTimers();
-
-		expect(listener).toHaveBeenCalledWith(
-			expect.arrayContaining([
-				{
-					type: FileChangeType.ADDED,
-					path: "src/main.ts",
-					fileType: FileType.File,
-				},
-				{
-					type: FileChangeType.ADDED,
-					path: "tests/main.test.ts",
-					fileType: FileType.File,
-				},
-			])
-		);
-		const calls = listener.mock.calls[0][0] as unknown[];
-		expect(calls).toHaveLength(2);
+		expect(listener).toHaveBeenCalledTimes(2);
 	});
 
 	it("should gracefully stop emitting events after stop() is called", async () => {
@@ -138,28 +119,9 @@ describe("MemoryWatcher", () => {
 		watcher.onDidChangeFile(listener);
 
 		await watcher.watch([{ path: "src", recursive: true }]);
-
 		await watcher.stop();
 
 		await memoryFs.writeFile("src/should-be-ignored.ts", "");
-
-		jest.runAllTimers();
-
-		expect(listener).not.toHaveBeenCalled();
-	});
-
-	it("should cancel out rapid ADD -> UPDATE -> DELETE for the same file and emit nothing", async () => {
-		const listener = jest.fn();
-		watcher.onDidChangeFile(listener);
-
-		await watcher.watch([{ path: "cache", recursive: true }]);
-
-		await memoryFs.writeFile("cache/temp.txt", "init");
-		await memoryFs.writeFile("cache/temp.txt", "update 1");
-		await memoryFs.writeFile("cache/temp.txt", "update 2");
-		await memoryFs.delete("cache/temp.txt");
-
-		jest.runAllTimers();
 
 		expect(listener).not.toHaveBeenCalled();
 	});
