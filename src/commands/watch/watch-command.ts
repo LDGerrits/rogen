@@ -9,13 +9,17 @@ import { ConfigParser } from "../../domain/config/config-parser.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { FileChange } from "../../platform/fs/file-events.js";
 import path from "path";
+import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
+import { Sequencer } from "../../base/async.js";
 
 export class WatchCommand implements Command {
 	private currentConfig: ResolvedConfig;
+	private readonly buildQueue = new Sequencer();
 
 	constructor(
 		private readonly logService: LogService,
 		private readonly watcher: Watcher,
+		private readonly reconciliationService: ReconciliationService,
 		private readonly fs: FileSystemService,
 		private readonly configPath: string,
 		private readonly configOverrides: Record<string, unknown>,
@@ -39,34 +43,45 @@ export class WatchCommand implements Command {
 			...sourcePaths,
 		]);
 
-		this.watcher.onDidChangeFile(async (changes) => {
-			// Check if the specific config file we loaded was modified
-			const configChanged = changes.some(
-				(c) => c.path === this.configPath
-			);
+		this.watcher.onDidChangeFile((rawChanges) => {
+			this.reconciliationService.queueEvents(rawChanges);
+		});
 
-			if (configChanged) {
-				this.logService.info(
-					"Configuration change detected. Reloading..."
+		this.reconciliationService.onDidEmitChanges((normalizedChanges) => {
+			this.buildQueue.queue(async () => {
+				const configChanged = normalizedChanges.some(
+					(c) => c.path === this.configPath
 				);
-				const reloadResult = await this.attemptReload();
 
-				if (reloadResult.isOk()) {
-					this.logService.info("Configuration updated successfully.");
-					this.currentConfig = reloadResult.unwrap();
-					this.triggerRebuild();
+				if (configChanged) {
+					this.logService.info(
+						"Configuration change detected. Reloading..."
+					);
+					const reloadResult = await this.attemptReload();
+
+					if (reloadResult.isOk()) {
+						this.logService.info(
+							"Configuration updated successfully."
+						);
+						this.currentConfig = reloadResult.unwrap();
+						this.triggerRebuild();
+					} else {
+						this.logService.warn(
+							`Invalid configuration change ignored: ${reloadResult.error.message}`
+						);
+					}
 				} else {
-					// Do not crash. Warn and continue using the cached config
-					this.logService.warn(
-						`Invalid configuration change ignored: ${reloadResult.error.message}`
-					);
-					this.logService.warn(
-						"Continuing execution with the last valid configuration."
-					);
+					this.triggerIncrementalBuild(normalizedChanges);
 				}
-			} else {
-				this.triggerIncrementalBuild(changes);
-			}
+			});
+		});
+
+		// Full reconciliation if the burst threshold is hit
+		this.reconciliationService.onDidRequestReconciliation(() => {
+			this.logService.info(
+				"Burst threshold reached. Executing full rebuild..."
+			);
+			this.triggerRebuild();
 		});
 
 		return new Promise(() => {});

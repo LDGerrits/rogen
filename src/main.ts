@@ -13,6 +13,7 @@ import { ConfigReader } from "./platform/config/config-reader.js";
 import { ConfigParser } from "./domain/config/config-parser.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { WatchCommand } from "./commands/watch/watch-command.js";
+import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 
 export default function run(): void {
 	main().catch((error) => {
@@ -117,6 +118,7 @@ async function main(): Promise<void> {
 				new WatchCommand(
 					logService,
 					new DiskWatcher(logService),
+					new ReconciliationService(logService),
 					fileSystemService,
 					configPath,
 					overrides,
