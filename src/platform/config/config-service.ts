@@ -1,123 +1,159 @@
-import path from "path";
-import { IConfigService, IConfigChangeEvent } from "./config.js";
-import { Registry } from "../registry/registry.js";
+import { ConfigChangeEvent, ConfigService, ConfigTarget } from "./config.js";
 import { Emitter, Event } from "../../base/event.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { ErrorUtils } from "../../base/errors.js";
-import { ConfigurationModel } from "./config-models.js";
-import { Extensions, IConfigurationRegistry } from "./config-registry.js";
-import { FileSystemService } from "../fs/file-system-service.js";
+import { Config, ConfigValue, ConfigModel } from "./config-models.js";
+import { FileSystemService, FileType } from "../fs/file-system-service.js";
 import { EnvironmentService } from "../environment/environment-service.js";
+import { DefaultConfig, CliConfig, ProjectConfig } from "./configs.js";
+import path from "path";
 
-export class ConfigService
+export class CoreConfigService
 	extends AbstractDisposable
-	implements IConfigService
+	implements ConfigService
 {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly _onDidChangeConfiguration = this._register(
-		new Emitter<IConfigChangeEvent>()
+	private readonly _onDidChangeConfig = this._register(
+		new Emitter<ConfigChangeEvent>()
 	);
-	readonly onDidChangeConfiguration: Event<IConfigChangeEvent> =
-		this._onDidChangeConfiguration.event;
+	readonly onDidChangeConfig: Event<ConfigChangeEvent> =
+		this._onDidChangeConfig.event;
 
-	private consolidatedModel: ConfigurationModel;
-	private fileModel: ConfigurationModel;
-	private readonly cliModel: ConfigurationModel;
-	private readonly registry: IConfigurationRegistry;
+	private config!: Config;
+
+	private readonly defaultConfig: DefaultConfig;
+	private readonly cliConfig: CliConfig;
+	private projectConfig!: ProjectConfig;
+
+	private memoryModel: ConfigModel = new ConfigModel({});
+	private _resolvedConfigPath: string | undefined;
+
+	get configPath(): string | undefined {
+		return this._resolvedConfigPath;
+	}
 
 	constructor(
 		private readonly fs: FileSystemService,
 		private readonly environment: EnvironmentService
 	) {
 		super();
-		this.registry = Registry.as<IConfigurationRegistry>(
-			Extensions.Configuration
-		);
-		this.fileModel = new ConfigurationModel();
-		this.cliModel = this.computeCliModel();
-		this.consolidatedModel = new ConfigurationModel();
+		this.defaultConfig = this._register(new DefaultConfig());
+		this.cliConfig = this._register(new CliConfig(this.environment));
 	}
 
 	async initialize(): Promise<void> {
-		await this.loadConfigurationFromFile();
-		this.consolidate();
+		this._resolvedConfigPath = await this.discoverProjectConfigPath();
+
+		this.projectConfig = this._register(
+			new ProjectConfig(this._resolvedConfigPath, this.fs)
+		);
+		this._register(
+			this.projectConfig.onDidChangeConfig(() =>
+				this.onDidProjectConfigChange()
+			)
+		);
+
+		await Promise.all([
+			this.defaultConfig.initialize(),
+			this.projectConfig.initialize(),
+			this.cliConfig.initialize(),
+		]);
+
+		this.rebuildConfig();
 	}
 
-	async reloadConfiguration(): Promise<void> {
-		await this.loadConfigurationFromFile();
-		this.consolidate();
-		this._onDidChangeConfiguration.fire({ source: "file" });
+	async reloadConfig(): Promise<void> {
+		await this.projectConfig.reload();
 	}
 
 	getValue<T>(section?: string): T {
-		return this.consolidatedModel.getValue<T>(section);
+		return this.config.getValue<T>(section);
 	}
 
-	private consolidate(): void {
-		const defaults = this.registry.getConfigurationModel();
+	inspect<T>(section: string): ConfigValue<T> {
+		return this.config.inspect<T>(section);
+	}
 
-		const merged = defaults.merge(this.fileModel).merge(this.cliModel);
+	private onDidProjectConfigChange(): void {
+		const previousConfig = this.config;
 
-		const schema = this.registry.getSchema();
-		const result = schema.safeParse(merged.contents);
+		this.rebuildConfig();
+
+		const changedKeys = previousConfig.compare(this.config);
+
+		if (changedKeys.length > 0) {
+			const event = new ConfigChangeEvent(
+				changedKeys,
+				ConfigTarget.PROJECT
+			);
+			this._onDidChangeConfig.fire(event);
+		}
+	}
+
+	private rebuildConfig(): void {
+		this.config = new Config(
+			this.defaultConfig.configurationModel,
+			this.projectConfig.configurationModel,
+			this.cliConfig.configurationModel,
+			this.memoryModel
+		);
+
+		const validatedData = this.validateConfig();
+		this.config.setValidatedModel(new ConfigModel(validatedData));
+	}
+
+	private validateConfig(): Record<string, unknown> {
+		const schema = this.defaultConfig.getSchema();
+		const contents = this.config.getConsolidatedModel().contents;
+		const result = schema.safeParse(contents);
 
 		if (!result.success) {
 			const issues = result.error.issues
 				.map((i) => `${i.path.join(".")}: ${i.message}`)
 				.join(", ");
-			throw new Error(`Configuration validation failed: ${issues}`);
+			throw new Error(`Config validation failed: ${issues}`);
 		}
 
-		this.consolidatedModel = new ConfigurationModel(result.data);
+		return result.data;
 	}
 
-	private async loadConfigurationFromFile(): Promise<void> {
-		const configPath = this.environment.args.config
-			? path.resolve(this.environment.cwd, this.environment.args.config)
-			: path.join(this.environment.cwd, ".rogen.json");
-
-		const isOptional = !this.environment.args.config;
-
-		if (!(await this.fs.exists(configPath))) {
-			if (!isOptional)
-				throw new Error(
-					`Specified config file not found: ${configPath}`
-				);
-			this.fileModel = new ConfigurationModel({});
-			return;
-		}
-
-		try {
-			const content = await this.fs.readFile(configPath);
-			const parsed = JSON.parse(content);
-
-			this.fileModel = new ConfigurationModel(parsed);
-		} catch (error) {
-			throw new Error(
-				`Syntax Error in config JSON: ${ErrorUtils.fromUnknown(error).message}`,
-				{ cause: error }
+	private async discoverProjectConfigPath(): Promise<string | undefined> {
+		if (this.environment.args.config) {
+			const targetPath = path.resolve(
+				this.environment.cwd,
+				this.environment.args.config
 			);
-		}
-	}
-
-	private computeCliModel(): ConfigurationModel {
-		const args = this.environment.args;
-		const overrides: Record<string, unknown> = {};
-
-		if (args.source) overrides.source = args.source;
-
-		if (args.build || args.output || args.env) {
-			const targetModes = args.mode || ["luau", "ts", "darklua"];
-			for (const mode of targetModes) {
-				overrides[mode] = {
-					...(args.build && { build: args.build }),
-					...(args.output && { output: args.output }),
-					...(args.env && { env: args.env }),
-				};
+			if (!(await this.fs.exists(targetPath))) {
+				throw new Error(
+					`Specified config file not found: ${targetPath}`
+				);
 			}
+			return targetPath;
 		}
 
-		return new ConfigurationModel(overrides);
+		const cwd = this.environment.cwd;
+		if (!(await this.fs.exists(cwd))) {
+			return undefined;
+		}
+
+		const entries = await this.fs.readDirectory(cwd);
+		const rogenFiles = entries
+			.filter(
+				([name, type]) =>
+					type === FileType.File && name.endsWith(".rogen.json")
+			)
+			.map(([name]) => name);
+
+		if (rogenFiles.length === 0) return undefined;
+
+		if (rogenFiles.includes(".rogen.json")) {
+			return path.join(cwd, ".rogen.json");
+		}
+
+		if (rogenFiles.length === 1) {
+			return path.join(cwd, rogenFiles[0]);
+		}
+
+		return undefined;
 	}
 }

@@ -12,7 +12,7 @@ import { WatchCommand } from "./commands/watch/watch-command.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { parseArgs } from "./platform/environment/args.js";
 import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
-import { ConfigService } from "./platform/config/config-service.js";
+import { CoreConfigService } from "./platform/config/config-service.js";
 
 export default function run(): void {
 	main().catch((error) => {
@@ -57,7 +57,10 @@ async function main(): Promise<void> {
 		);
 
 		// Resolve config
-		const configService = new ConfigService(fileSystemService, environment);
+		const configService = new CoreConfigService(
+			fileSystemService,
+			environment
+		);
 
 		try {
 			await configService.initialize();

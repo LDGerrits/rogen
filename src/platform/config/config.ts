@@ -1,22 +1,51 @@
 import { Event } from "../../base/event.js";
+import { ConfigValue } from "./config-models.js";
 
-export interface IConfigChangeEvent {
-	readonly source: "file" | "cli" | "default";
-	readonly affectedKeys?: ReadonlySet<string>;
+export const enum ConfigTarget {
+	DEFAULT = 1,
+	PROJECT,
+	CLI,
+	MEMORY,
 }
 
-export interface IConfigService {
+export class ConfigChangeEvent {
+	readonly affectedKeys: ReadonlySet<string>;
+
+	constructor(
+		changedKeys: string[],
+		public readonly source: ConfigTarget
+	) {
+		this.affectedKeys = new Set(changedKeys);
+	}
+
+	affectsConfig(section: string): boolean {
+		for (const key of this.affectedKeys) {
+			if (
+				key === section ||
+				key.startsWith(`${section}.`) ||
+				section.startsWith(`${key}.`)
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	readonly onDidChangeConfiguration: Event<IConfigChangeEvent>;
+	readonly onDidChangeConfig: Event<ConfigChangeEvent>;
 
-	/**
-	 * Fetches the value of the section. If no section is provided, returns the entire configuration object.
-	 */
 	getValue<T>(section?: string): T;
 
 	/**
-	 * Reloads the configuration file from disk and recalculates the merged model.
+	 * Inspects a value to determine exactly which layer provided it.
 	 */
-	reloadConfiguration(): Promise<void>;
+	inspect<T>(section: string): ConfigValue<T>;
+
+	/**
+	 * Reloads the config file and recalculates the merged model.
+	 */
+	reloadConfig(): Promise<void>;
 }

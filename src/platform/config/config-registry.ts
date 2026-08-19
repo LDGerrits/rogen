@@ -1,38 +1,38 @@
 import { z } from "zod";
 import { mergeDeep } from "../../base/object.js";
-import { ConfigurationModel } from "./config-models.js";
+import { ConfigModel } from "./config-models.js";
 import { Registry } from "../registry/registry.js";
 
 export const Extensions = {
-	Configuration: "platform.contributions.configuration",
+	Config: "platform.contributions.configuration",
 };
 
-export interface IConfigurationNode {
+export interface ConfigNode {
 	id: string;
 	schema: z.ZodRawShape;
 	defaults: Record<string, unknown>;
 }
 
-export interface IConfigurationRegistry {
-	registerConfiguration(node: IConfigurationNode): void;
-	getConfigurationModel(): ConfigurationModel;
+export interface ConfigRegistry {
+	registerConfig(node: ConfigNode): void;
+	getConfigModel(): ConfigModel;
 	getSchema(): z.ZodType<Record<string, unknown>>;
 }
 
-class ConfigurationRegistry implements IConfigurationRegistry {
-	private readonly nodes: IConfigurationNode[] = [];
+class CoreConfigRegistry implements ConfigRegistry {
+	private readonly nodes: ConfigNode[] = [];
 
-	registerConfiguration(node: IConfigurationNode): void {
+	registerConfig(node: ConfigNode): void {
 		this.nodes.push(node);
 	}
 
-	getConfigurationModel(): ConfigurationModel {
+	getConfigModel(): ConfigModel {
 		const defaults = this.nodes.reduce(
 			(acc, node) =>
 				mergeDeep<Record<string, unknown>>(acc, node.defaults),
 			{}
 		);
-		return new ConfigurationModel(defaults);
+		return new ConfigModel(defaults);
 	}
 
 	getSchema(): z.ZodType<Record<string, unknown>> {
@@ -44,4 +44,4 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 	}
 }
 
-Registry.add(Extensions.Configuration, new ConfigurationRegistry());
+Registry.add(Extensions.Config, new CoreConfigRegistry());

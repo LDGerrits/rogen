@@ -8,7 +8,7 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Sequencer } from "../../base/async.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { ConfigService } from "../../platform/config/config-service.js";
+import { CoreConfigService } from "../../platform/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 
 export class WatchCommand implements Command {
@@ -18,7 +18,7 @@ export class WatchCommand implements Command {
 		private readonly logService: LogService,
 		private readonly watcher: Watcher,
 		private readonly reconciliationService: ReconciliationService,
-		private readonly configService: ConfigService,
+		private readonly configService: CoreConfigService,
 		private readonly environmentService: EnvironmentService
 	) {}
 
@@ -46,8 +46,8 @@ export class WatchCommand implements Command {
 			...sourcePaths,
 		]);
 
-		this.configService.onDidChangeConfiguration(() => {
-			this.logService.info("Configuration updated successfully.");
+		this.configService.onDidChangeConfig(() => {
+			this.logService.info("Config updated successfully.");
 			this.triggerRebuild();
 		});
 
@@ -63,11 +63,11 @@ export class WatchCommand implements Command {
 
 				if (configChanged) {
 					this.logService.info(
-						"Configuration change detected. Reloading..."
+						"Config change detected. Reloading..."
 					);
 
 					try {
-						await this.configService.reloadConfiguration();
+						await this.configService.reloadConfig();
 					} catch (error) {
 						this.logService.warn(
 							`Invalid configuration change ignored: ${error instanceof Error ? error.message : String(error)}`

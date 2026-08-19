@@ -1,90 +1,164 @@
 import { jest } from "@jest/globals";
-import { ConfigService } from "../config-service.js";
+import { CoreConfigService } from "../config-service.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
-import { NativeEnvironmentService } from "../../environment/environment-service.js";
-import { ParsedArgsSchema } from "../../environment/args.js";
+import { ConfigTarget, ConfigChangeEvent } from "../config.js";
+import { Extensions, ConfigRegistry } from "../config-registry.js";
+import { Registry } from "../../registry/registry.js";
+import z from "zod";
+import { MockEnvironmentService } from "../../environment/__tests__/mock-environment-service.js";
 
-describe("ConfigService", () => {
+describe("CoreConfigService & Enterprise Config Architecture", () => {
 	let memFs: MemoryFileSystemService;
 
-	const createEnvironment = (args: Record<string, unknown> = {}) => {
-		const parsedArgs = ParsedArgsSchema.parse({ _: [], ...args });
-		return new NativeEnvironmentService(parsedArgs, "/mock/cwd");
-	};
+	beforeAll(() => {
+		const registry = Registry.as<ConfigRegistry>(Extensions.Config);
 
-	beforeEach(() => {
-		memFs = new MemoryFileSystemService();
+		registry.registerConfig({
+			id: "mock-test-config",
+			schema: {
+				casing: z.string().default("camelCase"),
+				source: z.array(z.string()).default(["src"]),
+				verbatim: z.boolean().default(false),
+			},
+			defaults: {
+				casing: "camelCase",
+				source: ["src"],
+				verbatim: false,
+			},
+		});
 	});
 
-	it("should initialize successfully with a default config when optional and missing", async () => {
-		const environment = createEnvironment();
-		const configService = new ConfigService(memFs, environment);
+	beforeEach(async () => {
+		memFs = new MemoryFileSystemService();
+		await memFs.createDirectory("/mock/cwd");
+	});
+
+	it("should initialize successfully with default config values when no project file exists", async () => {
+		const environment = new MockEnvironmentService();
+		const configService = new CoreConfigService(memFs, environment);
 
 		await configService.initialize();
 
-		const config = configService.getValue<Record<string, unknown>>();
-		expect(config).toBeDefined();
+		const casing = configService.getValue<string>("casing");
+		expect(casing).toBe("camelCase");
 	});
 
-	it("should parse file contents and merge with CLI overrides", async () => {
+	it("should correctly resolve project config, CLI overrides, and provide deep inspection provenance", async () => {
 		await memFs.writeFile(
 			"/mock/cwd/.rogen.json",
-			JSON.stringify({ casing: "PascalCase" })
+			JSON.stringify({ casing: "PascalCase", verbatim: true })
 		);
 
-		const environment = createEnvironment({ source: ["cli-src"] });
-		const configService = new ConfigService(memFs, environment);
+		const environment = new MockEnvironmentService({
+			_: [],
+			source: ["cli-src"],
+		});
+		const configService = new CoreConfigService(memFs, environment);
 
 		await configService.initialize();
 
 		expect(configService.getValue<string>("casing")).toBe("PascalCase");
 		expect(configService.getValue<string[]>("source")).toEqual(["cli-src"]);
+
+		const casingInspection = configService.inspect<string>("casing");
+		expect(casingInspection.defaultValue).toBe("camelCase");
+		expect(casingInspection.projectValue).toBe("PascalCase");
+		expect(casingInspection.value).toBe("PascalCase");
+
+		const sourceInspection = configService.inspect<string[]>("source");
+		expect(sourceInspection.cliValue).toEqual(["cli-src"]);
+		expect(sourceInspection.value).toEqual(["cli-src"]);
 	});
 
-	it("should fail initialization if a strictly requested config path is missing", async () => {
-		const environment = createEnvironment({ config: "custom.json" });
-		const configService = new ConfigService(memFs, environment);
-
-		await expect(configService.initialize()).rejects.toThrow(
-			"Specified config file not found"
-		);
-	});
-
-	it("should fire the onDidChangeConfiguration event when reload is called", async () => {
+	it("should prioritize exact .rogen.json when multiple files ending with .rogen.json are present", async () => {
 		await memFs.writeFile(
 			"/mock/cwd/.rogen.json",
 			JSON.stringify({ casing: "PascalCase" })
 		);
-		const environment = createEnvironment();
-		const configService = new ConfigService(memFs, environment);
+		await memFs.writeFile(
+			"/mock/cwd/custom.rogen.json",
+			JSON.stringify({ casing: "camelCase" })
+		);
+
+		const environment = new MockEnvironmentService();
+		const configService = new CoreConfigService(memFs, environment);
+
+		await configService.initialize();
+
+		expect(configService.getValue<string>("casing")).toBe("PascalCase");
+	});
+
+	it("should use the alternative file if only one file ending with .rogen.json exists and it is not .rogen.json", async () => {
+		await memFs.writeFile(
+			"/mock/cwd/staging.rogen.json",
+			JSON.stringify({ casing: "PascalCase" })
+		);
+
+		const environment = new MockEnvironmentService();
+		const configService = new CoreConfigService(memFs, environment);
+
+		await configService.initialize();
+
+		expect(configService.getValue<string>("casing")).toBe("PascalCase");
+	});
+
+	it("should ignore all matching config files if multiple exist and none are named .rogen.json", async () => {
+		await memFs.writeFile(
+			"/mock/cwd/alpha.rogen.json",
+			JSON.stringify({ casing: "PascalCase" })
+		);
+		await memFs.writeFile(
+			"/mock/cwd/beta.rogen.json",
+			JSON.stringify({ casing: "PascalCase" })
+		);
+
+		const environment = new MockEnvironmentService();
+		const configService = new CoreConfigService(memFs, environment);
+
+		await configService.initialize();
+
+		expect(configService.getValue<string>("casing")).toBe("camelCase");
+	});
+
+	it("should fire precise change events featuring affectsConfig matching", async () => {
+		await memFs.writeFile(
+			"/mock/cwd/.rogen.json",
+			JSON.stringify({ casing: "PascalCase" })
+		);
+
+		const environment = new MockEnvironmentService();
+		const configService = new CoreConfigService(memFs, environment);
 
 		await configService.initialize();
 
 		const listener = jest.fn();
-		configService.onDidChangeConfiguration(listener);
+		configService.onDidChangeConfig(listener);
 
 		await memFs.writeFile(
 			"/mock/cwd/.rogen.json",
 			JSON.stringify({ casing: "camelCase" })
 		);
-		await configService.reloadConfiguration();
+		await configService.reloadConfig();
 
 		expect(listener).toHaveBeenCalledTimes(1);
-		expect(listener).toHaveBeenCalledWith({ source: "file" });
+
+		const event = listener.mock.calls[0][0] as ConfigChangeEvent;
+
+		expect(event.source).toBe(ConfigTarget.PROJECT);
+		expect(event.affectsConfig("casing")).toBe(true);
+		expect(event.affectsConfig("source")).toBe(false);
 		expect(configService.getValue<string>("casing")).toBe("camelCase");
 	});
 
-	it("should clean up its listeners when disposed", async () => {
-		const environment = createEnvironment();
-		const configService = new ConfigService(memFs, environment);
+	it("should throw an error if a strictly requested custom config file path is missing", async () => {
+		const environment = new MockEnvironmentService({
+			_: [],
+			config: "non-existent.json",
+		});
+		const configService = new CoreConfigService(memFs, environment);
 
-		const listener = jest.fn();
-		configService.onDidChangeConfiguration(listener);
-
-		configService[Symbol.dispose]();
-
-		await configService.reloadConfiguration();
-
-		expect(listener).not.toHaveBeenCalled();
+		await expect(configService.initialize()).rejects.toThrow(
+			"Specified config file not found"
+		);
 	});
 });

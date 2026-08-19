@@ -2,13 +2,13 @@ import { Command } from "../command.js";
 import { Result, ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
-import { ConfigService } from "../../platform/config/config-service.js";
+import { CoreConfigService } from "../../platform/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 
 export class BuildCommand implements Command {
 	constructor(
 		private readonly logService: LogService,
-		private readonly configService: ConfigService
+		private readonly configService: CoreConfigService
 	) {}
 
 	async execute(_args: ParsedArgs): Promise<Result<void, Error>> {
