@@ -1,20 +1,45 @@
 {
-	"name": "rogen",
-	"version": "1.4.0",
-	"description": "A tool for feature-based folder structures with Rojo.",
+	"name": "@ldgerrits/rogen",
+	"version": "2.0.0",
+	"description": "A CLI tool that enables feature-based architecture for Roblox",
+	"publishConfig": {
+		"access": "public"
+	},
+	"homepage": "https://rogen-playfully.vercel.app/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/LDGerrits/rogen.git"
+	},
+	"keywords": [
+		"roblox",
+		"organization",
+		"feature-based architecture"
+	],
+	"author": "ldgerrits",
+	"license": "MIT",
 	"type": "module",
+	"workspaces": [
+		"docs"
+	],
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE.md"
+	],
 	"scripts": {
+		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"build": "tsc",
+		"bundle": "esbuild bin/rogen.ts --bundle --platform=node --format=cjs --external:*.node --outfile=dist/bundle.cjs",
+		"prepublishOnly": "npm run clean && npm run build && npm run bundle",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
-		"bundle": "esbuild bin/rogen.ts --bundle --platform=node --format=cjs --external:*.node --outfile=dist/bundle.cjs",
 		"release:local": "npm run bundle && npx pkg dist/bundle.cjs --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --out-path releases/"
 	},
-	"main": "dist/src/index.js",
+	"main": "dist/index.js",
 	"bin": {
-		"rogen": "./dist/bin/rogen.js"
+		"rogen": "dist/bundle.cjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -31,7 +56,11 @@
 	},
 	"dependencies": {
 		"chokidar": "^3.6.0",
-		"picomatch": "^4.0.5",
-		"zod": "^4.4.3"
+		"picomatch": "^4.0.5"
+	},
+	"allowScripts": {
+		"esbuild@0.28.1": true,
+		"sharp@0.34.5": true,
+		"unrs-resolver@1.12.2": true
 	}
 }
