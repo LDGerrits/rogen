@@ -34,18 +34,9 @@ export class ConfigChangeEvent {
 
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
-
 	readonly onDidChangeConfig: Event<ConfigChangeEvent>;
 
 	getValue<T>(section?: string): T;
-
-	/**
-	 * Inspects a value to determine exactly which layer provided it.
-	 */
 	inspect<T>(section: string): ConfigValue<T>;
-
-	/**
-	 * Reloads the config file and recalculates the merged model.
-	 */
 	reloadConfig(): Promise<void>;
 }

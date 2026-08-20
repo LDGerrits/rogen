@@ -33,10 +33,6 @@ export class DefaultConfig extends AbstractDisposable implements ConfigLoader {
 		this._configurationModel = this.registry.getConfigModel();
 		return this.configurationModel;
 	}
-
-	getSchema() {
-		return this.registry.getSchema();
-	}
 }
 
 export class CliConfig extends AbstractDisposable implements ConfigLoader {

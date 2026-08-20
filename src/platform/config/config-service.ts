@@ -1,4 +1,3 @@
-import { ConfigChangeEvent, ConfigService, ConfigTarget } from "./config.js";
 import { Emitter, Event } from "../../base/event.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Config, ConfigValue, ConfigModel } from "./config-models.js";
@@ -6,6 +5,7 @@ import { FileSystemService, FileType } from "../fs/file-system-service.js";
 import { EnvironmentService } from "../environment/environment-service.js";
 import { DefaultConfig, CliConfig, ProjectConfig } from "./configs.js";
 import path from "path";
+import { ConfigChangeEvent, ConfigService, ConfigTarget } from "./config.js";
 
 export class CoreConfigService
 	extends AbstractDisposable
@@ -97,24 +97,6 @@ export class CoreConfigService
 			this.cliConfig.configurationModel,
 			this.memoryModel
 		);
-
-		const validatedData = this.validateConfig();
-		this.config.setValidatedModel(new ConfigModel(validatedData));
-	}
-
-	private validateConfig(): Record<string, unknown> {
-		const schema = this.defaultConfig.getSchema();
-		const contents = this.config.getConsolidatedModel().contents;
-		const result = schema.safeParse(contents);
-
-		if (!result.success) {
-			const issues = result.error.issues
-				.map((i) => `${i.path.join(".")}: ${i.message}`)
-				.join(", ");
-			throw new Error(`Config validation failed: ${issues}`);
-		}
-
-		return result.data;
 	}
 
 	private async discoverProjectConfigPath(): Promise<string | undefined> {

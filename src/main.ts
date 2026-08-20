@@ -13,6 +13,7 @@ import { ReconciliationService } from "./platform/watcher/reconciliation-service
 import { parseArgs } from "./platform/environment/args.js";
 import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
 import { CoreConfigService } from "./platform/config/config-service.js";
+import "./domain/config/config.js";
 
 export default function run(): void {
 	main().catch((error) => {

@@ -38,7 +38,6 @@ export interface ConfigValue<T> {
 
 export class Config {
 	private consolidatedModel: ConfigModel | null = null;
-	private validatedModel: ConfigModel | null = null;
 
 	constructor(
 		private readonly defaultConfig: ConfigModel,
@@ -47,13 +46,7 @@ export class Config {
 		private readonly memoryConfig: ConfigModel
 	) {}
 
-	setValidatedModel(model: ConfigModel): void {
-		this.validatedModel = model;
-	}
-
 	getConsolidatedModel(): ConfigModel {
-		if (this.validatedModel) return this.validatedModel;
-
 		if (!this.consolidatedModel) {
 			const merged = mergeDeep<Record<string, unknown>>(
 				{},

@@ -4,7 +4,6 @@ import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js"
 import { ConfigTarget, ConfigChangeEvent } from "../config.js";
 import { Extensions, ConfigRegistry } from "../config-registry.js";
 import { Registry } from "../../registry/registry.js";
-import z from "zod";
 import { MockEnvironmentService } from "../../environment/__tests__/mock-environment-service.js";
 
 describe("CoreConfigService & Enterprise Config Architecture", () => {
@@ -15,15 +14,21 @@ describe("CoreConfigService & Enterprise Config Architecture", () => {
 
 		registry.registerConfig({
 			id: "mock-test-config",
-			schema: {
-				casing: z.string().default("camelCase"),
-				source: z.array(z.string()).default(["src"]),
-				verbatim: z.boolean().default(false),
-			},
-			defaults: {
-				casing: "camelCase",
-				source: ["src"],
-				verbatim: false,
+			type: "object",
+			properties: {
+				casing: {
+					type: "string",
+					default: "camelCase",
+				},
+				source: {
+					type: "array",
+					items: { type: "string" },
+					default: ["src"],
+				},
+				verbatim: {
+					type: "boolean",
+					default: false,
+				},
 			},
 		});
 	});
