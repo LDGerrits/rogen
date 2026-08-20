@@ -1976,6 +1976,58 @@ describe("Builder Integration", () => {
 		expect(result.exposedDataFiles).toHaveLength(1);
 		expect(result.exposedDataFiles[0].path).toContain("data.json");
 	});
+
+	it("should correctly handle both parented and non-parented aliases during pre-population", async () => {
+		jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+		(
+			jest.spyOn(fs.promises, "readdir") as jest.Mock<
+				(dir: string) => Promise<any[]>
+			>
+		).mockImplementation(async () => []);
+
+		const targetConfig: Mode = {
+			build: "out",
+			output: "test.project.json",
+			tags: {},
+			globIgnorePaths: [],
+		};
+
+		const baseTree: RojoTree = { name: "test-game", tree: {} };
+
+		const config: Config = {
+			...defaultConfig,
+			source: "src",
+			aliases: {
+				char: "StarterCharacterScripts",
+				first: "ReplicatedFirst",
+				bootstrap: "ReplicatedFirst.Bootstrap",
+			},
+		};
+
+		const env: Environment = {
+			isTsProject: false,
+			isDarkluaProject: false,
+		};
+
+		const result = await build(
+			targetConfig,
+			baseTree,
+			config,
+			env,
+			["src"],
+			{},
+			process.cwd()
+		);
+
+		const resultTree = result.tree.tree as any;
+
+		expect(resultTree.StarterCharacterScripts).toBeUndefined();
+		expect(resultTree.StarterPlayer?.StarterCharacterScripts).toBeDefined();
+
+		expect(resultTree.ReplicatedFirst).toBeDefined();
+		expect(resultTree.ReplicatedFirst.Bootstrap).toBeDefined();
+	});
 });
 
 describe("unwrap Routing Overrides", () => {

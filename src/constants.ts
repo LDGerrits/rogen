@@ -1,7 +1,7 @@
 import { RoutingMaps } from "./route.js";
 import { Config, RojoTree } from "./types.js";
 
-export const version = "1.4.3";
+export const version = "1.4.4";
 
 export const dataExtensions = new Set([
 	".csv",

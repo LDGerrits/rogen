@@ -223,6 +223,15 @@ export async function build(
 			if (typeof aliasPath === "string") {
 				const parts = aliasPath.split(".");
 				let current = rojoTree.tree;
+
+				// Ensure the parent container is created if needed
+				if (parts.length > 0 && serviceParents[parts[0]]) {
+					current = getOrCreateNode(
+						current,
+						serviceParents[parts[0]]
+					);
+				}
+
 				for (const part of parts) {
 					current = getOrCreateNode(current, part);
 				}
