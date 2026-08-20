@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import "../../../domain/config/config.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResultError } from "../../../base/result.js";
 import { InitCommand } from "../init-command.js";

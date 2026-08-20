@@ -7,8 +7,12 @@ import { ErrorUtils } from "../../base/errors.js";
 import { RojoNode } from "../../domain/rojo/rojo-project.js";
 import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { defaultConfig } from "../../domain/config/config.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { Registry } from "../../platform/registry/registry.js";
+import {
+	Extensions,
+	ConfigRegistry,
+} from "../../platform/config/config-registry.js";
 
 export class InitCommand implements Command {
 	constructor(
@@ -35,15 +39,24 @@ export class InitCommand implements Command {
 
 		await this.workspaceService.injectPackages(baseTreeNode, toolchain);
 
-		const smartConfig = mergeDeep<Record<string, unknown>>(defaultConfig, {
-			template: {
-				name: path.basename(cwd) || "roblox-game",
-				tree: baseTreeNode,
-				globIgnorePaths: toolchain.isTs
-					? ["**/package.json", "**/tsconfig.json"]
-					: [],
+		const registry = Registry.as<ConfigRegistry>(Extensions.Config);
+		const defaultConfig = registry.getConfigModel().contents;
+
+		const smartConfig = mergeDeep<Record<string, unknown>>(
+			{
+				$schema: "https://ldgerrits.github.io/rogen/schema.json",
 			},
-		});
+			defaultConfig,
+			{
+				template: {
+					name: path.basename(cwd) || "roblox-game",
+					tree: baseTreeNode,
+					globIgnorePaths: toolchain.isTs
+						? ["**/package.json", "**/tsconfig.json"]
+						: [],
+				},
+			}
+		);
 
 		// Prune config
 		if (toolchain.isTs) delete smartConfig.luau;
