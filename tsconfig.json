@@ -4,14 +4,15 @@
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
-		"rootDir": "./",
+		"rootDir": "./src",
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"strict": true,
 		"skipLibCheck": true,
 		"types": ["jest", "node"],
-		"isolatedModules": true
+		"isolatedModules": true,
+		"experimentalDecorators": true
 	},
-	"include": ["src/**/*", "bin/**/*"],
-	"exclude": ["node_modules", "dist", "examples"]
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist"]
 }
