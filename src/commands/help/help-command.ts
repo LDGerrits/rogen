@@ -10,23 +10,43 @@ export class HelpCommand implements Command {
 Rogen - Feature-based architecture for Roblox
 
 Usage:
-  rogen [command] [options]
+  rogen <command> [options]
 
 Commands:
-  init                 Generate a .rogen.json config file
-  build                Build the project
-  watch                Watch the source and build automatically
+  build [profiles...]      Build targeted profiles (default: all)
+  watch [profiles...]      Watch sources and rebuild on change
+  init [name]              Initialize a workspace config (creates <name>.rogen.json)
 
-Options:
-  -c, --config <path>  Specify custom config file
-  -p, --project <path> Specify path to Rojo project
-  -t, --tag <tag>      Activate environment tags
-  -m, --mode <mode>    Override modes (luau, ts, darklua, or custom)
-  -s, --source <path>  Override the directory containing uncompiled code
-  -b, --build <path>   Override output directory for transpiled code
-  -o, --output <path>  Override path of Rojo project file
-  -h, --help           Print help
-  -v, --version        Print version
+Build & Routing options:
+  -p, --project <path>     Override base Rojo project file template
+  -s, --src-dir <path>     Override or add source directory (repeatable)
+  -C, --condition <name>   Activate condition variant (repeatable)
+  -i, --ignore <glob>      Add ignore glob pattern (repeatable)
+  -n, --dry-run            Simulate build and print the resolved Rojo project without saving
+
+Output options (Single-profile only):
+  -d, --out-dir <path>     Override transpilation/artifact output directory
+  -o, --out-file <path>    Override generated Rojo project filename
+
+Init options:
+  -f, --force              Overwrite existing configuration file without prompting
+
+Logging options:
+  -q, --quiet              Suppress all non-error output
+  -v, --verbose            Print detailed compilation and routing resolution steps
+      --trace              Print exhaustive engine internals, file reconciliation, and timing
+
+Global options:
+  -c, --config <path>      Path to custom configuration file
+  -h, --help               Print help (or 'rogen help <command>' for details)
+  -V, --version            Print version information
+
+Examples:
+  $ rogen watch dev                  # Watch the 'dev' profile and live-update the Rojo project
+  $ rogen watch dev -C mock          # Watch 'dev' and additionally activate the 'mock' condition
+  $ rogen build luau darklua         # Compile both 'luau' and 'darklua' profiles in sequence
+  $ rogen build prod --dry-run       # Simulate a 'prod' build and inspect the generated project tree
+  $ rogen init lobby --force         # Force initialize a new 'lobby.rogen.json' configuration
 		`);
 
 		return ok(undefined);

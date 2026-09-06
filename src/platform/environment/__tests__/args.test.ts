@@ -2,11 +2,18 @@ import { parseArgs } from "../args.js";
 
 describe("CLI Argument Parsing", () => {
 	it("should parse full flags correctly alongside a command", () => {
-		const args = ["build", "--mode", "ts", "--source", "my_src", "--quiet"];
+		const args = [
+			"build",
+			"--profile",
+			"prod",
+			"--source",
+			"my_src",
+			"--quiet",
+		];
 		const { command, options } = parseArgs(args).unwrap();
 
 		expect(command).toBe("build");
-		expect(options.mode).toEqual(["ts"]);
+		expect(options.profile).toEqual("prod");
 		expect(options.source).toEqual(["my_src"]);
 		expect(options.quiet).toBe(true);
 	});

@@ -9,12 +9,9 @@ export interface ParsedArgs {
 	init?: boolean;
 	watch?: boolean;
 	config?: string;
-	mode?: string[];
+	profile?: string;
 	source?: string[];
 	env?: string[];
-	template?: string;
-	build?: string;
-	output?: string;
 	verbose?: boolean;
 	quiet?: boolean;
 	trace?: boolean;
@@ -32,12 +29,9 @@ export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 		init: { type: "boolean", short: "i" },
 		watch: { type: "boolean", short: "w" },
 		config: { type: "string", short: "c" },
-		mode: { type: "string", short: "m", multiple: true },
+		profile: { type: "string", short: "p" },
 		source: { type: "string", short: "s", multiple: true },
 		env: { type: "string", short: "e", multiple: true },
-		template: { type: "string", short: "t" },
-		build: { type: "string", short: "b" },
-		output: { type: "string", short: "o" },
 		verbose: { type: "boolean" },
 		quiet: { type: "boolean", short: "q" },
 		trace: { type: "boolean" },
@@ -56,36 +50,8 @@ export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 		else if (values.help) command = "help";
 		else if (positionals.length > 0) command = positionals[0].toLowerCase();
 
-		const parsedArgs: ParsedArgs = {
-			...values,
-			_: positionals || [],
-		};
-
-		return ok({ command, options: parsedArgs });
+		return ok({ command, options: { ...values, _: positionals || [] } });
 	} catch (error) {
-		const rawError = error as Record<string, unknown>;
-		if (rawError.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
-			const cleanMsg = (error as Error).message.replace(
-				/^TypeError \[ERR_PARSE_ARGS_UNKNOWN_OPTION\]:\s*/,
-				""
-			);
-			return err(
-				new ParseArgumentError(
-					`${cleanMsg}\nRun 'rogen --help' to see available commands.`,
-					rawError.code as string
-				)
-			);
-		}
 		return err(ErrorUtils.fromUnknown(error));
-	}
-}
-
-class ParseArgumentError extends Error {
-	constructor(
-		message: string,
-		public readonly code: string
-	) {
-		super(message);
-		this.name = "ParseArgumentError";
 	}
 }

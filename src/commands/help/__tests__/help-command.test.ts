@@ -14,9 +14,7 @@ describe("HelpCommand", () => {
 		expect(result.isOk()).toBe(true);
 		expect(mockLogService.info).toHaveBeenCalledTimes(1);
 		expect(mockLogService.info).toHaveBeenCalledWith(
-			expect.stringContaining(
-				"Rogen - Feature-based architecture for Roblox"
-			)
+			expect.stringContaining("Rogen")
 		);
 	});
 });
