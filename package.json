@@ -11,9 +11,16 @@
 		"url": "git+https://github.com/LDGerrits/rogen.git"
 	},
 	"keywords": [
+		"CLI",
 		"roblox",
-		"organization",
-		"feature-based architecture"
+		"rojo",
+		"luau",
+		"roblox-ts",
+		"feature-based",
+		"feature-driven",
+		"feature-sliced",
+		"feature-slices",
+		"domain-driven"
 	],
 	"author": "ldgerrits",
 	"license": "MIT",
