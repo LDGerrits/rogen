@@ -13,6 +13,7 @@ import { ReconciliationService } from "./platform/watcher/reconciliation-service
 import { parseArgs } from "./platform/environment/args.js";
 import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
 import { CoreConfigService } from "./platform/config/config-service.js";
+import { setUnexpectedErrorHandler } from "./base/errors.js";
 import "./domain/config/config.js";
 
 export default function run(): void {
@@ -50,6 +51,9 @@ async function main(): Promise<void> {
 		else if (environment.trace) logService.setLevel(LogLevel.Trace);
 		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
 
+		// Default handler throws async, which would crash `watch`.
+		setUnexpectedErrorHandler((error) => logService.error(error));
+
 		const fileSystemService = new DiskFileSystemService();
 
 		const workspaceService = new WorkspaceService(
@@ -79,7 +83,10 @@ async function main(): Promise<void> {
 		const registry = new CommandRegistry();
 
 		registry.register("help", () => new HelpCommand(logService));
-		registry.register("version", () => new VersionCommand(logService));
+		registry.register(
+			"version",
+			() => new VersionCommand(logService, fileSystemService)
+		);
 
 		registry.register(
 			"init",
