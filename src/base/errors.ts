@@ -59,7 +59,18 @@ export function setUnexpectedErrorHandler(
  * listener throwing during `Emitter.fire`. Goes through the replaceable
  * handler above instead of writing to the console directly, so callers can
  * control where these errors end up.
+ *
+ * The handler itself is never allowed to throw back into the caller: this
+ * is typically invoked from inside `Emitter.fire`'s per-listener catch
+ * block, where a synchronous throw here would abort delivery to whatever
+ * listeners are still queued, defeating the isolation `fire` exists to
+ * guarantee. A misbehaving handler is instead surfaced asynchronously,
+ * the same way the default handler reports an error with nothing installed.
  */
 export function onUnexpectedError(error: unknown): void {
-	unexpectedErrorHandler(ErrorUtils.fromUnknown(error));
+	try {
+		unexpectedErrorHandler(ErrorUtils.fromUnknown(error));
+	} catch (handlerError) {
+		defaultUnexpectedErrorHandler(ErrorUtils.fromUnknown(handlerError));
+	}
 }

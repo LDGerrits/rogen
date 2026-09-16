@@ -9,29 +9,33 @@ describe("onUnexpectedError / setUnexpectedErrorHandler", () => {
 		const handler = jest.fn();
 		const restore = setUnexpectedErrorHandler(handler);
 
-		onUnexpectedError(new Error("boom"));
+		try {
+			onUnexpectedError(new Error("boom"));
 
-		expect(handler).toHaveBeenCalledTimes(1);
-		expect(handler).toHaveBeenCalledWith(
-			expect.objectContaining({ message: "boom" })
-		);
-		expect(consoleSpy).not.toHaveBeenCalled();
-
-		setUnexpectedErrorHandler(restore);
-		consoleSpy.mockRestore();
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ message: "boom" })
+			);
+			expect(consoleSpy).not.toHaveBeenCalled();
+		} finally {
+			setUnexpectedErrorHandler(restore);
+			consoleSpy.mockRestore();
+		}
 	});
 
 	it("should normalize a non-Error value with ErrorUtils before handing it to the handler", () => {
 		const handler = jest.fn();
 		const restore = setUnexpectedErrorHandler(handler);
 
-		onUnexpectedError("something went wrong");
+		try {
+			onUnexpectedError("something went wrong");
 
-		expect(handler).toHaveBeenCalledWith(
-			expect.objectContaining({ message: "something went wrong" })
-		);
-
-		setUnexpectedErrorHandler(restore);
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ message: "something went wrong" })
+			);
+		} finally {
+			setUnexpectedErrorHandler(restore);
+		}
 	});
 
 	it("should still surface the error by throwing asynchronously by default, with nothing installed", () => {
@@ -52,10 +56,31 @@ describe("onUnexpectedError / setUnexpectedErrorHandler", () => {
 		const second = jest.fn();
 
 		const original = setUnexpectedErrorHandler(first);
-		const previous = setUnexpectedErrorHandler(second);
 
-		expect(previous).toBe(first);
+		try {
+			const previous = setUnexpectedErrorHandler(second);
+			expect(previous).toBe(first);
+		} finally {
+			setUnexpectedErrorHandler(original);
+		}
+	});
 
-		setUnexpectedErrorHandler(original);
+	it("should surface a throwing handler asynchronously instead of propagating out of onUnexpectedError", () => {
+		jest.useFakeTimers();
+		const handlerError = new Error("handler blew up");
+		const restore = setUnexpectedErrorHandler(() => {
+			throw handlerError;
+		});
+
+		try {
+			expect(() =>
+				onUnexpectedError(new Error("original failure"))
+			).not.toThrow();
+
+			expect(() => jest.runAllTimers()).toThrow(handlerError);
+		} finally {
+			setUnexpectedErrorHandler(restore);
+			jest.useRealTimers();
+		}
 	});
 });

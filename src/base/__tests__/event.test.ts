@@ -72,22 +72,26 @@ describe("Emitter and Event", () => {
 		};
 		const goodListener = jest.fn();
 
-		emitter.event(badListener);
-		emitter.event(goodListener);
+		try {
+			emitter.event(badListener);
+			emitter.event(goodListener);
 
-		expect(() => emitter.fire()).not.toThrow();
-		expect(goodListener).toHaveBeenCalledTimes(1);
-		expect(handler).toHaveBeenCalledTimes(1);
-		expect(handler).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: "Error in event listener",
-				cause: expect.objectContaining({ message: "Poison Pill" }),
-			})
-		);
-		expect(consoleSpy).not.toHaveBeenCalled();
-
-		setUnexpectedErrorHandler(restore);
-		consoleSpy.mockRestore();
+			expect(() => emitter.fire()).not.toThrow();
+			expect(goodListener).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: "Error in event listener",
+					cause: expect.objectContaining({
+						message: "Poison Pill",
+					}),
+				})
+			);
+			expect(consoleSpy).not.toHaveBeenCalled();
+		} finally {
+			setUnexpectedErrorHandler(restore);
+			consoleSpy.mockRestore();
+		}
 	});
 
 	it("should route a rejecting promise returned from a listener through the unexpected error handler", async () => {
@@ -97,22 +101,24 @@ describe("Emitter and Event", () => {
 		const emitter = new Emitter<void>();
 		const rejection = new Error("async failure");
 
-		emitter.event(() => Promise.reject(rejection));
-		emitter.fire();
+		try {
+			emitter.event(() => Promise.reject(rejection));
+			emitter.fire();
 
-		// Let the rejection's .catch() microtask run.
-		await Promise.resolve();
-		await Promise.resolve();
+			// Let the rejection's .catch() microtask run.
+			await Promise.resolve();
+			await Promise.resolve();
 
-		expect(handler).toHaveBeenCalledTimes(1);
-		expect(handler).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: "Unhandled promise rejection in event listener",
-				cause: rejection,
-			})
-		);
-
-		setUnexpectedErrorHandler(restore);
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: "Unhandled promise rejection in event listener",
+					cause: rejection,
+				})
+			);
+		} finally {
+			setUnexpectedErrorHandler(restore);
+		}
 	});
 
 	it("should correctly handle sparse array compaction when many listeners are removed", () => {
