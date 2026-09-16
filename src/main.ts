@@ -13,6 +13,7 @@ import { ReconciliationService } from "./platform/watcher/reconciliation-service
 import { parseArgs } from "./platform/environment/args.js";
 import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
 import { CoreConfigService } from "./platform/config/config-service.js";
+import { setUnexpectedErrorHandler } from "./base/errors.js";
 import "./domain/config/config.js";
 
 export default function run(): void {
@@ -49,6 +50,12 @@ async function main(): Promise<void> {
 		if (environment.quiet) logService.setLevel(LogLevel.Off);
 		else if (environment.trace) logService.setLevel(LogLevel.Trace);
 		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
+
+		// Route errors that surface outside a Result (e.g. a listener
+		// throwing during Emitter.fire) through the log service instead of
+		// the base default, which throws asynchronously and would crash a
+		// long-running command like `watch`.
+		setUnexpectedErrorHandler((error) => logService.error(error));
 
 		const fileSystemService = new DiskFileSystemService();
 

@@ -5,42 +5,36 @@ interface PackageJson {
 	version?: string;
 }
 
+/**
+ * Walks up from `startDir` looking for the nearest `package.json` and
+ * returns its `version`, or `"unknown"` if none is found or it can't be
+ * read.
+ */
 export async function getVersion(
 	fileSystemService: FileSystemService,
 	startDir: string
 ): Promise<string> {
 	try {
-		const projectRoot = await findInternalPackageRoot(
-			fileSystemService,
-			startDir
-		);
-		if (!projectRoot) return "unknown";
+		let currentDir = startDir;
 
-		const packageJsonPath = path.join(projectRoot, "package.json");
-		const pkg =
-			await fileSystemService.readJson<PackageJson>(packageJsonPath);
-		return pkg.version || "unknown";
+		for (;;) {
+			const packageJsonPath = path.join(currentDir, "package.json");
+
+			if (await fileSystemService.exists(packageJsonPath)) {
+				const pkg =
+					await fileSystemService.readJson<PackageJson>(
+						packageJsonPath
+					);
+				return pkg.version || "unknown";
+			}
+
+			const parentDir = path.dirname(currentDir);
+			if (parentDir === currentDir) break; // reached the filesystem root
+			currentDir = parentDir;
+		}
+
+		return "unknown";
 	} catch {
 		return "unknown";
 	}
-}
-
-async function findInternalPackageRoot(
-	fileSystemService: FileSystemService,
-	startDir: string
-): Promise<string | undefined> {
-	let currentDir = startDir;
-
-	while (currentDir !== path.dirname(currentDir)) {
-		if (
-			await fileSystemService.exists(
-				path.join(currentDir, "package.json")
-			)
-		) {
-			return currentDir;
-		}
-		currentDir = path.dirname(currentDir);
-	}
-
-	return undefined;
 }
