@@ -1,3 +1,5 @@
+import { ErrorUtils } from "../../base/errors.js";
+
 export enum LogLevel {
 	Off = 0,
 	Error = 1,
@@ -40,12 +42,12 @@ export abstract class AbstractLogService implements LogService {
 	protected format(message: string | Error, args: unknown[]): string {
 		let result =
 			message instanceof Error
-				? message.stack || message.message
+				? this.formatError(message)
 				: message;
 
 		for (const arg of args) {
 			if (arg instanceof Error) {
-				result += " " + (arg.stack || arg.message);
+				result += " " + this.formatError(arg);
 			} else if (typeof arg === "object") {
 				try {
 					result += " " + JSON.stringify(arg);
@@ -57,6 +59,24 @@ export abstract class AbstractLogService implements LogService {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Stringifies an error and walks its `cause` chain, so wrapping an error
+	 * with `{ cause }` (as `Emitter.fire` does when reporting a listener
+	 * failure) doesn't silently drop the original failure from the log.
+	 */
+	private formatError(error: Error): string {
+		const parts = [error.stack || error.message];
+
+		let cause = error.cause;
+		while (cause !== undefined) {
+			const causeError = ErrorUtils.fromUnknown(cause);
+			parts.push(`Caused by: ${causeError.stack || causeError.message}`);
+			cause = causeError.cause;
+		}
+
+		return parts.join("\n");
 	}
 
 	abstract error(message: string | Error, ...args: unknown[]): void;
