@@ -12,6 +12,9 @@ export interface ParsedArgs {
 	profile?: string;
 	source?: string[];
 	env?: string[];
+	build?: string;
+	output?: string;
+	mode?: string[];
 	verbose?: boolean;
 	quiet?: boolean;
 	trace?: boolean;
@@ -32,6 +35,9 @@ export function parseArgs(args: string[]): Result<ParsedCli, Error> {
 		profile: { type: "string", short: "p" },
 		source: { type: "string", short: "s", multiple: true },
 		env: { type: "string", short: "e", multiple: true },
+		build: { type: "string" },
+		output: { type: "string" },
+		mode: { type: "string", multiple: true },
 		verbose: { type: "boolean" },
 		quiet: { type: "boolean", short: "q" },
 		trace: { type: "boolean" },

@@ -7,6 +7,8 @@ import { FileChange } from "../fs/file-events.js";
 import { Watcher, WatchRequest } from "./watcher.js";
 
 export class MemoryWatcher implements Watcher {
+	declare readonly _serviceBrand: undefined;
+
 	private readonly _onDidChangeFile = new Emitter<FileChange[]>();
 	readonly onDidChangeFile: Event<FileChange[]> = this._onDidChangeFile.event;
 

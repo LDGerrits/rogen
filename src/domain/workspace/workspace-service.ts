@@ -12,12 +12,12 @@ export interface ToolchainProfile {
 
 export class WorkspaceService {
 	constructor(
-		private readonly NativeEnvironmentService: EnvironmentService,
+		private readonly environmentService: EnvironmentService,
 		private readonly fileSystem: FileSystemService
 	) {}
 
 	async detectToolchain(): Promise<ToolchainProfile> {
-		const cwd = this.NativeEnvironmentService.cwd;
+		const cwd = this.environmentService.cwd;
 
 		const [isTs, isWally, isPesde, hasDarkluaJson, hasDarkluaJson5] =
 			await Promise.all([
@@ -40,7 +40,7 @@ export class WorkspaceService {
 		rootNode: RojoNode,
 		toolchain: ToolchainProfile
 	): Promise<void> {
-		const cwd = this.NativeEnvironmentService.cwd;
+		const cwd = this.environmentService.cwd;
 
 		if (toolchain.isTs) {
 			const [hasRbxts, hasFlamework, hasRbxtsJs] = await Promise.all([
