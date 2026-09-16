@@ -79,7 +79,10 @@ async function main(): Promise<void> {
 		const registry = new CommandRegistry();
 
 		registry.register("help", () => new HelpCommand(logService));
-		registry.register("version", () => new VersionCommand(logService));
+		registry.register(
+			"version",
+			() => new VersionCommand(logService, fileSystemService)
+		);
 
 		registry.register(
 			"init",

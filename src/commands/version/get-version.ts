@@ -1,30 +1,46 @@
-import { createRequire } from "module";
 import path from "path";
-import * as fs from "fs";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-export function getVersion(): string {
+interface PackageJson {
+	version?: string;
+}
+
+export async function getVersion(
+	fileSystemService: FileSystemService,
+	startDir: string
+): Promise<string> {
 	try {
-		const require = createRequire(import.meta.url);
+		const projectRoot = await findInternalPackageRoot(
+			fileSystemService,
+			startDir
+		);
+		if (!projectRoot) return "unknown";
 
-		const projectRoot = findInternalPackageRoot(import.meta.dirname);
 		const packageJsonPath = path.join(projectRoot, "package.json");
-
-		const pkg = require(packageJsonPath);
+		const pkg =
+			await fileSystemService.readJson<PackageJson>(packageJsonPath);
 		return pkg.version || "unknown";
 	} catch {
 		return "unknown";
 	}
 }
 
-function findInternalPackageRoot(startDir: string): string {
+async function findInternalPackageRoot(
+	fileSystemService: FileSystemService,
+	startDir: string
+): Promise<string | undefined> {
 	let currentDir = startDir;
 
 	while (currentDir !== path.dirname(currentDir)) {
-		if (fs.existsSync(path.join(currentDir, "package.json"))) {
+		if (
+			await fileSystemService.exists(
+				path.join(currentDir, "package.json")
+			)
+		) {
 			return currentDir;
 		}
 		currentDir = path.dirname(currentDir);
 	}
 
-	return startDir;
+	return undefined;
 }
