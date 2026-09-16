@@ -61,6 +61,24 @@ describe("AbstractLogService formatting", () => {
 		consoleSpy.mockRestore();
 	});
 
+	it("should stop at a circular cause instead of hanging", () => {
+		const consoleSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+
+		const logService = new ConsoleLogService();
+		const a = new Error("a");
+		const b = new Error("b", { cause: a });
+		a.cause = b;
+
+		expect(() => logService.error(a)).not.toThrow();
+
+		const [loggedMessage] = consoleSpy.mock.calls[0] as [string];
+		expect(loggedMessage).toContain("[circular]");
+
+		consoleSpy.mockRestore();
+	});
+
 	it("should not append anything for an error with no cause", () => {
 		const consoleSpy = jest
 			.spyOn(console, "error")

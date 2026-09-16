@@ -68,9 +68,16 @@ export abstract class AbstractLogService implements LogService {
 	 */
 	private formatError(error: Error): string {
 		const parts = [error.stack || error.message];
+		const seen = new Set<unknown>([error]);
 
 		let cause = error.cause;
 		while (cause !== undefined) {
+			if (seen.has(cause)) {
+				parts.push("Caused by: [circular]");
+				break;
+			}
+			seen.add(cause);
+
 			const causeError = ErrorUtils.fromUnknown(cause);
 			parts.push(`Caused by: ${causeError.stack || causeError.message}`);
 			cause = causeError.cause;
