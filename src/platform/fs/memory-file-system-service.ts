@@ -23,6 +23,8 @@ function mockFsError(
 }
 
 export class MemoryFileSystemService implements FileSystemService {
+	declare readonly _serviceBrand: undefined;
+
 	private root = new DirectoryNode();
 
 	private readonly _onDidMutateFile = new Emitter<FileChange>();

@@ -8,6 +8,8 @@ export enum LogLevel {
 }
 
 export interface LogService {
+	readonly _serviceBrand: undefined;
+
 	setLevel(level: LogLevel): void;
 	getLevel(): LogLevel;
 
@@ -19,6 +21,8 @@ export interface LogService {
 }
 
 export abstract class AbstractLogService implements LogService {
+	declare readonly _serviceBrand: undefined;
+
 	protected level: LogLevel = LogLevel.Info;
 
 	setLevel(level: LogLevel): void {
@@ -63,6 +67,8 @@ export abstract class AbstractLogService implements LogService {
 }
 
 export class ConsoleLogService extends AbstractLogService {
+	declare readonly _serviceBrand: undefined;
+
 	private readonly colors = {
 		reset: "\x1b[0m",
 		red: "\x1b[31m",
@@ -111,6 +117,8 @@ export class ConsoleLogService extends AbstractLogService {
 }
 
 export class NullLogService implements LogService {
+	declare readonly _serviceBrand: undefined;
+
 	setLevel(_level: LogLevel): void {}
 	getLevel(): LogLevel {
 		return LogLevel.Off;

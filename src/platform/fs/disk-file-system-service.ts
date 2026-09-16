@@ -3,6 +3,8 @@ import * as path from "path";
 import { FileType, FileSystemService } from "./file-system-service.js";
 
 export class DiskFileSystemService implements FileSystemService {
+	declare readonly _serviceBrand: undefined;
+
 	async exists(filePath: string): Promise<boolean> {
 		try {
 			await fs.promises.access(filePath);

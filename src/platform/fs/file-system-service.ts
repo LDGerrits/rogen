@@ -5,6 +5,8 @@ export enum FileType {
 }
 
 export interface FileSystemService {
+	readonly _serviceBrand: undefined;
+
 	exists(filePath: string): Promise<boolean>;
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;

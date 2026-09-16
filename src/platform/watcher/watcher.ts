@@ -7,6 +7,8 @@ export interface WatchRequest {
 }
 
 export interface Watcher {
+	readonly _serviceBrand: undefined;
+
 	readonly onDidChangeFile: Event<FileChange[]>;
 	readonly onDidError: Event<Error>;
 
