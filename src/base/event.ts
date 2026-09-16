@@ -1,4 +1,5 @@
 import { DisposableStore, Disposable } from "./disposable.js";
+import { onUnexpectedError } from "./errors.js";
 
 export interface Event<T> {
 	(listener: (e: T) => void, disposables?: DisposableStore): Disposable;
@@ -43,15 +44,19 @@ export class Emitter<T> implements Disposable {
 			try {
 				const result = listener(event) as unknown;
 				if (result instanceof Promise) {
-					result.catch((err) => {
-						console.error(
-							"Unhandled promise rejection in event listener:",
-							err
+					result.catch((rejection) => {
+						onUnexpectedError(
+							new Error(
+								"Unhandled promise rejection in event listener",
+								{ cause: rejection }
+							)
 						);
 					});
 				}
 			} catch (error) {
-				console.error("Error in event listener:", error);
+				onUnexpectedError(
+					new Error("Error in event listener", { cause: error })
+				);
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import { Emitter } from "../event.js";
 import { DisposableStore } from "../disposable.js";
+import { setUnexpectedErrorHandler } from "../errors.js";
 
 describe("Emitter and Event", () => {
 	it("should notify registered listeners when fired", () => {
@@ -61,6 +62,8 @@ describe("Emitter and Event", () => {
 		const consoleSpy = jest
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
+		const handler = jest.fn();
+		const restore = setUnexpectedErrorHandler(handler);
 
 		const emitter = new Emitter<void>();
 
@@ -74,13 +77,42 @@ describe("Emitter and Event", () => {
 
 		expect(() => emitter.fire()).not.toThrow();
 		expect(goodListener).toHaveBeenCalledTimes(1);
-		expect(consoleSpy).toHaveBeenCalledTimes(1);
-		expect(consoleSpy).toHaveBeenCalledWith(
-			"Error in event listener:",
-			expect.any(Error)
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: "Error in event listener",
+				cause: expect.objectContaining({ message: "Poison Pill" }),
+			})
+		);
+		expect(consoleSpy).not.toHaveBeenCalled();
+
+		setUnexpectedErrorHandler(restore);
+		consoleSpy.mockRestore();
+	});
+
+	it("should route a rejecting promise returned from a listener through the unexpected error handler", async () => {
+		const handler = jest.fn();
+		const restore = setUnexpectedErrorHandler(handler);
+
+		const emitter = new Emitter<void>();
+		const rejection = new Error("async failure");
+
+		emitter.event(() => Promise.reject(rejection));
+		emitter.fire();
+
+		// Let the rejection's .catch() microtask run.
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: "Unhandled promise rejection in event listener",
+				cause: rejection,
+			})
 		);
 
-		consoleSpy.mockRestore();
+		setUnexpectedErrorHandler(restore);
 	});
 
 	it("should correctly handle sparse array compaction when many listeners are removed", () => {
