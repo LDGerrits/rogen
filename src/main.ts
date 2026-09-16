@@ -51,10 +51,7 @@ async function main(): Promise<void> {
 		else if (environment.trace) logService.setLevel(LogLevel.Trace);
 		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
 
-		// Route errors that surface outside a Result (e.g. a listener
-		// throwing during Emitter.fire) through the log service instead of
-		// the base default, which throws asynchronously and would crash a
-		// long-running command like `watch`.
+		// Default handler throws async, which would crash `watch`.
 		setUnexpectedErrorHandler((error) => logService.error(error));
 
 		const fileSystemService = new DiskFileSystemService();

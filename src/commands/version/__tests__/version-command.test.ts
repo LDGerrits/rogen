@@ -5,8 +5,6 @@ import { LogService } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 
 describe("VersionCommand", () => {
-	// getVersion walks up from VersionCommand's own directory looking for the
-	// nearest package.json, so seed the in-memory file system there.
 	const versionCommandDir = path.dirname(import.meta.dirname);
 
 	it("should output the version read from the nearest package.json", async () => {

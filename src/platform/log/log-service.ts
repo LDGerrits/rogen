@@ -61,11 +61,7 @@ export abstract class AbstractLogService implements LogService {
 		return result;
 	}
 
-	/**
-	 * Stringifies an error and walks its `cause` chain, so wrapping an error
-	 * with `{ cause }` (as `Emitter.fire` does when reporting a listener
-	 * failure) doesn't silently drop the original failure from the log.
-	 */
+	// Walks the cause chain so wrapped errors aren't silently dropped.
 	private formatError(error: Error): string {
 		const parts = [error.stack || error.message];
 		const seen = new Set<unknown>([error]);

@@ -105,7 +105,6 @@ describe("Emitter and Event", () => {
 			emitter.event(() => Promise.reject(rejection));
 			emitter.fire();
 
-			// Let the rejection's .catch() microtask run.
 			await Promise.resolve();
 			await Promise.resolve();
 

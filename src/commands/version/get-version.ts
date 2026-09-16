@@ -5,11 +5,7 @@ interface PackageJson {
 	version?: string;
 }
 
-/**
- * Walks up from `startDir` looking for the nearest `package.json` and
- * returns its `version`, or `"unknown"` if none is found or it can't be
- * read.
- */
+/** Walks up from `startDir` for the nearest package.json's version. */
 export async function getVersion(
 	fileSystemService: FileSystemService,
 	startDir: string

@@ -27,11 +27,7 @@ export const ErrorUtils = {
 
 export type UnexpectedErrorHandler = (error: Error) => void;
 
-/**
- * Throws on the next tick rather than swallowing the error, so a program
- * with nothing installed still fails loudly instead of silently. Mirrors
- * VS Code's default `onUnexpectedError` behavior.
- */
+// Throws on the next tick so a silent failure doesn't stay silent.
 const defaultUnexpectedErrorHandler: UnexpectedErrorHandler = (error) => {
 	setTimeout(() => {
 		throw error;
@@ -41,11 +37,7 @@ const defaultUnexpectedErrorHandler: UnexpectedErrorHandler = (error) => {
 let unexpectedErrorHandler: UnexpectedErrorHandler =
 	defaultUnexpectedErrorHandler;
 
-/**
- * Replaces the handler that {@link onUnexpectedError} reports through.
- * Returns the previous handler so a caller (typically a test) can restore
- * it afterwards.
- */
+/** Returns the previous handler so a caller can restore it. */
 export function setUnexpectedErrorHandler(
 	newHandler: UnexpectedErrorHandler
 ): UnexpectedErrorHandler {
@@ -54,23 +46,11 @@ export function setUnexpectedErrorHandler(
 	return previousHandler;
 }
 
-/**
- * Reports an error that couldn't be handled where it occurred, such as a
- * listener throwing during `Emitter.fire`. Goes through the replaceable
- * handler above instead of writing to the console directly, so callers can
- * control where these errors end up.
- *
- * The handler itself is never allowed to throw back into the caller: this
- * is typically invoked from inside `Emitter.fire`'s per-listener catch
- * block, where a synchronous throw here would abort delivery to whatever
- * listeners are still queued, defeating the isolation `fire` exists to
- * guarantee. A misbehaving handler is instead surfaced asynchronously,
- * the same way the default handler reports an error with nothing installed.
- */
 export function onUnexpectedError(error: unknown): void {
 	try {
 		unexpectedErrorHandler(ErrorUtils.fromUnknown(error));
 	} catch (handlerError) {
+		// Don't let a bad handler break the caller (usually Emitter.fire).
 		defaultUnexpectedErrorHandler(ErrorUtils.fromUnknown(handlerError));
 	}
 }
