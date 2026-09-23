@@ -16,12 +16,15 @@ import { CoreReconciliationService } from "../../../platform/watcher/core-reconc
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
 import { Watcher } from "../../../platform/watcher/watcher.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
 
 describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let reconciliation: CoreReconciliationService;
 	let store: DisposableStore;
+	let lifecycle: MockLifecycleService;
 	const logService = new NullLogService();
 
 	const startWatch = (configService: MockConfigService) => {
@@ -30,12 +33,13 @@ describe("watch command", () => {
 		services.set(Watcher, watcher);
 		services.set(ReconciliationService, reconciliation);
 		services.set(ConfigService, configService);
+		services.set(LifecycleService, lifecycle);
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")
 		);
 
-		void store
+		return store
 			.add(new CoreCommandService(services, logService))
 			.executeCommand("watch", { _: ["watch"] });
 	};
@@ -46,6 +50,7 @@ describe("watch command", () => {
 		await memFs.createDirectory("/repo");
 		watcher = new MemoryWatcher(memFs, logService);
 		store = new DisposableStore();
+		lifecycle = new MockLifecycleService();
 		reconciliation = new CoreReconciliationService(logService, {
 			burstThreshold: 200,
 			debounceMs: 100,
@@ -68,7 +73,7 @@ describe("watch command", () => {
 			"/repo/custom.rogen.json"
 		);
 		const reloadSpy = jest.spyOn(configService, "reloadConfig");
-		startWatch(configService);
+		void startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -92,7 +97,7 @@ describe("watch command", () => {
 			"/repo/custom.rogen.json"
 		);
 		const reloadSpy = jest.spyOn(configService, "reloadConfig");
-		startWatch(configService);
+		void startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -102,5 +107,79 @@ describe("watch command", () => {
 		await Promise.resolve();
 
 		expect(reloadSpy).not.toHaveBeenCalled();
+	});
+
+	it("resolves ok when shutdown is requested", async () => {
+		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		await Promise.resolve();
+		await Promise.resolve();
+
+		lifecycle.shutdown();
+
+		expect((await running).isOk()).toBe(true);
+	});
+
+	it("stops the watcher when shutdown is requested", async () => {
+		const stop = jest.spyOn(watcher, "stop");
+		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		await Promise.resolve();
+		await Promise.resolve();
+		stop.mockClear();
+
+		lifecycle.shutdown();
+		await running;
+
+		expect(stop).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not react to file changes after shutdown", async () => {
+		await memFs.createDirectory("/repo/src");
+		const debug = jest.spyOn(logService, "debug");
+		const running = startWatch(
+			new MockConfigService({ rootDirs: ["src"] })
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		lifecycle.shutdown();
+		await running;
+		debug.mockClear();
+
+		await memFs.writeFile("/repo/src/a.luau", "");
+		jest.advanceTimersByTime(150);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(debug).not.toHaveBeenCalledWith(
+			expect.stringContaining("incremental build")
+		);
+	});
+
+	it("reacts to file changes while running", async () => {
+		await memFs.createDirectory("/repo/src");
+		const debug = jest.spyOn(logService, "debug");
+		void startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		await Promise.resolve();
+		await Promise.resolve();
+
+		await memFs.writeFile("/repo/src/a.luau", "");
+		jest.advanceTimersByTime(150);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(debug).toHaveBeenCalledWith(
+			expect.stringContaining("incremental build")
+		);
+	});
+
+	it("returns an error and stops the watcher when watching fails", async () => {
+		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
+		const stop = jest.spyOn(watcher, "stop");
+
+		const result = await startWatch(
+			new MockConfigService({ rootDirs: [] })
+		);
+
+		expect(result.isErr()).toBe(true);
+		expect(stop).toHaveBeenCalled();
 	});
 });

@@ -11,6 +11,8 @@ import {
 } from "./platform/environment/environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "./platform/fs/file-system-service.js";
+import { LifecycleService } from "./platform/lifecycle/lifecycle-service.js";
+import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-service.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import {
 	ConsoleLogService,
@@ -103,6 +105,10 @@ async function main(): Promise<void> {
 		services.set(FileSystemService, fileSystemService);
 		services.set(WorkspaceService, workspaceService);
 		services.set(ConfigService, configService);
+		services.set(
+			LifecycleService,
+			disposables.add(new NativeLifecycleService())
+		);
 		services.set(Watcher, new DiskWatcher(logService));
 		services.set(ReconciliationService, reconciliationService);
 
