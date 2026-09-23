@@ -1,39 +1,68 @@
-import { parseArgs } from "../args.js";
+import { OptionDescriptor, parseArgs } from "../args.js";
 
-describe("CLI Argument Parsing", () => {
-	it("should parse full flags correctly alongside a command", () => {
-		const args = [
-			"build",
-			"--profile",
-			"prod",
-			"--source",
-			"my_src",
-			"--quiet",
-		];
-		const { command, options } = parseArgs(args).unwrap();
+const globals: OptionDescriptor[] = [
+	{ name: "help", short: "h", type: "boolean", description: "" },
+	{ name: "version", short: "v", type: "boolean", description: "" },
+	{ name: "quiet", short: "q", type: "boolean", description: "" },
+];
 
-		expect(command).toBe("build");
-		expect(options.profile).toEqual("prod");
-		expect(options.source).toEqual(["my_src"]);
-		expect(options.quiet).toBe(true);
+const buildOptions: OptionDescriptor[] = [
+	{
+		name: "tag",
+		short: "t",
+		type: "string",
+		multiple: true,
+		description: "",
+	},
+];
+
+const optionsFor = (command?: string) =>
+	command === undefined || command === "build"
+		? [...globals, ...buildOptions]
+		: globals;
+
+const values = (argv: string[]) =>
+	parseArgs(argv, optionsFor).unwrap().options as unknown as Record<
+		string,
+		unknown
+	>;
+
+describe("parseArgs", () => {
+	it("should parse a command's own options alongside the global ones", () => {
+		const parsed = values(["build", "-t", "a", "--tag", "b", "--quiet"]);
+
+		expect(parsed.tag).toEqual(["a", "b"]);
+		expect(parsed.quiet).toBe(true);
 	});
 
 	it("should map positional commands correctly and attach them to the '_' array", () => {
-		const { command, options } = parseArgs(["watch", "extra_arg"]).unwrap();
+		const { command, options } = parseArgs(
+			["watch", "extra_arg"],
+			optionsFor
+		).unwrap();
 
 		expect(command).toBe("watch");
 		expect(options._).toEqual(["watch", "extra_arg"]);
 	});
 
-	it("should return an error on unknown options", () => {
-		const result = parseArgs(["build", "--fake-flag"]);
+	it("should default to help, and let --version win", () => {
+		expect(parseArgs([], optionsFor).unwrap().command).toBe("help");
+		expect(parseArgs(["build", "-v"], optionsFor).unwrap().command).toBe(
+			"version"
+		);
+	});
+
+	it("should return an error naming an unknown option", () => {
+		const result = parseArgs(["build", "--fake-flag"], optionsFor);
 
 		expect(result.isErr()).toBe(true);
+		expect(result.isErr() && result.error.message).toContain("--fake-flag");
+	});
 
-		if (!result.isErr()) {
-			throw new Error("Expected an error result but got ok.");
-		}
+	it("should reject an option that belongs to another command", () => {
+		const result = parseArgs(["watch", "--tag", "a"], optionsFor);
 
-		expect(result.error.message).toContain("Unknown option");
+		expect(result.isErr()).toBe(true);
+		expect(result.isErr() && result.error.message).toContain("--tag");
 	});
 });

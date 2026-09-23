@@ -2,19 +2,19 @@ import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 
+export interface OptionDescriptor {
+	readonly name: string;
+	readonly short?: string;
+	readonly type: "string" | "boolean";
+	readonly multiple?: boolean;
+	readonly description: string;
+}
+
 export interface ParsedArgs {
 	_: string[];
 	help?: boolean;
 	version?: boolean;
-	init?: boolean;
-	watch?: boolean;
 	config?: string;
-	profile?: string;
-	source?: string[];
-	env?: string[];
-	build?: string;
-	output?: string;
-	mode?: string[];
 	verbose?: boolean;
 	quiet?: boolean;
 	trace?: boolean;
@@ -25,38 +25,42 @@ export interface ParsedCli {
 	options: ParsedArgs;
 }
 
-export function parseArgs(args: string[]): Result<ParsedCli, Error> {
-	const options = {
-		help: { type: "boolean", short: "h" },
-		version: { type: "boolean", short: "v" },
-		init: { type: "boolean", short: "i" },
-		watch: { type: "boolean", short: "w" },
-		config: { type: "string", short: "c" },
-		profile: { type: "string", short: "p" },
-		source: { type: "string", short: "s", multiple: true },
-		env: { type: "string", short: "e", multiple: true },
-		build: { type: "string" },
-		output: { type: "string" },
-		mode: { type: "string", multiple: true },
-		verbose: { type: "boolean" },
-		quiet: { type: "boolean", short: "q" },
-		trace: { type: "boolean" },
-	} as const;
+function toOptionTable(options: readonly OptionDescriptor[]) {
+	return Object.fromEntries(
+		options.map(({ name, short, type, multiple }) => [
+			name,
+			{ type, ...(short && { short }), ...(multiple && { multiple }) },
+		])
+	);
+}
 
+function parseStrict(args: string[], options: readonly OptionDescriptor[]) {
+	const { values, positionals } = nodeParseArgs({
+		args,
+		options: toOptionTable(options),
+		allowPositionals: true,
+		strict: true,
+	});
+
+	let command = "help";
+	if (values.version) command = "version";
+	else if (values.help) command = "help";
+	else if (positionals.length > 0) command = positionals[0].toLowerCase();
+
+	return { command, options: { ...values, _: positionals } as ParsedArgs };
+}
+
+/**
+ * Finds the command with every known option (`optionsFor(undefined)`), then
+ * parses again with only the options that command accepts.
+ */
+export function parseArgs(
+	args: string[],
+	optionsFor: (command?: string) => readonly OptionDescriptor[]
+): Result<ParsedCli, Error> {
 	try {
-		const { values, positionals } = nodeParseArgs({
-			args: args,
-			options,
-			allowPositionals: true,
-			strict: true,
-		});
-
-		let command = "help";
-		if (values.version) command = "version";
-		else if (values.help) command = "help";
-		else if (positionals.length > 0) command = positionals[0].toLowerCase();
-
-		return ok({ command, options: { ...values, _: positionals || [] } });
+		const { command } = parseStrict(args, optionsFor());
+		return ok(parseStrict(args, optionsFor(command)));
 	} catch (error) {
 		return err(ErrorUtils.fromUnknown(error));
 	}

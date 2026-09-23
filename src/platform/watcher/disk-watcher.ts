@@ -54,6 +54,10 @@ export class DiskWatcher implements Watcher {
 			this.logService.error(`DiskWatcher crashed: ${error.message}`);
 			this._onDidError.fire(error);
 		});
+
+		// Until chokidar is ready, new files count as initial and are ignored.
+		const watcher = this.watcher;
+		await new Promise<void>((resolve) => watcher.once("ready", resolve));
 	}
 
 	private fireEvent(

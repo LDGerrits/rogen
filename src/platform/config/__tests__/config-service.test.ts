@@ -48,31 +48,23 @@ describe("CoreConfigService & Enterprise Config Architecture", () => {
 		expect(casing).toBe("camelCase");
 	});
 
-	it("should correctly resolve project config, CLI overrides, and provide deep inspection provenance", async () => {
+	it("should resolve the project config over defaults and report provenance", async () => {
 		await memFs.writeFile(
 			"/mock/cwd/.rogen.json",
 			JSON.stringify({ casing: "PascalCase", verbatim: true })
 		);
 
-		const environment = new MockEnvironmentService({
-			_: [],
-			source: ["cli-src"],
-		});
+		const environment = new MockEnvironmentService();
 		const configService = new CoreConfigService(memFs, environment);
 
 		await configService.initialize();
 
 		expect(configService.getValue<string>("casing")).toBe("PascalCase");
-		expect(configService.getValue<string[]>("source")).toEqual(["cli-src"]);
 
 		const casingInspection = configService.inspect<string>("casing");
 		expect(casingInspection.defaultValue).toBe("camelCase");
 		expect(casingInspection.projectValue).toBe("PascalCase");
 		expect(casingInspection.value).toBe("PascalCase");
-
-		const sourceInspection = configService.inspect<string[]>("source");
-		expect(sourceInspection.cliValue).toEqual(["cli-src"]);
-		expect(sourceInspection.value).toEqual(["cli-src"]);
 	});
 
 	it("should prioritize exact .rogen.json when multiple files ending with .rogen.json are present", async () => {

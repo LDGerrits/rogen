@@ -2,7 +2,13 @@ import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ok } from "../../../base/result.js";
 import { Registry } from "../../registry/registry.js";
-import { Command, CommandRegistry, Extensions } from "../commands.js";
+import {
+	Command,
+	CommandRegistry,
+	Extensions,
+	GlobalOptions,
+} from "../commands.js";
+import { OptionDescriptor } from "../../environment/args.js";
 
 function command(id: string): Command {
 	return {
@@ -11,6 +17,20 @@ function command(id: string): Command {
 		handler: async () => ok(undefined),
 	};
 }
+
+function withOptions(id: string, options: OptionDescriptor[]): Command {
+	return {
+		...command(id),
+		metadata: { description: id, options },
+	};
+}
+
+const sourceOption: OptionDescriptor = {
+	name: "source",
+	short: "s",
+	type: "string",
+	description: "A source.",
+};
 
 describe("CommandRegistry", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
@@ -104,6 +124,95 @@ describe("CommandRegistry", () => {
 			expect([...commands.keys()]).toEqual(
 				expect.arrayContaining(["foo", "bar"])
 			);
+		});
+	});
+
+	describe("getOptions", () => {
+		it("should include the global options", () => {
+			expect(registry.getOptions()).toEqual(
+				expect.arrayContaining([...GlobalOptions])
+			);
+		});
+
+		it("should include each command's options once", () => {
+			store.add(
+				registry.registerCommand(withOptions("a", [sourceOption]))
+			);
+			store.add(
+				registry.registerCommand(withOptions("b", [sourceOption]))
+			);
+
+			const names = registry.getOptions().map((o) => o.name);
+
+			expect(names.filter((n) => n === "source")).toHaveLength(1);
+		});
+
+		it("should include only the given command's own options", () => {
+			store.add(
+				registry.registerCommand(withOptions("a", [sourceOption]))
+			);
+			store.add(registry.registerCommand(command("b")));
+
+			expect(registry.getOptions("b").map((o) => o.name)).not.toContain(
+				"source"
+			);
+			expect(registry.getOptions("a").map((o) => o.name)).toContain(
+				"source"
+			);
+		});
+
+		it("should drop a command's options once it is disposed", () => {
+			const registration = registry.registerCommand(
+				withOptions("a", [sourceOption])
+			);
+			registration[Symbol.dispose]();
+
+			expect(registry.getOptions().map((o) => o.name)).not.toContain(
+				"source"
+			);
+		});
+	});
+
+	describe("registerCommand option validation", () => {
+		it("should throw when a short flag is already bound to another option", () => {
+			const clash: OptionDescriptor = {
+				name: "sync",
+				short: "s",
+				type: "string",
+				description: "A clash.",
+			};
+			store.add(
+				registry.registerCommand(withOptions("a", [sourceOption]))
+			);
+
+			expect(() =>
+				registry.registerCommand(withOptions("b", [clash]))
+			).toThrow(/conflicts/);
+		});
+
+		it("should throw when an option redefines a global option differently", () => {
+			const clash: OptionDescriptor = {
+				name: "help",
+				type: "string",
+				description: "A clash.",
+			};
+
+			expect(() =>
+				registry.registerCommand(withOptions("a", [clash]))
+			).toThrow(/conflicts/);
+		});
+
+		it("should throw when a command reuses a global short flag", () => {
+			const clash: OptionDescriptor = {
+				name: "verbose-thing",
+				short: "v",
+				type: "boolean",
+				description: "A clash.",
+			};
+
+			expect(() =>
+				registry.registerCommand(withOptions("a", [clash]))
+			).toThrow(/conflicts/);
 		});
 	});
 });

@@ -13,6 +13,7 @@ export interface Watcher {
 	readonly onDidChangeFile: Event<FileChange[]>;
 	readonly onDidError: Event<Error>;
 
+	/** Resolves once changes under `requests` are being reported. */
 	watch(requests: WatchRequest[]): Promise<void>;
 	stop(): Promise<void>;
 }
