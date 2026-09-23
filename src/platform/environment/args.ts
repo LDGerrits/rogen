@@ -2,14 +2,19 @@ import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 
+export interface OptionDescriptor {
+	readonly name: string;
+	readonly short?: string;
+	readonly type: "string" | "boolean";
+	readonly multiple?: boolean;
+	readonly description: string;
+}
+
 export interface ParsedArgs {
 	_: string[];
 	help?: boolean;
 	version?: boolean;
-	init?: boolean;
-	watch?: boolean;
 	config?: string;
-	profile?: string;
 	source?: string[];
 	env?: string[];
 	build?: string;
@@ -25,28 +30,21 @@ export interface ParsedCli {
 	options: ParsedArgs;
 }
 
-export function parseArgs(args: string[]): Result<ParsedCli, Error> {
-	const options = {
-		help: { type: "boolean", short: "h" },
-		version: { type: "boolean", short: "v" },
-		init: { type: "boolean", short: "i" },
-		watch: { type: "boolean", short: "w" },
-		config: { type: "string", short: "c" },
-		profile: { type: "string", short: "p" },
-		source: { type: "string", short: "s", multiple: true },
-		env: { type: "string", short: "e", multiple: true },
-		build: { type: "string" },
-		output: { type: "string" },
-		mode: { type: "string", multiple: true },
-		verbose: { type: "boolean" },
-		quiet: { type: "boolean", short: "q" },
-		trace: { type: "boolean" },
-	} as const;
+export function parseArgs(
+	args: string[],
+	options: readonly OptionDescriptor[]
+): Result<ParsedCli, Error> {
+	const optionTable = Object.fromEntries(
+		options.map(({ name, short, type, multiple }) => [
+			name,
+			{ type, ...(short && { short }), ...(multiple && { multiple }) },
+		])
+	);
 
 	try {
 		const { values, positionals } = nodeParseArgs({
-			args: args,
-			options,
+			args,
+			options: optionTable,
 			allowPositionals: true,
 			strict: true,
 		});

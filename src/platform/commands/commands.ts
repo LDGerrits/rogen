@@ -1,7 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
-import { ParsedArgs } from "../environment/args.js";
+import { OptionDescriptor, ParsedArgs } from "../environment/args.js";
 import {
 	ServicesAccessor,
 	createServiceIdentifier,
@@ -45,7 +45,40 @@ export interface CommandMetadata {
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
 	}[];
+	readonly options?: readonly OptionDescriptor[];
 }
+
+export const GlobalOptions: readonly OptionDescriptor[] = [
+	{ name: "help", short: "h", type: "boolean", description: "Print help." },
+	{
+		name: "version",
+		short: "v",
+		type: "boolean",
+		description: "Print the version.",
+	},
+	{
+		name: "config",
+		short: "c",
+		type: "string",
+		description: "Path to the config file.",
+	},
+	{
+		name: "verbose",
+		type: "boolean",
+		description: "Print debug output.",
+	},
+	{
+		name: "quiet",
+		short: "q",
+		type: "boolean",
+		description: "Only print errors.",
+	},
+	{
+		name: "trace",
+		type: "boolean",
+		description: "Print trace output.",
+	},
+];
 
 export interface CommandRegistry {
 	readonly onDidRegisterCommand: Event<string>;
@@ -54,6 +87,29 @@ export interface CommandRegistry {
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
+	/** Global options plus every registered command's own, without duplicates. */
+	getOptions(): readonly OptionDescriptor[];
+}
+
+function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
+	return (
+		a.name === b.name &&
+		a.short === b.short &&
+		a.type === b.type &&
+		!!a.multiple === !!b.multiple
+	);
+}
+
+function findConflict(
+	option: OptionDescriptor,
+	known: readonly OptionDescriptor[]
+): OptionDescriptor | undefined {
+	return known.find(
+		(other) =>
+			!sameOption(option, other) &&
+			(option.name === other.name ||
+				(option.short !== undefined && option.short === other.short))
+	);
 }
 
 class CoreCommandRegistry implements CommandRegistry {
@@ -76,6 +132,16 @@ class CoreCommandRegistry implements CommandRegistry {
 			throw new Error(`Command "${id}" is already registered.`);
 		}
 
+		const known = this.getOptions();
+		for (const option of command.metadata.options ?? []) {
+			const conflict = findConflict(option, known);
+			if (conflict) {
+				throw new Error(
+					`Command "${id}" declares option "--${option.name}" that conflicts with "--${conflict.name}".`
+				);
+			}
+		}
+
 		this.commands.set(id, command);
 		this._onDidRegisterCommand.fire(id);
 
@@ -94,6 +160,18 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	getCommands(): ReadonlyMap<string, Command> {
 		return new Map(this.commands);
+	}
+
+	getOptions(): readonly OptionDescriptor[] {
+		const options = [...GlobalOptions];
+		for (const command of this.commands.values()) {
+			for (const option of command.metadata.options ?? []) {
+				if (!options.some((known) => sameOption(option, known))) {
+					options.push(option);
+				}
+			}
+		}
+		return options;
 	}
 }
 

@@ -1,6 +1,10 @@
 import { DisposableStore } from "./base/disposable.js";
 import { setUnexpectedErrorHandler } from "./base/errors.js";
-import { CommandService } from "./platform/commands/commands.js";
+import {
+	CommandRegistry,
+	CommandService,
+	Extensions,
+} from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import { ConfigService } from "./platform/config/config.js";
 import { CoreConfigService } from "./platform/config/config-service.js";
@@ -13,6 +17,7 @@ import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js
 import { FileSystemService } from "./platform/fs/file-system-service.js";
 import { LifecycleService } from "./platform/lifecycle/lifecycle-service.js";
 import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-service.js";
+import { Registry } from "./platform/registry/registry.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import {
 	ConsoleLogService,
@@ -44,7 +49,10 @@ async function main(): Promise<void> {
 
 	try {
 		const rawArgs = process.argv.slice(2);
-		const argsResult = parseArgs(rawArgs);
+		const argsResult = parseArgs(
+			rawArgs,
+			Registry.as<CommandRegistry>(Extensions.Commands).getOptions()
+		);
 
 		if (argsResult.isErr()) {
 			const tempLogger = new ConsoleLogService();
