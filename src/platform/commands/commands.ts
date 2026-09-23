@@ -1,7 +1,11 @@
 import { Disposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
-import { OptionDescriptor, ParsedArgs } from "../environment/args.js";
+import {
+	GlobalOptions,
+	OptionDescriptor,
+	ParsedArgs,
+} from "../environment/args.js";
 import {
 	ServicesAccessor,
 	createServiceIdentifier,
@@ -47,38 +51,6 @@ export interface CommandMetadata {
 	}[];
 	readonly options?: readonly OptionDescriptor[];
 }
-
-export const GlobalOptions: readonly OptionDescriptor[] = [
-	{ name: "help", short: "h", type: "boolean", description: "Print help." },
-	{
-		name: "version",
-		short: "v",
-		type: "boolean",
-		description: "Print the version.",
-	},
-	{
-		name: "config",
-		short: "c",
-		type: "string",
-		description: "Path to the config file.",
-	},
-	{
-		name: "verbose",
-		type: "boolean",
-		description: "Print debug output.",
-	},
-	{
-		name: "quiet",
-		short: "q",
-		type: "boolean",
-		description: "Only print errors.",
-	},
-	{
-		name: "trace",
-		type: "boolean",
-		description: "Print trace output.",
-	},
-];
 
 export interface CommandRegistry {
 	readonly onDidRegisterCommand: Event<string>;
@@ -166,7 +138,7 @@ class CoreCommandRegistry implements CommandRegistry {
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {
-		const options = [...GlobalOptions];
+		const options: OptionDescriptor[] = [...GlobalOptions];
 		const commands =
 			commandId === undefined
 				? [...this.commands.values()]

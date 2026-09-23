@@ -1,4 +1,9 @@
-import { OptionDescriptor, parseArgs } from "../args.js";
+import {
+	OptionDescriptor,
+	OptionValues,
+	ParsedArgs,
+	parseArgs,
+} from "../args.js";
 
 const globals: OptionDescriptor[] = [
 	{ name: "help", short: "h", type: "boolean", description: "" },
@@ -64,5 +69,37 @@ describe("parseArgs", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(result.isErr() && result.error.message).toContain("--tag");
+	});
+});
+
+describe("ParsedArgs", () => {
+	it("should type every global option by its declaration", () => {
+		const args: ParsedArgs = {
+			_: [],
+			help: true,
+			config: "a.rogen.json",
+			verbose: false,
+		};
+		// @ts-expect-error `config` is declared as a string
+		const wrong: ParsedArgs = { _: [], config: true };
+		// @ts-expect-error `nope` is not a declared option
+		const unknown: ParsedArgs = { _: [], nope: true };
+
+		expect([args, wrong, unknown]).toHaveLength(3);
+	});
+
+	it("should type a command's own options with OptionValues", () => {
+		const _options = [
+			{ name: "tag", type: "string", multiple: true, description: "" },
+			{ name: "dry", type: "boolean", description: "" },
+		] as const satisfies readonly OptionDescriptor[];
+		const values: OptionValues<typeof _options> = {
+			tag: ["a"],
+			dry: true,
+		};
+		// @ts-expect-error `tag` is repeatable, so it is a string[]
+		const wrong: OptionValues<typeof _options> = { tag: "a" };
+
+		expect([values, wrong]).toHaveLength(2);
 	});
 });

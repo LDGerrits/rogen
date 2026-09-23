@@ -4,8 +4,8 @@ import { Registry } from "../../platform/registry/registry.js";
 import {
 	CommandRegistry,
 	Extensions,
-	GlobalOptions,
 } from "../../platform/commands/commands.js";
+import { GlobalOptions } from "../../platform/environment/args.js";
 import { formatCommandHelp, formatHelp } from "./help-formatter.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({

@@ -10,15 +10,52 @@ export interface OptionDescriptor {
 	readonly description: string;
 }
 
-export interface ParsedArgs {
+export const GlobalOptions = [
+	{ name: "help", short: "h", type: "boolean", description: "Print help." },
+	{
+		name: "version",
+		short: "v",
+		type: "boolean",
+		description: "Print the version.",
+	},
+	{
+		name: "config",
+		short: "c",
+		type: "string",
+		description: "Path to the config file.",
+	},
+	{
+		name: "verbose",
+		type: "boolean",
+		description: "Print debug output.",
+	},
+	{
+		name: "quiet",
+		short: "q",
+		type: "boolean",
+		description: "Only print errors.",
+	},
+	{
+		name: "trace",
+		type: "boolean",
+		description: "Print trace output.",
+	},
+] as const satisfies readonly OptionDescriptor[];
+
+type OptionValue<O extends OptionDescriptor> = O["type"] extends "boolean"
+	? boolean
+	: O extends { readonly multiple: true }
+		? string[]
+		: string;
+
+/** The parsed values of a list declared `as const`, keyed by option name. */
+export type OptionValues<T extends readonly OptionDescriptor[]> = {
+	[O in T[number] as O["name"]]?: OptionValue<O>;
+};
+
+export type ParsedArgs = OptionValues<typeof GlobalOptions> & {
 	_: string[];
-	help?: boolean;
-	version?: boolean;
-	config?: string;
-	verbose?: boolean;
-	quiet?: boolean;
-	trace?: boolean;
-}
+};
 
 export interface ParsedCli {
 	command: string;

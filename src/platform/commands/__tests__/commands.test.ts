@@ -2,13 +2,8 @@ import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ok } from "../../../base/result.js";
 import { Registry } from "../../registry/registry.js";
-import {
-	Command,
-	CommandRegistry,
-	Extensions,
-	GlobalOptions,
-} from "../commands.js";
-import { OptionDescriptor } from "../../environment/args.js";
+import { Command, CommandRegistry, Extensions } from "../commands.js";
+import { GlobalOptions, OptionDescriptor } from "../../environment/args.js";
 
 function command(id: string): Command {
 	return {
