@@ -1,22 +1,23 @@
-import { Command } from "../command.js";
+import { ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { Registry } from "../../platform/registry/registry.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../platform/commands/commands.js";
 import { getVersion } from "./get-version.js";
-import { Result, ok } from "../../base/result.js";
 
-export class VersionCommand implements Command {
-	constructor(
-		private readonly logService: LogService,
-		private readonly fileSystemService: FileSystemService
-	) {}
-
-	async execute(): Promise<Result<void, Error>> {
+Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+	id: "version",
+	metadata: { description: "Prints the installed version." },
+	handler: async (accessor) => {
 		const version = await getVersion(
-			this.fileSystemService,
+			accessor.get(FileSystemService),
 			import.meta.dirname
 		);
-		this.logService.info(`rogen ${version}`);
+		accessor.get(LogService).info(`rogen ${version}`);
 
 		return ok(undefined);
-	}
-}
+	},
+});

@@ -1,12 +1,16 @@
-import { Command } from "../command.js";
+import { ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { Result, ok } from "../../base/result.js";
+import { Registry } from "../../platform/registry/registry.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../platform/commands/commands.js";
 
-export class HelpCommand implements Command {
-	constructor(private readonly logService: LogService) {}
-
-	execute(): Result<void, Error> {
-		this.logService.info(`
+Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+	id: "help",
+	metadata: { description: "Prints usage." },
+	handler: async (accessor) => {
+		accessor.get(LogService).info(`
 Rogen - Feature-based architecture for Roblox
 
 Usage:
@@ -50,5 +54,5 @@ Examples:
 		`);
 
 		return ok(undefined);
-	}
-}
+	},
+});

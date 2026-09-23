@@ -1,24 +1,44 @@
-import { BuildCommand } from "../build-command.js";
-import { NullLogService } from "../../../platform/log/log-service.js";
+import { jest } from "@jest/globals";
+import "../build-command.js";
+import { DisposableStore } from "../../../base/disposable.js";
+import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { MockConfigService } from "../../../platform/config/__tests__/mock-config-service.js";
+import { ConfigService } from "../../../platform/config/config.js";
+import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
+import {
+	LogService,
+	NullLogService,
+} from "../../../platform/log/log-service.js";
 
-describe("BuildCommand", () => {
-	it("constructs against the ConfigService interface, not a concrete implementation", () => {
-		const configService = new MockConfigService({ rootDirs: ["src"] });
+describe("build command", () => {
+	let store: DisposableStore;
 
-		expect(
-			() => new BuildCommand(new NullLogService(), configService)
-		).not.toThrow();
+	beforeEach(() => {
+		store = new DisposableStore();
 	});
 
-	it("reads its config through the injected ConfigService double", async () => {
-		const configService = new MockConfigService({
-			rootDirs: ["core", "lobby"],
-		});
-		const command = new BuildCommand(new NullLogService(), configService);
+	afterEach(() => {
+		store[Symbol.dispose]();
+	});
 
-		const result = await command.execute({ _: [] });
+	it("should read its root dirs from the ConfigService", async () => {
+		const logService = new NullLogService();
+		const info = jest.spyOn(logService, "info");
+		const services = new ServiceCollection();
+		services.set(LogService, logService);
+		services.set(
+			ConfigService,
+			new MockConfigService({ rootDirs: ["core", "lobby"] })
+		);
+		const commandService = store.add(
+			new CoreCommandService(services, logService)
+		);
+
+		const result = await commandService.executeCommand("build", {
+			_: ["build"],
+		});
 
 		expect(result.isOk()).toBe(true);
+		expect(info).toHaveBeenCalledWith("Building. Root dirs: core, lobby");
 	});
 });

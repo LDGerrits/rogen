@@ -1,24 +1,52 @@
 import { jest } from "@jest/globals";
-import { WatchCommand } from "../watch-command.js";
+import "../watch-command.js";
+import { DisposableStore } from "../../../base/disposable.js";
+import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
+import { MockConfigService } from "../../../platform/config/__tests__/mock-config-service.js";
+import { ConfigService } from "../../../platform/config/config.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
+import {
+	LogService,
+	NullLogService,
+} from "../../../platform/log/log-service.js";
+import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { NullLogService } from "../../../platform/log/log-service.js";
-import { MockConfigService } from "../../../platform/config/__tests__/mock-config-service.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { Watcher } from "../../../platform/watcher/watcher.js";
 
-describe("WatchCommand", () => {
+describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
-	let reconciliation: ReconciliationService;
+	let reconciliation: CoreReconciliationService;
+	let store: DisposableStore;
 	const logService = new NullLogService();
+
+	const startWatch = (configService: MockConfigService) => {
+		const services = new ServiceCollection();
+		services.set(LogService, logService);
+		services.set(Watcher, watcher);
+		services.set(ReconciliationService, reconciliation);
+		services.set(ConfigService, configService);
+		services.set(
+			EnvironmentService,
+			new MockEnvironmentService(undefined, "/repo")
+		);
+
+		void store
+			.add(new CoreCommandService(services, logService))
+			.executeCommand("watch", { _: ["watch"] });
+	};
 
 	beforeEach(async () => {
 		jest.useFakeTimers();
 		memFs = new MemoryFileSystemService();
 		await memFs.createDirectory("/repo");
 		watcher = new MemoryWatcher(memFs, logService);
-		reconciliation = new ReconciliationService(logService, {
+		store = new DisposableStore();
+		reconciliation = new CoreReconciliationService(logService, {
 			burstThreshold: 200,
 			debounceMs: 100,
 		});
@@ -27,24 +55,9 @@ describe("WatchCommand", () => {
 	afterEach(async () => {
 		await watcher.stop();
 		reconciliation[Symbol.dispose]();
+		store[Symbol.dispose]();
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();
-	});
-
-	it("constructs against the ConfigService interface, not a concrete implementation", () => {
-		const configService = new MockConfigService({ rootDirs: [] });
-		const environment = new MockEnvironmentService(undefined, "/repo");
-
-		expect(
-			() =>
-				new WatchCommand(
-					logService,
-					watcher,
-					reconciliation,
-					configService,
-					environment
-				)
-		).not.toThrow();
 	});
 
 	it("watches the config file the service actually resolved, not a hardcoded .rogen.json", async () => {
@@ -55,16 +68,7 @@ describe("WatchCommand", () => {
 			"/repo/custom.rogen.json"
 		);
 		const reloadSpy = jest.spyOn(configService, "reloadConfig");
-		const environment = new MockEnvironmentService(undefined, "/repo");
-		const command = new WatchCommand(
-			logService,
-			watcher,
-			reconciliation,
-			configService,
-			environment
-		);
-
-		void command.execute({ _: [] });
+		startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -88,16 +92,7 @@ describe("WatchCommand", () => {
 			"/repo/custom.rogen.json"
 		);
 		const reloadSpy = jest.spyOn(configService, "reloadConfig");
-		const environment = new MockEnvironmentService(undefined, "/repo");
-		const command = new WatchCommand(
-			logService,
-			watcher,
-			reconciliation,
-			configService,
-			environment
-		);
-
-		void command.execute({ _: [] });
+		startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 

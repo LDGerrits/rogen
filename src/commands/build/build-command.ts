@@ -1,24 +1,37 @@
-import { Command } from "../command.js";
-import { Result, ok } from "../../base/result.js";
+import { ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
 import { ConfigService } from "../../platform/config/config.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
+import { Registry } from "../../platform/registry/registry.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../platform/commands/commands.js";
 
-export class BuildCommand implements Command {
-	constructor(
-		private readonly logService: LogService,
-		private readonly configService: ConfigService
-	) {}
+Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+	id: "build",
+	metadata: {
+		description: "Writes each named config's project file.",
+		args: [
+			{
+				name: "name",
+				description: "A config to build.",
+				isOptional: true,
+				isVariadic: true,
+			},
+		],
+	},
+	handler: async (accessor) => {
+		const logService = accessor.get(LogService);
+		const configService = accessor.get(ConfigService);
 
-	async execute(_args: ParsedArgs): Promise<Result<void, Error>> {
-		const config = this.configService.getValue<ResolvedConfig>();
-		this.logService.info(
+		const config = configService.getValue<ResolvedConfig>();
+		logService.info(
 			`Building. Root dirs: ${(config.rootDirs ?? []).join(", ")}`
 		);
 
 		// TODO: implement the build pipeline.
 
 		return ok(undefined);
-	}
-}
+	},
+});

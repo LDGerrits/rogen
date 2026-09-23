@@ -1,5 +1,6 @@
 import { Event } from "../../base/event.js";
 import { ConfigValue } from "./config-models.js";
+import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export const enum ConfigTarget {
 	DEFAULT = 1,
@@ -42,3 +43,6 @@ export interface ConfigService {
 	inspect<T>(section: string): ConfigValue<T>;
 	reloadConfig(): Promise<void>;
 }
+
+export const ConfigService =
+	createServiceIdentifier<ConfigService>("configService");

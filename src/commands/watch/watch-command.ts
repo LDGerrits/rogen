@@ -1,100 +1,111 @@
 import path from "path";
-import { Command } from "../command.js";
-import { Result } from "../../base/result.js";
+import { Sequencer } from "../../base/async.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { FileChange } from "../../platform/fs/file-events.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
-import { Sequencer } from "../../base/async.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ConfigService } from "../../platform/config/config.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
+import { Registry } from "../../platform/registry/registry.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../platform/commands/commands.js";
 
-export class WatchCommand implements Command {
-	private readonly buildQueue = new Sequencer();
+Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+	id: "watch",
+	metadata: {
+		description:
+			"Builds, then rebuilds whenever sources or configs change.",
+		args: [
+			{
+				name: "name",
+				description: "A config to watch.",
+				isOptional: true,
+				isVariadic: true,
+			},
+		],
+	},
+	handler: async (accessor) => {
+		const logService = accessor.get(LogService);
+		const watcher = accessor.get(Watcher);
+		const reconciliationService = accessor.get(ReconciliationService);
+		const configService = accessor.get(ConfigService);
+		const environmentService = accessor.get(EnvironmentService);
 
-	constructor(
-		private readonly logService: LogService,
-		private readonly watcher: Watcher,
-		private readonly reconciliationService: ReconciliationService,
-		private readonly configService: ConfigService,
-		private readonly environmentService: EnvironmentService
-	) {}
+		const buildQueue = new Sequencer();
 
-	async execute(_args: ParsedArgs): Promise<Result<void, Error>> {
-		this.logService.info("Starting watch mode...");
+		const triggerRebuild = (): void => {
+			const config = configService.getValue<ResolvedConfig>();
+			logService.debug(
+				`Triggering full rebuild. Root dirs: ${(config.rootDirs ?? []).join(", ")}`
+			);
+		};
 
-		this.triggerRebuild();
+		const triggerIncrementalBuild = (changes: FileChange[]): void => {
+			logService.debug(
+				`Triggering incremental build for ${changes.length} files.`
+			);
+		};
 
-		const config = this.configService.getValue<ResolvedConfig>();
+		logService.info("Starting watch mode...");
+
+		triggerRebuild();
+
+		const config = configService.getValue<ResolvedConfig>();
 
 		const sourcePaths = (config.rootDirs ?? []).map((dir) => ({
-			path: path.resolve(this.environmentService.cwd, dir),
+			path: path.resolve(environmentService.cwd, dir),
 			recursive: true,
 		}));
 
-		const configPath = this.configService.configPath;
+		const configPath = configService.configPath;
 
-		await this.watcher.watch([
+		await watcher.watch([
 			...(configPath ? [{ path: configPath, recursive: false }] : []),
 			...sourcePaths,
 		]);
 
-		this.configService.onDidChangeConfig(() => {
-			this.logService.info("Config updated successfully.");
-			this.triggerRebuild();
+		configService.onDidChangeConfig(() => {
+			logService.info("Config updated successfully.");
+			triggerRebuild();
 		});
 
-		this.watcher.onDidChangeFile((rawChanges) => {
-			this.reconciliationService.queueEvents(rawChanges);
+		watcher.onDidChangeFile((rawChanges) => {
+			reconciliationService.queueEvents(rawChanges);
 		});
 
-		this.reconciliationService.onDidEmitChanges((normalizedChanges) => {
-			this.buildQueue.queue(async () => {
+		reconciliationService.onDidEmitChanges((normalizedChanges) => {
+			buildQueue.queue(async () => {
 				const configChanged =
 					configPath !== undefined &&
 					normalizedChanges.some((c) => c.path === configPath);
 
 				if (configChanged) {
-					this.logService.info(
-						"Config change detected. Reloading..."
-					);
+					logService.info("Config change detected. Reloading...");
 
 					try {
-						await this.configService.reloadConfig();
+						await configService.reloadConfig();
 					} catch (error) {
-						this.logService.warn(
+						logService.warn(
 							`Invalid configuration change ignored: ${error instanceof Error ? error.message : String(error)}`
 						);
 					}
 				} else {
-					this.triggerIncrementalBuild(normalizedChanges);
+					triggerIncrementalBuild(normalizedChanges);
 				}
 			});
 		});
 
 		// Full reconciliation if the burst threshold is hit
-		this.reconciliationService.onDidRequestReconciliation(() => {
-			this.logService.info(
+		reconciliationService.onDidRequestReconciliation(() => {
+			logService.info(
 				"Burst threshold reached. Executing full rebuild..."
 			);
-			this.triggerRebuild();
+			triggerRebuild();
 		});
 
 		return new Promise(() => {});
-	}
-
-	private triggerRebuild(): void {
-		const config = this.configService.getValue<ResolvedConfig>();
-		this.logService.debug(
-			`Triggering full rebuild. Root dirs: ${(config.rootDirs ?? []).join(", ")}`
-		);
-	}
-
-	private triggerIncrementalBuild(changes: FileChange[]): void {
-		this.logService.debug(
-			`Triggering incremental build for ${changes.length} files.`
-		);
-	}
-}
+	},
+});

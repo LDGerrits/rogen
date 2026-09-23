@@ -1,3 +1,5 @@
+import { createServiceIdentifier } from "../instantiation/instantiation.js";
+
 export enum FileType {
 	Unknown = 0,
 	File = 1,
@@ -26,3 +28,6 @@ export interface FileSystemService {
 
 	readJson<T>(filePath: string): Promise<T>;
 }
+
+export const FileSystemService =
+	createServiceIdentifier<FileSystemService>("fileSystemService");

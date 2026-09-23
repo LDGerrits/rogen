@@ -1,20 +1,39 @@
 import { jest } from "@jest/globals";
-import { LogService } from "../../../platform/log/log-service.js";
-import { HelpCommand } from "../help-command.js";
+import "../help-command.js";
+import { DisposableStore } from "../../../base/disposable.js";
+import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
+import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
+import {
+	LogService,
+	NullLogService,
+} from "../../../platform/log/log-service.js";
 
-describe("HelpCommand", () => {
-	it("should output the help instructions via the log service", () => {
-		const mockLogService = {
-			info: jest.fn(),
-		} as unknown as LogService;
+describe("help command", () => {
+	let store: DisposableStore;
 
-		const command = new HelpCommand(mockLogService);
-		const result = command.execute();
+	beforeEach(() => {
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
+	});
+
+	it("should output the help instructions via the log service", async () => {
+		const logService = new NullLogService();
+		const info = jest.spyOn(logService, "info");
+		const services = new ServiceCollection();
+		services.set(LogService, logService);
+		const commandService = store.add(
+			new CoreCommandService(services, logService)
+		);
+
+		const result = await commandService.executeCommand("help", {
+			_: ["help"],
+		});
 
 		expect(result.isOk()).toBe(true);
-		expect(mockLogService.info).toHaveBeenCalledTimes(1);
-		expect(mockLogService.info).toHaveBeenCalledWith(
-			expect.stringContaining("Rogen")
-		);
+		expect(info).toHaveBeenCalledTimes(1);
+		expect(info).toHaveBeenCalledWith(expect.stringContaining("Rogen"));
 	});
 });

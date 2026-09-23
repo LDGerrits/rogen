@@ -1,17 +1,17 @@
 import { jest } from "@jest/globals";
-import { ReconciliationService } from "../reconciliation-service.js";
+import { CoreReconciliationService } from "../core-reconciliation-service.js";
 import { FileType } from "../../fs/file-system-service.js";
 import { NullLogService } from "../../log/log-service.js";
 import { FileChangeType } from "../../fs/file-events.js";
 
-describe("ReconciliationService", () => {
-	let service: ReconciliationService;
+describe("CoreReconciliationService", () => {
+	let service: CoreReconciliationService;
 	let logService: NullLogService;
 
 	beforeEach(() => {
 		jest.useFakeTimers();
 		logService = new NullLogService();
-		service = new ReconciliationService(logService, {
+		service = new CoreReconciliationService(logService, {
 			burstThreshold: 5,
 			debounceMs: 100,
 		});

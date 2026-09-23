@@ -1,5 +1,6 @@
 import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-events.js";
+import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export interface WatchRequest {
 	readonly path: string;
@@ -15,3 +16,5 @@ export interface Watcher {
 	watch(requests: WatchRequest[]): Promise<void>;
 	stop(): Promise<void>;
 }
+
+export const Watcher = createServiceIdentifier<Watcher>("watcher");
