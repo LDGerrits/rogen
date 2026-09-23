@@ -42,6 +42,46 @@ describe("IndexService", () => {
 			);
 		});
 
+		it("should not index a directory that does not exist", async () => {
+			await indexService.initialize(["missing-root"]);
+
+			expect(indexService.getEntries("missing-root")).toBeUndefined();
+		});
+
+		it("should list a directory's entries with their types", async () => {
+			await memoryFs.writeFile("src/app.ts", "");
+			await memoryFs.createDirectory("src/components");
+			await memoryFs.createDirectory("src/empty");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.getEntries("src")).toEqual(
+				new Map([
+					["app.ts", FileType.File],
+					["components", FileType.Directory],
+					["empty", FileType.Directory],
+				])
+			);
+			expect(indexService.getEntries("src/empty")).toEqual(new Map());
+		});
+
+		it("should reflect applied changes in a directory's entries", async () => {
+			await memoryFs.createDirectory("src");
+			await indexService.initialize(["src"]);
+
+			indexService.applyChanges([
+				{
+					type: FileChangeType.ADDED,
+					path: "src/new.luau",
+					fileType: FileType.File,
+				},
+			]);
+
+			expect(indexService.getEntries("src")?.get("new.luau")).toBe(
+				FileType.File
+			);
+		});
+
 		it("should accurately track FileType for entries", async () => {
 			await memoryFs.writeFile("src/app.ts", "");
 			await memoryFs.createDirectory("src/components");

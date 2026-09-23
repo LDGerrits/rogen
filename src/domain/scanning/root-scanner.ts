@@ -1,12 +1,8 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { isMatch } from "../../base/glob.js";
 import { toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
-import {
-	FileSystemService,
-	FileType,
-} from "../../platform/fs/file-system-service.js";
+import { FileType } from "../../platform/fs/file-system-service.js";
+import { IndexService } from "../../platform/fs/index-service.js";
 
 export type SourceKind = "script" | "model" | "data";
 
@@ -68,35 +64,26 @@ function classifyFile(name: string): SourceKind | undefined {
 	return undefined;
 }
 
-function isNotFound(error: unknown): boolean {
-	return error instanceof Error && "code" in error && error.code === "ENOENT";
-}
-
 /**
- * Roots are returned in `rootDirs` order, which decides clashes between them.
- * A root that doesn't exist yields an empty root and a warning.
+ * Reads only the index, which the caller has initialized with every root dir.
+ * Roots come back in `rootDirs` order, which decides clashes between them.
+ * A root that isn't in the index yields an empty root and a warning.
  */
-export async function scanRootDirs(
-	fileSystem: FileSystemService,
+export function scanRootDirs(
+	index: IndexService,
 	options: ScanOptions
-): Promise<Result<ScanResult, Error>> {
-	try {
-		const scanned = await Promise.all(
-			options.rootDirs.map((rootDir) =>
-				scanRoot(fileSystem, rootDir, options)
-			)
-		);
-		return ok({
-			roots: scanned.map(
-				(root, index) => root ?? emptyRoot(options.rootDirs[index])
-			),
-			warnings: options.rootDirs
-				.filter((_, index) => !scanned[index])
-				.map(missingRootWarning),
-		});
-	} catch (error) {
-		return err(ErrorUtils.fromUnknown(error));
-	}
+): ScanResult {
+	const scanned = options.rootDirs.map((rootDir) =>
+		scanRoot(index, rootDir, options)
+	);
+	return {
+		roots: scanned.map(
+			(root, position) => root ?? emptyRoot(options.rootDirs[position])
+		),
+		warnings: options.rootDirs
+			.filter((_, position) => !scanned[position])
+			.map(missingRootWarning),
+	};
 }
 
 function missingRootWarning(rootDir: string): string {
@@ -107,11 +94,11 @@ function emptyRoot(rootDir: string): ScannedRoot {
 	return { rootDir, entries: [], markers: [], excluded: [] };
 }
 
-async function scanRoot(
-	fileSystem: FileSystemService,
+function scanRoot(
+	index: IndexService,
 	rootDir: string,
 	options: ScanOptions
-): Promise<ScannedRoot | undefined> {
+): ScannedRoot | undefined {
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
 	const excluded: string[] = [];
@@ -123,14 +110,9 @@ async function scanRoot(
 		return options.exclude.some((glob) => isMatch(fromConfig, glob));
 	};
 
-	const visit = async (dir: string): Promise<boolean> => {
-		let listing: [string, FileType][];
-		try {
-			listing = await fileSystem.readDirectory(dir);
-		} catch (error) {
-			if (isNotFound(error)) return false;
-			throw error;
-		}
+	const visit = (dir: string): boolean => {
+		const listing = index.getEntries(dir);
+		if (!listing) return false;
 
 		const relativeDir = toPosix(path.relative(rootDir, dir));
 		const relativeTo = (name: string) =>
@@ -177,11 +159,11 @@ async function scanRoot(
 			}
 		}
 
-		await Promise.all(subdirs.map(visit));
+		subdirs.forEach(visit);
 		return true;
 	};
 
-	if (!(await visit(rootDir))) return undefined;
+	if (!visit(rootDir)) return undefined;
 
 	return {
 		rootDir,

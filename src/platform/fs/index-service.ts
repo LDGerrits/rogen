@@ -17,9 +17,6 @@ export class IndexService {
 
 		const traverse = async (currentDir: string): Promise<void> => {
 			const posixDir = toPosix(currentDir);
-			if (!this.tree.has(posixDir)) {
-				this.tree.set(posixDir, new Map());
-			}
 
 			let entries: [string, FileType][];
 			try {
@@ -35,7 +32,8 @@ export class IndexService {
 				throw error;
 			}
 
-			const children = this.tree.get(posixDir)!;
+			const children = new Map<string, FileType>();
+			this.tree.set(posixDir, children);
 			const subdirs: string[] = [];
 
 			for (const [name, type] of entries) {
@@ -50,6 +48,11 @@ export class IndexService {
 		};
 
 		await Promise.all(sourcePaths.map((root) => traverse(root)));
+	}
+
+	/** `undefined` when the directory was never indexed or doesn't exist. */
+	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
+		return this.tree.get(toPosix(dirPath));
 	}
 
 	hasEntry(dirPath: string, name: string): boolean {
