@@ -1,16 +1,20 @@
 import { jest } from "@jest/globals";
 import { FileType } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
-import { IndexService } from "../index-service.js";
+import { CoreIndexService } from "../core-index-service.js";
 import { FileChangeType } from "../file-events.js";
 
-describe("IndexService", () => {
+describe("CoreIndexService", () => {
 	let memoryFs: MemoryFileSystemService;
-	let indexService: IndexService;
+	let indexService: CoreIndexService;
+
+	afterEach(() => {
+		indexService[Symbol.dispose]();
+	});
 
 	beforeEach(() => {
 		memoryFs = new MemoryFileSystemService();
-		indexService = new IndexService(memoryFs);
+		indexService = new CoreIndexService(memoryFs);
 	});
 
 	describe("Initialization", () => {

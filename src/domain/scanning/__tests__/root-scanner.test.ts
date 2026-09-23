@@ -1,8 +1,9 @@
 import { jest } from "@jest/globals";
 import path from "path";
+import { DisposableStore } from "../../../base/disposable.js";
 import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
-import { IndexService } from "../../../platform/fs/index-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ScannedRoot, ScanOptions, scanRootDirs } from "../root-scanner.js";
 
@@ -10,6 +11,9 @@ const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 describe("scanRootDirs", () => {
 	let fs: MemoryFileSystemService;
+	let store: DisposableStore;
+
+	const newIndex = () => store.add(new CoreIndexService(fs));
 
 	const scan = async (options: Partial<ScanOptions> = {}) => {
 		const scanOptions: ScanOptions = {
@@ -18,7 +22,7 @@ describe("scanRootDirs", () => {
 			configDir: abs("."),
 			...options,
 		};
-		const index = new IndexService(fs);
+		const index = newIndex();
 		await index.initialize([...scanOptions.rootDirs]);
 		return scanRootDirs(index, scanOptions);
 	};
@@ -32,6 +36,11 @@ describe("scanRootDirs", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
 	});
 
 	describe("recognised files", () => {
@@ -381,7 +390,7 @@ describe("scanRootDirs", () => {
 	describe("indexing", () => {
 		it("should read only the index, not the file system", async () => {
 			await write("src/A.luau", "src/sub/B.luau");
-			const index = new IndexService(fs);
+			const index = newIndex();
 			await index.initialize([abs("src")]);
 			const readDirectory = jest.spyOn(fs, "readDirectory");
 
@@ -397,7 +406,7 @@ describe("scanRootDirs", () => {
 
 		it("should scan one index for several configs with different excludes", async () => {
 			await write("src/A.luau", "src/B.luau");
-			const index = new IndexService(fs);
+			const index = newIndex();
 			await index.initialize([abs("src")]);
 			const base = { rootDirs: [abs("src")], configDir: abs(".") };
 
@@ -416,7 +425,7 @@ describe("scanRootDirs", () => {
 
 		it("should see files applied to the index after the initial scan", async () => {
 			await write("src/A.luau");
-			const index = new IndexService(fs);
+			const index = newIndex();
 			await index.initialize([abs("src")]);
 			index.applyChanges([
 				{
