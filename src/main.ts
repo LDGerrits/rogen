@@ -48,10 +48,12 @@ async function main(): Promise<void> {
 	const disposables = new DisposableStore();
 
 	try {
+		const commandRegistry = Registry.as<CommandRegistry>(
+			Extensions.Commands
+		);
 		const rawArgs = process.argv.slice(2);
-		const argsResult = parseArgs(
-			rawArgs,
-			Registry.as<CommandRegistry>(Extensions.Commands).getOptions()
+		const argsResult = parseArgs(rawArgs, (command) =>
+			commandRegistry.getOptions(command)
 		);
 
 		if (argsResult.isErr()) {

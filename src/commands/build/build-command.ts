@@ -2,7 +2,6 @@ import { ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigService } from "../../platform/config/config.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { CONFIG_OVERRIDE_OPTIONS } from "../config-overrides.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
 	CommandRegistry,
@@ -21,7 +20,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				isVariadic: true,
 			},
 		],
-		options: CONFIG_OVERRIDE_OPTIONS,
 	},
 	handler: async (accessor) => {
 		const logService = accessor.get(LogService);

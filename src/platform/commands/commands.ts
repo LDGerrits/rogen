@@ -87,8 +87,11 @@ export interface CommandRegistry {
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
-	/** Global options plus every registered command's own, without duplicates. */
-	getOptions(): readonly OptionDescriptor[];
+	/**
+	 * Global options plus the given command's own, or every registered
+	 * command's when no id is given.
+	 */
+	getOptions(commandId?: string): readonly OptionDescriptor[];
 }
 
 function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
@@ -162,9 +165,13 @@ class CoreCommandRegistry implements CommandRegistry {
 		return new Map(this.commands);
 	}
 
-	getOptions(): readonly OptionDescriptor[] {
+	getOptions(commandId?: string): readonly OptionDescriptor[] {
 		const options = [...GlobalOptions];
-		for (const command of this.commands.values()) {
+		const commands =
+			commandId === undefined
+				? [...this.commands.values()]
+				: [this.commands.get(commandId)].filter((c) => c !== undefined);
+		for (const command of commands) {
 			for (const option of command.metadata.options ?? []) {
 				if (!options.some((known) => sameOption(option, known))) {
 					options.push(option);

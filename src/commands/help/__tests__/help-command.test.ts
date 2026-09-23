@@ -68,12 +68,11 @@ describe("help command", () => {
 	});
 
 	describe("rogen help <command>", () => {
-		it("should print the command's arguments and options", async () => {
+		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
 			expect(printed()).toContain("rogen build [name...] [options]");
-			expect(printed()).toContain("--source <value>");
-			expect(printed()).toContain("Override the output directory.");
+			expect(printed()).toContain("A config to build.");
 		});
 
 		it("should resolve the command from --help as well", async () => {
@@ -112,9 +111,9 @@ describe("help command", () => {
 						`--${option.name}`,
 						...(option.type === "string" ? ["x"] : []),
 					];
-					expect(parseArgs(argv, registry.getOptions()).isOk()).toBe(
-						true
-					);
+					expect(
+						parseArgs(argv, (id) => registry.getOptions(id)).isOk()
+					).toBe(true);
 				}
 			}
 		});

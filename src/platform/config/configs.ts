@@ -50,23 +50,7 @@ export class CliConfig extends AbstractDisposable implements ConfigLoader {
 	}
 
 	async initialize(): Promise<ConfigModel> {
-		const args = this.environment.args;
-		const overrides: Record<string, unknown> = {};
-
-		if (args.source) overrides.source = args.source;
-
-		if (args.build || args.output || args.env) {
-			const targetModes = args.mode || ["luau", "ts", "darklua"];
-			for (const mode of targetModes) {
-				overrides[mode] = {
-					...(args.build && { build: args.build }),
-					...(args.output && { output: args.output }),
-					...(args.env && { env: args.env }),
-				};
-			}
-		}
-
-		this._configurationModel = new ConfigModel(overrides);
+		this._configurationModel = new ConfigModel({});
 		return this.configurationModel;
 	}
 }

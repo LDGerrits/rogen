@@ -147,6 +147,20 @@ describe("CommandRegistry", () => {
 			expect(names.filter((n) => n === "source")).toHaveLength(1);
 		});
 
+		it("should include only the given command's own options", () => {
+			store.add(
+				registry.registerCommand(withOptions("a", [sourceOption]))
+			);
+			store.add(registry.registerCommand(command("b")));
+
+			expect(registry.getOptions("b").map((o) => o.name)).not.toContain(
+				"source"
+			);
+			expect(registry.getOptions("a").map((o) => o.name)).toContain(
+				"source"
+			);
+		});
+
 		it("should drop a command's options once it is disposed", () => {
 			const registration = registry.registerCommand(
 				withOptions("a", [sourceOption])

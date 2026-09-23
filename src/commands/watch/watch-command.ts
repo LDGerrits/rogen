@@ -11,7 +11,6 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ConfigService } from "../../platform/config/config.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { CONFIG_OVERRIDE_OPTIONS } from "../config-overrides.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
 	CommandRegistry,
@@ -31,7 +30,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				isVariadic: true,
 			},
 		],
-		options: CONFIG_OVERRIDE_OPTIONS,
 	},
 	handler: async (accessor) => {
 		const logService = accessor.get(LogService);
