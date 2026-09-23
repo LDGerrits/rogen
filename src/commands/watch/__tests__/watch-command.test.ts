@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import "../watch-command.js";
+import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { MockConfigService } from "../../../platform/config/__tests__/mock-config-service.js";
@@ -58,6 +59,8 @@ describe("watch command", () => {
 	});
 
 	afterEach(async () => {
+		lifecycle.shutdown();
+		jest.restoreAllMocks();
 		await watcher.stop();
 		reconciliation[Symbol.dispose]();
 		store[Symbol.dispose]();
@@ -181,5 +184,64 @@ describe("watch command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(stop).toHaveBeenCalled();
+	});
+
+	it("should run the initial build only once the watcher is ready", async () => {
+		const ready = new DeferredPromise<void>();
+		jest.spyOn(watcher, "watch").mockReturnValue(ready.p);
+		const debug = jest.spyOn(logService, "debug");
+		void startWatch(new MockConfigService({ rootDirs: [] }));
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(debug).not.toHaveBeenCalledWith(
+			expect.stringContaining("full rebuild")
+		);
+
+		ready.complete();
+		await Promise.resolve();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(debug).toHaveBeenCalledWith(
+			expect.stringContaining("full rebuild")
+		);
+	});
+
+	it("should not throw when shutdown is requested twice", async () => {
+		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		await Promise.resolve();
+		await Promise.resolve();
+
+		lifecycle.shutdown();
+		lifecycle.shutdown();
+
+		expect((await running).isOk()).toBe(true);
+	});
+
+	it("should leave no listeners behind for a second run", async () => {
+		await memFs.createDirectory("/repo/src");
+		const debug = jest.spyOn(logService, "debug");
+		const first = startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		await Promise.resolve();
+		await Promise.resolve();
+		lifecycle.shutdown();
+		await first;
+
+		lifecycle = new MockLifecycleService();
+		void startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		await Promise.resolve();
+		await Promise.resolve();
+		debug.mockClear();
+
+		await memFs.writeFile("/repo/src/a.luau", "");
+		jest.advanceTimersByTime(150);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		const incremental = debug.mock.calls.filter(([message]) =>
+			String(message).includes("incremental build")
+		);
+		expect(incremental).toHaveLength(1);
 	});
 });

@@ -43,94 +43,85 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const buildQueue = new Sequencer();
 		const shutdown = new DeferredPromise<void>();
 
-		const triggerRebuild = (): void => {
+		const queueBuild = (build: () => Promise<void> | void): void => {
+			void buildQueue.queue(async () => {
+				if (!shutdown.isSettled) await build();
+			});
+		};
+
+		const rebuild = (): void => {
 			const config = configService.getValue<ResolvedConfig>();
 			logService.debug(
 				`Triggering full rebuild. Root dirs: ${(config.rootDirs ?? []).join(", ")}`
 			);
 		};
 
-		const triggerIncrementalBuild = (changes: FileChange[]): void => {
+		const incrementalBuild = (changes: FileChange[]): void => {
 			logService.debug(
 				`Triggering incremental build for ${changes.length} files.`
 			);
+		};
+
+		const configPath = configService.configPath;
+
+		const onChanges = async (changes: FileChange[]): Promise<void> => {
+			if (!changes.some((c) => c.path === configPath)) {
+				incrementalBuild(changes);
+				return;
+			}
+
+			logService.info("Config change detected. Reloading...");
+			try {
+				await configService.reloadConfig();
+			} catch (error) {
+				logService.warn(
+					`Invalid configuration change ignored: ${ErrorUtils.fromUnknown(error).message}`
+				);
+			}
 		};
 
 		try {
 			store.add(
 				lifecycleService.onWillShutdown(() => shutdown.complete())
 			);
-
-			logService.info("Starting watch mode...");
-
-			triggerRebuild();
-
-			const config = configService.getValue<ResolvedConfig>();
-
-			const sourcePaths = (config.rootDirs ?? []).map((dir) => ({
-				path: path.resolve(environmentService.cwd, dir),
-				recursive: true,
-			}));
-
-			const configPath = configService.configPath;
-
-			await watcher.watch([
-				...(configPath ? [{ path: configPath, recursive: false }] : []),
-				...sourcePaths,
-			]);
-
 			store.add(
 				configService.onDidChangeConfig(() => {
 					logService.info("Config updated successfully.");
-					triggerRebuild();
+					queueBuild(rebuild);
 				})
 			);
-
 			store.add(
-				watcher.onDidChangeFile((rawChanges) => {
-					reconciliationService.queueEvents(rawChanges);
-				})
+				watcher.onDidChangeFile((changes) =>
+					reconciliationService.queueEvents(changes)
+				)
 			);
-
 			store.add(
-				reconciliationService.onDidEmitChanges((normalizedChanges) => {
-					void buildQueue.queue(async () => {
-						if (shutdown.isSettled) return;
-
-						const configChanged =
-							configPath !== undefined &&
-							normalizedChanges.some(
-								(c) => c.path === configPath
-							);
-
-						if (configChanged) {
-							logService.info(
-								"Config change detected. Reloading..."
-							);
-
-							try {
-								await configService.reloadConfig();
-							} catch (error) {
-								logService.warn(
-									`Invalid configuration change ignored: ${ErrorUtils.fromUnknown(error).message}`
-								);
-							}
-						} else {
-							triggerIncrementalBuild(normalizedChanges);
-						}
-					});
-				})
+				reconciliationService.onDidEmitChanges((changes) =>
+					queueBuild(() => onChanges(changes))
+				)
 			);
-
-			// Full reconciliation if the burst threshold is hit
 			store.add(
 				reconciliationService.onDidRequestReconciliation(() => {
 					logService.info(
 						"Burst threshold reached. Executing full rebuild..."
 					);
-					triggerRebuild();
+					queueBuild(rebuild);
 				})
 			);
+
+			logService.info("Starting watch mode...");
+
+			const config = configService.getValue<ResolvedConfig>();
+			await watcher.watch([
+				...(configPath ? [{ path: configPath, recursive: false }] : []),
+				...(config.rootDirs ?? []).map((dir) => ({
+					path: path.resolve(environmentService.cwd, dir),
+					recursive: true,
+				})),
+			]);
+
+			// Build only once the watcher is live, so no change goes unseen.
+			queueBuild(rebuild);
 
 			await shutdown.p;
 
