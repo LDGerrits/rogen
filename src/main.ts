@@ -80,33 +80,35 @@ async function main(): Promise<void> {
 
 		const fileSystemService = new DiskFileSystemService();
 
-		// Resolve config
-		const configService = new CoreConfigService(
-			fileSystemService,
-			environment
-		);
+		const services = new ServiceCollection();
 
-		try {
-			await configService.initialize();
-		} catch (error) {
-			logService.error(
-				error instanceof Error ? error.message : String(error)
+		if (commandRegistry.getCommand(command)?.metadata.requiresConfig) {
+			const configService = new CoreConfigService(
+				fileSystemService,
+				environment
 			);
-			process.exitCode = 1;
-			return;
-		}
 
-		disposables.add(configService);
+			try {
+				await configService.initialize();
+			} catch (error) {
+				logService.error(
+					error instanceof Error ? error.message : String(error)
+				);
+				process.exitCode = 1;
+				return;
+			}
+
+			disposables.add(configService);
+			services.set(ConfigService, configService);
+		}
 
 		const reconciliationService = disposables.add(
 			new CoreReconciliationService(logService)
 		);
 
-		const services = new ServiceCollection();
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(FileSystemService, fileSystemService);
-		services.set(ConfigService, configService);
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())

@@ -136,13 +136,18 @@ describe("init command", () => {
 
 	describe("package mounts", () => {
 		it.each([
-			["wally.toml", "Packages"],
-			["pesde.toml", "roblox_packages"],
-			["node_modules/@rbxts/types/package.json", "include"],
+			["wally.toml", "Packages", "Packages"],
+			["pesde.toml", "roblox_packages", "roblox_packages"],
+			[
+				"node_modules/@rbxts/types/package.json",
+				"",
+				"node_modules/@rbxts",
+			],
 		])(
 			"should write a template with mounts when %s is found",
-			async (file, mounted) => {
+			async (file, dir, mounted) => {
 				await write(file);
+				if (dir) await memFs.createDirectory(path.join(cwd, dir));
 
 				await runInit();
 
@@ -169,6 +174,7 @@ describe("init command", () => {
 
 		it("should reference an existing template and leave it untouched", async () => {
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 			await write("template.project.json", '{"name":"mine"}');
 
 			await runInit("lobby");
@@ -181,6 +187,7 @@ describe("init command", () => {
 
 		it("should share one template between two configs", async () => {
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
 			const template = await read("template.project.json");
@@ -195,6 +202,7 @@ describe("init command", () => {
 		it("should put the template in the darklua source config only", async () => {
 			await write(".darklua.json");
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
 
@@ -211,6 +219,7 @@ describe("init command", () => {
 		it("should write strict JSON that parses under the config schema", async () => {
 			await write(".darklua.json");
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
 
@@ -224,6 +233,7 @@ describe("init command", () => {
 		it("should write fields in pipeline order", async () => {
 			await write("tsconfig.json", "{}");
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
 
@@ -317,6 +327,7 @@ describe("init command", () => {
 		it("should write nothing when one darklua file already exists", async () => {
 			await write(".darklua.json");
 			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 			await write("source.rogen.json", "{}");
 
 			const result = await runInit();

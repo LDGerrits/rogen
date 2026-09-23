@@ -1,4 +1,8 @@
-import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { Result, err, ok } from "../../base/result.js";
+import {
+	CONFIG_SUFFIX,
+	DEFAULT_CONFIG_STEM,
+} from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 import { DetectedWorkspace } from "./detect-workspace.js";
@@ -39,6 +43,22 @@ const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 	content: serialize(config),
 });
 
+/** `names` are the positionals after `init`. */
+export function parseInitName(names: readonly string[]): Result<string, Error> {
+	if (names.length > 1) {
+		return err(new Error("init takes at most one config name."));
+	}
+	const [name = DEFAULT_CONFIG_STEM] = names;
+	if (name === "." || name === ".." || /[\\/]/.test(name)) {
+		return err(
+			new Error(
+				`"${name}" is not a valid config name: it can't contain path separators.`
+			)
+		);
+	}
+	return ok(name);
+}
+
 export function planInit(options: InitPlanOptions): InitPlan {
 	const { name, workspace } = options;
 	const hasMounts = Object.keys(workspace.packageMounts).length > 0;
@@ -68,7 +88,8 @@ export function planInit(options: InitPlanOptions): InitPlan {
 	});
 
 	if (workspace.toolchain === "darklua") {
-		const sourceStem = name === "default" ? "source" : `${name}-source`;
+		const sourceStem =
+			name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
 		return {
 			template,
 			configs: [

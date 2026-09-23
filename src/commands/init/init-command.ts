@@ -5,6 +5,7 @@ import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
 import {
 	PlannedFile,
 	TEMPLATE_FILE,
+	parseInitName,
 	planInit,
 } from "../../domain/workspace/init-plan.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -16,7 +17,6 @@ import {
 	Extensions,
 } from "../../platform/commands/commands.js";
 
-const DEFAULT_NAME = "default";
 const DEFAULT_PROJECT_NAME = "roblox-game";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
@@ -36,22 +36,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const fileSystemService = accessor.get(FileSystemService);
 		const logService = accessor.get(LogService);
 
-		const [, name = DEFAULT_NAME, ...extra] = args._;
-		if (extra.length > 0) {
-			return err(new Error("init takes at most one config name."));
-		}
-		if (name === "." || name === ".." || /[\\/]/.test(name)) {
-			return err(
-				new Error(
-					`"${name}" is not a valid config name: it can't contain path separators.`
-				)
-			);
-		}
+		const nameResult = parseInitName(args._.slice(1));
+		if (nameResult.isErr()) return nameResult;
 
 		const cwd = environmentService.cwd;
 		const workspace = await detectWorkspace(fileSystemService, cwd);
 		const plan = planInit({
-			name,
+			name: nameResult.value,
 			workspace,
 			projectName: path.basename(cwd) || DEFAULT_PROJECT_NAME,
 			templateExists: await fileSystemService.exists(

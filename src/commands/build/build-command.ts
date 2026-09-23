@@ -11,6 +11,7 @@ import {
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "build",
 	metadata: {
+		requiresConfig: true,
 		description: "Writes each named config's project file.",
 		args: [
 			{

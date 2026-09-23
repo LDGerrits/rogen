@@ -1,7 +1,7 @@
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
-import { planInit } from "../init-plan.js";
+import { parseInitName, planInit } from "../init-plan.js";
 
 const STARTING_ROUTES = {
 	server: "ServerScriptService",
@@ -12,7 +12,7 @@ const STARTING_ROUTES = {
 
 const luau: DetectedWorkspace = { toolchain: "luau", packageMounts: {} };
 const mounts = {
-	ReplicatedStorage: { Packages: { $path: { optional: "Packages" } } },
+	ReplicatedStorage: { Packages: { $path: "Packages" } },
 };
 
 const plan = (
@@ -181,5 +181,23 @@ describe("planInit", () => {
 				"template.project.json"
 			);
 		});
+	});
+});
+
+describe("parseInitName", () => {
+	it("should default to the default config name", () => {
+		expect(parseInitName([]).unwrap()).toBe("default");
+	});
+
+	it("should accept a single name", () => {
+		expect(parseInitName(["lobby"]).unwrap()).toBe("lobby");
+	});
+
+	it.each(["a/b", "a\\b", "..", "."])("should reject %s", (name) => {
+		expect(parseInitName([name]).isErr()).toBe(true);
+	});
+
+	it("should reject more than one name", () => {
+		expect(parseInitName(["a", "b"]).isErr()).toBe(true);
 	});
 });

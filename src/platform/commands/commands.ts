@@ -39,6 +39,8 @@ export interface Command {
 
 export interface CommandMetadata {
 	readonly description: string;
+	/** Whether the composition root must load a config before running it. */
+	readonly requiresConfig?: boolean;
 	readonly args?: readonly {
 		readonly name: string;
 		readonly description: string;
