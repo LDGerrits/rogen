@@ -1,6 +1,10 @@
+export interface OptionalRojoPath {
+	readonly optional: string;
+}
+
 export interface RojoNode {
 	$className?: string;
-	$path?: string;
+	$path?: string | OptionalRojoPath;
 	$properties?: Record<string, unknown>;
 	$ignoreUnknownInstances?: boolean;
 	[key: string]: unknown;

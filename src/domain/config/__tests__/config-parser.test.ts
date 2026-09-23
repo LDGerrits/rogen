@@ -14,7 +14,7 @@ describe("domain/config/config-parser", () => {
 			const result = parseConfig(text, "lobby.rogen.json");
 
 			expect(result.isOk()).toBe(true);
-			expect(result.unwrap()).toEqual({
+			expect(result.unwrap().config).toEqual({
 				rootDirs: ["src"],
 				tags: { mock: false },
 			});
@@ -114,7 +114,7 @@ describe("domain/config/config-parser", () => {
 				"a.rogen.json"
 			);
 
-			expect(result.unwrap()).toEqual({ rootDirs: ["src"] });
+			expect(result.unwrap().config).toEqual({ rootDirs: ["src"] });
 		});
 
 		it("should describe a syntax error in words", () => {

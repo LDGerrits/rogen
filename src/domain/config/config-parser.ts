@@ -5,14 +5,23 @@ import {
 	ConfigRegistry,
 	Extensions,
 } from "../../platform/config/config-registry.js";
-import { Diagnostic, Diagnostics } from "../diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticLocation,
+	Diagnostics,
+} from "../diagnostics/diagnostic.js";
 import { RogenConfig } from "./config.js";
 import { validateNode } from "./schema-validation.js";
+
+export interface ParsedConfig {
+	readonly config: RogenConfig;
+	readonly extendsLocation?: DiagnosticLocation;
+}
 
 export function parseConfig(
 	text: string,
 	file: string
-): Result<RogenConfig, Diagnostic[]> {
+): Result<ParsedConfig, Diagnostic[]> {
 	const { root, value, errors } = parseJsonc(text);
 
 	if (errors.length > 0) {
@@ -33,5 +42,15 @@ export function parseConfig(
 	const problems = validateNode(root, schema, file);
 	if (problems.length > 0) return err(problems);
 
-	return ok(value as RogenConfig);
+	const extendsValue = root.properties.find(
+		(property) => property.name === "extends"
+	)?.value;
+	return ok({
+		config: value as RogenConfig,
+		extendsLocation: extendsValue && {
+			file,
+			line: extendsValue.line,
+			column: extendsValue.column,
+		},
+	});
 }

@@ -40,4 +40,26 @@ export const Diagnostics = {
 		severity: "error",
 		message: `"${path}": expected ${expected}, found ${found}.`,
 	}),
+	unreadable: (location: DiagnosticLocation, detail: string): Diagnostic => ({
+		...location,
+		severity: "error",
+		message: `the config could not be read: ${detail}.`,
+	}),
+	extendsUnreadable: (
+		location: DiagnosticLocation,
+		target: string,
+		detail: string
+	): Diagnostic => ({
+		...location,
+		severity: "error",
+		message: `"extends" target "${target}" could not be read: ${detail}.`,
+	}),
+	extendsCycle: (
+		location: DiagnosticLocation,
+		loop: readonly string[]
+	): Diagnostic => ({
+		...location,
+		severity: "error",
+		message: `extends cycle: ${loop.join(" -> ")}.`,
+	}),
 };
