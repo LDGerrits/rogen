@@ -8,7 +8,7 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Sequencer } from "../../base/async.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { CoreConfigService } from "../../platform/config/config-service.js";
+import { ConfigService } from "../../platform/config/config.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 
 export class WatchCommand implements Command {
@@ -18,7 +18,7 @@ export class WatchCommand implements Command {
 		private readonly logService: LogService,
 		private readonly watcher: Watcher,
 		private readonly reconciliationService: ReconciliationService,
-		private readonly configService: CoreConfigService,
+		private readonly configService: ConfigService,
 		private readonly environmentService: EnvironmentService
 	) {}
 
@@ -29,20 +29,15 @@ export class WatchCommand implements Command {
 
 		const config = this.configService.getValue<ResolvedConfig>();
 
-		const sourcePaths = config.source.map((src) => ({
-			path: path.resolve(this.environmentService.cwd, src),
+		const sourcePaths = (config.rootDirs ?? []).map((dir) => ({
+			path: path.resolve(this.environmentService.cwd, dir),
 			recursive: true,
 		}));
 
-		const configPath = this.environmentService.args.config
-			? path.resolve(
-					this.environmentService.cwd,
-					this.environmentService.args.config
-				)
-			: path.join(this.environmentService.cwd, ".rogen.json");
+		const configPath = this.configService.configPath;
 
 		await this.watcher.watch([
-			{ path: configPath, recursive: false },
+			...(configPath ? [{ path: configPath, recursive: false }] : []),
 			...sourcePaths,
 		]);
 
@@ -57,9 +52,9 @@ export class WatchCommand implements Command {
 
 		this.reconciliationService.onDidEmitChanges((normalizedChanges) => {
 			this.buildQueue.queue(async () => {
-				const configChanged = normalizedChanges.some(
-					(c) => c.path === configPath
-				);
+				const configChanged =
+					configPath !== undefined &&
+					normalizedChanges.some((c) => c.path === configPath);
 
 				if (configChanged) {
 					this.logService.info(
@@ -93,7 +88,7 @@ export class WatchCommand implements Command {
 	private triggerRebuild(): void {
 		const config = this.configService.getValue<ResolvedConfig>();
 		this.logService.debug(
-			`Triggering full rebuild with config: ${config.casing}`
+			`Triggering full rebuild. Root dirs: ${(config.rootDirs ?? []).join(", ")}`
 		);
 	}
 

@@ -36,6 +36,8 @@ export interface ConfigService {
 	readonly _serviceBrand: undefined;
 	readonly onDidChangeConfig: Event<ConfigChangeEvent>;
 
+	readonly configPath: string | undefined;
+
 	getValue<T>(section?: string): T;
 	inspect<T>(section: string): ConfigValue<T>;
 	reloadConfig(): Promise<void>;
