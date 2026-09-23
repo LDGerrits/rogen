@@ -39,7 +39,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const reconciliationService = accessor.get(ReconciliationService);
 		const configService = accessor.get(ConfigService);
 		const environmentService = accessor.get(EnvironmentService);
-
 		const lifecycleService = accessor.get(LifecycleService);
 
 		const store = new DisposableStore();

@@ -58,7 +58,7 @@ export function formatCommandHelp(
 		.filter(Boolean)
 		.join(" ");
 
-	const sections = [`${description}`, "", "Usage:", `  ${usage}`];
+	const sections = [description, "", "Usage:", `  ${usage}`];
 
 	if (args.length > 0) {
 		sections.push(

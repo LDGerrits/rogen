@@ -65,7 +65,7 @@ describe("watch command", () => {
 		jest.useRealTimers();
 	});
 
-	it("watches the config file the service actually resolved, not a hardcoded .rogen.json", async () => {
+	it("should watch the config file the service actually resolved, not a hardcoded .rogen.json", async () => {
 		await memFs.writeFile("/repo/custom.rogen.json", "{}");
 
 		const configService = new MockConfigService(
@@ -88,7 +88,7 @@ describe("watch command", () => {
 		expect(reloadSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it("does not reload when a file at a hardcoded .rogen.json path changes", async () => {
+	it("should not reload when a file at a hardcoded .rogen.json path changes", async () => {
 		await memFs.writeFile("/repo/custom.rogen.json", "{}");
 		await memFs.writeFile("/repo/.rogen.json", "{}");
 
@@ -109,7 +109,7 @@ describe("watch command", () => {
 		expect(reloadSpy).not.toHaveBeenCalled();
 	});
 
-	it("resolves ok when shutdown is requested", async () => {
+	it("should resolve ok when shutdown is requested", async () => {
 		const running = startWatch(new MockConfigService({ rootDirs: [] }));
 		await Promise.resolve();
 		await Promise.resolve();
@@ -119,7 +119,7 @@ describe("watch command", () => {
 		expect((await running).isOk()).toBe(true);
 	});
 
-	it("stops the watcher when shutdown is requested", async () => {
+	it("should stop the watcher when shutdown is requested", async () => {
 		const stop = jest.spyOn(watcher, "stop");
 		const running = startWatch(new MockConfigService({ rootDirs: [] }));
 		await Promise.resolve();
@@ -132,7 +132,7 @@ describe("watch command", () => {
 		expect(stop).toHaveBeenCalledTimes(1);
 	});
 
-	it("does not react to file changes after shutdown", async () => {
+	it("should not react to file changes after shutdown", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
 		const running = startWatch(
@@ -154,7 +154,7 @@ describe("watch command", () => {
 		);
 	});
 
-	it("reacts to file changes while running", async () => {
+	it("should react to file changes while running", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
 		void startWatch(new MockConfigService({ rootDirs: ["src"] }));
@@ -171,7 +171,7 @@ describe("watch command", () => {
 		);
 	});
 
-	it("returns an error and stops the watcher when watching fails", async () => {
+	it("should return an error and stops the watcher when watching fails", async () => {
 		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
 		const stop = jest.spyOn(watcher, "stop");
 
