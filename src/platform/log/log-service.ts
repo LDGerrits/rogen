@@ -1,4 +1,5 @@
 import { ErrorUtils } from "../../base/errors.js";
+import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export enum LogLevel {
 	Off = 0,
@@ -22,6 +23,8 @@ export interface LogService {
 	trace(message: string, ...args: unknown[]): void;
 }
 
+export const LogService = createServiceIdentifier<LogService>("logService");
+
 export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
@@ -41,9 +44,7 @@ export abstract class AbstractLogService implements LogService {
 
 	protected format(message: string | Error, args: unknown[]): string {
 		let result =
-			message instanceof Error
-				? this.formatError(message)
-				: message;
+			message instanceof Error ? this.formatError(message) : message;
 
 		for (const arg of args) {
 			if (arg instanceof Error) {

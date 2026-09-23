@@ -1,20 +1,34 @@
-import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
-import { InitCommand } from "./commands/init/init-command.js";
-import { LogLevel, ConsoleLogService } from "./platform/log/log-service.js";
-import { VersionCommand } from "./commands/version/version-command.js";
-import { HelpCommand } from "./commands/help/help-command.js";
-import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import { DisposableStore } from "./base/disposable.js";
-import { BuildCommand } from "./commands/build/build-command.js";
-import { CommandRegistry } from "./commands/command.js";
-import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
-import { WatchCommand } from "./commands/watch/watch-command.js";
-import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
-import { parseArgs } from "./platform/environment/args.js";
-import { NativeEnvironmentService } from "./platform/environment/environment-service.js";
-import { CoreConfigService } from "./platform/config/config-service.js";
 import { setUnexpectedErrorHandler } from "./base/errors.js";
+import { CommandService } from "./platform/commands/commands.js";
+import { CoreCommandService } from "./platform/commands/core-command-service.js";
+import { ConfigService } from "./platform/config/config.js";
+import { CoreConfigService } from "./platform/config/config-service.js";
+import { parseArgs } from "./platform/environment/args.js";
+import {
+	EnvironmentService,
+	NativeEnvironmentService,
+} from "./platform/environment/environment-service.js";
+import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
+import { FileSystemService } from "./platform/fs/file-system-service.js";
+import { ServiceCollection } from "./platform/instantiation/service-collection.js";
+import {
+	ConsoleLogService,
+	LogLevel,
+	LogService,
+} from "./platform/log/log-service.js";
+import { CoreReconciliationService } from "./platform/watcher/core-reconciliation-service.js";
+import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
+import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
+import { Watcher } from "./platform/watcher/watcher.js";
+import { CoreWorkspaceService } from "./domain/workspace/core-workspace-service.js";
+import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import "./domain/config/config.js";
+import "./commands/build/build-command.js";
+import "./commands/help/help-command.js";
+import "./commands/init/init-command.js";
+import "./commands/version/version-command.js";
+import "./commands/watch/watch-command.js";
 
 export default function run(): void {
 	main().catch((error) => {
@@ -56,7 +70,7 @@ async function main(): Promise<void> {
 
 		const fileSystemService = new DiskFileSystemService();
 
-		const workspaceService = new WorkspaceService(
+		const workspaceService = new CoreWorkspaceService(
 			environment,
 			fileSystemService
 		);
@@ -79,45 +93,25 @@ async function main(): Promise<void> {
 
 		disposables.add(configService);
 
-		// Initialize commands
-		const registry = new CommandRegistry();
-
-		registry.register("help", () => new HelpCommand(logService));
-		registry.register(
-			"version",
-			() => new VersionCommand(logService, fileSystemService)
+		const reconciliationService = disposables.add(
+			new CoreReconciliationService(logService)
 		);
 
-		registry.register(
-			"init",
-			() =>
-				new InitCommand(
-					environment,
-					fileSystemService,
-					workspaceService,
-					logService
-				)
-		);
+		const services = new ServiceCollection();
+		services.set(EnvironmentService, environment);
+		services.set(LogService, logService);
+		services.set(FileSystemService, fileSystemService);
+		services.set(WorkspaceService, workspaceService);
+		services.set(ConfigService, configService);
+		services.set(Watcher, new DiskWatcher(logService));
+		services.set(ReconciliationService, reconciliationService);
 
-		registry.register(
-			"build",
-			() => new BuildCommand(logService, configService)
+		const commandService = disposables.add(
+			new CoreCommandService(services, logService)
 		);
+		services.set(CommandService, commandService);
 
-		registry.register(
-			"watch",
-			() =>
-				new WatchCommand(
-					logService,
-					new DiskWatcher(logService),
-					new ReconciliationService(logService),
-					configService,
-					environment
-				)
-		);
-
-		// Execute command
-		const result = await registry.execute(command, cliArgs);
+		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
 			logService.error(result.error.message);

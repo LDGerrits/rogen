@@ -1,9 +1,10 @@
-import { WorkspaceService, ToolchainProfile } from "../workspace-service.js";
+import { ToolchainProfile, WorkspaceService } from "../workspace-service.js";
+import { CoreWorkspaceService } from "../core-workspace-service.js";
 import { RojoNode } from "../../rojo/rojo-project.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
 
-describe("WorkspaceService", () => {
+describe("CoreWorkspaceService", () => {
 	let memFs: MemoryFileSystemService;
 	let workspaceService: WorkspaceService;
 	let environment: NativeEnvironmentService;
@@ -14,7 +15,7 @@ describe("WorkspaceService", () => {
 		await memFs.createDirectory(cwd);
 
 		environment = new NativeEnvironmentService({ _: [] }, cwd);
-		workspaceService = new WorkspaceService(environment, memFs);
+		workspaceService = new CoreWorkspaceService(environment, memFs);
 	});
 
 	describe("detectToolchain", () => {

@@ -1,23 +1,53 @@
 import { jest } from "@jest/globals";
-import "../../../domain/config/config.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResultError } from "../../../base/result.js";
-import { InitCommand } from "../init-command.js";
 import path from "path";
+import "../../../domain/config/config.js";
+import "../init-command.js";
+import { DisposableStore } from "../../../base/disposable.js";
+import { ResultError } from "../../../base/result.js";
+import { CoreWorkspaceService } from "../../../domain/workspace/core-workspace-service.js";
 import { WorkspaceService } from "../../../domain/workspace/workspace-service.js";
-import { NullLogService } from "../../../platform/log/log-service.js";
-import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
+import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
+import {
+	EnvironmentService,
+	NativeEnvironmentService,
+} from "../../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
+import {
+	LogService,
+	NullLogService,
+} from "../../../platform/log/log-service.js";
 
-describe("InitCommand", () => {
+describe("init command", () => {
 	let memFs: MemoryFileSystemService;
 	let logService: NullLogService;
+	let store: DisposableStore;
 
-	const createEnvironment = (cwd: string) =>
-		new NativeEnvironmentService({ _: [] }, cwd);
+	const runInit = (cwd: string) => {
+		const environment = new NativeEnvironmentService({ _: ["init"] }, cwd);
+		const services = new ServiceCollection();
+		services.set(EnvironmentService, environment);
+		services.set(FileSystemService, memFs);
+		services.set(
+			WorkspaceService,
+			new CoreWorkspaceService(environment, memFs)
+		);
+		services.set(LogService, logService);
+
+		return store
+			.add(new CoreCommandService(services, logService))
+			.executeCommand("init", environment.args);
+	};
 
 	beforeEach(() => {
 		memFs = new MemoryFileSystemService();
 		logService = new NullLogService();
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
 	});
 
 	it("should return an error if default.rogen.json already exists", async () => {
@@ -25,16 +55,7 @@ describe("InitCommand", () => {
 		const targetPath = path.resolve(cwd, "default.rogen.json");
 		await memFs.writeFile(targetPath, "{}");
 
-		const environment = createEnvironment(cwd);
-		const workspaceService = new WorkspaceService(environment, memFs);
-
-		const command = new InitCommand(
-			environment,
-			memFs,
-			workspaceService,
-			logService
-		);
-		const result = await command.execute();
+		const result = await runInit(cwd);
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
@@ -46,16 +67,7 @@ describe("InitCommand", () => {
 		const cwd = path.resolve("/mock/my-game");
 		await memFs.createDirectory(cwd);
 
-		const environment = createEnvironment(cwd);
-		const workspaceService = new WorkspaceService(environment, memFs);
-
-		const command = new InitCommand(
-			environment,
-			memFs,
-			workspaceService,
-			logService
-		);
-		const result = await command.execute();
+		const result = await runInit(cwd);
 
 		expect(result.isOk()).toBe(true);
 
@@ -87,16 +99,7 @@ describe("InitCommand", () => {
 		);
 		await memFs.createDirectory(path.join(cwd, "Packages"));
 
-		const environment = createEnvironment(cwd);
-		const workspaceService = new WorkspaceService(environment, memFs);
-
-		const command = new InitCommand(
-			environment,
-			memFs,
-			workspaceService,
-			logService
-		);
-		const result = await command.execute();
+		const result = await runInit(cwd);
 
 		expect(result.isOk()).toBe(true);
 
@@ -127,16 +130,7 @@ describe("InitCommand", () => {
 			new Error("Permission denied")
 		);
 
-		const environment = createEnvironment(cwd);
-		const workspaceService = new WorkspaceService(environment, memFs);
-
-		const command = new InitCommand(
-			environment,
-			memFs,
-			workspaceService,
-			logService
-		);
-		const result = await command.execute();
+		const result = await runInit(cwd);
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
