@@ -1,15 +1,6 @@
+import { JSONSchema } from "../../base/json-schema.js";
 import { ConfigModel } from "./config-models.js";
 import { Registry } from "../registry/registry.js";
-
-export interface JSONSchema {
-	type?: string | string[];
-	default?: unknown;
-	description?: string;
-	enum?: unknown[];
-	properties?: Record<string, JSONSchema>;
-	items?: JSONSchema;
-	additionalProperties?: boolean | JSONSchema;
-}
 
 export interface ConfigNode {
 	id: string;

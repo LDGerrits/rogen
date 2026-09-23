@@ -1,5 +1,5 @@
 import { parseJsonc } from "../../../base/jsonc.js";
-import { JSONSchema } from "../../../platform/config/config-registry.js";
+import { JSONSchema } from "../../../base/json-schema.js";
 import { validateNode } from "../schema-validation.js";
 
 const schema: JSONSchema = {

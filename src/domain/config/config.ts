@@ -1,8 +1,8 @@
+import { JSONSchema } from "../../base/json-schema.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
 	Extensions,
 	ConfigRegistry,
-	JSONSchema,
 } from "../../platform/config/config-registry.js";
 
 export const SUPPORTED_SERVICES = [

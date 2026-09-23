@@ -1,5 +1,5 @@
 import { JsoncNode } from "../../base/jsonc.js";
-import { JSONSchema } from "../../platform/config/config-registry.js";
+import { JSONSchema } from "../../base/json-schema.js";
 import { Diagnostic, Diagnostics } from "../diagnostics/diagnostic.js";
 
 const KIND_NAMES: Record<JsoncNode["kind"], string> = {
@@ -29,9 +29,7 @@ export function validateNode(
 			Diagnostics.wrongType(
 				location(node),
 				path,
-				expected
-					.map((kind) => KIND_NAMES[kind as JsoncNode["kind"]])
-					.join(" or "),
+				expected.map((kind) => KIND_NAMES[kind]).join(" or "),
 				KIND_NAMES[node.kind]
 			),
 		];
