@@ -1,9 +1,13 @@
 import path from "path";
 import { ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { RojoNode, RojoTree } from "../../domain/rojo/rojo-project.js";
-import { WorkspaceService } from "../../domain/workspace/workspace-service.js";
-import { RogenConfig } from "../../domain/config/config.js";
+import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
+import {
+	PlannedFile,
+	TEMPLATE_FILE,
+	parseInitName,
+	planInit,
+} from "../../domain/workspace/init-plan.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -13,12 +17,7 @@ import {
 	Extensions,
 } from "../../platform/commands/commands.js";
 
-const STARTING_ROUTES: Record<string, string> = {
-	server: "ServerScriptService",
-	client: "StarterPlayer/StarterPlayerScripts",
-	shared: "ReplicatedStorage/shared",
-	"*": "ReplicatedStorage/shared",
-};
+const DEFAULT_PROJECT_NAME = "roblox-game";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "init",
@@ -27,72 +26,60 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		args: [
 			{
 				name: "name",
-				description: "The config to write.",
+				description: "The config to write. Defaults to default.",
 				isOptional: true,
 			},
 		],
 	},
-	handler: async (accessor) => {
+	handler: async (accessor, args) => {
 		const environmentService = accessor.get(EnvironmentService);
 		const fileSystemService = accessor.get(FileSystemService);
-		const workspaceService = accessor.get(WorkspaceService);
 		const logService = accessor.get(LogService);
 
+		const nameResult = parseInitName(args._.slice(1));
+		if (nameResult.isErr()) return nameResult;
+
 		const cwd = environmentService.cwd;
-		const configPath = path.resolve(cwd, "default.rogen.json");
+		const workspace = await detectWorkspace(fileSystemService, cwd);
+		const plan = planInit({
+			name: nameResult.value,
+			workspace,
+			projectName: path.basename(cwd) || DEFAULT_PROJECT_NAME,
+			templateExists: await fileSystemService.exists(
+				path.join(cwd, TEMPLATE_FILE)
+			),
+		});
 
-		if (await fileSystemService.exists(configPath)) {
-			return err(
-				new Error(
-					"A default.rogen.json file already exists in this directory."
-				)
-			);
-		}
-
-		const toolchain = await workspaceService.detectToolchain();
-
-		const baseTreeNode: RojoNode = { $className: "DataModel" };
-		await workspaceService.injectPackages(baseTreeNode, toolchain);
-
-		// A bare DataModel is the default anyway, so only write a template with mounts.
-		const hasPackageMounts = Object.keys(baseTreeNode).length > 1;
-
-		const config: RogenConfig = {
-			$schema: "https://rogen.dev/schema/2/rogen.json",
-			rootDirs: ["src"],
-			routes: STARTING_ROUTES,
-			...(hasPackageMounts ? { template: "base.project.json" } : {}),
-		};
-
-		// TODO: set `syncDir` from the compiler's output dir.
-
-		try {
-			if (hasPackageMounts) {
-				const template: RojoTree = {
-					name: path.basename(cwd) || "roblox-game",
-					tree: baseTreeNode,
-				};
-				await fileSystemService.writeFile(
-					path.resolve(cwd, "base.project.json"),
-					JSON.stringify(template, null, "\t")
+		for (const { fileName } of plan.configs) {
+			if (await fileSystemService.exists(path.join(cwd, fileName))) {
+				return err(
+					new Error(
+						`${fileName} already exists in this directory. Delete it to write a new one.`
+					)
 				);
 			}
-
-			await fileSystemService.writeFile(
-				configPath,
-				JSON.stringify(config, null, "\t")
-			);
-		} catch (error) {
-			return err(
-				new Error(
-					`Failed to write default.rogen.json: ${ErrorUtils.fromUnknown(error).message}`
-				)
-			);
 		}
 
-		logService.info(
-			"Successfully created default.rogen.json in the current directory."
-		);
+		const files: PlannedFile[] = [
+			...(plan.template ? [plan.template] : []),
+			...plan.configs,
+		];
+		for (const { fileName, content } of files) {
+			try {
+				await fileSystemService.writeFile(
+					path.join(cwd, fileName),
+					content
+				);
+			} catch (error) {
+				return err(
+					new Error(
+						`Failed to write ${fileName}: ${ErrorUtils.fromUnknown(error).message}`,
+						{ cause: error }
+					)
+				);
+			}
+			logService.info(`Created ${fileName}.`);
+		}
 
 		return ok(undefined);
 	},

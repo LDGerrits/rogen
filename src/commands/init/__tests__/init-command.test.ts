@@ -4,8 +4,7 @@ import "../../../domain/config/config.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
-import { CoreWorkspaceService } from "../../../domain/workspace/core-workspace-service.js";
-import { WorkspaceService } from "../../../domain/workspace/workspace-service.js";
+import { parseConfig } from "../../../domain/config/config-parser.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	EnvironmentService,
@@ -19,20 +18,27 @@ import {
 	NullLogService,
 } from "../../../platform/log/log-service.js";
 
+const STARTING_ROUTES = {
+	server: "ServerScriptService",
+	client: "StarterPlayer/StarterPlayerScripts",
+	shared: "ReplicatedStorage/shared",
+	"*": "ReplicatedStorage/shared",
+};
+
 describe("init command", () => {
+	const cwd = path.resolve("/mock/my-game");
 	let memFs: MemoryFileSystemService;
-	let logService: NullLogService;
 	let store: DisposableStore;
 
-	const runInit = (cwd: string) => {
-		const environment = new NativeEnvironmentService({ _: ["init"] }, cwd);
+	const runInit = (...names: string[]) => {
+		const environment = new NativeEnvironmentService(
+			{ _: ["init", ...names] },
+			cwd
+		);
+		const logService = new NullLogService();
 		const services = new ServiceCollection();
 		services.set(EnvironmentService, environment);
 		services.set(FileSystemService, memFs);
-		services.set(
-			WorkspaceService,
-			new CoreWorkspaceService(environment, memFs)
-		);
 		services.set(LogService, logService);
 
 		return store
@@ -40,104 +46,323 @@ describe("init command", () => {
 			.executeCommand("init", environment.args);
 	};
 
-	beforeEach(() => {
+	const write = (file: string, content = "") =>
+		memFs.writeFile(path.join(cwd, file), content);
+	const read = (file: string) => memFs.readFile(path.join(cwd, file));
+	const readJson = async (file: string) => JSON.parse(await read(file));
+	const exists = (file: string) => memFs.exists(path.join(cwd, file));
+	const errorMessage = (result: Awaited<ReturnType<typeof runInit>>) =>
+		(result as ResultError<Error>).error.message;
+
+	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
-		logService = new NullLogService();
 		store = new DisposableStore();
+		await memFs.createDirectory(cwd);
 	});
 
 	afterEach(() => {
 		store[Symbol.dispose]();
 	});
 
-	it("should return an error if default.rogen.json already exists", async () => {
-		const cwd = path.resolve("/mock/cwd");
-		const targetPath = path.resolve(cwd, "default.rogen.json");
-		await memFs.writeFile(targetPath, "{}");
+	describe("toolchains", () => {
+		it("should write a plain config when no toolchain is found", async () => {
+			const result = await runInit();
 
-		const result = await runInit(cwd);
-
-		expect(result.isErr()).toBe(true);
-		expect((result as ResultError<Error>).error.message).toContain(
-			"already exists in this directory"
-		);
-	});
-
-	it("should generate a clean Luau config when no toolchains are detected", async () => {
-		const cwd = path.resolve("/mock/my-game");
-		await memFs.createDirectory(cwd);
-
-		const result = await runInit(cwd);
-
-		expect(result.isOk()).toBe(true);
-
-		const targetPath = path.resolve(cwd, "default.rogen.json");
-		const writtenContent = await memFs.readFile(targetPath);
-		const config = JSON.parse(writtenContent);
-
-		expect(config.rootDirs).toEqual(["src"]);
-		expect(config.routes).toEqual({
-			server: "ServerScriptService",
-			client: "StarterPlayer/StarterPlayerScripts",
-			shared: "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared",
+			expect(result.isOk()).toBe(true);
+			const config = await readJson("default.rogen.json");
+			expect(config.rootDirs).toEqual(["src"]);
+			expect(config.routes).toEqual(STARTING_ROUTES);
+			expect(config.syncDir).toBeUndefined();
+			expect(config.template).toBeUndefined();
+			expect(await exists("template.project.json")).toBe(false);
 		});
-		expect(config.template).toBeUndefined();
-		expect(await memFs.exists(path.resolve(cwd, "base.project.json"))).toBe(
-			false
-		);
+
+		it("should use the tsconfig outDir as syncDir for roblox-ts", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ compilerOptions: { outDir: "build" } })
+			);
+
+			await runInit();
+
+			expect((await readJson("default.rogen.json")).syncDir).toBe(
+				"build"
+			);
+		});
+
+		it("should fall back to out when tsconfig has no outDir", async () => {
+			await write("tsconfig.json", "{}");
+
+			await runInit();
+
+			expect((await readJson("default.rogen.json")).syncDir).toBe("out");
+		});
+
+		it("should write one config for roblox-ts", async () => {
+			await write("tsconfig.json", "{}");
+
+			await runInit();
+
+			expect(await exists("source.rogen.json")).toBe(false);
+		});
+
+		it("should write a source config and a synced default config for darklua", async () => {
+			await write(".darklua.json");
+
+			await runInit();
+
+			const source = await readJson("source.rogen.json");
+			const config = await readJson("default.rogen.json");
+			expect(source.syncDir).toBeUndefined();
+			expect(source.routes).toEqual(STARTING_ROUTES);
+			expect(config.extends).toBe("source.rogen.json");
+			expect(config.syncDir).toBe("dist");
+			expect(config.routes).toBeUndefined();
+		});
+
+		it("should write <name> and <name>-source for a named darklua config", async () => {
+			await write(".darklua.json5");
+
+			await runInit("lobby");
+
+			expect((await readJson("lobby.rogen.json")).extends).toBe(
+				"lobby-source.rogen.json"
+			);
+			expect(await exists("lobby-source.rogen.json")).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(false);
+			expect(await exists("source.rogen.json")).toBe(false);
+		});
 	});
 
-	it("should tailor the config for TypeScript and Wally, injecting correct workspace packages", async () => {
-		const cwd = path.resolve("/mock/ts-game");
+	describe("package mounts", () => {
+		it.each([
+			["wally.toml", "Packages", "Packages"],
+			["pesde.toml", "roblox_packages", "roblox_packages"],
+			[
+				"node_modules/@rbxts/types/package.json",
+				"",
+				"node_modules/@rbxts",
+			],
+		])(
+			"should write a template with mounts when %s is found",
+			async (file, dir, mounted) => {
+				await write(file);
+				if (dir) await memFs.createDirectory(path.join(cwd, dir));
 
-		await memFs.writeFile(path.join(cwd, "tsconfig.json"), "{}");
-		await memFs.writeFile(path.join(cwd, "wally.toml"), "{}");
-		await memFs.writeFile(
-			path.join(cwd, "node_modules", "@rbxts", "package.json"),
-			"{}"
+				await runInit();
+
+				expect((await readJson("default.rogen.json")).template).toBe(
+					"template.project.json"
+				);
+				const template = await readJson("template.project.json");
+				expect(template.name).toBe("my-game");
+				expect(template.tree.$className).toBe("DataModel");
+				expect(JSON.stringify(template.tree)).toContain(mounted);
+			}
 		);
-		await memFs.createDirectory(path.join(cwd, "Packages"));
 
-		const result = await runInit(cwd);
+		it("should not write a template without mounts", async () => {
+			await write("tsconfig.json", "{}");
 
-		expect(result.isOk()).toBe(true);
+			await runInit();
 
-		const targetPath = path.resolve(cwd, "default.rogen.json");
-		const writtenContent = await memFs.readFile(targetPath);
-		const config = JSON.parse(writtenContent);
+			expect(await exists("template.project.json")).toBe(false);
+			expect(
+				(await readJson("default.rogen.json")).template
+			).toBeUndefined();
+		});
 
-		expect(config.rootDirs).toEqual(["src"]);
-		expect(config.template).toBe("base.project.json");
+		it("should reference an existing template and leave it untouched", async () => {
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
+			await write("template.project.json", '{"name":"mine"}');
 
-		const templatePath = path.resolve(cwd, "base.project.json");
-		const templateContent = await memFs.readFile(templatePath);
-		const template = JSON.parse(templateContent);
+			await runInit("lobby");
 
-		expect(template.name).toBe("ts-game");
-		const tree = template.tree;
-		expect(
-			tree.ReplicatedStorage.rbxts_include.node_modules["@rbxts"]
-		).toBeDefined();
-		expect(tree.ReplicatedStorage.Packages).toBeDefined();
+			expect(await read("template.project.json")).toBe('{"name":"mine"}');
+			expect((await readJson("lobby.rogen.json")).template).toBe(
+				"template.project.json"
+			);
+		});
+
+		it("should share one template between two configs", async () => {
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
+
+			await runInit();
+			const template = await read("template.project.json");
+			await runInit("lobby");
+
+			expect(await read("template.project.json")).toBe(template);
+			expect((await readJson("lobby.rogen.json")).template).toBe(
+				"template.project.json"
+			);
+		});
+
+		it("should put the template in the darklua source config only", async () => {
+			await write(".darklua.json");
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
+
+			await runInit();
+
+			expect((await readJson("source.rogen.json")).template).toBe(
+				"template.project.json"
+			);
+			expect(
+				(await readJson("default.rogen.json")).template
+			).toBeUndefined();
+		});
 	});
 
-	it("should return a structured error if writing the config file to disk fails", async () => {
-		const cwd = path.resolve("/mock/cwd");
-		await memFs.createDirectory(cwd);
+	describe("written files", () => {
+		it("should write strict JSON that parses under the config schema", async () => {
+			await write(".darklua.json");
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
 
+			await runInit();
+
+			for (const file of ["default.rogen.json", "source.rogen.json"]) {
+				const text = await read(file);
+				expect(() => JSON.parse(text)).not.toThrow();
+				expect(parseConfig(text, file).isOk()).toBe(true);
+			}
+		});
+
+		it("should write fields in pipeline order", async () => {
+			await write("tsconfig.json", "{}");
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
+
+			await runInit();
+
+			expect(Object.keys(await readJson("default.rogen.json"))).toEqual([
+				"$schema",
+				"rootDirs",
+				"routes",
+				"template",
+				"syncDir",
+			]);
+		});
+
+		it("should never write into .vscode", async () => {
+			await write("tsconfig.json", "{}");
+			await write(".darklua.json");
+
+			await runInit();
+
+			expect(await exists(".vscode")).toBe(false);
+		});
+	});
+
+	describe("names", () => {
+		it("should write default.rogen.json for a bare init", async () => {
+			await runInit();
+
+			expect(await exists("default.rogen.json")).toBe(true);
+		});
+
+		it("should write <name>.rogen.json for a named init", async () => {
+			await runInit("lobby");
+
+			expect(await exists("lobby.rogen.json")).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(false);
+		});
+
+		it.each(["a/b", "..\\x", "..", "."])(
+			"should reject the name %s",
+			async (name) => {
+				const result = await runInit(name);
+
+				expect(result.isErr()).toBe(true);
+				expect(errorMessage(result)).toContain(
+					"not a valid config name"
+				);
+			}
+		);
+
+		it("should reject more than one name", async () => {
+			const result = await runInit("a", "b");
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("a.rogen.json")).toBe(false);
+		});
+	});
+
+	describe("existing files", () => {
+		it("should fail when default.rogen.json exists, and leave it alone", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await runInit();
+
+			expect(result.isErr()).toBe(true);
+			expect(errorMessage(result)).toContain(
+				"default.rogen.json already exists"
+			);
+			expect(await read("default.rogen.json")).toBe("{}");
+		});
+
+		it("should fail when the named config exists", async () => {
+			await write("lobby.rogen.json", "{}");
+
+			const result = await runInit("lobby");
+
+			expect(result.isErr()).toBe(true);
+			expect(errorMessage(result)).toContain(
+				"lobby.rogen.json already exists"
+			);
+		});
+
+		it("should allow a named init beside an existing default config", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await runInit("lobby");
+
+			expect(result.isOk()).toBe(true);
+			expect(await read("default.rogen.json")).toBe("{}");
+			expect(await exists("lobby.rogen.json")).toBe(true);
+		});
+
+		it("should write nothing when one darklua file already exists", async () => {
+			await write(".darklua.json");
+			await write("wally.toml");
+			await memFs.createDirectory(path.join(cwd, "Packages"));
+			await write("source.rogen.json", "{}");
+
+			const result = await runInit();
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(false);
+			expect(await exists("template.project.json")).toBe(false);
+		});
+
+		it("should ignore an existing default.project.json", async () => {
+			await write("default.project.json", '{"name":"hand-written"}');
+
+			const result = await runInit();
+
+			expect(result.isOk()).toBe(true);
+			expect(await read("default.project.json")).toBe(
+				'{"name":"hand-written"}'
+			);
+			expect(
+				(await readJson("default.rogen.json")).template
+			).toBeUndefined();
+		});
+	});
+
+	it("should return a structured error if writing a file fails", async () => {
 		jest.spyOn(memFs, "writeFile").mockRejectedValue(
 			new Error("Permission denied")
 		);
 
-		const result = await runInit(cwd);
+		const result = await runInit();
 
 		expect(result.isErr()).toBe(true);
-		expect((result as ResultError<Error>).error.message).toContain(
+		expect(errorMessage(result)).toContain(
 			"Failed to write default.rogen.json"
 		);
-		expect((result as ResultError<Error>).error.message).toContain(
-			"Permission denied"
-		);
+		expect(errorMessage(result)).toContain("Permission denied");
 	});
 });

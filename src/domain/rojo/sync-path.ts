@@ -1,6 +1,6 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { OptionalRojoPath } from "./rojo-project.js";
+import { OptionalRojoPath, RojoPath } from "./rojo-project.js";
 
 export interface SyncLayout {
 	readonly commonRoot: string;
@@ -37,6 +37,24 @@ export function relativeToProject(
 	projectDir: string
 ): string {
 	return toPosix(path.relative(projectDir, absolutePath));
+}
+
+/**
+ * A `$path` from the template is real source on disk (Wally's `Packages`,
+ * rbxts's `include`), so it is only rebased, never moved under `syncDir`.
+ * Its form, plain or optional, is the template author's and is kept.
+ */
+export function rebaseTemplatePath(
+	templatePath: RojoPath,
+	templateDir: string,
+	projectDir: string
+): RojoPath {
+	const rebase = (target: string) =>
+		relativeToProject(path.resolve(templateDir, target), projectDir);
+
+	return typeof templatePath === "string"
+		? rebase(templatePath)
+		: { optional: rebase(templatePath.optional) };
 }
 
 export function syncPath(

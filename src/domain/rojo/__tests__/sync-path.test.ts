@@ -1,5 +1,10 @@
 import path from "path";
-import { commonRoot, relativeToProject, syncPath } from "../sync-path.js";
+import {
+	commonRoot,
+	rebaseTemplatePath,
+	relativeToProject,
+	syncPath,
+} from "../sync-path.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -175,16 +180,56 @@ describe("syncPath", () => {
 });
 
 describe("relativeToProject", () => {
-	it("should keep a Wally-style Packages path out of the sync dir", () => {
-		expect(relativeToProject(abs("Packages"), abs("."))).toBe("Packages");
-		expect(relativeToProject(abs("Packages"), abs("places/main"))).toBe(
-			"../../Packages"
-		);
-	});
-
 	it("should write posix separators", () => {
 		expect(relativeToProject(abs("roblox_packages/lib"), abs("."))).toBe(
 			"roblox_packages/lib"
+		);
+	});
+});
+
+describe("rebaseTemplatePath", () => {
+	const layout = {
+		commonRoot: abs("src"),
+		syncDir: abs("out"),
+		projectDir: abs("."),
+	};
+
+	it("should keep a Wally-style Packages path out of the sync dir", () => {
+		const rebased = rebaseTemplatePath("Packages", abs("."), abs("."));
+
+		expect(rebased).toBe("Packages");
+		expect(rebased).not.toEqual(syncPath(abs("Packages"), layout));
+	});
+
+	it("should not move a template path that sits under a root dir into the sync dir", () => {
+		const rebased = rebaseTemplatePath("src/vendor", abs("."), abs("."));
+
+		expect(rebased).toBe("src/vendor");
+		expect(rebased).not.toEqual(syncPath(abs("src/vendor"), layout));
+	});
+
+	it("should rebase a path when the template lives in another directory", () => {
+		expect(
+			rebaseTemplatePath("Packages", abs("."), abs("places/main"))
+		).toBe("../../Packages");
+		expect(
+			rebaseTemplatePath("../Packages", abs("places/main"), abs("."))
+		).toBe("places/Packages");
+	});
+
+	it("should keep the optional form of an optional template path", () => {
+		expect(
+			rebaseTemplatePath(
+				{ optional: "include" },
+				abs("."),
+				abs("places/main")
+			)
+		).toEqual({ optional: "../../include" });
+	});
+
+	it("should leave a plain template path plain", () => {
+		expect(typeof rebaseTemplatePath("include", abs("."), abs("."))).toBe(
+			"string"
 		);
 	});
 });

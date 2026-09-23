@@ -20,6 +20,7 @@ import {
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "watch",
 	metadata: {
+		requiresConfig: true,
 		description:
 			"Builds, then rebuilds whenever sources or configs change.",
 		args: [

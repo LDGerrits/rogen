@@ -1,4 +1,9 @@
+import { jest } from "@jest/globals";
 import path from "path";
+import { DisposableStore } from "../../../base/disposable.js";
+import { FileChangeType } from "../../../platform/fs/file-events.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ScannedRoot, ScanOptions, scanRootDirs } from "../root-scanner.js";
 
@@ -6,15 +11,20 @@ const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 describe("scanRootDirs", () => {
 	let fs: MemoryFileSystemService;
+	let store: DisposableStore;
+
+	const newIndex = () => store.add(new CoreIndexService(fs));
 
 	const scan = async (options: Partial<ScanOptions> = {}) => {
-		const result = await scanRootDirs(fs, {
+		const scanOptions: ScanOptions = {
 			rootDirs: [abs("src")],
 			exclude: [],
 			configDir: abs("."),
 			...options,
-		});
-		return result.unwrap();
+		};
+		const index = newIndex();
+		await index.initialize([...scanOptions.rootDirs]);
+		return scanRootDirs(index, scanOptions);
 	};
 
 	const files = (root: ScannedRoot) =>
@@ -26,6 +36,11 @@ describe("scanRootDirs", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
 	});
 
 	describe("recognised files", () => {
@@ -372,17 +387,64 @@ describe("scanRootDirs", () => {
 		});
 	});
 
-	describe("failures", () => {
-		it("should return an error when a root dir cannot be read", async () => {
-			await write("src");
+	describe("indexing", () => {
+		it("should read only the index, not the file system", async () => {
+			await write("src/A.luau", "src/sub/B.luau");
+			const index = newIndex();
+			await index.initialize([abs("src")]);
+			const readDirectory = jest.spyOn(fs, "readDirectory");
 
-			const result = await scanRootDirs(fs, {
+			const result = scanRootDirs(index, {
 				rootDirs: [abs("src")],
 				exclude: [],
 				configDir: abs("."),
 			});
 
-			expect(result.isErr()).toBe(true);
+			expect(result.roots[0].entries).toHaveLength(2);
+			expect(readDirectory).not.toHaveBeenCalled();
+		});
+
+		it("should scan one index for several configs with different excludes", async () => {
+			await write("src/A.luau", "src/B.luau");
+			const index = newIndex();
+			await index.initialize([abs("src")]);
+			const base = { rootDirs: [abs("src")], configDir: abs(".") };
+
+			const all = scanRootDirs(index, { ...base, exclude: [] });
+			const some = scanRootDirs(index, {
+				...base,
+				exclude: ["**/B.luau"],
+			});
+
+			expect(files(all.roots[0])).toEqual([
+				"script:A.luau",
+				"script:B.luau",
+			]);
+			expect(files(some.roots[0])).toEqual(["script:A.luau"]);
+		});
+
+		it("should see files applied to the index after the initial scan", async () => {
+			await write("src/A.luau");
+			const index = newIndex();
+			await index.initialize([abs("src")]);
+			index.applyChanges([
+				{
+					type: FileChangeType.ADDED,
+					path: abs("src/B.luau"),
+					fileType: FileType.File,
+				},
+			]);
+
+			const result = scanRootDirs(index, {
+				rootDirs: [abs("src")],
+				exclude: [],
+				configDir: abs("."),
+			});
+
+			expect(files(result.roots[0])).toEqual([
+				"script:A.luau",
+				"script:B.luau",
+			]);
 		});
 	});
 });
