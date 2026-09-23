@@ -9,7 +9,10 @@ export class MockConfigService implements ConfigService {
 	readonly onDidChangeConfig: Event<ConfigChangeEvent> =
 		this._onDidChangeConfig.event;
 
-	constructor(private mockData: Record<string, unknown> = {}) {}
+	constructor(
+		private mockData: Record<string, unknown> = {},
+		public configPath: string | undefined = undefined
+	) {}
 
 	setMockData(data: Record<string, unknown>): void {
 		this.mockData = data;

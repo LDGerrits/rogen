@@ -20,9 +20,9 @@ describe("InitCommand", () => {
 		logService = new NullLogService();
 	});
 
-	it("should return an error if .rogen.json already exists", async () => {
+	it("should return an error if default.rogen.json already exists", async () => {
 		const cwd = path.resolve("/mock/cwd");
-		const targetPath = path.resolve(cwd, ".rogen.json");
+		const targetPath = path.resolve(cwd, "default.rogen.json");
 		await memFs.writeFile(targetPath, "{}");
 
 		const environment = createEnvironment(cwd);
@@ -59,16 +59,21 @@ describe("InitCommand", () => {
 
 		expect(result.isOk()).toBe(true);
 
-		const targetPath = path.resolve(cwd, ".rogen.json");
+		const targetPath = path.resolve(cwd, "default.rogen.json");
 		const writtenContent = await memFs.readFile(targetPath);
 		const config = JSON.parse(writtenContent);
 
-		expect(config.luau).toBeDefined();
-		expect(config.ts).toBeUndefined();
-		expect(config.darklua).toBeUndefined();
-		expect(config.template.name).toBe("my-game");
-		expect(config.template.tree).toEqual({ $className: "DataModel" });
-		expect(config.template.globIgnorePaths).toEqual([]);
+		expect(config.rootDirs).toEqual(["src"]);
+		expect(config.routes).toEqual({
+			server: "ServerScriptService",
+			client: "StarterPlayer/StarterPlayerScripts",
+			shared: "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared",
+		});
+		expect(config.template).toBeUndefined();
+		expect(await memFs.exists(path.resolve(cwd, "base.project.json"))).toBe(
+			false
+		);
 	});
 
 	it("should tailor the config for TypeScript and Wally, injecting correct workspace packages", async () => {
@@ -95,15 +100,19 @@ describe("InitCommand", () => {
 
 		expect(result.isOk()).toBe(true);
 
-		const targetPath = path.resolve(cwd, ".rogen.json");
+		const targetPath = path.resolve(cwd, "default.rogen.json");
 		const writtenContent = await memFs.readFile(targetPath);
 		const config = JSON.parse(writtenContent);
 
-		expect(config.ts).toBeDefined();
-		expect(config.luau).toBeUndefined();
-		expect(config.template.globIgnorePaths).toContain("**/tsconfig.json");
+		expect(config.rootDirs).toEqual(["src"]);
+		expect(config.template).toBe("base.project.json");
 
-		const tree = config.template.tree;
+		const templatePath = path.resolve(cwd, "base.project.json");
+		const templateContent = await memFs.readFile(templatePath);
+		const template = JSON.parse(templateContent);
+
+		expect(template.name).toBe("ts-game");
+		const tree = template.tree;
 		expect(
 			tree.ReplicatedStorage.rbxts_include.node_modules["@rbxts"]
 		).toBeDefined();
@@ -131,7 +140,7 @@ describe("InitCommand", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect((result as ResultError<Error>).error.message).toContain(
-			"Failed to write .rogen.json"
+			"Failed to write default.rogen.json"
 		);
 		expect((result as ResultError<Error>).error.message).toContain(
 			"Permission denied"

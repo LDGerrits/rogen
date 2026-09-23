@@ -49,7 +49,7 @@ class CoreConfigRegistry implements ConfigRegistry {
 		const schema: JSONSchema = {
 			type: "object",
 			properties: {},
-			additionalProperties: true,
+			additionalProperties: false,
 		};
 
 		for (const node of this.nodes) {
