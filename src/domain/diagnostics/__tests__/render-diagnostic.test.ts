@@ -1,30 +1,27 @@
-import { createDiagnostic } from "../diagnostic-codes.js";
+import { Diagnostics } from "../diagnostic.js";
 import { renderDiagnostic } from "../render-diagnostic.js";
 
 describe("domain/diagnostics/render-diagnostic", () => {
 	describe("renderDiagnostic", () => {
 		it("should render location, severity, code and message", () => {
-			const diagnostic = createDiagnostic(
-				"RG1004",
+			const diagnostic = Diagnostics.unknownField(
 				{ file: "lobby.rogen.json", line: 7, column: 3 },
-				"outDir",
-				"syncDir"
+				"outDir"
 			);
 
 			expect(renderDiagnostic(diagnostic)).toBe(
-				'lobby.rogen.json:7:3 - error RG1004: unknown field "outDir". Did you mean "syncDir"?'
+				'lobby.rogen.json:7:3 - error RG1004: unknown field "outDir".'
 			);
 		});
 
-		it("should render an unknown field without a suggestion", () => {
-			const diagnostic = createDiagnostic(
-				"RG1004",
-				{ file: "a.rogen.json", line: 1, column: 1 },
-				"bogus"
+		it("should render a syntax error with its detail", () => {
+			const diagnostic = Diagnostics.invalidSyntax(
+				{ file: "a.rogen.json", line: 3, column: 2 },
+				"expected ','"
 			);
 
 			expect(renderDiagnostic(diagnostic)).toBe(
-				'a.rogen.json:1:1 - error RG1004: unknown field "bogus".'
+				"a.rogen.json:3:2 - error RG1001: invalid JSONC: expected ','."
 			);
 		});
 	});

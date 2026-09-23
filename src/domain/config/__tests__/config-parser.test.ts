@@ -61,19 +61,6 @@ describe("domain/config/config-parser", () => {
 			]);
 		});
 
-		it("should suggest the nearest field name for a near miss", () => {
-			const result = parseConfig(
-				'{ "rootDir": ["src"] }',
-				"a.rogen.json"
-			);
-
-			expect(result.isErr()).toBe(true);
-			if (!result.isErr()) return;
-			expect(result.error[0].message).toBe(
-				'unknown field "rootDir". Did you mean "rootDirs"?'
-			);
-		});
-
 		it("should accept $schema", () => {
 			const result = parseConfig(
 				'{ "$schema": "https://example.com/rogen.json" }',
@@ -91,7 +78,7 @@ describe("domain/config/config-parser", () => {
 			expect(result.error.map((d) => d.column)).toEqual([3, 11]);
 		});
 
-		it.each(["", "[]", "null", "42", '"text"'])(
+		it.each(["[]", "null", "42", '"text"'])(
 			"should reject %j as a config that is not an object",
 			(text) => {
 				const result = parseConfig(text, "a.rogen.json");
@@ -108,6 +95,28 @@ describe("domain/config/config-parser", () => {
 				});
 			}
 		);
+
+		it.each(["", "garbage", "[1,", "{ 1 }"])(
+			"should report %j as a syntax error rather than a wrong root type",
+			(text) => {
+				const result = parseConfig(text, "a.rogen.json");
+
+				expect(result.isErr()).toBe(true);
+				if (!result.isErr()) return;
+				expect(result.error.every((d) => d.code === "RG1001")).toBe(
+					true
+				);
+			}
+		);
+
+		it("should ignore a leading byte order mark", () => {
+			const result = parseConfig(
+				'\ufeff{ "rootDirs": ["src"] }',
+				"a.rogen.json"
+			);
+
+			expect(result.unwrap()).toEqual({ rootDirs: ["src"] });
+		});
 
 		it("should describe a syntax error in words", () => {
 			const result = parseConfig('{ "rootDirs": ["src"', "a.rogen.json");
