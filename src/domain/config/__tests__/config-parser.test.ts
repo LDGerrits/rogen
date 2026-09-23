@@ -31,7 +31,6 @@ describe("domain/config/config-parser", () => {
 			expect(result.isErr()).toBe(true);
 			if (!result.isErr()) return;
 			expect(result.error[0]).toMatchObject({
-				code: "RG1001",
 				severity: "error",
 				file: "lobby.rogen.json",
 				line: 3,
@@ -51,7 +50,6 @@ describe("domain/config/config-parser", () => {
 			if (!result.isErr()) return;
 			expect(result.error).toEqual([
 				{
-					code: "RG1004",
 					severity: "error",
 					message: 'unknown field "bogus".',
 					file: "lobby.rogen.json",
@@ -87,7 +85,6 @@ describe("domain/config/config-parser", () => {
 				if (!result.isErr()) return;
 				expect(result.error).toHaveLength(1);
 				expect(result.error[0]).toMatchObject({
-					code: "RG1002",
 					message: "a config must be a JSON object.",
 					file: "a.rogen.json",
 					line: 1,
@@ -103,9 +100,11 @@ describe("domain/config/config-parser", () => {
 
 				expect(result.isErr()).toBe(true);
 				if (!result.isErr()) return;
-				expect(result.error.every((d) => d.code === "RG1001")).toBe(
-					true
-				);
+				expect(
+					result.error.every((d) =>
+						d.message.startsWith("invalid JSONC")
+					)
+				).toBe(true);
 			}
 		);
 
@@ -128,10 +127,76 @@ describe("domain/config/config-parser", () => {
 			);
 		});
 
+		it("should report a document nested too deeply instead of throwing", () => {
+			const result = parseConfig("[".repeat(100000), "a.rogen.json");
+
+			expect(result.isErr()).toBe(true);
+			if (!result.isErr()) return;
+			expect(result.error[0].message).toBe(
+				"invalid JSONC: the document is nested too deeply."
+			);
+		});
+
 		it("should not throw on malformed input", () => {
 			expect(() =>
 				parseConfig("{ ] \u0000 //", "a.rogen.json")
 			).not.toThrow();
+		});
+
+		it("should reject a value of the wrong type at the root", () => {
+			const result = parseConfig('{ "rootDirs": "src" }', "a.rogen.json");
+
+			expect(result.isErr()).toBe(true);
+			if (!result.isErr()) return;
+			expect(result.error).toEqual([
+				{
+					severity: "error",
+					message: '"rootDirs": expected an array, found a string.',
+					file: "a.rogen.json",
+					line: 1,
+					column: 15,
+				},
+			]);
+		});
+
+		it("should reject a wrongly typed array item", () => {
+			const result = parseConfig(
+				'{ "rootDirs": ["src", 1] }',
+				"a.rogen.json"
+			);
+
+			expect(result.isErr()).toBe(true);
+			if (!result.isErr()) return;
+			expect(result.error.map((d) => [d.message, d.column])).toEqual([
+				['"rootDirs[1]": expected a string, found a number.', 23],
+			]);
+		});
+
+		it("should reject a wrongly typed value in a map", () => {
+			const result = parseConfig(
+				'{ "tags": { "mock": "yes" } }',
+				"a.rogen.json"
+			);
+
+			expect(result.isErr()).toBe(true);
+			if (!result.isErr()) return;
+			expect(result.error.map((d) => [d.message, d.column])).toEqual([
+				['"tags.mock": expected a boolean, found a string.', 21],
+			]);
+		});
+
+		it("should reject null wherever it appears", () => {
+			const result = parseConfig(
+				'{ "syncDir": null, "routes": { "shared": null } }',
+				"a.rogen.json"
+			);
+
+			expect(result.isErr()).toBe(true);
+			if (!result.isErr()) return;
+			expect(result.error.map((d) => d.message)).toEqual([
+				'"syncDir": expected a string, found null.',
+				'"routes.shared": expected a string, found null.',
+			]);
 		});
 	});
 });

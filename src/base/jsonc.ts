@@ -1,10 +1,13 @@
 import {
+	Node,
 	ParseError,
 	ParseErrorCode,
 	getNodeValue,
 	parseTree,
 	printParseErrorCode,
 } from "jsonc-parser";
+
+const BYTE_ORDER_MARK = 0xfeff;
 
 export interface JsoncPosition {
 	readonly line: number;
@@ -17,12 +20,23 @@ export interface JsoncError extends JsoncPosition {
 
 export interface JsoncProperty extends JsoncPosition {
 	readonly name: string;
+	readonly value: JsoncNode;
 }
 
+export type JsoncNode = JsoncPosition &
+	(
+		| {
+				readonly kind: "object";
+				readonly properties: readonly JsoncProperty[];
+		  }
+		| { readonly kind: "array"; readonly items: readonly JsoncNode[] }
+		| { readonly kind: "string" | "number" | "boolean" | "null" }
+	);
+
 export interface JsoncDocument {
+	readonly root: JsoncNode | undefined;
 	readonly value: unknown;
 	readonly errors: readonly JsoncError[];
-	readonly rootProperties: readonly JsoncProperty[];
 }
 
 const SYNTAX_MESSAGES: Record<string, string> = {
@@ -45,31 +59,77 @@ const SYNTAX_MESSAGES: Record<string, string> = {
 };
 
 export function parseJsonc(text: string): JsoncDocument {
-	const source = text.startsWith("﻿") ? text.slice(1) : text;
+	const source =
+		text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text;
 	const errors: ParseError[] = [];
-	const root = parseTree(source, errors, { allowTrailingComma: true });
 
-	const rootProperties: JsoncProperty[] = [];
-	if (root?.type === "object") {
-		for (const property of root.children ?? []) {
-			const key = property.children?.[0];
-			if (key) {
-				rootProperties.push({
-					name: String(key.value),
-					...positionAt(source, key.offset),
-				});
-			}
+	let tree: Node | undefined;
+	let value: unknown;
+	let root: JsoncNode | undefined;
+	try {
+		tree = parseTree(source, errors, { allowTrailingComma: true });
+		if (tree) {
+			value = getNodeValue(tree);
+			root = toJsoncNode(tree, source);
 		}
+	} catch (error) {
+		if (!(error instanceof RangeError)) throw error;
+		return {
+			root: undefined,
+			value: undefined,
+			errors: [
+				{
+					message: "the document is nested too deeply",
+					line: 1,
+					column: 1,
+				},
+			],
+		};
 	}
 
 	return {
-		value: root ? getNodeValue(root) : undefined,
+		root,
+		value,
 		errors: errors.map((error) => ({
 			message: describeSyntaxError(error.error),
 			...positionAt(source, error.offset),
 		})),
-		rootProperties,
 	};
+}
+
+function toJsoncNode(node: Node, source: string): JsoncNode {
+	const position = positionAt(source, node.offset);
+	switch (node.type) {
+		case "object":
+			return {
+				...position,
+				kind: "object",
+				properties: (node.children ?? []).flatMap((property) => {
+					const [key, value] = property.children ?? [];
+					if (!key || !value) return [];
+					return {
+						name: String(key.value),
+						...positionAt(source, key.offset),
+						value: toJsoncNode(value, source),
+					};
+				}),
+			};
+		case "array":
+			return {
+				...position,
+				kind: "array",
+				items: (node.children ?? []).map((item) =>
+					toJsoncNode(item, source)
+				),
+			};
+		case "string":
+		case "number":
+		case "boolean":
+		case "null":
+			return { ...position, kind: node.type };
+		default:
+			throw new Error(`Unexpected JSONC node type "${node.type}".`);
+	}
 }
 
 function describeSyntaxError(code: ParseErrorCode): string {

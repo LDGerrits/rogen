@@ -7,45 +7,31 @@ import {
 } from "../../platform/config/config-registry.js";
 import { Diagnostic, Diagnostics } from "../diagnostics/diagnostic.js";
 import { RogenConfig } from "./config.js";
+import { validateNode } from "./schema-validation.js";
 
 export function parseConfig(
 	text: string,
 	file: string
 ): Result<RogenConfig, Diagnostic[]> {
-	const document = parseJsonc(text);
+	const { root, value, errors } = parseJsonc(text);
 
-	if (document.errors.length > 0) {
+	if (errors.length > 0) {
 		return err(
-			document.errors.map((error) =>
-				Diagnostics.invalidSyntax(
-					{ file, line: error.line, column: error.column },
-					error.message
-				)
+			errors.map(({ message, line, column }) =>
+				Diagnostics.invalidSyntax({ file, line, column }, message)
 			)
 		);
 	}
 
-	if (!isObject(document.value)) {
+	if (root?.kind !== "object") {
 		return err([Diagnostics.notAnObject({ file, line: 1, column: 1 })]);
 	}
 
-	const knownFields = Object.keys(
-		Registry.as<ConfigRegistry>(Extensions.Config).getJsonSchema()
-			.properties ?? {}
-	);
-	const unknownFields = document.rootProperties
-		.filter((property) => !knownFields.includes(property.name))
-		.map((property) =>
-			Diagnostics.unknownField(
-				{ file, line: property.line, column: property.column },
-				property.name
-			)
-		);
-	if (unknownFields.length > 0) return err(unknownFields);
+	const schema = Registry.as<ConfigRegistry>(
+		Extensions.Config
+	).getJsonSchema();
+	const problems = validateNode(root, schema, file);
+	if (problems.length > 0) return err(problems);
 
-	return ok(document.value as RogenConfig);
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+	return ok(value as RogenConfig);
 }
