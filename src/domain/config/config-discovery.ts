@@ -6,7 +6,7 @@ import {
 import { Result, ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 
-const CONFIG_SUFFIX = ".rogen.json";
+export const CONFIG_SUFFIX = ".rogen.json";
 const DEFAULT_CONFIG_NAME = "default.rogen.json";
 
 export async function discoverConfigPaths(

@@ -6,6 +6,7 @@ import {
 	parseTree,
 	printParseErrorCode,
 } from "jsonc-parser";
+import { Result, err, ok } from "./result.js";
 
 const BYTE_ORDER_MARK = 0xfeff;
 
@@ -139,4 +140,18 @@ function describeSyntaxError(code: ParseErrorCode): string {
 function positionAt(text: string, offset: number): JsoncPosition {
 	const lines = text.slice(0, offset).split("\n");
 	return { line: lines.length, column: lines[lines.length - 1].length + 1 };
+}
+
+export function parse(text: string): Result<unknown, Error> {
+	const { root, value, errors } = parseJsonc(text);
+	const [first] = errors;
+	if (first) {
+		return err(
+			new Error(
+				`invalid JSONC at ${first.line}:${first.column}: ${first.message}.`
+			)
+		);
+	}
+	if (!root) return err(new Error("invalid JSONC: the document is empty."));
+	return ok(value);
 }

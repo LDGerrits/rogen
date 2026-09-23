@@ -28,8 +28,6 @@ import { CoreReconciliationService } from "./platform/watcher/core-reconciliatio
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
-import { CoreWorkspaceService } from "./domain/workspace/core-workspace-service.js";
-import { WorkspaceService } from "./domain/workspace/workspace-service.js";
 import "./domain/config/config.js";
 import "./commands/build/build-command.js";
 import "./commands/help/help-command.js";
@@ -82,11 +80,6 @@ async function main(): Promise<void> {
 
 		const fileSystemService = new DiskFileSystemService();
 
-		const workspaceService = new CoreWorkspaceService(
-			environment,
-			fileSystemService
-		);
-
 		// Resolve config
 		const configService = new CoreConfigService(
 			fileSystemService,
@@ -113,7 +106,6 @@ async function main(): Promise<void> {
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(FileSystemService, fileSystemService);
-		services.set(WorkspaceService, workspaceService);
 		services.set(ConfigService, configService);
 		services.set(
 			LifecycleService,
