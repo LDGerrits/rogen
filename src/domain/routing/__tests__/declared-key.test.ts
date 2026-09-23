@@ -1,0 +1,149 @@
+import {
+	matchFolderKey,
+	matchMarkerKey,
+	matchSuffixKeys,
+	rojoAssignedName,
+} from "../declared-key.js";
+
+const ROUTES = new Set(["server", "client", "shared"]);
+const ROUTES_AND_TAGS = new Set([
+	"server",
+	"client",
+	"shared",
+	"mock",
+	"debug",
+]);
+
+describe("matchFolderKey", () => {
+	it("matches a folder named exactly after a declared key", () => {
+		expect(matchFolderKey("server", ROUTES)).toBe("server");
+	});
+
+	it("is case-sensitive", () => {
+		expect(matchFolderKey("Server", ROUTES)).toBeUndefined();
+	});
+
+	it("does not match an undeclared name", () => {
+		expect(matchFolderKey("Inventory", ROUTES)).toBeUndefined();
+	});
+});
+
+describe("matchMarkerKey", () => {
+	it("matches a marker file named after a declared key", () => {
+		expect(matchMarkerKey(".server", ROUTES)).toBe("server");
+	});
+
+	it("matches a tag marker", () => {
+		expect(matchMarkerKey(".mock", ROUTES_AND_TAGS)).toBe("mock");
+	});
+
+	it("is case-sensitive", () => {
+		expect(matchMarkerKey(".Server", ROUTES)).toBeUndefined();
+	});
+
+	it("ignores a name that doesn't start with a dot", () => {
+		expect(matchMarkerKey("server", ROUTES)).toBeUndefined();
+	});
+
+	it("ignores a bare dot", () => {
+		expect(matchMarkerKey(".", ROUTES)).toBeUndefined();
+	});
+});
+
+describe("matchSuffixKeys", () => {
+	it("strips a separator suffix for each of + - _ . @, case-insensitively", () => {
+		for (const sep of ["+", "-", "_", ".", "@"]) {
+			const result = matchSuffixKeys(`Combat${sep}Server`, ROUTES);
+			expect(result.baseName).toBe("Combat");
+			expect(result.matchedKeys).toEqual(new Set(["server"]));
+		}
+	});
+
+	it("matches a PascalCase suffix (CombatServer)", () => {
+		const result = matchSuffixKeys("CombatServer", ROUTES);
+		expect(result.baseName).toBe("Combat");
+		expect(result.matchedKeys).toEqual(new Set(["server"]));
+	});
+
+	it("does not match HTTPServer: the preceding letter is capitalised", () => {
+		const result = matchSuffixKeys("HTTPServer", ROUTES);
+		expect(result.baseName).toBe("HTTPServer");
+		expect(result.matchedKeys.size).toBe(0);
+	});
+
+	it("accepts the accidental match HttpClient", () => {
+		const result = matchSuffixKeys("HttpClient", ROUTES);
+		expect(result.baseName).toBe("Http");
+		expect(result.matchedKeys).toEqual(new Set(["client"]));
+	});
+
+	it("does not treat a bare key with nothing before it as a suffix", () => {
+		const result = matchSuffixKeys("Server", ROUTES);
+		expect(result.baseName).toBe("Server");
+		expect(result.matchedKeys.size).toBe(0);
+	});
+
+	it("stacks suffixes in either order", () => {
+		const forward = matchSuffixKeys("Foo.mock.server", ROUTES_AND_TAGS);
+		expect(forward.baseName).toBe("Foo");
+		expect(forward.matchedKeys).toEqual(new Set(["mock", "server"]));
+
+		const backward = matchSuffixKeys("Foo.server.mock", ROUTES_AND_TAGS);
+		expect(backward.baseName).toBe("Foo");
+		expect(backward.matchedKeys).toEqual(new Set(["mock", "server"]));
+	});
+
+	it("stops the run at the first non-declared part: Foo.mock.Bar yields no keys", () => {
+		const result = matchSuffixKeys("Foo.mock.Bar", ROUTES_AND_TAGS);
+		expect(result.matchedKeys.size).toBe(0);
+		expect(result.baseName).toBe("Foo.mock.Bar");
+	});
+
+	it("does not recognise an undeclared key even if it looks like a suffix", () => {
+		const result = matchSuffixKeys("Analytics.beta", ROUTES_AND_TAGS);
+		expect(result.matchedKeys.size).toBe(0);
+		expect(result.baseName).toBe("Analytics.beta");
+	});
+
+	it("reports an undeclared trailing suffix so callers can warn about it", () => {
+		const result = matchSuffixKeys("Analytics.beta", ROUTES_AND_TAGS);
+		expect(result.undeclaredSuffix).toBe("beta");
+	});
+
+	it("reports no undeclared suffix for an ordinary PascalCase name", () => {
+		const result = matchSuffixKeys("Analytics", ROUTES_AND_TAGS);
+		expect(result.undeclaredSuffix).toBeUndefined();
+	});
+
+	it("reports no undeclared suffix once every part is fully matched", () => {
+		const result = matchSuffixKeys("Foo.mock.server", ROUTES_AND_TAGS);
+		expect(result.undeclaredSuffix).toBeUndefined();
+	});
+
+	it("prefers the longer of two matching forms at one position", () => {
+		const result = matchSuffixKeys("Foo.Server", ROUTES);
+		expect(result.baseName).toBe("Foo");
+	});
+});
+
+describe("rojoAssignedName", () => {
+	it("strips a trailing .client", () => {
+		expect(rojoAssignedName("main.client")).toBe("main");
+	});
+
+	it("strips a trailing .server", () => {
+		expect(rojoAssignedName("main.server")).toBe("main");
+	});
+
+	it("leaves a non-trailing .server untouched, matching Rojo", () => {
+		expect(rojoAssignedName("Foo.server.mock")).toBe("Foo.server.mock");
+	});
+
+	it("leaves any other suffix untouched", () => {
+		expect(rojoAssignedName("Types.shared")).toBe("Types.shared");
+	});
+
+	it("does not know about declared keys at all", () => {
+		expect(rojoAssignedName("Save+mock.server")).toBe("Save+mock");
+	});
+});
