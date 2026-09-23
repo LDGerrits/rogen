@@ -1,58 +1,47 @@
-import { ok } from "../../base/result.js";
+import { err, ok } from "../../base/result.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
 	CommandRegistry,
 	Extensions,
+	GlobalOptions,
 } from "../../platform/commands/commands.js";
+import { formatCommandHelp, formatHelp } from "./help-formatter.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "help",
-	metadata: { description: "Prints usage." },
-	handler: async (accessor) => {
-		accessor.get(LogService).info(`
-Rogen - Feature-based architecture for Roblox
+	metadata: {
+		description: "Prints usage, or details for one command.",
+		args: [
+			{
+				name: "command",
+				description: "The command to describe.",
+				isOptional: true,
+			},
+		],
+	},
+	handler: async (accessor, args) => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const logService = accessor.get(LogService);
 
-Usage:
-  rogen <command> [options]
+		// `rogen build --help` and `rogen help build` both name the command.
+		const target = args.help ? args._[0] : args._[1];
 
-Commands:
-  build [profiles...]      Build targeted profiles (default: all)
-  watch [profiles...]      Watch sources and rebuild on change
-  init [name]              Initialize a workspace config (creates <name>.rogen.json)
+		if (target === undefined) {
+			logService.info(formatHelp(registry.getCommands(), GlobalOptions));
+			return ok(undefined);
+		}
 
-Build & Routing options:
-  -p, --project <path>     Override base Rojo project file template
-  -s, --src-dir <path>     Override or add source directory (repeatable)
-  -C, --condition <name>   Activate condition variant (repeatable)
-  -i, --ignore <glob>      Add ignore glob pattern (repeatable)
-  -n, --dry-run            Simulate build and print the resolved Rojo project without saving
+		const command = registry.getCommand(target.toLowerCase());
+		if (!command) {
+			return err(
+				new Error(
+					`Unknown command "${target}". Run 'rogen help' to see available commands.`
+				)
+			);
+		}
 
-Output options (Single-profile only):
-  -d, --out-dir <path>     Override transpilation/artifact output directory
-  -o, --out-file <path>    Override generated Rojo project filename
-
-Init options:
-  -f, --force              Overwrite existing configuration file without prompting
-
-Logging options:
-  -q, --quiet              Suppress all non-error output
-  -v, --verbose            Print detailed compilation and routing resolution steps
-      --trace              Print exhaustive engine internals, file reconciliation, and timing
-
-Global options:
-  -c, --config <path>      Path to custom configuration file
-  -h, --help               Print help (or 'rogen help <command>' for details)
-  -V, --version            Print version information
-
-Examples:
-  $ rogen watch dev                  # Watch the 'dev' profile and live-update the Rojo project
-  $ rogen watch dev -C mock          # Watch 'dev' and additionally activate the 'mock' condition
-  $ rogen build luau darklua         # Compile both 'luau' and 'darklua' profiles in sequence
-  $ rogen build prod --dry-run       # Simulate a 'prod' build and inspect the generated project tree
-  $ rogen init lobby --force         # Force initialize a new 'lobby.rogen.json' configuration
-		`);
-
+		logService.info(formatCommandHelp(command, GlobalOptions));
 		return ok(undefined);
 	},
 });
