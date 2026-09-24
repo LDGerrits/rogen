@@ -5,6 +5,10 @@ describe("rojoAssignedName", () => {
 		expect(rojoAssignedName("main.client")).toBe("main");
 	});
 
+	it("strips a trailing .plugin", () => {
+		expect(rojoAssignedName("main.plugin")).toBe("main");
+	});
+
 	it("strips a trailing .server", () => {
 		expect(rojoAssignedName("main.server")).toBe("main");
 	});

@@ -1,4 +1,4 @@
-const ROJO_SCRIPT_SUFFIXES = ["server", "client"] as const;
+const ROJO_SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof ROJO_SCRIPT_SUFFIXES)[number];
 

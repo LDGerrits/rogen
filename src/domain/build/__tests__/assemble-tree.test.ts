@@ -3,6 +3,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
 import { build } from "../build.js";
 
@@ -32,7 +33,9 @@ describe("assembleTree", () => {
 		};
 		const index = store.add(new CoreIndexService(fs));
 		await index.initialize([...config.rootDirs]);
-		return build(config, index).unwrap();
+		const output = build(config, index).unwrap();
+		expectRojoProject(output.value);
+		return output;
 	};
 
 	const storageOf = async (overrides: Partial<ResolvedConfig> = {}) =>
@@ -451,7 +454,10 @@ describe("assembleTree", () => {
 				tree: {
 					$className: "DataModel",
 					ReplicatedStorage: {
-						Inventory: { Extra: { $path: "extra" } },
+						Inventory: {
+							$className: "Folder",
+							Extra: { $path: "extra" },
+						},
 					},
 				},
 			});
@@ -462,6 +468,7 @@ describe("assembleTree", () => {
 			expect(
 				(value.tree.ReplicatedStorage as RojoNode).Inventory
 			).toEqual({
+				$className: "Folder",
 				Extra: { $path: "extra" },
 				Save: { $path: optional("src/Inventory/Save.luau") },
 			});

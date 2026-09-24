@@ -4,6 +4,7 @@ import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js"
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { build, checkRoutes, rootsToIndex } from "../build.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
@@ -45,6 +46,7 @@ describe("domain/build/build", () => {
 			const result = build(config, await indexOf(config.rootDirs));
 
 			expect(result.unwrap().warnings).toEqual([]);
+			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
@@ -123,6 +125,7 @@ describe("domain/build/build", () => {
 
 			const result = build(config, await indexOf(config.rootDirs));
 
+			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.name).toBe("lobby");
 		});
 	});

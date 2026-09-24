@@ -1,6 +1,4 @@
-import { spawnSync } from "child_process";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
@@ -8,6 +6,12 @@ import { configRefsFromArgs } from "../../../domain/config/config-refs.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import "../../../domain/config/config.js";
+import {
+	classes,
+	describeWithRojo,
+	makeRojoDir,
+	sourcemap,
+} from "../../../domain/rojo/__tests__/rojo-cli.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -20,42 +24,6 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
-
-interface SourcemapNode {
-	readonly name: string;
-	readonly className: string;
-	readonly children?: readonly SourcemapNode[];
-}
-
-const MANIFEST = path.resolve("rokit.toml");
-
-function runRojo(cwd: string, args: string[]) {
-	return spawnSync("rojo", args, {
-		cwd,
-		encoding: "utf8",
-		timeout: 20_000,
-	});
-}
-
-function rojoAvailable(): boolean {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-rojo-probe-"));
-	try {
-		fs.copyFileSync(MANIFEST, path.join(dir, "rokit.toml"));
-		return runRojo(dir, ["sourcemap", "--help"]).status === 0;
-	} finally {
-		fs.rmSync(dir, { recursive: true, force: true });
-	}
-}
-
-function classes(node: SourcemapNode, prefix = ""): string[] {
-	const here = prefix ? `${prefix}/${node.name}` : node.name;
-	return [
-		`${here}: ${node.className}`,
-		...(node.children ?? []).flatMap((child) => classes(child, here)),
-	];
-}
-
-const describeWithRojo = rojoAvailable() ? describe : describe.skip;
 
 describeWithRojo("build command against Rojo", () => {
 	let store: DisposableStore;
@@ -88,17 +56,9 @@ describeWithRojo("build command against Rojo", () => {
 			.executeCommand("build", args);
 	};
 
-	const sourcemap = (projectFile: string): SourcemapNode => {
-		const result = runRojo(dir, ["sourcemap", projectFile]);
-		expect(result.stderr).toBe("");
-		expect(result.status).toBe(0);
-		return JSON.parse(result.stdout);
-	};
-
 	beforeEach(() => {
 		store = new DisposableStore();
-		dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-rojo-"));
-		fs.copyFileSync(MANIFEST, path.join(dir, "rokit.toml"));
+		dir = makeRojoDir("rogen-rojo-");
 	});
 
 	afterEach(() => {
@@ -125,7 +85,7 @@ describeWithRojo("build command against Rojo", () => {
 		const result = await build([]);
 
 		expect(result.isOk()).toBe(true);
-		expect(classes(sourcemap("default.project.json"))).toEqual(
+		expect(classes(sourcemap(dir, "default.project.json"))).toEqual(
 			expect.arrayContaining([
 				expect.stringMatching(/\/ServerScriptService\/Main: Script$/),
 				expect.stringMatching(/\/ReplicatedStorage\/shared: Folder$/),
@@ -156,8 +116,8 @@ describeWithRojo("build command against Rojo", () => {
 		const result = await build(["default", "source"]);
 
 		expect(result.isOk()).toBe(true);
-		expect(classes(sourcemap("default.project.json"))).toEqual(
-			classes(sourcemap("source.project.json"))
+		expect(classes(sourcemap(dir, "default.project.json"))).toEqual(
+			classes(sourcemap(dir, "source.project.json"))
 		);
 	});
 });
