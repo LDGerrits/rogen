@@ -4,10 +4,10 @@ import { ErrorUtils } from "../../base/errors.js";
 import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
 import {
 	PlannedFile,
-	TEMPLATE_FILE,
 	parseInitName,
 	planInit,
 } from "../../domain/workspace/init-plan.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -40,25 +40,31 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		if (nameResult.isErr()) return nameResult;
 
 		const cwd = environmentService.cwd;
-		const workspace = await detectWorkspace(fileSystemService, cwd);
-		const plan = planInit({
-			name: nameResult.value,
-			workspace,
-			projectName: path.basename(cwd) || DEFAULT_PROJECT_NAME,
-			templateExists: await fileSystemService.exists(
-				path.join(cwd, TEMPLATE_FILE)
-			),
-		});
-
-		for (const { fileName } of plan.configs) {
-			if (await fileSystemService.exists(path.join(cwd, fileName))) {
-				return err(
-					new Error(
-						`${fileName} already exists in this directory. Delete it to write a new one.`
-					)
-				);
-			}
+		let existingFiles: ReadonlySet<string>;
+		try {
+			existingFiles = new Set(
+				(await fileSystemService.readDirectory(cwd)).map(
+					([name]) => name
+				)
+			);
+		} catch (error) {
+			return err(
+				new Error(
+					`Failed to read ${cwd}: ${ErrorUtils.fromUnknown(error).message}`,
+					{ cause: error }
+				)
+			);
 		}
+
+		const planned = planInit({
+			name: nameResult.value,
+			workspace: await detectWorkspace(fileSystemService, cwd),
+			projectName: path.basename(cwd) || DEFAULT_PROJECT_NAME,
+			directory: cwd,
+			existingFiles,
+		});
+		if (planned.isErr()) return err(new DiagnosticsError(planned.error));
+		const plan = planned.value;
 
 		const files: PlannedFile[] = [
 			...(plan.template ? [plan.template] : []),

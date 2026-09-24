@@ -4,6 +4,7 @@ import "../../../domain/config/config.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { readConfigFile } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
@@ -53,6 +54,8 @@ describe("init command", () => {
 	const exists = (file: string) => memFs.exists(path.join(cwd, file));
 	const errorMessage = (result: Awaited<ReturnType<typeof runInit>>) =>
 		(result as ResultError<Error>).error.message;
+	const diagnosticsOf = (result: Awaited<ReturnType<typeof runInit>>) =>
+		((result as ResultError<Error>).error as DiagnosticsError).diagnostics;
 
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
@@ -227,9 +230,7 @@ describe("init command", () => {
 				const text = await read(file);
 				expect(() => JSON.parse(text)).not.toThrow();
 				expect(
-					(
-						await readConfigFile(memFs, path.join(cwd, file))
-					).isOk()
+					(await readConfigFile(memFs, path.join(cwd, file))).isOk()
 				).toBe(true);
 			}
 		});
@@ -301,9 +302,12 @@ describe("init command", () => {
 			const result = await runInit();
 
 			expect(result.isErr()).toBe(true);
-			expect(errorMessage(result)).toContain(
-				"default.rogen.json already exists"
-			);
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "default.rogen.json"),
+				},
+			]);
 			expect(await read("default.rogen.json")).toBe("{}");
 		});
 
@@ -313,9 +317,12 @@ describe("init command", () => {
 			const result = await runInit("lobby");
 
 			expect(result.isErr()).toBe(true);
-			expect(errorMessage(result)).toContain(
-				"lobby.rogen.json already exists"
-			);
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "lobby.rogen.json"),
+				},
+			]);
 		});
 
 		it("should allow a named init beside an existing default config", async () => {

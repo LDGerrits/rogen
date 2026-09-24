@@ -1,3 +1,6 @@
+import path from "path";
+import { ResultError } from "../../../base/result.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
@@ -10,16 +13,45 @@ const STARTING_ROUTES = {
 	"*": "ReplicatedStorage/shared",
 };
 
-const luau: DetectedWorkspace = { toolchain: "luau", packageMounts: {} };
+const directory = path.resolve("/mock/my-game");
+
+const luau: DetectedWorkspace = {
+	toolchain: "luau",
+	packageDirs: new Set(),
+	rbxtsScopes: [],
+	hasInclude: false,
+};
+const withPackages: Partial<DetectedWorkspace> = {
+	packageManager: "wally",
+	packageDirs: new Set(["Packages"]),
+};
 const mounts = {
 	ReplicatedStorage: { Packages: { $path: "Packages" } },
 };
 
-const plan = (
+const planResult = (
 	workspace: DetectedWorkspace,
 	name = "default",
-	templateExists = false
-) => planInit({ name, workspace, projectName: "my-game", templateExists });
+	existingFiles: readonly string[] = []
+) =>
+	planInit({
+		name,
+		workspace,
+		projectName: "my-game",
+		directory,
+		existingFiles: new Set(existingFiles),
+	});
+
+const plan = (...args: Parameters<typeof planResult>) =>
+	planResult(...args).unwrap();
+
+const errorsOf = (result: ReturnType<typeof planResult>) =>
+	(result as ResultError<Diagnostic[]>).error;
+
+const treeOf = (workspace: Partial<DetectedWorkspace>) => {
+	const { template } = plan({ ...luau, ...workspace });
+	return template && JSON.parse(template.content).tree;
+};
 
 const configOf = (
 	files: ReturnType<typeof plan>,
@@ -55,7 +87,7 @@ describe("planInit", () => {
 
 	it("should write fields in pipeline order", () => {
 		const { configs } = plan(
-			{ toolchain: "roblox-ts", outDir: "out", packageMounts: mounts },
+			{ ...luau, ...withPackages, toolchain: "roblox-ts", outDir: "out" },
 			"default"
 		);
 
@@ -85,9 +117,9 @@ describe("planInit", () => {
 
 	it("should write the detected outDir as syncDir for roblox-ts", () => {
 		const { configs } = plan({
+			...luau,
 			toolchain: "roblox-ts",
 			outDir: "build",
-			packageMounts: {},
 		});
 
 		expect(configs).toHaveLength(1);
@@ -95,10 +127,7 @@ describe("planInit", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: DetectedWorkspace = {
-			toolchain: "darklua",
-			packageMounts: {},
-		};
+		const darklua: DetectedWorkspace = { ...luau, toolchain: "darklua" };
 
 		it("should write a source config and a default config extending it", () => {
 			const files = plan(darklua);
@@ -138,7 +167,7 @@ describe("planInit", () => {
 		});
 
 		it("should put the template in the source config only", () => {
-			const files = plan({ ...darklua, packageMounts: mounts });
+			const files = plan({ ...darklua, ...withPackages });
 
 			expect(configOf(files, "source.rogen.json").template).toBe(
 				"template.project.json"
@@ -151,7 +180,7 @@ describe("planInit", () => {
 
 	describe("template", () => {
 		it("should write template.project.json when mounts were detected", () => {
-			const files = plan({ ...luau, packageMounts: mounts });
+			const files = plan({ ...luau, ...withPackages });
 
 			expect(files.template?.fileName).toBe("template.project.json");
 			expect(JSON.parse(files.template!.content)).toEqual({
@@ -170,16 +199,170 @@ describe("planInit", () => {
 		});
 
 		it("should reference an existing template without rewriting it", () => {
-			const files = plan(
-				{ ...luau, packageMounts: mounts },
-				"lobby",
-				true
-			);
+			const files = plan({ ...luau, ...withPackages }, "lobby", [
+				"template.project.json",
+			]);
 
 			expect(files.template).toBeUndefined();
 			expect(configOf(files, "lobby.rogen.json").template).toBe(
 				"template.project.json"
 			);
+		});
+	});
+
+	describe("package mounts", () => {
+		it("should mount rbxts scopes and include", () => {
+			expect(
+				treeOf({
+					rbxtsScopes: ["@rbxts", "@flamework"],
+					hasInclude: true,
+				})
+			).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					rbxts_include: {
+						$path: "include",
+						node_modules: {
+							$className: "Folder",
+							"@rbxts": { $path: "node_modules/@rbxts" },
+							"@flamework": { $path: "node_modules/@flamework" },
+						},
+					},
+				},
+			});
+		});
+
+		it("should not mount include when it does not exist", () => {
+			expect(
+				treeOf({ rbxtsScopes: ["@rbxts"] }).ReplicatedStorage
+			).toEqual({
+				rbxts_include: {
+					node_modules: {
+						$className: "Folder",
+						"@rbxts": { $path: "node_modules/@rbxts" },
+					},
+				},
+			});
+		});
+
+		it("should not mount include without rbxts scopes", () => {
+			expect(treeOf({ hasInclude: true })).toBeUndefined();
+		});
+
+		it("should mount wally packages that exist", () => {
+			expect(
+				treeOf({
+					packageManager: "wally",
+					packageDirs: new Set(["Packages", "ServerPackages"]),
+				})
+			).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: { Packages: { $path: "Packages" } },
+				ServerScriptService: {
+					ServerPackages: { $path: "ServerPackages" },
+				},
+			});
+		});
+
+		it("should mount only the wally directories that exist", () => {
+			expect(treeOf(withPackages)).toEqual({
+				$className: "DataModel",
+				...mounts,
+			});
+		});
+
+		it("should not mount wally packages that are not installed", () => {
+			expect(treeOf({ packageManager: "wally" })).toBeUndefined();
+		});
+
+		it("should mount pesde packages that exist", () => {
+			expect(
+				treeOf({
+					packageManager: "pesde",
+					packageDirs: new Set([
+						"roblox_packages",
+						"roblox_server_packages",
+					]),
+				})
+			).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: { Packages: { $path: "roblox_packages" } },
+				ServerScriptService: {
+					ServerPackages: { $path: "roblox_server_packages" },
+				},
+			});
+		});
+
+		it("should only mount the directories of the detected manager", () => {
+			expect(
+				treeOf({
+					packageManager: "pesde",
+					packageDirs: new Set(["Packages", "ServerPackages"]),
+				})
+			).toBeUndefined();
+		});
+
+		it("should not mount a package directory without a manager", () => {
+			expect(
+				treeOf({
+					packageDirs: new Set(["Packages", "roblox_packages"]),
+				})
+			).toBeUndefined();
+		});
+
+		it("should combine mounts from several sources under one service", () => {
+			const tree = treeOf({ ...withPackages, rbxtsScopes: ["@rbxts"] });
+
+			expect(Object.keys(tree)).toEqual([
+				"$className",
+				"ReplicatedStorage",
+			]);
+			expect(tree.ReplicatedStorage).toMatchObject({
+				rbxts_include: expect.anything(),
+				Packages: expect.anything(),
+			});
+		});
+	});
+
+	describe("existing files", () => {
+		it("should fail when the config it would write exists", () => {
+			const result = planResult(luau, "default", ["default.rogen.json"]);
+
+			expect(result.isErr()).toBe(true);
+			expect(errorsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(directory, "default.rogen.json"),
+				},
+			]);
+		});
+
+		it("should allow a named config beside an existing default config", () => {
+			const result = planResult(luau, "lobby", ["default.rogen.json"]);
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should report every darklua config that already exists", () => {
+			const result = planResult(
+				{ ...luau, toolchain: "darklua" },
+				"default",
+				["source.rogen.json", "default.rogen.json"]
+			);
+
+			expect(errorsOf(result).map((error) => error.resource)).toEqual([
+				path.join(directory, "source.rogen.json"),
+				path.join(directory, "default.rogen.json"),
+			]);
+		});
+
+		it("should not fail over an existing template or project file", () => {
+			const result = planResult({ ...luau, ...withPackages }, "default", [
+				"template.project.json",
+				"default.project.json",
+			]);
+
+			expect(result.isOk()).toBe(true);
 		});
 	});
 });

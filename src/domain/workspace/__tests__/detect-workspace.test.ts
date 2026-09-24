@@ -20,8 +20,12 @@ describe("detectWorkspace", () => {
 			const workspace = await detectWorkspace(fs, cwd);
 
 			expect(workspace.toolchain).toBe("luau");
-			expect(workspace.outDir).toBeUndefined();
-			expect(workspace.packageMounts).toEqual({});
+			expect(workspace).toEqual({
+				toolchain: "luau",
+				packageDirs: new Set(),
+				rbxtsScopes: [],
+				hasInclude: false,
+			});
 		});
 
 		it("should detect roblox-ts from tsconfig.json", async () => {
@@ -95,144 +99,60 @@ describe("detectWorkspace", () => {
 		});
 	});
 
-	describe("package mounts", () => {
+	describe("packages", () => {
 		const mkdir = (dir: string) => fs.createDirectory(path.join(cwd, dir));
 
-		it("should mount rbxts packages and include that exist", async () => {
-			await write("tsconfig.json", "{}");
-			await write("node_modules/@rbxts/types/package.json");
-			await write("node_modules/@flamework/core/package.json");
-			await mkdir("include");
+		it.each([
+			["wally.toml", "wally"],
+			["pesde.toml", "pesde"],
+		])(
+			"should detect the package manager from %s",
+			async (file, manager) => {
+				await write(file);
 
-			const { packageMounts } = await detectWorkspace(fs, cwd);
+				const workspace = await detectWorkspace(fs, cwd);
 
-			expect(packageMounts).toEqual({
-				ReplicatedStorage: {
-					rbxts_include: {
-						$path: "include",
-						node_modules: {
-							$className: "Folder",
-							"@rbxts": { $path: "node_modules/@rbxts" },
-							"@flamework": { $path: "node_modules/@flamework" },
-						},
-					},
-				},
-			});
-		});
+				expect(workspace.packageManager).toBe(manager);
+			}
+		);
 
-		it("should not mount include when it does not exist", async () => {
-			await write("node_modules/@rbxts/types/package.json");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({
-				ReplicatedStorage: {
-					rbxts_include: {
-						node_modules: {
-							$className: "Folder",
-							"@rbxts": { $path: "node_modules/@rbxts" },
-						},
-					},
-				},
-			});
-		});
-
-		it("should mount @rbxts-js and @flamework when installed", async () => {
-			await write("node_modules/@rbxts-js/react/package.json");
-			await write("node_modules/@flamework/core/package.json");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toMatchObject({
-				ReplicatedStorage: {
-					rbxts_include: {
-						node_modules: {
-							"@rbxts-js": { $path: "node_modules/@rbxts-js" },
-							"@flamework": { $path: "node_modules/@flamework" },
-						},
-					},
-				},
-			});
-		});
-
-		it("should not mount anything for tsconfig.json alone", async () => {
-			await write("tsconfig.json", "{}");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({});
-		});
-
-		it("should mount wally packages that exist", async () => {
+		it("should prefer pesde when both manifests are present", async () => {
 			await write("wally.toml");
-			await mkdir("Packages");
-			await mkdir("ServerPackages");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({
-				ReplicatedStorage: { Packages: { $path: "Packages" } },
-				ServerScriptService: {
-					ServerPackages: { $path: "ServerPackages" },
-				},
-			});
-		});
-
-		it("should mount only the wally folders that exist", async () => {
-			await write("wally.toml");
-			await mkdir("Packages");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({
-				ReplicatedStorage: { Packages: { $path: "Packages" } },
-			});
-		});
-
-		it("should not mount wally packages that are not installed", async () => {
-			await write("wally.toml");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({});
-		});
-
-		it("should mount pesde packages that exist", async () => {
 			await write("pesde.toml");
-			await mkdir("roblox_packages");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.packageManager).toBe("pesde");
+		});
+
+		it("should report the package directories that exist", async () => {
+			await mkdir("Packages");
 			await mkdir("roblox_server_packages");
 
-			const { packageMounts } = await detectWorkspace(fs, cwd);
+			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(packageMounts).toEqual({
-				ReplicatedStorage: { Packages: { $path: "roblox_packages" } },
-				ServerScriptService: {
-					ServerPackages: { $path: "roblox_server_packages" },
-				},
-			});
+			expect(workspace.packageManager).toBeUndefined();
+			expect(workspace.packageDirs).toEqual(
+				new Set(["Packages", "roblox_server_packages"])
+			);
 		});
 
-		it("should not mount a package folder without its manifest", async () => {
-			await mkdir("Packages");
-			await mkdir("roblox_packages");
-
-			const { packageMounts } = await detectWorkspace(fs, cwd);
-
-			expect(packageMounts).toEqual({});
-		});
-
-		it("should combine mounts from several package managers under one service", async () => {
-			await write("wally.toml");
-			await mkdir("Packages");
+		it("should report the rbxts scopes installed in node_modules", async () => {
 			await write("node_modules/@rbxts/types/package.json");
+			await write("node_modules/@flamework/core/package.json");
+			await write("node_modules/@other/thing/package.json");
 
-			const { packageMounts } = await detectWorkspace(fs, cwd);
+			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(Object.keys(packageMounts)).toEqual(["ReplicatedStorage"]);
-			expect(packageMounts.ReplicatedStorage).toMatchObject({
-				rbxts_include: expect.anything(),
-				Packages: expect.anything(),
-			});
+			expect(workspace.rbxtsScopes).toEqual(["@rbxts", "@flamework"]);
+		});
+
+		it("should report whether include exists", async () => {
+			await mkdir("include");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.hasInclude).toBe(true);
 		});
 	});
 });

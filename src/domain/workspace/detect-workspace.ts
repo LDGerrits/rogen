@@ -2,20 +2,26 @@ import path from "path";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { RojoNode } from "../rojo/rojo-tree.js";
 
 export type Toolchain = "roblox-ts" | "darklua" | "luau";
+export type PackageManager = "wally" | "pesde";
 
 export interface DetectedWorkspace {
 	readonly toolchain: Toolchain;
 	readonly outDir?: string;
-	readonly packageMounts: RojoNode;
+	readonly packageManager?: PackageManager;
+	/** The installed package directories, of any manager. */
+	readonly packageDirs: ReadonlySet<string>;
+	readonly rbxtsScopes: readonly string[];
+	readonly hasInclude: boolean;
 }
 
 const DEFAULT_OUT_DIR = "out";
-const NODE_MODULES_SCOPES = ["@rbxts", "@flamework", "@rbxts-js"] as const;
-
-const mount = (mountPath: string): RojoNode => ({ $path: mountPath });
+export const RBXTS_SCOPES = ["@rbxts", "@flamework", "@rbxts-js"] as const;
+export const PACKAGE_DIRS = {
+	wally: { shared: "Packages", server: "ServerPackages" },
+	pesde: { shared: "roblox_packages", server: "roblox_server_packages" },
+} as const satisfies Record<PackageManager, object>;
 
 /** Only `init` may call this: builds do what the config says. */
 export async function detectWorkspace(
@@ -24,60 +30,50 @@ export async function detectWorkspace(
 ): Promise<DetectedWorkspace> {
 	const has = (...segments: string[]) =>
 		fileSystem.exists(path.join(cwd, ...segments));
+	const filter = async (candidates: readonly string[], ...parent: string[]) =>
+		(
+			await Promise.all(
+				candidates.map(async (candidate) =>
+					(await has(...parent, candidate)) ? candidate : undefined
+				)
+			)
+		).filter((candidate) => candidate !== undefined);
 
-	const [isTs, isDarklua, isWally, isPesde] = await Promise.all([
+	const [
+		isTs,
+		isDarklua,
+		isWally,
+		isPesde,
+		packageDirs,
+		rbxtsScopes,
+		hasInclude,
+	] = await Promise.all([
 		has("tsconfig.json"),
 		Promise.all([has(".darklua.json"), has(".darklua.json5")]).then(
 			(found) => found.some(Boolean)
 		),
 		has("wally.toml"),
 		has("pesde.toml"),
+		filter(
+			Object.values(PACKAGE_DIRS).flatMap(({ shared, server }) => [
+				shared,
+				server,
+			])
+		),
+		filter(RBXTS_SCOPES, "node_modules"),
+		has("include"),
 	]);
 
-	const replicatedStorage: RojoNode = {};
-	const serverScriptService: RojoNode = {};
-
-	const scopes = (
-		await Promise.all(
-			NODE_MODULES_SCOPES.map(async (scope) =>
-				(await has("node_modules", scope)) ? scope : undefined
-			)
-		)
-	).filter((scope) => scope !== undefined);
-	if (scopes.length > 0) {
-		replicatedStorage.rbxts_include = {
-			...((await has("include")) && mount("include")),
-			node_modules: {
-				$className: "Folder",
-				...Object.fromEntries(
-					scopes.map((scope) => [
-						scope,
-						mount(`node_modules/${scope}`),
-					])
-				),
-			},
-		};
-	}
-
-	const [shared, server] = isPesde
-		? ["roblox_packages", "roblox_server_packages"]
+	const packageManager: PackageManager | undefined = isPesde
+		? "pesde"
 		: isWally
-			? ["Packages", "ServerPackages"]
-			: [];
-	if (shared && (await has(shared))) {
-		replicatedStorage.Packages = mount(shared);
-	}
-	if (server && (await has(server))) {
-		serverScriptService.ServerPackages = mount(server);
-	}
-
-	const packageMounts: RojoNode = {
-		...(Object.keys(replicatedStorage).length > 0 && {
-			ReplicatedStorage: replicatedStorage,
-		}),
-		...(Object.keys(serverScriptService).length > 0 && {
-			ServerScriptService: serverScriptService,
-		}),
+			? "wally"
+			: undefined;
+	const facts = {
+		...(packageManager && { packageManager }),
+		packageDirs: new Set(packageDirs),
+		rbxtsScopes,
+		hasInclude,
 	};
 
 	if (isTs) {
@@ -87,13 +83,10 @@ export async function detectWorkspace(
 				fileSystem,
 				path.join(cwd, "tsconfig.json")
 			),
-			packageMounts,
+			...facts,
 		};
 	}
-	return {
-		toolchain: isDarklua ? "darklua" : "luau",
-		packageMounts,
-	};
+	return { toolchain: isDarklua ? "darklua" : "luau", ...facts };
 }
 
 function outDirOf(tsconfig: unknown): string | undefined {

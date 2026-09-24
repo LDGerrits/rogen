@@ -1,11 +1,17 @@
+import path from "path";
 import { Result, err, ok } from "../../base/result.js";
+import {
+	Diagnostic,
+	DiagnosticLocation,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	CONFIG_SUFFIX,
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
-import { RojoTree } from "../rojo/rojo-tree.js";
-import { DetectedWorkspace } from "./detect-workspace.js";
+import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
+import { DetectedWorkspace, PACKAGE_DIRS } from "./detect-workspace.js";
 
 export interface PlannedFile {
 	readonly fileName: string;
@@ -21,8 +27,20 @@ export interface InitPlanOptions {
 	readonly name: string;
 	readonly workspace: DetectedWorkspace;
 	readonly projectName: string;
-	readonly templateExists: boolean;
+	/** The absolute directory init writes into. */
+	readonly directory: string;
+	/** The names of the entries already in `directory`. */
+	readonly existingFiles: ReadonlySet<string>;
 }
+
+export const InitDiagnostics = {
+	configExists: (location: DiagnosticLocation) =>
+		errorDiagnostic(
+			"init.configExists",
+			location,
+			"this config already exists. Delete it to write a new one."
+		),
+};
 
 const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
 export const TEMPLATE_FILE = "template.project.json";
@@ -37,6 +55,47 @@ const STARTING_ROUTES = {
 
 const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
+
+const mount = (mountPath: string): RojoNode => ({ $path: mountPath });
+
+function packageMounts(workspace: DetectedWorkspace): RojoNode {
+	const replicatedStorage: RojoNode = {};
+	const serverScriptService: RojoNode = {};
+
+	if (workspace.rbxtsScopes.length > 0) {
+		replicatedStorage.rbxts_include = {
+			...(workspace.hasInclude && mount("include")),
+			node_modules: {
+				$className: "Folder",
+				...Object.fromEntries(
+					workspace.rbxtsScopes.map((scope) => [
+						scope,
+						mount(`node_modules/${scope}`),
+					])
+				),
+			},
+		};
+	}
+
+	if (workspace.packageManager) {
+		const { shared, server } = PACKAGE_DIRS[workspace.packageManager];
+		if (workspace.packageDirs.has(shared)) {
+			replicatedStorage.Packages = mount(shared);
+		}
+		if (workspace.packageDirs.has(server)) {
+			serverScriptService.ServerPackages = mount(server);
+		}
+	}
+
+	return {
+		...(Object.keys(replicatedStorage).length > 0 && {
+			ReplicatedStorage: replicatedStorage,
+		}),
+		...(Object.keys(serverScriptService).length > 0 && {
+			ServerScriptService: serverScriptService,
+		}),
+	};
+}
 
 const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 	fileName: `${stem}${CONFIG_SUFFIX}`,
@@ -59,19 +118,35 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 	return ok(name);
 }
 
-export function planInit(options: InitPlanOptions): InitPlan {
+export function planInit(
+	options: InitPlanOptions
+): Result<InitPlan, Diagnostic[]> {
+	const plan = buildPlan(options);
+	const existing = plan.configs
+		.filter(({ fileName }) => options.existingFiles.has(fileName))
+		.map(({ fileName }) =>
+			InitDiagnostics.configExists({
+				resource: path.join(options.directory, fileName),
+			})
+		);
+	return existing.length > 0 ? err(existing) : ok(plan);
+}
+
+function buildPlan(options: InitPlanOptions): InitPlan {
 	const { name, workspace } = options;
-	const hasMounts = Object.keys(workspace.packageMounts).length > 0;
+	const mounts = packageMounts(workspace);
+	const hasMounts = Object.keys(mounts).length > 0;
+	const templateExists = options.existingFiles.has(TEMPLATE_FILE);
 
 	const template: PlannedFile | undefined =
-		hasMounts && !options.templateExists
+		hasMounts && !templateExists
 			? {
 					fileName: TEMPLATE_FILE,
 					content: serialize({
 						name: options.projectName,
 						tree: {
 							$className: "DataModel",
-							...workspace.packageMounts,
+							...mounts,
 						},
 					} satisfies RojoTree),
 				}
@@ -81,7 +156,7 @@ export function planInit(options: InitPlanOptions): InitPlan {
 		$schema: SCHEMA_URL,
 		rootDirs: ["src"],
 		routes: STARTING_ROUTES,
-		...((hasMounts || options.templateExists) && {
+		...((hasMounts || templateExists) && {
 			template: TEMPLATE_FILE,
 		}),
 		...(syncDir && { syncDir }),
