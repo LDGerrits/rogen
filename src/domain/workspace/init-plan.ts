@@ -10,8 +10,14 @@ import {
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
-import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
-import { DetectedWorkspace, PACKAGE_DIRS } from "./detect-workspace.js";
+import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
+import {
+	DEFAULT_OUT_DIR,
+	DetectedWorkspace,
+	PACKAGE_DIRS,
+	RBXTS_SCOPES,
+	Toolchain,
+} from "./detect-workspace.js";
 
 export interface PlannedFile {
 	readonly fileName: string;
@@ -23,9 +29,26 @@ export interface InitPlan {
 	readonly configs: readonly PlannedFile[];
 }
 
-export interface InitPlanOptions {
+export interface TemplateMount {
+	readonly path: string;
+	readonly optional: boolean;
+}
+
+export interface MountCandidate {
+	readonly path: string;
+	readonly installed: boolean;
+}
+
+export interface InitChoices {
 	readonly name: string;
-	readonly workspace: DetectedWorkspace;
+	readonly toolchain: Toolchain;
+	readonly rootDirs: readonly string[];
+	readonly syncDir?: string;
+	readonly mounts: readonly TemplateMount[];
+}
+
+export interface InitPlanOptions {
+	readonly choices: InitChoices;
 	readonly projectName: string;
 	/** The absolute directory init writes into. */
 	readonly directory: string;
@@ -56,36 +79,101 @@ const STARTING_ROUTES = {
 const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
 
-const mount = (mountPath: string): RojoNode => ({ $path: mountPath });
+const INCLUDE_DIR = "include";
+const SCOPE_PARENT = "node_modules/";
 
-function packageMounts(workspace: DetectedWorkspace): RojoNode {
+const rojoPath = ({ path: mountPath, optional }: TemplateMount): RojoPath =>
+	optional ? { optional: mountPath } : mountPath;
+
+const mountNode = (mount: TemplateMount): RojoNode => ({
+	$path: rojoPath(mount),
+});
+
+export function syncDirFor(
+	toolchain: Toolchain,
+	workspace: DetectedWorkspace
+): string | undefined {
+	if (toolchain === "roblox-ts") return workspace.outDir ?? DEFAULT_OUT_DIR;
+	return toolchain === "darklua" ? DARKLUA_SYNC_DIR : undefined;
+}
+
+/** Everything a template could mount, found or not. */
+export function mountCandidates(
+	workspace: DetectedWorkspace
+): readonly MountCandidate[] {
+	const { shared, server } =
+		PACKAGE_DIRS[workspace.packageManager ?? "wally"];
+	return [
+		{ path: INCLUDE_DIR, installed: workspace.hasInclude },
+		...RBXTS_SCOPES.map((scope) => ({
+			path: `${SCOPE_PARENT}${scope}`,
+			installed: workspace.rbxtsScopes.includes(scope),
+		})),
+		...[shared, server].map((dir) => ({
+			path: dir,
+			installed:
+				workspace.packageManager !== undefined &&
+				workspace.packageDirs.has(dir),
+		})),
+	];
+}
+
+export function defaultInitChoices(
+	workspace: DetectedWorkspace,
+	name: string
+): InitChoices {
+	const candidates = mountCandidates(workspace);
+	const hasScopes = workspace.rbxtsScopes.length > 0;
+	const syncDir = syncDirFor(workspace.toolchain, workspace);
+	return {
+		name,
+		toolchain: workspace.toolchain,
+		rootDirs: ["src"],
+		...(syncDir && { syncDir }),
+		mounts: candidates
+			.filter(
+				({ path: mountPath, installed }) =>
+					installed && (mountPath !== INCLUDE_DIR || hasScopes)
+			)
+			.map(({ path: mountPath }) => ({
+				path: mountPath,
+				optional: false,
+			})),
+	};
+}
+
+function templateTree(mounts: readonly TemplateMount[]): RojoNode {
 	const replicatedStorage: RojoNode = {};
 	const serverScriptService: RojoNode = {};
 
-	if (workspace.rbxtsScopes.length > 0) {
+	const include = mounts.find(({ path }) => path === INCLUDE_DIR);
+	const scopes = mounts.filter(({ path }) => path.startsWith(SCOPE_PARENT));
+	if (include || scopes.length > 0) {
 		replicatedStorage.rbxts_include = {
-			...(workspace.hasInclude && mount("include")),
-			node_modules: {
-				$className: "Folder",
-				...Object.fromEntries(
-					workspace.rbxtsScopes.map((scope) => [
-						scope,
-						mount(`node_modules/${scope}`),
-					])
-				),
-			},
+			...(include && mountNode(include)),
+			...(scopes.length > 0 && {
+				node_modules: {
+					$className: "Folder",
+					...Object.fromEntries(
+						scopes.map((scope) => [
+							scope.path.slice(SCOPE_PARENT.length),
+							mountNode(scope),
+						])
+					),
+				},
+			}),
 		};
 	}
 
-	if (workspace.packageManager) {
-		const { shared, server } = PACKAGE_DIRS[workspace.packageManager];
-		if (workspace.packageDirs.has(shared)) {
-			replicatedStorage.Packages = mount(shared);
-		}
-		if (workspace.packageDirs.has(server)) {
-			serverScriptService.ServerPackages = mount(server);
-		}
-	}
+	const dirs = Object.values(PACKAGE_DIRS);
+	const shared = mounts.find(({ path }) =>
+		dirs.some((dir) => dir.shared === path)
+	);
+	const server = mounts.find(({ path }) =>
+		dirs.some((dir) => dir.server === path)
+	);
+	if (shared) replicatedStorage.Packages = mountNode(shared);
+	if (server) serverScriptService.ServerPackages = mountNode(server);
 
 	return {
 		...(Object.keys(replicatedStorage).length > 0 && {
@@ -108,6 +196,9 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 		return err(new Error("init takes at most one config name."));
 	}
 	const [name = DEFAULT_CONFIG_STEM] = names;
+	if (name.trim() === "") {
+		return err(new Error("A config name can't be empty."));
+	}
 	if (name === "." || name === ".." || /[\\/]/.test(name)) {
 		return err(
 			new Error(
@@ -133,9 +224,9 @@ export function planInit(
 }
 
 function buildPlan(options: InitPlanOptions): InitPlan {
-	const { name, workspace } = options;
-	const mounts = packageMounts(workspace);
-	const hasMounts = Object.keys(mounts).length > 0;
+	const { name, toolchain, rootDirs, syncDir, mounts } = options.choices;
+	const tree = templateTree(mounts);
+	const hasMounts = Object.keys(tree).length > 0;
 	const templateExists = options.existingFiles.has(TEMPLATE_FILE);
 
 	const template: PlannedFile | undefined =
@@ -146,23 +237,23 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 						name: options.projectName,
 						tree: {
 							$className: "DataModel",
-							...mounts,
+							...tree,
 						},
 					} satisfies RojoTree),
 				}
 			: undefined;
 
-	const starter = (syncDir?: string): RogenConfig => ({
+	const starter = (starterSyncDir?: string): RogenConfig => ({
 		$schema: SCHEMA_URL,
-		rootDirs: ["src"],
+		rootDirs: [...rootDirs],
 		routes: STARTING_ROUTES,
 		...((hasMounts || templateExists) && {
 			template: TEMPLATE_FILE,
 		}),
-		...(syncDir && { syncDir }),
+		...(starterSyncDir && { syncDir: starterSyncDir }),
 	});
 
-	if (workspace.toolchain === "darklua") {
+	if (toolchain === "darklua") {
 		const sourceStem =
 			name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
 		return {
@@ -172,14 +263,11 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 				configFile(name, {
 					$schema: SCHEMA_URL,
 					extends: `${sourceStem}${CONFIG_SUFFIX}`,
-					syncDir: DARKLUA_SYNC_DIR,
+					...(syncDir && { syncDir }),
 				}),
 			],
 		};
 	}
 
-	return {
-		template,
-		configs: [configFile(name, starter(workspace.outDir))],
-	};
+	return { template, configs: [configFile(name, starter(syncDir))] };
 }

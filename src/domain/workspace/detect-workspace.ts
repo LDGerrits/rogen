@@ -16,7 +16,7 @@ export interface DetectedWorkspace {
 	readonly hasInclude: boolean;
 }
 
-const DEFAULT_OUT_DIR = "out";
+export const DEFAULT_OUT_DIR = "out";
 export const RBXTS_SCOPES = ["@rbxts", "@flamework", "@rbxts-js"] as const;
 export const PACKAGE_DIRS = {
 	wally: { shared: "Packages", server: "ServerPackages" },
