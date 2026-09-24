@@ -357,6 +357,142 @@ describe("scanRootDirs", () => {
 		});
 	});
 
+	describe("linked directories", () => {
+		it("should scan a linked directory under its link path", async () => {
+			await write("shared/Util.luau", "shared/deep/Deep.luau");
+			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
+
+			const { roots, warnings } = await scan();
+
+			expect(roots[0].rootDir).toBe(abs("src"));
+			expect(files(roots[0])).toEqual([
+				"script:Shared/Util.luau",
+				"script:Shared/deep/Deep.luau",
+			]);
+			expect(warnings).toEqual([]);
+		});
+
+		it("should place a linked file like the file it points at", async () => {
+			await write("shared/Util.luau");
+			await fs.createSymbolicLink(
+				abs("shared/Util.luau"),
+				abs("src/U.luau")
+			);
+
+			const { roots } = await scan();
+
+			expect(files(roots[0])).toEqual(["script:U.luau"]);
+		});
+
+		it("should treat a linked directory with an init script as an init folder", async () => {
+			await write("shared/Pkg/init.luau");
+			await fs.createSymbolicLink(abs("shared/Pkg"), abs("src/Pkg"));
+
+			const { roots } = await scan();
+
+			expect(roots[0].entries).toEqual([
+				{
+					kind: "init-folder",
+					rootDir: abs("src"),
+					relativePath: "Pkg",
+					initFile: "init.luau",
+				},
+			]);
+		});
+
+		it("should scan two links to one target as two copies", async () => {
+			await write("shared/Util.luau");
+			await fs.createSymbolicLink(abs("shared"), abs("src/One"));
+			await fs.createSymbolicLink(abs("shared"), abs("src/Two"));
+
+			const { roots } = await scan();
+
+			expect(files(roots[0])).toEqual([
+				"script:One/Util.luau",
+				"script:Two/Util.luau",
+			]);
+		});
+
+		it("should match exclude globs against the link path", async () => {
+			await write("shared/Util.luau", "shared/Util.spec.luau");
+			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
+
+			const { roots } = await scan({
+				exclude: [glob("src/Shared/*.spec.luau")],
+			});
+
+			expect(files(roots[0])).toEqual(["script:Shared/Util.luau"]);
+			expect(roots[0].excluded).toEqual(["Shared/Util.spec.luau"]);
+		});
+
+		it("should not read what an excluded link points at", async () => {
+			await write("shared/Util.luau");
+			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
+
+			const { roots, warnings } = await scan({
+				exclude: [glob("src/Shared")],
+			});
+
+			expect(roots[0].entries).toEqual([]);
+			expect(roots[0].excluded).toEqual(["Shared"]);
+			expect(warnings).toEqual([]);
+		});
+
+		it("should skip a link to nothing with a warning naming the link", async () => {
+			await write("src/A.luau");
+			await fs.createSymbolicLink(abs("missing"), abs("src/Broken"));
+
+			const { roots, warnings } = await scan();
+
+			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(warnings).toMatchObject([
+				{
+					severity: DiagnosticSeverity.Warning,
+					code: "scan.unresolvedLink",
+					resource: abs("src/Broken"),
+				},
+			]);
+		});
+
+		it("should skip a link to its own ancestor with one warning", async () => {
+			await write("src/A.luau");
+			await fs.createSymbolicLink(abs("src"), abs("src/Loop"));
+
+			const { roots, warnings } = await scan();
+
+			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(warnings).toMatchObject([
+				{ code: "scan.unresolvedLink", resource: abs("src/Loop") },
+			]);
+		});
+
+		it("should warn once about a link that two overlapping root dirs both reach", async () => {
+			await write("src/inner/A.luau");
+			await fs.createSymbolicLink(
+				abs("missing"),
+				abs("src/inner/Broken")
+			);
+
+			const { warnings } = await scan({
+				rootDirs: [abs("src"), abs("src/inner")],
+			});
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it("should skip a link that points above its root dir", async () => {
+			await write("src/A.luau");
+			await fs.createSymbolicLink(abs("."), abs("src/Up"));
+
+			const { roots, warnings } = await scan();
+
+			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(warnings).toMatchObject([
+				{ code: "scan.unresolvedLink", resource: abs("src/Up") },
+			]);
+		});
+	});
+
 	describe("missing root dirs", () => {
 		it("should warn and contribute nothing", async () => {
 			await write("core/A.luau");

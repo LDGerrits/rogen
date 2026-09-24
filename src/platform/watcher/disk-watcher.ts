@@ -1,4 +1,6 @@
 import chokidar from "chokidar";
+import * as fs from "fs";
+import * as path from "path";
 import { FileType } from "../fs/file-system-service.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
@@ -35,9 +37,10 @@ export class DiskWatcher implements Watcher {
 			ignoreInitial: true,
 			persistent: true,
 			depth: requests.some((r) => r.recursive) ? undefined : 0,
-			followSymlinks: false,
+			followSymlinks: true,
 			ignored: (target: string) =>
-				isIgnored(target, options.ignored ?? []),
+				isIgnored(target, options.ignored ?? []) ||
+				linksToAncestor(target),
 		});
 
 		this.watcher.on("add", (p) =>
@@ -81,5 +84,23 @@ export class DiskWatcher implements Watcher {
 			await this.watcher.close();
 			this.watcher = null;
 		}
+	}
+}
+
+// Following a link that points at an ancestor would report the tree again forever.
+function linksToAncestor(target: string): boolean {
+	try {
+		if (!fs.lstatSync(target).isSymbolicLink()) return false;
+		const real = fs.realpathSync(target);
+		for (
+			let ancestor = path.dirname(target);
+			;
+			ancestor = path.dirname(ancestor)
+		) {
+			if (fs.realpathSync(ancestor) === real) return true;
+			if (path.dirname(ancestor) === ancestor) return false;
+		}
+	} catch {
+		return false;
 	}
 }

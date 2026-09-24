@@ -1,10 +1,17 @@
 import path from "path";
-import { FileSystemService, FileType } from "./file-system-service.js";
+import {
+	FileSystemService,
+	FileType,
+	isDirectoryType,
+} from "./file-system-service.js";
+import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { toPosix } from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "./file-events.js";
 import { IndexService } from "./index-service.js";
+
+const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
 
 export class CoreIndexService
 	extends AbstractDisposable
@@ -32,13 +39,7 @@ export class CoreIndexService
 				entries =
 					await this.fileSystemService.readDirectory(currentDir);
 			} catch (error) {
-				if (
-					error instanceof Error &&
-					"code" in error &&
-					error.code === "ENOENT"
-				) {
-					return;
-				}
+				if (ErrorUtils.hasCode(error, "ENOENT")) return;
 				throw error;
 			}
 
@@ -47,11 +48,18 @@ export class CoreIndexService
 			const subdirs: string[] = [];
 
 			for (const [name, type] of entries) {
-				children.set(name, type);
-
-				if (type === FileType.Directory) {
-					subdirs.push(path.join(currentDir, name));
+				const entryPath = path.join(currentDir, name);
+				if (
+					type & FileType.SymbolicLink &&
+					isDirectoryType(type) &&
+					(await this.linksToAncestor(entryPath))
+				) {
+					children.set(name, FileType.SymbolicLink);
+					continue;
 				}
+
+				children.set(name, type);
+				if (isDirectoryType(type)) subdirs.push(entryPath);
 			}
 
 			await Promise.all(subdirs.map((subdir) => traverse(subdir)));
@@ -59,6 +67,33 @@ export class CoreIndexService
 
 		await Promise.all(sourcePaths.map((root) => traverse(root)));
 		this.tree = next;
+	}
+
+	private async linksToAncestor(linkPath: string): Promise<boolean> {
+		let target: string;
+		try {
+			target = await this.fileSystemService.realPath(linkPath);
+		} catch (error) {
+			if (ErrorUtils.hasCode(error, ...UNRESOLVED_CODES)) return true;
+			throw error;
+		}
+
+		for (
+			let ancestor = path.dirname(linkPath);
+			;
+			ancestor = path.dirname(ancestor)
+		) {
+			try {
+				if (
+					(await this.fileSystemService.realPath(ancestor)) === target
+				)
+					return true;
+			} catch (error) {
+				if (!ErrorUtils.hasCode(error, ...UNRESOLVED_CODES))
+					throw error;
+			}
+			if (path.dirname(ancestor) === ancestor) return false;
+		}
 	}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
@@ -89,7 +124,7 @@ export class CoreIndexService
 					const type = parentMap.get(name);
 					parentMap.delete(name);
 
-					if (type === FileType.Directory) {
+					if (type !== undefined && isDirectoryType(type)) {
 						this.removeDirectory(posixPath);
 					}
 				}
@@ -107,7 +142,7 @@ export class CoreIndexService
 		this.tree.get(posixDir)!.set(name, type);
 
 		const fullPosixPath = posixDir === "." ? name : `${posixDir}/${name}`;
-		if (type === FileType.Directory && !this.tree.has(fullPosixPath)) {
+		if (isDirectoryType(type) && !this.tree.has(fullPosixPath)) {
 			this.tree.set(fullPosixPath, new Map());
 		}
 	}
@@ -117,7 +152,7 @@ export class CoreIndexService
 		if (!children) return;
 
 		for (const [name, type] of children.entries()) {
-			if (type === FileType.Directory) {
+			if (isDirectoryType(type)) {
 				this.removeDirectory(`${dirPath}/${name}`);
 			}
 		}

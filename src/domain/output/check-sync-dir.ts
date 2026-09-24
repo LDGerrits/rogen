@@ -2,7 +2,7 @@ import path from "path";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileSystemService,
-	FileType,
+	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -80,7 +80,7 @@ async function findShifted(
 
 	if (await fileSystem.isDirectory(syncDir)) {
 		for (const [name, type] of await fileSystem.readDirectory(syncDir))
-			if (type === FileType.Directory)
+			if (isDirectoryType(type))
 				candidates.push(path.join(syncDir, name, ...segments));
 	}
 

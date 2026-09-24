@@ -125,6 +125,110 @@ describe("CoreIndexService", () => {
 		});
 	});
 
+	describe("Symbolic links", () => {
+		it("should index a linked directory's entries under the link path", async () => {
+			await memoryFs.writeFile("shared/a.luau", "");
+			await memoryFs.createSymbolicLink("shared", "src/Shared");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.getEntryType("src", "Shared")).toBe(
+				FileType.Directory | FileType.SymbolicLink
+			);
+			expect(indexService.getEntries("src/Shared")).toEqual(
+				new Map([["a.luau", FileType.File]])
+			);
+			expect(indexService.getEntries("shared")).toBeUndefined();
+		});
+
+		it("should index each of two links to one target separately", async () => {
+			await memoryFs.writeFile("shared/a.luau", "");
+			await memoryFs.createSymbolicLink("shared", "src/One");
+			await memoryFs.createSymbolicLink("shared", "src/Two");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.hasEntry("src/One", "a.luau")).toBe(true);
+			expect(indexService.hasEntry("src/Two", "a.luau")).toBe(true);
+		});
+
+		it("should record a linked file as a file that is a link", async () => {
+			await memoryFs.writeFile("shared/a.luau", "");
+			await memoryFs.createSymbolicLink("shared/a.luau", "src/A.luau");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.getEntryType("src", "A.luau")).toBe(
+				FileType.File | FileType.SymbolicLink
+			);
+		});
+
+		it("should record a link to nothing as only a link", async () => {
+			await memoryFs.createSymbolicLink("missing", "src/Broken");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.getEntryType("src", "Broken")).toBe(
+				FileType.SymbolicLink
+			);
+		});
+
+		it("should not descend into a link that points at its own parent", async () => {
+			await memoryFs.writeFile("src/a.luau", "");
+			await memoryFs.createSymbolicLink("src", "src/Loop");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.getEntryType("src", "Loop")).toBe(
+				FileType.SymbolicLink
+			);
+			expect(indexService.getEntries("src/Loop")).toBeUndefined();
+		});
+
+		it("should not descend into a link that points above the root", async () => {
+			await memoryFs.writeFile("repo/src/a.luau", "");
+			await memoryFs.createSymbolicLink("repo", "repo/src/Up");
+
+			await indexService.initialize(["repo/src"]);
+
+			expect(indexService.getEntryType("repo/src", "Up")).toBe(
+				FileType.SymbolicLink
+			);
+			expect(indexService.getEntries("repo/src/Up")).toBeUndefined();
+		});
+
+		it("should not descend into a link that loops back through another link", async () => {
+			await memoryFs.writeFile("shared/a.luau", "");
+			await memoryFs.createSymbolicLink("shared", "src/Shared");
+			await memoryFs.createSymbolicLink("src", "shared/Back");
+
+			await indexService.initialize(["src"]);
+
+			expect(indexService.hasEntry("src/Shared", "a.luau")).toBe(true);
+			expect(indexService.getEntryType("src/Shared", "Back")).toBe(
+				FileType.SymbolicLink
+			);
+			expect(indexService.getEntries("src/Shared/Back")).toBeUndefined();
+		});
+
+		it("should drop a removed link and everything indexed under it", async () => {
+			await memoryFs.writeFile("shared/a.luau", "");
+			await memoryFs.createSymbolicLink("shared", "src/Shared");
+			await indexService.initialize(["src"]);
+
+			indexService.applyChanges([
+				{
+					type: FileChangeType.DELETED,
+					path: "src/Shared",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(indexService.hasEntry("src", "Shared")).toBe(false);
+			expect(indexService.getEntries("src/Shared")).toBeUndefined();
+		});
+	});
+
 	describe("File Changes & State Mutations", () => {
 		beforeEach(async () => {
 			await memoryFs.writeFile("src/core/math.ts", "");

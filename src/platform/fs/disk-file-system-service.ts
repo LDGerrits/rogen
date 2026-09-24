@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ErrorUtils } from "../../base/errors.js";
 import { FileType, FileSystemService } from "./file-system-service.js";
 
 export class DiskFileSystemService implements FileSystemService {
@@ -7,7 +8,7 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async exists(filePath: string): Promise<boolean> {
 		try {
-			await fs.promises.access(filePath);
+			await fs.promises.stat(filePath);
 			return true;
 		} catch {
 			return false;
@@ -36,13 +37,38 @@ export class DiskFileSystemService implements FileSystemService {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
 		});
-		return dirents.map((dirent) => {
-			let type = FileType.Unknown;
-			if (dirent.isFile()) type = FileType.File;
-			else if (dirent.isDirectory()) type = FileType.Directory;
+		return Promise.all(
+			dirents.map(async (dirent): Promise<[string, FileType]> => {
+				if (dirent.isSymbolicLink()) {
+					return [
+						dirent.name,
+						await this.linkType(path.join(filePath, dirent.name)),
+					];
+				}
+				if (dirent.isFile()) return [dirent.name, FileType.File];
+				if (dirent.isDirectory())
+					return [dirent.name, FileType.Directory];
+				return [dirent.name, FileType.Unknown];
+			})
+		);
+	}
 
-			return [dirent.name, type];
-		});
+	private async linkType(linkPath: string): Promise<FileType> {
+		try {
+			const stat = await fs.promises.stat(linkPath);
+			if (stat.isFile()) return FileType.SymbolicLink | FileType.File;
+			if (stat.isDirectory())
+				return FileType.SymbolicLink | FileType.Directory;
+		} catch (error) {
+			if (!ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR", "ELOOP")) {
+				throw error;
+			}
+		}
+		return FileType.SymbolicLink;
+	}
+
+	async realPath(filePath: string): Promise<string> {
+		return fs.promises.realpath(filePath);
 	}
 
 	async createDirectory(filePath: string): Promise<void> {
@@ -64,9 +90,7 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
-		if (await this.exists(filePath)) {
-			await fs.promises.rm(filePath, { recursive, force: true });
-		}
+		await fs.promises.rm(filePath, { recursive, force: true });
 	}
 
 	async copy(

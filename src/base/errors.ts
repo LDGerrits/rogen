@@ -20,6 +20,17 @@ export const ErrorUtils = {
 		);
 	},
 
+	/** Whether `error` carries one of the Node error codes `codes`, such as `ENOENT`. */
+	hasCode(error: unknown, ...codes: string[]): boolean {
+		return (
+			typeof error === "object" &&
+			error !== null &&
+			"code" in error &&
+			typeof error.code === "string" &&
+			codes.includes(error.code)
+		);
+	},
+
 	toString(error: Error): string {
 		return error.stack ? error.stack : error.message;
 	},
