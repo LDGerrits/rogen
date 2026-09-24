@@ -27,6 +27,16 @@ const FILES: Record<string, string> = {
 	"L.SERVER.luau": "",
 	"M.LUAU": "",
 	"N.local.luau": "",
+	"O.json": "{}",
+	"P.toml": "",
+	"Q.yaml": "a: 1",
+	"R.yml": "a: 1",
+	"S.csv": "Key,Source",
+	"T.txt": "text",
+	"U.luau.txt": "text",
+	"V.model.json": '{"className":"Folder"}',
+	"X.md": "# notes",
+	"Y.msgpack": "",
 	"Foo.luau": "",
 	"Foo.meta.json": '{"attributes":{"a":1}}',
 	"Dir/A.luau": "",
@@ -74,8 +84,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		const built = build(config, index).unwrap();
 		(await writeOutput(fileSystem, config, built.value)).unwrap();
 	};
-
-	it.todo("should place standalone data files as Rojo does");
 
 	it("should place every Rojo-native file as Rojo would", async () => {
 		for (const [file, content] of Object.entries(FILES)) {

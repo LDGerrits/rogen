@@ -3,7 +3,7 @@ import { isObject } from "../../base/object.js";
 import { toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
-import { rojoAssignedName } from "../rojo/rojo-assigned-name.js";
+import { rojoAssignedName, rojoModelName } from "../rojo/rojo-assigned-name.js";
 import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
 import { ScannedEntry } from "./root-scanner.js";
 import { RojoProject } from "./rojo-project.js";
@@ -95,19 +95,12 @@ export function assembleTree(
 	for (const [dir, instancePath] of collapsed)
 		insert(instancePath, dir, { $path: syncPath(dir, layout) });
 
-	const standaloneData: string[] = [];
 	for (const entry of placed) {
 		if (isCollapsed(entry.source, collapsed)) continue;
-		if (entry.file.entry.kind === "data") {
-			standaloneData.push(entry.source);
-			continue;
-		}
 		insert(entry.file.instancePath, entry.source, {
 			$path: syncPath(entry.source, layout),
 		});
 	}
-	if (standaloneData.length > 0)
-		warnings.push(TreeDiagnostics.standaloneData(location, standaloneData));
 
 	const globIgnorePaths = [
 		...new Set([
@@ -141,7 +134,8 @@ function rojoNameOf(entry: ScannedEntry): string {
 	const name = path.posix.basename(entry.relativePath);
 	if (entry.kind === "init-folder") return name;
 	const stem = name.slice(0, name.length - path.extname(name).length);
-	return entry.kind === "script" ? rojoAssignedName(stem) : stem;
+	if (entry.kind === "script") return rojoAssignedName(stem);
+	return entry.kind === "data" ? rojoModelName(stem) : stem;
 }
 
 /**

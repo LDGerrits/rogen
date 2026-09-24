@@ -1,4 +1,4 @@
-import { rojoAssignedName } from "../rojo-assigned-name.js";
+import { rojoAssignedName, rojoModelName } from "../rojo-assigned-name.js";
 
 describe("rojoAssignedName", () => {
 	it("strips a trailing .client", () => {
@@ -23,5 +23,16 @@ describe("rojoAssignedName", () => {
 
 	it("does not know about declared keys at all", () => {
 		expect(rojoAssignedName("Save+mock.server")).toBe("Save+mock");
+	});
+});
+
+describe("rojoModelName", () => {
+	it("strips a trailing .model", () => {
+		expect(rojoModelName("Gun.model")).toBe("Gun");
+	});
+
+	it("leaves any other stem untouched", () => {
+		expect(rojoModelName("Gun")).toBe("Gun");
+		expect(rojoModelName("Gun.model.mock")).toBe("Gun.model.mock");
 	});
 });

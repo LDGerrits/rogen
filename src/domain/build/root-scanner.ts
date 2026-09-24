@@ -50,14 +50,14 @@ const DATA_EXTENSIONS = new Set([
 	".txt",
 	".yaml",
 	".yml",
-	".msgpack",
-	".md",
 ]);
+// Rojo reads these as metadata and as a nested project, not as source to place.
+const RESERVED_JSON = /\.(meta|project)\.json$/;
 const INIT_SCRIPT = /^(init|index)([.@-][a-z0-9_]+)?\./i;
 
 function classifyFile(name: string): SourceKind | undefined {
 	const lower = name.toLowerCase();
-	if (lower.endsWith(".d.ts")) return undefined;
+	if (lower.endsWith(".d.ts") || RESERVED_JSON.test(lower)) return undefined;
 
 	const extension = path.extname(lower);
 	if (SCRIPT_EXTENSIONS.has(extension)) return "script";

@@ -59,9 +59,7 @@ describe("scanRootDirs", () => {
 				"src/I.csv",
 				"src/J.txt",
 				"src/K.yaml",
-				"src/L.yml",
-				"src/M.msgpack",
-				"src/N.md"
+				"src/L.yml"
 			);
 
 			const { roots } = await scan();
@@ -79,14 +77,22 @@ describe("scanRootDirs", () => {
 				"data:J.txt",
 				"data:K.yaml",
 				"data:L.yml",
-				"data:M.msgpack",
-				"data:N.md",
 			]);
+		});
+
+		it("should drop the files Rojo reads as metadata or a nested project", async () => {
+			await write("src/A.luau", "src/A.meta.json", "src/B.project.json");
+
+			const { roots } = await scan();
+
+			expect(files(roots[0])).toEqual(["script:A.luau"]);
 		});
 
 		it("should drop unrecognised extensions", async () => {
 			await write(
 				"src/A.luau",
+				"src/notes.md",
+				"src/pack.msgpack",
 				"src/image.png",
 				"src/notes",
 				"src/x.bak"

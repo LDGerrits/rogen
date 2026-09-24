@@ -12,3 +12,8 @@ export function rojoAssignedName(stem: string): string {
 	const suffix = rojoScriptSuffix(stem);
 	return suffix ? stem.slice(0, -(suffix.length + 1)) : stem;
 }
+
+// Rojo names a `.model.json` file after the part before `.model`.
+export function rojoModelName(stem: string): string {
+	return stem.endsWith(".model") ? stem.slice(0, -".model".length) : stem;
+}

@@ -7,6 +7,7 @@ import { Target, parseTarget } from "../roblox/target.js";
 import {
 	RojoScriptSuffix,
 	rojoAssignedName,
+	rojoModelName,
 	rojoScriptSuffix,
 } from "../rojo/rojo-assigned-name.js";
 import {
@@ -185,6 +186,7 @@ function routeEntry(
 		}
 		name = stripSpans(stem, stripped);
 		if (entry.kind === "script") name = rojoAssignedName(name);
+		if (entry.kind === "data") name = rojoModelName(name);
 	}
 
 	const target = context.targets.get(governing ?? FALLBACK_ROUTE);

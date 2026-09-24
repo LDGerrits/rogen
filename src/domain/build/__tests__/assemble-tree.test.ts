@@ -526,7 +526,7 @@ describe("assembleTree", () => {
 	});
 
 	describe("data files", () => {
-		it("should remove a standalone data file and warn to wrap it in a folder", async () => {
+		it("should place a standalone data file as its own instance", async () => {
 			await write("src/Items.json", "src/Foo.luau");
 
 			const { value, warnings } = await assemble();
@@ -534,9 +534,19 @@ describe("assembleTree", () => {
 			expect(value.tree.ReplicatedStorage).toEqual({
 				$className: "ReplicatedStorage",
 				Foo: { $path: optional("src/Foo.luau") },
+				Items: { $path: optional("src/Items.json") },
 			});
-			expect(warnings).toMatchObject([{ code: "tree.standaloneData" }]);
-			expect(warnings[0].message).toContain("Items.json");
+			expect(warnings).toEqual([]);
+		});
+
+		it("should name a .model.json file without the .model", async () => {
+			await write("src/Gun.model.json", "src/Foo.luau");
+
+			const storage = await storageOf();
+
+			expect(storage.Gun).toEqual({
+				$path: optional("src/Gun.model.json"),
+			});
 		});
 	});
 
