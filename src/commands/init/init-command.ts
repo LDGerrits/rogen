@@ -2,14 +2,17 @@ import path from "path";
 import { ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
+import { askInitChoices } from "../../domain/workspace/init-questions.js";
 import {
 	PlannedFile,
+	defaultInitChoices,
 	parseInitName,
 	planInit,
 } from "../../domain/workspace/init-plan.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
@@ -22,7 +25,8 @@ const DEFAULT_PROJECT_NAME = "roblox-game";
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "init",
 	metadata: {
-		description: "Writes a starting config, detecting the toolchain.",
+		description:
+			"Writes a starting config, detecting the toolchain and asking in a terminal.",
 		args: [
 			{
 				name: "name",
@@ -35,8 +39,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const environmentService = accessor.get(EnvironmentService);
 		const fileSystemService = accessor.get(FileSystemService);
 		const logService = accessor.get(LogService);
+		const promptService = accessor.get(PromptService);
 
-		const nameResult = parseInitName(args._.slice(1));
+		const names = args._.slice(1);
+		const nameResult = parseInitName(names);
 		if (nameResult.isErr()) return nameResult;
 
 		const cwd = environmentService.cwd;
@@ -56,9 +62,18 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			);
 		}
 
+		const workspace = await detectWorkspace(fileSystemService, cwd);
+		const choices = promptService.isInteractive
+			? await askInitChoices(
+					promptService,
+					workspace,
+					names.length > 0 ? nameResult.value : undefined
+				)
+			: defaultInitChoices(workspace, nameResult.value);
+		if (!choices) return err(new Error("init cancelled."));
+
 		const planned = planInit({
-			name: nameResult.value,
-			workspace: await detectWorkspace(fileSystemService, cwd),
+			choices,
 			projectName: path.basename(cwd) || DEFAULT_PROJECT_NAME,
 			directory: cwd,
 			existingFiles,

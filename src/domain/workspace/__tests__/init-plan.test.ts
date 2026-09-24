@@ -4,7 +4,12 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
-import { parseInitName, planInit } from "../init-plan.js";
+import {
+	InitChoices,
+	defaultInitChoices,
+	parseInitName,
+	planInit,
+} from "../init-plan.js";
 
 const STARTING_ROUTES = {
 	server: "ServerScriptService",
@@ -35,8 +40,7 @@ const planResult = (
 	existingFiles: readonly string[] = []
 ) =>
 	planInit({
-		name,
-		workspace,
+		choices: defaultInitChoices(workspace, name),
 		projectName: "my-game",
 		directory,
 		existingFiles: new Set(existingFiles),
@@ -324,6 +328,73 @@ describe("planInit", () => {
 		});
 	});
 
+	describe("choices", () => {
+		const planChoices = (choices: Partial<InitChoices>) =>
+			planInit({
+				choices: { ...defaultInitChoices(luau, "default"), ...choices },
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(),
+			}).unwrap();
+
+		it("should write the chosen root dirs", () => {
+			const files = planChoices({ rootDirs: ["src", "shared"] });
+
+			expect(configOf(files, "default.rogen.json").rootDirs).toEqual([
+				"src",
+				"shared",
+			]);
+		});
+
+		it("should write the chosen sync dir", () => {
+			const files = planChoices({
+				toolchain: "roblox-ts",
+				syncDir: "lib",
+			});
+
+			expect(configOf(files, "default.rogen.json").syncDir).toBe("lib");
+		});
+
+		it("should write optional mounts as optional paths", () => {
+			const files = planChoices({
+				mounts: [
+					{ path: "Packages", optional: true },
+					{ path: "ServerPackages", optional: false },
+				],
+			});
+
+			expect(JSON.parse(files.template!.content).tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Packages: { $path: { optional: "Packages" } },
+				},
+				ServerScriptService: {
+					ServerPackages: { $path: "ServerPackages" },
+				},
+			});
+		});
+
+		it("should not write a template when no mount was chosen", () => {
+			const files = planChoices({ mounts: [] });
+
+			expect(files.template).toBeUndefined();
+			expect(
+				configOf(files, "default.rogen.json").template
+			).toBeUndefined();
+		});
+
+		it("should extend the source config without a sync dir when none was chosen", () => {
+			const files = planChoices({
+				toolchain: "darklua",
+				syncDir: undefined,
+			});
+
+			expect(
+				configOf(files, "default.rogen.json").syncDir
+			).toBeUndefined();
+		});
+	});
+
 	describe("existing files", () => {
 		it("should fail when the config it would write exists", () => {
 			const result = planResult(luau, "default", ["default.rogen.json"]);
@@ -378,6 +449,10 @@ describe("parseInitName", () => {
 
 	it.each(["a/b", "a\\b", "..", "."])("should reject %s", (name) => {
 		expect(parseInitName([name]).isErr()).toBe(true);
+	});
+
+	it("should reject an empty name", () => {
+		expect(parseInitName([" "]).isErr()).toBe(true);
 	});
 
 	it("should reject more than one name", () => {

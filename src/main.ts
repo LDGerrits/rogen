@@ -24,6 +24,8 @@ import {
 	LogLevel,
 	LogService,
 } from "./platform/log/log-service.js";
+import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
+import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreReconciliationService } from "./platform/watcher/core-reconciliation-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
@@ -108,6 +110,7 @@ async function main(): Promise<void> {
 
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
+		services.set(PromptService, new ConsolePromptService());
 		services.set(FileSystemService, fileSystemService);
 		services.set(
 			IndexService,

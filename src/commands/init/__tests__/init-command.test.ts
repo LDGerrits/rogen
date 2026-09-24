@@ -18,6 +18,12 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+import { PromptService } from "../../../platform/prompt/prompt-service.js";
+import {
+	ACCEPT_DEFAULT,
+	CANCEL,
+	MockPromptService,
+} from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 
 const STARTING_ROUTES = {
 	server: "ServerScriptService",
@@ -31,7 +37,10 @@ describe("init command", () => {
 	let memFs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const runInit = (...names: string[]) => {
+	const runInit = (
+		names: string[] = [],
+		promptService: PromptService = new MockPromptService([], false)
+	) => {
 		const environment = new NativeEnvironmentService(
 			{ _: ["init", ...names] },
 			cwd
@@ -41,6 +50,7 @@ describe("init command", () => {
 		services.set(EnvironmentService, environment);
 		services.set(FileSystemService, memFs);
 		services.set(LogService, logService);
+		services.set(PromptService, promptService);
 
 		return store
 			.add(new CoreCommandService(services, logService))
@@ -126,7 +136,7 @@ describe("init command", () => {
 		it("should write <name> and <name>-source for a named darklua config", async () => {
 			await write(".darklua.json5");
 
-			await runInit("lobby");
+			await runInit(["lobby"]);
 
 			expect((await readJson("lobby.rogen.json")).extends).toBe(
 				"lobby-source.rogen.json"
@@ -180,7 +190,7 @@ describe("init command", () => {
 			await memFs.createDirectory(path.join(cwd, "Packages"));
 			await write("template.project.json", '{"name":"mine"}');
 
-			await runInit("lobby");
+			await runInit(["lobby"]);
 
 			expect(await read("template.project.json")).toBe('{"name":"mine"}');
 			expect((await readJson("lobby.rogen.json")).template).toBe(
@@ -194,7 +204,7 @@ describe("init command", () => {
 
 			await runInit();
 			const template = await read("template.project.json");
-			await runInit("lobby");
+			await runInit(["lobby"]);
 
 			expect(await read("template.project.json")).toBe(template);
 			expect((await readJson("lobby.rogen.json")).template).toBe(
@@ -269,7 +279,7 @@ describe("init command", () => {
 		});
 
 		it("should write <name>.rogen.json for a named init", async () => {
-			await runInit("lobby");
+			await runInit(["lobby"]);
 
 			expect(await exists("lobby.rogen.json")).toBe(true);
 			expect(await exists("default.rogen.json")).toBe(false);
@@ -278,7 +288,7 @@ describe("init command", () => {
 		it.each(["a/b", "..\\x", "..", "."])(
 			"should reject the name %s",
 			async (name) => {
-				const result = await runInit(name);
+				const result = await runInit([name]);
 
 				expect(result.isErr()).toBe(true);
 				expect(errorMessage(result)).toContain(
@@ -288,10 +298,92 @@ describe("init command", () => {
 		);
 
 		it("should reject more than one name", async () => {
-			const result = await runInit("a", "b");
+			const result = await runInit(["a", "b"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(await exists("a.rogen.json")).toBe(false);
+		});
+	});
+
+	describe("interactive", () => {
+		it("should write what plain init writes when every default is accepted", async () => {
+			await write("tsconfig.json", "{}");
+			await write("Packages/x.luau");
+			await write("wally.toml");
+			const prompts = new MockPromptService(
+				Array(5).fill(ACCEPT_DEFAULT)
+			);
+
+			const result = await runInit([], prompts);
+			const interactive = await readJson("default.rogen.json");
+			const interactiveTemplate = await readJson("template.project.json");
+			await memFs.delete(path.join(cwd, "default.rogen.json"));
+			await memFs.delete(path.join(cwd, "template.project.json"));
+			await runInit();
+
+			expect(result.isOk()).toBe(true);
+			expect(interactive).toEqual(await readJson("default.rogen.json"));
+			expect(interactiveTemplate).toEqual(
+				await readJson("template.project.json")
+			);
+		});
+
+		it("should write the answers", async () => {
+			const prompts = new MockPromptService([
+				"game",
+				"darklua",
+				"src, lib",
+				"out",
+				[],
+			]);
+
+			await runInit([], prompts);
+
+			const source = await readJson("game-source.rogen.json");
+			expect(source.rootDirs).toEqual(["src", "lib"]);
+			expect((await readJson("game.rogen.json")).syncDir).toBe("out");
+		});
+
+		it("should mount a folder that is not installed as optional", async () => {
+			const prompts = new MockPromptService([
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				["Packages"],
+			]);
+
+			await runInit([], prompts);
+
+			expect(
+				(await readJson("template.project.json")).tree.ReplicatedStorage
+			).toEqual({ Packages: { $path: { optional: "Packages" } } });
+		});
+
+		it("should not ask for a name that was given", async () => {
+			const prompts = new MockPromptService(
+				Array(4).fill(ACCEPT_DEFAULT)
+			);
+
+			await runInit(["lobby"], prompts);
+
+			expect(prompts.asked).not.toContain("Config name");
+			expect(await exists("lobby.rogen.json")).toBe(true);
+		});
+
+		it("should write nothing when cancelled", async () => {
+			const result = await runInit([], new MockPromptService([CANCEL]));
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(false);
+		});
+
+		it("should not ask when there is no terminal", async () => {
+			const prompts = new MockPromptService([], false);
+
+			const result = await runInit([], prompts);
+
+			expect(result.isOk()).toBe(true);
+			expect(prompts.asked).toEqual([]);
 		});
 	});
 
@@ -314,7 +406,7 @@ describe("init command", () => {
 		it("should fail when the named config exists", async () => {
 			await write("lobby.rogen.json", "{}");
 
-			const result = await runInit("lobby");
+			const result = await runInit(["lobby"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(diagnosticsOf(result)).toMatchObject([
@@ -328,7 +420,7 @@ describe("init command", () => {
 		it("should allow a named init beside an existing default config", async () => {
 			await write("default.rogen.json", "{}");
 
-			const result = await runInit("lobby");
+			const result = await runInit(["lobby"]);
 
 			expect(result.isOk()).toBe(true);
 			expect(await read("default.rogen.json")).toBe("{}");
