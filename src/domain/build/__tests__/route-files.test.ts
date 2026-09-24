@@ -436,6 +436,14 @@ describe("routeFiles", () => {
 			]);
 		});
 
+		it("should return the unrouted files' source paths", async () => {
+			await write("src/server/A.luau", "src/B.luau");
+
+			const result = (await route(noStar)).unwrap();
+
+			expect(result.unrouted).toEqual([abs("src/B.luau")]);
+		});
+
 		it("should report every unrouted file in one warning", async () => {
 			await write("src/A.luau", "src/B.luau", "src/C.luau");
 

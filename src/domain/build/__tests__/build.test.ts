@@ -47,6 +47,10 @@ describe("domain/build/build", () => {
 			expect(result.unwrap().warnings).toEqual([]);
 			expect(result.unwrap().value.tree).toEqual({
 				$className: "DataModel",
+				ReplicatedStorage: {
+					$className: "ReplicatedStorage",
+					A: { $path: { optional: "src/A.luau" } },
+				},
 			});
 		});
 

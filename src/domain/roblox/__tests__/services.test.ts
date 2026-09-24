@@ -1,4 +1,8 @@
-import { SUPPORTED_SERVICES, isSupportedService } from "../services.js";
+import {
+	SUPPORTED_SERVICES,
+	containerClassName,
+	isSupportedService,
+} from "../services.js";
 
 describe("domain/roblox/services", () => {
 	it("should list the supported services", () => {
@@ -24,6 +28,30 @@ describe("domain/roblox/services", () => {
 
 		it("should reject a name that is not a service", () => {
 			expect(isSupportedService("StarterPlayerScripts")).toBe(false);
+		});
+	});
+
+	describe("containerClassName", () => {
+		it("should give a service its own class", () => {
+			expect(containerClassName(["Workspace"])).toBe("Workspace");
+		});
+
+		it("should give StarterPlayer's script containers their own class", () => {
+			expect(
+				containerClassName(["StarterPlayer", "StarterCharacterScripts"])
+			).toBe("StarterCharacterScripts");
+		});
+
+		it("should make anything else a Folder", () => {
+			expect(containerClassName(["ReplicatedStorage", "shared"])).toBe(
+				"Folder"
+			);
+			expect(
+				containerClassName([
+					"ReplicatedStorage",
+					"StarterPlayerScripts",
+				])
+			).toBe("Folder");
 		});
 	});
 });

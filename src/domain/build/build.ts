@@ -1,11 +1,12 @@
 import path from "path";
-import { isInside } from "../../base/path.js";
+import { isInside, toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { applyTags } from "./apply-tags.js";
+import { assembleTree } from "./assemble-tree.js";
 import { scanRootDirs } from "./root-scanner.js";
 import { routeFiles } from "./route-files.js";
 
@@ -28,15 +29,25 @@ export function build(
 	const tagging = applyTags(routing.value.routed, config);
 	if (tagging.isErr()) return tagging;
 
+	const assembly = assembleTree(config, {
+		files: tagging.value.files,
+		excluded: scan.roots.flatMap((root) =>
+			root.excluded.map((relativePath) =>
+				toPosix(path.join(root.rootDir, relativePath))
+			)
+		),
+		pruned: tagging.value.pruned,
+		unrouted: routing.value.unrouted,
+		superseded: tagging.value.superseded,
+	});
+
 	return ok({
-		value: {
-			name: config.name,
-			tree: { $className: "DataModel" },
-		},
+		value: assembly.value,
 		warnings: [
 			...scan.warnings,
 			...routing.value.warnings,
 			...tagging.value.warnings,
+			...assembly.warnings,
 		],
 	});
 }

@@ -1,3 +1,4 @@
+import { containerClassName } from "../roblox/services.js";
 import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
 
 export class RojoProject {
@@ -48,13 +49,21 @@ export class RojoProject {
 	private ensureNode(path: readonly string[]): RojoNode {
 		let current = this.tree.tree;
 
-		for (const segment of path) {
+		path.forEach((segment, depth) => {
 			if (!current[segment]) {
-				current[segment] = { $className: "Folder" };
+				current[segment] = createContainer(path.slice(0, depth + 1));
 			}
 			current = current[segment] as RojoNode;
-		}
+		});
 
 		return current;
 	}
+}
+
+/** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */
+function createContainer(instancePath: readonly string[]): RojoNode {
+	const $className = containerClassName(instancePath);
+	return $className === "Folder"
+		? { $className, $ignoreUnknownInstances: false }
+		: { $className };
 }

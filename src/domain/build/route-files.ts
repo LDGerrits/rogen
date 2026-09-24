@@ -41,6 +41,8 @@ export interface RoutedFile {
 
 export interface RouteResult {
 	readonly routed: readonly RoutedFile[];
+	/** Absolute POSIX source paths of the files no route governs. */
+	readonly unrouted: readonly string[];
 	readonly warnings: readonly Diagnostic[];
 }
 
@@ -95,6 +97,7 @@ export function routeFiles(
 
 	return ok({
 		routed,
+		unrouted,
 		warnings:
 			unrouted.length > 0
 				? [RouteDiagnostics.unrouted(location, unrouted)]

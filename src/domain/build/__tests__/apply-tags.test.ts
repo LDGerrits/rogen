@@ -129,6 +129,14 @@ describe("applyTags", () => {
 			expect(result.warnings).toEqual([]);
 		});
 
+		it("should report the file an active tag replaced as superseded", async () => {
+			await write("src/Analytics.luau", "src/Analytics.mock.luau");
+
+			const result = (await apply({ mock: true })).unwrap();
+
+			expect(result.superseded).toEqual([abs("src/Analytics.luau")]);
+		});
+
 		it("should prune models by a dormant suffix too", async () => {
 			await write("src/Gun.mock.rbxm");
 

@@ -9,6 +9,8 @@ import { TagDiagnostics } from "./tag-diagnostics.js";
 export interface TagResult {
 	/** Every instance path appears once; the last root dir wins across roots. */
 	readonly files: readonly RoutedFile[];
+	/** Absolute POSIX source paths of the files that lost their instance path to another. */
+	readonly superseded: readonly string[];
 	/** Absolute POSIX source paths of the files a dormant tag removed. */
 	readonly pruned: readonly string[];
 	readonly warnings: readonly Diagnostic[];
@@ -78,7 +80,9 @@ export function applyTags(
 	}
 
 	if (errors.length > 0) return err(errors);
-	return ok({ files: [...winners.values()], pruned, warnings });
+	const won = new Set(winners.values());
+	const superseded = kept.filter((file) => !won.has(file)).map(displayPath);
+	return ok({ files: [...won], superseded, pruned, warnings });
 }
 
 function sourcePath(file: RoutedFile): string {

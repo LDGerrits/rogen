@@ -38,6 +38,25 @@ describe("RojoProject", () => {
 		expect(combat.$path).toBe("out/combat.luau");
 	});
 
+	it("should create parents as services or folders that drop unknown instances", () => {
+		const project = new RojoProject({ name: "test-tree", tree: {} });
+
+		project.insertNode(["ReplicatedStorage", "shared", "Foo"], {
+			$path: "foo.luau",
+		});
+
+		expect(project.getTree().tree).toEqual({
+			ReplicatedStorage: {
+				$className: "ReplicatedStorage",
+				shared: {
+					$className: "Folder",
+					$ignoreUnknownInstances: false,
+					Foo: { $path: "foo.luau" },
+				},
+			},
+		});
+	});
+
 	it("should strip $className when a Folder is overwritten by a file", () => {
 		const project = new RojoProject(baseTree);
 
