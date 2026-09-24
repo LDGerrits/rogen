@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: "ServerScriptService/Save" is defined by both the template and <dir>/src/Save.server.luau, so the template's is kept and <dir>/src/Save.server.luau is left out. Rename one of them to keep both.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Load: Script  <- src/Load.server.luau
+    Save: Script  <- hand/Save.server.luau

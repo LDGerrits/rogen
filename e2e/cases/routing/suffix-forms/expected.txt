@@ -1,0 +1,27 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: Folder
+        HTTPServer: ModuleScript  <- src/Combat/HTTPServer.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Alpha: Script  <- src/Combat/Alpha.server.luau
+      Beta: ModuleScript  <- src/Combat/Beta-server.luau
+      Delta: ModuleScript  <- src/Combat/Delta+server.luau
+      Epsilon: ModuleScript  <- src/Combat/Epsilon@server.luau
+      Eta: ModuleScript  <- src/Combat/Eta-SERVER.luau
+      Gamma: ModuleScript  <- src/Combat/Gamma_Server.luau
+      Zeta: ModuleScript  <- src/Combat/ZetaServer.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Combat: Folder
+        Hud: LocalScript  <- src/Combat/Hud.client.luau

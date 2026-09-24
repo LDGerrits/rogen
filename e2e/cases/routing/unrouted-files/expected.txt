@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: 3 files matched no route and were left out (<dir>/src/Inventory/Hud.client.luau, <dir>/src/Inventory/Types.luau, <dir>/src/Util.luau). Add a "*" route to place them.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- src/Inventory/Save.server.luau

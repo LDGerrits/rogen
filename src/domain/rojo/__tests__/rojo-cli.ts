@@ -30,7 +30,18 @@ function rojoAvailable(): boolean {
 	}
 }
 
-export const describeWithRojo = rojoAvailable() ? describe : describe.skip;
+const requireRojo = (name: string, _fn: () => void) =>
+	describe(name, () => {
+		it("should have Rojo installed", () => {
+			throw new Error("Rojo is not available; run `rokit install`.");
+		});
+	});
+
+export const describeWithRojo = rojoAvailable()
+	? describe
+	: process.env.CI
+		? requireRojo
+		: describe.skip;
 
 export function makeRojoDir(prefix: string): string {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));

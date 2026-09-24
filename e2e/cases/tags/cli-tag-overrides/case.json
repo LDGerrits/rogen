@@ -1,0 +1,32 @@
+{
+	"steps": [
+		[
+			"build",
+			"-o",
+			"plain.project.json"
+		],
+		[
+			"build",
+			"-o",
+			"mocked.project.json",
+			"--tag",
+			"mock"
+		],
+		[
+			"build",
+			"-o",
+			"nodev.project.json",
+			"--no-tag",
+			"dev"
+		],
+		[
+			"build",
+			"-o",
+			"both.project.json",
+			"-t",
+			"mock",
+			"--no-tag",
+			"dev"
+		]
+	]
+}

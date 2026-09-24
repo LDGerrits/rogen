@@ -1,0 +1,22 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Config: Folder
+        Items: ModuleScript  <- src/Config/shared/Items.json
+        Locale: LocalizationTable  <- src/Config/Locale.csv
+        Marker: Folder  <- src/Config/Marker.model.json
+        Notes: StringValue  <- src/Config/Notes.txt
+        Settings: ModuleScript  <- src/Config/Settings.toml
+        Strings: ModuleScript  <- src/Config/Strings.yaml
+  ServerScriptService: ServerScriptService
+    Config: Folder
+      Secrets: ModuleScript  <- src/Config/server/Secrets.json

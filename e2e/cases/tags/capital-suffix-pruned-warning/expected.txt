@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: 1 file pruned by the dormant tag "mock" matched on a capital suffix (<dir>/src/Net/HttpMock.luau). Use a separator (Foo.mock.luau) if these are not variants.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Net: Folder
+        Http: ModuleScript  <- src/Net/Http.luau

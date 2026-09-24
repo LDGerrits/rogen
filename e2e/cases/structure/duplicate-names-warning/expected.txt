@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: 2 files all become "ReplicatedStorage/shared/Inventory/Types" (<dir>/src/Inventory/Types.lua, <dir>/src/Inventory/Types.luau), so only the last one is used.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau

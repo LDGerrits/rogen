@@ -1,0 +1,27 @@
+$ rogen build default active
+exit 0
+stdout:
+  Wrote default.project.json.
+  Wrote active.project.json.
+
+written:
+  active.project.json
+  default.project.json
+
+$ rojo sourcemap active.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Experimental: Folder
+        Deep: Folder
+          Thing: ModuleScript  <- src/Experimental/Deep/Thing.luau
+        Feature: ModuleScript  <- src/Experimental/Feature.luau
+      Stable: Folder
+        Feature: ModuleScript  <- src/Stable/Feature.luau
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Stable: Folder
+        Feature: ModuleScript  <- src/Stable/Feature.luau

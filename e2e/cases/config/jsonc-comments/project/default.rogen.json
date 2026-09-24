@@ -1,0 +1,9 @@
+// the game
+{
+	/* where the code is */
+	"rootDirs": ["src",],
+	"routes": {
+		"server": "ServerScriptService", // scripts
+		"*": "ReplicatedStorage",
+	},
+}

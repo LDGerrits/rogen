@@ -1,0 +1,19 @@
+$ rogen list
+exit 0
+stdout:
+  default.rogen.json
+    extends: source.rogen.json
+    root dirs: src
+    sync dir: dist
+    project file: default.project.json
+    tags: dev
+  lobby.rogen.json
+    root dirs: core, places/lobby
+    sync dir: (none)
+    project file: out/lobby.project.json
+    tags: (none)
+  source.rogen.json
+    root dirs: src
+    sync dir: (none)
+    project file: source.project.json
+    tags: dev

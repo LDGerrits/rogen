@@ -1,0 +1,4 @@
+{
+	"extends": "./match-source.rogen.json",
+	"syncDir": "dist/match"
+}

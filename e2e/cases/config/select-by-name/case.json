@@ -1,0 +1,11 @@
+{
+	"steps": [
+		[
+			"build",
+			"lobby"
+		],
+		[
+			"build"
+		]
+	]
+}

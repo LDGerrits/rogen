@@ -1,0 +1,4 @@
+$ rogen help deploy
+exit 1
+stderr:
+  error: Unknown command "deploy". Run 'rogen help' to see available commands.

@@ -1,0 +1,107 @@
+$ rogen help build
+exit 0
+stdout:
+  Writes each named config's project file.
+  
+  Usage:
+    rogen build [name...] [options]
+  
+  Arguments:
+    name  A config to build.
+  
+  Options:
+    -c, --config <value>    An explicit config path. (repeatable)
+    -o, --out-file <value>  Overrides outFile.
+    -s, --sync-dir <value>  Overrides syncDir.
+        --template <value>  Overrides template.
+    -t, --tag <value>       Turns a tag on. (repeatable)
+        --no-tag <value>    Turns a tag off. (repeatable)
+        --show-config       Prints the resolved config and exits.
+  
+  Global options:
+    -h, --help     Print help.
+    -v, --version  Print the version.
+        --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen help watch
+exit 0
+stdout:
+  Builds, then rebuilds whenever sources or configs change.
+  
+  Usage:
+    rogen watch [name...] [options]
+  
+  Arguments:
+    name  A config to watch.
+  
+  Options:
+    -c, --config <value>    An explicit config path. (repeatable)
+    -o, --out-file <value>  Overrides outFile.
+    -s, --sync-dir <value>  Overrides syncDir.
+        --template <value>  Overrides template.
+    -t, --tag <value>       Turns a tag on. (repeatable)
+        --no-tag <value>    Turns a tag off. (repeatable)
+  
+  Global options:
+    -h, --help     Print help.
+    -v, --version  Print the version.
+        --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen help init
+exit 0
+stdout:
+  Writes a starting config, detecting the toolchain and asking in a terminal.
+  
+  Usage:
+    rogen init [name] [options]
+  
+  Arguments:
+    name  The config to write. Defaults to default.
+  
+  Global options:
+    -h, --help     Print help.
+    -v, --version  Print the version.
+        --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen help list
+exit 0
+stdout:
+  Lists every config here with its root dirs, sync dir, project file and tags.
+  
+  Usage:
+    rogen list [options]
+  
+  Global options:
+    -h, --help     Print help.
+    -v, --version  Print the version.
+        --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen build --help
+exit 0
+stdout:
+  Writes each named config's project file.
+  
+  Usage:
+    rogen build [name...] [options]
+  
+  Arguments:
+    name  A config to build.
+  
+  Options:
+    -c, --config <value>    An explicit config path. (repeatable)
+    -o, --out-file <value>  Overrides outFile.
+    -s, --sync-dir <value>  Overrides syncDir.
+        --template <value>  Overrides template.
+    -t, --tag <value>       Turns a tag on. (repeatable)
+        --no-tag <value>    Turns a tag off. (repeatable)
+        --show-config       Prints the resolved config and exits.
+  
+  Global options:
+    -h, --help     Print help.
+    -v, --version  Print the version.
+        --verbose  Print debug output.
+    -q, --quiet    Only print errors.

@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json:3:2 - error: unknown field "outDir".

@@ -13,5 +13,8 @@ export default {
 		],
 	},
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
-	testMatch: ["<rootDir>/src/**/__tests__/**/*.test.ts"],
+	testMatch: [
+		"<rootDir>/src/**/__tests__/**/*.test.ts",
+		"<rootDir>/e2e/*.test.ts",
+	],
 };

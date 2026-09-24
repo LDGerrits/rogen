@@ -1,0 +1,15 @@
+$ rogen build lobby
+exit 0
+stdout:
+  Wrote lobby.project.json.
+
+written:
+  lobby.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shared: ModuleScript  <- dist/lobby/core/Shared.luau
+  ServerScriptService: ServerScriptService
+    Lobby: Script  <- dist/lobby/places/lobby/Lobby.server.luau

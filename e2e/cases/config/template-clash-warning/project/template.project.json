@@ -1,0 +1,11 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"Save": {
+				"$path": "hand/Save.server.luau"
+			}
+		}
+	}
+}

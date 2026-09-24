@@ -1,0 +1,4 @@
+$ rogen prod
+exit 1
+stderr:
+  error: Unknown command "prod". To build a config, run 'rogen build prod'; run 'rogen help' to see the commands.

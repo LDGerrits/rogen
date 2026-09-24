@@ -1,0 +1,18 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"tags": {
+		"mock": false
+	},
+	"exclude": [
+		"**/*.spec.luau"
+	],
+	"template": "./template.project.json"
+}

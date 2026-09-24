@@ -1,0 +1,5 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json - error: no routes declared, so nothing can be placed.
+  Add a "routes" map — `rogen init` writes a starting set.

@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json:12:13 - error: tag "server" has the same name as a route key; rename one of them.

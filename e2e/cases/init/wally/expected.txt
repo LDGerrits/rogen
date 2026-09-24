@@ -1,0 +1,44 @@
+$ rogen init
+exit 0
+stdout:
+  Created template.project.json.
+  Created default.rogen.json.
+
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+  default.rogen.json
+  template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"template": "template.project.json"
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+    shared: Folder
+      A: ModuleScript  <- src/A.luau
+
+$ rojo sourcemap template.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau

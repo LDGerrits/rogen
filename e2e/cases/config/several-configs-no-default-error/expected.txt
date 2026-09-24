@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: Several config files found in <dir> and none is named default.rogen.json: lobby.rogen.json, match.rogen.json. Run "rogen build <name>" or pass -c to pick one.

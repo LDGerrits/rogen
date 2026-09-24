@@ -1,0 +1,48 @@
+$ rogen build core lobby match
+exit 0
+stdout:
+  Wrote core.project.json.
+  Wrote lobby.project.json.
+  Wrote match.project.json.
+
+written:
+  core.project.json
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap core.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        InventoryTypes: ModuleScript  <- core/Inventory/InventoryTypes.luau
+      Settings: ModuleScript  <- core/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        InventoryTypes: ModuleScript  <- core/Inventory/InventoryTypes.luau
+      Settings: ModuleScript  <- places/lobby/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+    Lobby: Folder
+      LobbyService: Script  <- places/lobby/Lobby/LobbyService.server.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        InventoryTypes: ModuleScript  <- core/Inventory/InventoryTypes.luau
+      Settings: ModuleScript  <- core/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+    Match: Folder
+      MatchService: Script  <- places/match/Match/MatchService.server.luau

@@ -1,0 +1,6 @@
+{
+	"extends": "./default.rogen.json",
+	"tags": {
+		"mock": true
+	}
+}

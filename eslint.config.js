@@ -30,7 +30,7 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ["src/**/*.test.ts", "tests/**/*.spec.ts"],
+		files: ["src/**/*.test.ts", "e2e/**/*.test.ts", "tests/**/*.spec.ts"],
 		...jestPlugin.configs["flat/recommended"],
 		languageOptions: {
 			parser: tseslint.parser,

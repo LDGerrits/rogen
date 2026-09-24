@@ -1,0 +1,4 @@
+$ rogen init
+exit 1
+stderr:
+  error: <dir>/default.rogen.json - error: this config already exists. Delete it to write a new one.

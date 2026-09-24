@@ -1,0 +1,33 @@
+$ rogen init lobby
+exit 0
+stdout:
+  Created lobby.rogen.json.
+
+$ rogen build lobby
+exit 0
+stdout:
+  Wrote lobby.project.json.
+
+written:
+  lobby.project.json
+  lobby.rogen.json
+
+lobby.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
+}
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

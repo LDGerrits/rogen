@@ -1,0 +1,5 @@
+{
+	"links": {
+		"src/Config.luau": "../shared-code/Config.luau"
+	}
+}

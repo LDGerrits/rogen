@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.project.json - error: 2 files with active tags all become "ReplicatedStorage/shared/Analytics/Analytics" (<dir>/src/Analytics/Analytics.dev.luau, <dir>/src/Analytics/Analytics.mock.luau). Only one can apply: turn a tag off or rename a file.

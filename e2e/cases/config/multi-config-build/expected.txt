@@ -1,0 +1,25 @@
+$ rogen build lobby match
+exit 0
+stdout:
+  Wrote lobby.project.json.
+  Wrote match.project.json.
+
+written:
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shared: ModuleScript  <- core/Shared.luau
+  ServerScriptService: ServerScriptService
+    Lobby: Script  <- lobby/Lobby.server.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shared: ModuleScript  <- core/Shared.luau
+  ServerScriptService: ServerScriptService
+    Match: Script  <- match/Match.server.luau

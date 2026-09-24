@@ -1,0 +1,12 @@
+$ rogen build --template other.project.json
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Other: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau

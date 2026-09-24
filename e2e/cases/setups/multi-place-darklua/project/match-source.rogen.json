@@ -1,0 +1,7 @@
+{
+	"extends": "./core.rogen.json",
+	"rootDirs": [
+		"core",
+		"places/match"
+	]
+}
