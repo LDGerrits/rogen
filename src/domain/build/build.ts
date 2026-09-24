@@ -5,6 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
+import { applyTags } from "./apply-tags.js";
 import { scanRootDirs } from "./root-scanner.js";
 import { routeFiles } from "./route-files.js";
 
@@ -24,13 +25,19 @@ export function build(
 	});
 	const routing = routeFiles(scan.roots, config);
 	if (routing.isErr()) return routing;
+	const tagging = applyTags(routing.value.routed, config);
+	if (tagging.isErr()) return tagging;
 
 	return ok({
 		value: {
 			name: config.name,
 			tree: { $className: "DataModel" },
 		},
-		warnings: [...scan.warnings, ...routing.value.warnings],
+		warnings: [
+			...scan.warnings,
+			...routing.value.warnings,
+			...tagging.value.warnings,
+		],
 	});
 }
 

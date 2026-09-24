@@ -242,17 +242,17 @@ describe("routeFiles", () => {
 
 			expect(
 				result.unwrap().routed.map((file) => file.instancePath)
-			).toEqual([["ServerScriptService", "Foo.mock"]]);
+			).toEqual([["ServerScriptService", "Foo"]]);
 		});
 
-		it("should leave a tag suffix in the name", async () => {
+		it("should strip a tag suffix from the name", async () => {
 			await write("src/Foo.mock.server.luau");
 
 			const result = await route({ tags: { mock: true } });
 
 			expect(
 				result.unwrap().routed.map((file) => file.instancePath)
-			).toEqual([["ServerScriptService", "Foo.mock"]]);
+			).toEqual([["ServerScriptService", "Foo"]]);
 		});
 
 		it("should not route models or data files by suffix", async () => {
@@ -268,7 +268,114 @@ describe("routeFiles", () => {
 			await write("src/Foo.mock.luau");
 
 			expect(await paths({ tags: { mock: true } })).toEqual([
-				"ReplicatedStorage/shared/Foo.mock",
+				"ReplicatedStorage/shared/Foo",
+			]);
+		});
+
+		it("should leave an undeclared suffix in the name", async () => {
+			await write("src/Foo.beta.luau");
+
+			expect(await paths({ tags: { mock: true } })).toEqual([
+				"ReplicatedStorage/shared/Foo.beta",
+			]);
+		});
+	});
+
+	describe("tags", () => {
+		const tagsOf = async (
+			overrides: Partial<ResolvedConfig> = { tags: { mock: true } }
+		) => (await route(overrides)).unwrap().routed.map((file) => file.tags);
+
+		it("should remove a tag folder from the path", async () => {
+			await write("src/Analytics/mock/Service.luau");
+
+			const [file] = (await route({ tags: { mock: true } })).unwrap()
+				.routed;
+
+			expect(file.instancePath).toEqual([
+				"ReplicatedStorage",
+				"shared",
+				"Analytics",
+				"Service",
+			]);
+			expect(file.tags).toEqual([{ tag: "mock", form: "folder" }]);
+		});
+
+		it("should keep a folder that a tag marker applies to", async () => {
+			await write("src/Experimental/.mock", "src/Experimental/Save.luau");
+
+			const [file] = (await route({ tags: { mock: true } })).unwrap()
+				.routed;
+
+			expect(file.instancePath).toEqual([
+				"ReplicatedStorage",
+				"shared",
+				"Experimental",
+				"Save",
+			]);
+			expect(file.tags).toEqual([{ tag: "mock", form: "marker" }]);
+		});
+
+		it("should apply a marker in the root dir to every file", async () => {
+			await write("src/.mock", "src/A/B.luau");
+
+			expect(await tagsOf()).toEqual([[{ tag: "mock", form: "marker" }]]);
+		});
+
+		it("should record how a suffix matched", async () => {
+			await write("src/Analytics.mock.luau", "src/HttpMock.luau");
+
+			expect(await tagsOf()).toEqual([
+				[{ tag: "mock", form: "separator" }],
+				[{ tag: "mock", form: "capital" }],
+			]);
+		});
+
+		it("should record a tag on a script's init file", async () => {
+			await write("src/Combat/init.mock.luau");
+
+			expect(await tagsOf()).toEqual([
+				[{ tag: "mock", form: "separator" }],
+			]);
+		});
+
+		it("should record every tag a file carries", async () => {
+			await write("src/dev/Save.mock.luau");
+
+			expect(await tagsOf({ tags: { mock: true, dev: true } })).toEqual([
+				[
+					{ tag: "dev", form: "folder" },
+					{ tag: "mock", form: "separator" },
+				],
+			]);
+		});
+
+		it("should not record a dot-file or folder that is not a declared tag", async () => {
+			await write("src/.beta", "src/beta/Save.luau");
+
+			expect(await tagsOf()).toEqual([[]]);
+		});
+
+		it("should report a separator-set-off suffix no declared key explains", async () => {
+			await write("src/Foo.beta.luau", "src/InventoryService.luau");
+
+			const files = (await route()).unwrap().routed;
+
+			expect(files.map((file) => file.undeclaredSuffix)).toEqual([
+				"beta",
+				undefined,
+			]);
+		});
+
+		it("should report a .server that a tag suffix follows", async () => {
+			await write("src/Foo.server.mock.luau", "src/Bar.mock.server.luau");
+
+			const files = (await route({ tags: { mock: true } })).unwrap()
+				.routed;
+
+			expect(files.map((file) => file.buriedScriptSuffix)).toEqual([
+				undefined,
+				"server",
 			]);
 		});
 	});

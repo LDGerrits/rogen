@@ -50,6 +50,29 @@ describe("domain/build/build", () => {
 			});
 		});
 
+		it("should return the tag stage's warnings", async () => {
+			await fs.writeFile(abs("src/HttpMock.luau"), "");
+			const config = configOf({ tags: { mock: false } });
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expect(result.unwrap().warnings).toMatchObject([
+				{ code: "tag.dormantCapitalSuffix" },
+			]);
+		});
+
+		it("should fail when two active tags claim one instance", async () => {
+			await fs.writeFile(abs("src/A.mock.luau"), "");
+			await fs.writeFile(abs("src/A.dev.luau"), "");
+			const config = configOf({ tags: { mock: true, dev: true } });
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "tag.activeClash" },
+			]);
+		});
+
 		it("should warn about a missing root dir and still succeed", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({ rootDirs: [abs("core"), abs("lobby")] });

@@ -26,8 +26,11 @@ export function matchMarkerKey(
 	return declaredKeys.has(key) ? key : undefined;
 }
 
+export type SuffixForm = "separator" | "capital";
+
 interface SuffixCandidate {
 	readonly strippedLength: number;
+	readonly form: SuffixForm;
 }
 
 function findSeparatorMatch(
@@ -40,7 +43,7 @@ function findSeparatorMatch(
 	for (const sep of SEPARATOR_CHARS) {
 		const suffix = sep + klower;
 		if (lower.endsWith(suffix)) {
-			return { strippedLength: suffix.length };
+			return { strippedLength: suffix.length, form: "separator" };
 		}
 	}
 	return undefined;
@@ -61,7 +64,19 @@ function findPascalMatch(
 	if (!isUpper(remaining[startIdx])) return undefined;
 	if (isUpper(remaining[startIdx - 1])) return undefined;
 
-	return { strippedLength: klower.length };
+	return { strippedLength: klower.length, form: "capital" };
+}
+
+function findSuffixMatch(
+	remaining: string,
+	key: string
+): SuffixCandidate | undefined {
+	const separator = findSeparatorMatch(remaining, key);
+	const capital = findPascalMatch(remaining, key);
+	if (!separator || !capital) return separator ?? capital;
+	return capital.strippedLength > separator.strippedLength
+		? capital
+		: separator;
 }
 
 export interface SuffixSpan {
@@ -69,6 +84,12 @@ export interface SuffixSpan {
 	/** Where the key and its separator begin in the stem. */
 	readonly start: number;
 	readonly length: number;
+	readonly form: SuffixForm;
+}
+
+export interface UndeclaredSuffix {
+	readonly text: string;
+	readonly form: SuffixForm;
 }
 
 export interface SuffixMatch {
@@ -76,7 +97,7 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	readonly undeclaredSuffix: string | undefined;
+	readonly undeclaredSuffix: UndeclaredSuffix | undefined;
 }
 
 // Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`.
@@ -90,27 +111,25 @@ export function matchSuffixKeys(
 
 	while (remaining.length > 0) {
 		let bestKey: string | undefined;
-		let bestStrip = 0;
+		let best: SuffixCandidate | undefined;
 
 		for (const key of declaredKeys) {
-			const strip = Math.max(
-				findSeparatorMatch(remaining, key)?.strippedLength ?? 0,
-				findPascalMatch(remaining, key)?.strippedLength ?? 0
-			);
-			if (strip > bestStrip) {
-				bestStrip = strip;
+			const found = findSuffixMatch(remaining, key);
+			if (found && found.strippedLength > (best?.strippedLength ?? 0)) {
+				best = found;
 				bestKey = key;
 			}
 		}
 
-		if (!bestKey) break;
+		if (!bestKey || !best) break;
 
 		matched.add(bestKey);
-		remaining = remaining.slice(0, remaining.length - bestStrip);
+		remaining = remaining.slice(0, remaining.length - best.strippedLength);
 		spans.push({
 			key: bestKey,
 			start: remaining.length,
-			length: bestStrip,
+			length: best.strippedLength,
+			form: best.form,
 		});
 	}
 
@@ -122,13 +141,13 @@ export function matchSuffixKeys(
 	};
 }
 
-function trailingCandidate(remaining: string): string | undefined {
+function trailingCandidate(remaining: string): UndeclaredSuffix | undefined {
 	if (remaining.length === 0) return undefined;
 
 	for (let i = remaining.length - 1; i >= 0; i--) {
 		if (isSeparator(remaining[i])) {
 			return i < remaining.length - 1
-				? remaining.slice(i + 1)
+				? { text: remaining.slice(i + 1), form: "separator" }
 				: undefined;
 		}
 	}
@@ -136,7 +155,8 @@ function trailingCandidate(remaining: string): string | undefined {
 	for (let i = remaining.length - 1; i > 0; i--) {
 		const ch = remaining[i];
 		if (!isUpper(ch)) continue;
-		if (!isUpper(remaining[i - 1])) return remaining.slice(i);
+		if (!isUpper(remaining[i - 1]))
+			return { text: remaining.slice(i), form: "capital" };
 		return undefined;
 	}
 
