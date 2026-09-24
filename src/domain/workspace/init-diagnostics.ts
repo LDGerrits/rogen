@@ -1,30 +1,19 @@
 import {
-	Diagnostic,
-	DiagnosticSeverity,
+	DiagnosticLocation,
+	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 
-const error = (
-	code: string,
-	resource: string,
-	message: string
-): Diagnostic => ({
-	severity: DiagnosticSeverity.Error,
-	code,
-	message,
-	resource,
-});
-
 export const InitDiagnostics = {
-	tooManyNames: (resource: string) =>
-		error(
+	tooManyNames: (location: DiagnosticLocation) =>
+		errorDiagnostic(
 			"init.tooManyNames",
-			resource,
+			location,
 			"init takes at most one config name."
 		),
-	invalidName: (resource: string, name: string) =>
-		error(
+	invalidName: (location: DiagnosticLocation, name: string) =>
+		errorDiagnostic(
 			"init.invalidName",
-			resource,
+			location,
 			`"${name}" is not a valid config name: it can't contain path separators.`
 		),
 };

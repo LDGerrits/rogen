@@ -51,11 +51,11 @@ export function parseInitName(
 	cwd: string
 ): Result<string, Diagnostic[]> {
 	if (names.length > 1) {
-		return err([InitDiagnostics.tooManyNames(cwd)]);
+		return err([InitDiagnostics.tooManyNames({ resource: cwd })]);
 	}
 	const [name = DEFAULT_CONFIG_STEM] = names;
 	if (name === "." || name === ".." || /[\\/]/.test(name)) {
-		return err([InitDiagnostics.invalidName(cwd, name)]);
+		return err([InitDiagnostics.invalidName({ resource: cwd }, name)]);
 	}
 	return ok(name);
 }

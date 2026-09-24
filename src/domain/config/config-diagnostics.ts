@@ -1,19 +1,7 @@
 import {
-	Diagnostic,
 	DiagnosticLocation,
-	DiagnosticSeverity,
+	errorDiagnostic as error,
 } from "../../platform/diagnostics/diagnostic.js";
-
-const error = (
-	code: string,
-	location: DiagnosticLocation,
-	message: string
-): Diagnostic => ({
-	...location,
-	severity: DiagnosticSeverity.Error,
-	code,
-	message,
-});
 
 export const ConfigDiagnostics = {
 	invalidSyntax: (location: DiagnosticLocation, detail: string) =>

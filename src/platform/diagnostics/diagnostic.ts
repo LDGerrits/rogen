@@ -21,3 +21,29 @@ export interface Diagnostic extends DiagnosticLocation {
 	readonly code: string;
 	readonly message: string;
 }
+
+export function errorDiagnostic(
+	code: string,
+	location: DiagnosticLocation,
+	message: string
+): Diagnostic {
+	return {
+		...location,
+		severity: DiagnosticSeverity.Error,
+		code,
+		message,
+	};
+}
+
+export function warningDiagnostic(
+	code: string,
+	location: DiagnosticLocation,
+	message: string
+): Diagnostic {
+	return {
+		...location,
+		severity: DiagnosticSeverity.Warning,
+		code,
+		message,
+	};
+}

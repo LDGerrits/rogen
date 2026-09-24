@@ -1,4 +1,5 @@
 import path from "path";
+import { isInside } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
@@ -45,15 +46,5 @@ export function rootsToIndex(
 	];
 	return dirs.filter(
 		(dir) => !dirs.some((other) => other !== dir && isInside(dir, other))
-	);
-}
-
-function isInside(dir: string, parent: string): boolean {
-	const relative = path.relative(parent, dir);
-	return (
-		relative !== "" &&
-		relative !== ".." &&
-		!relative.startsWith(`..${path.sep}`) &&
-		!path.isAbsolute(relative)
 	);
 }
