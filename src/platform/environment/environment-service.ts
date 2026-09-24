@@ -8,7 +8,6 @@ export interface EnvironmentService {
 	readonly cwd: string;
 
 	readonly verbose: boolean;
-	readonly trace: boolean;
 	readonly quiet: boolean;
 }
 
@@ -20,9 +19,6 @@ export class NativeEnvironmentService implements EnvironmentService {
 
 	get verbose(): boolean {
 		return !!this.args.verbose;
-	}
-	get trace(): boolean {
-		return !!this.args.trace;
 	}
 	get quiet(): boolean {
 		return !!this.args.quiet;

@@ -5,9 +5,19 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
+/** Per-invocation values that sit above every layer of a config's chain. */
+export interface ConfigOverrides {
+	readonly outFile?: string;
+	readonly syncDir?: string;
+	readonly template?: string;
+	/** Tag name to whether it is on. */
+	readonly tags: Readonly<Record<string, boolean>>;
+}
+
 export interface ConfigRefs {
 	readonly names: readonly string[];
 	readonly paths: readonly string[];
+	readonly overrides?: ConfigOverrides;
 }
 
 /** A snapshot of one config; a later reload replaces it rather than mutating it. */

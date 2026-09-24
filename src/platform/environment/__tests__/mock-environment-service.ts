@@ -8,7 +8,6 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly args: ParsedArgs = { _: [] },
 		public readonly cwd: string = "/mock/cwd",
 		public readonly verbose: boolean = false,
-		public readonly trace: boolean = false,
 		public readonly quiet: boolean = false
 	) {}
 }

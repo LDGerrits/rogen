@@ -59,15 +59,11 @@ export async function discoverConfigPaths(
 	return ok(resolved);
 }
 
-async function resolveDefaultConfig(
+/** Every `*.rogen.json` directly in `cwd`, as sorted absolute paths; fails when there is none. */
+export async function findConfigFiles(
 	fileSystem: FileSystemService,
 	cwd: string
-): Promise<Result<string, Error>> {
-	const defaultPath = path.join(cwd, DEFAULT_CONFIG_NAME);
-	if (await fileSystem.exists(defaultPath)) {
-		return ok(defaultPath);
-	}
-
+): Promise<Result<string[], Error>> {
 	let entries: [string, FileType][];
 	try {
 		entries = await fileSystem.readDirectory(cwd);
@@ -81,13 +77,7 @@ async function resolveDefaultConfig(
 		);
 	}
 
-	const candidates = entries
-		.filter(
-			([name, type]) =>
-				type === FileType.File && name.endsWith(CONFIG_SUFFIX)
-		)
-		.map(([name]) => name)
-		.sort();
+	const candidates = configFileNames(entries);
 
 	if (candidates.length === 0) {
 		return err(
@@ -99,17 +89,59 @@ async function resolveDefaultConfig(
 		);
 	}
 
-	if (candidates.length === 1) {
-		return ok(path.join(cwd, candidates[0]));
+	return ok(candidates.map((name) => path.join(cwd, name)));
+}
+
+async function resolveDefaultConfig(
+	fileSystem: FileSystemService,
+	cwd: string
+): Promise<Result<string, Error>> {
+	const defaultPath = path.join(cwd, DEFAULT_CONFIG_NAME);
+	if (await fileSystem.exists(defaultPath)) {
+		return ok(defaultPath);
+	}
+
+	const found = await findConfigFiles(fileSystem, cwd);
+	if (found.isErr()) return found;
+
+	if (found.value.length === 1) {
+		return ok(found.value[0]);
 	}
 
 	return err(
 		new Error(
 			`Several config files found in ${cwd} and none is named ` +
-				`${DEFAULT_CONFIG_NAME}: ${candidates.join(", ")}. Run ` +
+				`${DEFAULT_CONFIG_NAME}: ${found.value.map((file) => path.basename(file)).join(", ")}. Run ` +
 				`"rogen build <name>" or pass -c to pick one.`
 		)
 	);
+}
+
+function configFileNames(entries: readonly [string, FileType][]): string[] {
+	return entries
+		.filter(
+			([name, type]) =>
+				type === FileType.File && name.endsWith(CONFIG_SUFFIX)
+		)
+		.map(([name]) => name)
+		.sort();
+}
+
+/** One line naming the configs in `cwd` that are not among `requested`, or `undefined` when there are none. */
+export async function unrequestedConfigNotice(
+	fileSystem: FileSystemService,
+	cwd: string,
+	requested: readonly string[]
+): Promise<string | undefined> {
+	const found = await findConfigFiles(fileSystem, cwd);
+	if (found.isErr()) return undefined;
+
+	const skipped = found.value
+		.filter((file) => !requested.includes(file))
+		.map((file) => path.basename(file));
+	return skipped.length > 0
+		? `Not building: ${skipped.join(", ")}.`
+		: undefined;
 }
 
 function findDuplicate(paths: readonly string[]): string | undefined {

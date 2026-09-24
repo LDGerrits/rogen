@@ -12,6 +12,7 @@ import {
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import {
@@ -39,6 +40,7 @@ describe("watch command", () => {
 		services.set(Watcher, watcher);
 		services.set(ReconciliationService, reconciliation);
 		services.set(ConfigService, configService);
+		services.set(FileSystemService, memFs);
 		services.set(LifecycleService, lifecycle);
 		services.set(
 			EnvironmentService,
@@ -83,13 +85,11 @@ describe("watch command", () => {
 		const configService = new MockConfigService([entry]);
 		const reload = jest.spyOn(configService, "reload");
 		void startWatch(configService);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		await memFs.writeFile("/repo/base.rogen.json", '{"rootDirs":["src"]}');
 		jest.advanceTimersByTime(150);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		expect(reload).toHaveBeenCalledWith(["/repo/base.rogen.json"]);
 	});
@@ -100,15 +100,23 @@ describe("watch command", () => {
 		const configService = new MockConfigService([mockEntry()]);
 		const reload = jest.spyOn(configService, "reload");
 		void startWatch(configService);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		await memFs.writeFile("/repo/other.rogen.json", '{"rootDirs":["src"]}');
 		jest.advanceTimersByTime(150);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		expect(reload).not.toHaveBeenCalled();
+	});
+
+	it("should name the configs here that it was not asked to watch", async () => {
+		await memFs.writeFile("/repo/default.rogen.json", "{}");
+		await memFs.writeFile("/repo/source.rogen.json", "{}");
+		const info = jest.spyOn(logService, "info");
+		void startWatch(new MockConfigService([mockEntry()]));
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(info).toHaveBeenCalledWith("Not building: source.rogen.json.");
 	});
 
 	it("should refuse to start when a config is invalid", async () => {
@@ -134,8 +142,7 @@ describe("watch command", () => {
 
 	it("should resolve ok when shutdown is requested", async () => {
 		const running = startWatch(new MockConfigService([mockEntry()]));
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		lifecycle.shutdown();
 
@@ -145,8 +152,7 @@ describe("watch command", () => {
 	it("should stop the watcher when shutdown is requested", async () => {
 		const stop = jest.spyOn(watcher, "stop");
 		const running = startWatch(new MockConfigService([mockEntry()]));
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 		stop.mockClear();
 
 		lifecycle.shutdown();
@@ -161,16 +167,14 @@ describe("watch command", () => {
 		const running = startWatch(
 			new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })])
 		);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 		lifecycle.shutdown();
 		await running;
 		debug.mockClear();
 
 		await memFs.writeFile("/repo/src/a.luau", "");
 		jest.advanceTimersByTime(150);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		expect(debug).not.toHaveBeenCalledWith(
 			expect.stringContaining("incremental build")
@@ -180,14 +184,14 @@ describe("watch command", () => {
 	it("should react to file changes while running", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
-		void startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
-		await Promise.resolve();
-		await Promise.resolve();
+		void startWatch(
+			new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })])
+		);
+		await jest.advanceTimersByTimeAsync(0);
 
 		await memFs.writeFile("/repo/src/a.luau", "");
 		jest.advanceTimersByTime(150);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		expect(debug).toHaveBeenCalledWith(
 			expect.stringContaining("incremental build")
@@ -198,9 +202,7 @@ describe("watch command", () => {
 		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
 		const stop = jest.spyOn(watcher, "stop");
 
-		const result = await startWatch(
-			new MockConfigService([mockEntry()])
-		);
+		const result = await startWatch(new MockConfigService([mockEntry()]));
 
 		expect(result.isErr()).toBe(true);
 		expect(stop).toHaveBeenCalled();
@@ -211,16 +213,14 @@ describe("watch command", () => {
 		jest.spyOn(watcher, "watch").mockReturnValue(ready.p);
 		const debug = jest.spyOn(logService, "debug");
 		void startWatch(new MockConfigService([mockEntry()]));
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		expect(debug).not.toHaveBeenCalledWith(
 			expect.stringContaining("full rebuild")
 		);
 
 		ready.complete();
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 		await Promise.resolve();
 
 		expect(debug).toHaveBeenCalledWith(
@@ -230,8 +230,7 @@ describe("watch command", () => {
 
 	it("should not throw when shutdown is requested twice", async () => {
 		const running = startWatch(new MockConfigService([mockEntry()]));
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		lifecycle.shutdown();
 		lifecycle.shutdown();
@@ -242,22 +241,23 @@ describe("watch command", () => {
 	it("should leave no listeners behind for a second run", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
-		const first = startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
-		await Promise.resolve();
-		await Promise.resolve();
+		const first = startWatch(
+			new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })])
+		);
+		await jest.advanceTimersByTimeAsync(0);
 		lifecycle.shutdown();
 		await first;
 
 		lifecycle = new MockLifecycleService();
-		void startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
-		await Promise.resolve();
-		await Promise.resolve();
+		void startWatch(
+			new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })])
+		);
+		await jest.advanceTimersByTimeAsync(0);
 		debug.mockClear();
 
 		await memFs.writeFile("/repo/src/a.luau", "");
 		jest.advanceTimersByTime(150);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
 
 		const incremental = debug.mock.calls.filter(([message]) =>
 			String(message).includes("incremental build")

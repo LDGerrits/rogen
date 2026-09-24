@@ -51,7 +51,7 @@ export class CoreCommandService
 			return Promise.resolve(
 				err(
 					new Error(
-						`Unknown command "${commandId}". Run 'rogen --help' to see available commands.`
+						`Unknown command "${commandId}". To build a config, run 'rogen build ${commandId}'; run 'rogen help' to see the commands.`
 					)
 				)
 			);

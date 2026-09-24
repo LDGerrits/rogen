@@ -59,12 +59,6 @@ export const GlobalOptions: readonly OptionDescriptor[] = [
 		description: "Print the version.",
 	},
 	{
-		name: "config",
-		short: "c",
-		type: "string",
-		description: "Path to the config file.",
-	},
-	{
 		name: "verbose",
 		type: "boolean",
 		description: "Print debug output.",
@@ -74,11 +68,6 @@ export const GlobalOptions: readonly OptionDescriptor[] = [
 		short: "q",
 		type: "boolean",
 		description: "Only print errors.",
-	},
-	{
-		name: "trace",
-		type: "boolean",
-		description: "Print trace output.",
 	},
 ];
 

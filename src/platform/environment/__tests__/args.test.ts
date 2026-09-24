@@ -1,6 +1,7 @@
 import { OptionDescriptor, parseArgs } from "../args.js";
 
 const globals: OptionDescriptor[] = [
+	{ name: "verbose", type: "boolean", description: "" },
 	{ name: "help", short: "h", type: "boolean", description: "" },
 	{ name: "version", short: "v", type: "boolean", description: "" },
 	{ name: "quiet", short: "q", type: "boolean", description: "" },
@@ -45,10 +46,26 @@ describe("parseArgs", () => {
 		expect(options._).toEqual(["watch", "extra_arg"]);
 	});
 
-	it("should default to help, and let --version win", () => {
-		expect(parseArgs([], optionsFor).unwrap().command).toBe("help");
+	it("should default to build, and let --help and --version win", () => {
+		expect(parseArgs([], optionsFor).unwrap().command).toBe("build");
+		expect(parseArgs(["-t", "a"], optionsFor).unwrap().command).toBe(
+			"build"
+		);
+		expect(parseArgs(["--help"], optionsFor).unwrap().command).toBe("help");
 		expect(parseArgs(["build", "-v"], optionsFor).unwrap().command).toBe(
 			"version"
+		);
+	});
+
+	it("should put the defaulted command first in the positionals", () => {
+		expect(values(["-q"])._).toEqual(["build"]);
+	});
+
+	it("should reject --verbose together with --quiet", () => {
+		const result = parseArgs(["build", "--verbose", "-q"], optionsFor);
+
+		expect(result.isErr() && result.error.message).toContain(
+			"--verbose can't be combined with --quiet"
 		);
 	});
 

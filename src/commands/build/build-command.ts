@@ -1,7 +1,15 @@
-import { ok } from "../../base/result.js";
+import { err, ok } from "../../base/result.js";
+import { showConfig } from "./show-config.js";
+import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
-import { requireValidConfigs } from "../../domain/config/valid-configs.js";
+import { unrequestedConfigNotice } from "../../domain/config/config-discovery.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	entryErrors,
+	requireValidConfigs,
+} from "../../domain/config/valid-configs.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
 	CommandRegistry,
@@ -21,16 +29,49 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				isVariadic: true,
 			},
 		],
+		options: [
+			...ConfigOptions,
+			{
+				name: "show-config",
+				type: "boolean",
+				description: "Prints the resolved config and exits.",
+			},
+		],
 	},
-	handler: async (accessor) => {
+	handler: async (accessor, args) => {
 		const logService = accessor.get(LogService);
 		const configService = accessor.get(ConfigService);
+		const fileSystemService = accessor.get(FileSystemService);
+		const environmentService = accessor.get(EnvironmentService);
+
+		if (args["show-config"]) {
+			logService.info(showConfig(configService.configs));
+			const broken = configService.configs.filter(
+				(entry) => entryErrors(entry).length > 0
+			);
+			return broken.length > 0
+				? err(
+						new Error(
+							`${broken.length} of ${configService.configs.length} configs have errors.`
+						)
+					)
+				: ok(undefined);
+		}
 
 		const configs = requireValidConfigs(configService);
 		if (configs.isErr()) return configs;
 
+		const notice = await unrequestedConfigNotice(
+			fileSystemService,
+			environmentService.cwd,
+			configService.configs.map((entry) => entry.file)
+		);
+		if (notice) logService.info(notice);
+
 		for (const config of configs.value) {
-			logService.info(`Building. Root dirs: ${config.rootDirs.join(", ")}`);
+			logService.info(
+				`Building. Root dirs: ${config.rootDirs.join(", ")}`
+			);
 		}
 
 		// TODO: implement the build pipeline.
