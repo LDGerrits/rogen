@@ -79,6 +79,23 @@ export class DiskFileSystemService implements FileSystemService {
 		await fs.promises.copyFile(source, destination, flags);
 	}
 
+	async rename(
+		source: string,
+		destination: string,
+		overwrite: boolean = false
+	): Promise<void> {
+		if (!overwrite && (await this.exists(destination))) {
+			throw Object.assign(
+				new Error(
+					`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+				),
+				{ code: "EEXIST" }
+			);
+		}
+		await this.createDirectory(path.dirname(destination));
+		await fs.promises.rename(source, destination);
+	}
+
 	async readJson<T>(filePath: string): Promise<T> {
 		const content = await this.readFile(filePath);
 		return JSON.parse(content) as T;

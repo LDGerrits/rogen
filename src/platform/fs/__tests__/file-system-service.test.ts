@@ -59,6 +59,56 @@ describe("MemoryFileSystemService: core operations", () => {
 		});
 	});
 
+	describe("Renames", () => {
+		it("should move a file to a new path, creating parent directories", async () => {
+			await memFs.writeFile("a.txt", "data");
+
+			await memFs.rename("a.txt", "out/b.txt");
+
+			expect(await memFs.exists("a.txt")).toBe(false);
+			expect(await memFs.readFile("out/b.txt")).toBe("data");
+		});
+
+		it("should replace the destination only if overwrite is true", async () => {
+			await memFs.writeFile("a.txt", "new");
+			await memFs.writeFile("b.txt", "old");
+
+			await expect(memFs.rename("a.txt", "b.txt")).rejects.toMatchObject({
+				code: "EEXIST",
+			});
+
+			await memFs.rename("a.txt", "b.txt", true);
+			expect(await memFs.readFile("b.txt")).toBe("new");
+			expect(await memFs.exists("a.txt")).toBe(false);
+		});
+
+		it("should throw ENOENT when the source is missing", async () => {
+			await expect(
+				memFs.rename("missing.txt", "b.txt")
+			).rejects.toMatchObject({ code: "ENOENT" });
+		});
+
+		it("should emit DELETED for the source and UPDATED for a replaced destination", async () => {
+			await memFs.writeFile("a.txt", "new");
+			await memFs.writeFile("b.txt", "old");
+			const listener = jest.fn();
+			memFs.onDidMutateFile(listener);
+
+			await memFs.rename("a.txt", "b.txt", true);
+
+			expect(listener).toHaveBeenCalledWith({
+				type: FileChangeType.DELETED,
+				path: "a.txt",
+				fileType: FileType.File,
+			});
+			expect(listener).toHaveBeenCalledWith({
+				type: FileChangeType.UPDATED,
+				path: "b.txt",
+				fileType: FileType.File,
+			});
+		});
+	});
+
 	describe("Deletions", () => {
 		it("should successfully delete a single file", async () => {
 			await memFs.writeFile("temp.txt", "data");

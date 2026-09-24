@@ -57,6 +57,17 @@ export function rebaseTemplatePath(
 		: { optional: rebase(templatePath.optional) };
 }
 
+/** The absolute path a compiler emits for `filePath` under `syncDir`. */
+export function emittedPath(
+	filePath: string,
+	commonRootDir: string,
+	syncDir: string
+): string {
+	return path
+		.join(syncDir, path.relative(commonRootDir, filePath))
+		.replace(COMPILED_EXTENSION, ".luau");
+}
+
 export function syncPath(
 	filePath: string,
 	layout: SyncLayout
@@ -65,13 +76,9 @@ export function syncPath(
 		return { optional: relativeToProject(filePath, layout.projectDir) };
 	}
 
-	const emitted = path.join(
-		layout.syncDir,
-		path.relative(layout.commonRoot, filePath)
-	);
 	return {
 		optional: relativeToProject(
-			emitted.replace(COMPILED_EXTENSION, ".luau"),
+			emittedPath(filePath, layout.commonRoot, layout.syncDir),
 			layout.projectDir
 		),
 	};

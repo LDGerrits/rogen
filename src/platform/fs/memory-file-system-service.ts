@@ -197,21 +197,7 @@ export class MemoryFileSystemService implements FileSystemService {
 
 		parent.entries.delete(name);
 
-		const emitDeletes = (node: Node, currentPath: string) => {
-			if (node.type === FileType.Directory) {
-				for (const [childName, childNode] of (node as DirectoryNode)
-					.entries) {
-					emitDeletes(childNode, `${currentPath}/${childName}`);
-				}
-			}
-			this._onDidMutateFile.fire({
-				type: FileChangeType.DELETED,
-				path: currentPath,
-				fileType: node.type,
-			});
-		};
-
-		emitDeletes(target, toPosix(filePath));
+		this._emitDeleted(target, toPosix(filePath));
 	}
 
 	async copy(
@@ -227,6 +213,76 @@ export class MemoryFileSystemService implements FileSystemService {
 		}
 		const content = await this.readFile(source);
 		await this.writeFile(destination, content);
+	}
+
+	async rename(
+		source: string,
+		destination: string,
+		overwrite: boolean = false
+	): Promise<void> {
+		const node = this._lookup(source, false) as Node;
+		const from = toPosix(source);
+		const to = toPosix(destination);
+		if (from === to) return;
+
+		const existing = this._lookup(destination);
+		if (existing && !overwrite) {
+			throw mockFsError(
+				"EEXIST",
+				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+			);
+		}
+		if (existing?.type === FileType.Directory) {
+			throw mockFsError(
+				"EISDIR",
+				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
+			);
+		}
+
+		const target = this._lookupParent(destination, true);
+		this._lookupParent(source).entries.delete(from.split("/").pop()!);
+		target.entries.set(to.split("/").pop()!, node);
+
+		this._emitDeleted(node, from);
+		this._emitAdded(
+			node,
+			to,
+			existing ? FileChangeType.UPDATED : FileChangeType.ADDED
+		);
+	}
+
+	private _emitDeleted(node: Node, currentPath: string): void {
+		if (node.type === FileType.Directory) {
+			for (const [childName, childNode] of node.entries) {
+				this._emitDeleted(childNode, `${currentPath}/${childName}`);
+			}
+		}
+		this._onDidMutateFile.fire({
+			type: FileChangeType.DELETED,
+			path: currentPath,
+			fileType: node.type,
+		});
+	}
+
+	private _emitAdded(
+		node: Node,
+		currentPath: string,
+		type: FileChangeType
+	): void {
+		this._onDidMutateFile.fire({
+			type,
+			path: currentPath,
+			fileType: node.type,
+		});
+		if (node.type === FileType.Directory) {
+			for (const [childName, childNode] of node.entries) {
+				this._emitAdded(
+					childNode,
+					`${currentPath}/${childName}`,
+					FileChangeType.ADDED
+				);
+			}
+		}
 	}
 
 	async readJson<T>(filePath: string): Promise<T> {

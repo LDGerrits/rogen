@@ -26,6 +26,12 @@ export interface FileSystemService {
 		overwrite?: boolean
 	): Promise<void>;
 
+	rename(
+		source: string,
+		destination: string,
+		overwrite?: boolean
+	): Promise<void>;
+
 	readJson<T>(filePath: string): Promise<T>;
 }
 
