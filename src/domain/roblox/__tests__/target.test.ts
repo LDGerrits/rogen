@@ -35,7 +35,7 @@ describe("domain/roblox/target", () => {
 			});
 		});
 
-		it("should accept a service that used to be missing", () => {
+		it("should accept TextChatService as a first segment", () => {
 			expect(
 				parseTarget("TextChatService/Config", location).unwrap()
 			).toEqual({ service: "TextChatService", folders: ["Config"] });

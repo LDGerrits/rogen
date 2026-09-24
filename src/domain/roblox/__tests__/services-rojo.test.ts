@@ -19,7 +19,7 @@ describeWithRojo("supported services against Rojo", () => {
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
-	it("should have Rojo place every service as its own class", () => {
+	it("should have Rojo infer every service without a className", () => {
 		const tree: Record<string, unknown> = { $className: "DataModel" };
 		for (const service of SUPPORTED_SERVICES) {
 			tree[service] = { Holder: { $className: "Folder" } };

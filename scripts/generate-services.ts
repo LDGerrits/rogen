@@ -38,7 +38,10 @@ function isKnownToRojo(name: string): boolean {
 		encoding: "utf8",
 	});
 	if (result.error) throw result.error;
-	return result.status === 0;
+	if (result.status === 0) return true;
+	if (result.stderr.includes("missing some required information"))
+		return false;
+	throw new Error(`Rojo failed while probing ${name}:\n${result.stderr}`);
 }
 
 try {
