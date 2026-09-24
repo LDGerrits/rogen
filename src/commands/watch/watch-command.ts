@@ -8,8 +8,10 @@ import { FileChange } from "../../platform/fs/file-events.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
-import { requireValidConfigs } from "../../domain/config/valid-configs.js";
-import { DiagnosticSeverity } from "../../platform/diagnostics/diagnostic.js";
+import {
+	entryErrors,
+	requireValidConfigs,
+} from "../../domain/config/valid-configs.js";
 import { renderDiagnostics } from "../../platform/diagnostics/render-diagnostic.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
@@ -79,10 +81,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.info("Config change detected. Reloading...");
 			await configService.reload(configFiles);
 			for (const entry of configService.configs) {
-				const errors = entry.diagnostics.filter(
-					(diagnostic) =>
-						diagnostic.severity === DiagnosticSeverity.Error
-				);
+				const errors = entryErrors(entry);
 				if (errors.length > 0) {
 					logService.warn(
 						`Invalid configuration change ignored:\n${renderDiagnostics(errors)}`

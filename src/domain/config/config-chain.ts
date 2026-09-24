@@ -8,6 +8,7 @@ import {
 	ConfigFile,
 	readConfigFile,
 } from "../../platform/config/config-file.js";
+import { UNREADABLE_CONFIG_CODE } from "../../platform/config/config-file-diagnostics.js";
 import { ConfigDiagnostics } from "./config-diagnostics.js";
 
 export interface ConfigChain {
@@ -48,7 +49,7 @@ export async function loadConfigChain(
 				files,
 				layers,
 				diagnostics: loaded.error.map((diagnostic) =>
-					from && diagnostic.code === "config.unreadable"
+					from && diagnostic.code === UNREADABLE_CONFIG_CODE
 						? ConfigDiagnostics.extendsUnreadable(
 								from,
 								target,

@@ -3,6 +3,8 @@ import {
 	errorDiagnostic as error,
 } from "../diagnostics/diagnostic.js";
 
+export const UNREADABLE_CONFIG_CODE = "config.unreadable";
+
 export const ConfigFileDiagnostics = {
 	invalidSyntax: (location: DiagnosticLocation, detail: string) =>
 		error("config.invalidSyntax", location, `invalid JSONC: ${detail}.`),
@@ -27,7 +29,7 @@ export const ConfigFileDiagnostics = {
 		),
 	unreadable: (location: DiagnosticLocation, detail: string) =>
 		error(
-			"config.unreadable",
+			UNREADABLE_CONFIG_CODE,
 			location,
 			`the config could not be read: ${detail}.`
 		),
