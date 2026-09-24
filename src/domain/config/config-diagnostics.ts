@@ -47,47 +47,4 @@ export const ConfigDiagnostics = {
 			location,
 			`extends cycle: ${loop.join(" -> ")}.`
 		),
-	namedNotFound: (location: DiagnosticLocation, name: string) =>
-		error(
-			"config.namedNotFound",
-			location,
-			`config "${name}" not found: that file does not exist.`
-		),
-	pathNotFound: (location: DiagnosticLocation) =>
-		error(
-			"config.pathNotFound",
-			location,
-			"the specified config file does not exist."
-		),
-	duplicate: (location: DiagnosticLocation) =>
-		error(
-			"config.duplicate",
-			location,
-			"this config was named more than once; each config can only be " +
-				"built once per invocation."
-		),
-	directoryUnreadable: (location: DiagnosticLocation, detail: string) =>
-		error(
-			"config.directoryUnreadable",
-			location,
-			`could not look for a config file here: ${detail}.`
-		),
-	noneFound: (location: DiagnosticLocation, lookedFor: string) =>
-		error(
-			"config.noneFound",
-			location,
-			`no config file found. Looked for ${lookedFor}. Run "rogen init" to create one.`
-		),
-	ambiguous: (
-		location: DiagnosticLocation,
-		defaultName: string,
-		candidates: readonly string[]
-	) =>
-		error(
-			"config.ambiguous",
-			location,
-			`several config files found and none is named ${defaultName}: ` +
-				`${candidates.join(", ")}. Run "rogen build <name>" or pass -c ` +
-				"to pick one."
-		),
 };

@@ -4,10 +4,8 @@ import {
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { DetectedWorkspace } from "./detect-workspace.js";
-import { InitDiagnostics } from "./init-diagnostics.js";
 
 export interface PlannedFile {
 	readonly fileName: string;
@@ -45,17 +43,18 @@ const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 	content: serialize(config),
 });
 
-/** `names` are the positionals after `init`; `cwd` is where the config would be written. */
-export function parseInitName(
-	names: readonly string[],
-	cwd: string
-): Result<string, Diagnostic[]> {
+/** `names` are the positionals after `init`. */
+export function parseInitName(names: readonly string[]): Result<string, Error> {
 	if (names.length > 1) {
-		return err([InitDiagnostics.tooManyNames({ resource: cwd })]);
+		return err(new Error("init takes at most one config name."));
 	}
 	const [name = DEFAULT_CONFIG_STEM] = names;
 	if (name === "." || name === ".." || /[\\/]/.test(name)) {
-		return err([InitDiagnostics.invalidName({ resource: cwd }, name)]);
+		return err(
+			new Error(
+				`"${name}" is not a valid config name: it can't contain path separators.`
+			)
+		);
 	}
 	return ok(name);
 }

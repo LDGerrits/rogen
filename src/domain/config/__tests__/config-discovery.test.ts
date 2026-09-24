@@ -1,10 +1,9 @@
 import { discoverConfigPaths } from "../config-discovery.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Result, ResultError } from "../../../base/result.js";
-import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 
-function diagnosticsOf(result: Result<unknown, Diagnostic[]>): Diagnostic[] {
-	return (result as ResultError<Diagnostic[]>).error;
+function errorMessage(result: Result<unknown, Error>): string {
+	return (result as ResultError<Error>).error.message;
 }
 
 describe("discoverConfigPaths", () => {
@@ -43,19 +42,15 @@ describe("discoverConfigPaths", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(result.unwrapOr(undefined)).toBeUndefined();
-			const [diagnostic] = diagnosticsOf(result);
-			expect(diagnostic.code).toBe("config.ambiguous");
-			expect(diagnostic.message).toContain("lobby.rogen.json");
-			expect(diagnostic.message).toContain("match.rogen.json");
+			expect(errorMessage(result)).toContain("lobby.rogen.json");
+			expect(errorMessage(result)).toContain("match.rogen.json");
 		});
 
 		it("errors clearly when nothing is found", async () => {
 			const result = await discoverConfigPaths(fs, cwd, []);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "config.noneFound", resource: cwd },
-			]);
+			expect(errorMessage(result)).toContain("No config file found");
 		});
 
 		it("ignores a directory that happens to end in .rogen.json", async () => {
@@ -64,9 +59,7 @@ describe("discoverConfigPaths", () => {
 			const result = await discoverConfigPaths(fs, cwd, []);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "config.noneFound", resource: cwd },
-			]);
+			expect(errorMessage(result)).toContain("No config file found");
 		});
 	});
 
@@ -98,12 +91,8 @@ describe("discoverConfigPaths", () => {
 			const result = await discoverConfigPaths(fs, cwd, ["ghost"]);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "config.namedNotFound",
-					resource: "/repo/ghost.rogen.json",
-				},
-			]);
+			expect(errorMessage(result)).toContain("ghost");
+			expect(errorMessage(result)).toContain("/repo/ghost.rogen.json");
 		});
 	});
 
@@ -167,12 +156,7 @@ describe("discoverConfigPaths", () => {
 			);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "config.pathNotFound",
-					resource: "/repo/missing.rogen.json",
-				},
-			]);
+			expect(errorMessage(result)).toContain("/repo/missing.rogen.json");
 		});
 	});
 
@@ -188,12 +172,7 @@ describe("discoverConfigPaths", () => {
 			);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "config.duplicate",
-					resource: "/repo/lobby.rogen.json",
-				},
-			]);
+			expect(errorMessage(result)).toContain("/repo/lobby.rogen.json");
 		});
 
 		it("errors when the same name is given twice", async () => {
@@ -204,9 +183,7 @@ describe("discoverConfigPaths", () => {
 				"lobby",
 			]);
 
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "config.duplicate" },
-			]);
+			expect(result.isErr()).toBe(true);
 		});
 	});
 });

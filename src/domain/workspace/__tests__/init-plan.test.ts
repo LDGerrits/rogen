@@ -186,26 +186,18 @@ describe("planInit", () => {
 
 describe("parseInitName", () => {
 	it("should default to the default config name", () => {
-		expect(parseInitName([], "/repo").unwrap()).toBe("default");
+		expect(parseInitName([]).unwrap()).toBe("default");
 	});
 
 	it("should accept a single name", () => {
-		expect(parseInitName(["lobby"], "/repo").unwrap()).toBe("lobby");
+		expect(parseInitName(["lobby"]).unwrap()).toBe("lobby");
 	});
 
 	it.each(["a/b", "a\\b", "..", "."])("should reject %s", (name) => {
-		const result = parseInitName([name], "/repo");
-
-		expect(result.isErr() && result.error).toMatchObject([
-			{ code: "init.invalidName", resource: "/repo" },
-		]);
+		expect(parseInitName([name]).isErr()).toBe(true);
 	});
 
 	it("should reject more than one name", () => {
-		const result = parseInitName(["a", "b"], "/repo");
-
-		expect(result.isErr() && result.error).toMatchObject([
-			{ code: "init.tooManyNames", resource: "/repo" },
-		]);
+		expect(parseInitName(["a", "b"]).isErr()).toBe(true);
 	});
 });
