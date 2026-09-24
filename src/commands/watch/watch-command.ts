@@ -228,12 +228,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			await indexService.initialize(plan.roots);
 		};
 
-		const refreshPlan = async (reindex: boolean): Promise<boolean> => {
+		const refreshPlan = async (): Promise<boolean> => {
 			plan = createWatchPlan(liveEntries());
-			const rewatch = watchKey() !== activeWatch;
-			if (rewatch) await watchPlan();
-			else if (reindex) await indexService.initialize(plan.roots);
-			return rewatch || reindex;
+			if (watchKey() === activeWatch) return false;
+			await watchPlan();
+			return true;
 		};
 
 		const reloadConfigs = async (
@@ -246,6 +245,24 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			return changed;
 		};
 
+		const applyConfigChanges = async (
+			files: readonly string[]
+		): Promise<{ reloaded: string[]; reindexed: boolean }> => {
+			const reloaded = new Set<string>();
+			let reindexed = false;
+			let toReload = files;
+			for (;;) {
+				for (const file of await reloadConfigs(toReload)) {
+					reloaded.add(file);
+				}
+				if (!(await refreshPlan())) break;
+				reindexed = true;
+				// A config edited while the watcher restarted was never reported.
+				toReload = [...configService.files];
+			}
+			return { reloaded: [...reloaded], reindexed };
+		};
+
 		const onChanges = async (changes: FileChange[]): Promise<void> => {
 			const configFiles = changes
 				.map((change) => change.path)
@@ -255,8 +272,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			let reindexed = false;
 			if (configFiles.length > 0) {
 				logService.info("Config change detected. Reloading...");
-				reloaded = await reloadConfigs(configFiles);
-				reindexed = await refreshPlan(false);
+				({ reloaded, reindexed } =
+					await applyConfigChanges(configFiles));
 			}
 
 			const sourceChanges = changes.filter((change) =>
@@ -282,8 +299,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.info(
 				"Burst threshold reached. Executing full rebuild..."
 			);
-			const reloaded = await reloadConfigs([...configService.files]);
-			await refreshPlan(true);
+			const { reloaded, reindexed } = await applyConfigChanges([
+				...configService.files,
+			]);
+			if (!reindexed) await indexService.initialize(plan.roots);
 			for (const { file } of liveEntries()) {
 				queueRebuild(file, reloaded.includes(file));
 			}

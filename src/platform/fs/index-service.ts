@@ -13,7 +13,7 @@ export interface IndexService {
 	/** Fires after `applyChanges` has updated the listing. */
 	readonly onDidUpdate: Event<FileChange[]>;
 
-	/** Replaces the whole index. A directory that doesn't exist isn't indexed. */
+	/** Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
 	initialize(sourcePaths: readonly string[]): Promise<void>;
 	applyChanges(changes: FileChange[]): void;
 

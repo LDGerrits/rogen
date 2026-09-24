@@ -36,6 +36,27 @@ describe("CoreIndexService", () => {
 			expect(indexService.hasEntry("src", "missing.ts")).toBe(false);
 		});
 
+		it("should keep serving the old listing until the new one is complete", async () => {
+			await memoryFs.writeFile("old/a.ts", "");
+			await memoryFs.writeFile("new/b.ts", "");
+			await indexService.initialize(["old"]);
+			const readDirectory = memoryFs.readDirectory.bind(memoryFs);
+			const seen: boolean[] = [];
+			jest.spyOn(memoryFs, "readDirectory").mockImplementation(
+				async (dir) => {
+					seen.push(indexService.hasEntry("old", "a.ts"));
+					return readDirectory(dir);
+				}
+			);
+
+			await indexService.initialize(["new"]);
+
+			expect(seen.length).toBeGreaterThan(0);
+			expect(seen.every(Boolean)).toBe(true);
+			expect(indexService.hasEntry("old", "a.ts")).toBe(false);
+			expect(indexService.hasEntry("new", "b.ts")).toBe(true);
+		});
+
 		it("should silently ignore directories that throw ENOENT during traversal", async () => {
 			await expect(
 				indexService.initialize(["missing-root"])

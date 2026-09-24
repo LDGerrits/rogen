@@ -12,7 +12,7 @@ export class CoreIndexService
 {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly tree = new Map<string, Map<string, FileType>>();
+	private tree = new Map<string, Map<string, FileType>>();
 
 	private readonly _onDidUpdate = this._register(new Emitter<FileChange[]>());
 	readonly onDidUpdate: Event<FileChange[]> = this._onDidUpdate.event;
@@ -22,7 +22,7 @@ export class CoreIndexService
 	}
 
 	async initialize(sourcePaths: readonly string[]): Promise<void> {
-		this.tree.clear();
+		const next = new Map<string, Map<string, FileType>>();
 
 		const traverse = async (currentDir: string): Promise<void> => {
 			const posixDir = toPosix(currentDir);
@@ -43,7 +43,7 @@ export class CoreIndexService
 			}
 
 			const children = new Map<string, FileType>();
-			this.tree.set(posixDir, children);
+			next.set(posixDir, children);
 			const subdirs: string[] = [];
 
 			for (const [name, type] of entries) {
@@ -58,6 +58,7 @@ export class CoreIndexService
 		};
 
 		await Promise.all(sourcePaths.map((root) => traverse(root)));
+		this.tree = next;
 	}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {

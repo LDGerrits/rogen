@@ -523,6 +523,31 @@ describe("watch command", () => {
 			expect(await built("default")).toEqual(["L"]);
 		});
 
+		it("should pick up a config edited while the watcher restarted", async () => {
+			await memFs.createDirectory("/repo/lib");
+			await memFs.createDirectory("/repo/lib2");
+			await memFs.writeFile("/repo/lib2/L2.luau", "");
+			await run();
+			const watch = watcher.watch.bind(watcher);
+			jest.spyOn(watcher, "watch").mockImplementationOnce(
+				async (requests, options) => {
+					await write(
+						"/repo/default.rogen.json",
+						config({ rootDirs: ["lib2"] })
+					);
+					return watch(requests, options);
+				}
+			);
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await settle();
+
+			expect(await built("default")).toEqual(["L2"]);
+		});
+
 		it("should keep building from the last valid config when one goes invalid", async () => {
 			await write("/repo/prod.rogen.json", config());
 			await run(["default", "prod"]);
