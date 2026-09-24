@@ -1,6 +1,13 @@
 import { mergeDeep } from "../../base/object.js";
 import { safeStringify } from "../../base/json.js";
 
+/** A section is a dotted path, or its segments when a key may itself contain a dot. */
+export type ConfigSection = string | readonly string[];
+
+export function sectionPath(section: ConfigSection): readonly string[] {
+	return typeof section === "string" ? section.split(".") : section;
+}
+
 export class ConfigModel {
 	public readonly keys: string[];
 
@@ -8,13 +15,12 @@ export class ConfigModel {
 		this.keys = Object.keys(contents);
 	}
 
-	getValue<T>(section?: string): T | undefined {
+	getValue<T>(section?: ConfigSection): T | undefined {
 		if (!section) return this.contents as T;
 
-		const path = section.split(".");
 		let current: unknown = this.contents;
 
-		for (const component of path) {
+		for (const component of sectionPath(section)) {
 			if (typeof current !== "object" || current === null)
 				return undefined;
 			current = (current as Record<string, unknown>)[component];
@@ -28,12 +34,18 @@ export class ConfigModel {
 	}
 }
 
+export type ConfigSource =
+	| { readonly tier: "default" }
+	| { readonly tier: "layer"; readonly index: number }
+	| { readonly tier: "cli" };
+
 export interface ConfigValue<T> {
 	readonly defaultValue?: T;
-	readonly projectValue?: T;
+	readonly layerValues: readonly (T | undefined)[];
 	readonly cliValue?: T;
-	readonly memoryValue?: T;
 	readonly value?: T;
+	/** Which tier supplied `value`, and for a layer which one; `undefined` when nothing sets it. */
+	readonly source?: ConfigSource;
 }
 
 export class Config {
@@ -41,9 +53,8 @@ export class Config {
 
 	constructor(
 		private readonly defaultConfig: ConfigModel,
-		private readonly projectConfig: ConfigModel,
-		private readonly cliConfig: ConfigModel,
-		private readonly memoryConfig: ConfigModel
+		private readonly layers: readonly ConfigModel[],
+		private readonly cliConfig: ConfigModel
 	) {}
 
 	getConsolidatedModel(): ConfigModel {
@@ -51,40 +62,39 @@ export class Config {
 			const merged = mergeDeep<Record<string, unknown>>(
 				{},
 				this.defaultConfig.contents,
-				this.projectConfig.contents,
-				this.cliConfig.contents,
-				this.memoryConfig.contents
+				...this.layers.map((layer) => layer.contents),
+				this.cliConfig.contents
 			);
 			this.consolidatedModel = new ConfigModel(merged);
 		}
 		return this.consolidatedModel;
 	}
 
-	getValue<T>(section?: string): T {
+	getValue<T>(section?: ConfigSection): T {
 		return this.getConsolidatedModel().getValue<T>(section) as T;
 	}
 
-	inspect<T>(section: string): ConfigValue<T> {
+	inspect<T>(section: ConfigSection): ConfigValue<T> {
 		const defaultValue = this.defaultConfig.getValue<T>(section);
-		const projectValue = this.projectConfig.getValue<T>(section);
+		const layerValues = this.layers.map((layer) =>
+			layer.getValue<T>(section)
+		);
 		const cliValue = this.cliConfig.getValue<T>(section);
-		const memoryValue = this.memoryConfig.getValue<T>(section);
 
 		return {
 			defaultValue,
-			projectValue,
+			layerValues,
 			cliValue,
-			memoryValue,
 			value: this.getValue<T>(section),
+			source: this.sourceOf(defaultValue, layerValues, cliValue),
 		};
 	}
 
 	getAllKeys(): string[] {
 		const keys = new Set<string>([
 			...this.defaultConfig.keys,
-			...this.projectConfig.keys,
+			...this.layers.flatMap((layer) => layer.keys),
 			...this.cliConfig.keys,
-			...this.memoryConfig.keys,
 		]);
 		return Array.from(keys);
 	}
@@ -103,5 +113,20 @@ export class Config {
 		}
 
 		return changedKeys;
+	}
+
+	private sourceOf(
+		defaultValue: unknown,
+		layerValues: readonly unknown[],
+		cliValue: unknown
+	): ConfigSource | undefined {
+		if (cliValue !== undefined) return { tier: "cli" };
+		for (let index = layerValues.length - 1; index >= 0; index--) {
+			if (layerValues[index] !== undefined) {
+				return { tier: "layer", index };
+			}
+		}
+		if (defaultValue !== undefined) return { tier: "default" };
+		return undefined;
 	}
 }

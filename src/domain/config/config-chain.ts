@@ -1,119 +1,73 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
-import { toPosix } from "../../base/path.js";
-import { Result, ok, err } from "../../base/result.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
 } from "../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	ConfigFile,
+	readConfigFile,
+} from "../../platform/config/config-file.js";
 import { ConfigDiagnostics } from "./config-diagnostics.js";
-import { parseConfig } from "./config-parser.js";
-import { CollapsedConfig, RogenConfig } from "./config.js";
 
-interface Layer {
-	readonly file: string;
-	readonly config: RogenConfig;
-	readonly extendsLocation?: DiagnosticLocation;
+export interface ConfigChain {
+	/** The leaf first, then each parent. Includes a file that failed to load, so a watcher still sees it. */
+	readonly files: readonly string[];
+	readonly layers: readonly ConfigFile[];
+	readonly diagnostics: readonly Diagnostic[];
 }
 
-export async function collapseConfig(
+export async function loadConfigChain(
 	fileSystem: FileSystemService,
 	file: string
-): Promise<Result<CollapsedConfig, Diagnostic[]>> {
-	const layers: Layer[] = [];
+): Promise<ConfigChain> {
+	const files: string[] = [];
+	const layers: ConfigFile[] = [];
 	let current = file;
 	let referrer: DiagnosticLocation | undefined;
 
 	for (;;) {
-		const cycleStart = layers.findIndex((layer) => layer.file === current);
+		const cycleStart = files.indexOf(current);
 		if (cycleStart >= 0 && referrer) {
-			const cycle = [
-				...layers.slice(cycleStart).map((l) => l.file),
-				current,
-			];
-			return err([ConfigDiagnostics.extendsCycle(referrer, cycle)]);
+			const cycle = [...files.slice(cycleStart), current];
+			return {
+				files,
+				layers,
+				diagnostics: [
+					ConfigDiagnostics.extendsCycle(referrer, cycle),
+				],
+			};
 		}
 
-		const layer = await loadLayer(fileSystem, current, referrer);
-		if (layer.isErr()) return layer;
-
-		layers.push(layer.value);
-		const { config, extendsLocation } = layer.value;
-		if (config.extends === undefined || !extendsLocation) break;
-
-		referrer = extendsLocation;
-		current = path.resolve(path.dirname(current), config.extends);
-	}
-
-	return ok(mergeLayers(layers));
-}
-
-async function loadLayer(
-	fileSystem: FileSystemService,
-	file: string,
-	referrer: DiagnosticLocation | undefined
-): Promise<Result<Layer, Diagnostic[]>> {
-	let text: string;
-	try {
-		text = await fileSystem.readFile(file);
-	} catch (error) {
-		const detail = ErrorUtils.fromUnknown(error).message;
-		return err([
-			referrer
-				? ConfigDiagnostics.extendsUnreadable(referrer, file, detail)
-				: ConfigDiagnostics.unreadable(
-						{ resource: file, position: { line: 1, column: 1 } },
-						detail
-					),
-		]);
-	}
-
-	const parsed = parseConfig(text, file);
-	if (parsed.isErr()) return parsed;
-	return ok({ file, ...parsed.value });
-}
-
-function mergeLayers(layers: readonly Layer[]): CollapsedConfig {
-	const [leaf] = layers;
-	let merged: Omit<CollapsedConfig, "file" | "chain" | "outFile"> = {};
-
-	for (const layer of [...layers].reverse()) {
-		const { config } = layer;
-		const dir = path.dirname(layer.file);
-		const absolute = (value: string) => path.resolve(dir, value);
-
-		merged = {
-			...merged,
-			...(config.rootDirs !== undefined && {
-				rootDirs: config.rootDirs.map(absolute),
-			}),
-			...(config.exclude !== undefined && {
-				exclude: config.exclude.map((glob) =>
-					path.posix.join(toPosix(dir), glob)
+		files.push(current);
+		const loaded = await readConfigFile(fileSystem, current);
+		if (loaded.isErr()) {
+			const from = referrer;
+			const target = current;
+			return {
+				files,
+				layers,
+				diagnostics: loaded.error.map((diagnostic) =>
+					from && diagnostic.code === "config.unreadable"
+						? ConfigDiagnostics.extendsUnreadable(
+								from,
+								target,
+								diagnostic.message
+							)
+						: diagnostic
 				),
-			}),
-			...(config.template !== undefined && {
-				template: absolute(config.template),
-			}),
-			...(config.syncDir !== undefined && {
-				syncDir: absolute(config.syncDir),
-			}),
-			...((config.routes || merged.routes) && {
-				routes: { ...merged.routes, ...config.routes },
-			}),
-			...((config.tags || merged.tags) && {
-				tags: { ...merged.tags, ...config.tags },
-			}),
-		};
-	}
+			};
+		}
 
-	return {
-		file: leaf.file,
-		chain: layers.map((layer) => layer.file),
-		...merged,
-		...(leaf.config.outFile !== undefined && {
-			outFile: path.resolve(path.dirname(leaf.file), leaf.config.outFile),
-		}),
-	};
+		const layer = loaded.value;
+		layers.push(layer);
+		const parent = layer.model.getValue<string>("extends");
+		if (parent === undefined) return { files, layers, diagnostics: [] };
+
+		referrer = {
+			resource: layer.file,
+			position: layer.positionOf("extends"),
+		};
+		current = path.resolve(path.dirname(current), parent);
+	}
 }

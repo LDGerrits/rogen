@@ -18,18 +18,6 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
-export interface CollapsedConfig {
-	readonly file: string;
-	readonly chain: readonly string[];
-	readonly rootDirs?: readonly string[];
-	readonly routes?: Readonly<Record<string, string>>;
-	readonly tags?: Readonly<Record<string, boolean>>;
-	readonly exclude?: readonly string[];
-	readonly template?: string;
-	readonly syncDir?: string;
-	readonly outFile?: string;
-}
-
 export interface ResolvedConfig {
 	readonly rootDirs: string[];
 	readonly routes: Record<string, string>;

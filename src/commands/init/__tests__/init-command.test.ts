@@ -4,7 +4,7 @@ import "../../../domain/config/config.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
-import { parseConfig } from "../../../domain/config/config-parser.js";
+import { readConfigFile } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	EnvironmentService,
@@ -226,7 +226,11 @@ describe("init command", () => {
 			for (const file of ["default.rogen.json", "source.rogen.json"]) {
 				const text = await read(file);
 				expect(() => JSON.parse(text)).not.toThrow();
-				expect(parseConfig(text, file).isOk()).toBe(true);
+				expect(
+					(
+						await readConfigFile(memFs, path.join(cwd, file))
+					).isOk()
+				).toBe(true);
 			}
 		});
 

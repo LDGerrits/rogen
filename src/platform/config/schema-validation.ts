@@ -1,7 +1,7 @@
 import { JsoncNode } from "../../base/jsonc.js";
 import { JSONSchema } from "../../base/json-schema.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ConfigDiagnostics } from "./config-diagnostics.js";
+import { Diagnostic } from "../diagnostics/diagnostic.js";
+import { ConfigFileDiagnostics } from "./config-file-diagnostics.js";
 
 const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	object: "an object",
@@ -26,7 +26,7 @@ export function validateNode(
 	const expected = schema.type === undefined ? [] : [schema.type].flat();
 	if (expected.length > 0 && !expected.includes(node.kind)) {
 		return [
-			ConfigDiagnostics.wrongType(
+			ConfigFileDiagnostics.wrongType(
 				location(node),
 				path,
 				expected.map((kind) => KIND_NAMES[kind]).join(" or "),
@@ -52,7 +52,7 @@ export function validateNode(
 		}
 		if (schema.additionalProperties === false) {
 			return [
-				ConfigDiagnostics.unknownField(
+				ConfigFileDiagnostics.unknownField(
 					location(property),
 					propertyPath
 				),

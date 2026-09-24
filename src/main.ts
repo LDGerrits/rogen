@@ -6,8 +6,6 @@ import {
 	Extensions,
 } from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { ConfigService } from "./platform/config/config.js";
-import { CoreConfigService } from "./platform/config/config-service.js";
 import { parseArgs } from "./platform/environment/args.js";
 import {
 	EnvironmentService,
@@ -28,6 +26,8 @@ import { CoreReconciliationService } from "./platform/watcher/core-reconciliatio
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
+import { ConfigService } from "./domain/config/config-service.js";
+import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
 import "./commands/build/build-command.js";
 import "./commands/help/help-command.js";
@@ -88,12 +88,12 @@ async function main(): Promise<void> {
 				environment
 			);
 
-			try {
-				await configService.initialize();
-			} catch (error) {
-				logService.error(
-					error instanceof Error ? error.message : String(error)
-				);
+			const initialized = await configService.initialize({
+				names: cliArgs._.slice(1),
+				paths: cliArgs.config ? [cliArgs.config] : [],
+			});
+			if (initialized.isErr()) {
+				logService.error(initialized.error.message);
 				process.exitCode = 1;
 				return;
 			}

@@ -1,20 +1,10 @@
-import { Event } from "../../base/event.js";
-import { ConfigValue } from "./config-models.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
-
-export const enum ConfigTarget {
-	DEFAULT = 1,
-	PROJECT,
-	CLI,
-	MEMORY,
-}
-
 export class ConfigChangeEvent {
 	readonly affectedKeys: ReadonlySet<string>;
 
+	/** `resource` is what the configuration was loaded from, such as a file. */
 	constructor(
 		changedKeys: string[],
-		public readonly source: ConfigTarget
+		public readonly resource: string
 	) {
 		this.affectedKeys = new Set(changedKeys);
 	}
@@ -32,17 +22,3 @@ export class ConfigChangeEvent {
 		return false;
 	}
 }
-
-export interface ConfigService {
-	readonly _serviceBrand: undefined;
-	readonly onDidChangeConfig: Event<ConfigChangeEvent>;
-
-	readonly configPath: string | undefined;
-
-	getValue<T>(section?: string): T;
-	inspect<T>(section: string): ConfigValue<T>;
-	reloadConfig(): Promise<void>;
-}
-
-export const ConfigService =
-	createServiceIdentifier<ConfigService>("configService");

@@ -1,10 +1,15 @@
 import { jest } from "@jest/globals";
 import "../watch-command.js";
 import { DeferredPromise } from "../../../base/async.js";
+import { ResultError } from "../../../base/result.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { MockConfigService } from "../../../platform/config/__tests__/mock-config-service.js";
-import { ConfigService } from "../../../platform/config/config.js";
+import {
+	MockConfigService,
+	mockEntry,
+} from "../../../domain/config/__tests__/mock-config-service.js";
+import { ConfigService } from "../../../domain/config/config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -68,52 +73,67 @@ describe("watch command", () => {
 		jest.useRealTimers();
 	});
 
-	it("should watch the config file the service actually resolved, not a hardcoded .rogen.json", async () => {
-		await memFs.writeFile("/repo/custom.rogen.json", "{}");
-
-		const configService = new MockConfigService(
-			{ rootDirs: [] },
-			"/repo/custom.rogen.json"
-		);
-		const reloadSpy = jest.spyOn(configService, "reloadConfig");
+	it("should reload when a file the config service reads changes", async () => {
+		await memFs.writeFile("/repo/base.rogen.json", "{}");
+		await memFs.writeFile("/repo/default.rogen.json", "{}");
+		const entry = {
+			...mockEntry({}, "/repo/default.rogen.json"),
+			chain: ["/repo/default.rogen.json", "/repo/base.rogen.json"],
+		};
+		const configService = new MockConfigService([entry]);
+		const reload = jest.spyOn(configService, "reload");
 		void startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 
-		await memFs.writeFile(
-			"/repo/custom.rogen.json",
-			'{"rootDirs":["src"]}'
-		);
+		await memFs.writeFile("/repo/base.rogen.json", '{"rootDirs":["src"]}');
 		jest.advanceTimersByTime(150);
 		await Promise.resolve();
 		await Promise.resolve();
 
-		expect(reloadSpy).toHaveBeenCalledTimes(1);
+		expect(reload).toHaveBeenCalledWith(["/repo/base.rogen.json"]);
 	});
 
-	it("should not reload when a file at a hardcoded .rogen.json path changes", async () => {
-		await memFs.writeFile("/repo/custom.rogen.json", "{}");
-		await memFs.writeFile("/repo/.rogen.json", "{}");
-
-		const configService = new MockConfigService(
-			{ rootDirs: [] },
-			"/repo/custom.rogen.json"
-		);
-		const reloadSpy = jest.spyOn(configService, "reloadConfig");
+	it("should not reload when an unrelated config file changes", async () => {
+		await memFs.writeFile("/repo/default.rogen.json", "{}");
+		await memFs.writeFile("/repo/other.rogen.json", "{}");
+		const configService = new MockConfigService([mockEntry()]);
+		const reload = jest.spyOn(configService, "reload");
 		void startWatch(configService);
 		await Promise.resolve();
 		await Promise.resolve();
 
-		await memFs.writeFile("/repo/.rogen.json", '{"rootDirs":["src"]}');
+		await memFs.writeFile("/repo/other.rogen.json", '{"rootDirs":["src"]}');
 		jest.advanceTimersByTime(150);
 		await Promise.resolve();
 		await Promise.resolve();
 
-		expect(reloadSpy).not.toHaveBeenCalled();
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	it("should refuse to start when a config is invalid", async () => {
+		const watch = jest.spyOn(watcher, "watch");
+		const entry = {
+			...mockEntry(),
+			diagnostics: [
+				errorDiagnostic(
+					"config.unknownField",
+					{ resource: "/repo/default.rogen.json" },
+					"boom."
+				),
+			],
+		};
+
+		const result = await startWatch(new MockConfigService([entry]));
+
+		expect((result as ResultError<Error>).error.message).toBe(
+			"/repo/default.rogen.json - error: boom."
+		);
+		expect(watch).not.toHaveBeenCalled();
 	});
 
 	it("should resolve ok when shutdown is requested", async () => {
-		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		const running = startWatch(new MockConfigService([mockEntry()]));
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -124,7 +144,7 @@ describe("watch command", () => {
 
 	it("should stop the watcher when shutdown is requested", async () => {
 		const stop = jest.spyOn(watcher, "stop");
-		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		const running = startWatch(new MockConfigService([mockEntry()]));
 		await Promise.resolve();
 		await Promise.resolve();
 		stop.mockClear();
@@ -139,7 +159,7 @@ describe("watch command", () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
 		const running = startWatch(
-			new MockConfigService({ rootDirs: ["src"] })
+			new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })])
 		);
 		await Promise.resolve();
 		await Promise.resolve();
@@ -160,7 +180,7 @@ describe("watch command", () => {
 	it("should react to file changes while running", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
-		void startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		void startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -179,7 +199,7 @@ describe("watch command", () => {
 		const stop = jest.spyOn(watcher, "stop");
 
 		const result = await startWatch(
-			new MockConfigService({ rootDirs: [] })
+			new MockConfigService([mockEntry()])
 		);
 
 		expect(result.isErr()).toBe(true);
@@ -190,7 +210,7 @@ describe("watch command", () => {
 		const ready = new DeferredPromise<void>();
 		jest.spyOn(watcher, "watch").mockReturnValue(ready.p);
 		const debug = jest.spyOn(logService, "debug");
-		void startWatch(new MockConfigService({ rootDirs: [] }));
+		void startWatch(new MockConfigService([mockEntry()]));
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -209,7 +229,7 @@ describe("watch command", () => {
 	});
 
 	it("should not throw when shutdown is requested twice", async () => {
-		const running = startWatch(new MockConfigService({ rootDirs: [] }));
+		const running = startWatch(new MockConfigService([mockEntry()]));
 		await Promise.resolve();
 		await Promise.resolve();
 
@@ -222,14 +242,14 @@ describe("watch command", () => {
 	it("should leave no listeners behind for a second run", async () => {
 		await memFs.createDirectory("/repo/src");
 		const debug = jest.spyOn(logService, "debug");
-		const first = startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		const first = startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
 		await Promise.resolve();
 		await Promise.resolve();
 		lifecycle.shutdown();
 		await first;
 
 		lifecycle = new MockLifecycleService();
-		void startWatch(new MockConfigService({ rootDirs: ["src"] }));
+		void startWatch(new MockConfigService([mockEntry({ rootDirs: ["/repo/src"] })]));
 		await Promise.resolve();
 		await Promise.resolve();
 		debug.mockClear();
