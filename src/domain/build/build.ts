@@ -13,11 +13,7 @@ export interface BuildOutput {
 	readonly warnings: readonly Diagnostic[];
 }
 
-/**
- * Turns a resolved config into a project tree, reading only the in-memory
- * `index`, which the caller has initialized with `rootsToIndex`. Holds no
- * state, so a rebuild in watch is a full call after `index.applyChanges`.
- */
+/** Reads only the in-memory `index`, which the caller initialized with `rootsToIndex`. */
 export function build(
 	config: ResolvedConfig,
 	index: IndexService
@@ -36,10 +32,7 @@ export function build(
 	});
 }
 
-/**
- * The absolute dirs to index for every config together, with any dir that
- * lies inside another dropped, since the outer one already covers it.
- */
+/** The absolute dirs to index for all configs, minus any dir inside another. */
 export function rootsToIndex(
 	configs: readonly Pick<ResolvedConfig, "rootDirs">[]
 ): string[] {
