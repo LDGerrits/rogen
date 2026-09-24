@@ -13,6 +13,7 @@ export function mockEntry(
 		chain: [file],
 		diagnostics: [],
 		resolved: {
+			name: "repo",
 			rootDirs: [],
 			routes: {},
 			tags: {},

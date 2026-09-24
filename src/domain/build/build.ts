@@ -8,8 +8,6 @@ import { RojoTree } from "../rojo/rojo-tree.js";
 import { scanRootDirs } from "./root-scanner.js";
 import { routeFiles } from "./route-files.js";
 
-const PROJECT_FILE_SUFFIX = ".project.json";
-
 export interface BuildOutput {
 	readonly value: RojoTree;
 	readonly warnings: readonly Diagnostic[];
@@ -29,7 +27,7 @@ export function build(
 
 	return ok({
 		value: {
-			name: path.basename(config.outFile, PROJECT_FILE_SUFFIX),
+			name: config.name,
 			tree: { $className: "DataModel" },
 		},
 		warnings: [...scan.warnings, ...routing.value.warnings],

@@ -1,6 +1,7 @@
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
+import { safeStringify } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
@@ -9,13 +10,17 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { loadConfigChain } from "./config-chain.js";
 import { discoverConfigPaths } from "./config-discovery.js";
-import { layerConfig, resolveConfig } from "./config-resolver.js";
+import { layerConfig, locateConfigValue } from "./config-layers.js";
+import { resolveConfig } from "./config-resolver.js";
+import { readTemplate } from "./config-template.js";
 import { ConfigEntry, ConfigRefs, ConfigService } from "./config-service.js";
 
 interface ConfigSlot {
 	readonly entry: ConfigEntry;
 	/** The merged config behind `entry.resolved`, kept to see what a reload changed. */
 	readonly config: Config | undefined;
+	/** Every file the entry reads: its chain and its template. */
+	readonly files: readonly string[];
 }
 
 export class CoreConfigService
@@ -38,7 +43,7 @@ export class CoreConfigService
 	}
 
 	get files(): ReadonlySet<string> {
-		return new Set(this.slots.flatMap((slot) => slot.entry.chain));
+		return new Set(this.slots.flatMap((slot) => slot.files));
 	}
 
 	constructor(
@@ -69,7 +74,7 @@ export class CoreConfigService
 			const previous = this.slots;
 			const next = await Promise.all(
 				previous.map((slot) =>
-					slot.entry.chain.some((file) => changed.has(file))
+					slot.files.some((file) => changed.has(file))
 						? this.load(slot.entry.file, slot)
 						: slot
 				)
@@ -82,6 +87,12 @@ export class CoreConfigService
 				const keys = before.config
 					? before.config.compare(after.config)
 					: after.config.getAllKeys();
+				if (
+					safeStringify(before.entry.resolved?.template) !==
+					safeStringify(after.entry.resolved?.template)
+				) {
+					keys.push("template");
+				}
 				if (keys.length > 0) {
 					this._onDidChangeConfig.fire(
 						new ConfigChangeEvent(keys, after.entry.file)
@@ -96,8 +107,12 @@ export class CoreConfigService
 		previous: ConfigSlot | undefined
 	): Promise<ConfigSlot> {
 		const chain = await loadConfigChain(this.fileSystemService, file);
-		const failed = (diagnostics: readonly Diagnostic[]): ConfigSlot => ({
+		const failed = (
+			diagnostics: readonly Diagnostic[],
+			files: readonly string[] = chain.files
+		): ConfigSlot => ({
 			config: previous?.config,
+			files,
 			entry: {
 				file,
 				chain: chain.files,
@@ -108,12 +123,33 @@ export class CoreConfigService
 		if (chain.diagnostics.length > 0) return failed(chain.diagnostics);
 
 		const layered = layerConfig(chain.layers);
+		const templateFile = layered.config.getValue<string | undefined>(
+			"template"
+		);
+		const files = templateFile ? [...chain.files, templateFile] : chain.files;
+
+		const template = templateFile
+			? await readTemplate(
+					this.fileSystemService,
+					templateFile,
+					locateConfigValue(layered, "template")
+				)
+			: undefined;
+		if (template?.isErr()) return failed(template.error, files);
+
+		const resolved = resolveConfig(
+			layered,
+			template?.isOk() ? template.value : undefined
+		);
+		if (resolved.isErr()) return failed(resolved.error, files);
+
 		return {
 			config: layered.config,
+			files,
 			entry: {
 				file,
 				chain: chain.files,
-				resolved: resolveConfig(layered),
+				resolved: resolved.value,
 				diagnostics: [],
 			},
 		};

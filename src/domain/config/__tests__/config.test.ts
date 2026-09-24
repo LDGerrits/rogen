@@ -94,6 +94,7 @@ describe("domain/config/config contribution", () => {
 
 	it("ResolvedConfig requires no template/syncDir (compile-time check)", () => {
 		const resolved: ResolvedConfig = {
+			name: "repo",
 			rootDirs: ["/repo/src"],
 			routes: {},
 			tags: {},

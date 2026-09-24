@@ -5,6 +5,7 @@ import {
 	ConfigRegistry,
 } from "../../platform/config/config-registry.js";
 import { SUPPORTED_SERVICES } from "../roblox/services.js";
+import { RojoTree } from "../rojo/rojo-tree.js";
 
 export interface RogenConfig {
 	readonly $schema?: string;
@@ -18,12 +19,18 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
+export interface ResolvedTemplate {
+	readonly file: string;
+	readonly project: Partial<RojoTree>;
+}
+
 export interface ResolvedConfig {
+	readonly name: string;
 	readonly rootDirs: string[];
 	readonly routes: Record<string, string>;
 	readonly tags: Record<string, boolean>;
 	readonly exclude: string[];
-	readonly template?: string;
+	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
 }

@@ -9,6 +9,7 @@ import { build, rootsToIndex } from "../build.js";
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
+	name: "repo",
 	rootDirs: [abs("src")],
 	routes: { "*": "ReplicatedStorage" },
 	tags: {},
@@ -89,9 +90,9 @@ describe("domain/build/build", () => {
 			]);
 		});
 
-		it("should name the project after the config's project file", async () => {
+		it("should name the project after the config's resolved name", async () => {
 			await fs.createDirectory(abs("src"));
-			const config = configOf({ outFile: abs("lobby.project.json") });
+			const config = configOf({ name: "lobby" });
 
 			const result = build(config, await indexOf(config.rootDirs));
 

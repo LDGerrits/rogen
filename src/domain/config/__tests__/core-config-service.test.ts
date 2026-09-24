@@ -175,6 +175,7 @@ describe("domain/config/core-config-service", () => {
 		});
 
 		it("should inherit a field the child leaves out and replace one it sets", async () => {
+			await write("/repo/one.project.json", { tree: {} });
 			await write("/repo/source.rogen.json", {
 				rootDirs: ["src"],
 				template: "one.project.json",
@@ -189,7 +190,7 @@ describe("domain/config/core-config-service", () => {
 
 			expect(service.configs[0].resolved).toMatchObject({
 				rootDirs: ["/repo/src"],
-				template: "/repo/one.project.json",
+				template: { file: "/repo/one.project.json" },
 				syncDir: "/repo/dist",
 			});
 		});
@@ -197,6 +198,7 @@ describe("domain/config/core-config-service", () => {
 		it("should resolve a parent's relative paths against the parent's directory", async () => {
 			await fs.createDirectory("/repo/shared");
 			await fs.createDirectory("/repo/places");
+			await write("/repo/shared/template.project.json", { tree: {} });
 			await write("/repo/shared/core.rogen.json", {
 				rootDirs: ["src"],
 				exclude: ["**/*.spec.luau"],
@@ -215,7 +217,7 @@ describe("domain/config/core-config-service", () => {
 			expect(service.configs[0].resolved).toMatchObject({
 				rootDirs: ["/repo/shared/src"],
 				exclude: ["/repo/shared/**/*.spec.luau"],
-				template: "/repo/shared/template.project.json",
+				template: { file: "/repo/shared/template.project.json" },
 				syncDir: "/repo/shared/out",
 			});
 		});
@@ -276,6 +278,7 @@ describe("domain/config/core-config-service", () => {
 				"/repo/core.rogen.json",
 			]);
 			expect(service.configs[0].resolved).toEqual({
+				name: "repo",
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
 				routes: {
 					server: "ServerScriptService",
@@ -532,6 +535,409 @@ describe("domain/config/core-config-service", () => {
 			await service.reload(["/repo/unrelated.json"]);
 
 			expect(service.configs[0]).toBe(before[0]);
+		});
+	});
+
+	describe("resolution", () => {
+		const diagnosticsFor = async (
+			config: Record<string, unknown> | string,
+			file = "default"
+		) => {
+			await write(`/repo/${file}.rogen.json`, config);
+			await start({ names: [file] });
+			return service.configs[0].diagnostics.map((d) => [
+				d.message,
+				d.resource,
+				d.position?.line,
+				d.position?.column,
+			]);
+		};
+
+		it("should apply a default only when the whole chain leaves the field out", async () => {
+			await write("/repo/base.rogen.json", {
+				exclude: ["**/*.spec.luau"],
+				rootDirs: ["core"],
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+
+			await start();
+
+			expect(service.configs[0].resolved).toMatchObject({
+				exclude: ["/repo/**/*.spec.luau"],
+				rootDirs: ["/repo/core"],
+				routes: {},
+				tags: {},
+			});
+		});
+
+		it("should not inject a route set when the chain declares no routes", async () => {
+			await write("/repo/default.rogen.json", {});
+
+			await start();
+
+			expect(service.configs[0].resolved?.routes).toEqual({});
+		});
+
+		it("should default outFile from the config's stem", async () => {
+			await write("/repo/lobby.rogen.json", {});
+
+			await start({ names: ["lobby"] });
+
+			expect(service.configs[0].resolved?.outFile).toBe(
+				"/repo/lobby.project.json"
+			);
+		});
+
+		describe("project name", () => {
+			it("should prefer the template's own name", async () => {
+				await write("/repo/t.project.json", {
+					name: "FromTemplate",
+					tree: {},
+				});
+				await write("/repo/default.rogen.json", {
+					template: "t.project.json",
+				});
+
+				await start();
+
+				expect(service.configs[0].resolved?.name).toBe("FromTemplate");
+			});
+
+			it("should fall back to the config's directory when the template has no name", async () => {
+				await write("/repo/t.project.json", { tree: {} });
+				await write("/repo/default.rogen.json", {
+					template: "t.project.json",
+				});
+
+				await start();
+
+				expect(service.configs[0].resolved?.name).toBe("repo");
+			});
+
+			it("should fall back to the config's directory when there is no template", async () => {
+				await write("/repo/default.rogen.json", {});
+
+				await start();
+
+				expect(service.configs[0].resolved?.name).toBe("repo");
+			});
+
+			it("should never be empty", async () => {
+				fs = new MemoryFileSystemService();
+				service = new CoreConfigService(
+					fs,
+					new MockEnvironmentService({ _: [] }, "/")
+				);
+				await write("/default.rogen.json", {});
+
+				await start();
+
+				expect(service.configs[0].resolved?.name).toBe("project");
+			});
+
+			it("should ignore an empty template name", async () => {
+				await write("/repo/t.project.json", { name: "", tree: {} });
+				await write("/repo/default.rogen.json", {
+					template: "t.project.json",
+				});
+
+				await start();
+
+				expect(service.configs[0].resolved?.name).toBe("repo");
+			});
+		});
+
+		describe("template", () => {
+			it("should carry the parsed template and its file", async () => {
+				await write("/repo/t.project.json", {
+					name: "Game",
+					tree: { $className: "DataModel" },
+				});
+				await write("/repo/default.rogen.json", {
+					template: "t.project.json",
+				});
+
+				await start();
+
+				expect(service.configs[0].resolved?.template).toEqual({
+					file: "/repo/t.project.json",
+					project: { name: "Game", tree: { $className: "DataModel" } },
+				});
+				expect(service.files).toContain("/repo/t.project.json");
+			});
+
+			it("should report a missing template at the field that named it", async () => {
+				const problems = await diagnosticsFor(`{
+	"template": "missing.project.json"
+}`);
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain(
+					"the template could not be read"
+				);
+				expect(problems[0].slice(1)).toEqual([
+					"/repo/default.rogen.json",
+					2,
+					14,
+				]);
+				expect(service.files).toContain("/repo/missing.project.json");
+			});
+
+			it("should report a template that is not a JSON object", async () => {
+				await write("/repo/t.project.json", "[1]");
+
+				const problems = await diagnosticsFor({
+					template: "t.project.json",
+				});
+
+				expect(problems.map((p) => p[0])).toEqual([
+					"the template is not a valid Rojo project file: it must be a JSON object.",
+				]);
+			});
+
+			it("should report a template with invalid JSON", async () => {
+				await write("/repo/t.project.json", "{ nope");
+
+				const problems = await diagnosticsFor({
+					template: "t.project.json",
+				});
+
+				expect(problems[0][0]).toContain(
+					"the template is not a valid Rojo project file: invalid JSONC"
+				);
+			});
+
+			it("should point at the parent file that named the template", async () => {
+				await write("/repo/base.rogen.json", `{
+	"template": "missing.project.json"
+}`);
+
+				const problems = await diagnosticsFor({
+					extends: "./base.rogen.json",
+				});
+
+				expect(problems[0].slice(1)).toEqual([
+					"/repo/base.rogen.json",
+					2,
+					14,
+				]);
+			});
+
+			it("should fire a change when the template's contents change", async () => {
+				await write("/repo/t.project.json", { name: "One", tree: {} });
+				await write("/repo/default.rogen.json", {
+					template: "t.project.json",
+				});
+				await start();
+				const listener = jest.fn<(event: ConfigChangeEvent) => void>();
+				service.onDidChangeConfig(listener);
+
+				await write("/repo/t.project.json", { name: "Two", tree: {} });
+				await service.reload(["/repo/t.project.json"]);
+
+				expect(service.configs[0].resolved?.name).toBe("Two");
+				expect(listener).toHaveBeenCalledTimes(1);
+				expect(listener.mock.calls[0][0].affectsConfig("template")).toBe(
+					true
+				);
+			});
+		});
+
+		describe("validation", () => {
+			it("should reject a route key with a separator", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": {
+		"my-key": "ServerScriptService"
+	}
+}`);
+
+				expect(problems).toEqual([
+					[
+						'route key "my-key" is invalid: use letters and digits only, starting with a letter.',
+						"/repo/default.rogen.json",
+						3,
+						13,
+					],
+				]);
+			});
+
+			it("should accept the fallback route key", async () => {
+				expect(
+					await diagnosticsFor({
+						routes: { "*": "ReplicatedStorage" },
+					})
+				).toEqual([]);
+			});
+
+			it("should reject a tag name that starts with a digit", async () => {
+				const problems = await diagnosticsFor(`{
+	"tags": { "1st": true }
+}`);
+
+				expect(problems).toEqual([
+					[
+						'tag "1st" is invalid: use letters and digits only, starting with a letter.',
+						"/repo/default.rogen.json",
+						2,
+						19,
+					],
+				]);
+			});
+
+			it("should reject a tag that shares a name with a route key", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "server": "ServerScriptService" },
+	"tags": { "server": true }
+}`);
+
+				expect(problems).toEqual([
+					[
+						'tag "server" has the same name as a route key; rename one of them.',
+						"/repo/default.rogen.json",
+						3,
+						22,
+					],
+				]);
+			});
+
+			it("should reject a route target whose service is unsupported", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "server": "Nowhere/Folder" }
+}`);
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain(
+					'"Nowhere" is not a supported service'
+				);
+				expect(problems[0].slice(1)).toEqual([
+					"/repo/default.rogen.json",
+					2,
+					24,
+				]);
+			});
+
+			it("should point at the parent that supplied a bad route", async () => {
+				await write("/repo/base.rogen.json", `{
+	"routes": { "server": "Nowhere" }
+}`);
+
+				const problems = await diagnosticsFor({
+					extends: "./base.rogen.json",
+					routes: { client: "StarterGui" },
+				});
+
+				expect(problems.map((p) => p.slice(1))).toEqual([
+					["/repo/base.rogen.json", 2, 24],
+				]);
+			});
+
+			it("should reject writing over its own template", async () => {
+				await write("/repo/game.project.json", { tree: {} });
+
+				const problems = await diagnosticsFor(`{
+	"template": "game.project.json",
+	"outFile": "game.project.json"
+}`);
+
+				expect(problems).toEqual([
+					[
+						'the output file /repo/game.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.',
+						"/repo/default.rogen.json",
+						3,
+						13,
+					],
+				]);
+			});
+
+			it("should reject a default outFile that is the template", async () => {
+				await write("/repo/default.project.json", { tree: {} });
+
+				const problems = await diagnosticsFor(`{
+	"template": "default.project.json"
+}`);
+
+				expect(problems.map((p) => p[0])).toEqual([
+					'the output file /repo/default.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.',
+				]);
+				expect(problems[0].slice(1)).toEqual([
+					"/repo/default.rogen.json",
+					2,
+					14,
+				]);
+			});
+
+			it("should reject a root dir inside another, naming both", async () => {
+				const problems = await diagnosticsFor(`{
+	"rootDirs": ["src", "src/shared"]
+}`);
+
+				expect(problems).toEqual([
+					[
+						'root dir "/repo/src/shared" is inside root dir "/repo/src"; a file under it would belong to both. Remove one.',
+						"/repo/default.rogen.json",
+						2,
+						22,
+					],
+				]);
+			});
+
+			it("should catch the nesting whichever order the root dirs come in", async () => {
+				const problems = await diagnosticsFor({
+					rootDirs: ["src/shared", "src"],
+				});
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain(
+					'root dir "/repo/src/shared" is inside root dir "/repo/src"'
+				);
+			});
+
+			it("should accept root dirs that are only siblings or share a prefix", async () => {
+				expect(
+					await diagnosticsFor({
+						rootDirs: ["core", "places/lobby", "core-extra"],
+					})
+				).toEqual([]);
+			});
+
+			it("should report every problem at once", async () => {
+				const problems = await diagnosticsFor({
+					routes: { "a-b": "Nowhere" },
+					tags: { "c-d": true },
+					rootDirs: ["src", "src/x"],
+				});
+
+				expect(problems).toHaveLength(4);
+			});
+
+			it("should keep the last valid config when a reload turns a rule bad", async () => {
+				await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+				await start();
+
+				await write("/repo/default.rogen.json", {
+					rootDirs: ["a", "a/b"],
+				});
+				await service.reload(["/repo/default.rogen.json"]);
+
+				expect(service.configs[0].resolved?.rootDirs).toEqual([
+					"/repo/a",
+				]);
+				expect(service.configs[0].diagnostics).toHaveLength(1);
+			});
+		});
+
+		it("should read neither the working directory nor the clock", async () => {
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			const cwd = jest.spyOn(process, "cwd");
+			const now = jest.spyOn(Date, "now");
+
+			await start();
+
+			expect(cwd).not.toHaveBeenCalled();
+			expect(now).not.toHaveBeenCalled();
+			jest.restoreAllMocks();
 		});
 	});
 });
