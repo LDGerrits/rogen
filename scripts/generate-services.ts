@@ -60,7 +60,7 @@ async function readDatabase(version: string): Promise<ReflectionDatabase> {
 const rojoVersion = pinnedRojoVersion();
 const databaseVersion = await bundledDatabaseVersion(rojoVersion);
 const services = selectServices(await readDatabase(databaseVersion));
-fs.writeFileSync(OUTPUT, renderServicesModule(services));
+fs.writeFileSync(OUTPUT, renderServicesModule(services, rojoVersion));
 console.log(
 	`Wrote ${services.length} services from Rojo ${rojoVersion} (database ${databaseVersion}) to ${OUTPUT}`
 );

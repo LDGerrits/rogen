@@ -32,8 +32,14 @@ describe("domain/roblox/select-services", () => {
 
 	describe("renderServicesModule", () => {
 		it("should export the services and the guard that checks against them", () => {
-			const source = renderServicesModule(["Lighting", "Workspace"]);
+			const source = renderServicesModule(
+				["Lighting", "Workspace"],
+				"7.6.1"
+			);
 			expect(source).toContain('\t"Lighting",\n\t"Workspace",\n');
+			expect(source).toContain(
+				'export const SERVICES_ROJO_VERSION = "7.6.1";'
+			);
 			expect(source).toContain("export type SupportedService");
 			expect(source).toContain("export function isSupportedService");
 		});
