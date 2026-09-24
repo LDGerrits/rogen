@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -365,8 +366,13 @@ describe("scanRootDirs", () => {
 				excluded: [],
 			});
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
-			expect(warnings).toHaveLength(1);
-			expect(warnings[0]).toContain(abs("lobby"));
+			expect(warnings).toMatchObject([
+				{
+					severity: DiagnosticSeverity.Warning,
+					code: "scan.missingRootDir",
+					resource: abs("lobby"),
+				},
+			]);
 		});
 
 		it("should not warn when every root dir exists", async () => {

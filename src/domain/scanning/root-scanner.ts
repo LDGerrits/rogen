@@ -2,7 +2,9 @@ import path from "path";
 import { isMatch } from "../../base/glob.js";
 import { toPosix } from "../../base/path.js";
 import { FileType } from "../../platform/fs/file-system-service.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
+import { ScanDiagnostics } from "./scan-diagnostics.js";
 
 export type SourceKind = "script" | "model" | "data";
 
@@ -36,7 +38,7 @@ export interface ScanOptions {
 
 export interface ScanResult {
 	readonly roots: readonly ScannedRoot[];
-	readonly warnings: readonly string[];
+	readonly warnings: readonly Diagnostic[];
 }
 
 const SCRIPT_EXTENSIONS = new Set([".luau", ".lua", ".ts", ".tsx"]);
@@ -82,12 +84,8 @@ export function scanRootDirs(
 		),
 		warnings: options.rootDirs
 			.filter((_, position) => !scanned[position])
-			.map(missingRootWarning),
+			.map(ScanDiagnostics.missingRootDir),
 	};
-}
-
-function missingRootWarning(rootDir: string): string {
-	return `The root dir "${rootDir}" does not exist, so it contributes nothing.`;
 }
 
 function emptyRoot(rootDir: string): ScannedRoot {

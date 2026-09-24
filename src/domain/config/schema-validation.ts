@@ -1,6 +1,7 @@
 import { JsoncNode } from "../../base/jsonc.js";
 import { JSONSchema } from "../../base/json-schema.js";
-import { Diagnostic, Diagnostics } from "../diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { ConfigDiagnostics } from "./config-diagnostics.js";
 
 const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	object: "an object",
@@ -18,15 +19,14 @@ export function validateNode(
 	path = ""
 ): Diagnostic[] {
 	const location = (at: { line: number; column: number }) => ({
-		file,
-		line: at.line,
-		column: at.column,
+		resource: file,
+		position: { line: at.line, column: at.column },
 	});
 
 	const expected = schema.type === undefined ? [] : [schema.type].flat();
 	if (expected.length > 0 && !expected.includes(node.kind)) {
 		return [
-			Diagnostics.wrongType(
+			ConfigDiagnostics.wrongType(
 				location(node),
 				path,
 				expected.map((kind) => KIND_NAMES[kind]).join(" or "),
@@ -51,7 +51,12 @@ export function validateNode(
 			return validateNode(property.value, known, file, propertyPath);
 		}
 		if (schema.additionalProperties === false) {
-			return [Diagnostics.unknownField(location(property), propertyPath)];
+			return [
+				ConfigDiagnostics.unknownField(
+					location(property),
+					propertyPath
+				),
+			];
 		}
 		if (typeof schema.additionalProperties === "object") {
 			return validateNode(

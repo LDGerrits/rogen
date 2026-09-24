@@ -8,8 +8,8 @@ import {
 import {
 	Diagnostic,
 	DiagnosticLocation,
-	Diagnostics,
-} from "../diagnostics/diagnostic.js";
+} from "../../platform/diagnostics/diagnostic.js";
+import { ConfigDiagnostics } from "./config-diagnostics.js";
 import { RogenConfig } from "./config.js";
 import { validateNode } from "./schema-validation.js";
 
@@ -27,13 +27,21 @@ export function parseConfig(
 	if (errors.length > 0) {
 		return err(
 			errors.map(({ message, line, column }) =>
-				Diagnostics.invalidSyntax({ file, line, column }, message)
+				ConfigDiagnostics.invalidSyntax(
+					{ resource: file, position: { line, column } },
+					message
+				)
 			)
 		);
 	}
 
 	if (root?.kind !== "object") {
-		return err([Diagnostics.notAnObject({ file, line: 1, column: 1 })]);
+		return err([
+			ConfigDiagnostics.notAnObject({
+				resource: file,
+				position: { line: 1, column: 1 },
+			}),
+		]);
 	}
 
 	const schema = Registry.as<ConfigRegistry>(
@@ -48,9 +56,8 @@ export function parseConfig(
 	return ok({
 		config: value as RogenConfig,
 		extendsLocation: extendsValue && {
-			file,
-			line: extendsValue.line,
-			column: extendsValue.column,
+			resource: file,
+			position: { line: extendsValue.line, column: extendsValue.column },
 		},
 	});
 }

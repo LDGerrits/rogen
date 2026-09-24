@@ -6,8 +6,8 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
-	Diagnostics,
-} from "../diagnostics/diagnostic.js";
+} from "../../platform/diagnostics/diagnostic.js";
+import { ConfigDiagnostics } from "./config-diagnostics.js";
 import { parseConfig } from "./config-parser.js";
 import { CollapsedConfig, RogenConfig } from "./config.js";
 
@@ -32,7 +32,7 @@ export async function collapseConfig(
 				...layers.slice(cycleStart).map((l) => l.file),
 				current,
 			];
-			return err([Diagnostics.extendsCycle(referrer, cycle)]);
+			return err([ConfigDiagnostics.extendsCycle(referrer, cycle)]);
 		}
 
 		const layer = await loadLayer(fileSystem, current, referrer);
@@ -61,8 +61,11 @@ async function loadLayer(
 		const detail = ErrorUtils.fromUnknown(error).message;
 		return err([
 			referrer
-				? Diagnostics.extendsUnreadable(referrer, file, detail)
-				: Diagnostics.unreadable({ file, line: 1, column: 1 }, detail),
+				? ConfigDiagnostics.extendsUnreadable(referrer, file, detail)
+				: ConfigDiagnostics.unreadable(
+						{ resource: file, position: { line: 1, column: 1 } },
+						detail
+					),
 		]);
 	}
 

@@ -8,6 +8,7 @@ import {
 	parseInitName,
 	planInit,
 } from "../../domain/workspace/init-plan.js";
+import { renderDiagnostics } from "../../platform/diagnostics/render-diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -36,10 +37,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const fileSystemService = accessor.get(FileSystemService);
 		const logService = accessor.get(LogService);
 
-		const nameResult = parseInitName(args._.slice(1));
-		if (nameResult.isErr()) return nameResult;
-
 		const cwd = environmentService.cwd;
+		const nameResult = parseInitName(args._.slice(1), cwd);
+		if (nameResult.isErr()) {
+			return err(new Error(renderDiagnostics(nameResult.error)));
+		}
+
 		const workspace = await detectWorkspace(fileSystemService, cwd);
 		const plan = planInit({
 			name: nameResult.value,

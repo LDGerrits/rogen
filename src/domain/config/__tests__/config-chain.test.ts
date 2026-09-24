@@ -2,7 +2,10 @@ import "../config.js";
 import { collapseConfig } from "../config-chain.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Result, ResultError } from "../../../base/result.js";
-import { Diagnostic } from "../../diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CollapsedConfig } from "../config.js";
 
 function diagnosticsOf(
@@ -248,12 +251,12 @@ describe("domain/config/config-chain", () => {
 
 			expect(diagnosticsOf(result)).toEqual([
 				{
-					severity: "error",
+					severity: DiagnosticSeverity.Error,
+					code: "config.extendsCycle",
 					message:
 						"extends cycle: /repo/a.rogen.json -> /repo/a.rogen.json.",
-					file: "/repo/a.rogen.json",
-					line: 2,
-					column: 13,
+					resource: "/repo/a.rogen.json",
+					position: { line: 2, column: 13 },
 				},
 			]);
 		});
@@ -266,7 +269,7 @@ describe("domain/config/config-chain", () => {
 			const result = await collapseConfig(fs, "/repo/a.rogen.json");
 
 			const [diagnostic] = diagnosticsOf(result);
-			expect(diagnostic.file).toBe("/repo/c.rogen.json");
+			expect(diagnostic.resource).toBe("/repo/c.rogen.json");
 			expect(diagnostic.message).toBe(
 				"extends cycle: /repo/b.rogen.json -> /repo/c.rogen.json -> /repo/b.rogen.json."
 			);
@@ -284,13 +287,12 @@ describe("domain/config/config-chain", () => {
 
 			const [diagnostic] = diagnosticsOf(result);
 			expect(diagnostic).toMatchObject({
-				severity: "error",
-				file: "/repo/default.rogen.json",
-				line: 2,
-				column: 13,
+				severity: DiagnosticSeverity.Error,
+				code: "config.extendsUnreadable",
+				resource: "/repo/default.rogen.json",
+				position: { line: 2, column: 13 },
 			});
 			expect(diagnostic.message).toContain("/repo/missing.rogen.json");
-			expect(diagnostic.message).toContain("could not be read");
 		});
 
 		it("should report a missing leaf config", async () => {
@@ -298,12 +300,11 @@ describe("domain/config/config-chain", () => {
 
 			const [diagnostic] = diagnosticsOf(result);
 			expect(diagnostic).toMatchObject({
-				severity: "error",
-				file: "/repo/nope.rogen.json",
-				line: 1,
-				column: 1,
+				severity: DiagnosticSeverity.Error,
+				code: "config.unreadable",
+				resource: "/repo/nope.rogen.json",
+				position: { line: 1, column: 1 },
 			});
-			expect(diagnostic.message).toContain("could not be read");
 		});
 
 		it("should report the diagnostics of an invalid ancestor against that file", async () => {
@@ -316,8 +317,8 @@ describe("domain/config/config-chain", () => {
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
-					file: "/repo/base.rogen.json",
-					message: 'unknown field "bogus".',
+					resource: "/repo/base.rogen.json",
+					code: "config.unknownField",
 				},
 			]);
 		});
@@ -367,7 +368,7 @@ describe("domain/config/config-chain", () => {
 			const result = await collapseConfig(fs, "/repo/default.rogen.json");
 
 			expect(
-				diagnosticsOf(result).map((d) => [d.file, d.message])
+				diagnosticsOf(result).map((d) => [d.resource, d.message])
 			).toEqual([
 				[
 					"/repo/base.rogen.json",

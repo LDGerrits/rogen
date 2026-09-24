@@ -26,8 +26,8 @@ function validate(text: string) {
 	const { root } = parseJsonc(text);
 	return validateNode(root!, schema, "a.json").map((d) => [
 		d.message,
-		d.line,
-		d.column,
+		d.position?.line,
+		d.position?.column,
 	]);
 }
 

@@ -1,3 +1,4 @@
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import "../config.js";
 import { parseConfig } from "../config-parser.js";
 
@@ -31,10 +32,10 @@ describe("domain/config/config-parser", () => {
 			expect(result.isErr()).toBe(true);
 			if (!result.isErr()) return;
 			expect(result.error[0]).toMatchObject({
-				severity: "error",
-				file: "lobby.rogen.json",
-				line: 3,
-				column: 2,
+				severity: DiagnosticSeverity.Error,
+				code: "config.invalidSyntax",
+				resource: "lobby.rogen.json",
+				position: { line: 3, column: 2 },
 			});
 		});
 
@@ -50,11 +51,11 @@ describe("domain/config/config-parser", () => {
 			if (!result.isErr()) return;
 			expect(result.error).toEqual([
 				{
-					severity: "error",
+					severity: DiagnosticSeverity.Error,
+					code: "config.unknownField",
 					message: 'unknown field "bogus".',
-					file: "lobby.rogen.json",
-					line: 3,
-					column: 2,
+					resource: "lobby.rogen.json",
+					position: { line: 3, column: 2 },
 				},
 			]);
 		});
@@ -73,7 +74,9 @@ describe("domain/config/config-parser", () => {
 
 			expect(result.isErr()).toBe(true);
 			if (!result.isErr()) return;
-			expect(result.error.map((d) => d.column)).toEqual([3, 11]);
+			expect(result.error.map((d) => d.position?.column)).toEqual([
+				3, 11,
+			]);
 		});
 
 		it.each(["[]", "null", "42", '"text"'])(
@@ -85,10 +88,9 @@ describe("domain/config/config-parser", () => {
 				if (!result.isErr()) return;
 				expect(result.error).toHaveLength(1);
 				expect(result.error[0]).toMatchObject({
-					message: "a config must be a JSON object.",
-					file: "a.rogen.json",
-					line: 1,
-					column: 1,
+					code: "config.notAnObject",
+					resource: "a.rogen.json",
+					position: { line: 1, column: 1 },
 				});
 			}
 		);
@@ -101,9 +103,7 @@ describe("domain/config/config-parser", () => {
 				expect(result.isErr()).toBe(true);
 				if (!result.isErr()) return;
 				expect(
-					result.error.every((d) =>
-						d.message.startsWith("invalid JSONC")
-					)
+					result.error.every((d) => d.code === "config.invalidSyntax")
 				).toBe(true);
 			}
 		);
@@ -150,11 +150,11 @@ describe("domain/config/config-parser", () => {
 			if (!result.isErr()) return;
 			expect(result.error).toEqual([
 				{
-					severity: "error",
+					severity: DiagnosticSeverity.Error,
+					code: "config.wrongType",
 					message: '"rootDirs": expected an array, found a string.',
-					file: "a.rogen.json",
-					line: 1,
-					column: 15,
+					resource: "a.rogen.json",
+					position: { line: 1, column: 15 },
 				},
 			]);
 		});
@@ -167,7 +167,9 @@ describe("domain/config/config-parser", () => {
 
 			expect(result.isErr()).toBe(true);
 			if (!result.isErr()) return;
-			expect(result.error.map((d) => [d.message, d.column])).toEqual([
+			expect(
+				result.error.map((d) => [d.message, d.position?.column])
+			).toEqual([
 				['"rootDirs[1]": expected a string, found a number.', 23],
 			]);
 		});
@@ -180,7 +182,9 @@ describe("domain/config/config-parser", () => {
 
 			expect(result.isErr()).toBe(true);
 			if (!result.isErr()) return;
-			expect(result.error.map((d) => [d.message, d.column])).toEqual([
+			expect(
+				result.error.map((d) => [d.message, d.position?.column])
+			).toEqual([
 				['"tags.mock": expected a boolean, found a string.', 21],
 			]);
 		});
