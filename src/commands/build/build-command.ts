@@ -1,4 +1,13 @@
+import path from "path";
 import { err, ok } from "../../base/result.js";
+import { build, checkRoutes, rootsToIndex } from "../../domain/build/build.js";
+import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
+import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
+import { writeOutput } from "../../domain/output/write-output.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
+import { IndexService } from "../../platform/fs/index-service.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -15,6 +24,13 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../../platform/commands/commands.js";
+
+function logWarnings(
+	logService: LogService,
+	warnings: readonly Diagnostic[]
+): void {
+	for (const warning of warnings) logService.warn(renderDiagnostic(warning));
+}
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "build",
@@ -43,6 +59,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const fileSystemService = accessor.get(FileSystemService);
 		const environmentService = accessor.get(EnvironmentService);
+		const indexService = accessor.get(IndexService);
 
 		if (args["show-config"]) {
 			logService.info(showConfig(configService.configs));
@@ -68,13 +85,47 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		);
 		if (notice) logService.info(notice);
 
-		for (const config of configs.value) {
-			logService.info(
-				`Building. Root dirs: ${config.rootDirs.join(", ")}`
-			);
-		}
+		const entries = configService.configs.flatMap((entry) =>
+			entry.resolved ? [{ file: entry.file, ...entry.resolved }] : []
+		);
+		const upfront = [
+			...checkRoutes(entries),
+			...findOutputClashes(entries),
+		];
+		if (upfront.length > 0) return err(new DiagnosticsError(upfront));
 
-		// TODO: implement the build pipeline.
+		await indexService.initialize(rootsToIndex(configs.value));
+
+		const built = [];
+		const errors: Diagnostic[] = [];
+		for (const config of configs.value) {
+			const result = build(config, indexService);
+			if (result.isErr()) {
+				errors.push(...result.error);
+				continue;
+			}
+			built.push({ config, tree: result.value.value });
+			logWarnings(logService, result.value.warnings);
+		}
+		if (errors.length > 0) return err(new DiagnosticsError(errors));
+
+		for (const { config, tree } of built) {
+			const written = await writeOutput(fileSystemService, config, tree);
+			if (written.isErr())
+				return err(new DiagnosticsError(written.error));
+
+			const outFile =
+				path.relative(environmentService.cwd, config.outFile) || ".";
+			logService.info(
+				written.value.value.written
+					? `Wrote ${outFile}.`
+					: `${outFile} is up to date.`
+			);
+			logWarnings(logService, [
+				...written.value.warnings,
+				...(await checkSyncDir(fileSystemService, config)),
+			]);
+		}
 
 		return ok(undefined);
 	},

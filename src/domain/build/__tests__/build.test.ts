@@ -4,7 +4,7 @@ import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js"
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { build, rootsToIndex } from "../build.js";
+import { build, checkRoutes, rootsToIndex } from "../build.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -124,6 +124,33 @@ describe("domain/build/build", () => {
 			const result = build(config, await indexOf(config.rootDirs));
 
 			expect(result.unwrap().value.name).toBe("lobby");
+		});
+	});
+
+	describe("checkRoutes", () => {
+		it("should name each config file that declares no routes", () => {
+			const diagnostics = checkRoutes([
+				{
+					file: abs("default.rogen.json"),
+					routes: { "*": "Workspace" },
+				},
+				{ file: abs("bare.rogen.json"), routes: {} },
+			]);
+
+			expect(diagnostics).toMatchObject([
+				{ code: "route.noRoutes", resource: abs("bare.rogen.json") },
+			]);
+		});
+
+		it("should report nothing when every config declares a route", () => {
+			expect(
+				checkRoutes([
+					{
+						file: abs("a.rogen.json"),
+						routes: { server: "Workspace" },
+					},
+				])
+			).toEqual([]);
 		});
 	});
 

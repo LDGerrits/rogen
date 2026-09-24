@@ -8,11 +8,21 @@ import { RojoTree } from "../rojo/rojo-tree.js";
 import { applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { scanRootDirs } from "./root-scanner.js";
+import { RouteDiagnostics } from "./route-diagnostics.js";
 import { routeFiles } from "./route-files.js";
 
 export interface BuildOutput {
 	readonly value: RojoTree;
 	readonly warnings: readonly Diagnostic[];
+}
+
+/** An error per config whose chain declares no routes, so the caller can refuse before scanning anything. */
+export function checkRoutes(
+	configs: readonly { file: string; routes: ResolvedConfig["routes"] }[]
+): Diagnostic[] {
+	return configs
+		.filter(({ routes }) => Object.keys(routes).length === 0)
+		.map(({ file }) => RouteDiagnostics.noRoutes({ resource: file }));
 }
 
 /** Reads only the in-memory `index`, which the caller initialized with `rootsToIndex`. */

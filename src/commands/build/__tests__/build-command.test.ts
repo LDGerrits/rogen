@@ -1,3 +1,4 @@
+import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
 import { ResultError } from "../../../base/result.js";
@@ -8,6 +9,7 @@ import {
 	MockConfigService,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
+import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	ConfigEntry,
 	ConfigService,
@@ -15,13 +17,17 @@ import {
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { ParsedArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+
+const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 describe("build command", () => {
 	let store: DisposableStore;
@@ -40,12 +46,14 @@ describe("build command", () => {
 	const run = (
 		configService: MockConfigService,
 		logService: LogService,
-		args: ParsedArgs = { _: ["build"] }
+		args: ParsedArgs = { _: ["build"] },
+		index: IndexService = store.add(new CoreIndexService(fs))
 	) => {
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, fs);
+		services.set(IndexService, index);
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")
@@ -55,16 +63,170 @@ describe("build command", () => {
 			.executeCommand("build", args);
 	};
 
-	it("should read its root dirs from the ConfigService", async () => {
+	const buildable = (
+		overrides: Partial<ResolvedConfig> = {},
+		file = "/repo/default.rogen.json"
+	) =>
+		mockEntry(
+			{
+				rootDirs: [abs("src")],
+				routes: { "*": "ReplicatedStorage" },
+				...overrides,
+			},
+			file
+		);
+
+	it("should write the project file for a config", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();
 		const info = jest.spyOn(logService, "info");
+
 		const result = await run(
-			new MockConfigService([mockEntry({ rootDirs: ["core", "lobby"] })]),
+			new MockConfigService([buildable()]),
 			logService
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(info).toHaveBeenCalledWith("Building. Root dirs: core, lobby");
+		expect(
+			JSON.parse(await fs.readFile(abs("default.project.json")))
+		).toMatchObject({
+			name: "repo",
+			tree: {
+				ReplicatedStorage: {
+					A: { $path: { optional: "src/A.luau" } },
+				},
+			},
+		});
+		expect(info).toHaveBeenCalledWith("Wrote default.project.json.");
+	});
+
+	it("should write one file per config from a shared scan", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const index = store.add(new CoreIndexService(fs));
+		const initialize = jest.spyOn(index, "initialize");
+
+		const result = await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable(
+					{ outFile: abs("source.project.json") },
+					"/repo/source.rogen.json"
+				),
+			]),
+			new NullLogService(),
+			{ _: ["build"] },
+			index
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(initialize).toHaveBeenCalledTimes(1);
+		expect(initialize).toHaveBeenCalledWith([abs("src")]);
+		expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		expect(await fs.exists(abs("source.project.json"))).toBe(true);
+	});
+
+	it("should leave an unchanged project file alone", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		await run(new MockConfigService([buildable()]), new NullLogService());
+		const logService = new NullLogService();
+		const info = jest.spyOn(logService, "info");
+
+		const result = await run(
+			new MockConfigService([buildable()]),
+			logService
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(info).toHaveBeenCalledWith(
+			"default.project.json is up to date."
+		);
+	});
+
+	it("should fail and write nothing when a config declares no routes", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+
+		const result = await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable(
+					{ routes: {}, outFile: abs("bare.project.json") },
+					"/repo/bare.rogen.json"
+				),
+			]),
+			new NullLogService()
+		);
+
+		expect((result as ResultError<Error>).error.message).toContain(
+			"/repo/bare.rogen.json - error: no routes declared"
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		expect(await fs.exists(abs("bare.project.json"))).toBe(false);
+	});
+
+	it("should fail and write nothing when two configs share an output file", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+
+		const result = await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable({}, "/repo/source.rogen.json"),
+			]),
+			new NullLogService()
+		);
+
+		expect((result as ResultError<Error>).error.message).toContain(
+			"write the same file"
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should warn about unrouted files without failing", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const logService = new NullLogService();
+		const warn = jest.spyOn(logService, "warn");
+
+		const result = await run(
+			new MockConfigService([
+				buildable({ routes: { server: "ServerScriptService" } }),
+			]),
+			logService
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining("matched no route")
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(true);
+	});
+
+	it("should warn when nothing the config emits exists under its sync dir", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const logService = new NullLogService();
+		const warn = jest.spyOn(logService, "warn");
+
+		const result = await run(
+			new MockConfigService([buildable({ syncDir: abs("out") })]),
+			logService
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining("nothing emitted")
+		);
+	});
+
+	it("should fail when the project file cannot be written", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		await fs.createDirectory(abs("default.project.json"));
+
+		const result = await run(
+			new MockConfigService([buildable()]),
+			new NullLogService()
+		);
+
+		expect((result as ResultError<Error>).error.message).toContain(
+			"could not be written"
+		);
 	});
 
 	it("should refuse to build when a config is invalid", async () => {

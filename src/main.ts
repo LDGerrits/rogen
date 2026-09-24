@@ -13,6 +13,8 @@ import {
 } from "./platform/environment/environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "./platform/fs/file-system-service.js";
+import { CoreIndexService } from "./platform/fs/core-index-service.js";
+import { IndexService } from "./platform/fs/index-service.js";
 import { LifecycleService } from "./platform/lifecycle/lifecycle-service.js";
 import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-service.js";
 import { Registry } from "./platform/registry/registry.js";
@@ -107,6 +109,10 @@ async function main(): Promise<void> {
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(FileSystemService, fileSystemService);
+		services.set(
+			IndexService,
+			disposables.add(new CoreIndexService(fileSystemService))
+		);
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())
