@@ -1,0 +1,9 @@
+{
+	"steps": [
+		[
+			"build",
+			"--template",
+			"other.project.json"
+		]
+	]
+}

@@ -1,0 +1,13 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"syncDir": "out",
+	"template": "./template.project.json"
+}

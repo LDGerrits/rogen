@@ -1,0 +1,14 @@
+$ rogen build -c configs/lobby.rogen.json
+exit 0
+stdout:
+  Wrote configs/lobby.project.json.
+
+written:
+  configs/lobby.project.json
+
+$ rojo sourcemap configs/lobby.project.json
+configs: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Keep: Folder
+        Yes: ModuleScript  <- ../src/Keep/Yes.luau

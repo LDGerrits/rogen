@@ -1,0 +1,25 @@
+{
+	"steps": [
+		[
+			"build",
+			"a",
+			"b",
+			"-o",
+			"x.project.json"
+		],
+		[
+			"build",
+			"a",
+			"b",
+			"-s",
+			"out"
+		],
+		[
+			"build",
+			"a",
+			"b",
+			"--template",
+			"t.project.json"
+		]
+	]
+}

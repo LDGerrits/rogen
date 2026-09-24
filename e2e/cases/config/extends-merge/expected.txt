@@ -1,0 +1,22 @@
+$ rogen build place
+exit 0
+stdout:
+  Not building: base.rogen.json.
+  Wrote place.project.json.
+
+written:
+  place.project.json
+
+$ rojo sourcemap place.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Lib: ModuleScript  <- Packages/Lib.luau
+    shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.mock.luau
+      Save.spec: ModuleScript  <- src/Save.spec.luau
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau
+  TextChatService: TextChatService
+    Kick: ModuleScript  <- src/Kick.chat.luau
+  Workspace: Workspace

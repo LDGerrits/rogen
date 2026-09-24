@@ -1,0 +1,4 @@
+$ rogen list
+exit 1
+stderr:
+  error: No config file found in <dir>. Looked for default.rogen.json or any *.rogen.json. Run "rogen init" to create one.

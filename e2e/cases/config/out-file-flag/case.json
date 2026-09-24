@@ -1,0 +1,9 @@
+{
+	"steps": [
+		[
+			"build",
+			"-o",
+			"custom/game.project.json"
+		]
+	]
+}

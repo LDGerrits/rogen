@@ -3,3 +3,4 @@ node_modules/
 dist/
 .vscode/
 .npmrc
+!e2e/cases/**/dist/

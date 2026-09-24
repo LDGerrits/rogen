@@ -1,0 +1,9 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/src/Real/Back - warning: this link points at nothing, or back at a directory that contains it, so it contributes nothing.
+
+written:
+  default.project.json

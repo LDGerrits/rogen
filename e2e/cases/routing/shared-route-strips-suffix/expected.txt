@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Config: ModuleScript  <- src/Inventory/shared/Config.luau
+        Types: ModuleScript  <- src/Inventory/Types.shared.luau

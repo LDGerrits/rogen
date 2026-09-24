@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/later - warning: this root dir does not exist, so it contributes nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

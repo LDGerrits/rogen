@@ -1,0 +1,10 @@
+$ rogen build --quiet
+exit 0
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    B: Script  <- src/B.server.luau

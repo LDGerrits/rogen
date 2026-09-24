@@ -1,0 +1,30 @@
+$ rogen init lobby
+exit 0
+stdout:
+  Created lobby-source.rogen.json.
+  Created lobby.rogen.json.
+
+written:
+  lobby-source.rogen.json
+  lobby.rogen.json
+
+lobby-source.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "lobby-source.rogen.json",
+	"syncDir": "dist"
+}

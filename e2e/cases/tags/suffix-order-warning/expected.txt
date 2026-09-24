@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Folder
+      Load: Script  <- src/Save/Load.mock.server.luau
+      Save: ModuleScript  <- src/Save/Save.server.mock.luau

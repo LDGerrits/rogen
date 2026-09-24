@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote build/game.project.json.
+
+written:
+  build/game.project.json
+
+$ rojo sourcemap build/game.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Lib: ModuleScript  <- ../Packages/Lib.luau
+  ServerScriptService: ServerScriptService
+    Save: Script  <- ../src/Save.server.luau
+  Workspace: Workspace

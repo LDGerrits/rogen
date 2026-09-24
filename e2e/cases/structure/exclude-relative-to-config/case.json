@@ -1,0 +1,9 @@
+{
+	"steps": [
+		[
+			"build",
+			"-c",
+			"configs/lobby.rogen.json"
+		]
+	]
+}

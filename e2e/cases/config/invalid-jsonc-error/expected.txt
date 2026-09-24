@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json:4:1 - error: invalid JSONC: expected '}'.

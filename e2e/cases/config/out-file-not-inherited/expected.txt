@@ -1,0 +1,13 @@
+$ rogen build child
+exit 0
+stdout:
+  Not building: base.rogen.json.
+  Wrote child.project.json.
+
+written:
+  child.project.json
+
+$ rojo sourcemap child.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau

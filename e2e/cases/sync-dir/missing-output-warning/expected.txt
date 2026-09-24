@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/src - warning: nothing emitted for root dir "src" exists under "out". The nearest path that exists is "." — has the compiler run?
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+  ServerScriptService: ServerScriptService

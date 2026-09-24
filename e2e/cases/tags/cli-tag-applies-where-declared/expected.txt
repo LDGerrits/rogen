@@ -1,0 +1,23 @@
+$ rogen build lobby match --tag mock --verbose
+exit 0
+stdout:
+  [debug] Tag "mock" is not declared in match.rogen.json; skipped there.
+  Wrote lobby.project.json.
+  Wrote match.project.json.
+
+written:
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.mock.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.luau
+      Analytics.mock: ModuleScript  <- src/Analytics.mock.luau

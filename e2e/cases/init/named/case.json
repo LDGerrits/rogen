@@ -1,0 +1,12 @@
+{
+	"steps": [
+		[
+			"init",
+			"lobby"
+		],
+		[
+			"build",
+			"lobby"
+		]
+	]
+}

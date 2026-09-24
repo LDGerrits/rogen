@@ -1,0 +1,25 @@
+$ rogen build --show-config
+exit 0
+stdout:
+  {
+    "name": "Game",
+    "rootDirs": [
+      "<dir>/src"
+    ],
+    "commonRoot": "<dir>/src",
+    "routes": {
+      "server": "ServerScriptService",
+      "client": "StarterPlayer/StarterPlayerScripts",
+      "shared": "ReplicatedStorage/shared",
+      "*": "ReplicatedStorage/shared"
+    },
+    "tags": {
+      "mock": true
+    },
+    "exclude": [
+      "<dir>/**/*.spec.luau"
+    ],
+    "template": "<dir>/template.project.json",
+    "syncDir": "<dir>/dist",
+    "outFile": "<dir>/default.project.json"
+  }

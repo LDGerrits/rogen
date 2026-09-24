@@ -1,0 +1,14 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Bots: Actor  <- src/Bots/init.meta.json
+      Body: ModuleScript  <- src/Bots/Body.luau
+      Brain: ModuleScript  <- src/Bots/Brain.luau

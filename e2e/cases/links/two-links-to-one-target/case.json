@@ -1,0 +1,6 @@
+{
+	"links": {
+		"src/A": "../shared-code",
+		"src/B": "../shared-code"
+	}
+}

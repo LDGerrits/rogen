@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json:11:14 - error: the output file <dir>/default.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.

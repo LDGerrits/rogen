@@ -1,0 +1,12 @@
+{
+	"extends": "./base.rogen.json",
+	"routes": {
+		"chat": "TextChatService"
+	},
+	"tags": {
+		"mock": true
+	},
+	"exclude": [
+		"**/*.story.luau"
+	]
+}

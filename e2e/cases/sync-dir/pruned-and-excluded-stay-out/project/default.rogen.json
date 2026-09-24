@@ -1,0 +1,18 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"syncDir": "out",
+	"tags": {
+		"mock": false
+	},
+	"exclude": [
+		"**/*.spec.ts"
+	]
+}

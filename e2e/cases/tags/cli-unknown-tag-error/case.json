@@ -1,0 +1,14 @@
+{
+	"steps": [
+		[
+			"build",
+			"--tag",
+			"nope"
+		],
+		[
+			"build",
+			"--no-tag",
+			"nope"
+		]
+	]
+}

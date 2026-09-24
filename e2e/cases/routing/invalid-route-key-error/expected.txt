@@ -1,0 +1,5 @@
+$ rogen build
+exit 1
+stderr:
+  error: <dir>/default.rogen.json:6:14 - error: route key "ser-ver" is invalid: use letters and digits only, starting with a letter.
+  <dir>/default.rogen.json:7:12 - error: route key "2fast" is invalid: use letters and digits only, starting with a letter.

@@ -1,0 +1,13 @@
+$ rogen build -c configs/place.rogen.json
+exit 0
+stdout:
+  Wrote configs/place.project.json.
+
+written:
+  configs/place.project.json
+
+$ rojo sourcemap configs/place.project.json
+configs: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- ../src/A.luau

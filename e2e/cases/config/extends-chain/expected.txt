@@ -1,0 +1,17 @@
+$ rogen build c
+exit 0
+stdout:
+  Not building: a.rogen.json, b.rogen.json.
+  Wrote c.project.json.
+
+written:
+  c.project.json
+
+$ rojo sourcemap c.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      F: ModuleScript  <- one/F.x.luau
+      G: ModuleScript  <- one/G.y.luau
+  ServerStorage: ServerStorage
+    Save: Script  <- one/Save.server.luau

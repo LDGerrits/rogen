@@ -1,0 +1,5 @@
+{
+	"rootDirs": ["src"],
+	"outDir": "dist",
+	"routes": {"*": "ReplicatedStorage"}
+}

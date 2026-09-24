@@ -1,0 +1,48 @@
+$ rogen init
+exit 0
+stdout:
+  Created source.rogen.json.
+  Created default.rogen.json.
+
+$ rogen build default source
+exit 0
+stdout:
+  Wrote default.project.json.
+  Wrote source.project.json.
+
+written:
+  default.project.json
+  default.rogen.json
+  source.project.json
+  source.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "source.rogen.json",
+	"syncDir": "dist"
+}
+
+source.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- dist/Save.server.luau
+
+$ rojo sourcemap source.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau

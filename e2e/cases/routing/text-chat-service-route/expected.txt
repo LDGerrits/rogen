@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Teams: Teams
+    Commands: Folder
+      Assign: ModuleScript  <- src/Commands/Assign.teams.luau
+  TextChatService: TextChatService
+    Commands: Folder
+      Kick: ModuleScript  <- src/Commands/Kick.chat.luau

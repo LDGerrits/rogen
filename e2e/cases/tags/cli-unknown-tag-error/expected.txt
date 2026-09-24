@@ -1,0 +1,9 @@
+$ rogen build --tag nope
+exit 1
+stderr:
+  error: Tag "nope" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.
+
+$ rogen build --no-tag nope
+exit 1
+stderr:
+  error: Tag "nope" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.

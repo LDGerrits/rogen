@@ -1,0 +1,58 @@
+$ rogen build lobby lobby-source match match-source
+exit 0
+stdout:
+  Not building: core.rogen.json.
+  Wrote lobby.project.json.
+  Wrote lobby-source.project.json.
+  Wrote match.project.json.
+  Wrote match-source.project.json.
+
+written:
+  lobby-source.project.json
+  lobby.project.json
+  match-source.project.json
+  match.project.json
+
+$ rojo sourcemap lobby-source.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Settings: ModuleScript  <- places/lobby/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+    Lobby: Folder
+      LobbyService: Script  <- places/lobby/Lobby/LobbyService.server.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Settings: ModuleScript  <- dist/lobby/places/lobby/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- dist/lobby/core/Inventory/InventoryService.server.luau
+    Lobby: Folder
+      LobbyService: Script  <- dist/lobby/places/lobby/Lobby/LobbyService.server.luau
+
+$ rojo sourcemap match-source.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Settings: ModuleScript  <- core/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+    Match: Folder
+      MatchService: Script  <- places/match/Match/MatchService.server.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Settings: ModuleScript  <- dist/match/core/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- dist/match/core/Inventory/InventoryService.server.luau
+    Match: Folder
+      MatchService: Script  <- dist/match/places/match/Match/MatchService.server.luau

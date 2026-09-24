@@ -1,0 +1,27 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: Folder
+        CombatConfig: ModuleScript  <- src/Combat/CombatConfig.shared.luau
+      Inventory: Folder
+        InventoryTypes: ModuleScript  <- src/Inventory/InventoryTypes.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      CombatService: Script  <- src/Combat/CombatService.server.luau
+    Inventory: Folder
+      InventoryService: Script  <- src/Inventory/InventoryService.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Combat: Folder
+        CombatHud: LocalScript  <- src/Combat/CombatHud.client.luau
+      Inventory: Folder
+        InventoryController: LocalScript  <- src/Inventory/InventoryController.client.luau

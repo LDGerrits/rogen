@@ -1,0 +1,16 @@
+$ rogen build
+exit 0
+stdout:
+  Wrote default.project.json.
+stderr:
+  warning: <dir>/core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the compiler's output rooted differently?
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+  ServerScriptService: ServerScriptService
+    Save: Script  <- out/place/Save.server.luau

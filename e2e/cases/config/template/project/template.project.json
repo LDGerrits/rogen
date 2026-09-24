@@ -1,0 +1,16 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$properties": {
+				"Gravity": 100
+			}
+		},
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			}
+		}
+	}
+}

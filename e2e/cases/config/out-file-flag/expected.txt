@@ -1,0 +1,12 @@
+$ rogen build -o custom/game.project.json
+exit 0
+stdout:
+  Wrote custom/game.project.json.
+
+written:
+  custom/game.project.json
+
+$ rojo sourcemap custom/game.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- ../src/Save.server.luau

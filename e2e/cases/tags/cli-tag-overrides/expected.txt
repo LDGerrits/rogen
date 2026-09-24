@@ -1,0 +1,57 @@
+$ rogen build -o plain.project.json
+exit 0
+stdout:
+  Wrote plain.project.json.
+
+$ rogen build -o mocked.project.json --tag mock
+exit 0
+stdout:
+  Wrote mocked.project.json.
+
+$ rogen build -o nodev.project.json --no-tag dev
+exit 0
+stdout:
+  Wrote nodev.project.json.
+
+$ rogen build -o both.project.json -t mock --no-tag dev
+exit 0
+stdout:
+  Wrote both.project.json.
+
+written:
+  both.project.json
+  mocked.project.json
+  nodev.project.json
+  plain.project.json
+
+$ rojo sourcemap both.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.mock.luau
+        Service: ModuleScript  <- src/Analytics/Service.luau
+
+$ rojo sourcemap mocked.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.mock.luau
+        Service: ModuleScript  <- src/Analytics/dev/Service.luau
+
+$ rojo sourcemap nodev.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.luau
+        Service: ModuleScript  <- src/Analytics/Service.luau
+
+$ rojo sourcemap plain.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.luau
+        Service: ModuleScript  <- src/Analytics/dev/Service.luau

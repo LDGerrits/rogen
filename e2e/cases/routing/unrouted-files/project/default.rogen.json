@@ -1,0 +1,8 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService"
+	}
+}

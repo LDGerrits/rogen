@@ -1,0 +1,25 @@
+$ rogen build default mocked
+exit 0
+stdout:
+  Wrote default.project.json.
+  Wrote mocked.project.json.
+
+written:
+  default.project.json
+  mocked.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.luau
+        Types: ModuleScript  <- src/Analytics/Types.luau
+
+$ rojo sourcemap mocked.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.mock.luau
+        Types: ModuleScript  <- src/Analytics/Types.luau

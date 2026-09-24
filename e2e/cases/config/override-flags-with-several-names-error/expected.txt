@@ -1,0 +1,14 @@
+$ rogen build a b -o x.project.json
+exit 1
+stderr:
+  error: -o targets a single config, but several were named. Name one config, or set it in the file.
+
+$ rogen build a b -s out
+exit 1
+stderr:
+  error: -s targets a single config, but several were named. Name one config, or set it in the file.
+
+$ rogen build a b --template t.project.json
+exit 1
+stderr:
+  error: --template targets a single config, but several were named. Name one config, or set it in the file.

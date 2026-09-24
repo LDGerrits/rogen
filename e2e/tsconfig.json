@@ -1,0 +1,8 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "..",
+		"noEmit": true
+	},
+	"include": ["./*.ts", "../src/domain/rojo/__tests__/rojo-cli.ts"]
+}
