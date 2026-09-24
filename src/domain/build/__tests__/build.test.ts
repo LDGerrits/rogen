@@ -10,7 +10,7 @@ const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
 	rootDirs: [abs("src")],
-	routes: {},
+	routes: { "*": "ReplicatedStorage" },
 	tags: {},
 	exclude: [],
 	outFile: abs("default.project.json"),
@@ -61,6 +61,31 @@ describe("domain/build/build", () => {
 					code: "scan.missingRootDir",
 					resource: abs("lobby"),
 				},
+			]);
+		});
+
+		it("should report unrouted files as one warning after the scan's", async () => {
+			await fs.writeFile(abs("core/A.luau"), "");
+			const config = configOf({
+				rootDirs: [abs("core"), abs("lobby")],
+				routes: {},
+			});
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expect(
+				result.unwrap().warnings.map((warning) => warning.code)
+			).toEqual(["scan.missingRootDir", "route.unrouted"]);
+		});
+
+		it("should fail when a route targets an unsupported service", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const config = configOf({ routes: { "*": "Nowhere" } });
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "roblox.unsupportedService" },
 			]);
 		});
 

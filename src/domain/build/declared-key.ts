@@ -64,9 +64,18 @@ function findPascalMatch(
 	return { strippedLength: klower.length };
 }
 
+export interface SuffixSpan {
+	readonly key: string;
+	/** Where the key and its separator begin in the stem. */
+	readonly start: number;
+	readonly length: number;
+}
+
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
+	/** In match order: the trailing key first. */
+	readonly spans: readonly SuffixSpan[];
 	readonly undeclaredSuffix: string | undefined;
 }
 
@@ -77,6 +86,7 @@ export function matchSuffixKeys(
 ): SuffixMatch {
 	let remaining = stem;
 	const matched = new Set<string>();
+	const spans: SuffixSpan[] = [];
 
 	while (remaining.length > 0) {
 		let bestKey: string | undefined;
@@ -97,11 +107,17 @@ export function matchSuffixKeys(
 
 		matched.add(bestKey);
 		remaining = remaining.slice(0, remaining.length - bestStrip);
+		spans.push({
+			key: bestKey,
+			start: remaining.length,
+			length: bestStrip,
+		});
 	}
 
 	return {
 		baseName: remaining,
 		matchedKeys: matched,
+		spans,
 		undeclaredSuffix: trailingCandidate(remaining),
 	};
 }

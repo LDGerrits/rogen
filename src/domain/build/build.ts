@@ -6,6 +6,7 @@ import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { scanRootDirs } from "./root-scanner.js";
+import { routeFiles } from "./route-files.js";
 
 const PROJECT_FILE_SUFFIX = ".project.json";
 
@@ -19,17 +20,19 @@ export function build(
 	config: ResolvedConfig,
 	index: IndexService
 ): Result<BuildOutput, Diagnostic[]> {
-	const { warnings } = scanRootDirs(index, {
+	const scan = scanRootDirs(index, {
 		rootDirs: config.rootDirs,
 		exclude: config.exclude,
 	});
+	const routing = routeFiles(scan.roots, config);
+	if (routing.isErr()) return routing;
 
 	return ok({
 		value: {
 			name: path.basename(config.outFile, PROJECT_FILE_SUFFIX),
 			tree: { $className: "DataModel" },
 		},
-		warnings,
+		warnings: [...scan.warnings, ...routing.value.warnings],
 	});
 }
 

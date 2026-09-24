@@ -92,6 +92,14 @@ describe("matchSuffixKeys", () => {
 		expect(backward.matchedKeys).toEqual(new Set(["mock", "server"]));
 	});
 
+	it("records where each matched key sits in the stem", () => {
+		const result = matchSuffixKeys("Foo.server.mock", ROUTES_AND_TAGS);
+		expect(result.spans).toEqual([
+			{ key: "mock", start: 10, length: 5 },
+			{ key: "server", start: 3, length: 7 },
+		]);
+	});
+
 	it("stops the run at the first non-declared part: Foo.mock.Bar yields no keys", () => {
 		const result = matchSuffixKeys("Foo.mock.Bar", ROUTES_AND_TAGS);
 		expect(result.matchedKeys.size).toBe(0);
