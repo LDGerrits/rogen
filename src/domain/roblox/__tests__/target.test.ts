@@ -35,7 +35,20 @@ describe("domain/roblox/target", () => {
 			});
 		});
 
-		it.each(["Server", "StarterPlayerScripts", "replicatedstorage", ""])(
+		it("should accept TextChatService as a first segment", () => {
+			expect(
+				parseTarget("TextChatService/Config", location).unwrap()
+			).toEqual({ service: "TextChatService", folders: ["Config"] });
+		});
+
+		it.each([
+			"Server",
+			"StarterPlayerScripts",
+			"replicatedstorage",
+			"CoreGui",
+			"ReplicatedStorge",
+			"",
+		])(
 			"should reject %j as a first segment that is not a supported service",
 			(target) => {
 				const result = parseTarget(target, location);
