@@ -52,5 +52,30 @@ describe("DiskWatcher", () => {
 
 			expect(changes.some(added)).toBe(true);
 		});
+
+		it("should skip a file and a directory it was told to ignore", async () => {
+			const changes: FileChange[] = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+			const skippedDir = path.join(dir, "out");
+			const skippedFile = path.join(dir, "a.project.json");
+			await fs.mkdir(skippedDir);
+
+			await watcher.watch([{ path: dir, recursive: true }], {
+				ignored: [skippedDir, skippedFile],
+			});
+			await fs.writeFile(path.join(skippedDir, "B.luau"), "");
+			await fs.writeFile(skippedFile, "");
+			await fs.writeFile(path.join(dir, "a.luau"), "");
+
+			await waitFor(() =>
+				changes.some(
+					(c) => c.path === toPosix(path.join(dir, "a.luau"))
+				)
+			);
+
+			expect(changes.map((c) => c.path)).toEqual([
+				toPosix(path.join(dir, "a.luau")),
+			]);
+		});
 	});
 });

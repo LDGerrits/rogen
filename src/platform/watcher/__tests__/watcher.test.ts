@@ -125,4 +125,19 @@ describe("MemoryWatcher", () => {
 
 		expect(listener).not.toHaveBeenCalled();
 	});
+
+	it("should skip a file and everything under a directory it was told to ignore", async () => {
+		const listener = jest.fn();
+		watcher.onDidChangeFile(listener);
+
+		await watcher.watch([{ path: "src", recursive: true }], {
+			ignored: ["src/out", "src/a.project.json"],
+		});
+
+		await memoryFs.writeFile("src/out/nested/A.luau", "");
+		await memoryFs.writeFile("src/a.project.json", "");
+		await memoryFs.writeFile("src/out-of-tree.luau", "");
+
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
 });

@@ -12,6 +12,11 @@ export interface WriteOutputResult {
 	readonly warnings: readonly Diagnostic[];
 }
 
+/** The file `writeOutput` stages a write through before renaming it into place. */
+export function stagingFile(outFile: string): string {
+	return `${outFile}.tmp`;
+}
+
 /** Leaves the file untouched when its bytes wouldn't change, so Rojo doesn't re-sync and `watch` doesn't rebuild on its own write. */
 export async function writeOutput(
 	fileSystem: FileSystemService,
@@ -20,7 +25,7 @@ export async function writeOutput(
 ): Promise<Result<WriteOutputResult, Diagnostic[]>> {
 	const { outFile } = config;
 	const content = `${stableStringify(tree)}\n`;
-	const temporary = `${outFile}.tmp`;
+	const temporary = stagingFile(outFile);
 
 	try {
 		if (

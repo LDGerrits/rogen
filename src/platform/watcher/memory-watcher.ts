@@ -4,7 +4,8 @@ import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { FileChange } from "../fs/file-events.js";
-import { Watcher, WatchRequest } from "./watcher.js";
+import { isIgnored } from "./ignored-paths.js";
+import { Watcher, WatchOptions, WatchRequest } from "./watcher.js";
 
 export class MemoryWatcher implements Watcher {
 	declare readonly _serviceBrand: undefined;
@@ -16,6 +17,7 @@ export class MemoryWatcher implements Watcher {
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private activeRequests: WatchRequest[] = [];
+	private ignored: readonly string[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
 	constructor(
@@ -23,7 +25,11 @@ export class MemoryWatcher implements Watcher {
 		private readonly logService: LogService
 	) {}
 
-	async watch(requests: WatchRequest[]): Promise<void> {
+	async watch(
+		requests: WatchRequest[],
+		options: WatchOptions = {}
+	): Promise<void> {
+		this.ignored = options.ignored ?? [];
 		this.activeRequests = requests.map((req) => ({
 			...req,
 			path: toPosix(req.path),
@@ -39,6 +45,7 @@ export class MemoryWatcher implements Watcher {
 
 			this.memoryFs.onDidMutateFile((change) => {
 				const normalizedChangePath = toPosix(change.path);
+				if (isIgnored(normalizedChangePath, this.ignored)) return;
 
 				const isWatched = this.activeRequests.some((req) => {
 					if (req.recursive) {
@@ -69,5 +76,6 @@ export class MemoryWatcher implements Watcher {
 			this.watchDisposables = null;
 		}
 		this.activeRequests = [];
+		this.ignored = [];
 	}
 }

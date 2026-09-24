@@ -4,7 +4,8 @@ import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
 import { FileChange, FileChangeType } from "../fs/file-events.js";
-import { Watcher, WatchRequest } from "./watcher.js";
+import { isIgnored } from "./ignored-paths.js";
+import { Watcher, WatchOptions, WatchRequest } from "./watcher.js";
 
 export class DiskWatcher implements Watcher {
 	declare readonly _serviceBrand: undefined;
@@ -19,7 +20,10 @@ export class DiskWatcher implements Watcher {
 
 	constructor(private readonly logService: LogService) {}
 
-	async watch(requests: WatchRequest[]): Promise<void> {
+	async watch(
+		requests: WatchRequest[],
+		options: WatchOptions = {}
+	): Promise<void> {
 		await this.stop();
 
 		const targetPaths = requests.map((r) => r.path);
@@ -32,6 +36,8 @@ export class DiskWatcher implements Watcher {
 			persistent: true,
 			depth: requests.some((r) => r.recursive) ? undefined : 0,
 			followSymlinks: false,
+			ignored: (target: string) =>
+				isIgnored(target, options.ignored ?? []),
 		});
 
 		this.watcher.on("add", (p) =>

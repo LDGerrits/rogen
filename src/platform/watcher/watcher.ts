@@ -7,6 +7,11 @@ export interface WatchRequest {
 	readonly recursive: boolean;
 }
 
+export interface WatchOptions {
+	/** Paths to skip; a directory skips everything under it. */
+	readonly ignored?: readonly string[];
+}
+
 export interface Watcher {
 	readonly _serviceBrand: undefined;
 
@@ -14,7 +19,7 @@ export interface Watcher {
 	readonly onDidError: Event<Error>;
 
 	/** Resolves once changes under `requests` are being reported. */
-	watch(requests: WatchRequest[]): Promise<void>;
+	watch(requests: WatchRequest[], options?: WatchOptions): Promise<void>;
 	stop(): Promise<void>;
 }
 
