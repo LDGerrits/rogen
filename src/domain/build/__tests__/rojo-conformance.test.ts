@@ -35,6 +35,7 @@ const FILES: Record<string, string> = {
 	"T.txt": "text",
 	"U.luau.txt": "text",
 	"V.model.json": '{"className":"Folder"}',
+	"W.project.json": '{"name":"W","tree":{"$className":"Folder"}}',
 	"X.md": "# notes",
 	"Y.msgpack": "",
 	"Foo.luau": "",

@@ -7,8 +7,8 @@ import { Target, parseTarget } from "../roblox/target.js";
 import {
 	RojoScriptSuffix,
 	rojoAssignedName,
-	rojoModelName,
 	rojoScriptSuffix,
+	stripRojoDataSuffix,
 } from "../rojo/rojo-assigned-name.js";
 import {
 	SuffixForm,
@@ -165,7 +165,9 @@ function routeEntry(
 		)?.key;
 		tags.push(...tagSpansOf(match.spans, context).map(asTagMatch));
 	} else {
-		const stem = stemOf(leaf);
+		const rawStem = stemOf(leaf);
+		const stem =
+			entry.kind === "data" ? stripRojoDataSuffix(rawStem) : rawStem;
 		const match = matchSuffixKeys(stem, context.declaredKeys);
 		const tagSpans = tagSpansOf(match.spans, context);
 		tags.push(...tagSpans.map(asTagMatch));
@@ -186,7 +188,6 @@ function routeEntry(
 		}
 		name = stripSpans(stem, stripped);
 		if (entry.kind === "script") name = rojoAssignedName(name);
-		if (entry.kind === "data") name = rojoModelName(name);
 	}
 
 	const target = context.targets.get(governing ?? FALLBACK_ROUTE);

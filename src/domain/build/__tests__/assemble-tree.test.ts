@@ -539,6 +539,22 @@ describe("assembleTree", () => {
 			expect(warnings).toEqual([]);
 		});
 
+		it("should place a nested project file without collapsing its directory", async () => {
+			await write(
+				"src/Inventory/Save.luau",
+				"src/Inventory/Outer.project.json"
+			);
+
+			const storage = await storageOf();
+
+			expect(storage.Inventory).toEqual({
+				$className: "Folder",
+				$ignoreUnknownInstances: false,
+				Save: { $path: optional("src/Inventory/Save.luau") },
+				Outer: { $path: optional("src/Inventory/Outer.project.json") },
+			});
+		});
+
 		it("should name a .model.json file without the .model", async () => {
 			await write("src/Gun.model.json", "src/Foo.luau");
 

@@ -264,6 +264,31 @@ describe("routeFiles", () => {
 			]);
 		});
 
+		it("should route a .model.json file by a suffix before .model", async () => {
+			await write("src/Gun.server.model.json");
+
+			expect(await paths()).toEqual(["ServerScriptService/Gun"]);
+		});
+
+		it("should strip a tag suffix before .model from the name", async () => {
+			await write("src/Gun.mock.model.json");
+
+			const result = await route({ tags: { mock: true } });
+
+			expect(
+				result.unwrap().routed.map((file) => file.instancePath)
+			).toEqual([["ReplicatedStorage", "shared", "Gun"]]);
+			expect(result.unwrap().routed[0].tags).toMatchObject([
+				{ tag: "mock" },
+			]);
+		});
+
+		it("should name a nested project file after the part before .project", async () => {
+			await write("src/Outer.project.json");
+
+			expect(await paths()).toEqual(["ReplicatedStorage/shared/Outer"]);
+		});
+
 		it("should leave an ignored suffix on a model in its Rojo name", async () => {
 			await write("src/server/Gun.client.rbxm");
 

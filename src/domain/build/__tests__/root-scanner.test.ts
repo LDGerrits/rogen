@@ -80,8 +80,8 @@ describe("scanRootDirs", () => {
 			]);
 		});
 
-		it("should drop the files Rojo reads as metadata or a nested project", async () => {
-			await write("src/A.luau", "src/A.meta.json", "src/B.project.json");
+		it("should drop a .meta.json file, which Rojo applies to the file beside it", async () => {
+			await write("src/A.luau", "src/A.meta.json");
 
 			const { roots } = await scan();
 

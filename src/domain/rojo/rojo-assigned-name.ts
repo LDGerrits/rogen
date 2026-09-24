@@ -17,3 +17,8 @@ export function rojoAssignedName(stem: string): string {
 export function rojoModelName(stem: string): string {
 	return stem.endsWith(".model") ? stem.slice(0, -".model".length) : stem;
 }
+
+// Rojo reads `.model.json` and `.project.json` as a model and a nested project; only the part before the suffix is ours to name.
+export function stripRojoDataSuffix(stem: string): string {
+	return stem.replace(/(?<=.)\.(model|project)$/, "");
+}

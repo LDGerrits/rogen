@@ -1,4 +1,8 @@
-import { rojoAssignedName, rojoModelName } from "../rojo-assigned-name.js";
+import {
+	rojoAssignedName,
+	rojoModelName,
+	stripRojoDataSuffix,
+} from "../rojo-assigned-name.js";
 
 describe("rojoAssignedName", () => {
 	it("strips a trailing .client", () => {
@@ -34,5 +38,17 @@ describe("rojoModelName", () => {
 	it("leaves any other stem untouched", () => {
 		expect(rojoModelName("Gun")).toBe("Gun");
 		expect(rojoModelName("Gun.model.mock")).toBe("Gun.model.mock");
+	});
+});
+
+describe("stripRojoDataSuffix", () => {
+	it("strips a trailing .model or .project", () => {
+		expect(stripRojoDataSuffix("Gun.model")).toBe("Gun");
+		expect(stripRojoDataSuffix("Outer.project")).toBe("Outer");
+	});
+
+	it("leaves a stem that is only the suffix, and any other stem", () => {
+		expect(stripRojoDataSuffix(".model")).toBe(".model");
+		expect(stripRojoDataSuffix("Gun.model.mock")).toBe("Gun.model.mock");
 	});
 });
