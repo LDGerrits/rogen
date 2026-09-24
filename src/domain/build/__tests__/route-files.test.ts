@@ -255,13 +255,19 @@ describe("routeFiles", () => {
 			).toEqual([["ServerScriptService", "Foo"]]);
 		});
 
-		it("should not route models or data files by suffix", async () => {
+		it("should route models and data files by suffix and strip it", async () => {
 			await write("src/Gun.server.rbxm", "src/Data.client.json");
 
 			expect(await paths()).toEqual([
-				"ReplicatedStorage/shared/Data.client",
-				"ReplicatedStorage/shared/Gun.server",
+				"StarterPlayer/StarterPlayerScripts/Data",
+				"ServerScriptService/Gun",
 			]);
+		});
+
+		it("should leave an ignored suffix on a model in its Rojo name", async () => {
+			await write("src/server/Gun.client.rbxm");
+
+			expect(await paths()).toEqual(["ServerScriptService/Gun.client"]);
 		});
 
 		it("should not route on a tag alone", async () => {

@@ -87,17 +87,12 @@ export interface SuffixSpan {
 	readonly form: SuffixForm;
 }
 
-export interface UndeclaredSuffix {
-	readonly text: string;
-	readonly form: SuffixForm;
-}
-
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	readonly undeclaredSuffix: UndeclaredSuffix | undefined;
+	readonly undeclaredSuffix: string | undefined;
 }
 
 // Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`.
@@ -141,13 +136,13 @@ export function matchSuffixKeys(
 	};
 }
 
-function trailingCandidate(remaining: string): UndeclaredSuffix | undefined {
+function trailingCandidate(remaining: string): string | undefined {
 	if (remaining.length === 0) return undefined;
 
 	for (let i = remaining.length - 1; i >= 0; i--) {
 		if (isSeparator(remaining[i])) {
 			return i < remaining.length - 1
-				? { text: remaining.slice(i + 1), form: "separator" }
+				? remaining.slice(i + 1)
 				: undefined;
 		}
 	}
@@ -155,8 +150,7 @@ function trailingCandidate(remaining: string): UndeclaredSuffix | undefined {
 	for (let i = remaining.length - 1; i > 0; i--) {
 		const ch = remaining[i];
 		if (!isUpper(ch)) continue;
-		if (!isUpper(remaining[i - 1]))
-			return { text: remaining.slice(i), form: "capital" };
+		if (!isUpper(remaining[i - 1])) return remaining.slice(i);
 		return undefined;
 	}
 

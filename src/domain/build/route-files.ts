@@ -35,7 +35,7 @@ export interface RoutedFile {
 	readonly instancePath: readonly string[];
 	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
 	readonly tags: readonly TagMatch[];
-	/** A separator-set-off trailing part of the name that no declared key explains. */
+	/** A dot-separated trailing part of the name that no declared key explains. */
 	readonly undeclaredSuffix?: string;
 	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
@@ -168,18 +168,21 @@ function routeEntry(
 		const match = matchSuffixKeys(stem, context.declaredKeys);
 		const tagSpans = tagSpansOf(match.spans, context);
 		tags.push(...tagSpans.map(asTagMatch));
-		if (match.undeclaredSuffix?.form === "separator")
-			undeclaredSuffix = match.undeclaredSuffix.text;
+		if (
+			match.undeclaredSuffix &&
+			match.baseName.endsWith(`.${match.undeclaredSuffix}`)
+		)
+			undeclaredSuffix = match.undeclaredSuffix;
 
 		const stripped = [...tagSpans];
+		const routeSpan = governing
+			? undefined
+			: match.spans.find((span) => context.routeKeys.has(span.key));
+		if (routeSpan) {
+			governing = routeSpan.key;
+			stripped.push(routeSpan);
+		}
 		if (entry.kind === "script") {
-			const routeSpan = governing
-				? undefined
-				: match.spans.find((span) => context.routeKeys.has(span.key));
-			if (routeSpan) {
-				governing = routeSpan.key;
-				stripped.push(routeSpan);
-			}
 			if (tagSpans.length > 0 && !rojoScriptSuffix(stem))
 				buriedScriptSuffix = rojoScriptSuffix(
 					stripSpans(stem, tagSpans)

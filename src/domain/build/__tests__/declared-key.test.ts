@@ -106,12 +106,6 @@ describe("matchSuffixKeys", () => {
 		]);
 	});
 
-	it("reports the form of an undeclared suffix", () => {
-		expect(
-			matchSuffixKeys("HttpBeta", ROUTES_AND_TAGS).undeclaredSuffix
-		).toEqual({ text: "Beta", form: "capital" });
-	});
-
 	it("stops the run at the first non-declared part: Foo.mock.Bar yields no keys", () => {
 		const result = matchSuffixKeys("Foo.mock.Bar", ROUTES_AND_TAGS);
 		expect(result.matchedKeys.size).toBe(0);
@@ -126,10 +120,7 @@ describe("matchSuffixKeys", () => {
 
 	it("reports an undeclared trailing suffix so callers can warn about it", () => {
 		const result = matchSuffixKeys("Analytics.beta", ROUTES_AND_TAGS);
-		expect(result.undeclaredSuffix).toEqual({
-			text: "beta",
-			form: "separator",
-		});
+		expect(result.undeclaredSuffix).toBe("beta");
 	});
 
 	it("reports no undeclared suffix for an ordinary PascalCase name", () => {

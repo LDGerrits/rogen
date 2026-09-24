@@ -386,20 +386,15 @@ describe("applyTags", () => {
 			expect(result.warnings[0].message).toContain("2 files");
 		});
 
-		it("should not warn about an ordinary capitalised name", async () => {
-			await write("src/InventoryService.luau");
+		it.each(["InventoryService", "player_data", "Foo-beta", "HttpBeta"])(
+			"should not warn about %s, which has no dot-separated suffix",
+			async (name) => {
+				await write(`src/${name}.luau`);
 
-			expect((await apply({ mock: true })).unwrap().warnings).toEqual([]);
-		});
-
-		it("should warn about a separator suffix such as a snake_case part", async () => {
-			await write("src/player_data.luau");
-
-			const { warnings } = (await apply({ mock: true })).unwrap();
-
-			expect(warnings.map((warning) => warning.code)).toEqual([
-				"tag.undeclaredSuffix",
-			]);
-		});
+				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
+					[]
+				);
+			}
+		);
 	});
 });
