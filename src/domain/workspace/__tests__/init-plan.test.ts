@@ -1,5 +1,5 @@
 import { RogenConfig } from "../../config/config.js";
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoTree } from "../../rojo/rojo-tree.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
 import { parseInitName, planInit } from "../init-plan.js";
 

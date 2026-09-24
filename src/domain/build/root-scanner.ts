@@ -32,8 +32,8 @@ export interface ScannedRoot {
 
 export interface ScanOptions {
 	readonly rootDirs: readonly string[];
+	/** Absolute, POSIX-style globs, as the collapsed config produces them. */
 	readonly exclude: readonly string[];
-	readonly configDir: string;
 }
 
 export interface ScanResult {
@@ -102,10 +102,8 @@ function scanRoot(
 	const excluded: string[] = [];
 
 	const isExcluded = (absolutePath: string) => {
-		const fromConfig = toPosix(
-			path.relative(options.configDir, absolutePath)
-		);
-		return options.exclude.some((glob) => isMatch(fromConfig, glob));
+		const posixPath = toPosix(absolutePath);
+		return options.exclude.some((glob) => isMatch(posixPath, glob));
 	};
 
 	const visit = (dir: string): boolean => {

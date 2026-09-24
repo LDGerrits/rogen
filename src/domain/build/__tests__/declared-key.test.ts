@@ -2,7 +2,6 @@ import {
 	matchFolderKey,
 	matchMarkerKey,
 	matchSuffixKeys,
-	rojoAssignedName,
 } from "../declared-key.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
@@ -123,27 +122,5 @@ describe("matchSuffixKeys", () => {
 	it("prefers the longer of two matching forms at one position", () => {
 		const result = matchSuffixKeys("Foo.Server", ROUTES);
 		expect(result.baseName).toBe("Foo");
-	});
-});
-
-describe("rojoAssignedName", () => {
-	it("strips a trailing .client", () => {
-		expect(rojoAssignedName("main.client")).toBe("main");
-	});
-
-	it("strips a trailing .server", () => {
-		expect(rojoAssignedName("main.server")).toBe("main");
-	});
-
-	it("leaves a non-trailing .server untouched, matching Rojo", () => {
-		expect(rojoAssignedName("Foo.server.mock")).toBe("Foo.server.mock");
-	});
-
-	it("leaves any other suffix untouched", () => {
-		expect(rojoAssignedName("Types.shared")).toBe("Types.shared");
-	});
-
-	it("does not know about declared keys at all", () => {
-		expect(rojoAssignedName("Save+mock.server")).toBe("Save+mock");
 	});
 });

@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
@@ -9,6 +10,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ScannedRoot, ScanOptions, scanRootDirs } from "../root-scanner.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+const glob = (pattern: string) => toPosix(abs(pattern));
 
 describe("scanRootDirs", () => {
 	let fs: MemoryFileSystemService;
@@ -20,7 +22,6 @@ describe("scanRootDirs", () => {
 		const scanOptions: ScanOptions = {
 			rootDirs: [abs("src")],
 			exclude: [],
-			configDir: abs("."),
 			...options,
 		};
 		const index = newIndex();
@@ -240,7 +241,7 @@ describe("scanRootDirs", () => {
 		it("should not list a dot-file inside an excluded directory", async () => {
 			await write("src/legacy/.server");
 
-			const { roots } = await scan({ exclude: ["src/legacy"] });
+			const { roots } = await scan({ exclude: [glob("src/legacy")] });
 
 			expect(roots[0].markers).toEqual([]);
 		});
@@ -250,7 +251,7 @@ describe("scanRootDirs", () => {
 		it("should remove matching files", async () => {
 			await write("src/Keep.luau", "src/Drop.spec.luau");
 
-			const { roots } = await scan({ exclude: ["**/*.spec.luau"] });
+			const { roots } = await scan({ exclude: [glob("**/*.spec.luau")] });
 
 			expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 		});
@@ -262,18 +263,17 @@ describe("scanRootDirs", () => {
 				"src/tests/b/B.luau"
 			);
 
-			const { roots } = await scan({ exclude: ["**/tests"] });
+			const { roots } = await scan({ exclude: [glob("**/tests")] });
 
 			expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 		});
 
-		it("should match globs relative to the config's directory", async () => {
+		it("should match globs against absolute paths", async () => {
 			await write("places/main/src/A.luau", "places/main/src/B.luau");
 
 			const { roots } = await scan({
 				rootDirs: [abs("places/main/src")],
-				configDir: abs("places/main"),
-				exclude: ["src/B.luau"],
+				exclude: [glob("places/main/src/B.luau")],
 			});
 
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
@@ -282,7 +282,7 @@ describe("scanRootDirs", () => {
 		it("should remove an excluded init script before deciding whether the directory is a unit", async () => {
 			await write("src/Foo/init.luau", "src/Foo/Bar.luau");
 
-			const { roots } = await scan({ exclude: ["**/init.luau"] });
+			const { roots } = await scan({ exclude: [glob("**/init.luau")] });
 
 			expect(files(roots[0])).toEqual(["script:Foo/Bar.luau"]);
 		});
@@ -295,7 +295,7 @@ describe("scanRootDirs", () => {
 			);
 
 			const { roots } = await scan({
-				exclude: ["**/tests", "**/*.spec.luau"],
+				exclude: [glob("**/tests"), glob("**/*.spec.luau")],
 			});
 
 			expect(roots[0].excluded).toEqual(["X.spec.luau", "tests"]);
@@ -403,7 +403,6 @@ describe("scanRootDirs", () => {
 			const result = scanRootDirs(index, {
 				rootDirs: [abs("src")],
 				exclude: [],
-				configDir: abs("."),
 			});
 
 			expect(result.roots[0].entries).toHaveLength(2);
@@ -414,12 +413,12 @@ describe("scanRootDirs", () => {
 			await write("src/A.luau", "src/B.luau");
 			const index = newIndex();
 			await index.initialize([abs("src")]);
-			const base = { rootDirs: [abs("src")], configDir: abs(".") };
+			const base = { rootDirs: [abs("src")] };
 
 			const all = scanRootDirs(index, { ...base, exclude: [] });
 			const some = scanRootDirs(index, {
 				...base,
-				exclude: ["**/B.luau"],
+				exclude: [glob("**/B.luau")],
 			});
 
 			expect(files(all.roots[0])).toEqual([
@@ -444,7 +443,6 @@ describe("scanRootDirs", () => {
 			const result = scanRootDirs(index, {
 				rootDirs: [abs("src")],
 				exclude: [],
-				configDir: abs("."),
 			});
 
 			expect(files(result.roots[0])).toEqual([

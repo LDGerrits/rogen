@@ -2,7 +2,7 @@ import path from "path";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { RojoNode } from "../rojo/rojo-project.js";
+import { RojoNode } from "../rojo/rojo-tree.js";
 
 export type Toolchain = "roblox-ts" | "darklua" | "luau";
 

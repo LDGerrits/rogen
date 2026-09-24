@@ -1,6 +1,6 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { OptionalRojoPath, RojoPath } from "./rojo-project.js";
+import { OptionalRojoPath, RojoPath } from "../rojo/rojo-tree.js";
 
 export interface SyncLayout {
 	readonly commonRoot: string;

@@ -4,7 +4,7 @@ import {
 	Extensions,
 	ConfigRegistry,
 } from "../../../platform/config/config-registry.js";
-import { SUPPORTED_SERVICES, RogenConfig, ResolvedConfig } from "../config.js";
+import { RogenConfig, ResolvedConfig } from "../config.js";
 
 describe("domain/config/config contribution", () => {
 	const registry = Registry.as<ConfigRegistry>(Extensions.Config);
@@ -102,21 +102,5 @@ describe("domain/config/config contribution", () => {
 		};
 		expect(resolved.template).toBeUndefined();
 		expect(resolved.syncDir).toBeUndefined();
-	});
-
-	it("exports the supported services", () => {
-		expect(SUPPORTED_SERVICES).toEqual([
-			"ServerScriptService",
-			"ServerStorage",
-			"ReplicatedStorage",
-			"ReplicatedFirst",
-			"StarterGui",
-			"StarterPack",
-			"StarterPlayer",
-			"Workspace",
-			"Lighting",
-			"SoundService",
-			"RobloxPluginGuiService",
-		]);
 	});
 });

@@ -5,7 +5,7 @@ import {
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RojoTree } from "../rojo/rojo-project.js";
+import { RojoTree } from "../rojo/rojo-tree.js";
 import { DetectedWorkspace } from "./detect-workspace.js";
 import { InitDiagnostics } from "./init-diagnostics.js";
 

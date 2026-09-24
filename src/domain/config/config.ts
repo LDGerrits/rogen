@@ -4,22 +4,7 @@ import {
 	Extensions,
 	ConfigRegistry,
 } from "../../platform/config/config-registry.js";
-
-export const SUPPORTED_SERVICES = [
-	"ServerScriptService",
-	"ServerStorage",
-	"ReplicatedStorage",
-	"ReplicatedFirst",
-	"StarterGui",
-	"StarterPack",
-	"StarterPlayer",
-	"Workspace",
-	"Lighting",
-	"SoundService",
-	"RobloxPluginGuiService",
-] as const;
-
-export type SupportedService = (typeof SUPPORTED_SERVICES)[number];
+import { SUPPORTED_SERVICES } from "../roblox/services.js";
 
 export interface RogenConfig {
 	readonly $schema?: string;
@@ -61,7 +46,8 @@ const routesSchema: JSONSchema = {
 	type: "object",
 	default: {},
 	description:
-		'Route key -> "Service" or "Service/Folder/...". Only declared ' +
+		'Route key -> "Service" or "Service/Folder/...", where Service is ' +
+		`one of ${SUPPORTED_SERVICES.join(", ")}. Only declared ` +
 		"keys route: there is no built-in set, so an absent or empty " +
 		"routes leaves every file unrouted (rogen init writes a starting set).",
 	additionalProperties: { type: "string" },
