@@ -3,7 +3,6 @@ import {
 	DiagnosticLocation,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { SUPPORTED_SERVICES } from "./services.js";
 
 export const RobloxDiagnostics = {
 	unsupportedService: (
@@ -13,6 +12,6 @@ export const RobloxDiagnostics = {
 		errorDiagnostic(
 			"roblox.unsupportedService",
 			location,
-			`"${segment}" is not a supported service; a target must start with one of ${SUPPORTED_SERVICES.join(", ")}.`
+			`"${segment}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
 		),
 };

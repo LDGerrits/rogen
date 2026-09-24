@@ -4,7 +4,6 @@ import {
 	Extensions,
 	ConfigRegistry,
 } from "../../platform/config/config-registry.js";
-import { SUPPORTED_SERVICES } from "../roblox/services.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 
 export interface RogenConfig {
@@ -42,7 +41,8 @@ const routesSchema: JSONSchema = {
 	default: {},
 	description:
 		'Route key -> "Service" or "Service/Folder/...", where Service is ' +
-		`one of ${SUPPORTED_SERVICES.join(", ")}. Only declared ` +
+		"any service Rojo can write to, such as ServerScriptService or " +
+		"ReplicatedStorage. Only declared " +
 		"keys route: there is no built-in set, so an absent or empty " +
 		"routes leaves every file unrouted (rogen init writes a starting set).",
 	additionalProperties: { type: "string" },

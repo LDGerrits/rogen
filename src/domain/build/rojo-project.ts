@@ -1,4 +1,4 @@
-import { containerClassName } from "../roblox/services.js";
+import { containerClassName } from "../roblox/container-class-name.js";
 import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
 
 export class RojoProject {
