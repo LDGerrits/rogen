@@ -1,21 +1,19 @@
-export interface ApiDump {
-	readonly Classes: readonly {
-		readonly Name: string;
-		readonly Tags?: readonly string[];
-	}[];
-}
+type ClassEntry = readonly [name: string, tags: readonly string[]];
+
+/** The decoded reflection database Rojo bundles: a tuple whose second element maps each class name to `[name, tags, ...]`. */
+export type ReflectionDatabase = readonly [
+	unknown,
+	Readonly<Record<string, ClassEntry>>,
+	...unknown[],
+];
 
 const ROBLOX_INTERNAL_SERVICE = /^Core/;
 
-/** `isKnownToRojo` is only asked about candidates that survive every other rule, since answering it means running Rojo. */
-export function selectServices(
-	dump: ApiDump,
-	isKnownToRojo: (name: string) => boolean
-): string[] {
-	return dump.Classes.filter((c) => c.Tags?.includes("Service"))
-		.map((c) => c.Name)
+export function selectServices(database: ReflectionDatabase): string[] {
+	return Object.values(database[1])
+		.filter(([, tags]) => tags.includes("Service"))
+		.map(([name]) => name)
 		.filter((name) => !ROBLOX_INTERNAL_SERVICE.test(name))
-		.filter(isKnownToRojo)
 		.sort();
 }
 

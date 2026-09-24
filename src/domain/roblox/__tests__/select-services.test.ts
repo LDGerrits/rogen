@@ -1,68 +1,32 @@
 import {
-	ApiDump,
+	ReflectionDatabase,
 	renderServicesModule,
 	selectServices,
 } from "../select-services.js";
 
-const dump: ApiDump = {
-	Classes: [
-		{ Name: "Workspace", Tags: ["NotCreatable", "Service"] },
-		{ Name: "Teams", Tags: ["NotCreatable", "Service"] },
-		{ Name: "Part", Tags: [] },
-		{ Name: "Folder" },
-		{ Name: "CoreGui", Tags: ["NotCreatable", "Service"] },
-		{ Name: "CorePackages", Tags: ["Service"] },
-		{ Name: "BrandNewService", Tags: ["Service"] },
-	],
-};
-
-const knownToRojo = (name: string) => name !== "BrandNewService";
+const database: ReflectionDatabase = [
+	[0, 697],
+	{
+		Workspace: ["Workspace", ["NotCreatable", "Service"]],
+		Teams: ["Teams", ["NotCreatable", "Service"]],
+		Part: ["Part", []],
+		Folder: ["Folder", ["NotBrowsable"]],
+		CoreGui: ["CoreGui", ["NotCreatable", "Service"]],
+		CorePackages: ["CorePackages", ["Service"]],
+	},
+	{},
+];
 
 describe("domain/roblox/select-services", () => {
 	describe("selectServices", () => {
-		it("should keep classes tagged Service", () => {
-			expect(selectServices(dump, knownToRojo)).toEqual([
-				"Teams",
-				"Workspace",
-			]);
+		it("should keep classes tagged Service, sorted", () => {
+			expect(selectServices(database)).toEqual(["Teams", "Workspace"]);
 		});
 
 		it("should drop the services Roblox keeps for itself", () => {
-			const selected = selectServices(dump, knownToRojo);
+			const selected = selectServices(database);
 			expect(selected).not.toContain("CoreGui");
 			expect(selected).not.toContain("CorePackages");
-		});
-
-		it("should drop services Rojo does not know", () => {
-			expect(selectServices(dump, knownToRojo)).not.toContain(
-				"BrandNewService"
-			);
-		});
-
-		it("should not ask Rojo about classes it already dropped", () => {
-			const asked: string[] = [];
-			selectServices(dump, (name) => {
-				asked.push(name);
-				return true;
-			});
-			expect(asked.sort()).toEqual([
-				"BrandNewService",
-				"Teams",
-				"Workspace",
-			]);
-		});
-
-		it("should sort the result so regenerating gives a stable diff", () => {
-			const names = selectServices(
-				{
-					Classes: [
-						{ Name: "Workspace", Tags: ["Service"] },
-						{ Name: "Lighting", Tags: ["Service"] },
-					],
-				},
-				() => true
-			);
-			expect(names).toEqual(["Lighting", "Workspace"]);
 		});
 	});
 
