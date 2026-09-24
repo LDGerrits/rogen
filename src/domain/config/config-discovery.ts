@@ -121,7 +121,7 @@ function configFileNames(entries: readonly [string, FileType][]): string[] {
 	return entries
 		.filter(
 			([name, type]) =>
-				type === FileType.File && name.endsWith(CONFIG_SUFFIX)
+				type & FileType.File && name.endsWith(CONFIG_SUFFIX)
 		)
 		.map(([name]) => name)
 		.sort();

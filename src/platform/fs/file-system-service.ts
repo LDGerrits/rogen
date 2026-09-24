@@ -4,6 +4,7 @@ export enum FileType {
 	Unknown = 0,
 	File = 1,
 	Directory = 2,
+	SymbolicLink = 64,
 }
 
 export interface FileSystemService {
@@ -13,6 +14,7 @@ export interface FileSystemService {
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;
 
+	/** A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
 	readDirectory(filePath: string): Promise<[string, FileType][]>;
 	createDirectory(filePath: string): Promise<void>;
 
@@ -31,6 +33,9 @@ export interface FileSystemService {
 		destination: string,
 		overwrite?: boolean
 	): Promise<void>;
+
+	/** Rejects with ENOENT for a link to nothing and ELOOP for links that only point at each other. */
+	realPath(filePath: string): Promise<string>;
 
 	readJson<T>(filePath: string): Promise<T>;
 }

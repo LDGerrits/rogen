@@ -80,7 +80,7 @@ async function findShifted(
 
 	if (await fileSystem.isDirectory(syncDir)) {
 		for (const [name, type] of await fileSystem.readDirectory(syncDir))
-			if (type === FileType.Directory)
+			if (type & FileType.Directory)
 				candidates.push(path.join(syncDir, name, ...segments));
 	}
 

@@ -434,6 +434,75 @@ describe("watch command", () => {
 		});
 	});
 
+	describe("linked directories", () => {
+		const outFile = () => memFs.readFile("/repo/default.project.json");
+
+		it("should add a linked directory to the project file", async () => {
+			await memFs.writeFile("/shared/Util.luau", "");
+			await run();
+
+			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await settle();
+
+			expect(await built("default")).toEqual(["Shared"]);
+		});
+
+		it("should drop a removed link from the project file", async () => {
+			await memFs.writeFile("/shared/Util.luau", "");
+			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await run();
+			expect(await built("default")).toEqual(["Shared"]);
+
+			await memFs.delete("/repo/src/Shared", true);
+			await settle();
+
+			expect(await built("default")).toEqual([]);
+			expect(await memFs.exists("/shared/Util.luau")).toBe(true);
+		});
+
+		it("should rebuild when a file is added inside a target outside every root dir", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await memFs.writeFile("/shared/Util.luau", "");
+			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await run();
+			expect(await outFile()).not.toContain("ServerScriptService");
+
+			await memFs.writeFile("/shared/Save.server.luau", "");
+			await settle();
+
+			expect(await outFile()).toContain("ServerScriptService");
+		});
+
+		it("should rebuild when a file is removed inside a target outside every root dir", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await memFs.writeFile("/shared/Save.server.luau", "");
+			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await run();
+			expect(await outFile()).toContain("ServerScriptService");
+
+			await memFs.delete("/shared/Save.server.luau");
+			await settle();
+
+			expect(await outFile()).not.toContain("ServerScriptService");
+		});
+	});
+
 	describe("hot reload", () => {
 		it("should reload when a config changes", async () => {
 			await run();

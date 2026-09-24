@@ -119,6 +119,41 @@ describe("domain/build/build", () => {
 			]);
 		});
 
+		it("should emit a linked directory under its link path", async () => {
+			await fs.writeFile(abs("shared/Util.luau"), "");
+			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
+			const config = configOf();
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expectRojoProject(result.unwrap().value);
+			expect(result.unwrap().value.tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					$className: "ReplicatedStorage",
+					Shared: { $path: { optional: "src/Shared" } },
+				},
+			});
+		});
+
+		it("should emit two links to one target as two instances", async () => {
+			await fs.writeFile(abs("shared/Util.luau"), "");
+			await fs.createSymbolicLink(abs("shared"), abs("src/One"));
+			await fs.createSymbolicLink(abs("shared"), abs("src/Two"));
+			const config = configOf();
+
+			const result = build(config, await indexOf(config.rootDirs));
+
+			expect(result.unwrap().value.tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					$className: "ReplicatedStorage",
+					One: { $path: { optional: "src/One" } },
+					Two: { $path: { optional: "src/Two" } },
+				},
+			});
+		});
+
 		it("should name the project after the config's resolved name", async () => {
 			await fs.createDirectory(abs("src"));
 			const config = configOf({ name: "lobby" });

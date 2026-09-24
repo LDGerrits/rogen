@@ -78,4 +78,85 @@ describe("DiskWatcher", () => {
 			]);
 		});
 	});
+
+	describe("symbolic links", () => {
+		let root: string;
+		let outside: string;
+		let changes: FileChange[];
+
+		const linkPath = (...segments: string[]) =>
+			toPosix(path.join(root, ...segments));
+		const has = (type: FileChangeType, target: string) =>
+			changes.some((c) => c.type === type && c.path === target);
+
+		beforeEach(async () => {
+			root = path.join(dir, "src");
+			outside = path.join(dir, "shared");
+			await fs.mkdir(path.join(outside, "deep"), { recursive: true });
+			await fs.mkdir(root);
+			await fs.writeFile(path.join(outside, "Util.luau"), "");
+			changes = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+		});
+
+		it("should report an edit inside a linked target that is outside the watched directory", async () => {
+			await fs.symlink(outside, path.join(root, "Shared"), "junction");
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.writeFile(path.join(outside, "Util.luau"), "v2");
+			await fs.writeFile(path.join(outside, "deep", "New.luau"), "");
+
+			await waitFor(
+				() =>
+					has(FileChangeType.UPDATED, linkPath("Shared/Util.luau")) &&
+					has(FileChangeType.ADDED, linkPath("Shared/deep/New.luau"))
+			);
+
+			expect(
+				has(FileChangeType.UPDATED, linkPath("Shared/Util.luau"))
+			).toBe(true);
+		});
+
+		it("should report a link added later, and what is under it, at the link path", async () => {
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.symlink(outside, path.join(root, "Shared"), "junction");
+
+			await waitFor(
+				() =>
+					has(FileChangeType.ADDED, linkPath("Shared")) &&
+					has(FileChangeType.ADDED, linkPath("Shared/Util.luau"))
+			);
+			expect(changes.every((c) => c.path.startsWith(linkPath()))).toBe(
+				true
+			);
+		});
+
+		it("should report a link removed, without touching its target", async () => {
+			await fs.symlink(outside, path.join(root, "Shared"), "junction");
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.rm(path.join(root, "Shared"), { recursive: true });
+
+			await waitFor(() =>
+				has(FileChangeType.DELETED, linkPath("Shared"))
+			);
+			expect(
+				await fs.readFile(path.join(outside, "Util.luau"), "utf-8")
+			).toBe("");
+		});
+
+		it("should not follow a link that points at its own parent", async () => {
+			await fs.symlink(root, path.join(root, "Loop"), "junction");
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.writeFile(path.join(root, "a.luau"), "");
+
+			await waitFor(() => has(FileChangeType.ADDED, linkPath("a.luau")));
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			expect(
+				changes.filter((c) => c.path.startsWith(linkPath("Loop/")))
+			).toEqual([]);
+		});
+	});
 });

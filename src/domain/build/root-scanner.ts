@@ -75,16 +75,26 @@ export function scanRootDirs(
 	index: IndexService,
 	options: ScanOptions
 ): ScanResult {
+	const unresolvedLinks: Diagnostic[] = [];
 	const scanned = options.rootDirs.map((rootDir) =>
-		scanRoot(index, rootDir, options)
+		scanRoot(index, rootDir, options, unresolvedLinks)
 	);
 	return {
 		roots: scanned.map(
 			(root, position) => root ?? emptyRoot(options.rootDirs[position])
 		),
-		warnings: options.rootDirs
-			.filter((_, position) => !scanned[position])
-			.map(ScanDiagnostics.missingRootDir),
+		warnings: [
+			...options.rootDirs
+				.filter((_, position) => !scanned[position])
+				.map(ScanDiagnostics.missingRootDir),
+			...[
+				...new Map(
+					unresolvedLinks.map((link) => [link.resource, link])
+				).values(),
+			].sort((a, b) =>
+				a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0
+			),
+		],
 	};
 }
 
@@ -95,7 +105,8 @@ function emptyRoot(rootDir: string): ScannedRoot {
 function scanRoot(
 	index: IndexService,
 	rootDir: string,
-	options: ScanOptions
+	options: ScanOptions,
+	unresolvedLinks: Diagnostic[]
 ): ScannedRoot | undefined {
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
@@ -123,7 +134,7 @@ function scanRoot(
 
 		const initFile = kept
 			.filter(
-				([name, type]) => type === FileType.File && isInitScript(name)
+				([name, type]) => type & FileType.File && isInitScript(name)
 			)
 			.map(([name]) => name)
 			.sort()[0];
@@ -139,7 +150,11 @@ function scanRoot(
 
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
-			if (type === FileType.Directory) {
+			if (type === FileType.SymbolicLink) {
+				unresolvedLinks.push(
+					ScanDiagnostics.unresolvedLink(path.join(dir, name))
+				);
+			} else if (type & FileType.Directory) {
 				subdirs.push(path.join(dir, name));
 			} else if (name.startsWith(".")) {
 				markers.push(relativeTo(name));

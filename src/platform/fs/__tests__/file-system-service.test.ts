@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { FileType } from "../file-system-service.js";
-import { FileChangeType } from "../file-events.js";
+import { FileChange, FileChangeType } from "../file-events.js";
 
 describe("MemoryFileSystemService: core operations", () => {
 	let memFs: MemoryFileSystemService;
@@ -252,6 +252,94 @@ describe("MemoryFileSystemService: core operations", () => {
 				path: "docs",
 				fileType: FileType.Directory,
 			});
+		});
+	});
+
+	describe("Symbolic links: events", () => {
+		const collect = () => {
+			const changes: FileChange[] = [];
+			memFs.onDidMutateFile((change) => changes.push(change));
+			return changes;
+		};
+
+		it("should report a new link and everything under it as added", async () => {
+			await memFs.writeFile("shared/a.luau", "");
+			const changes = collect();
+
+			await memFs.createSymbolicLink("shared", "src/Shared");
+
+			expect(changes).toEqual([
+				{
+					type: FileChangeType.ADDED,
+					path: "src/Shared",
+					fileType: FileType.Directory,
+				},
+				{
+					type: FileChangeType.ADDED,
+					path: "src/Shared/a.luau",
+					fileType: FileType.File,
+				},
+			]);
+		});
+
+		it("should report a write to a target under the link path as well", async () => {
+			await memFs.writeFile("shared/a.luau", "");
+			await memFs.createSymbolicLink("shared", "src/Shared");
+			const changes = collect();
+
+			await memFs.writeFile("shared/a.luau", "v2");
+
+			expect(changes.map((change) => change.path)).toEqual([
+				"shared/a.luau",
+				"src/Shared/a.luau",
+			]);
+		});
+
+		it("should report a write through a link as a write to the target", async () => {
+			await memFs.writeFile("shared/a.luau", "");
+			await memFs.createSymbolicLink("shared", "src/Shared");
+			const changes = collect();
+
+			await memFs.writeFile("src/Shared/a.luau", "v2");
+
+			expect(changes.map((change) => change.path)).toEqual([
+				"shared/a.luau",
+				"src/Shared/a.luau",
+			]);
+			expect(await memFs.readFile("shared/a.luau")).toBe("v2");
+		});
+
+		it("should report a deleted link and what was under it, and keep the target", async () => {
+			await memFs.writeFile("shared/a.luau", "");
+			await memFs.createSymbolicLink("shared", "src/Shared");
+			const changes = collect();
+
+			await memFs.delete("src/Shared", true);
+
+			expect(changes.map((change) => change.path)).toEqual([
+				"src/Shared/a.luau",
+				"src/Shared",
+			]);
+			expect(
+				changes.every((c) => c.type === FileChangeType.DELETED)
+			).toBe(true);
+			expect(await memFs.exists("shared/a.luau")).toBe(true);
+		});
+
+		it("should stop reporting under a link that points at its own parent", async () => {
+			await memFs.writeFile("src/a.luau", "");
+			const changes = collect();
+
+			await memFs.createSymbolicLink("src", "src/Loop");
+			await memFs.writeFile("src/a.luau", "v2");
+
+			expect(changes.map((change) => change.path)).toEqual([
+				"src/Loop",
+				"src/Loop/a.luau",
+				"src/Loop/Loop",
+				"src/a.luau",
+				"src/Loop/a.luau",
+			]);
 		});
 	});
 });

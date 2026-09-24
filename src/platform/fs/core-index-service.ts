@@ -47,11 +47,18 @@ export class CoreIndexService
 			const subdirs: string[] = [];
 
 			for (const [name, type] of entries) {
-				children.set(name, type);
-
-				if (type === FileType.Directory) {
-					subdirs.push(path.join(currentDir, name));
+				const entryPath = path.join(currentDir, name);
+				if (
+					type & FileType.SymbolicLink &&
+					type & FileType.Directory &&
+					(await this.linksToAncestor(entryPath))
+				) {
+					children.set(name, FileType.SymbolicLink);
+					continue;
 				}
+
+				children.set(name, type);
+				if (type & FileType.Directory) subdirs.push(entryPath);
 			}
 
 			await Promise.all(subdirs.map((subdir) => traverse(subdir)));
@@ -59,6 +66,31 @@ export class CoreIndexService
 
 		await Promise.all(sourcePaths.map((root) => traverse(root)));
 		this.tree = next;
+	}
+
+	private async linksToAncestor(linkPath: string): Promise<boolean> {
+		let target: string;
+		try {
+			target = await this.fileSystemService.realPath(linkPath);
+		} catch {
+			return true;
+		}
+
+		for (
+			let ancestor = path.dirname(linkPath);
+			;
+			ancestor = path.dirname(ancestor)
+		) {
+			try {
+				if (
+					(await this.fileSystemService.realPath(ancestor)) === target
+				)
+					return true;
+			} catch {
+				// An ancestor that can't be resolved can't be the target.
+			}
+			if (path.dirname(ancestor) === ancestor) return false;
+		}
 	}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
@@ -89,7 +121,7 @@ export class CoreIndexService
 					const type = parentMap.get(name);
 					parentMap.delete(name);
 
-					if (type === FileType.Directory) {
+					if (type && type & FileType.Directory) {
 						this.removeDirectory(posixPath);
 					}
 				}
@@ -107,7 +139,7 @@ export class CoreIndexService
 		this.tree.get(posixDir)!.set(name, type);
 
 		const fullPosixPath = posixDir === "." ? name : `${posixDir}/${name}`;
-		if (type === FileType.Directory && !this.tree.has(fullPosixPath)) {
+		if (type & FileType.Directory && !this.tree.has(fullPosixPath)) {
 			this.tree.set(fullPosixPath, new Map());
 		}
 	}
@@ -117,7 +149,7 @@ export class CoreIndexService
 		if (!children) return;
 
 		for (const [name, type] of children.entries()) {
-			if (type === FileType.Directory) {
+			if (type & FileType.Directory) {
 				this.removeDirectory(`${dirPath}/${name}`);
 			}
 		}
