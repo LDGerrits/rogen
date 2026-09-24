@@ -41,10 +41,7 @@ export function applyTags(
 			TagDiagnostics.dormantCapitalSuffix(location, tag, paths)
 		);
 
-	const undeclared = new Map<string, string[]>();
-	for (const file of kept) {
-		if (file.undeclaredSuffix)
-			append(undeclared, file.undeclaredSuffix, displayPath(file));
+	for (const file of kept)
 		if (file.buriedScriptSuffix)
 			warnings.push(
 				TagDiagnostics.buriedScriptSuffix(
@@ -52,9 +49,6 @@ export function applyTags(
 					file.buriedScriptSuffix
 				)
 			);
-	}
-	for (const [suffix, paths] of undeclared)
-		warnings.push(TagDiagnostics.undeclaredSuffix(location, suffix, paths));
 
 	const winners = new Map<string, RoutedFile>();
 	for (const root of groupBy(kept, (file) => file.entry.rootDir).values()) {

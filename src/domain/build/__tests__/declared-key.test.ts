@@ -118,21 +118,6 @@ describe("matchSuffixKeys", () => {
 		expect(result.baseName).toBe("Analytics.beta");
 	});
 
-	it("reports an undeclared trailing suffix so callers can warn about it", () => {
-		const result = matchSuffixKeys("Analytics.beta", ROUTES_AND_TAGS);
-		expect(result.undeclaredSuffix).toBe("beta");
-	});
-
-	it("reports no undeclared suffix for an ordinary PascalCase name", () => {
-		const result = matchSuffixKeys("Analytics", ROUTES_AND_TAGS);
-		expect(result.undeclaredSuffix).toBeUndefined();
-	});
-
-	it("reports no undeclared suffix once every part is fully matched", () => {
-		const result = matchSuffixKeys("Foo.mock.server", ROUTES_AND_TAGS);
-		expect(result.undeclaredSuffix).toBeUndefined();
-	});
-
 	it("prefers the longer of two matching forms at one position", () => {
 		const result = matchSuffixKeys("Foo.Server", ROUTES);
 		expect(result.baseName).toBe("Foo");

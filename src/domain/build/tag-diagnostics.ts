@@ -41,17 +41,6 @@ export const TagDiagnostics = {
 			`${paths.length} ${paths.length === 1 ? "file" : "files"} pruned by the dormant tag "${tag}" matched on a capital suffix (${listPaths(paths)}). Use a separator (Foo.${tag}.luau) if these are not variants.`
 		),
 
-	undeclaredSuffix: (
-		location: DiagnosticLocation,
-		suffix: string,
-		paths: readonly string[]
-	): Diagnostic =>
-		warningDiagnostic(
-			"tag.undeclaredSuffix",
-			location,
-			`${paths.length} ${paths.length === 1 ? "file ends" : "files end"} in "${suffix}" (${listPaths(paths)}), which looks like a tag but isn't declared under "tags", so it stays in the name.`
-		),
-
 	buriedScriptSuffix: (
 		location: DiagnosticLocation,
 		suffix: RojoScriptSuffix

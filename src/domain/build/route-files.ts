@@ -35,8 +35,6 @@ export interface RoutedFile {
 	readonly instancePath: readonly string[];
 	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
 	readonly tags: readonly TagMatch[];
-	/** A dot-separated trailing part of the name that no declared key explains. */
-	readonly undeclaredSuffix?: string;
 	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
 }
@@ -152,7 +150,6 @@ function routeEntry(
 	}
 
 	let name = leaf;
-	let undeclaredSuffix: string | undefined;
 	let buriedScriptSuffix: RojoScriptSuffix | undefined;
 	if (entry.kind === "init-folder") {
 		const match = matchSuffixKeys(
@@ -168,11 +165,6 @@ function routeEntry(
 		const match = matchSuffixKeys(stem, context.declaredKeys);
 		const tagSpans = tagSpansOf(match.spans, context);
 		tags.push(...tagSpans.map(asTagMatch));
-		if (
-			match.undeclaredSuffix &&
-			match.baseName.endsWith(`.${match.undeclaredSuffix}`)
-		)
-			undeclaredSuffix = match.undeclaredSuffix;
 
 		const stripped = [...tagSpans];
 		const routeSpan = governing
@@ -197,7 +189,6 @@ function routeEntry(
 	return {
 		instancePath: [target.service, ...target.folders, ...folders, name],
 		tags,
-		undeclaredSuffix,
 		buriedScriptSuffix,
 	};
 }

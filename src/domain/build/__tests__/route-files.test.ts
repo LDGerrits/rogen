@@ -362,17 +362,6 @@ describe("routeFiles", () => {
 			expect(await tagsOf()).toEqual([[]]);
 		});
 
-		it("should report a separator-set-off suffix no declared key explains", async () => {
-			await write("src/Foo.beta.luau", "src/InventoryService.luau");
-
-			const files = (await route()).unwrap().routed;
-
-			expect(files.map((file) => file.undeclaredSuffix)).toEqual([
-				"beta",
-				undefined,
-			]);
-		});
-
 		it("should report a .server that a tag suffix follows", async () => {
 			await write("src/Foo.server.mock.luau", "src/Bar.mock.server.luau");
 

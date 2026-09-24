@@ -361,40 +361,15 @@ describe("applyTags", () => {
 			);
 		});
 
-		it("should keep a suffix that isn't a declared tag and warn once per suffix", async () => {
-			await write(
-				"src/Foo.beta.luau",
-				"src/Bar.beta.luau",
-				"src/Baz.luau"
-			);
+		it("should keep a suffix that isn't a declared tag in the name, without a warning", async () => {
+			await write("src/Foo.beta.luau");
 
 			const result = (await apply({ mock: true })).unwrap();
 
 			expect(
 				result.files.map((file) => file.instancePath.join("/"))
-			).toEqual([
-				"ReplicatedStorage/Bar.beta",
-				"ReplicatedStorage/Baz",
-				"ReplicatedStorage/Foo.beta",
-			]);
-			expect(result.warnings).toMatchObject([
-				{
-					severity: DiagnosticSeverity.Warning,
-					code: "tag.undeclaredSuffix",
-				},
-			]);
-			expect(result.warnings[0].message).toContain("2 files");
+			).toEqual(["ReplicatedStorage/Foo.beta"]);
+			expect(result.warnings).toEqual([]);
 		});
-
-		it.each(["InventoryService", "player_data", "Foo-beta", "HttpBeta"])(
-			"should not warn about %s, which has no dot-separated suffix",
-			async (name) => {
-				await write(`src/${name}.luau`);
-
-				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
-					[]
-				);
-			}
-		);
 	});
 });

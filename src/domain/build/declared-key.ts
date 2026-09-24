@@ -1,9 +1,5 @@
 const SEPARATOR_CHARS = "+._@-";
 
-function isSeparator(ch: string): boolean {
-	return SEPARATOR_CHARS.includes(ch);
-}
-
 function isUpper(ch: string | undefined): boolean {
 	return (
 		ch !== undefined && ch !== ch.toLowerCase() && ch === ch.toUpperCase()
@@ -92,7 +88,6 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	readonly undeclaredSuffix: string | undefined;
 }
 
 // Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`.
@@ -132,27 +127,5 @@ export function matchSuffixKeys(
 		baseName: remaining,
 		matchedKeys: matched,
 		spans,
-		undeclaredSuffix: trailingCandidate(remaining),
 	};
-}
-
-function trailingCandidate(remaining: string): string | undefined {
-	if (remaining.length === 0) return undefined;
-
-	for (let i = remaining.length - 1; i >= 0; i--) {
-		if (isSeparator(remaining[i])) {
-			return i < remaining.length - 1
-				? remaining.slice(i + 1)
-				: undefined;
-		}
-	}
-
-	for (let i = remaining.length - 1; i > 0; i--) {
-		const ch = remaining[i];
-		if (!isUpper(ch)) continue;
-		if (!isUpper(remaining[i - 1])) return remaining.slice(i);
-		return undefined;
-	}
-
-	return undefined;
 }
