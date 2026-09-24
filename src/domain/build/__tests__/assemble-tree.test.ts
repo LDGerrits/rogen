@@ -444,6 +444,46 @@ describe("assembleTree", () => {
 		});
 	});
 
+	describe("template nodes", () => {
+		it("should not collapse a directory onto a template container, so its children merge", async () => {
+			await write("src/Inventory/Save.luau");
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Inventory: { Extra: { $path: "extra" } },
+					},
+				},
+			});
+
+			const { value, warnings } = await assemble({ template });
+
+			expect(warnings).toEqual([]);
+			expect(
+				(value.tree.ReplicatedStorage as RojoNode).Inventory
+			).toEqual({
+				Extra: { $path: "extra" },
+				Save: { $path: optional("src/Inventory/Save.luau") },
+			});
+		});
+
+		it("should never collapse over a template $path, whatever the directory holds", async () => {
+			await write("src/Packages/A.luau", "src/Packages/B.luau");
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Packages: { $path: optional("Packages") },
+					},
+				},
+			});
+
+			const storage = await storageOf({ template });
+
+			expect(storage.Packages).toEqual({ $path: optional("Packages") });
+		});
+	});
+
 	describe("generated folders", () => {
 		it("should give every folder Rogen creates a Folder class and $ignoreUnknownInstances false", async () => {
 			await write("src/A/Other.luau", "src/A/B/(x)/C.luau");

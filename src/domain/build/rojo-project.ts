@@ -41,6 +41,7 @@ export class RojoProject {
 		// Physical paths override Folder class
 		if (updated.$path && updated.$className === "Folder") {
 			delete updated.$className;
+			delete updated.$ignoreUnknownInstances;
 		}
 
 		parent[leafName] = updated;

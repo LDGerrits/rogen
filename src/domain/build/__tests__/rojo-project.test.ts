@@ -60,7 +60,10 @@ describe("RojoProject", () => {
 	it("should strip $className when a Folder is overwritten by a file", () => {
 		const project = new RojoProject(baseTree);
 
-		project.insertNode(["Workspace", "Map"], { $className: "Folder" });
+		project.insertNode(["Workspace", "Map"], {
+			$className: "Folder",
+			$ignoreUnknownInstances: false,
+		});
 		project.insertNode(["Workspace", "Map"], { $path: "map.rbxm" });
 
 		const tree = project.getTree().tree;
@@ -69,6 +72,7 @@ describe("RojoProject", () => {
 		const map = workspace["Map"] as RojoNode;
 
 		expect(map.$className).toBeUndefined();
+		expect(map.$ignoreUnknownInstances).toBeUndefined();
 		expect(map.$path).toBe("map.rbxm");
 	});
 });

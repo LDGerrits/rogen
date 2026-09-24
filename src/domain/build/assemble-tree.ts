@@ -68,10 +68,11 @@ export function assembleTree(
 		...input.pruned,
 		...input.unrouted,
 	].filter((source) => !DECLARATION_FILE.test(source));
-	const collapsed = collapsibleDirs(placed, [
-		...ignored,
-		...input.superseded,
-	]);
+	const collapsed = collapsibleDirs(
+		placed,
+		[...ignored, ...input.superseded],
+		(instancePath) => isTemplateContainer(template.getNode(instancePath))
+	);
 
 	const insert = (
 		instancePath: readonly string[],
@@ -150,7 +151,8 @@ function rojoNameOf(entry: ScannedEntry): string {
  */
 function collapsibleDirs(
 	placed: readonly PlacedEntry[],
-	leftOut: readonly string[]
+	leftOut: readonly string[],
+	isReserved: (instancePath: readonly string[]) => boolean
 ): Map<string, readonly string[]> {
 	const claims = new Map<string, number>();
 	const entriesByDir = new Map<string, PlacedEntry[]>();
@@ -195,6 +197,7 @@ function collapsibleDirs(
 		const instancePath = instancePathOf(dir, entries);
 		if (
 			instancePath &&
+			!isReserved(instancePath) &&
 			claims.get(instancePath.join(INSTANCE_SEPARATOR)) === entries.length
 		)
 			collapsed.set(dir, instancePath);
@@ -229,6 +232,11 @@ function instancePathOf(
 		base = head;
 	}
 	return base;
+}
+
+/** A template node without a `$path` is a container whose children a collapsed directory would replace. */
+function isTemplateContainer(node: RojoNode | undefined): boolean {
+	return node !== undefined && node.$path === undefined;
 }
 
 function isCollapsed(
