@@ -1,5 +1,6 @@
 import { decode } from "@msgpack/msgpack";
 import { spawnSync } from "child_process";
+import { createHash } from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -25,28 +26,41 @@ function pinnedRojoVersion(): string {
 	return match[1];
 }
 
-async function bundledDatabaseVersion(rojoVersion: string): Promise<string> {
+interface PinnedCrate {
+	readonly version: string;
+	readonly checksum: string;
+}
+
+async function bundledDatabase(rojoVersion: string): Promise<PinnedCrate> {
 	const lock = await (
 		await fetchOk(
 			`https://raw.githubusercontent.com/rojo-rbx/rojo/v${rojoVersion}/Cargo.lock`
 		)
 	).text();
-	const match = /name = "rbx_reflection_database"\nversion = "([^"]+)"/.exec(
-		lock
-	);
+	const match =
+		/name = "rbx_reflection_database"\nversion = "([^"]+)"\n(?:.*\n)*?checksum = "([0-9a-f]+)"/.exec(
+			lock
+		);
 	if (!match) throw new Error("Cargo.lock does not list the database.");
-	return match[1];
+	return { version: match[1], checksum: match[2] };
 }
 
-async function readDatabase(version: string): Promise<ReflectionDatabase> {
-	const crate = `rbx_reflection_database-${version}`;
+async function readDatabase(pinned: PinnedCrate): Promise<ReflectionDatabase> {
+	const crate = `rbx_reflection_database-${pinned.version}`;
 	const response = await fetchOk(
 		`https://static.crates.io/crates/rbx_reflection_database/${encodeURIComponent(crate)}.crate`
 	);
+	const bytes = Buffer.from(await response.arrayBuffer());
+	const checksum = createHash("sha256").update(bytes).digest("hex");
+	if (checksum !== pinned.checksum) {
+		throw new Error(
+			`${crate} does not match the checksum in Rojo's Cargo.lock.`
+		);
+	}
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-services-"));
 	try {
 		const archive = path.join(dir, "crate.tar.gz");
-		fs.writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
+		fs.writeFileSync(archive, bytes);
 		const untar = spawnSync("tar", ["-xzf", archive, "-C", dir]);
 		if (untar.status !== 0) throw new Error(`tar failed: ${untar.stderr}`);
 		return decode(
@@ -58,9 +72,9 @@ async function readDatabase(version: string): Promise<ReflectionDatabase> {
 }
 
 const rojoVersion = pinnedRojoVersion();
-const databaseVersion = await bundledDatabaseVersion(rojoVersion);
-const services = selectServices(await readDatabase(databaseVersion));
+const database = await bundledDatabase(rojoVersion);
+const services = selectServices(await readDatabase(database));
 fs.writeFileSync(OUTPUT, renderServicesModule(services, rojoVersion));
 console.log(
-	`Wrote ${services.length} services from Rojo ${rojoVersion} (database ${databaseVersion}) to ${OUTPUT}`
+	`Wrote ${services.length} services from Rojo ${rojoVersion} (database ${database.version}) to ${OUTPUT}`
 );

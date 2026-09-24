@@ -23,6 +23,28 @@ describe("domain/roblox/select-services", () => {
 			expect(selectServices(database)).toEqual(["Teams", "Workspace"]);
 		});
 
+		it("should keep a service whose name merely starts like a reserved one", () => {
+			expect(
+				selectServices([
+					[0, 697],
+					{
+						...database[1],
+						CoreScriptSyncService: [
+							"CoreScriptSyncService",
+							["Service"],
+						],
+					},
+				])
+			).toContain("CoreScriptSyncService");
+		});
+
+		it("should throw when a reserved service is no longer in the database", () => {
+			const { CorePackages: _, ...rest } = database[1];
+			expect(() => selectServices([[0, 697], rest])).toThrow(
+				"CorePackages"
+			);
+		});
+
 		it("should drop the services Roblox keeps for itself", () => {
 			const selected = selectServices(database);
 			expect(selected).not.toContain("CoreGui");

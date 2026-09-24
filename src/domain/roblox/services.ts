@@ -53,6 +53,8 @@ export const SUPPORTED_SERVICES = [
 	"ControllerService",
 	"ConversationalAIAcceptanceService",
 	"CookiesService",
+	"CoreScriptDebuggingManagerHelper",
+	"CoreScriptSyncService",
 	"CreationDBService",
 	"CreatorStoreService",
 	"CrossDMScriptChangeListener",

@@ -7,14 +7,23 @@ export type ReflectionDatabase = readonly [
 	...unknown[],
 ];
 
-const ROBLOX_INTERNAL_SERVICE = /^Core/;
+// Tagged Service like any other, but reserved for Roblox's own scripts.
+const RESERVED_SERVICES: readonly string[] = ["CoreGui", "CorePackages"];
 
+/** Throws when a reserved service is missing, so a renamed one is noticed rather than let through. */
 export function selectServices(database: ReflectionDatabase): string[] {
-	return Object.values(database[1])
+	const services = Object.values(database[1])
 		.filter(([, tags]) => tags.includes("Service"))
-		.map(([name]) => name)
-		.filter((name) => !ROBLOX_INTERNAL_SERVICE.test(name))
-		.sort();
+		.map(([name]) => name);
+	const missing = RESERVED_SERVICES.filter(
+		(name) => !services.includes(name)
+	);
+	if (missing.length > 0) {
+		throw new Error(
+			`Reserved services not in the database: ${missing.join(", ")}`
+		);
+	}
+	return services.filter((name) => !RESERVED_SERVICES.includes(name)).sort();
 }
 
 export function renderServicesModule(
