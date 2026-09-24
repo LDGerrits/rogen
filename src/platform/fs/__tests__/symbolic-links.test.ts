@@ -8,7 +8,7 @@ import { MemoryFileSystemService } from "../memory-file-system-service.js";
 interface Fixture {
 	readonly fileSystem: FileSystemService;
 	readonly root: string;
-	link(target: string, linkPath: string): Promise<void>;
+	link(target: string, linkPath: string, relative?: boolean): Promise<void>;
 	dispose(): void;
 }
 
@@ -22,7 +22,7 @@ const fixtures: [string, () => Fixture][] = [
 			return {
 				fileSystem: new DiskFileSystemService(),
 				root,
-				link: async (target, linkPath) => {
+				link: async (target, linkPath, relative = false) => {
 					await fs.promises.mkdir(path.dirname(linkPath), {
 						recursive: true,
 					});
@@ -32,7 +32,9 @@ const fixtures: [string, () => Fixture][] = [
 						})
 						?.isDirectory();
 					await fs.promises.symlink(
-						target,
+						relative
+							? path.relative(path.dirname(linkPath), target)
+							: target,
 						linkPath,
 						isDirectory ? "junction" : "file"
 					);
@@ -49,8 +51,13 @@ const fixtures: [string, () => Fixture][] = [
 			return {
 				fileSystem: memory,
 				root: path.resolve("/repo"),
-				link: (target, linkPath) =>
-					memory.createSymbolicLink(target, linkPath),
+				link: (target, linkPath, relative = false) =>
+					memory.createSymbolicLink(
+						relative
+							? path.relative(path.dirname(linkPath), target)
+							: target,
+						linkPath
+					),
 				dispose: () => undefined,
 			};
 		},
@@ -160,6 +167,21 @@ describe.each(fixtures)("%s: symbolic links", (_name, create) => {
 			expect(
 				await fixture.fileSystem.realPath(at("src/Shared/a.luau"))
 			).toBe(await fixture.fileSystem.realPath(at("shared/a.luau")));
+		});
+
+		it("should resolve a relative link against the directory it is in", async () => {
+			await fixture.fileSystem.writeFile(at("shared/a.luau"), "");
+			await fixture.link(at("shared"), at("src/deep/Shared"), true);
+
+			expect(
+				await fixture.fileSystem.realPath(at("src/deep/Shared"))
+			).toBe(await fixture.fileSystem.realPath(at("shared")));
+			expect(
+				await fixture.fileSystem.readFile(at("src/deep/Shared/a.luau"))
+			).toBe("");
+			expect(await types(at("src/deep"))).toEqual({
+				Shared: FileType.Directory | FileType.SymbolicLink,
+			});
 		});
 
 		it("should follow a chain of links", async () => {

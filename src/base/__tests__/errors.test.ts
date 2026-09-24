@@ -1,5 +1,25 @@
 import { jest } from "@jest/globals";
-import { onUnexpectedError, setUnexpectedErrorHandler } from "../errors.js";
+import {
+	ErrorUtils,
+	onUnexpectedError,
+	setUnexpectedErrorHandler,
+} from "../errors.js";
+
+describe("ErrorUtils.hasCode", () => {
+	it("should match an error whose code is one of those given", () => {
+		const error = Object.assign(new Error("gone"), { code: "ENOENT" });
+
+		expect(ErrorUtils.hasCode(error, "ENOENT", "ELOOP")).toBe(true);
+		expect(ErrorUtils.hasCode(error, "EACCES")).toBe(false);
+	});
+
+	it("should not match a value without a string code", () => {
+		expect(ErrorUtils.hasCode(new Error("plain"), "ENOENT")).toBe(false);
+		expect(ErrorUtils.hasCode({ code: 2 }, "2")).toBe(false);
+		expect(ErrorUtils.hasCode("ENOENT", "ENOENT")).toBe(false);
+		expect(ErrorUtils.hasCode(undefined, "ENOENT")).toBe(false);
+	});
+});
 
 describe("onUnexpectedError / setUnexpectedErrorHandler", () => {
 	it("should report through an installed handler instead of the console", () => {

@@ -136,6 +136,20 @@ export class MemoryFileSystemService implements FileSystemService {
 		return node;
 	}
 
+	private _absoluteTarget(target: string, linkPath: string): string {
+		if (!/^\.\.?([\\/]|$)/.test(target)) return target;
+
+		const parts = splitPath(linkPath);
+		parts.pop();
+		const { realParts } = this._walk(parts.join("/"), true);
+		const resolved = [...realParts];
+		for (const part of splitPath(target)) {
+			if (part === "..") resolved.pop();
+			else if (part !== ".") resolved.push(part);
+		}
+		return resolved.join("/");
+	}
+
 	private _targetPath(filePath: string): string {
 		const parts = splitPath(filePath);
 		const name = parts.pop()!;
@@ -416,6 +430,7 @@ export class MemoryFileSystemService implements FileSystemService {
 		return links;
 	}
 
+	/** A target starting with `.` or `..` is relative to the link's directory; any other is a path from the root. */
 	async createSymbolicLink(target: string, linkPath: string): Promise<void> {
 		const parent = this._lookupParent(linkPath, true);
 		const name = splitPath(linkPath).pop()!;
@@ -425,7 +440,7 @@ export class MemoryFileSystemService implements FileSystemService {
 				`EEXIST: file already exists, symlink '${target}' -> '${linkPath}'`
 			);
 		}
-		const link = new LinkNode(target);
+		const link = new LinkNode(this._absoluteTarget(target, linkPath));
 		parent.entries.set(name, link);
 		this._emitAdded(link, toPosix(linkPath), FileChangeType.ADDED);
 	}

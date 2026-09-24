@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ErrorUtils } from "../../base/errors.js";
 import { FileType, FileSystemService } from "./file-system-service.js";
 
 export class DiskFileSystemService implements FileSystemService {
@@ -7,7 +8,7 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async exists(filePath: string): Promise<boolean> {
 		try {
-			await fs.promises.access(filePath);
+			await fs.promises.stat(filePath);
 			return true;
 		} catch {
 			return false;
@@ -58,8 +59,10 @@ export class DiskFileSystemService implements FileSystemService {
 			if (stat.isFile()) return FileType.SymbolicLink | FileType.File;
 			if (stat.isDirectory())
 				return FileType.SymbolicLink | FileType.Directory;
-		} catch {
-			// A link to nothing has no target type.
+		} catch (error) {
+			if (!ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR", "ELOOP")) {
+				throw error;
+			}
 		}
 		return FileType.SymbolicLink;
 	}

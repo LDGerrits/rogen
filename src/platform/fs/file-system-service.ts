@@ -7,6 +7,14 @@ export enum FileType {
 	SymbolicLink = 64,
 }
 
+export function isFileType(type: FileType): boolean {
+	return (type & FileType.File) !== 0;
+}
+
+export function isDirectoryType(type: FileType): boolean {
+	return (type & FileType.Directory) !== 0;
+}
+
 export interface FileSystemService {
 	readonly _serviceBrand: undefined;
 

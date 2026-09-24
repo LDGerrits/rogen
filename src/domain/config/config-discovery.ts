@@ -2,6 +2,7 @@ import path from "path";
 import {
 	FileSystemService,
 	FileType,
+	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { Result, ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
@@ -120,8 +121,7 @@ async function resolveDefaultConfig(
 function configFileNames(entries: readonly [string, FileType][]): string[] {
 	return entries
 		.filter(
-			([name, type]) =>
-				type & FileType.File && name.endsWith(CONFIG_SUFFIX)
+			([name, type]) => isFileType(type) && name.endsWith(CONFIG_SUFFIX)
 		)
 		.map(([name]) => name)
 		.sort();

@@ -1,7 +1,11 @@
 import path from "path";
 import { isMatch } from "../../base/glob.js";
 import { toPosix } from "../../base/path.js";
-import { FileType } from "../../platform/fs/file-system-service.js";
+import {
+	FileType,
+	isDirectoryType,
+	isFileType,
+} from "../../platform/fs/file-system-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ScanDiagnostics } from "./scan-diagnostics.js";
@@ -133,9 +137,7 @@ function scanRoot(
 		}
 
 		const initFile = kept
-			.filter(
-				([name, type]) => type & FileType.File && isInitScript(name)
-			)
+			.filter(([name, type]) => isFileType(type) && isInitScript(name))
 			.map(([name]) => name)
 			.sort()[0];
 		if (initFile && relativeDir) {
@@ -154,7 +156,7 @@ function scanRoot(
 				unresolvedLinks.push(
 					ScanDiagnostics.unresolvedLink(path.join(dir, name))
 				);
-			} else if (type & FileType.Directory) {
+			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 			} else if (name.startsWith(".")) {
 				markers.push(relativeTo(name));
