@@ -1,5 +1,4 @@
 import { err, ok } from "../../base/result.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -47,9 +46,15 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		if (args["show-config"]) {
 			logService.info(showConfig(configService.configs));
-			const errors = configService.configs.flatMap(entryErrors);
-			return errors.length > 0
-				? err(new DiagnosticsError(errors))
+			const broken = configService.configs.filter(
+				(entry) => entryErrors(entry).length > 0
+			);
+			return broken.length > 0
+				? err(
+						new Error(
+							`${broken.length} of ${configService.configs.length} configs have errors.`
+						)
+					)
 				: ok(undefined);
 		}
 

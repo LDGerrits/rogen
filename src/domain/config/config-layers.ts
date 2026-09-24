@@ -65,18 +65,14 @@ function cliModel(
 	declaredTags: readonly string[],
 	cwd: string
 ): ConfigModel {
-	const contents: Record<string, unknown> = {
-		outFile: overrides.outFile,
-		syncDir: overrides.syncDir,
-		template: overrides.template,
-	};
+	const contents: Record<string, unknown> = {};
+	for (const key of ["outFile", "syncDir", "template"] as const) {
+		if (overrides[key] !== undefined) contents[key] = overrides[key];
+	}
 	if (declaredTags.length > 0) {
 		contents.tags = Object.fromEntries(
 			declaredTags.map((tag) => [tag, overrides.tags[tag]])
 		);
-	}
-	for (const key of Object.keys(contents)) {
-		if (contents[key] === undefined) delete contents[key];
 	}
 	return new ConfigModel(absolutize(contents, cwd));
 }

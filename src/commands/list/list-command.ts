@@ -41,8 +41,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		let broken = 0;
 		for (const entry of configService.configs) {
 			const rows = [relative(entry.file)];
-			const errors = entryErrors(entry);
+			if (entry.chain.length > 1) {
+				rows.push(
+					`  extends: ${entry.chain.slice(1).map(relative).join(" -> ")}`
+				);
+			}
 
+			const errors = entryErrors(entry);
 			if (errors.length > 0 || !entry.resolved) {
 				broken++;
 				rows.push(
@@ -52,11 +57,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				);
 			} else {
 				const config = entry.resolved;
-				if (entry.chain.length > 1) {
-					rows.push(
-						`  extends: ${entry.chain.slice(1).map(relative).join(" -> ")}`
-					);
-				}
 				rows.push(
 					`  root dirs: ${list(config.rootDirs.map(relative))}`,
 					`  sync dir: ${list(config.syncDir ? [relative(config.syncDir)] : [])}`,

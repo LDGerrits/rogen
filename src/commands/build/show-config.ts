@@ -2,6 +2,8 @@ import path from "path";
 import { commonRoot } from "../../domain/build/sync-path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
+import { entryErrors } from "../../domain/config/valid-configs.js";
+import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 
 function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 	return {
@@ -18,16 +20,19 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 	};
 }
 
-/** Strict JSON: the config itself for one entry, else an object keyed by config file. */
+/** Strict JSON: the entry itself for one config, else an object keyed by config file. */
 export function showConfig(entries: readonly ConfigEntry[]): string {
-	const described = entries.flatMap((entry): [string, unknown][] =>
+	const described = entries.map((entry): [string, unknown] => [
+		path.basename(entry.file),
 		entry.resolved
-			? [[path.basename(entry.file), describeConfig(entry.resolved)]]
-			: []
-	);
+			? describeConfig(entry.resolved)
+			: {
+					diagnostics: entryErrors(entry).map(renderDiagnostic),
+				},
+	]);
 	const value =
-		entries.length === 1
-			? described[0]?.[1]
+		described.length === 1
+			? described[0][1]
 			: Object.fromEntries(described);
-	return JSON.stringify(value ?? {}, null, 2);
+	return JSON.stringify(value, null, 2);
 }

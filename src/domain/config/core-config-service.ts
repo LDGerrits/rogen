@@ -115,14 +115,14 @@ export class CoreConfigService
 	}
 
 	private checkTagOverrides(): Result<void, Error> {
+		const allReadable = this.slots.every(
+			(slot) => slot.undeclaredTags !== undefined
+		);
 		for (const tag of Object.keys(this.overrides.tags)) {
 			const skipped = this.slots.filter((slot) =>
 				slot.undeclaredTags?.includes(tag)
 			);
-			if (
-				this.slots.every((slot) => slot.undeclaredTags !== undefined) &&
-				skipped.length === this.slots.length
-			) {
+			if (allReadable && skipped.length === this.slots.length) {
 				return err(
 					new Error(
 						`Tag "${tag}" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.`

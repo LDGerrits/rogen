@@ -195,7 +195,7 @@ describe("build command", () => {
 			expect(String(info.mock.calls[0][0])).not.toContain("Building");
 		});
 
-		it("should report a broken config's diagnostics and still print the valid ones", async () => {
+		it("should print a broken config's diagnostics in its own entry and fail", async () => {
 			const broken = {
 				...mockEntry({}, "/repo/broken.rogen.json"),
 				resolved: undefined,
@@ -213,11 +213,14 @@ describe("build command", () => {
 			]);
 
 			expect(((await result) as ResultError<Error>).error.message).toBe(
-				"/repo/broken.rogen.json - error: boom."
+				"1 of 2 configs have errors."
 			);
-			expect(
-				Object.keys(JSON.parse(String(info.mock.calls[0][0])))
-			).toEqual(["ok.rogen.json"]);
+			expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
+				"ok.rogen.json": { name: "repo" },
+				"broken.rogen.json": {
+					diagnostics: ["/repo/broken.rogen.json - error: boom."],
+				},
+			});
 		});
 	});
 });

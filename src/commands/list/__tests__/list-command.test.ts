@@ -128,6 +128,19 @@ describe("list command", () => {
 		expect(result.isErr()).toBe(true);
 	});
 
+	it("should still show the extends chain of a broken config", async () => {
+		await write("base.rogen.json", { bogus: 1 });
+		await write("broken.rogen.json", { extends: "base.rogen.json" });
+
+		await run();
+
+		const row = printed().find((text) =>
+			text.startsWith("broken.rogen.json")
+		);
+		expect(row).toContain("  extends: base.rogen.json");
+		expect(row).toContain("error:");
+	});
+
 	it("should fail when there is no config here", async () => {
 		const result = await run();
 
