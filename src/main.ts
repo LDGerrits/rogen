@@ -27,11 +27,13 @@ import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { ConfigService } from "./domain/config/config-service.js";
+import { configRefsFromArgs } from "./domain/config/config-refs.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
 import "./commands/build/build-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
+import "./commands/list/list-command.js";
 import "./commands/version/version-command.js";
 import "./commands/watch/watch-command.js";
 
@@ -72,7 +74,6 @@ async function main(): Promise<void> {
 
 		// Logging levels
 		if (environment.quiet) logService.setLevel(LogLevel.Off);
-		else if (environment.trace) logService.setLevel(LogLevel.Trace);
 		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
 
 		// Default handler throws async, which would crash `watch`.
@@ -82,24 +83,21 @@ async function main(): Promise<void> {
 
 		const services = new ServiceCollection();
 
-		if (commandRegistry.getCommand(command)?.metadata.requiresConfig) {
-			const configService = new CoreConfigService(
-				fileSystemService,
-				environment
-			);
+		const configService = disposables.add(
+			new CoreConfigService(fileSystemService, environment, logService)
+		);
+		services.set(ConfigService, configService);
 
-			const initialized = await configService.initialize({
-				names: cliArgs._.slice(1),
-				paths: cliArgs.config ? [cliArgs.config] : [],
-			});
+		if (commandRegistry.getCommand(command)?.metadata.requiresConfig) {
+			const refs = configRefsFromArgs(cliArgs);
+			const initialized = refs.isOk()
+				? await configService.initialize(refs.value)
+				: refs;
 			if (initialized.isErr()) {
 				logService.error(initialized.error.message);
 				process.exitCode = 1;
 				return;
 			}
-
-			disposables.add(configService);
-			services.set(ConfigService, configService);
 		}
 
 		const reconciliationService = disposables.add(

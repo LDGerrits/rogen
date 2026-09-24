@@ -1,3 +1,4 @@
+import path from "path";
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
@@ -8,12 +9,18 @@ import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { LogService } from "../../platform/log/log-service.js";
 import { loadConfigChain } from "./config-chain.js";
 import { discoverConfigPaths } from "./config-discovery.js";
 import { layerConfig, locateConfigValue } from "./config-layers.js";
 import { resolveConfig } from "./config-resolver.js";
 import { readTemplate } from "./config-template.js";
-import { ConfigEntry, ConfigRefs, ConfigService } from "./config-service.js";
+import {
+	ConfigEntry,
+	ConfigOverrides,
+	ConfigRefs,
+	ConfigService,
+} from "./config-service.js";
 
 interface ConfigSlot {
 	readonly entry: ConfigEntry;
@@ -21,6 +28,8 @@ interface ConfigSlot {
 	readonly config: Config | undefined;
 	/** Every file the entry reads: its chain and its template. */
 	readonly files: readonly string[];
+	/** The CLI tags this config does not declare; `undefined` when its chain could not be read. */
+	readonly undeclaredTags: readonly string[] | undefined;
 }
 
 export class CoreConfigService
@@ -37,6 +46,7 @@ export class CoreConfigService
 
 	private readonly reloads = new Sequencer();
 	private slots: readonly ConfigSlot[] = [];
+	private overrides: ConfigOverrides = { tags: {} };
 
 	get configs(): readonly ConfigEntry[] {
 		return this.slots.map((slot) => slot.entry);
@@ -48,7 +58,8 @@ export class CoreConfigService
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		private readonly logService: LogService
 	) {
 		super();
 	}
@@ -62,10 +73,11 @@ export class CoreConfigService
 		);
 		if (discovered.isErr()) return err(discovered.error);
 
+		this.overrides = refs.overrides ?? { tags: {} };
 		this.slots = await Promise.all(
 			discovered.value.map((file) => this.load(file, undefined))
 		);
-		return ok(undefined);
+		return this.checkTagOverrides();
 	}
 
 	reload(files: readonly string[]): Promise<void> {
@@ -102,6 +114,30 @@ export class CoreConfigService
 		});
 	}
 
+	private checkTagOverrides(): Result<void, Error> {
+		for (const tag of Object.keys(this.overrides.tags)) {
+			const skipped = this.slots.filter((slot) =>
+				slot.undeclaredTags?.includes(tag)
+			);
+			if (
+				this.slots.every((slot) => slot.undeclaredTags !== undefined) &&
+				skipped.length === this.slots.length
+			) {
+				return err(
+					new Error(
+						`Tag "${tag}" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.`
+					)
+				);
+			}
+			for (const slot of skipped) {
+				this.logService.debug(
+					`Tag "${tag}" is not declared in ${path.basename(slot.entry.file)}; skipped there.`
+				);
+			}
+		}
+		return ok(undefined);
+	}
+
 	private async load(
 		file: string,
 		previous: ConfigSlot | undefined
@@ -109,10 +145,12 @@ export class CoreConfigService
 		const chain = await loadConfigChain(this.fileSystemService, file);
 		const failed = (
 			diagnostics: readonly Diagnostic[],
-			files: readonly string[] = chain.files
+			files: readonly string[] = chain.files,
+			undeclaredTags?: readonly string[]
 		): ConfigSlot => ({
 			config: previous?.config,
 			files,
+			undeclaredTags,
 			entry: {
 				file,
 				chain: chain.files,
@@ -122,11 +160,17 @@ export class CoreConfigService
 		});
 		if (chain.diagnostics.length > 0) return failed(chain.diagnostics);
 
-		const layered = layerConfig(chain.layers);
+		const layered = layerConfig(
+			chain.layers,
+			this.overrides,
+			this.environmentService.cwd
+		);
 		const templateFile = layered.config.getValue<string | undefined>(
 			"template"
 		);
-		const files = templateFile ? [...chain.files, templateFile] : chain.files;
+		const files = templateFile
+			? [...chain.files, templateFile]
+			: chain.files;
 
 		const template = templateFile
 			? await readTemplate(
@@ -135,17 +179,22 @@ export class CoreConfigService
 					locateConfigValue(layered, "template")
 				)
 			: undefined;
-		if (template?.isErr()) return failed(template.error, files);
+		if (template?.isErr()) {
+			return failed(template.error, files, layered.undeclaredTags);
+		}
 
 		const resolved = resolveConfig(
 			layered,
 			template?.isOk() ? template.value : undefined
 		);
-		if (resolved.isErr()) return failed(resolved.error, files);
+		if (resolved.isErr()) {
+			return failed(resolved.error, files, layered.undeclaredTags);
+		}
 
 		return {
 			config: layered.config,
 			files,
+			undeclaredTags: layered.undeclaredTags,
 			entry: {
 				file,
 				chain: chain.files,

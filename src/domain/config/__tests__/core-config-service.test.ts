@@ -5,12 +5,14 @@ import { ConfigChangeEvent } from "../../../platform/config/config.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { NullLogService } from "../../../platform/log/log-service.js";
 import { ConfigRefs } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 describe("domain/config/core-config-service", () => {
 	let fs: MemoryFileSystemService;
 	let service: CoreConfigService;
+	let logService: NullLogService;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
 		fs.writeFile(
@@ -30,9 +32,11 @@ describe("domain/config/core-config-service", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
+		logService = new NullLogService();
 		service = new CoreConfigService(
 			fs,
-			new MockEnvironmentService({ _: [] }, "/repo")
+			new MockEnvironmentService({ _: [] }, "/repo"),
+			logService
 		);
 	});
 
@@ -303,7 +307,8 @@ describe("domain/config/core-config-service", () => {
 			await fs.createDirectory("/repo");
 			service = new CoreConfigService(
 				fs,
-				new MockEnvironmentService({ _: [] }, "/repo")
+				new MockEnvironmentService({ _: [] }, "/repo"),
+				logService
 			);
 			await write("/repo/core.rogen.json", { rootDirs: ["core"] });
 			await write("/repo/default.rogen.json", {
@@ -441,8 +446,12 @@ describe("domain/config/core-config-service", () => {
 
 		it("should fire one change event per affected config, naming it", async () => {
 			await write("/repo/base.rogen.json", { rootDirs: ["a"] });
-			await write("/repo/one.rogen.json", { extends: "./base.rogen.json" });
-			await write("/repo/two.rogen.json", { extends: "./base.rogen.json" });
+			await write("/repo/one.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+			await write("/repo/two.rogen.json", {
+				extends: "./base.rogen.json",
+			});
 			await write("/repo/other.rogen.json", { rootDirs: ["z"] });
 			await start({ names: ["one", "two", "other"] });
 			const listener = listen();
@@ -628,7 +637,8 @@ describe("domain/config/core-config-service", () => {
 				fs = new MemoryFileSystemService();
 				service = new CoreConfigService(
 					fs,
-					new MockEnvironmentService({ _: [] }, "/")
+					new MockEnvironmentService({ _: [] }, "/"),
+					logService
 				);
 				await write("/default.rogen.json", {});
 
@@ -663,7 +673,10 @@ describe("domain/config/core-config-service", () => {
 
 				expect(service.configs[0].resolved?.template).toEqual({
 					file: "/repo/t.project.json",
-					project: { name: "Game", tree: { $className: "DataModel" } },
+					project: {
+						name: "Game",
+						tree: { $className: "DataModel" },
+					},
 				});
 				expect(service.files).toContain("/repo/t.project.json");
 			});
@@ -710,9 +723,12 @@ describe("domain/config/core-config-service", () => {
 			});
 
 			it("should point at the parent file that named the template", async () => {
-				await write("/repo/base.rogen.json", `{
+				await write(
+					"/repo/base.rogen.json",
+					`{
 	"template": "missing.project.json"
-}`);
+}`
+				);
 
 				const problems = await diagnosticsFor({
 					extends: "./base.rogen.json",
@@ -739,9 +755,9 @@ describe("domain/config/core-config-service", () => {
 
 				expect(service.configs[0].resolved?.name).toBe("Two");
 				expect(listener).toHaveBeenCalledTimes(1);
-				expect(listener.mock.calls[0][0].affectsConfig("template")).toBe(
-					true
-				);
+				expect(
+					listener.mock.calls[0][0].affectsConfig("template")
+				).toBe(true);
 			});
 		});
 
@@ -819,9 +835,12 @@ describe("domain/config/core-config-service", () => {
 			});
 
 			it("should point at the parent that supplied a bad route", async () => {
-				await write("/repo/base.rogen.json", `{
+				await write(
+					"/repo/base.rogen.json",
+					`{
 	"routes": { "server": "Nowhere" }
-}`);
+}`
+				);
 
 				const problems = await diagnosticsFor({
 					extends: "./base.rogen.json",
@@ -938,6 +957,116 @@ describe("domain/config/core-config-service", () => {
 			expect(cwd).not.toHaveBeenCalled();
 			expect(now).not.toHaveBeenCalled();
 			jest.restoreAllMocks();
+		});
+	});
+
+	describe("overrides", () => {
+		it("should apply outFile, syncDir and template against the working directory", async () => {
+			await write("/repo/base.project.json", { name: "Base" });
+			await write("/repo/default.rogen.json", {
+				outFile: "old.project.json",
+				syncDir: "old",
+			});
+
+			await start({
+				overrides: {
+					outFile: "out/new.project.json",
+					syncDir: "dist",
+					template: "base.project.json",
+					tags: {},
+				},
+			});
+
+			expect(service.configs[0].resolved).toMatchObject({
+				outFile: "/repo/out/new.project.json",
+				syncDir: "/repo/dist",
+				template: { file: "/repo/base.project.json" },
+			});
+		});
+
+		it("should turn a declared tag on or off and leave the others", async () => {
+			await write("/repo/default.rogen.json", {
+				tags: { mock: false, dev: true, prod: false },
+			});
+
+			await start({ overrides: { tags: { mock: true, dev: false } } });
+
+			expect(service.configs[0].resolved?.tags).toEqual({
+				mock: true,
+				dev: false,
+				prod: false,
+			});
+		});
+
+		it("should fail when no named config declares the tag", async () => {
+			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+			await write("/repo/match.rogen.json", {});
+
+			const result = await start({
+				names: ["lobby", "match"],
+				overrides: { tags: { ghost: true } },
+			});
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				'"ghost"'
+			);
+		});
+
+		it("should apply a tag where it is declared and say where it was skipped", async () => {
+			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+			await write("/repo/match.rogen.json", {});
+			const debug = jest.spyOn(logService, "debug");
+
+			const result = await start({
+				names: ["lobby", "match"],
+				overrides: { tags: { mock: true } },
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(service.configs.map((c) => c.resolved?.tags)).toEqual([
+				{ mock: true },
+				{},
+			]);
+			expect(debug).toHaveBeenCalledWith(
+				expect.stringContaining("match.rogen.json")
+			);
+			expect(debug).toHaveBeenCalledTimes(1);
+		});
+
+		it("should not fail on a tag when a named config could not be read", async () => {
+			await write("/repo/lobby.rogen.json", "{ nope");
+
+			const result = await start({
+				names: ["lobby"],
+				overrides: { tags: { mock: true } },
+			});
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should keep the overrides across a reload", async () => {
+			await write("/repo/default.rogen.json", {
+				rootDirs: ["a"],
+				tags: { mock: false },
+			});
+			await start({
+				overrides: {
+					outFile: "out.project.json",
+					tags: { mock: true },
+				},
+			});
+
+			await write("/repo/default.rogen.json", {
+				rootDirs: ["b"],
+				tags: { mock: false },
+			});
+			await service.reload(["/repo/default.rogen.json"]);
+
+			expect(service.configs[0].resolved).toMatchObject({
+				rootDirs: ["/repo/b"],
+				outFile: "/repo/out.project.json",
+				tags: { mock: true },
+			});
 		});
 	});
 });

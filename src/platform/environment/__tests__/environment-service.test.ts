@@ -14,6 +14,5 @@ describe("NativeEnvironmentService", () => {
 		expect(env.args).toBe(args);
 		expect(env.verbose).toBe(true);
 		expect(env.quiet).toBe(false);
-		expect(env.trace).toBe(false);
 	});
 });

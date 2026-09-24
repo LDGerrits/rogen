@@ -14,10 +14,15 @@ export interface ParsedArgs {
 	_: string[];
 	help?: boolean;
 	version?: boolean;
-	config?: string;
 	verbose?: boolean;
 	quiet?: boolean;
-	trace?: boolean;
+	config?: string[];
+	"out-file"?: string;
+	"sync-dir"?: string;
+	template?: string;
+	tag?: string[];
+	"no-tag"?: string[];
+	"show-config"?: boolean;
 }
 
 export interface ParsedCli {
@@ -42,10 +47,11 @@ function parseStrict(args: string[], options: readonly OptionDescriptor[]) {
 		strict: true,
 	});
 
-	let command = "help";
+	let command = "build";
 	if (values.version) command = "version";
 	else if (values.help) command = "help";
 	else if (positionals.length > 0) command = positionals[0].toLowerCase();
+	else positionals.push(command);
 
 	return { command, options: { ...values, _: positionals } as ParsedArgs };
 }
@@ -60,7 +66,11 @@ export function parseArgs(
 ): Result<ParsedCli, Error> {
 	try {
 		const { command } = parseStrict(args, optionsFor());
-		return ok(parseStrict(args, optionsFor(command)));
+		const parsed = parseStrict(args, optionsFor(command));
+		if (parsed.options.verbose && parsed.options.quiet) {
+			return err(new Error("--verbose can't be combined with --quiet."));
+		}
+		return ok(parsed);
 	} catch (error) {
 		return err(ErrorUtils.fromUnknown(error));
 	}

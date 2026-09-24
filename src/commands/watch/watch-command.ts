@@ -2,12 +2,16 @@ import { DeferredPromise, Sequencer } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { err, ok } from "../../base/result.js";
+import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { FileChange } from "../../platform/fs/file-events.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
+import { unrequestedConfigNotice } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	entryErrors,
 	requireValidConfigs,
@@ -33,6 +37,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				isVariadic: true,
 			},
 		],
+		options: ConfigOptions,
 	},
 	handler: async (accessor) => {
 		const logService = accessor.get(LogService);
@@ -40,9 +45,18 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const reconciliationService = accessor.get(ReconciliationService);
 		const configService = accessor.get(ConfigService);
 		const lifecycleService = accessor.get(LifecycleService);
+		const fileSystemService = accessor.get(FileSystemService);
+		const environmentService = accessor.get(EnvironmentService);
 
 		const configs = requireValidConfigs(configService);
 		if (configs.isErr()) return configs;
+
+		const notice = await unrequestedConfigNotice(
+			fileSystemService,
+			environmentService.cwd,
+			configService.configs.map((entry) => entry.file)
+		);
+		if (notice) logService.info(notice);
 
 		const store = new DisposableStore();
 		const buildQueue = new Sequencer();

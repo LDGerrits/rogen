@@ -37,7 +37,7 @@ export function formatHelp(
 		"Rogen - Feature-based architecture for Roblox",
 		"",
 		"Usage:",
-		"  rogen <command> [options]",
+		"  rogen [command] [name...] [options]",
 		"",
 		"Commands:",
 		...formatColumns(rows),
