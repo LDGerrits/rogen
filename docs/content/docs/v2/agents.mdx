@@ -1,0 +1,34 @@
+---
+title: Using Rogen with agents
+description: Tell a coding agent how Rogen lays out and builds a project.
+---
+
+An agent that doesn't know Rogen tends to edit the generated `*.project.json`, or to put a new file where nothing routes it. A short set of rules prevents both. Install it as a skill, or paste it into your `AGENTS.md`.
+
+## Install the skill
+
+The skill lives at `skills/rogen/SKILL.md` in the [Rogen repository](https://github.com/LDGerrits/rogen).
+
+```bash title="Any agent"
+npx skills add LDGerrits/rogen
+```
+
+```text title="Claude Code"
+/plugin marketplace add LDGerrits/rogen
+/plugin install rogen@rogen
+```
+
+## Or add it to `AGENTS.md`
+
+```md title="AGENTS.md"
+## Rogen
+
+1. Rogen generates `*.project.json` from the folder layout. Never edit that file; edit the config or its `template`.
+2. Read `*.rogen.json` for `routes` and `tags`: the only keys that route or tag.
+3. Put a new file where the repo's existing layout would put it. Where there is none, use routing folders. `.server` and `.client` set the script class, not the route.
+4. `Foo.<tag>.luau` or a `<tag>/` folder is a variant that replaces `Foo` when the tag is active.
+5. After adding, moving or renaming files, run `rogen build` (safe while `watch` runs), and fix the diagnostics it prints.
+6. For anything else, run `rogen help`.
+```
+
+The rules stay short on purpose: `rogen help` and these docs cover the rest, and the diagnostics `rogen build` prints tell the agent what to fix.

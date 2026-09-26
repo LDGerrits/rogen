@@ -1,0 +1,11 @@
+{
+	"name": "rogen",
+	"owner": { "name": "LDGerrits" },
+	"plugins": [
+		{
+			"name": "rogen",
+			"description": "Teaches agents how Rogen generates Rojo project files, and how to add files to a Rogen repo.",
+			"source": "./"
+		}
+	]
+}
