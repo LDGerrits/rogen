@@ -121,6 +121,42 @@ describe("detectWorkspace", () => {
 		});
 	});
 
+	describe("tsconfig include and tsBuildInfoFile", () => {
+		it("should report whether tsconfig.json sets include", async () => {
+			await write("tsconfig.json", '{"include":["src"]}');
+
+			expect((await detectWorkspace(fs, cwd)).tsconfigHasInclude).toBe(
+				true
+			);
+		});
+
+		it("should report a tsconfig.json without include", async () => {
+			await write("tsconfig.json", "{}");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.tsconfigHasInclude).toBe(false);
+			expect(workspace.tsBuildInfoFile).toBeUndefined();
+		});
+
+		it("should read compilerOptions.tsBuildInfoFile", async () => {
+			await write(
+				"tsconfig.json",
+				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
+			);
+
+			expect((await detectWorkspace(fs, cwd)).tsBuildInfoFile).toBe(
+				"out/tsconfig.tsbuildinfo"
+			);
+		});
+
+		it("should not report them for luau", async () => {
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.tsconfigHasInclude).toBeUndefined();
+		});
+	});
+
 	describe("code folders", () => {
 		it("should list top-level folders holding code, sorted", async () => {
 			await write("src/a/b/Deep.luau");

@@ -28,6 +28,8 @@ export interface PlannedFile {
 export interface InitPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
+	/** A roblox-ts place's own tsconfig, written after the configs. */
+	readonly tsconfig?: PlannedFile;
 	readonly nextSteps: readonly string[];
 }
 
@@ -61,11 +63,11 @@ export const InitDiagnostics = {
 		),
 };
 
-const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
+export const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
 export const TEMPLATE_FILE = "template.project.json";
 const DARKLUA_SYNC_DIR = "dist";
 
-const serialize = (value: unknown): string =>
+export const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
 
 const configFile = (stem: string, config: RogenConfig): PlannedFile => ({

@@ -7,6 +7,11 @@ import {
 } from "../config/config-discovery.js";
 import { DetectedWorkspace, Language } from "./detect-workspace.js";
 import {
+	DEFAULT_CONFIG_FILE,
+	PlaceChoices,
+	placeFileNames,
+} from "./init-place.js";
+import {
 	TemplateMount,
 	defaultMounts,
 	offeredMounts,
@@ -56,7 +61,8 @@ export async function askInitChoices(
 ): Promise<Result<InitChoices | undefined, Diagnostic[]>> {
 	const { workspace, directory, existingFiles } = context;
 
-	const chosenName = name ?? (await askName(promptService, existingFiles));
+	const chosenName =
+		name ?? (await askConfigName(promptService, existingFiles));
 	if (chosenName === undefined) return ok(undefined);
 
 	const language = await promptService.select<Language>({
@@ -207,25 +213,102 @@ async function askRoutes(
 	return fallback && { routes, fallback: fallback === "shared" };
 }
 
-async function askName(
-	promptService: PromptService,
-	existingFiles: ReadonlySet<string>
-): Promise<string | undefined> {
-	const defaultFile = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
-	if (!existingFiles.has(defaultFile)) return DEFAULT_CONFIG_STEM;
+interface NameQuestion {
+	readonly message: string;
+	readonly description: string;
+	/** The files a config of this name would write. */
+	readonly filesFor: (name: string) => readonly string[];
+}
 
+function askName(
+	promptService: PromptService,
+	existingFiles: ReadonlySet<string>,
+	{ message, description, filesFor }: NameQuestion
+): Promise<string | undefined> {
 	return promptService.text({
-		message: "Config name",
-		description: `Writes <name>.rogen.json. ${defaultFile} already exists, so pick another name, such as test.`,
+		message,
+		description,
 		validate: (value) => {
 			if (value.trim() === "") return "Enter a name.";
 			const parsed = parseInitName([value]);
 			if (parsed.isErr()) return parsed.error.message;
-			const taken = [
-				`${value}${CONFIG_SUFFIX}`,
-				`${sourceStemOf(value)}${CONFIG_SUFFIX}`,
-			].find((file) => existingFiles.has(file));
+			const taken = filesFor(value).find((file) =>
+				existingFiles.has(file)
+			);
 			return taken && `${taken} already exists.`;
 		},
 	});
+}
+
+async function askConfigName(
+	promptService: PromptService,
+	existingFiles: ReadonlySet<string>
+): Promise<string | undefined> {
+	if (!existingFiles.has(DEFAULT_CONFIG_FILE)) return DEFAULT_CONFIG_STEM;
+	return askName(promptService, existingFiles, {
+		message: "Config name",
+		description: `Writes <name>.rogen.json. ${DEFAULT_CONFIG_FILE} already exists, so pick another name, such as test.`,
+		filesFor: (name) => [
+			`${name}${CONFIG_SUFFIX}`,
+			`${sourceStemOf(name)}${CONFIG_SUFFIX}`,
+		],
+	});
+}
+
+export type InitAnswers =
+	| { readonly kind: "project"; readonly choices: InitChoices }
+	| { readonly kind: "place"; readonly choices: PlaceChoices };
+
+/**
+ * Offers a place when `default.rogen.json` exists, and otherwise asks for a
+ * new project. Resolves like `askInitChoices`.
+ */
+export async function askInit(
+	promptService: PromptService,
+	context: InitContext,
+	name?: string
+): Promise<Result<InitAnswers | undefined, Diagnostic[]>> {
+	if (context.existingFiles.has(DEFAULT_CONFIG_FILE)) {
+		const addPlace = await promptService.confirm({
+			message: `Add a place that extends ${DEFAULT_CONFIG_FILE}?`,
+			description:
+				"A place is another Roblox place in this repo. It shares default's routes and packages and adds a folder of its own.",
+			initialValue: true,
+		});
+		if (addPlace === undefined) return ok(undefined);
+		if (addPlace) {
+			const choices = await askPlaceChoices(promptService, context, name);
+			return ok(choices && { kind: "place", choices });
+		}
+	}
+
+	const asked = await askInitChoices(promptService, context, name);
+	if (asked.isErr()) return asked;
+	return ok(asked.value && { kind: "project", choices: asked.value });
+}
+
+async function askPlaceChoices(
+	promptService: PromptService,
+	{ workspace, existingFiles }: InitContext,
+	name?: string
+): Promise<PlaceChoices | undefined> {
+	const placeName =
+		name ??
+		(await askName(promptService, existingFiles, {
+			message: "Place name",
+			description: "Writes <name>.rogen.json.",
+			filesFor: (candidate) => placeFileNames(candidate, workspace),
+		}));
+	if (placeName === undefined) return undefined;
+
+	const folder = await promptService.text({
+		message: "Place folder",
+		description:
+			"Holds this place's own code. It's added to default's root dirs.",
+		placeholder: `places/${placeName}`,
+		validate: required("a folder"),
+	});
+	return folder === undefined
+		? undefined
+		: { name: placeName, folder: folder.trim() };
 }

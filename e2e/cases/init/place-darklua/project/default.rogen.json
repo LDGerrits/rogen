@@ -1,0 +1,5 @@
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "source.rogen.json",
+	"syncDir": "dist"
+}

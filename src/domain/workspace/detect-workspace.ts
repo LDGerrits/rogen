@@ -16,6 +16,10 @@ export interface DetectedWorkspace {
 	readonly outDir?: string;
 	/** `compilerOptions.rootDir` from tsconfig.json, for roblox-ts. */
 	readonly rootDir?: string;
+	/** Whether tsconfig.json sets `include`, for roblox-ts. */
+	readonly tsconfigHasInclude?: boolean;
+	/** `compilerOptions.tsBuildInfoFile` from tsconfig.json, for roblox-ts. */
+	readonly tsBuildInfoFile?: string;
 	/** Top-level folders holding Luau or TypeScript code, sorted. */
 	readonly codeFolders: readonly string[];
 	readonly hasSrc: boolean;
@@ -106,6 +110,10 @@ export async function detectWorkspace(
 			language: "roblox-ts",
 			outDir: tsconfig.outDir,
 			...(tsconfig.rootDir && { rootDir: tsconfig.rootDir }),
+			tsconfigHasInclude: tsconfig.hasInclude,
+			...(tsconfig.tsBuildInfoFile && {
+				tsBuildInfoFile: tsconfig.tsBuildInfoFile,
+			}),
 			...facts,
 		};
 	}
@@ -115,6 +123,8 @@ export async function detectWorkspace(
 interface TsconfigFacts {
 	readonly outDir: string;
 	readonly rootDir?: string;
+	readonly hasInclude: boolean;
+	readonly tsBuildInfoFile?: string;
 }
 
 function compilerOption(tsconfig: unknown, key: string): string | undefined {
@@ -133,16 +143,22 @@ async function readTsconfig(
 		const parsed = parse(await fileSystem.readFile(tsconfigPath));
 		if (parsed.isOk()) {
 			const rootDir = compilerOption(parsed.value, "rootDir");
+			const tsBuildInfoFile = compilerOption(
+				parsed.value,
+				"tsBuildInfoFile"
+			);
 			return {
 				outDir:
 					compilerOption(parsed.value, "outDir") ?? DEFAULT_OUT_DIR,
 				...(rootDir && { rootDir }),
+				hasInclude: isObject(parsed.value) && "include" in parsed.value,
+				...(tsBuildInfoFile && { tsBuildInfoFile }),
 			};
 		}
 	} catch {
 		// An unreadable tsconfig.json means the defaults, not a failed init.
 	}
-	return { outDir: DEFAULT_OUT_DIR };
+	return { outDir: DEFAULT_OUT_DIR, hasInclude: false };
 }
 
 const firstSegment = (dir: string): string =>

@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": null,
+		"rootDirs": [
+			"src",
+			"places/lobby"
+		],
+		"outDir": "out/lobby"
+	},
+	"include": [
+		"src",
+		"places/lobby"
+	]
+}

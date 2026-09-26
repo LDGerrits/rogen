@@ -1,0 +1,29 @@
+$ rogen build default lobby
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    Wrote default.project.json.
+  lobby
+    Wrote lobby.project.json.
+  Built 2 configs.
+
+written:
+  default.project.json
+  lobby.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- out/Combat/Server/Damage.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- out/lobby/src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- out/lobby/places/lobby/Lobby/Server/Greeter.luau
