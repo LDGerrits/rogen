@@ -82,7 +82,7 @@ describe("askInitChoices", () => {
 
 		expect(prompts.asked).toEqual([
 			"Language",
-			"Does Darklua process your code before Rojo syncs it?",
+			"Do you use Darklua?",
 			"Root dirs",
 			"Sync dir",
 			"Packages",

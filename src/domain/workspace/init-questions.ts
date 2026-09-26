@@ -86,9 +86,9 @@ export async function askInitChoices(
 	if (language === undefined) return ok(undefined);
 
 	const darklua = await promptService.confirm({
-		message: "Does Darklua process your code before Rojo syncs it?",
+		message: "Do you use Darklua?",
 		description:
-			"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
+			"Darklua transforms Lua and Luau code using configurable rules. Inject global variables, bundle code, and more.",
 		hint: workspace.darklua ? "found .darklua.json" : undefined,
 		initialValue: workspace.darklua,
 	});
