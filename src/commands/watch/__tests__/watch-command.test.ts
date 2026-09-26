@@ -9,6 +9,7 @@ import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { stagingPattern } from "../../../domain/output/write-output.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import {
 	FileChange,
@@ -32,6 +33,9 @@ import { CoreReconciliationService } from "../../../platform/watcher/core-reconc
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
 import { Watcher } from "../../../platform/watcher/watcher.js";
+
+const isDefaultStaging = (file: string): boolean =>
+	stagingPattern("/repo/default.project.json").test(file);
 
 describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
@@ -269,8 +273,8 @@ describe("watch command", () => {
 			const [, options] = watch.mock.calls[0];
 			expect(options?.ignored).toEqual([
 				"/repo/default.project.json",
-				"/repo/default.project.json.tmp",
 				"/repo/out",
+				stagingPattern("/repo/default.project.json"),
 			]);
 		});
 
@@ -387,7 +391,7 @@ describe("watch command", () => {
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
 				async (file, content) => {
-					if (file === "/repo/default.project.json.tmp") await gate.p;
+					if (isDefaultStaging(file)) await gate.p;
 					return writeFile(file, content);
 				}
 			);
@@ -411,7 +415,7 @@ describe("watch command", () => {
 			const staged = jest.fn();
 			jest.spyOn(memFs, "writeFile").mockImplementation(
 				async (file, content) => {
-					if (file === "/repo/default.project.json.tmp") {
+					if (isDefaultStaging(file)) {
 						staged();
 						await gate.p;
 					}
@@ -830,7 +834,7 @@ describe("watch command", () => {
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
 				async (file, content) => {
-					if (file === "/repo/default.project.json.tmp") await gate.p;
+					if (isDefaultStaging(file)) await gate.p;
 					return writeFile(file, content);
 				}
 			);

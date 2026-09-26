@@ -2,7 +2,7 @@ import path from "path";
 import { isInside } from "../../base/path.js";
 import { rootsToIndex } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
-import { stagingFile } from "../output/write-output.js";
+import { stagingPattern } from "../output/write-output.js";
 
 export interface WatchPlanConfig extends Pick<
 	ResolvedConfig,
@@ -16,7 +16,7 @@ export interface WatchPlan {
 	/** The dirs to watch and index: every config's root dirs, minus any inside another. */
 	readonly roots: readonly string[];
 	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
-	readonly ignored: readonly string[];
+	readonly ignored: readonly (string | RegExp)[];
 	/** Every config with a root dir that contains `changePath`, each once. */
 	configsFor(changePath: string): readonly string[];
 	watches(changePath: string): boolean;
@@ -35,15 +35,18 @@ export function createWatchPlan(
 	}));
 	const roots = rootsToIndex(configs);
 
-	const ignored = [
-		...new Set(
-			configs.flatMap((config) => [
-				path.resolve(config.outFile),
-				stagingFile(path.resolve(config.outFile)),
-				...(config.syncDir ? [path.resolve(config.syncDir)] : []),
-			])
-		),
+	const outFiles = [
+		...new Set(configs.map((config) => path.resolve(config.outFile))),
+	];
+	const ignoredPaths = [
+		...new Set([
+			...outFiles,
+			...configs.flatMap((config) =>
+				config.syncDir ? [path.resolve(config.syncDir)] : []
+			),
+		]),
 	].filter((target) => !roots.some((root) => contains(target, root)));
+	const ignored = [...ignoredPaths, ...outFiles.map(stagingPattern)];
 
 	return {
 		roots,

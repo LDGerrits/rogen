@@ -17,7 +17,7 @@ export class MemoryWatcher implements Watcher {
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private activeRequests: WatchRequest[] = [];
-	private ignored: readonly string[] = [];
+	private ignored: readonly (string | RegExp)[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
 	constructor(

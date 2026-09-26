@@ -8,8 +8,8 @@ export interface WatchRequest {
 }
 
 export interface WatchOptions {
-	/** Paths to skip; a directory skips everything under it. */
-	readonly ignored?: readonly string[];
+	/** Paths to skip; a directory skips everything under it, and a pattern matches whole paths. */
+	readonly ignored?: readonly (string | RegExp)[];
 }
 
 export interface Watcher {
