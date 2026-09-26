@@ -20,6 +20,7 @@ import {
 	configFile,
 	existingFileDiagnostics,
 	serialize,
+	tagsStep,
 } from "./init-plan.js";
 
 export const DEFAULT_CONFIG_FILE = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
@@ -113,6 +114,8 @@ function planLuauPlace({
 }: PlacePlanOptions): InitPlan {
 	const rootDirs = [...base.rootDirs, folder];
 	const steps = [`rogen watch ${name}`, `rojo serve ${name}.project.json`];
+	const tags = (configStem: string) =>
+		tagsStep(workspace.language, `${configStem}${CONFIG_SUFFIX}`);
 
 	if (!workspace.darklua) {
 		return {
@@ -122,7 +125,7 @@ function planLuauPlace({
 					rootDirs,
 				}),
 			],
-			nextSteps: steps,
+			nextSteps: [...steps, tags(name)],
 		};
 	}
 
@@ -137,7 +140,7 @@ function planLuauPlace({
 					syncDir,
 				}),
 			],
-			nextSteps: [...steps, darkluaStep],
+			nextSteps: [...steps, darkluaStep, tags(name)],
 		};
 	}
 
@@ -153,7 +156,7 @@ function planLuauPlace({
 				syncDir,
 			}),
 		],
-		nextSteps: [...steps, darkluaStep],
+		nextSteps: [...steps, darkluaStep, tags(sourceStem)],
 	};
 }
 
@@ -179,6 +182,7 @@ function planRobloxTsPlace({
 		...(workspace.darklua
 			? [`Darklua must also process ${outDir} into ${syncDir}.`]
 			: []),
+		tagsStep(workspace.language, `${name}${CONFIG_SUFFIX}`),
 	];
 
 	return {

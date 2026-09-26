@@ -10,6 +10,7 @@ stdout:
     rojo serve default.project.json
     Darklua must process out into dist (darklua process out dist).
     Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
   Wrote 2 files.
 
 $ rogen build

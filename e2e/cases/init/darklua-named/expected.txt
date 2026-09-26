@@ -9,6 +9,7 @@ stdout:
     rojo serve lobby.project.json
     Darklua must process each root dir into dist (darklua process src dist).
     Add your own routes under "routes" in lobby-source.rogen.json.
+    Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.
   Wrote 2 files.
 
 written:
