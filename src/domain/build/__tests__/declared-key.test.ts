@@ -20,8 +20,14 @@ describe("matchFolderKey", () => {
 		expect(matchFolderKey("server", ROUTES)).toBe("server");
 	});
 
-	it("is case-sensitive", () => {
-		expect(matchFolderKey("Server", ROUTES)).toBeUndefined();
+	it("matches with the first letter in the other case and reports the declared key", () => {
+		expect(matchFolderKey("Server", ROUTES)).toBe("server");
+		expect(matchFolderKey("server", new Set(["Server"]))).toBe("Server");
+	});
+
+	it("does not match any other difference in case", () => {
+		expect(matchFolderKey("SERVER", ROUTES)).toBeUndefined();
+		expect(matchFolderKey("sERVER", ROUTES)).toBeUndefined();
 	});
 
 	it("does not match an undeclared name", () => {
@@ -38,8 +44,12 @@ describe("matchMarkerKey", () => {
 		expect(matchMarkerKey(".mock", ROUTES_AND_TAGS)).toBe("mock");
 	});
 
-	it("is case-sensitive", () => {
-		expect(matchMarkerKey(".Server", ROUTES)).toBeUndefined();
+	it("matches with the first letter in the other case", () => {
+		expect(matchMarkerKey(".Server", ROUTES)).toBe("server");
+	});
+
+	it("does not match any other difference in case", () => {
+		expect(matchMarkerKey(".SERVER", ROUTES)).toBeUndefined();
 	});
 
 	it("ignores a name that doesn't start with a dot", () => {
@@ -120,15 +130,21 @@ describe("matchSuffixKeys", () => {
 		expect(result.baseName).toBe("Analytics.beta");
 	});
 
-	it("does not match a separator suffix in different letter case", () => {
+	it("matches a separator suffix with the first letter in the other case", () => {
 		const result = matchSuffixKeys("Foo.Server", ROUTES);
-		expect(result.baseName).toBe("Foo.Server");
+		expect(result.baseName).toBe("Foo");
+		expect(result.matchedKeys).toEqual(new Set(["server"]));
+	});
+
+	it("does not match a separator suffix that differs beyond the first letter", () => {
+		const result = matchSuffixKeys("Foo.SERVER", ROUTES);
+		expect(result.baseName).toBe("Foo.SERVER");
 		expect(result.matchedKeys.size).toBe(0);
 	});
 
-	it("does not match a capital suffix after a separator", () => {
-		const result = matchSuffixKeys("Foo_Server", ROUTES);
-		expect(result.matchedKeys.size).toBe(0);
+	it("does not match a capital suffix after an upper-case letter or the start", () => {
+		expect(matchSuffixKeys("HTTPServer", ROUTES).matchedKeys.size).toBe(0);
+		expect(matchSuffixKeys("Server", ROUTES).matchedKeys.size).toBe(0);
 	});
 
 	it("matches a capital suffix after a digit", () => {
@@ -136,26 +152,31 @@ describe("matchSuffixKeys", () => {
 		expect(result.baseName).toBe("Level2");
 	});
 
-	it("matches a key declared with a capital exactly", () => {
+	it("matches a key declared with a capital in every form", () => {
 		const keys = new Set(["Server"]);
 		expect(matchSuffixKeys("Foo.Server", keys).baseName).toBe("Foo");
+		expect(matchSuffixKeys("Foo.server", keys).baseName).toBe("Foo");
 		expect(matchSuffixKeys("FooServer", keys).baseName).toBe("Foo");
-		expect(matchSuffixKeys("Foo.server", keys).matchedKeys.size).toBe(0);
+		expect(matchSuffixKeys("Foo.SERVER", keys).matchedKeys.size).toBe(0);
 	});
 
-	it("names the declared key that a separator suffix only differs from in case", () => {
-		expect(matchSuffixKeys("Foo.Server", ROUTES).nearMissKey).toBe(
+	it("names the declared key that a separator suffix only differs from beyond the first letter", () => {
+		expect(matchSuffixKeys("Foo.SERVER", ROUTES).nearMissKey).toBe(
 			"server"
 		);
-		expect(matchSuffixKeys("Foo-SHARED", ROUTES).nearMissKey).toBe(
+		expect(matchSuffixKeys("Foo-sHARED", ROUTES).nearMissKey).toBe(
 			"shared"
 		);
 	});
 
 	it("names a near miss that sits before matched suffixes", () => {
-		const result = matchSuffixKeys("Foo.Server.mock", ROUTES_AND_TAGS);
+		const result = matchSuffixKeys("Foo.SERVER.mock", ROUTES_AND_TAGS);
 		expect(result.matchedKeys).toEqual(new Set(["mock"]));
 		expect(result.nearMissKey).toBe("server");
+	});
+
+	it("has no near miss for a first-letter match", () => {
+		expect(matchSuffixKeys("Foo.Server", ROUTES).nearMissKey).toBeUndefined();
 	});
 
 	it("has no near miss for an exact match or an unrelated name", () => {
@@ -165,12 +186,14 @@ describe("matchSuffixKeys", () => {
 });
 
 describe("matchKeyIgnoringCase", () => {
-	it("returns the declared key that a name only differs from in case", () => {
-		expect(matchKeyIgnoringCase("Server", ROUTES)).toBe("server");
+	it("returns the declared key that a name only differs from beyond the first letter", () => {
+		expect(matchKeyIgnoringCase("SERVER", ROUTES)).toBe("server");
+		expect(matchKeyIgnoringCase("sERVER", ROUTES)).toBe("server");
 	});
 
-	it("ignores a name that is itself declared", () => {
+	it("ignores a name that matches, including with the first letter flipped", () => {
 		expect(matchKeyIgnoringCase("server", ROUTES)).toBeUndefined();
+		expect(matchKeyIgnoringCase("Server", ROUTES)).toBeUndefined();
 	});
 
 	it("ignores an unrelated name", () => {

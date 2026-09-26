@@ -3,7 +3,7 @@ exit 0
 stdout:
   Wrote default.project.json.
 stderr:
-  warning: <dir>/default.project.json - warning: 3 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Hud.Client.luau (client), <dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/Server (server)). Rename them to match the key, or declare the key as written.
+  warning: <dir>/default.project.json - warning: 2 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/SHARED (shared)). Rename them to match the key, or declare the key as written.
 
 written:
   default.project.json
@@ -13,11 +13,13 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Inventory: Folder
-        Hud.Client: ModuleScript  <- src/Inventory/Hud.Client.luau
         Load.SERVER: ModuleScript  <- src/Inventory/Load.SERVER.luau
-      Server: Folder
-        Save: ModuleScript  <- src/Server/Save.luau
+      SHARED: Folder
+        Types: ModuleScript  <- src/SHARED/Types.luau
+  ServerScriptService: ServerScriptService
+    Save: ModuleScript  <- src/Server/Save.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder
         Http: ModuleScript  <- src/Inventory/HttpClient.luau
+        Hud: ModuleScript  <- src/Inventory/Hud.Client.luau

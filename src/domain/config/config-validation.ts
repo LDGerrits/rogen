@@ -8,6 +8,10 @@ import { ResolvedConfig } from "./config.js";
 const FALLBACK_ROUTE = "*";
 const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/;
 
+/** Keys that share this identity match the same folders, markers and suffixes. */
+const matchIdentity = (key: string): string =>
+	key.slice(0, 1).toLowerCase() + key.slice(1);
+
 /** Every rule that can be checked without touching the source tree. */
 export function validateConfig(
 	layered: LayeredConfig,
@@ -18,10 +22,18 @@ export function validateConfig(
 	const problems: Diagnostic[] = [];
 
 	const routeKeys = Object.keys(resolved.routes);
+	const declared = new Map<string, string>();
+	const claim = (key: string, location: ReturnType<typeof locate>) => {
+		const other = declared.get(matchIdentity(key));
+		if (other === undefined) declared.set(matchIdentity(key), key);
+		else problems.push(ConfigDiagnostics.ambiguousKey(location, key, other));
+	};
 	for (const key of routeKeys) {
 		const location = locate("routes", key);
 		if (key !== FALLBACK_ROUTE && !NAME_PATTERN.test(key)) {
 			problems.push(ConfigDiagnostics.invalidRouteKey(location, key));
+		} else if (key !== FALLBACK_ROUTE) {
+			claim(key, location);
 		}
 		const target = parseTarget(resolved.routes[key], location);
 		if (target.isErr()) problems.push(...target.error);
@@ -33,6 +45,8 @@ export function validateConfig(
 			problems.push(ConfigDiagnostics.invalidTagName(location, tag));
 		} else if (routeKeys.includes(tag)) {
 			problems.push(ConfigDiagnostics.tagClashesWithRoute(location, tag));
+		} else {
+			claim(tag, location);
 		}
 	}
 
