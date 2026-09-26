@@ -6,17 +6,15 @@ on:
             - "v*"
 
 permissions:
-    contents: read
-    pages: write
-    id-token: write
+    contents: write
+
+concurrency:
+    group: publish-schema
 
 jobs:
-    deploy-schema:
-        name: Deploy Schema to GitHub Pages
+    publish-schema:
+        name: Publish Schema to gh-pages
         runs-on: ubuntu-latest
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -24,20 +22,31 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 18
+                  node-version: 22
                   cache: "npm"
 
             - name: Install Dependencies
               run: npm ci
 
+            - name: Check Tag Matches Package Version
+              run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+
             - name: Generate Schema
               run: npx tsx scripts/generate-schema.ts
 
-            - name: Upload Pages Artifact
-              uses: actions/upload-pages-artifact@v3
-              with:
-                  path: "./public"
-
-            - name: Deploy to GitHub Pages
-              id: deployment
-              uses: actions/deploy-pages@v4
+            - name: Publish to gh-pages
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  if git ls-remote --exit-code --heads origin gh-pages > /dev/null; then
+                      git fetch origin gh-pages
+                      git worktree add site gh-pages
+                  else
+                      git worktree add --orphan -b gh-pages site
+                  fi
+                  cp -r public/schema site/
+                  touch site/.nojekyll
+                  cd site
+                  git add -A
+                  git commit -m "publish schema for $GITHUB_REF_NAME" || exit 0
+                  git push origin gh-pages

@@ -18,7 +18,7 @@ written:
 
 lobby-source.rogen.json:
 {
-	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"rootDirs": [
 		"src"
 	],
@@ -32,7 +32,7 @@ lobby-source.rogen.json:
 
 lobby.rogen.json:
 {
-	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "lobby-source.rogen.json",
 	"syncDir": "dist"
 }

@@ -10,6 +10,7 @@ import {
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
+import { schemaUrlFor } from "../config/schema-url.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import {
 	DEFAULT_OUT_DIR,
@@ -65,7 +66,7 @@ export const InitDiagnostics = {
 		),
 };
 
-export const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
+export const SCHEMA_URL = schemaUrlFor("2.0.0");
 export const TEMPLATE_FILE = "template.project.json";
 export const DARKLUA_SYNC_DIR = "dist";
 
