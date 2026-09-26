@@ -98,7 +98,9 @@ describe("ConsolePromptService", () => {
 			await terminal.press(KEY.ctrlC);
 			await answer;
 			const lines = terminal.screen.split("\n");
-			const message = lines.findIndex((line) => line.includes("Root dirs"));
+			const message = lines.findIndex((line) =>
+				line.includes("Root dirs")
+			);
 			const description = lines.findIndex((line) =>
 				line.includes("Folders to scan.")
 			);
