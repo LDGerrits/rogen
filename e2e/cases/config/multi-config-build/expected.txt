@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · lobby, match
   lobby
-    Wrote lobby.project.json.
+    lobby.project.json · wrote
   match
-    Wrote match.project.json.
+    match.project.json · wrote
   Built 2 configs.
 
 written:

@@ -1,4 +1,5 @@
 import * as clack from "@clack/prompts";
+import { Readable, Writable } from "stream";
 import { styleText } from "util";
 import {
 	ConfirmPromptOptions,
@@ -25,16 +26,29 @@ const withDetails = (message: string, { description, hint }: PromptDetails) => {
 	].join("\n");
 };
 
+interface PromptStreams {
+	readonly input?: Readable & { readonly isTTY?: boolean };
+	readonly output?: Writable & { readonly isTTY?: boolean };
+}
+
 export class ConsolePromptService implements PromptService {
 	declare readonly _serviceBrand: undefined;
 
-	readonly isInteractive = Boolean(
-		process.stdin.isTTY && process.stdout.isTTY
-	);
+	readonly isInteractive: boolean;
+	private readonly streams: Required<PromptStreams>;
+
+	constructor({
+		input = process.stdin,
+		output = process.stdout,
+	}: PromptStreams = {}) {
+		this.streams = { input, output };
+		this.isInteractive = Boolean(input.isTTY && output.isTTY);
+	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {
 		const { placeholder = "" } = options;
 		const answer = await clack.text({
+			...this.streams,
 			message: withDetails(options.message, options),
 			placeholder,
 			defaultValue: placeholder,
@@ -47,6 +61,7 @@ export class ConsolePromptService implements PromptService {
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
 		const answer = await clack.confirm({
+			...this.streams,
 			message: withDetails(options.message, options),
 			initialValue: options.initialValue,
 		});
@@ -57,6 +72,7 @@ export class ConsolePromptService implements PromptService {
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
 		const answer = await clack.select<T>({
+			...this.streams,
 			message: withDetails(options.message, options),
 			options: options.choices.map(toOption),
 			initialValue: options.initialValue,
@@ -68,6 +84,7 @@ export class ConsolePromptService implements PromptService {
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined> {
 		const answer = await clack.multiselect<T>({
+			...this.streams,
 			message: withDetails(options.message, options),
 			options: options.choices.map(toOption),
 			initialValues: options.initialValues && [...options.initialValues],

@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/default.project.json - warning: 2 files all become "ReplicatedStorage/shared/Inventory/Types" (<dir>/src/Inventory/Types.lua, <dir>/src/Inventory/Types.luau), so only the last one is used.

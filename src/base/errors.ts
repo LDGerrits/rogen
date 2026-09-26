@@ -36,6 +36,11 @@ export const ErrorUtils = {
 	},
 };
 
+/** The user backed out: not a failure to report, only a message to end on. */
+export class CancelledError extends Error {
+	override readonly name = "CancelledError";
+}
+
 export type UnexpectedErrorHandler = (error: Error) => void;
 
 // Throws on the next tick so a silent failure doesn't stay silent.

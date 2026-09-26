@@ -3,13 +3,13 @@ exit 0
 stdout:
   rogen build · default, source, lobby, lobby-source
   default
-    Wrote default.project.json.
+    default.project.json · wrote
   source
-    Wrote source.project.json.
+    source.project.json · wrote
   lobby
-    Wrote lobby.project.json.
+    lobby.project.json · wrote
   lobby-source
-    Wrote lobby-source.project.json.
+    lobby-source.project.json · wrote
   Built 4 configs.
 
 written:

@@ -1,6 +1,6 @@
 import path from "path";
 import { ok, err } from "../../base/result.js";
-import { ErrorUtils } from "../../base/errors.js";
+import { CancelledError, ErrorUtils } from "../../base/errors.js";
 import { CONFIG_SUFFIX } from "../../domain/config/config-discovery.js";
 import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
 import {
@@ -98,7 +98,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				choices: defaultInitChoices(workspace, nameResult.value),
 			};
 		}
-		if (!answers) return err(new Error("init cancelled."));
+		if (!answers) return err(new CancelledError("init cancelled."));
 
 		const planned = await planAnswers(
 			fileSystemService,

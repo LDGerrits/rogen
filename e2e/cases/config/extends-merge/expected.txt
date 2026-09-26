@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen build · place
   Not building: base.rogen.json.
-  Wrote place.project.json.
+  place.project.json · wrote
   Built 1 config.
 
 written:

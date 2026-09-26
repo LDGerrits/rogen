@@ -65,15 +65,17 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			}
 		}
 
+		if (broken > 0) {
+			return err(
+				new Error(
+					`${broken} of ${files.value.length} configs have errors.`
+				)
+			);
+		}
+
 		logService.outro(
 			`${files.value.length} ${files.value.length === 1 ? "config" : "configs"}.`
 		);
-		return broken > 0
-			? err(
-					new Error(
-						`${broken} of ${files.value.length} configs have errors.`
-					)
-				)
-			: ok(undefined);
+		return ok(undefined);
 	},
 });

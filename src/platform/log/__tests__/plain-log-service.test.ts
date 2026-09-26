@@ -119,6 +119,59 @@ describe("PlainLogService", () => {
 		expect(out).toEqual(["rogen 2.0.0"]);
 	});
 
+	it("should print raw text at the error level", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Error);
+
+		logService.print("rogen 2.0.0");
+
+		expect(out).toEqual(["rogen 2.0.0"]);
+	});
+
+	it("should print no raw text when logging is off", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Off);
+
+		logService.print("rogen 2.0.0");
+
+		expect(out).toEqual([]);
+	});
+
+	it("should close an open frame with the given message", () => {
+		const logService = new PlainLogService();
+
+		logService.intro("rogen build");
+		logService.closeFrame("build failed.");
+
+		expect(out).toEqual(["rogen build", "build failed."]);
+	});
+
+	it("should not close a frame that was never opened", () => {
+		new PlainLogService().closeFrame("build failed.");
+
+		expect(out).toEqual([]);
+	});
+
+	it("should not close a frame that was already closed", () => {
+		const logService = new PlainLogService();
+
+		logService.intro("rogen build");
+		logService.outro("done");
+		logService.closeFrame("build failed.");
+
+		expect(out).toEqual(["rogen build", "done"]);
+	});
+
+	it("should not close a frame whose header was silenced", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Error);
+
+		logService.intro("rogen build");
+		logService.closeFrame("build failed.");
+
+		expect(out).toEqual([]);
+	});
+
 	it("should write no ANSI escapes", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Trace);

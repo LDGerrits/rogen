@@ -2,7 +2,7 @@ $ rogen build --template other.project.json
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 
 written:

@@ -701,9 +701,7 @@ describe("watch command", () => {
 						lines: [],
 					});
 				else if (kind === "success" || kind === "error")
-					result
-						.at(-1)
-						?.lines.push(text.replace(/ · \d+ms$/, " · Nms"));
+					result.at(-1)?.lines.push(text);
 				else if (kind.startsWith("diagnostic"))
 					result.at(-1)?.lines.push(`${kind}: ${text}`);
 			}
@@ -730,8 +728,8 @@ describe("watch command", () => {
 				{
 					title: "initial build",
 					lines: [
-						"default.project.json · Nms",
-						"source.project.json · Nms",
+						"default.project.json · wrote",
+						"source.project.json · wrote",
 					],
 				},
 			]);
@@ -750,8 +748,8 @@ describe("watch command", () => {
 				{
 					title: "2 files changed",
 					lines: [
-						"default.project.json · Nms",
-						"source.project.json · Nms",
+						"default.project.json · wrote",
+						"source.project.json · wrote",
 					],
 				},
 			]);
@@ -786,7 +784,7 @@ describe("watch command", () => {
 			expect(blocks()).toEqual([
 				{
 					title: "default.rogen.json changed · reloaded",
-					lines: ["default.project.json · Nms"],
+					lines: ["default.project.json · wrote"],
 				},
 			]);
 		});
@@ -802,7 +800,7 @@ describe("watch command", () => {
 
 			const [block] = blocks();
 			expect(block.lines).toEqual([
-				"default.project.json · Nms",
+				"default.project.json · wrote",
 				expect.stringMatching(
 					/^diagnosticWarning: .*default\.project\.json - warning: 1 file matched no route/
 				),
@@ -818,6 +816,87 @@ describe("watch command", () => {
 			await settle();
 
 			expect(blocks()).toEqual([]);
+		});
+
+		it("should print a finished rebuild that was waiting behind a slower block when shutdown is requested", async () => {
+			await memFs.createDirectory("/repo/lib");
+			await write(
+				"/repo/source.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await run(["default", "source"]);
+			logService.clear();
+			const gate = new DeferredPromise<void>();
+			const writeFile = memFs.writeFile.bind(memFs);
+			jest.spyOn(memFs, "writeFile").mockImplementation(
+				async (file, content) => {
+					if (file === "/repo/default.project.json.tmp") await gate.p;
+					return writeFile(file, content);
+				}
+			);
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			await memFs.writeFile("/repo/lib/B.luau", "");
+			await settle();
+			lifecycle.shutdown();
+			gate.complete();
+			await settle();
+
+			expect(blocks()).toEqual([
+				{
+					title: "1 file changed",
+					lines: ["default.project.json · wrote"],
+				},
+				{
+					title: "1 file changed",
+					lines: ["source.project.json · wrote"],
+				},
+			]);
+			expect(logService.entries.at(-1)).toEqual({
+				kind: "outro",
+				text: "Stopped watching.",
+			});
+		});
+
+		describe("a failing build", () => {
+			beforeEach(async () => {
+				await write(
+					"/repo/default.rogen.json",
+					config({ tags: { dev: true, mock: true } })
+				);
+				await memFs.writeFile("/repo/src/Analytics.dev.luau", "");
+				await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
+			});
+
+			it("should print the error under the result that failed", async () => {
+				await run();
+
+				const [block] = blocks();
+				expect(block.lines).toEqual([
+					"default.project.json · not written",
+					expect.stringMatching(
+						/^diagnosticError: .*default\.project\.json - error: /
+					),
+				]);
+			});
+
+			it("should say the errors repeat when they were already printed", async () => {
+				await run();
+				logService.clear();
+
+				await memFs.writeFile("/repo/src/B.luau", "");
+				await settle();
+
+				expect(blocks()).toEqual([
+					{
+						title: "1 file changed",
+						lines: [
+							"default.project.json · not written · same errors as before",
+						],
+					},
+				]);
+			});
 		});
 
 		it("should close with a result line when it stops", async () => {

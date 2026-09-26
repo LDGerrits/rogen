@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/default.project.json - warning: 3 files matched no route and were left out (<dir>/src/Inventory/Hud.client.luau, <dir>/src/Inventory/Types.luau, <dir>/src/Util.luau). Add a "*" route to place them.
