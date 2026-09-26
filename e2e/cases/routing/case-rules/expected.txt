@@ -2,6 +2,8 @@ $ rogen build
 exit 0
 stdout:
   Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: 2 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/SHARED (shared)). Rename them to match the key, or declare the key as written.
 
 written:
   default.project.json
@@ -10,11 +12,12 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Server: Folder
-        Save: ModuleScript  <- src/Server/Save.luau
+      Inventory: Folder
+        Load.SERVER: ModuleScript  <- src/Inventory/Load.SERVER.luau
+      SHARED: Folder
+        Types: ModuleScript  <- src/SHARED/Types.luau
   ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Load: ModuleScript  <- src/Inventory/Load.SERVER.luau
+    Save: ModuleScript  <- src/Server/Save.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder

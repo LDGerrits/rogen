@@ -1,16 +1,61 @@
 const SEPARATOR_CHARS = "+._@-";
 
-function isUpper(ch: string | undefined): boolean {
-	return (
-		ch !== undefined && ch !== ch.toLowerCase() && ch === ch.toUpperCase()
-	);
+const INVISIBLE_FOLDER = /^\((.+)\)$/;
+
+/** A folder written `(name)` is the folder `name`, left out of the tree. */
+export function unwrapInvisibleFolder(folderName: string): {
+	readonly name: string;
+	readonly invisible: boolean;
+} {
+	const inner = INVISIBLE_FOLDER.exec(folderName)?.[1];
+	return inner === undefined
+		? { name: folderName, invisible: false }
+		: { name: inner, invisible: true };
+}
+
+function capitalized(key: string): string {
+	return key[0].toUpperCase() + key.slice(1);
+}
+
+/** The same name with the first letter in the other case. */
+function withFirstLetterFlipped(name: string): string {
+	const first = name[0];
+	const flipped =
+		first === first.toLowerCase() ? first.toUpperCase() : first.toLowerCase();
+	return flipped + name.slice(1);
+}
+
+/** The declared key that `name` spells exactly or with the first letter in the other case. */
+function resolveKey(
+	name: string,
+	declaredKeys: ReadonlySet<string>
+): string | undefined {
+	if (name === "") return undefined;
+	if (declaredKeys.has(name)) return name;
+	const flipped = withFirstLetterFlipped(name);
+	return declaredKeys.has(flipped) ? flipped : undefined;
+}
+
+/** The letter or digit that a capital-letter suffix has to start after. */
+function isWordEnd(ch: string | undefined): boolean {
+	return ch !== undefined && /[a-z0-9]/.test(ch);
+}
+
+/** The declared key that `name` only differs from beyond the first letter's case, if `name` doesn't match. */
+export function matchKeyIgnoringCase(
+	name: string,
+	declaredKeys: ReadonlySet<string>
+): string | undefined {
+	if (resolveKey(name, declaredKeys) !== undefined) return undefined;
+	const lower = name.toLowerCase();
+	return [...declaredKeys].find((key) => key.toLowerCase() === lower);
 }
 
 export function matchFolderKey(
 	folderName: string,
 	declaredKeys: ReadonlySet<string>
 ): string | undefined {
-	return declaredKeys.has(folderName) ? folderName : undefined;
+	return resolveKey(folderName, declaredKeys);
 }
 
 export function matchMarkerKey(
@@ -18,8 +63,7 @@ export function matchMarkerKey(
 	declaredKeys: ReadonlySet<string>
 ): string | undefined {
 	if (!fileName.startsWith(".") || fileName.length < 2) return undefined;
-	const key = fileName.slice(1);
-	return declaredKeys.has(key) ? key : undefined;
+	return resolveKey(fileName.slice(1), declaredKeys);
 }
 
 export type SuffixForm = "separator" | "capital";
@@ -33,34 +77,31 @@ function findSeparatorMatch(
 	remaining: string,
 	key: string
 ): SuffixCandidate | undefined {
-	const lower = remaining.toLowerCase();
-	const klower = key.toLowerCase();
-
 	for (const sep of SEPARATOR_CHARS) {
-		const suffix = sep + klower;
-		if (lower.endsWith(suffix)) {
-			return { strippedLength: suffix.length, form: "separator" };
+		for (const spelling of [key, withFirstLetterFlipped(key)]) {
+			if (remaining.endsWith(sep + spelling)) {
+				return {
+					strippedLength: sep.length + spelling.length,
+					form: "separator",
+				};
+			}
 		}
 	}
 	return undefined;
 }
 
-function findPascalMatch(
+function findCapitalMatch(
 	remaining: string,
 	key: string
 ): SuffixCandidate | undefined {
-	const lower = remaining.toLowerCase();
-	const klower = key.toLowerCase();
-	if (!lower.endsWith(klower)) return undefined;
+	const word = capitalized(key);
+	if (!remaining.endsWith(word)) return undefined;
 
-	const startIdx = remaining.length - klower.length;
 	// A bare `Server` has no base name, so it isn't a suffix.
-	if (startIdx === 0) return undefined;
+	const startIdx = remaining.length - word.length;
+	if (!isWordEnd(remaining[startIdx - 1])) return undefined;
 
-	if (!isUpper(remaining[startIdx])) return undefined;
-	if (isUpper(remaining[startIdx - 1])) return undefined;
-
-	return { strippedLength: klower.length, form: "capital" };
+	return { strippedLength: word.length, form: "capital" };
 }
 
 function findSuffixMatch(
@@ -68,7 +109,7 @@ function findSuffixMatch(
 	key: string
 ): SuffixCandidate | undefined {
 	const separator = findSeparatorMatch(remaining, key);
-	const capital = findPascalMatch(remaining, key);
+	const capital = findCapitalMatch(remaining, key);
 	if (!separator || !capital) return separator ?? capital;
 	return capital.strippedLength > separator.strippedLength
 		? capital
@@ -88,6 +129,8 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
+	/** A declared key that the base name still ends with after a separator, in different letter case. */
+	readonly nearMissKey?: string;
 }
 
 // Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`.
@@ -127,5 +170,17 @@ export function matchSuffixKeys(
 		baseName: remaining,
 		matchedKeys: matched,
 		spans,
+		nearMissKey: findSeparatorNearMiss(remaining, declaredKeys),
 	};
+}
+
+function findSeparatorNearMiss(
+	remaining: string,
+	declaredKeys: ReadonlySet<string>
+): string | undefined {
+	const lower = remaining.toLowerCase();
+	for (const key of declaredKeys)
+		for (const sep of SEPARATOR_CHARS)
+			if (lower.endsWith(sep + key.toLowerCase())) return key;
+	return undefined;
 }

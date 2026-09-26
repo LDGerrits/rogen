@@ -818,6 +818,49 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
+			it("should reject two route keys that differ only in the case of their first letter", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "server": "ServerScriptService", "Server": "Workspace" }
+}`);
+
+				expect(problems).toEqual([
+					[
+						'"Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.',
+						"/repo/default.rogen.json",
+						2,
+						57,
+					],
+				]);
+			});
+
+			it("should reject two tags that differ only in the case of their first letter", async () => {
+				const problems = await diagnosticsFor(`{
+	"tags": { "mock": true, "Mock": false }
+}`);
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain('"Mock" and "mock"');
+			});
+
+			it("should reject a tag that differs from a route key only in the case of its first letter", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "server": "ServerScriptService" },
+	"tags": { "Server": true }
+}`);
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain('"Server" and "server"');
+			});
+
+			it("should accept keys that differ beyond the first letter", async () => {
+				expect(
+					await diagnosticsFor({
+						routes: { server: "ServerScriptService" },
+						tags: { SERVER: true },
+					})
+				).toEqual([]);
+			});
+
 			it("should reject a route target whose service is unsupported", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "Nowhere/Folder" }

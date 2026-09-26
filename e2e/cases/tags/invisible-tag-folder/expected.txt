@@ -1,0 +1,29 @@
+$ rogen build -o prod.project.json
+exit 0
+stdout:
+  Wrote prod.project.json.
+
+$ rogen build -o mocked.project.json --tag mock --no-tag prod
+exit 0
+stdout:
+  Wrote mocked.project.json.
+
+written:
+  mocked.project.json
+  prod.project.json
+
+$ rojo sourcemap mocked.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Service: ModuleScript  <- src/Analytics/(mock)/Service.luau
+        Types: ModuleScript  <- src/Analytics/Types.luau
+
+$ rojo sourcemap prod.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Service: ModuleScript  <- src/Analytics/(prod)/Service.luau
+        Types: ModuleScript  <- src/Analytics/Types.luau

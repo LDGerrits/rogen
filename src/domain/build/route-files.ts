@@ -12,16 +12,18 @@ import {
 } from "../rojo/rojo-assigned-name.js";
 import {
 	SuffixForm,
+	SuffixMatch,
 	SuffixSpan,
 	matchFolderKey,
+	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
+	unwrapInvisibleFolder,
 } from "./declared-key.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
 const FALLBACK_ROUTE = "*";
-const INVISIBLE_FOLDER = /^\(.+\)$/;
 
 export type TagForm = "folder" | "marker" | SuffixForm;
 
@@ -54,6 +56,8 @@ interface RouteContext {
 	readonly tagKeys: ReadonlySet<string>;
 	readonly declaredKeys: ReadonlySet<string>;
 	readonly targets: ReadonlyMap<string, Target>;
+	/** Called with the path of a name that only differs from a declared key in letter case. */
+	readonly noteNearMiss: (path: string, key: string) => void;
 }
 
 /** Files that no route governs are left out and reported in one warning. */
@@ -75,17 +79,26 @@ export function routeFiles(
 		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
 	);
 	const tagKeys = new Set(Object.keys(config.tags));
+	const nearMisses = new Map<string, string>();
 	const context: RouteContext = {
 		routeKeys,
 		tagKeys,
 		declaredKeys: new Set([...routeKeys, ...tagKeys]),
 		targets,
+		noteNearMiss: (path, key) => nearMisses.set(path, key),
 	};
 
 	const routed: RoutedFile[] = [];
 	const unrouted: string[] = [];
 	for (const root of roots) {
 		const markers = markersByDir(root);
+		for (const marker of root.markers) {
+			const key = matchKeyIgnoringCase(
+				path.posix.basename(marker).slice(1),
+				context.declaredKeys
+			);
+			if (key) context.noteNearMiss(rootPath(root, marker), key);
+		}
 		for (const entry of root.entries) {
 			const outcome = routeEntry(entry, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
@@ -99,11 +112,26 @@ export function routeFiles(
 	return ok({
 		routed,
 		unrouted,
-		warnings:
-			unrouted.length > 0
+		warnings: [
+			...(nearMisses.size > 0
+				? [
+						RouteDiagnostics.caseMismatch(
+							location,
+							[...nearMisses].map(
+								([path, key]) => `${path} (${key})`
+							)
+						),
+					]
+				: []),
+			...(unrouted.length > 0
 				? [RouteDiagnostics.unrouted(location, unrouted)]
-				: [],
+				: []),
+		],
 	});
+}
+
+function rootPath(root: ScannedRoot, relativePath: string): string {
+	return toPosix(path.join(root.rootDir, relativePath));
 }
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
@@ -145,11 +173,20 @@ function routeEntry(
 	let dir = "";
 	for (const segment of segments) {
 		dir = dir ? `${dir}/${segment}` : segment;
-		const routeKey = matchFolderKey(segment, context.routeKeys);
-		const tagKey = matchFolderKey(segment, context.tagKeys);
+		const { name, invisible } = unwrapInvisibleFolder(segment);
+		const routeKey = matchFolderKey(name, context.routeKeys);
+		const tagKey = matchFolderKey(name, context.tagKeys);
 		if (routeKey) governing ??= routeKey;
 		else if (tagKey) tags.push({ tag: tagKey, form: "folder" });
-		else if (!INVISIBLE_FOLDER.test(segment)) folders.push(segment);
+		else {
+			if (!invisible) folders.push(segment);
+			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
+			if (nearMiss)
+				context.noteNearMiss(
+					toPosix(path.join(entry.rootDir, dir)),
+					nearMiss
+				);
+		}
 		applyMarkers(dir);
 	}
 
@@ -160,6 +197,7 @@ function routeEntry(
 			stemOf(entry.initFile),
 			context.declaredKeys
 		);
+		noteSuffixNearMiss(entry, match, context);
 		governing ??= match.spans.find((span) =>
 			context.routeKeys.has(span.key)
 		)?.key;
@@ -169,6 +207,7 @@ function routeEntry(
 		const stem =
 			entry.kind === "data" ? stripRojoDataSuffix(rawStem) : rawStem;
 		const match = matchSuffixKeys(stem, context.declaredKeys);
+		noteSuffixNearMiss(entry, match, context);
 		const tagSpans = tagSpansOf(match.spans, context);
 		tags.push(...tagSpans.map(asTagMatch));
 
@@ -197,6 +236,18 @@ function routeEntry(
 		tags,
 		buriedScriptSuffix,
 	};
+}
+
+function noteSuffixNearMiss(
+	entry: ScannedEntry,
+	match: SuffixMatch,
+	context: RouteContext
+): void {
+	if (match.nearMissKey)
+		context.noteNearMiss(
+			toPosix(path.join(entry.rootDir, entry.relativePath)),
+			match.nearMissKey
+		);
 }
 
 function tagSpansOf(
