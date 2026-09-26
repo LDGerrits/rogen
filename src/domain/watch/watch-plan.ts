@@ -2,6 +2,7 @@ import path from "path";
 import { isInside } from "../../base/path.js";
 import { rootsToIndex } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
+import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { stagingPattern } from "../output/write-output.js";
 
 export interface WatchPlanConfig extends Pick<
@@ -16,7 +17,7 @@ export interface WatchPlan {
 	/** The dirs to watch and index: every config's root dirs, minus any inside another. */
 	readonly roots: readonly string[];
 	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
-	readonly ignored: readonly (string | RegExp)[];
+	readonly ignored: readonly IgnoredPath[];
 	/** Every config with a root dir that contains `changePath`, each once. */
 	configsFor(changePath: string): readonly string[];
 	watches(changePath: string): boolean;

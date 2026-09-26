@@ -7,9 +7,11 @@ export interface WatchRequest {
 	readonly recursive: boolean;
 }
 
+export type IgnoredPath = string | RegExp;
+
 export interface WatchOptions {
 	/** Paths to skip; a directory skips everything under it, and a pattern matches whole paths. */
-	readonly ignored?: readonly (string | RegExp)[];
+	readonly ignored?: readonly IgnoredPath[];
 }
 
 export interface Watcher {

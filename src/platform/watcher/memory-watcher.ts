@@ -5,7 +5,7 @@ import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { FileChange } from "../fs/file-events.js";
 import { isIgnored } from "./ignored-paths.js";
-import { Watcher, WatchOptions, WatchRequest } from "./watcher.js";
+import { IgnoredPath, Watcher, WatchOptions, WatchRequest } from "./watcher.js";
 
 export class MemoryWatcher implements Watcher {
 	declare readonly _serviceBrand: undefined;
@@ -17,7 +17,7 @@ export class MemoryWatcher implements Watcher {
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private activeRequests: WatchRequest[] = [];
-	private ignored: readonly (string | RegExp)[] = [];
+	private ignored: readonly IgnoredPath[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
 	constructor(

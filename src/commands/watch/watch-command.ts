@@ -297,6 +297,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			...plan.roots.map((dir) => ({ path: dir, recursive: true })),
 		];
 
+		// JSON.stringify drops a RegExp's source, so stringify patterns explicitly
 		const watchKey = () =>
 			JSON.stringify([watchRequests(), plan.ignored.map(String)]);
 

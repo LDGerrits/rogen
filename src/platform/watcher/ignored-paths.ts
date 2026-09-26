@@ -1,6 +1,5 @@
 import { toPosix } from "../../base/path.js";
-
-export type IgnoredPath = string | RegExp;
+import { IgnoredPath } from "./watcher.js";
 
 /** Whether `target` is one of `ignored`, or lies under one; a pattern matches the posix form of the whole path. */
 export function isIgnored(

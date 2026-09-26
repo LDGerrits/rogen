@@ -168,14 +168,14 @@ describe("domain/watch/watch-plan", () => {
 
 		it("should escape regex characters in the output path", () => {
 			const plan = createWatchPlan([
-				config("/repo (v2)/default.rogen.json", ["/repo (v2)/src"]),
+				config("/repo (x)/default.rogen.json", ["/repo (x)/src"]),
 			]);
 
 			expect(
-				isIgnored("/repo (v2)/default.project.json.1.tmp", plan.ignored)
+				isIgnored("/repo (x)/default.project.json.1.tmp", plan.ignored)
 			).toBe(true);
 			expect(
-				isIgnored("/repoXv2)/default.project.json.1.tmp", plan.ignored)
+				isIgnored("/repoXx)/default.project.json.1.tmp", plan.ignored)
 			).toBe(false);
 		});
 
