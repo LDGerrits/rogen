@@ -1,8 +1,8 @@
-import { randomUUID } from "crypto";
 import { ErrorUtils } from "../../base/errors.js";
 import { stableStringify } from "../../base/json.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
+import { generateUuid } from "../../base/uuid.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -16,7 +16,7 @@ export interface WriteOutputResult {
 
 /** A fresh file for `writeOutput` to stage a write through, so concurrent writers never share one. */
 export function stagingFile(outFile: string): string {
-	return `${outFile}.${randomUUID()}.tmp`;
+	return `${outFile}.${generateUuid()}.tmp`;
 }
 
 /** Matches the staging file of any writer of `outFile`, in posix form. */
