@@ -1,0 +1,8 @@
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "./source.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}

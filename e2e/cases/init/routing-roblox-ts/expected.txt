@@ -1,0 +1,57 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Created template.project.json.
+  Created default.rogen.json.
+  Next steps
+    rbxtsc -w
+    rogen watch
+    rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+  Wrote 2 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  Wrote default.project.json.
+  Built 1 config.
+
+written:
+  default.project.json
+  default.rogen.json
+  template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"template": "template.project.json",
+	"syncDir": "out"
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: ModuleScript  <- out/Inventory/Server/Save.luau
+    Trading: Folder
+      Trade: ModuleScript  <- out/Trading/server/Trade.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Trading: Folder
+        Window: ModuleScript  <- out/Trading/client/Window.luau
+
+$ rojo sourcemap template.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage

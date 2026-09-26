@@ -1,4 +1,5 @@
 import {
+	ConfirmPromptOptions,
 	MultiSelectPromptOptions,
 	PromptDetails,
 	PromptService,
@@ -10,7 +11,11 @@ export const ACCEPT_DEFAULT = Symbol("acceptDefault");
 export const CANCEL = Symbol("cancel");
 
 export type ScriptedAnswer =
-	string | readonly string[] | typeof ACCEPT_DEFAULT | typeof CANCEL;
+	| string
+	| boolean
+	| readonly string[]
+	| typeof ACCEPT_DEFAULT
+	| typeof CANCEL;
 
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
@@ -42,6 +47,10 @@ export class MockPromptService implements PromptService {
 			);
 		}
 		return resolved;
+	}
+
+	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
+		return this.next<boolean>(options, options.initialValue);
 	}
 
 	async select<T extends string>(

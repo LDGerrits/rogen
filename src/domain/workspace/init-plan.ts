@@ -10,14 +10,15 @@ import {
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
-import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
+import { RojoTree } from "../rojo/rojo-tree.js";
 import {
 	DEFAULT_OUT_DIR,
 	DetectedWorkspace,
-	PACKAGE_DIRS,
-	RBXTS_SCOPES,
-	Toolchain,
+	Language,
 } from "./detect-workspace.js";
+import { TemplateMount, defaultMounts, templateTree } from "./init-mounts.js";
+import { defaultRootDir } from "./init-root-dirs.js";
+import { DEFAULT_ROUTES, RouteId, startingRoutes } from "./starting-routes.js";
 
 export interface PlannedFile {
 	readonly fileName: string;
@@ -27,24 +28,23 @@ export interface PlannedFile {
 export interface InitPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
-}
-
-export interface TemplateMount {
-	readonly path: string;
-	readonly optional: boolean;
-}
-
-export interface MountCandidate {
-	readonly path: string;
-	readonly installed: boolean;
+	/** A roblox-ts place's own tsconfig, written after the configs. */
+	readonly tsconfig?: PlannedFile;
+	readonly nextSteps: readonly string[];
 }
 
 export interface InitChoices {
 	readonly name: string;
-	readonly toolchain: Toolchain;
+	readonly language: Language;
+	readonly darklua: boolean;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
+	/** Where roblox-ts compiles to; Darklua reads it when both are used. */
+	readonly outDir?: string;
 	readonly mounts: readonly TemplateMount[];
+	readonly routes: readonly RouteId[];
+	/** Whether files that match no route go to the shared target, or are left out. */
+	readonly fallback: boolean;
 }
 
 export interface InitPlanOptions {
@@ -65,130 +65,68 @@ export const InitDiagnostics = {
 		),
 };
 
-const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
+export const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
 export const TEMPLATE_FILE = "template.project.json";
-const DARKLUA_SYNC_DIR = "dist";
+export const DARKLUA_SYNC_DIR = "dist";
 
-const STARTING_ROUTES = {
-	server: "ServerScriptService",
-	client: "StarterPlayer/StarterPlayerScripts",
-	shared: "ReplicatedStorage/shared",
-	"*": "ReplicatedStorage/shared",
-};
-
-const serialize = (value: unknown): string =>
+export const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
 
-const INCLUDE_DIR = "include";
-const SCOPE_PARENT = "node_modules/";
-
-const rojoPath = ({ path: mountPath, optional }: TemplateMount): RojoPath =>
-	optional ? { optional: mountPath } : mountPath;
-
-const mountNode = (mount: TemplateMount): RojoNode => ({
-	$path: rojoPath(mount),
+export const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
+	fileName: `${stem}${CONFIG_SUFFIX}`,
+	content: serialize(config),
 });
 
 export function syncDirFor(
-	toolchain: Toolchain,
+	language: Language,
+	darklua: boolean,
 	workspace: DetectedWorkspace
 ): string | undefined {
-	if (toolchain === "roblox-ts") return workspace.outDir ?? DEFAULT_OUT_DIR;
-	return toolchain === "darklua" ? DARKLUA_SYNC_DIR : undefined;
+	if (darklua) return DARKLUA_SYNC_DIR;
+	return language === "roblox-ts"
+		? (workspace.outDir ?? DEFAULT_OUT_DIR)
+		: undefined;
 }
 
-/** Everything a template could mount, found or not. */
-export function mountCandidates(
-	workspace: DetectedWorkspace
-): readonly MountCandidate[] {
-	const { shared, server } =
-		PACKAGE_DIRS[workspace.packageManager ?? "wally"];
-	return [
-		{ path: INCLUDE_DIR, installed: workspace.hasInclude },
-		...RBXTS_SCOPES.map((scope) => ({
-			path: `${SCOPE_PARENT}${scope}`,
-			installed: workspace.rbxtsScopes.includes(scope),
-		})),
-		...[shared, server].map((dir) => ({
-			path: dir,
-			installed:
-				workspace.packageManager !== undefined &&
-				workspace.packageDirs.has(dir),
-		})),
-	];
+export const compiledDirOf = (workspace: DetectedWorkspace): string =>
+	workspace.outDir ?? DEFAULT_OUT_DIR;
+
+export const sourceStemOf = (name: string): string =>
+	name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
+
+const hasSourceConfig = (language: Language, darklua: boolean): boolean =>
+	language === "luau" && darklua;
+
+/** Every config file `init` writes for `name`. */
+export function configFileNames(
+	name: string,
+	language: Language,
+	darklua: boolean
+): string[] {
+	const stems = hasSourceConfig(language, darklua)
+		? [sourceStemOf(name), name]
+		: [name];
+	return stems.map((stem) => `${stem}${CONFIG_SUFFIX}`);
 }
 
 export function defaultInitChoices(
 	workspace: DetectedWorkspace,
 	name: string
 ): InitChoices {
-	const candidates = mountCandidates(workspace);
-	const hasScopes = workspace.rbxtsScopes.length > 0;
-	const syncDir = syncDirFor(workspace.toolchain, workspace);
+	const { language, darklua } = workspace;
+	const syncDir = syncDirFor(language, darklua, workspace);
 	return {
 		name,
-		toolchain: workspace.toolchain,
-		rootDirs: ["src"],
+		language,
+		darklua,
+		rootDirs: [defaultRootDir(workspace, language)],
 		...(syncDir && { syncDir }),
-		mounts: candidates
-			.filter(
-				({ path: mountPath, installed }) =>
-					installed && (mountPath !== INCLUDE_DIR || hasScopes)
-			)
-			.map(({ path: mountPath }) => ({
-				path: mountPath,
-				optional: false,
-			})),
+		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
+		mounts: defaultMounts(workspace, language),
+		routes: DEFAULT_ROUTES,
+		fallback: true,
 	};
 }
-
-function templateTree(mounts: readonly TemplateMount[]): RojoNode {
-	const replicatedStorage: RojoNode = {};
-	const serverScriptService: RojoNode = {};
-
-	const include = mounts.find(({ path }) => path === INCLUDE_DIR);
-	const scopes = mounts.filter(({ path }) => path.startsWith(SCOPE_PARENT));
-	if (include || scopes.length > 0) {
-		replicatedStorage.rbxts_include = {
-			...(include && mountNode(include)),
-			...(scopes.length > 0 && {
-				node_modules: {
-					$className: "Folder",
-					...Object.fromEntries(
-						scopes.map((scope) => [
-							scope.path.slice(SCOPE_PARENT.length),
-							mountNode(scope),
-						])
-					),
-				},
-			}),
-		};
-	}
-
-	const dirs = Object.values(PACKAGE_DIRS);
-	const shared = mounts.find(({ path }) =>
-		dirs.some((dir) => dir.shared === path)
-	);
-	const server = mounts.find(({ path }) =>
-		dirs.some((dir) => dir.server === path)
-	);
-	if (shared) replicatedStorage.Packages = mountNode(shared);
-	if (server) serverScriptService.ServerPackages = mountNode(server);
-
-	return {
-		...(Object.keys(replicatedStorage).length > 0 && {
-			ReplicatedStorage: replicatedStorage,
-		}),
-		...(Object.keys(serverScriptService).length > 0 && {
-			ServerScriptService: serverScriptService,
-		}),
-	};
-}
-
-const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
-	fileName: `${stem}${CONFIG_SUFFIX}`,
-	content: serialize(config),
-});
 
 /** `names` are the positionals after `init`. */
 export function parseInitName(names: readonly string[]): Result<string, Error> {
@@ -209,22 +147,72 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 	return ok(name);
 }
 
+/** One diagnostic per file in `fileNames` that already exists in `directory`. */
+export const existingFileDiagnostics = (
+	fileNames: readonly string[],
+	directory: string,
+	existingFiles: ReadonlySet<string>
+): Diagnostic[] =>
+	fileNames
+		.filter((fileName) => existingFiles.has(fileName))
+		.map((fileName) =>
+			InitDiagnostics.configExists({
+				resource: path.join(directory, fileName),
+			})
+		);
+
 export function planInit(
 	options: InitPlanOptions
 ): Result<InitPlan, Diagnostic[]> {
 	const plan = buildPlan(options);
-	const existing = plan.configs
-		.filter(({ fileName }) => options.existingFiles.has(fileName))
-		.map(({ fileName }) =>
-			InitDiagnostics.configExists({
-				resource: path.join(options.directory, fileName),
-			})
-		);
+	const existing = existingFileDiagnostics(
+		plan.configs.map(({ fileName }) => fileName),
+		options.directory,
+		options.existingFiles
+	);
 	return existing.length > 0 ? err(existing) : ok(plan);
 }
 
+function nextSteps({
+	name,
+	language,
+	darklua,
+	rootDirs,
+	syncDir,
+	outDir,
+}: InitChoices): string[] {
+	const steps = [
+		...(language === "roblox-ts" ? ["rbxtsc -w"] : []),
+		name === DEFAULT_CONFIG_STEM ? "rogen watch" : `rogen watch ${name}`,
+		`rojo serve ${name}.project.json`,
+	];
+	if (darklua && syncDir) {
+		steps.push(
+			language === "roblox-ts"
+				? `Darklua must process ${outDir ?? DEFAULT_OUT_DIR} into ${syncDir} (darklua process ${outDir ?? DEFAULT_OUT_DIR} ${syncDir}).`
+				: `Darklua must process each root dir into ${syncDir} (darklua process ${rootDirs[0]} ${syncDir}).`
+		);
+	}
+	const routesStem = hasSourceConfig(language, darklua)
+		? sourceStemOf(name)
+		: name;
+	steps.push(
+		`Add your own routes under "routes" in ${routesStem}${CONFIG_SUFFIX}.`
+	);
+	return steps;
+}
+
 function buildPlan(options: InitPlanOptions): InitPlan {
-	const { name, toolchain, rootDirs, syncDir, mounts } = options.choices;
+	const {
+		name,
+		language,
+		darklua,
+		rootDirs,
+		syncDir,
+		mounts,
+		routes,
+		fallback,
+	} = options.choices;
 	const tree = templateTree(mounts);
 	const hasMounts = Object.keys(tree).length > 0;
 	const templateExists = options.existingFiles.has(TEMPLATE_FILE);
@@ -246,18 +234,20 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 	const starter = (starterSyncDir?: string): RogenConfig => ({
 		$schema: SCHEMA_URL,
 		rootDirs: [...rootDirs],
-		routes: STARTING_ROUTES,
+		routes: startingRoutes(language, routes, fallback),
 		...((hasMounts || templateExists) && {
 			template: TEMPLATE_FILE,
 		}),
 		...(starterSyncDir && { syncDir: starterSyncDir }),
 	});
 
-	if (toolchain === "darklua") {
-		const sourceStem =
-			name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
+	const steps = nextSteps(options.choices);
+
+	if (hasSourceConfig(language, darklua)) {
+		const sourceStem = sourceStemOf(name);
 		return {
 			template,
+			nextSteps: steps,
 			configs: [
 				configFile(sourceStem, starter()),
 				configFile(name, {
@@ -269,5 +259,9 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 		};
 	}
 
-	return { template, configs: [configFile(name, starter(syncDir))] };
+	return {
+		template,
+		configs: [configFile(name, starter(syncDir))],
+		nextSteps: steps,
+	};
 }

@@ -3,6 +3,10 @@ exit 0
 stdout:
   rogen init
   Created default.rogen.json.
+  Next steps
+    rogen watch
+    rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 1 file.
 
 $ rogen build
@@ -23,17 +27,17 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       Inventory: Folder
         Types: ModuleScript  <- src/Inventory/Types.luau
   ServerScriptService: ServerScriptService

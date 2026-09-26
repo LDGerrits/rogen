@@ -17,6 +17,11 @@ export interface TextPromptOptions extends PromptDetails {
 	readonly validate?: (value: string) => string | undefined;
 }
 
+export interface ConfirmPromptOptions extends PromptDetails {
+	readonly message: string;
+	readonly initialValue?: boolean;
+}
+
 export interface SelectPromptOptions<T extends string> extends PromptDetails {
 	readonly message: string;
 	readonly choices: readonly PromptChoice<T>[];
@@ -37,6 +42,7 @@ export interface PromptService {
 	readonly isInteractive: boolean;
 
 	text(options: TextPromptOptions): Promise<string | undefined>;
+	confirm(options: ConfirmPromptOptions): Promise<boolean | undefined>;
 	select<T extends string>(
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined>;

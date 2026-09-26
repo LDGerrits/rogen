@@ -9,7 +9,7 @@ stdout:
   Commands:
     build [name...]  Writes each named config's project file.
     help [command]   Prints usage, or details for one command.
-    init [name]      Writes a starting config, detecting the toolchain and asking in a terminal.
+    init [name]      Writes a starting config, detecting the workspace and asking in a terminal.
     list             Lists every config here with its root dirs, sync dir, project file and tags.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
@@ -33,7 +33,7 @@ stdout:
   Commands:
     build [name...]  Writes each named config's project file.
     help [command]   Prints usage, or details for one command.
-    init [name]      Writes a starting config, detecting the toolchain and asking in a terminal.
+    init [name]      Writes a starting config, detecting the workspace and asking in a terminal.
     list             Lists every config here with its root dirs, sync dir, project file and tags.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.

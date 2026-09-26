@@ -2,11 +2,18 @@ $ rogen init
 exit 0
 stdout:
   rogen init
+  Created template.project.json.
   Created default.rogen.json.
-  Wrote 1 file.
+  Next steps
+    rbxtsc -w
+    rogen watch
+    rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+  Wrote 2 files.
 
 written:
   default.rogen.json
+  template.project.json
 
 default.rogen.json:
 {
@@ -20,5 +27,10 @@ default.rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
+	"template": "template.project.json",
 	"syncDir": "out"
 }
+
+$ rojo sourcemap template.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage

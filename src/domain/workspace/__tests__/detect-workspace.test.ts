@@ -15,13 +15,15 @@ describe("detectWorkspace", () => {
 		await fs.createDirectory(cwd);
 	});
 
-	describe("toolchain", () => {
-		it("should be luau when nothing is found", async () => {
+	describe("language and darklua", () => {
+		it("should be luau without darklua when nothing is found", async () => {
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("luau");
 			expect(workspace).toEqual({
-				toolchain: "luau",
+				language: "luau",
+				darklua: false,
+				codeFolders: [],
+				hasSrc: false,
 				packageDirs: new Set(),
 				rbxtsScopes: [],
 				hasInclude: false,
@@ -33,7 +35,8 @@ describe("detectWorkspace", () => {
 
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("roblox-ts");
+			expect(workspace.language).toBe("roblox-ts");
+			expect(workspace.darklua).toBe(false);
 		});
 
 		it.each([".darklua.json", ".darklua.json5"])(
@@ -43,18 +46,20 @@ describe("detectWorkspace", () => {
 
 				const workspace = await detectWorkspace(fs, cwd);
 
-				expect(workspace.toolchain).toBe("darklua");
+				expect(workspace.language).toBe("luau");
+				expect(workspace.darklua).toBe(true);
 				expect(workspace.outDir).toBeUndefined();
 			}
 		);
 
-		it("should prefer roblox-ts when both are present", async () => {
+		it("should report roblox-ts and darklua together", async () => {
 			await write("tsconfig.json", "{}");
 			await write(".darklua.json");
 
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("roblox-ts");
+			expect(workspace.language).toBe("roblox-ts");
+			expect(workspace.darklua).toBe(true);
 		});
 	});
 
@@ -96,6 +101,113 @@ describe("detectWorkspace", () => {
 			const workspace = await detectWorkspace(fs, cwd);
 
 			expect(workspace.outDir).toBe("out");
+		});
+	});
+
+	describe("rootDir", () => {
+		it("should read compilerOptions.rootDir from tsconfig.json", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ compilerOptions: { rootDir: "game" } })
+			);
+
+			expect((await detectWorkspace(fs, cwd)).rootDir).toBe("game");
+		});
+
+		it("should not report a rootDir when tsconfig.json has none", async () => {
+			await write("tsconfig.json", "{}");
+
+			expect((await detectWorkspace(fs, cwd)).rootDir).toBeUndefined();
+		});
+	});
+
+	describe("tsconfig include and tsBuildInfoFile", () => {
+		it("should report whether tsconfig.json sets include", async () => {
+			await write("tsconfig.json", '{"include":["src"]}');
+
+			expect((await detectWorkspace(fs, cwd)).tsconfigHasInclude).toBe(
+				true
+			);
+		});
+
+		it("should report a tsconfig.json without include", async () => {
+			await write("tsconfig.json", "{}");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.tsconfigHasInclude).toBe(false);
+			expect(workspace.tsBuildInfoFile).toBeUndefined();
+		});
+
+		it("should read compilerOptions.tsBuildInfoFile", async () => {
+			await write(
+				"tsconfig.json",
+				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
+			);
+
+			expect((await detectWorkspace(fs, cwd)).tsBuildInfoFile).toBe(
+				"out/tsconfig.tsbuildinfo"
+			);
+		});
+
+		it("should not report them for luau", async () => {
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.tsconfigHasInclude).toBeUndefined();
+		});
+	});
+
+	describe("code folders", () => {
+		it("should list top-level folders holding code, sorted", async () => {
+			await write("src/a/b/Deep.luau");
+			await write("places/lobby/Game.server.lua");
+			await write("shared/Util.ts");
+			await write("web/App.tsx");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.codeFolders).toEqual([
+				"places",
+				"shared",
+				"src",
+				"web",
+			]);
+		});
+
+		it("should skip folders without code, dot-folders and node_modules", async () => {
+			await write("docs/readme.md");
+			await write(".git/hooks/pre-commit.lua");
+			await write("node_modules/pkg/index.ts");
+			await write("src/nested/node_modules/x/y.lua");
+			await write("src/Real.luau");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.codeFolders).toEqual(["src"]);
+		});
+
+		it("should skip package folders, include and the outDir", async () => {
+			await write(
+				"tsconfig.json",
+				'{"compilerOptions":{"outDir":"lib"}}'
+			);
+			await write("Packages/Roact.luau");
+			await write("include/RuntimeLib.lua");
+			await write("lib/main.luau");
+			await write("src/main.ts");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.codeFolders).toEqual(["src"]);
+		});
+
+		it("should report whether src exists, even without code", async () => {
+			await fs.createDirectory(path.join(cwd, "src"));
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.hasSrc).toBe(true);
+			expect(workspace.codeFolders).toEqual([]);
 		});
 	});
 

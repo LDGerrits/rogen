@@ -1,0 +1,11 @@
+{
+	"steps": [
+		[
+			"build",
+			"default",
+			"source",
+			"lobby",
+			"lobby-source"
+		]
+	]
+}

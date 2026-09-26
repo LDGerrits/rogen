@@ -1,0 +1,47 @@
+$ rogen build default source lobby lobby-source
+exit 0
+stdout:
+  rogen build · default, source, lobby, lobby-source
+  default
+    Wrote default.project.json.
+  source
+    Wrote source.project.json.
+  lobby
+    Wrote lobby.project.json.
+  lobby-source
+    Wrote lobby-source.project.json.
+  Built 4 configs.
+
+written:
+  default.project.json
+  lobby-source.project.json
+  lobby.project.json
+  source.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- dist/Combat/Server/Damage.luau
+
+$ rojo sourcemap lobby-source.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- dist/lobby/src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- dist/lobby/places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap source.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau

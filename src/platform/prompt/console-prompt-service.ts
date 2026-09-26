@@ -1,6 +1,7 @@
 import * as clack from "@clack/prompts";
 import { styleText } from "util";
 import {
+	ConfirmPromptOptions,
 	MultiSelectPromptOptions,
 	PromptDetails,
 	PromptChoice,
@@ -40,6 +41,14 @@ export class ConsolePromptService implements PromptService {
 			validate:
 				options.validate &&
 				((value) => options.validate?.(value || placeholder)),
+		});
+		return clack.isCancel(answer) ? undefined : answer;
+	}
+
+	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
+		const answer = await clack.confirm({
+			message: withDetails(options.message, options),
+			initialValue: options.initialValue,
 		});
 		return clack.isCancel(answer) ? undefined : answer;
 	}

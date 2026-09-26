@@ -3,6 +3,10 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  Next steps
+    rogen watch lobby
+    rojo serve lobby.project.json
+    Add your own routes under "routes" in lobby.rogen.json.
   Wrote 1 file.
 
 $ rogen build lobby
@@ -23,15 +27,15 @@ lobby.rogen.json:
 		"src"
 	],
 	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 
 $ rojo sourcemap lobby.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       A: ModuleScript  <- src/A.luau
