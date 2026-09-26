@@ -1,4 +1,4 @@
 $ rogen build a b
 exit 1
 stderr:
-  error: <dir>/game.project.json - error: "a.rogen.json" and "b.rogen.json" write the same file, <dir>/game.project.json. Give each its own "outFile".
+  <dir>/game.project.json - error: "a.rogen.json" and "b.rogen.json" write the same file, <dir>/game.project.json. Give each its own "outFile".

@@ -1,7 +1,9 @@
 $ rogen init
 exit 0
 stdout:
+  rogen init
   Created default.rogen.json.
+  Wrote 1 file.
 
 written:
   default.rogen.json

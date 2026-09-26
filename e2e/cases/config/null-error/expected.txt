@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  error: <dir>/default.rogen.json:3:13 - error: "syncDir": expected a string, found null.
+  <dir>/default.rogen.json:3:13 - error: "syncDir": expected a string, found null.

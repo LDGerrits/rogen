@@ -28,7 +28,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const target = args.help ? args._[0] : args._[1];
 
 		if (target === undefined) {
-			logService.info(formatHelp(registry.getCommands(), GlobalOptions));
+			logService.print(formatHelp(registry.getCommands(), GlobalOptions));
 			return ok(undefined);
 		}
 
@@ -41,7 +41,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			);
 		}
 
-		logService.info(formatCommandHelp(command, GlobalOptions));
+		logService.print(formatCommandHelp(command, GlobalOptions));
 		return ok(undefined);
 	},
 });

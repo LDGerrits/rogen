@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  error: <dir>/default.rogen.json:12:13 - error: tag "my-tag" is invalid: use letters and digits only, starting with a letter.
+  <dir>/default.rogen.json:12:13 - error: tag "my-tag" is invalid: use letters and digits only, starting with a letter.

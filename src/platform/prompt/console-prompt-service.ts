@@ -1,6 +1,8 @@
 import * as clack from "@clack/prompts";
+import { styleText } from "util";
 import {
 	MultiSelectPromptOptions,
+	PromptDetails,
 	PromptChoice,
 	PromptService,
 	SelectPromptOptions,
@@ -10,6 +12,18 @@ import {
 const toOption = <T extends string>({ value, label, hint }: PromptChoice<T>) =>
 	({ value, label, hint }) as clack.Option<T>;
 
+const GUTTER = styleText("gray", "│");
+
+const withDetails = (message: string, { description, hint }: PromptDetails) => {
+	const lines = [description, hint]
+		.filter((text): text is string => text !== undefined)
+		.flatMap((text) => text.split("\n"));
+	return [
+		message,
+		...lines.map((line) => `${GUTTER}  ${styleText("dim", line)}`),
+	].join("\n");
+};
+
 export class ConsolePromptService implements PromptService {
 	declare readonly _serviceBrand: undefined;
 
@@ -18,12 +32,14 @@ export class ConsolePromptService implements PromptService {
 	);
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {
+		const { placeholder = "" } = options;
 		const answer = await clack.text({
-			message: options.message,
-			initialValue: options.initialValue,
+			message: withDetails(options.message, options),
+			placeholder,
+			defaultValue: placeholder,
 			validate:
 				options.validate &&
-				((value) => options.validate?.(value ?? "")),
+				((value) => options.validate?.(value || placeholder)),
 		});
 		return clack.isCancel(answer) ? undefined : answer;
 	}
@@ -32,7 +48,7 @@ export class ConsolePromptService implements PromptService {
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
 		const answer = await clack.select<T>({
-			message: options.message,
+			message: withDetails(options.message, options),
 			options: options.choices.map(toOption),
 			initialValue: options.initialValue,
 		});
@@ -43,7 +59,7 @@ export class ConsolePromptService implements PromptService {
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined> {
 		const answer = await clack.multiselect<T>({
-			message: options.message,
+			message: withDetails(options.message, options),
 			options: options.choices.map(toOption),
 			initialValues: options.initialValues && [...options.initialValues],
 			required: false,

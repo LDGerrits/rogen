@@ -1,4 +1,6 @@
 import { ErrorUtils } from "../../base/errors.js";
+import { Diagnostic, DiagnosticSeverity } from "../diagnostics/diagnostic.js";
+import { renderDiagnostic } from "../diagnostics/render-diagnostic.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export enum LogLevel {
@@ -21,7 +23,30 @@ export interface LogService {
 	info(message: string, ...args: unknown[]): void;
 	debug(message: string, ...args: unknown[]): void;
 	trace(message: string, ...args: unknown[]): void;
+
+	/** Text the user asked for (help, version, JSON), written as is. */
+	print(text: string): void;
+	intro(title: string): void;
+	step(title: string): void;
+	success(message: string): void;
+	outro(message: string): void;
+	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. */
+	diagnostic(diagnostic: Diagnostic): void;
 }
+
+export type LogKind =
+	| "print"
+	| "intro"
+	| "step"
+	| "success"
+	| "outro"
+	| "info"
+	| "warn"
+	| "error"
+	| "debug"
+	| "trace"
+	| "diagnosticWarning"
+	| "diagnosticError";
 
 export const LogService = createServiceIdentifier<LogService>("logService");
 
@@ -83,60 +108,60 @@ export abstract class AbstractLogService implements LogService {
 		return parts.join("\n");
 	}
 
-	abstract error(message: string | Error, ...args: unknown[]): void;
-	abstract warn(message: string, ...args: unknown[]): void;
-	abstract info(message: string, ...args: unknown[]): void;
-	abstract debug(message: string, ...args: unknown[]): void;
-	abstract trace(message: string, ...args: unknown[]): void;
-}
-
-export class ConsoleLogService extends AbstractLogService {
-	declare readonly _serviceBrand: undefined;
-
-	private readonly colors = {
-		reset: "\x1b[0m",
-		red: "\x1b[31m",
-		yellow: "\x1b[33m",
-		gray: "\x1b[90m",
-		cyan: "\x1b[36m",
-	};
+	protected abstract write(kind: LogKind, text: string): void;
 
 	error(message: string | Error, ...args: unknown[]): void {
-		if (this.canLog(LogLevel.Error)) {
-			console.error(
-				`${this.colors.red}error:${this.colors.reset} ${this.format(message, args)}`
-			);
-		}
+		if (this.canLog(LogLevel.Error))
+			this.write("error", this.format(message, args));
 	}
 
 	warn(message: string, ...args: unknown[]): void {
-		if (this.canLog(LogLevel.Warn)) {
-			console.warn(
-				`${this.colors.yellow}warning:${this.colors.reset} ${this.format(message, args)}`
-			);
-		}
+		if (this.canLog(LogLevel.Warn))
+			this.write("warn", this.format(message, args));
 	}
 
 	info(message: string, ...args: unknown[]): void {
-		if (this.canLog(LogLevel.Info)) {
-			console.info(this.format(message, args));
-		}
+		if (this.canLog(LogLevel.Info))
+			this.write("info", this.format(message, args));
 	}
 
 	debug(message: string, ...args: unknown[]): void {
-		if (this.canLog(LogLevel.Debug)) {
-			console.debug(
-				`${this.colors.gray}[debug] ${this.format(message, args)}${this.colors.reset}`
-			);
-		}
+		if (this.canLog(LogLevel.Debug))
+			this.write("debug", this.format(message, args));
 	}
 
 	trace(message: string, ...args: unknown[]): void {
-		if (this.canLog(LogLevel.Trace)) {
-			console.debug(
-				`${this.colors.cyan}[trace] ${this.format(message, args)}${this.colors.reset}`
+		if (this.canLog(LogLevel.Trace))
+			this.write("trace", this.format(message, args));
+	}
+
+	print(text: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("print", text);
+	}
+
+	intro(title: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("intro", title);
+	}
+
+	step(title: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("step", title);
+	}
+
+	success(message: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("success", message);
+	}
+
+	outro(message: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("outro", message);
+	}
+
+	diagnostic(diagnostic: Diagnostic): void {
+		const isError = diagnostic.severity === DiagnosticSeverity.Error;
+		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
+			this.write(
+				isError ? "diagnosticError" : "diagnosticWarning",
+				renderDiagnostic(diagnostic)
 			);
-		}
 	}
 }
 
@@ -152,4 +177,10 @@ export class NullLogService implements LogService {
 	info(_message: string, ..._args: unknown[]): void {}
 	debug(_message: string, ..._args: unknown[]): void {}
 	trace(_message: string, ..._args: unknown[]): void {}
+	print(_text: string): void {}
+	intro(_title: string): void {}
+	step(_title: string): void {}
+	success(_message: string): void {}
+	outro(_message: string): void {}
+	diagnostic(_diagnostic: Diagnostic): void {}
 }

@@ -1,9 +1,11 @@
 $ rogen build
 exit 0
 stdout:
+  rogen build · default
   Wrote default.project.json.
+  Built 1 config.
 stderr:
-  warning: <dir>/default.project.json - warning: 2 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/SHARED (shared)). Rename them to match the key, or declare the key as written.
+  <dir>/default.project.json - warning: 2 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/SHARED (shared)). Rename them to match the key, or declare the key as written.
 
 written:
   default.project.json

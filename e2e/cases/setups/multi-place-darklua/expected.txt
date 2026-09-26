@@ -1,11 +1,17 @@
 $ rogen build lobby lobby-source match match-source
 exit 0
 stdout:
+  rogen build · lobby, lobby-source, match, match-source
   Not building: core.rogen.json.
-  Wrote lobby.project.json.
-  Wrote lobby-source.project.json.
-  Wrote match.project.json.
-  Wrote match-source.project.json.
+  lobby
+    Wrote lobby.project.json.
+  lobby-source
+    Wrote lobby-source.project.json.
+  match
+    Wrote match.project.json.
+  match-source
+    Wrote match-source.project.json.
+  Built 4 configs.
 
 written:
   lobby-source.project.json

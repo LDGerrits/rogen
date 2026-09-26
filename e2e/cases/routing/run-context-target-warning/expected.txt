@@ -1,0 +1,19 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  Wrote default.project.json.
+  Built 1 config.
+stderr:
+  <dir>/default.project.json - warning: emitLegacyScripts: false in the template isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from the template.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Hud: Script  <- src/Hud.client.luau

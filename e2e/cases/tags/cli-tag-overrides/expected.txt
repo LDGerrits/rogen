@@ -1,22 +1,30 @@
 $ rogen build -o plain.project.json
 exit 0
 stdout:
+  rogen build · default
   Wrote plain.project.json.
+  Built 1 config.
 
 $ rogen build -o mocked.project.json --tag mock
 exit 0
 stdout:
+  rogen build · default
   Wrote mocked.project.json.
+  Built 1 config.
 
 $ rogen build -o nodev.project.json --no-tag dev
 exit 0
 stdout:
+  rogen build · default
   Wrote nodev.project.json.
+  Built 1 config.
 
 $ rogen build -o both.project.json -t mock --no-tag dev
 exit 0
 stdout:
+  rogen build · default
   Wrote both.project.json.
+  Built 1 config.
 
 written:
   both.project.json

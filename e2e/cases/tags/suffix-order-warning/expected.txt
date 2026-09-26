@@ -1,9 +1,11 @@
 $ rogen build
 exit 0
 stdout:
+  rogen build · default
   Wrote default.project.json.
+  Built 1 config.
 stderr:
-  warning: <dir>/src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau.
+  <dir>/src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau.
 
 written:
   default.project.json

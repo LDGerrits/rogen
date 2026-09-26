@@ -1,8 +1,10 @@
 $ rogen build c
 exit 0
 stdout:
+  rogen build · c
   Not building: a.rogen.json, b.rogen.json.
   Wrote c.project.json.
+  Built 1 config.
 
 written:
   c.project.json

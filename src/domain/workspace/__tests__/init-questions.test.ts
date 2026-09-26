@@ -128,6 +128,36 @@ describe("askInitChoices", () => {
 		expect(offered).not.toContain("Packages");
 	});
 
+	it("should show every text question as a placeholder with a description", async () => {
+		const prompts = new MockPromptService(acceptAll(5));
+
+		await askInitChoices(prompts, rbxts);
+
+		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
+		expect(text.map(({ message }) => message)).toEqual([
+			"Config name",
+			"Root dirs",
+			"Sync dir",
+		]);
+		expect(text.map(({ placeholder }) => placeholder)).toEqual([
+			"default",
+			"src",
+			"build",
+		]);
+		for (const { description } of text) expect(description).toBeTruthy();
+	});
+
+	it("should take the placeholder when a text answer is empty", async () => {
+		const choices = await ask(luau, [
+			"",
+			ACCEPT_DEFAULT,
+			"",
+			ACCEPT_DEFAULT,
+		]);
+
+		expect(choices).toEqual(defaultInitChoices(luau, "default"));
+	});
+
 	it("should reject an invalid config name", async () => {
 		await expect(ask(luau, ["a/b"])).rejects.toThrow("path separators");
 	});

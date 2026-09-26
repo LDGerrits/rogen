@@ -15,7 +15,7 @@ import {
 	relativeToProject,
 	syncPath,
 } from "./sync-path.js";
-import { TreeDiagnostics } from "./tree-diagnostics.js";
+import { RunContextRoute, TreeDiagnostics } from "./tree-diagnostics.js";
 
 export interface AssemblyInput {
 	readonly files: readonly RoutedFile[];
@@ -40,12 +40,16 @@ interface PlacedEntry {
 
 const DECLARATION_FILE = /\.d\.ts$/i;
 const INSTANCE_SEPARATOR = "/";
+const PLAYER_SCRIPT_CONTAINERS = new Set([
+	"StarterPlayerScripts",
+	"StarterCharacterScripts",
+]);
 
 /** Merges the routed files into the template, collapsing a directory into one `$path` where Rojo would see the same files. */
 export function assembleTree(
 	config: Pick<
 		ResolvedConfig,
-		"name" | "rootDirs" | "template" | "syncDir" | "outFile"
+		"name" | "rootDirs" | "routes" | "template" | "syncDir" | "outFile"
 	>,
 	input: AssemblyInput
 ): AssemblyOutput {
@@ -57,6 +61,15 @@ export function assembleTree(
 		projectDir,
 	};
 	const warnings: Diagnostic[] = [];
+
+	const runContextRoutes =
+		config.template?.project.emitLegacyScripts === false
+			? routesIntoPlayerScripts(config.routes)
+			: [];
+	if (runContextRoutes.length > 0)
+		warnings.push(
+			TreeDiagnostics.runContextTarget(location, runContextRoutes)
+		);
 
 	const templateTree = rebasedTemplateTree(config, projectDir);
 	const template = new RojoProject({ name: config.name, tree: templateTree });
@@ -118,6 +131,20 @@ export function assembleTree(
 	else delete value.globIgnorePaths;
 
 	return { value, warnings };
+}
+
+function routesIntoPlayerScripts(
+	routes: Readonly<Record<string, string>>
+): RunContextRoute[] {
+	return Object.entries(routes)
+		.filter(([, target]) => {
+			const [service, container] = target.split(INSTANCE_SEPARATOR);
+			return (
+				service === "StarterPlayer" &&
+				PLAYER_SCRIPT_CONTAINERS.has(container)
+			);
+		})
+		.map(([key, target]) => ({ key, target }));
 }
 
 function placeEntry(file: RoutedFile): PlacedEntry {

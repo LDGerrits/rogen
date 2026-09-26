@@ -1,8 +1,12 @@
 $ rogen build default active
 exit 0
 stdout:
-  Wrote default.project.json.
-  Wrote active.project.json.
+  rogen build · default, active
+  default
+    Wrote default.project.json.
+  active
+    Wrote active.project.json.
+  Built 2 configs.
 
 written:
   active.project.json

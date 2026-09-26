@@ -16,7 +16,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			accessor.get(FileSystemService),
 			import.meta.dirname
 		);
-		accessor.get(LogService).info(`rogen ${version}`);
+		accessor.get(LogService).print(`rogen ${version}`);
 
 		return ok(undefined);
 	},

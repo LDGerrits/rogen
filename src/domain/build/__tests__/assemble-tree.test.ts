@@ -219,6 +219,107 @@ describe("assembleTree", () => {
 		});
 	});
 
+	describe("run context targets", () => {
+		const runContextWarnings = async (
+			routes: Record<string, string>,
+			emitLegacyScripts?: boolean
+		) => {
+			await write("src/Hud.client.luau");
+			const template = templateOf({
+				tree: { $className: "DataModel" },
+				...(emitLegacyScripts !== undefined && { emitLegacyScripts }),
+			});
+			const { warnings } = await assemble({ routes, template });
+			return warnings.filter(
+				({ code }) => code === "tree.runContextTarget"
+			);
+		};
+
+		it.each([
+			"StarterPlayer/StarterPlayerScripts",
+			"StarterPlayer/StarterCharacterScripts",
+			"StarterPlayer/StarterPlayerScripts/Ui",
+		])(
+			"should warn when emitLegacyScripts is false and a route targets %s",
+			async (target) => {
+				const warnings = await runContextWarnings(
+					{ "*": "ReplicatedStorage", client: target },
+					false
+				);
+
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0]).toMatchObject({
+					resource: abs("default.project.json"),
+				});
+				expect(warnings[0].message).toContain(`"client"`);
+				expect(warnings[0].message).toContain(target);
+				expect(warnings[0].message).toContain("emitLegacyScripts");
+			}
+		);
+
+		it("should warn once per config, naming every offending route", async () => {
+			const warnings = await runContextWarnings(
+				{
+					client: "StarterPlayer/StarterPlayerScripts",
+					character: "StarterPlayer/StarterCharacterScripts",
+					"*": "ReplicatedStorage",
+				},
+				false
+			);
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].message).toContain(`"client"`);
+			expect(warnings[0].message).toContain(`"character"`);
+		});
+
+		it.each([undefined, true])(
+			"should not warn when emitLegacyScripts is %s",
+			async (emitLegacyScripts) => {
+				const warnings = await runContextWarnings(
+					{ client: "StarterPlayer/StarterPlayerScripts" },
+					emitLegacyScripts
+				);
+
+				expect(warnings).toEqual([]);
+			}
+		);
+
+		it("should not warn when no route targets those containers", async () => {
+			const warnings = await runContextWarnings(
+				{ client: "ReplicatedStorage/client", server: "StarterGui" },
+				false
+			);
+
+			expect(warnings).toEqual([]);
+		});
+
+		it("should not warn without a template", async () => {
+			await write("src/Hud.client.luau");
+
+			const { warnings } = await assemble({
+				routes: { "*": "StarterPlayer/StarterPlayerScripts" },
+			});
+
+			expect(warnings).toEqual([]);
+		});
+
+		it("should still write the tree", async () => {
+			await write("src/Hud.client.luau");
+			const template = templateOf({
+				tree: { $className: "DataModel" },
+				emitLegacyScripts: false,
+			});
+
+			const { value } = await assemble({
+				routes: { "*": "StarterPlayer/StarterPlayerScripts" },
+				template,
+			});
+
+			expect(value.emitLegacyScripts).toBe(false);
+			expect(value.tree.StarterPlayer).toBeDefined();
+		});
+	});
+
 	describe("collapse", () => {
 		it("should collapse a directory whose every file is present under Rojo's name", async () => {
 			await write(

@@ -9,6 +9,11 @@ import { ErrorUtils } from "../../base/errors.js";
 
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";
+
+/** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
+export const configLabel = (file: string): string =>
+	path.basename(file, CONFIG_SUFFIX);
+
 const DEFAULT_CONFIG_NAME = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
 
 export async function discoverConfigPaths(

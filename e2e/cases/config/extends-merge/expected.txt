@@ -1,8 +1,10 @@
 $ rogen build place
 exit 0
 stdout:
+  rogen build · place
   Not building: base.rogen.json.
   Wrote place.project.json.
+  Built 1 config.
 
 written:
   place.project.json

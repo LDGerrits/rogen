@@ -7,7 +7,6 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../../platform/commands/commands.js";
-import { renderDiagnostics } from "../../platform/diagnostics/render-diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -38,35 +37,37 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const list = (values: readonly string[]) =>
 			values.length > 0 ? values.join(", ") : "(none)";
 
+		logService.intro("rogen list");
+
 		let broken = 0;
 		for (const entry of configService.configs) {
-			const rows = [relative(entry.file)];
+			logService.step(relative(entry.file));
 			if (entry.chain.length > 1) {
-				rows.push(
-					`  extends: ${entry.chain.slice(1).map(relative).join(" -> ")}`
+				logService.info(
+					`extends: ${entry.chain.slice(1).map(relative).join(" -> ")}`
 				);
 			}
 
 			const errors = entryErrors(entry);
 			if (errors.length > 0 || !entry.resolved) {
 				broken++;
-				rows.push(
-					...renderDiagnostics(errors)
-						.split("\n")
-						.map((line) => `  ${line}`)
-				);
+				for (const error of errors) logService.diagnostic(error);
 			} else {
 				const config = entry.resolved;
-				rows.push(
-					`  root dirs: ${list(config.rootDirs.map(relative))}`,
-					`  sync dir: ${list(config.syncDir ? [relative(config.syncDir)] : [])}`,
-					`  project file: ${relative(config.outFile)}`,
-					`  tags: ${list(Object.keys(config.tags).filter((tag) => config.tags[tag]))}`
+				logService.info(
+					[
+						`root dirs: ${list(config.rootDirs.map(relative))}`,
+						`sync dir: ${list(config.syncDir ? [relative(config.syncDir)] : [])}`,
+						`project file: ${relative(config.outFile)}`,
+						`tags: ${list(Object.keys(config.tags).filter((tag) => config.tags[tag]))}`,
+					].join("\n")
 				);
 			}
-			logService.info(rows.join("\n"));
 		}
 
+		logService.outro(
+			`${files.value.length} ${files.value.length === 1 ? "config" : "configs"}.`
+		);
 		return broken > 0
 			? err(
 					new Error(
