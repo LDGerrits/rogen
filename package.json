@@ -36,7 +36,8 @@
 	"scripts": {
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"build": "tsc",
-		"bundle": "esbuild bin/rogen.ts --bundle --platform=node --format=cjs --external:*.node --main-fields=module,main --outfile=dist/bundle.cjs",
+		"bundle": "esbuild bin/rogen.ts --bundle --platform=node --format=cjs --external:*.node --main-fields=module,main --define:import.meta.dirname=__dirname --outfile=dist/bundle.cjs",
+		"bundle:watch": "npm run bundle -- --watch",
 		"prepublishOnly": "npm run clean && npm run build && npm run bundle",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
