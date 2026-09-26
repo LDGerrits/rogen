@@ -18,8 +18,8 @@ project: DataModel
       Beta: ModuleScript  <- src/Combat/Beta-server.luau
       Delta: ModuleScript  <- src/Combat/Delta+server.luau
       Epsilon: ModuleScript  <- src/Combat/Epsilon@server.luau
-      Eta: ModuleScript  <- src/Combat/Eta-SERVER.luau
-      Gamma: ModuleScript  <- src/Combat/Gamma_Server.luau
+      Eta: ModuleScript  <- src/Combat/Eta-server.luau
+      Gamma: ModuleScript  <- src/Combat/Gamma_server.luau
       Zeta: ModuleScript  <- src/Combat/ZetaServer.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts

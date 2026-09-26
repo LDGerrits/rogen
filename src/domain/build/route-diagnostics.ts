@@ -14,6 +14,16 @@ export const RouteDiagnostics = {
 			'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
 		),
 
+	caseMismatch: (
+		location: DiagnosticLocation,
+		entries: readonly string[]
+	): Diagnostic =>
+		warningDiagnostic(
+			"route.caseMismatch",
+			location,
+			`${entries.length} ${entries.length === 1 ? "name" : "names"} differ from a declared route or tag only in letter case, so ${entries.length === 1 ? "it is" : "they are"} treated as ordinary (${listPaths(entries)}). Rename ${entries.length === 1 ? "it" : "them"} to match the key, or declare the key as written.`
+		),
+
 	unrouted: (
 		location: DiagnosticLocation,
 		paths: readonly string[]

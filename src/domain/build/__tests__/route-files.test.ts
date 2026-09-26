@@ -76,7 +76,7 @@ describe("routeFiles", () => {
 			await write(
 				"src/Inventory/Combat-server.luau",
 				"src/Inventory/Save@server.luau",
-				"src/Inventory/Load_Server.luau",
+				"src/Inventory/Load_server.luau",
 				"src/Inventory/PlayerServer.luau"
 			);
 
@@ -86,6 +86,38 @@ describe("routeFiles", () => {
 				"ServerScriptService/Inventory/Player",
 				"ServerScriptService/Inventory/Save",
 			]);
+		});
+
+		it("should not strip a suffix whose letter case differs from the key", async () => {
+			await write(
+				"src/Inventory/Load_Server.luau",
+				"src/Inventory/Saveserver.luau"
+			);
+
+			expect(await paths()).toEqual([
+				"ReplicatedStorage/shared/Inventory/Load_Server",
+				"ReplicatedStorage/shared/Inventory/Saveserver",
+			]);
+		});
+
+		it("should match a capital suffix after a digit but not after a separator", async () => {
+			await write(
+				"src/Inventory/Level2Server.luau",
+				"src/Inventory/Load.Server.luau"
+			);
+
+			expect(await paths()).toEqual([
+				"ServerScriptService/Inventory/Level2",
+				"ReplicatedStorage/shared/Inventory/Load.Server",
+			]);
+		});
+
+		it("should capitalize the first letter of a lower-case key for a capital suffix", async () => {
+			await write("src/Inventory/PlayerServer.luau");
+
+			expect(
+				await paths({ routes: { Server: "Workspace", ...ROUTES } })
+			).toEqual(["Workspace/Inventory/Player"]);
 		});
 
 		it("should remove a routing folder and route below it", async () => {
@@ -187,11 +219,144 @@ describe("routeFiles", () => {
 	});
 
 	describe("invisible folders", () => {
+		it("should treat an invisible folder named after a route as a routing folder", async () => {
+			await write("src/Inventory/(server)/Save.luau");
+
+			expect(await paths()).toEqual([
+				"ServerScriptService/Inventory/Save",
+			]);
+		});
+
+		it("should treat an invisible folder named after a tag as a tag folder", async () => {
+			await write("src/Analytics/(mock)/Service.luau");
+
+			const [file] = (await route({ tags: { mock: true } })).unwrap()
+				.routed;
+
+			expect(file.instancePath).toEqual([
+				"ReplicatedStorage",
+				"shared",
+				"Analytics",
+				"Service",
+			]);
+			expect(file.tags).toEqual([{ tag: "mock", form: "folder" }]);
+		});
+
 		it("should drop an invisible folder from the path", async () => {
 			await write("src/Inventory/(internal)/Save.luau");
 
 			expect(await paths()).toEqual([
 				"ReplicatedStorage/shared/Inventory/Save",
+			]);
+		});
+	});
+
+	describe("letter case mismatches", () => {
+		const caseWarnings = async (overrides: Partial<ResolvedConfig> = {}) =>
+			(await route(overrides)).unwrap().warnings.filter(
+				({ code }) => code === "route.caseMismatch"
+			);
+
+		it("should warn about a folder named like a route in different case", async () => {
+			await write("src/Server/Save.luau");
+
+			const [warning] = await caseWarnings();
+
+			expect(warning).toMatchObject({
+				severity: DiagnosticSeverity.Warning,
+				resource: abs("default.project.json"),
+			});
+			expect(warning.message).toContain("1 name ");
+			expect(warning.message).toContain("src/Server (server)");
+		});
+
+		it("should warn about an invisible folder named like a tag in different case", async () => {
+			await write("src/Analytics/(Mock)/Service.luau");
+
+			const [warning] = await caseWarnings({ tags: { mock: true } });
+
+			expect(warning.message).toContain("src/Analytics/(Mock) (mock)");
+		});
+
+		it("should warn about a marker file named like a route in different case", async () => {
+			await write("src/Inventory/.Server", "src/Inventory/Save.luau");
+
+			const [warning] = await caseWarnings();
+
+			expect(warning.message).toContain("src/Inventory/.Server (server)");
+		});
+
+		it("should warn about a separator suffix in different case", async () => {
+			await write("src/Inventory/Load.Server.luau");
+
+			const [warning] = await caseWarnings();
+
+			expect(warning.message).toContain(
+				"src/Inventory/Load.Server.luau (server)"
+			);
+		});
+
+		it("should warn about a separator suffix on an init script", async () => {
+			await write("src/Inventory/init.Server.luau");
+
+			const [warning] = await caseWarnings();
+
+			expect(warning.message).toContain("src/Inventory (server)");
+		});
+
+		it("should warn once for a folder however many files it holds", async () => {
+			await write("src/Server/A.luau", "src/Server/B.luau");
+
+			const warnings = await caseWarnings();
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].message).toContain("1 name ");
+		});
+
+		it("should report every mismatch in one warning", async () => {
+			await write(
+				"src/Server/A.luau",
+				"src/Inventory/.Client",
+				"src/Inventory/B.Server.luau"
+			);
+
+			const warnings = await caseWarnings();
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].message).toContain("3 names ");
+		});
+
+		it("should not warn when a key is declared in both letter cases", async () => {
+			await write("src/Server/Save.luau");
+
+			expect(
+				await caseWarnings({
+					routes: { ...ROUTES, Server: "Workspace" },
+				})
+			).toEqual([]);
+		});
+
+		it("should not warn about a name that matches exactly or not at all", async () => {
+			await write(
+				"src/server/A.luau",
+				"src/Inventory/B.server.luau",
+				"src/Inventory/HTTPServer.luau",
+				"src/Inventory/Player.luau"
+			);
+
+			expect(await caseWarnings()).toEqual([]);
+		});
+
+		it("should still report a mismatch on a file that no route governs", async () => {
+			await write("src/Server/Save.luau");
+
+			const warnings = (
+				await route({ routes: { server: "ServerScriptService" } })
+			).unwrap().warnings;
+
+			expect(warnings.map(({ code }) => code)).toEqual([
+				"route.caseMismatch",
+				"route.unrouted",
 			]);
 		});
 	});

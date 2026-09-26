@@ -1,7 +1,9 @@
 import {
 	matchFolderKey,
+	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
+	unwrapInvisibleFolder,
 } from "../declared-key.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
@@ -50,9 +52,9 @@ describe("matchMarkerKey", () => {
 });
 
 describe("matchSuffixKeys", () => {
-	it("strips a separator suffix for each of + - _ . @, case-insensitively", () => {
+	it("strips a separator suffix for each of + - _ . @", () => {
 		for (const sep of ["+", "-", "_", ".", "@"]) {
-			const result = matchSuffixKeys(`Combat${sep}Server`, ROUTES);
+			const result = matchSuffixKeys(`Combat${sep}server`, ROUTES);
 			expect(result.baseName).toBe("Combat");
 			expect(result.matchedKeys).toEqual(new Set(["server"]));
 		}
@@ -118,8 +120,84 @@ describe("matchSuffixKeys", () => {
 		expect(result.baseName).toBe("Analytics.beta");
 	});
 
-	it("prefers the longer of two matching forms at one position", () => {
+	it("does not match a separator suffix in different letter case", () => {
 		const result = matchSuffixKeys("Foo.Server", ROUTES);
-		expect(result.baseName).toBe("Foo");
+		expect(result.baseName).toBe("Foo.Server");
+		expect(result.matchedKeys.size).toBe(0);
+	});
+
+	it("does not match a capital suffix after a separator", () => {
+		const result = matchSuffixKeys("Foo_Server", ROUTES);
+		expect(result.matchedKeys.size).toBe(0);
+	});
+
+	it("matches a capital suffix after a digit", () => {
+		const result = matchSuffixKeys("Level2Server", ROUTES);
+		expect(result.baseName).toBe("Level2");
+	});
+
+	it("matches a key declared with a capital exactly", () => {
+		const keys = new Set(["Server"]);
+		expect(matchSuffixKeys("Foo.Server", keys).baseName).toBe("Foo");
+		expect(matchSuffixKeys("FooServer", keys).baseName).toBe("Foo");
+		expect(matchSuffixKeys("Foo.server", keys).matchedKeys.size).toBe(0);
+	});
+
+	it("names the declared key that a separator suffix only differs from in case", () => {
+		expect(matchSuffixKeys("Foo.Server", ROUTES).nearMissKey).toBe(
+			"server"
+		);
+		expect(matchSuffixKeys("Foo-SHARED", ROUTES).nearMissKey).toBe(
+			"shared"
+		);
+	});
+
+	it("names a near miss that sits before matched suffixes", () => {
+		const result = matchSuffixKeys("Foo.Server.mock", ROUTES_AND_TAGS);
+		expect(result.matchedKeys).toEqual(new Set(["mock"]));
+		expect(result.nearMissKey).toBe("server");
+	});
+
+	it("has no near miss for an exact match or an unrelated name", () => {
+		expect(matchSuffixKeys("Foo.server", ROUTES).nearMissKey).toBeUndefined();
+		expect(matchSuffixKeys("Foo.beta", ROUTES).nearMissKey).toBeUndefined();
+	});
+});
+
+describe("matchKeyIgnoringCase", () => {
+	it("returns the declared key that a name only differs from in case", () => {
+		expect(matchKeyIgnoringCase("Server", ROUTES)).toBe("server");
+	});
+
+	it("ignores a name that is itself declared", () => {
+		expect(matchKeyIgnoringCase("server", ROUTES)).toBeUndefined();
+	});
+
+	it("ignores an unrelated name", () => {
+		expect(matchKeyIgnoringCase("Inventory", ROUTES)).toBeUndefined();
+	});
+});
+
+describe("unwrapInvisibleFolder", () => {
+	it("removes the parentheses and marks the folder invisible", () => {
+		expect(unwrapInvisibleFolder("(mock)")).toEqual({
+			name: "mock",
+			invisible: true,
+		});
+	});
+
+	it("leaves an ordinary name alone", () => {
+		expect(unwrapInvisibleFolder("mock")).toEqual({
+			name: "mock",
+			invisible: false,
+		});
+	});
+
+	it("ignores empty or unbalanced parentheses", () => {
+		for (const name of ["()", "(mock", "mock)"])
+			expect(unwrapInvisibleFolder(name)).toEqual({
+				name,
+				invisible: false,
+			});
 	});
 });

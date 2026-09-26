@@ -2,6 +2,8 @@ $ rogen build
 exit 0
 stdout:
   Wrote default.project.json.
+stderr:
+  warning: <dir>/default.project.json - warning: 3 names differ from a declared route or tag only in letter case, so they are treated as ordinary (<dir>/src/Inventory/Hud.Client.luau (client), <dir>/src/Inventory/Load.SERVER.luau (server), <dir>/src/Server (server)). Rename them to match the key, or declare the key as written.
 
 written:
   default.project.json
@@ -10,13 +12,12 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      Inventory: Folder
+        Hud.Client: ModuleScript  <- src/Inventory/Hud.Client.luau
+        Load.SERVER: ModuleScript  <- src/Inventory/Load.SERVER.luau
       Server: Folder
         Save: ModuleScript  <- src/Server/Save.luau
-  ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Load: ModuleScript  <- src/Inventory/Load.SERVER.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder
         Http: ModuleScript  <- src/Inventory/HttpClient.luau
-        Hud: ModuleScript  <- src/Inventory/Hud.Client.luau
