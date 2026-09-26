@@ -35,10 +35,11 @@ describe("list command", () => {
 		const start = entries.findIndex(
 			({ kind, text }) => kind === "step" && text === step
 		);
-		const end = entries.findIndex(
+		const next = entries.findIndex(
 			({ kind }, index) =>
 				index > start && (kind === "step" || kind === "outro")
 		);
+		const end = next === -1 ? entries.length : next;
 		return entries.slice(start + 1, end).map(({ text }) => text);
 	};
 

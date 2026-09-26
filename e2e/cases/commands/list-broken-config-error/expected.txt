@@ -1,0 +1,9 @@
+$ rogen list
+exit 1
+stdout:
+  rogen list
+  default.rogen.json
+  list failed.
+stderr:
+  <dir>/default.rogen.json:2:2 - error: unknown field "bogus".
+  error: 1 of 1 configs have errors.

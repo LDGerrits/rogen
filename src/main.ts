@@ -1,5 +1,5 @@
 import { DisposableStore } from "./base/disposable.js";
-import { setUnexpectedErrorHandler } from "./base/errors.js";
+import { CancelledError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -47,13 +47,22 @@ export default function run(): void {
 	});
 }
 
-function reportFailure(logService: LogService, error: Error): void {
+function reportFailure(
+	logService: LogService,
+	error: Error,
+	command: string
+): void {
+	if (error instanceof CancelledError) {
+		logService.closeFrame(error.message);
+		return;
+	}
 	if (error instanceof DiagnosticsError) {
 		for (const diagnostic of error.diagnostics)
 			logService.diagnostic(diagnostic);
 	} else {
 		logService.error(error.message);
 	}
+	logService.closeFrame(`${command} failed.`);
 }
 
 async function main(): Promise<void> {
@@ -108,7 +117,7 @@ async function main(): Promise<void> {
 				? await configService.initialize(refs.value)
 				: refs;
 			if (initialized.isErr()) {
-				reportFailure(logService, initialized.error);
+				reportFailure(logService, initialized.error, command);
 				process.exitCode = 1;
 				return;
 			}
@@ -141,7 +150,7 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			reportFailure(logService, result.error);
+			reportFailure(logService, result.error, command);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

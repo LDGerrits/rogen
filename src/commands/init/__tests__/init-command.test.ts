@@ -3,6 +3,7 @@ import path from "path";
 import "../../../domain/config/config.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
+import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { readConfigFile } from "../../../platform/config/config-file.js";
@@ -543,7 +544,9 @@ describe("init command", () => {
 		it("should write nothing when cancelled", async () => {
 			const result = await runInit([], new MockPromptService([CANCEL]));
 
-			expect(result.isErr()).toBe(true);
+			expect((result as ResultError<Error>).error).toBeInstanceOf(
+				CancelledError
+			);
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 

@@ -30,6 +30,8 @@ export interface LogService {
 	step(title: string): void;
 	success(message: string): void;
 	outro(message: string): void;
+	/** Closes the frame `intro` opened with `message`; does nothing when none is open. */
+	closeFrame(message: string): void;
 	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. */
 	diagnostic(diagnostic: Diagnostic): void;
 }
@@ -54,6 +56,7 @@ export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
+	private frameOpen = false;
 
 	setLevel(level: LogLevel): void {
 		this.level = level;
@@ -136,11 +139,13 @@ export abstract class AbstractLogService implements LogService {
 	}
 
 	print(text: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("print", text);
+		if (this.level !== LogLevel.Off) this.write("print", text);
 	}
 
 	intro(title: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("intro", title);
+		if (!this.canLog(LogLevel.Info)) return;
+		this.write("intro", title);
+		this.frameOpen = true;
 	}
 
 	step(title: string): void {
@@ -152,7 +157,13 @@ export abstract class AbstractLogService implements LogService {
 	}
 
 	outro(message: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("outro", message);
+		if (!this.canLog(LogLevel.Info)) return;
+		this.write("outro", message);
+		this.frameOpen = false;
+	}
+
+	closeFrame(message: string): void {
+		if (this.frameOpen) this.outro(message);
 	}
 
 	diagnostic(diagnostic: Diagnostic): void {
@@ -182,5 +193,6 @@ export class NullLogService implements LogService {
 	step(_title: string): void {}
 	success(_message: string): void {}
 	outro(_message: string): void {}
+	closeFrame(_message: string): void {}
 	diagnostic(_diagnostic: Diagnostic): void {}
 }

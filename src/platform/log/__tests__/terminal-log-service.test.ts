@@ -42,6 +42,21 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
+	it("should close an open frame after the error", () => {
+		const logService = new TerminalLogService();
+
+		logService.intro("rogen build");
+		logService.error("broken");
+		logService.closeFrame("build failed.");
+
+		expect(drawn().split("\n").filter(Boolean)).toEqual([
+			"┌  rogen build",
+			"│  ■ broken",
+			"│",
+			"└  build failed.",
+		]);
+	});
+
 	it("should keep the severity written by the diagnostic itself", () => {
 		new TerminalLogService().diagnostic(
 			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
