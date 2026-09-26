@@ -67,6 +67,23 @@ describe("CLI surface", () => {
 		});
 	});
 
+	it("should parse -T as --no-tag, alongside -t", () => {
+		const { options } = parse(
+			"build",
+			"-t",
+			"mock",
+			"-T",
+			"dev",
+			"--no-tag",
+			"prod"
+		).unwrap();
+
+		expect(options).toMatchObject({
+			tag: ["mock"],
+			"no-tag": ["dev", "prod"],
+		});
+	});
+
 	it("should accept the override flags on watch, but not --show-config", () => {
 		expect(parse("watch", "-t", "mock", "-c", "a.rogen.json").isOk()).toBe(
 			true

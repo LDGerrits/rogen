@@ -1,0 +1,125 @@
+---
+title: Darklua
+description: Step-by-step setup guide for Darklua projects.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+[Darklua](https://github.com/seaofvoices/darklua) is a **processor**: it rewrites your code into a folder of its own before Rojo syncs it. That folder is the **sync directory**. Rogen detects Darklua when it finds a `.darklua.json` or `.darklua.json5` file in the project root, and `init` asks about it.
+
+<Callout type="info" title="Only Rojo syncs from the sync directory">
+	Rogen reads your source folders to decide where each file goes. It never reads the sync directory: it only points Rojo's paths there.
+</Callout>
+
+<Steps>
+
+<Step>
+### Define the Sync Directory
+
+Assume the Darklua configuration takes files from `src` and outputs files to `dist`. With roblox-ts, Darklua reads the compiled `out` folder instead.
+
+</Step>
+
+<Step>
+### Create the Config
+
+Run `rogen init` and answer that Darklua processes your code. The setup differs by language:
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    `init` writes **two** configs. `source.rogen.json` holds the tree, with paths into `src`, and `default.rogen.json` extends it and adds the sync directory:
+
+    ```json title="source.rogen.json"
+    {
+    	"$schema": "https://rogen.dev/schema/2/rogen.json",
+    	"rootDirs": ["src"],
+    	"routes": {
+    		"Server": "ServerScriptService",
+    		"Client": "StarterPlayer/StarterPlayerScripts",
+    		"Shared": "ReplicatedStorage/Shared",
+    		"*": "ReplicatedStorage/Shared"
+    	}
+    }
+    ```
+
+    ```json title="default.rogen.json"
+    {
+    	"$schema": "https://rogen.dev/schema/2/rogen.json",
+    	"extends": "source.rogen.json",
+    	"syncDir": "dist"
+    }
+    ```
+
+    The two configs are one tree rendered twice. `default.project.json` points into `dist` and is the file for `rojo serve`. `source.project.json` points into `src` and is for Darklua, whose `convert_require` rule reads a Rojo sourcemap made from source paths.
+
+    The synced config is the default because serving a source-rooted project would sync unprocessed code into Studio. The source config is the parent because a child can add a field but never remove one.
+  </Tab>
+  <Tab value="roblox-ts">
+    `init` writes **one** config. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync directory:
+
+    ```json title="default.rogen.json"
+    {
+    	"$schema": "https://rogen.dev/schema/2/rogen.json",
+    	"rootDirs": ["src"],
+    	"routes": {
+    		"server": "ServerScriptService",
+    		"client": "StarterPlayer/StarterPlayerScripts",
+    		"shared": "ReplicatedStorage/shared",
+    		"*": "ReplicatedStorage/shared"
+    	},
+    	"template": "template.project.json",
+    	"syncDir": "dist"
+    }
+    ```
+
+    roblox-ts has its own types, so nothing needs a source-rooted project and a second config isn't needed.
+  </Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+### Run the Pipeline
+
+`init` prints the commands to run. Run the processors and Rogen simultaneously.
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    ```
+    Darklua must process each root dir into dist (darklua process src dist).
+    ```
+
+    ```bash
+    darklua process src dist --watch
+    ```
+
+    Watch both configs, so the project file for Darklua stays current too:
+
+    ```bash
+    rogen watch default source
+    ```
+  </Tab>
+  <Tab value="roblox-ts">
+    ```
+    Darklua must process out into dist (darklua process out dist).
+    ```
+
+    ```bash
+    rbxtsc -w
+    darklua process out dist --watch
+    rogen watch
+    ```
+  </Tab>
+</Tabs>
+
+Then start Rojo with `rojo serve`.
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+	`rogen build` and `rogen watch` print one line naming any `*.rogen.json` they weren't asked to build, so forgetting the source config in a Darklua setup doesn't go unnoticed.
+</Callout>

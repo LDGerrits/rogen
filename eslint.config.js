@@ -7,7 +7,7 @@ export default defineConfig(
 	eslint.configs.recommended,
 	...tseslint.configs.recommended,
 	{
-		ignores: ["dist/", "node_modules/"],
+		ignores: ["dist/", "node_modules/", "docs/"],
 	},
 	{
 		files: ["src/**/*.ts", "src/**/*.js"],

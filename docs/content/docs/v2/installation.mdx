@@ -1,0 +1,91 @@
+---
+title: Installation
+description: Install Rogen and set up the project.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+
+Install Rogen using **Rokit** or **npm**.
+
+<Callout type="info">
+	**Prerequisite:** Install [Rojo](https://github.com/rojo-rbx/rojo) or
+	[Argon](https://github.com/argon-rbx/argon) to sync code to Roblox Studio.
+</Callout>
+
+<Tabs items={["Rokit", "npm"]}>
+  <Tab value="Rokit">
+    <Steps>
+      <Step>
+        ### Add Rogen to the toolchain
+
+        Open the `rokit.toml` file and add Rogen.
+
+        ```toml title="rokit.toml"
+        [tools]
+        rogen = "ldgerrits/rogen@2.0.0"
+        ```
+
+      </Step>
+
+      <Step>
+        ### Install the Tool
+
+        Run the installation command.
+
+        ```bash
+        rokit install
+        ```
+
+      </Step>
+
+      <Step>
+        ### Verify Installation
+
+        Check the Rogen version.
+
+        ```bash
+        rogen version
+        ```
+
+        If the command prints a version number, the install was successful.
+
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab value="npm">
+    <Steps>
+      <Step>
+        ### Install the Tool
+
+        Run the installation command in your terminal to add Rogen to your project.
+
+        ```bash
+        npm i @ldgerrits/rogen
+        ```
+
+      </Step>
+
+      <Step>
+        ### Verify Installation
+
+        Check the Rogen version using `npx` to execute the locally installed package.
+
+        ```bash
+        npx rogen version
+        ```
+
+        If the command prints a version number, the install was successful.
+
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>
+
+## Next
+
+Run `rogen init` in the project to write a starting config, then follow the guide for the [Luau](/docs/v2/setups/luau) or [roblox-ts](/docs/v2/setups/roblox-ts) setup.

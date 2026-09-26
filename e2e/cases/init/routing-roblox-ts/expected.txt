@@ -9,6 +9,7 @@ stdout:
     rogen watch
     rojo serve default.project.json
     Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
   Wrote 2 files.
 
 $ rogen build

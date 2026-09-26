@@ -103,7 +103,11 @@ describe("planPlace", () => {
 		it("should say how to run the place", () => {
 			expect(
 				written(plan(luau, { rootDirs: ["src"] })).nextSteps
-			).toEqual(["rogen watch lobby", "rojo serve lobby.project.json"]);
+			).toEqual([
+				"rogen watch lobby",
+				"rojo serve lobby.project.json",
+				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.',
+			]);
 		});
 	});
 
@@ -146,6 +150,7 @@ describe("planPlace", () => {
 				"rogen watch lobby",
 				"rojo serve lobby.project.json",
 				"Darklua must also process places/lobby into dist/lobby.",
+				'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
 
@@ -223,6 +228,7 @@ describe("planPlace", () => {
 				"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
 				"rogen watch lobby",
 				"rojo serve lobby.project.json",
+				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
 			]);
 		});
 

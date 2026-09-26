@@ -79,6 +79,30 @@ describe("DiskWatcher", () => {
 		});
 	});
 
+	describe("ignored patterns", () => {
+		it("should skip a path that matches an ignored pattern", async () => {
+			const changes: FileChange[] = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+			const staged = path.join(dir, "a.project.json.abc.tmp");
+
+			await watcher.watch([{ path: dir, recursive: true }], {
+				ignored: [/a\.project\.json\.[^/]+\.tmp$/],
+			});
+			await fs.writeFile(staged, "");
+			await fs.writeFile(path.join(dir, "a.luau"), "");
+
+			await waitFor(() =>
+				changes.some(
+					(c) => c.path === toPosix(path.join(dir, "a.luau"))
+				)
+			);
+
+			expect(changes.map((c) => c.path)).toEqual([
+				toPosix(path.join(dir, "a.luau")),
+			]);
+		});
+	});
+
 	describe("symbolic links", () => {
 		let root: string;
 		let outside: string;

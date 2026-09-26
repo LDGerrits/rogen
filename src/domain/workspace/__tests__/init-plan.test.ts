@@ -262,6 +262,7 @@ describe("planInit", () => {
 				"rogen watch",
 				"rojo serve default.project.json",
 				'Add your own routes under "routes" in default.rogen.json.',
+				'Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
 
@@ -280,8 +281,15 @@ describe("planInit", () => {
 		});
 
 		it("should point the routes hint at the source config for luau with darklua", () => {
-			expect(planFor("luau", true, "lobby").nextSteps.at(-1)).toBe(
-				'Add your own routes under "routes" in lobby-source.rogen.json.'
+			expect(planFor("luau", true, "lobby").nextSteps.slice(-2)).toEqual([
+				'Add your own routes under "routes" in lobby-source.rogen.json.',
+				'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
+			]);
+		});
+
+		it("should mention tags with a .ts variant for roblox-ts", () => {
+			expect(planFor("roblox-ts", false).nextSteps.at(-1)).toBe(
+				'Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.'
 			);
 		});
 
@@ -296,6 +304,7 @@ describe("planInit", () => {
 				"rogen watch lobby",
 				"rojo serve lobby.project.json",
 				'Add your own routes under "routes" in lobby.rogen.json.',
+				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
 	});

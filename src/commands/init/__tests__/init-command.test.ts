@@ -99,6 +99,7 @@ describe("init command", () => {
 				"info: rogen watch",
 				"info: rojo serve default.project.json",
 				'info: Add your own routes under "routes" in default.rogen.json.',
+				'info: Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.',
 				"outro: Wrote 1 file.",
 			]);
 		});
@@ -771,6 +772,7 @@ describe("init command", () => {
 				"info: rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
 				"info: rogen watch lobby",
 				"info: rojo serve lobby.project.json",
+				'info: Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
 				"outro: Wrote 2 files.",
 			]);
 		});

@@ -1,0 +1,119 @@
+---
+title: CLI
+description: The complete command-line interface for Rogen.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+```bash
+rogen [command] [name…] [options]
+```
+
+The first positional is always a **command**. A bare `rogen` runs `build`. Any further positionals are config names: `rogen build lobby` builds `lobby.rogen.json`. Command names therefore never clash with config names.
+
+<Callout type="info">
+	`rogen lobby` is an error, not a shortcut. Rogen suggests `rogen build lobby`.
+</Callout>
+
+## Commands
+
+### `build [name…]`
+
+Writes each named config's project file. This is the default command. Several names build in one process, and two configs writing the same file is an error.
+
+When the working directory holds other `*.rogen.json` files, `build` names the ones it wasn't asked to build. In a Darklua setup only one config feeds Studio, and the other feeds Darklua, so forgetting either should be visible.
+
+### `watch [name…]`
+
+Builds, then rebuilds whenever sources or configs change. Only file names and folders matter, so a change to what's inside a script never rebuilds.
+
+`watch` reloads a config when it, or any config in its `extends` chain, or its template changes. CLI overrides stay in effect across reloads. When a saved config is invalid, `watch` prints the error and keeps building with the last valid config for that config, so a broken `prod.rogen.json` doesn't stop `default.rogen.json`.
+
+Each rebuild prints a block headed by the time and what triggered it:
+
+```
+┌  rogen watch · default, lobby
+│
+◇  12:04:31 · 2 files changed
+│  ✔ default.project.json · wrote
+│  ■ lobby.project.json · not written
+│  ■ /repo/lobby.project.json - error: …
+│
+◇  12:05:02 · default.rogen.json changed · reloaded
+│  ✔ default.project.json · unchanged
+```
+
+`watch` is safe next to `build`: see [Building While Watching](/docs/v2/core-concepts/output#building-while-watching). Press Ctrl+C to stop.
+
+### `init [name]`
+
+Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It detects the language (roblox-ts when there is a `tsconfig.json`, else Luau), Darklua and packages once, and writes the result down as plain fields. Builds never guess.
+
+In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. When `default.rogen.json` already exists, it offers to add a **place**. It never overwrites, and never touches `.gitignore` or editor settings.
+
+It ends with the next steps to run: the compiler watcher (roblox-ts), `rogen watch`, `rojo serve`, and where to add routes and tags.
+
+### `list`
+
+Lists every `*.rogen.json` in the working directory, with its root directories, sync directory, project file and active tags. With variants as files, this is where "what can this repo build?" is answered.
+
+### `help [command]`
+
+Prints usage, or the details of one command.
+
+### `version`
+
+Prints the installed version.
+
+## Options
+
+`build` and `watch` accept the override flags. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
+
+### `-c, --config <path>`
+
+An explicit config path, for anything the name rule can't reach. Repeatable.
+
+### `-o, --out-file <path>`
+
+Overrides `outFile`.
+
+### `-s, --sync-dir <path>`
+
+Overrides `syncDir`.
+
+### `--template <path>`
+
+Overrides `template`. It has no short flag.
+
+### `-t, --tag <name>`
+
+Turns a tag on. Repeatable.
+
+### `-T, --no-tag <name>`
+
+Turns a tag off. Repeatable. It is the capital of `-t`, the way `ssh -t` and `ssh -T` are a pair.
+
+<Callout type="info">
+	`-o`, `-s` and `--template` target one config, so using them with several names is an error. A tag flag applies wherever a built config declares that tag, and is an error only when none does.
+</Callout>
+
+### `--show-config`
+
+`build` only. Prints the resolved config, with every default explicit and every path absolute, and exits.
+
+### Global options
+
+| Flag | Description |
+|---|---|
+| `-h, --help` | Prints help. |
+| `-v, --version` | Prints the version. |
+| `--verbose` | Prints debug output. Can't be combined with `--quiet`. |
+| `-q, --quiet` | Prints errors only. Can't be combined with `--verbose`. |
+
+Text you asked for, like help, the version and `--show-config`, is printed even with `--quiet`.
+
+## Output
+
+Every command prints through one logger. In a terminal it draws a framed layout with symbols. Without a terminal (CI, pipes, a redirect) it prints plain lines with no gutter or color, so nothing that greps the output breaks.
+
+A build result line is `<file> · wrote`, `<file> · unchanged` or `<file> · not written`. Diagnostics keep their `file:line:col - severity: message` shape on their own lines under it, so editors and CI can parse them. A command that fails prints the error inside the frame and exits with 1.

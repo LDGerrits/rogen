@@ -1,0 +1,79 @@
+---
+title: Project Layout
+description: Shape the tree with invisible folders, init folders, metadata and excludes.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Rogen scans the **root directories** listed in `rootDirs` and turns what it finds into a tree. A few more rules shape that tree.
+
+<Steps>
+
+<Step>
+### Invisible Folders
+
+A folder written as `(name)` groups files on disk but is left out of the generated tree. The parentheses come off before route keys and tags are matched, so `(mock)` is a tag folder and `(server)` a routing folder.
+
+```
+src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
+```
+
+</Step>
+
+<Step>
+### Init Folders
+
+A directory that contains an `init` or `index` script is one instance in Rojo. Rogen routes the folder as a whole and doesn't route its contents.
+
+</Step>
+
+<Step>
+### Data Files
+
+Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the way Rojo reads them. Route and tag suffixes are read before the extension. TypeScript declaration files (`.d.ts`) are never scanned.
+
+</Step>
+
+<Step>
+### Metadata Files
+
+A `.meta.json` file sets what a file or folder can't express itself: a class, properties or attributes. It is never placed as an instance.
+
+- A **file's** metadata file shares its stem: `Analytics.mock.meta.json` belongs to `Analytics.mock.luau`.
+- A **folder's** `init.meta.json` applies to every node Rogen generates for that folder, which is how a feature folder becomes an `Actor`:
+
+```json title="src/Inventory/init.meta.json"
+{ "className": "Actor" }
+```
+
+An `init.meta.json` inside a routing folder or tag folder applies to nothing, and Rogen warns about it.
+
+</Step>
+
+<Step>
+### Excluding Files
+
+The `exclude` field lists globs that are never built, relative to the config's directory. An **excluded** file is left out of the output.
+
+```json
+{ "exclude": ["**/*.spec.luau", "**/*.story.luau"] }
+```
+
+</Step>
+
+</Steps>
+
+## Linked Directories
+
+A symlink or Windows junction inside a root directory is read as the directory it points at. That's how code shared between repos gets into one tree. Rogen only ever uses the link's own path, so the generated project file stays portable. A link that loops back to one of its ancestors, or points at nothing, is skipped with a warning.
+
+## Several Root Directories
+
+With several root directories, their feature folders merge into one tree. When two of them produce the same instance, the **later root directory wins**. That's how one codebase serves several places. See the [multi-place guide](/docs/v2/setups/multi-place).
+
+Root directories mustn't contain one another. A root directory that doesn't exist is a warning, and `watch` picks it up when it appears.
+
+<Callout type="info" title="Rogen only reads names">
+	The tree is a function of the directory listing, so changing what's inside a script never changes the output.
+</Callout>

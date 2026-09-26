@@ -1,0 +1,80 @@
+---
+title: Glossary
+description: The terms Rogen's docs use, and where each one is explained.
+---
+
+## The Pipeline
+
+- **Root directory**: A directory Rogen scans and watches for code, declared in `rootDirs`. With several, their feature folders and modules merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-root-directories).
+
+- **Common root**: The deepest directory containing every root directory. Derived, never written in the config. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).
+
+- **Linked directory**: A symlink or Windows junction inside a root directory, read as the directory it points at. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
+
+- **Feature folder**: A folder inside a root directory that groups every file belonging to one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+
+- **Sync directory**: The directory Rojo syncs from, declared as `syncDir`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-directory).
+
+- **Template**: The Rojo project file that Rogen merges its generated tree into, declared as `template`. See [Output and Sync](/docs/v2/core-concepts/output#template).
+
+- **Output**: The Rojo project file a config writes, named by `outFile`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
+
+- **Build**: One complete run that turns root directories into an output for one config. See [CLI](/docs/v2/cli#build-name).
+
+- **Rendering**: The tree written out as a project file, with its `$path`s rooted at one directory. See [Output and Sync](/docs/v2/core-concepts/output#one-tree-two-renderings).
+
+- **Watch**: A long-running build that regenerates its output when files change, and reloads itself when a config changes. See [CLI](/docs/v2/cli#watch-name).
+
+- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager that a workspace uses. `init` detects it once. See [CLI](/docs/v2/cli#init-name).
+
+- **Processor**: A tool such as Darklua that rewrites your code into a folder of its own before Rojo syncs it. See the [Darklua guide](/docs/v2/setups/darklua).
+
+- **Place**: One Roblox place in a repo that builds several, written as a config that extends a shared one. See the [multi-place guide](/docs/v2/setups/multi-place).
+
+## Routing
+
+- **Service**: A top-level Roblox DataModel container that code can be placed in, such as `ServerScriptService`. See [Routing](/docs/v2/core-concepts/routing#targets).
+
+- **Route**: A rule in `routes` that sends files to a target. Its name is the **route key**. See [Routing](/docs/v2/core-concepts/routing).
+
+- **Governing route**: The one route that decides where a file goes: the outermost one, walking from the root directory down. See [Routing](/docs/v2/core-concepts/routing#the-governing-route).
+
+- **Target**: The path a route places files at, whose first segment is a service. See [Routing](/docs/v2/core-concepts/routing#targets).
+
+- **Fallback route**: The `*` route, for files that no route matched. See [Routing](/docs/v2/core-concepts/routing#files-that-match-no-route).
+
+- **Routing folder**: A folder named after a route key. It never appears in the generated tree. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+
+- **Suffix**: A route key or tag at the end of a script name. See [Routing](/docs/v2/core-concepts/routing#suffixes).
+
+- **Declared key**: A route key or a tag. Both are recognised as a folder, a marker file or a suffix. See [Tags](/docs/v2/core-concepts/tags#marking-files).
+
+- **Marker file**: An empty dot-file naming a declared key, which applies it to its directory and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
+
+- **Metadata file**: Rojo's `.meta.json`, which sets a class, properties or attributes. See [Project Layout](/docs/v2/core-concepts/project-layout).
+
+- **Invisible folder**: A folder written as `(name)`, left out of the generated tree. See [Project Layout](/docs/v2/core-concepts/project-layout).
+
+- **Init folder**: A directory containing an `init` or `index` script, which Rojo treats as one instance. See [Project Layout](/docs/v2/core-concepts/project-layout).
+
+## Tags and Filtering
+
+- **Tag**: A name declared in `tags` that marks a colocated variant of a file. See [Tags](/docs/v2/core-concepts/tags).
+
+- **Active tag**: A tag switched on for the current build. Its suffix is stripped and its file replaces an untagged one. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+
+- **Tag folder**: A folder named after a declared tag. It never appears in the tree. See [Tags](/docs/v2/core-concepts/tags#tag-folders).
+
+- **Dormant tag**: A declared tag that isn't active in the current build. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+
+- **Pruned**: Left out of the output because the file carries a dormant tag. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+
+- **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout).
+
+## Configuration
+
+- **Config**: A `<name>.rogen.json` file. See [Configuration](/docs/v2/configuration).
+
+- **Variant**: A config that differs from another, selected by name and usually extending it. See [Configuration](/docs/v2/configuration#extending-configs).
+
+- **Override**: A CLI flag that replaces a config value for one invocation. See [CLI](/docs/v2/cli#options).

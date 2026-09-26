@@ -1,0 +1,68 @@
+---
+title: Roblox-ts
+description: Step-by-step setup guide for roblox-ts projects.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Rogen integrates smoothly with [roblox-ts](https://roblox-ts.com/).
+Rogen reads the uncompiled `src` folder to build the routing map, swaps file extensions to `.luau`, and points Rojo to the compiled output.
+
+<Steps>
+
+<Step>
+### Configure Rogen
+
+Initialize the configuration file via the CLI:
+
+```bash
+rogen init
+```
+
+Rogen detects roblox-ts and configures a `ts` mode automatically. Ensure the `build` path matches the `outDir` in the `tsconfig.json` file.
+
+```json title=".rogen.json"
+{
+	"source": ["src"],
+	"ts": {
+		"output": "default.project.json",
+		"build": "out"
+	},
+	"project": {
+		"name": "my-ts-game",
+		"globIgnorePaths": ["**/package.json", "**/tsconfig.json"],
+		"tree": {
+			"$className": "DataModel"
+		}
+	}
+}
+```
+
+</Step>
+
+<Step>
+### Run the Pipeline
+
+Run the `rbxtsc` compiler and Rogen simultaneously. Install `concurrently` to manage both processes:
+
+```bash
+npm install -D concurrently
+```
+
+Update the `package.json` script to run both watchers:
+
+```json
+"scripts": {
+	"watch": "concurrently \"rogen watch\" \"rbxtsc -w\""
+}
+```
+
+Run the script:
+
+```bash
+npm run watch
+```
+
+</Step>
+
+</Steps>

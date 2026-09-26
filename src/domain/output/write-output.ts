@@ -1,5 +1,7 @@
+import { randomUUID } from "crypto";
 import { ErrorUtils } from "../../base/errors.js";
 import { stableStringify } from "../../base/json.js";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -12,9 +14,15 @@ export interface WriteOutputResult {
 	readonly warnings: readonly Diagnostic[];
 }
 
-/** The file `writeOutput` stages a write through before renaming it into place. */
+/** A fresh file for `writeOutput` to stage a write through, so concurrent writers never share one. */
 export function stagingFile(outFile: string): string {
-	return `${outFile}.tmp`;
+	return `${outFile}.${randomUUID()}.tmp`;
+}
+
+/** Matches the staging file of any writer of `outFile`, in posix form. */
+export function stagingPattern(outFile: string): RegExp {
+	const escaped = toPosix(outFile).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`^${escaped}\\.[^/]+\\.tmp$`);
 }
 
 /** Leaves the file untouched when its bytes wouldn't change, so Rojo doesn't re-sync and `watch` doesn't rebuild on its own write. */

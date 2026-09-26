@@ -1,0 +1,66 @@
+---
+title: Routing Rules
+description: Learn how Rogen routes files using File Names, Marker Files, and Folder Names.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rogen uses naming rules to send files into correct Roblox service containers like `ServerScriptService` or `StarterPlayerScripts`.
+There are 3 primary ways to route code: **Folder Names**, **File Names**, and **Marker Files**.
+
+<Steps>
+
+<Step>
+### Folder Names
+
+Name a folder after a routing keyword (`server`, `client`, `shared`) or a specific Roblox service, and all files inside it inherit that destination.
+
+- Naming a folder `client` sends files to `StarterPlayerScripts`.
+- Naming a folder `ReplicatedFirst` maps exactly to that service.
+
+Rogen will consume these folders and strip them from the final path but not its contents.
+
+</Step>
+
+<Step>
+
+### File Names (Affixes)
+
+To route a specific file differently than its parent folder, use a routing prefix or suffix like so:
+
+- `CombatClient.luau` routes to `StarterPlayerScripts`.
+- `Combat_Server.luau` routes to `ServerScriptService`.
+- `Combat-ReplicatedFirst.ts` routes to `ReplicatedFirst`.
+
+The formatting is as follows:
+
+- Use separators like dots, hyphens, underscores or plusses (`.`, `-`, `_`, `+`).
+- Prepend or append keywords using CamelCase or PascalCase.
+
+Moreover, the routing keywords are stripped from the final script name.
+
+</Step>
+
+<Step>
+
+## Marker Files
+
+Place an empty file named after a service (like `.server` or `.client`) inside a directory.
+This routes the entire folder to that service.
+Unlike folder names, marker files preserve the original folder name in the final tree.
+
+</Step>
+
+</Steps>
+
+<Callout type="info" title="The Deepest Rule Wins">
+	When multiple rules apply to a single path, Rogen always prioritizes the
+	deepest specific routing rule. File names represent the final level in any
+	path. Because of this, file name routing always overrides folder routing.
+</Callout>
+
+<Callout type="info" title="Default Fallback">
+	If no routing rule is applied anywhere in a file's path, Rogen automatically
+	places it in `ReplicatedStorage`.
+</Callout>
