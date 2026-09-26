@@ -1,0 +1,143 @@
+---
+title: Multi-Place
+description: Step-by-step setup guide for sharing code across multiple places.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+A **place** is one Roblox place in a repo that builds several. It's a config that `extends` a shared one and adds a folder of its own to the root directories, so core code is shared across places.
+
+<Steps>
+
+<Step>
+### Structure the Repository
+
+Keep shared code in `src`, and each place's own code in `places/<name>`.
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder level={1} name="Combat" />
+	<TreeFolder name="places" open />
+	<TreeFolder level={1} name="lobby" open />
+	<TreeFolder level={2} name="Lobby" />
+</SystemWindow>
+
+</Step>
+
+<Step>
+### Add the Place
+
+When `default.rogen.json` already exists, run `rogen init` in a terminal. It offers to add a place, then asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project.
+
+```bash
+rogen init
+```
+
+Places are never added without a terminal, and `init` never edits an existing file. What it writes depends on the toolchain:
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    One config:
+
+    ```json title="lobby.rogen.json"
+    {
+    	"$schema": "https://rogen.dev/schema/2/rogen.json",
+    	"extends": "./default.rogen.json",
+    	"rootDirs": ["src", "places/lobby"]
+    }
+    ```
+
+    Rogen reads both root directories and merges them into one tree. If two files land on the same instance, the directory listed last wins, so the place can override shared code.
+  </Tab>
+  <Tab value="roblox-ts">
+    One config and one tsconfig. A place's root directories have a different common root than `src` alone, so its compiled files land at a different path and need their own `outDir`:
+
+    ```json title="lobby.rogen.json"
+    {
+    	"$schema": "https://rogen.dev/schema/2/rogen.json",
+    	"extends": "./default.rogen.json",
+    	"rootDirs": ["src", "places/lobby"],
+    	"syncDir": "out/lobby"
+    }
+    ```
+
+    ```json title="tsconfig.lobby.json"
+    {
+    	"extends": "./tsconfig.json",
+    	"compilerOptions": {
+    		"rootDir": null,
+    		"rootDirs": ["src", "places/lobby"],
+    		"outDir": "out/lobby"
+    	},
+    	"include": ["src", "places/lobby"]
+    }
+    ```
+
+    `tsconfig.json` itself is never edited. When it has no `include`, its own build would pick up `places/lobby`, so `init` tells you to add `"include": ["src"]`.
+  </Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+### Start Watching
+
+Name the place to build it:
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    ```bash
+    rogen watch lobby
+    rojo serve lobby.project.json
+    ```
+  </Tab>
+  <Tab value="roblox-ts">
+    ```bash
+    rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
+    rogen watch lobby
+    rojo serve lobby.project.json
+    ```
+  </Tab>
+</Tabs>
+
+The config's name names its project file: `lobby.rogen.json` writes `lobby.project.json`. `rogen list` shows every config the repo can build.
+
+</Step>
+
+</Steps>
+
+## With Darklua
+
+Each place needs a project file for Studio **and** a source-rooted one for Darklua, so a place is two configs: `lobby-source` extends `source` and adds the place's root directory, and `lobby` extends `lobby-source` and adds a sync directory.
+
+```json title="lobby-source.rogen.json"
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "./source.rogen.json",
+	"rootDirs": ["src", "places/lobby"]
+}
+```
+
+```json title="lobby.rogen.json"
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"extends": "./lobby-source.rogen.json",
+	"syncDir": "dist/lobby"
+}
+```
+
+The common root of `src` and `places/lobby` is the repo root, so the synced paths are `dist/lobby/src/…` and `dist/lobby/places/lobby/…`. Run Darklua once per root directory to match:
+
+```bash
+darklua process src dist/lobby/src
+darklua process places/lobby dist/lobby/places/lobby
+rogen watch lobby lobby-source
+```
+
+A merged source config for every place wouldn't work: Darklua rewrites requires against the sourcemap, so the sourcemap must be the place's own tree, and places that override each other's files would collapse into one.
+
+<Callout type="info">
+	Shared `routes`, `tags` and `template` live in the config that every place extends, so a place only states what differs.
+</Callout>

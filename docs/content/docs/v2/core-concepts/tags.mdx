@@ -1,0 +1,105 @@
+---
+title: Tags
+description: Swap in variants of a file, like a mock, at build time.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+A **tag** marks a colocated variant of a file. `Analytics.mock.luau` is a variant of `Analytics`: when the `mock` tag is on, it *becomes* `Analytics`, and when the tag is off, it is left out.
+
+Tags exist for exactly that. Leaving files out without a replacement is the job of [`exclude`](/docs/v2/configuration#exclude).
+
+## Declaring Tags
+
+Declare every tag the project uses in the config's `tags` map, with whether it is on:
+
+```json title="default.rogen.json"
+{
+	"tags": {
+		"mock": false,
+		"dev": false
+	}
+}
+```
+
+Declaring the whole set lets Rogen tell a tag from a name that only looks like one. A suffix that isn't a declared tag stays in the instance name. A tag can't share a name with a route key, but it can share a name with a config.
+
+A **tag** is **active** when it is on for the current build, and **dormant** otherwise. A file that carries a dormant tag is **pruned**: left out of the output.
+
+## Marking Files
+
+A tag is recognised the same three ways a [route key](/docs/v2/core-concepts/routing) is, with the same matching rules:
+
+| | Route key | Tag |
+|---|---|---|
+| **Folder** named after it (`mock/` or `(mock)/`) | removed from the tree | removed from the tree |
+| **Marker file** (`.server`, `.mock`) | applies below; the folder keeps its name | applies below; the folder keeps its name |
+| **Suffix** (`Combat.server`, `Analytics.mock`) | stripped when governing | stripped when active |
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    ```
+    src/Analytics/Analytics.luau       ->  Analytics
+    src/Analytics/Analytics.mock.luau  ->  Analytics   (mock active; otherwise pruned)
+    src/Experimental/.mock             ->  tags every file under Experimental
+    ```
+  </Tab>
+  <Tab value="roblox-ts">
+    ```
+    src/Analytics/Analytics.ts       ->  Analytics
+    src/Analytics/Analytics.mock.ts  ->  Analytics   (mock active; otherwise pruned)
+    src/Experimental/.mock           ->  tags every file under Experimental
+    ```
+  </Tab>
+</Tabs>
+
+Tag suffixes use the same separators as route suffixes. A tag suffix means nothing to Rojo, so the separator form (`Analytics.mock.luau`) is the one to use.
+
+## Tag Folders
+
+A folder named after a declared tag is a **tag folder**. Like a routing folder, it exists only to declare, so it never appears in the tree: an active tag's folder is removed and its contents move up into the parent, and a dormant tag's folder is pruned whole.
+
+That makes build-time swapping work without touching a single `require`:
+
+```
+src/Analytics/dev/Service.luau   ->  Analytics/Service   (dev active: dev/ removed)
+src/Analytics/prod/Service.luau  ->  pruned              (prod dormant)
+```
+
+Both files target the same instance, and the active tag decides which one gets there. `(mock)/` works as well: parentheses come off before names are matched.
+
+## Precedence
+
+Within one root directory:
+
+1. A tagged file beats an untagged one at the same instance name, silently. That's the feature, not a clash.
+2. Two files with active tags claiming one instance name is an error naming both files.
+3. Two untagged files at one instance name is a warning.
+4. Across root directories, the last one wins. This applies after the rules above.
+
+## Turning Tags On and Off
+
+The config says whether a tag is on. The CLI overrides it for one invocation:
+
+```bash
+rogen build -t mock
+rogen build -t mock -T dev
+```
+
+`-t, --tag` turns a tag on and `-T, --no-tag` turns one off. Both are repeatable, and naming a tag that no built config declares is an error. See the [CLI reference](/docs/v2/cli#options).
+
+For a permanent variant, use a second config that extends the first and flips the tag:
+
+```json title="mocked.rogen.json"
+{
+	"extends": "./default.rogen.json",
+	"tags": { "mock": true }
+}
+```
+
+`rogen build mocked` then writes `mocked.project.json`.
+
+<Callout type="warn" title="Capital suffixes prune with a warning">
+	`HttpMock.luau` matches a dormant `mock` tag on its capital letter and is pruned. `Mock`, `Debug`, `Dev` and `Test` are common trailing nouns in Roblox code, and a tag misfire deletes a file. Rogen lists each pruned file in a warning. Use the separator form (`Http.mock.luau`) for real variants.
+</Callout>

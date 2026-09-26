@@ -1,0 +1,47 @@
+---
+title: Luau
+description: Step-by-step setup guide for a Luau project.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Rogen builds Luau projects directly. Rogen reads the source directory and generates the project file automatically.
+
+<Steps>
+
+<Step>
+### Create the Configuration file
+
+Generate a `.rogen.json` configuration file. Run the initialization command in the project root:
+
+```bash
+rogen init
+```
+
+The configuration file instructs Rogen to scan the `src` folder and output a `default.project.json` file using the `luau` build mode.
+
+</Step>
+
+<Step>
+### Start Watching
+
+Run Rogen in watch mode. Rogen builds the project file and updates the map automatically upon file changes.
+
+```bash
+rogen watch
+```
+
+</Step>
+
+<Step>
+### Sync with Rojo
+
+Open a separate terminal window. Start Rojo using the generated project file.
+
+```bash
+rojo serve
+```
+
+</Step>
+
+</Steps>
