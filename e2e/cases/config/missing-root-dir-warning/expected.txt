@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/later - warning: this root dir does not exist, so it contributes nothing.

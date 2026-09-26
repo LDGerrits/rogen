@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · game
-  Wrote game.project.json.
+  game.project.json · wrote
   Built 1 config.
 
 written:

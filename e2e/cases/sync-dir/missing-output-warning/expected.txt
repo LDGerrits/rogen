@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/src - warning: nothing emitted for root dir "src" exists under "out". The nearest path that exists is "." — has the compiler run?

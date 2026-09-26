@@ -2,7 +2,7 @@ $ rogen build -o custom/game.project.json
 exit 0
 stdout:
   rogen build · default
-  Wrote custom/game.project.json.
+  custom/game.project.json · wrote
   Built 1 config.
 
 written:

@@ -4,13 +4,13 @@ stdout:
   rogen build · lobby, lobby-source, match, match-source
   Not building: core.rogen.json.
   lobby
-    Wrote lobby.project.json.
+    lobby.project.json · wrote
   lobby-source
-    Wrote lobby-source.project.json.
+    lobby-source.project.json · wrote
   match
-    Wrote match.project.json.
+    match.project.json · wrote
   match-source
-    Wrote match-source.project.json.
+    match-source.project.json · wrote
   Built 4 configs.
 
 written:

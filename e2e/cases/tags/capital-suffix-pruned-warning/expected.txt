@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/default.project.json - warning: 1 file pruned by the dormant tag "mock" matched on a capital suffix (<dir>/src/Net/HttpMock.luau). Use a separator (Foo.mock.luau) if these are not variants.

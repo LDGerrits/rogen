@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/src/Real/Back - warning: this link points at nothing, or back at a directory that contains it, so it contributes nothing.

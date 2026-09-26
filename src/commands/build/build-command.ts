@@ -131,9 +131,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			const outFile =
 				path.relative(environmentService.cwd, config.outFile) || ".";
 			logService.success(
-				written.value.value.written
-					? `Wrote ${outFile}.`
-					: `${outFile} is up to date.`
+				`${outFile} · ${written.value.value.written ? "wrote" : "unchanged"}`
 			);
 			logDiagnostics(logService, [
 				...warnings,

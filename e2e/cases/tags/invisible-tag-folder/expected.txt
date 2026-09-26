@@ -2,14 +2,14 @@ $ rogen build -o prod.project.json
 exit 0
 stdout:
   rogen build · default
-  Wrote prod.project.json.
+  prod.project.json · wrote
   Built 1 config.
 
 $ rogen build -o mocked.project.json --tag mock --no-tag prod
 exit 0
 stdout:
   rogen build · default
-  Wrote mocked.project.json.
+  mocked.project.json · wrote
   Built 1 config.
 
 written:

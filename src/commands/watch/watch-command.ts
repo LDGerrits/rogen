@@ -44,7 +44,6 @@ import {
 interface RebuildReport {
 	readonly outFile: string;
 	readonly outcome: "wrote" | "unchanged" | "failed";
-	readonly elapsedMs: number;
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -146,7 +145,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			)?.resolved;
 			if (!config) return undefined;
 
-			const startedAt = performance.now();
 			const outFile =
 				path.relative(environmentService.cwd, config.outFile) || ".";
 			const finish = (
@@ -155,7 +153,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			): RebuildReport => ({
 				outFile,
 				outcome,
-				elapsedMs: performance.now() - startedAt,
 				diagnostics,
 			});
 
@@ -207,28 +204,29 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				logService.diagnostic(diagnostic);
 		};
 
-		const printReport = (report: RebuildReport) => {
-			if (report.outcome === "failed") {
-				logService.error(`${report.outFile} · not written`);
-			} else {
-				logService.success(
-					`${report.outFile} · ${
-						report.outcome === "wrote"
-							? `${Math.round(report.elapsedMs)}ms`
-							: "unchanged"
-					}`
+		const printReport = ({
+			outFile,
+			outcome,
+			diagnostics,
+		}: RebuildReport) => {
+			if (outcome === "failed") {
+				logService.error(
+					diagnostics.length > 0
+						? `${outFile} · not written`
+						: `${outFile} · not written · same errors as before`
 				);
+			} else {
+				logService.success(`${outFile} · ${outcome}`);
 			}
-			for (const diagnostic of report.diagnostics)
+			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
 		};
 
 		const pending = new Set<Promise<void>>();
 
-		const guarded =
+		const reported =
 			<T>(task: () => Promise<T>) =>
 			async (): Promise<T | undefined> => {
-				if (shutdown.isSettled) return undefined;
 				try {
 					return await task();
 				} catch (error) {
@@ -236,6 +234,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 					return undefined;
 				}
 			};
+
+		const guarded =
+			<T>(task: () => Promise<T>) =>
+			async (): Promise<T | undefined> =>
+				shutdown.isSettled ? undefined : reported(task)();
 
 		const track = (queued: Promise<unknown>): void => {
 			const tracked = queued.then(
@@ -269,7 +272,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			if (raised.length === 0 && results.length === 0) return;
 			track(
 				printer.queue(
-					guarded(async () => {
+					reported(async () => {
 						const reports = (await Promise.all(results)).filter(
 							(report) => report !== undefined
 						);

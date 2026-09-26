@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen build · default
   Not building: source.rogen.json.
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 
 written:

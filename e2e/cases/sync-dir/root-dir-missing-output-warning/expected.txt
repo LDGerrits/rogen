@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  Wrote default.project.json.
+  default.project.json · wrote
   Built 1 config.
 stderr:
   <dir>/core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the compiler's output rooted differently?

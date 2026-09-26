@@ -98,7 +98,7 @@ describe("build command", () => {
 				},
 			},
 		});
-		expect(success).toHaveBeenCalledWith("Wrote default.project.json.");
+		expect(success).toHaveBeenCalledWith("default.project.json · wrote");
 	});
 
 	it("should write one file per config from a shared scan", async () => {
@@ -144,9 +144,9 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · default, lobby",
 			"step: default",
-			"success: Wrote default.project.json.",
+			"success: default.project.json · wrote",
 			"step: lobby",
-			"success: Wrote lobby.project.json.",
+			"success: lobby.project.json · wrote",
 			"outro: Built 2 configs.",
 		]);
 	});
@@ -183,7 +183,7 @@ describe("build command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(success).toHaveBeenCalledWith(
-			"default.project.json is up to date."
+			"default.project.json · unchanged"
 		);
 	});
 
