@@ -2,8 +2,12 @@ $ rogen build lobby match --tag mock --verbose
 exit 0
 stdout:
   [debug] Tag "mock" is not declared in match.rogen.json; skipped there.
-  Wrote lobby.project.json.
-  Wrote match.project.json.
+  rogen build · lobby, match
+  lobby
+    Wrote lobby.project.json.
+  match
+    Wrote match.project.json.
+  Built 2 configs.
 
 written:
   lobby.project.json

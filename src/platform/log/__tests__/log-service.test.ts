@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { ConsoleLogService } from "../log-service.js";
+import { PlainLogService } from "../plain-log-service.js";
 
 describe("AbstractLogService formatting", () => {
 	it("should include an error's cause chain, not just its own message", () => {
@@ -7,7 +7,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
 
-		const logService = new ConsoleLogService();
+		const logService = new PlainLogService();
 		const rootCause = new Error("Poison Pill");
 		const wrapper = new Error("Error in event listener", {
 			cause: rootCause,
@@ -29,7 +29,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
 
-		const logService = new ConsoleLogService();
+		const logService = new PlainLogService();
 		const rootCause = new Error("root failure");
 		const middle = new Error("middle wrapper", { cause: rootCause });
 		const outer = new Error("outer wrapper", { cause: middle });
@@ -50,7 +50,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
 
-		const logService = new ConsoleLogService();
+		const logService = new PlainLogService();
 		const wrapper = new Error("wrapper", { cause: "raw string cause" });
 
 		logService.error(wrapper);
@@ -66,7 +66,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
 
-		const logService = new ConsoleLogService();
+		const logService = new PlainLogService();
 		const a = new Error("a");
 		const b = new Error("b", { cause: a });
 		a.cause = b;
@@ -84,7 +84,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "error")
 			.mockImplementation(() => {});
 
-		const logService = new ConsoleLogService();
+		const logService = new PlainLogService();
 		logService.error(new Error("standalone"));
 
 		const [loggedMessage] = consoleSpy.mock.calls[0] as [string];

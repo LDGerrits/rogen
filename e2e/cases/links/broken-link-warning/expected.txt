@@ -1,9 +1,11 @@
 $ rogen build
 exit 0
 stdout:
+  rogen build · default
   Wrote default.project.json.
+  Built 1 config.
 stderr:
-  warning: <dir>/src/Missing - warning: this link points at nothing, or back at a directory that contains it, so it contributes nothing.
+  <dir>/src/Missing - warning: this link points at nothing, or back at a directory that contains it, so it contributes nothing.
 
 written:
   default.project.json

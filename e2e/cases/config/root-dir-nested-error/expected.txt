@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  error: <dir>/default.rogen.json:4:3 - error: root dir "<dir>/src/shared" is inside root dir "<dir>/src"; a file under it would belong to both. Remove one.
+  <dir>/default.rogen.json:4:3 - error: root dir "<dir>/src/shared" is inside root dir "<dir>/src"; a file under it would belong to both. Remove one.

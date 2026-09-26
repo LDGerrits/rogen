@@ -19,11 +19,10 @@ import { LifecycleService } from "./platform/lifecycle/lifecycle-service.js";
 import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-service.js";
 import { Registry } from "./platform/registry/registry.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
-import {
-	ConsoleLogService,
-	LogLevel,
-	LogService,
-} from "./platform/log/log-service.js";
+import { LogLevel, LogService } from "./platform/log/log-service.js";
+import { PlainLogService } from "./platform/log/plain-log-service.js";
+import { TerminalLogService } from "./platform/log/terminal-log-service.js";
+import { DiagnosticsError } from "./platform/diagnostics/diagnostics-error.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreReconciliationService } from "./platform/watcher/core-reconciliation-service.js";
@@ -48,10 +47,24 @@ export default function run(): void {
 	});
 }
 
+function reportFailure(logService: LogService, error: Error): void {
+	if (error instanceof DiagnosticsError) {
+		for (const diagnostic of error.diagnostics)
+			logService.diagnostic(diagnostic);
+	} else {
+		logService.error(error.message);
+	}
+}
+
 async function main(): Promise<void> {
 	const disposables = new DisposableStore();
 
 	try {
+		const promptService = new ConsolePromptService();
+		const logService: LogService = promptService.isInteractive
+			? new TerminalLogService()
+			: new PlainLogService();
+
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands
 		);
@@ -61,8 +74,7 @@ async function main(): Promise<void> {
 		);
 
 		if (argsResult.isErr()) {
-			const tempLogger = new ConsoleLogService();
-			tempLogger.error(argsResult.error.message);
+			logService.error(argsResult.error.message);
 			process.exitCode = 1;
 			return;
 		}
@@ -74,10 +86,8 @@ async function main(): Promise<void> {
 			process.cwd()
 		);
 
-		const logService = new ConsoleLogService();
-
 		// Logging levels
-		if (environment.quiet) logService.setLevel(LogLevel.Off);
+		if (environment.quiet) logService.setLevel(LogLevel.Error);
 		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
 
 		// Default handler throws async, which would crash `watch`.
@@ -98,7 +108,7 @@ async function main(): Promise<void> {
 				? await configService.initialize(refs.value)
 				: refs;
 			if (initialized.isErr()) {
-				logService.error(initialized.error.message);
+				reportFailure(logService, initialized.error);
 				process.exitCode = 1;
 				return;
 			}
@@ -110,7 +120,7 @@ async function main(): Promise<void> {
 
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
-		services.set(PromptService, new ConsolePromptService());
+		services.set(PromptService, promptService);
 		services.set(FileSystemService, fileSystemService);
 		services.set(
 			IndexService,
@@ -131,7 +141,7 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			logService.error(result.error.message);
+			reportFailure(logService, result.error);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

@@ -39,7 +39,7 @@ describe("version command", () => {
 			path.join(versionCommandDir, "package.json"),
 			JSON.stringify({ version: "9.9.9" })
 		);
-		const info = jest.spyOn(logService, "info");
+		const info = jest.spyOn(logService, "print");
 
 		const result = await commandService.executeCommand("version", {
 			_: ["version"],
@@ -50,7 +50,7 @@ describe("version command", () => {
 	});
 
 	it("should fall back to 'unknown' when no package.json is found", async () => {
-		const info = jest.spyOn(logService, "info");
+		const info = jest.spyOn(logService, "print");
 
 		const result = await commandService.executeCommand("version", {
 			_: ["version"],

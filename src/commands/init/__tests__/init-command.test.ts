@@ -18,6 +18,7 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
 	ACCEPT_DEFAULT,
@@ -39,13 +40,13 @@ describe("init command", () => {
 
 	const runInit = (
 		names: string[] = [],
-		promptService: PromptService = new MockPromptService([], false)
+		promptService: PromptService = new MockPromptService([], false),
+		logService: LogService = new NullLogService()
 	) => {
 		const environment = new NativeEnvironmentService(
 			{ _: ["init", ...names] },
 			cwd
 		);
-		const logService = new NullLogService();
 		const services = new ServiceCollection();
 		services.set(EnvironmentService, environment);
 		services.set(FileSystemService, memFs);
@@ -75,6 +76,34 @@ describe("init command", () => {
 
 	afterEach(() => {
 		store[Symbol.dispose]();
+	});
+
+	describe("output", () => {
+		it("should open with a header, list each file written and close with a result", async () => {
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"success: Created default.rogen.json.",
+				"outro: Wrote 1 file.",
+			]);
+		});
+
+		it("should print nothing after the header when the config already exists", async () => {
+			await write("default.rogen.json", "{}");
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				[],
+				new MockPromptService([], false),
+				logService
+			);
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.lines).toEqual(["intro: rogen init"]);
+		});
 	});
 
 	describe("toolchains", () => {

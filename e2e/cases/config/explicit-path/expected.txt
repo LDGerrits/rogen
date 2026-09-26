@@ -1,7 +1,9 @@
 $ rogen build -c configs/place.rogen.json
 exit 0
 stdout:
+  rogen build · place
   Wrote configs/place.project.json.
+  Built 1 config.
 
 written:
   configs/place.project.json

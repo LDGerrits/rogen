@@ -1,8 +1,12 @@
 $ rogen build default mocked
 exit 0
 stdout:
-  Wrote default.project.json.
-  Wrote mocked.project.json.
+  rogen build · default, mocked
+  default
+    Wrote default.project.json.
+  mocked
+    Wrote mocked.project.json.
+  Built 2 configs.
 
 written:
   default.project.json

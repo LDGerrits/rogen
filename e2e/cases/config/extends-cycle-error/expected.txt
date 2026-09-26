@@ -1,4 +1,4 @@
 $ rogen build a
 exit 1
 stderr:
-  error: <dir>/c.rogen.json:2:13 - error: extends cycle: <dir>/a.rogen.json -> <dir>/b.rogen.json -> <dir>/c.rogen.json -> <dir>/a.rogen.json.
+  <dir>/c.rogen.json:2:13 - error: extends cycle: <dir>/a.rogen.json -> <dir>/b.rogen.json -> <dir>/c.rogen.json -> <dir>/a.rogen.json.

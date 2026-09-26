@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  error: <dir>/default.rogen.json:7:13 - error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.
+  <dir>/default.rogen.json:7:13 - error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.

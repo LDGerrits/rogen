@@ -95,7 +95,7 @@ describeWithRojo("end to end watch", () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 		expect(await tree()).not.toContain("ServerScriptService");
-		expect(session?.output).toContain("Config change detected");
+		expect(session?.output).toContain("default.rogen.json changed");
 	}, 30_000);
 
 	it("should keep building from the last valid config while the config is invalid", async () => {
@@ -155,7 +155,7 @@ describeWithRojo("end to end watch", () => {
 		);
 
 		await eventually(() => {
-			expect(session?.output).toContain("Config change detected");
+			expect(session?.output).toContain("default.rogen.json changed");
 		});
 		writeProjectFile(project.dir, "src/Other.luau");
 		await eventually(async () => {
@@ -218,7 +218,7 @@ describeWithRojo("end to end watch", () => {
 	it("should exit cleanly when interrupted", async () => {
 		const running = start();
 		await eventually(() => {
-			expect(running.output).toContain("Wrote default.project.json");
+			expect(running.output).toContain("default.project.json · ");
 		});
 
 		expect(await running.stop()).toBe(0);

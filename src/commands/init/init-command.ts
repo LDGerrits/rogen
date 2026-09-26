@@ -63,6 +63,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		}
 
 		const workspace = await detectWorkspace(fileSystemService, cwd);
+		logService.intro("rogen init");
 		const choices = promptService.isInteractive
 			? await askInitChoices(
 					promptService,
@@ -99,9 +100,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 					)
 				);
 			}
-			logService.info(`Created ${fileName}.`);
+			logService.success(`Created ${fileName}.`);
 		}
 
+		logService.outro(
+			`Wrote ${files.length} ${files.length === 1 ? "file" : "files"}.`
+		);
 		return ok(undefined);
 	},
 });

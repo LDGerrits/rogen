@@ -26,6 +26,7 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -79,7 +80,7 @@ describe("build command", () => {
 	it("should write the project file for a config", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();
-		const info = jest.spyOn(logService, "info");
+		const success = jest.spyOn(logService, "success");
 
 		const result = await run(
 			new MockConfigService([buildable()]),
@@ -97,7 +98,7 @@ describe("build command", () => {
 				},
 			},
 		});
-		expect(info).toHaveBeenCalledWith("Wrote default.project.json.");
+		expect(success).toHaveBeenCalledWith("Wrote default.project.json.");
 	});
 
 	it("should write one file per config from a shared scan", async () => {
@@ -125,11 +126,55 @@ describe("build command", () => {
 		expect(await fs.exists(abs("source.project.json"))).toBe(true);
 	});
 
+	it("should open with a header, group each config in a step and close with a result", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const logService = new MockLogService();
+
+		await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable(
+					{ outFile: abs("lobby.project.json") },
+					"/repo/lobby.rogen.json"
+				),
+			]),
+			logService
+		);
+
+		expect(logService.lines).toEqual([
+			"intro: rogen build · default, lobby",
+			"step: default",
+			"success: Wrote default.project.json.",
+			"step: lobby",
+			"success: Wrote lobby.project.json.",
+			"outro: Built 2 configs.",
+		]);
+	});
+
+	it("should print a warning after the result of its config", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const logService = new MockLogService();
+
+		await run(
+			new MockConfigService([
+				buildable({ routes: { server: "ServerScriptService" } }),
+			]),
+			logService
+		);
+
+		expect(logService.entries.map(({ kind }) => kind)).toEqual([
+			"intro",
+			"success",
+			"diagnosticWarning",
+			"outro",
+		]);
+	});
+
 	it("should leave an unchanged project file alone", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		await run(new MockConfigService([buildable()]), new NullLogService());
 		const logService = new NullLogService();
-		const info = jest.spyOn(logService, "info");
+		const success = jest.spyOn(logService, "success");
 
 		const result = await run(
 			new MockConfigService([buildable()]),
@@ -137,7 +182,7 @@ describe("build command", () => {
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(info).toHaveBeenCalledWith(
+		expect(success).toHaveBeenCalledWith(
 			"default.project.json is up to date."
 		);
 	});
@@ -183,7 +228,7 @@ describe("build command", () => {
 	it("should warn about unrouted files without failing", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();
-		const warn = jest.spyOn(logService, "warn");
+		const diagnostic = jest.spyOn(logService, "diagnostic");
 
 		const result = await run(
 			new MockConfigService([
@@ -193,8 +238,10 @@ describe("build command", () => {
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(warn).toHaveBeenCalledWith(
-			expect.stringContaining("matched no route")
+		expect(diagnostic).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining("matched no route"),
+			})
 		);
 		expect(await fs.exists(abs("default.project.json"))).toBe(true);
 	});
@@ -202,7 +249,7 @@ describe("build command", () => {
 	it("should warn when nothing the config emits exists under its sync dir", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();
-		const warn = jest.spyOn(logService, "warn");
+		const diagnostic = jest.spyOn(logService, "diagnostic");
 
 		const result = await run(
 			new MockConfigService([buildable({ syncDir: abs("out") })]),
@@ -210,8 +257,10 @@ describe("build command", () => {
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(warn).toHaveBeenCalledWith(
-			expect.stringContaining("nothing emitted")
+		expect(diagnostic).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining("nothing emitted"),
+			})
 		);
 	});
 
@@ -257,7 +306,7 @@ describe("build command", () => {
 		const logService = new NullLogService();
 		const info = jest.spyOn(logService, "info");
 
-		await run(new MockConfigService([mockEntry()]), logService);
+		await run(new MockConfigService([buildable()]), logService);
 
 		expect(info).toHaveBeenCalledWith(
 			"Not building: base.rogen.json, source.rogen.json."
@@ -269,7 +318,7 @@ describe("build command", () => {
 		const logService = new NullLogService();
 		const info = jest.spyOn(logService, "info");
 
-		await run(new MockConfigService([mockEntry()]), logService);
+		await run(new MockConfigService([buildable()]), logService);
 
 		expect(info).not.toHaveBeenCalledWith(
 			expect.stringContaining("Not building")
@@ -279,7 +328,7 @@ describe("build command", () => {
 	describe("--show-config", () => {
 		const show = (entries: ConfigEntry[]) => {
 			const logService = new NullLogService();
-			const info = jest.spyOn(logService, "info");
+			const info = jest.spyOn(logService, "print");
 			const result = run(new MockConfigService(entries), logService, {
 				_: ["build"],
 				"show-config": true,

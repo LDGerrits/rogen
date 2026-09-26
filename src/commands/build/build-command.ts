@@ -6,13 +6,15 @@ import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
-import { unrequestedConfigNotice } from "../../domain/config/config-discovery.js";
+import {
+	configLabel,
+	unrequestedConfigNotice,
+} from "../../domain/config/config-discovery.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
@@ -25,11 +27,11 @@ import {
 	Extensions,
 } from "../../platform/commands/commands.js";
 
-function logWarnings(
+function logDiagnostics(
 	logService: LogService,
-	warnings: readonly Diagnostic[]
+	diagnostics: readonly Diagnostic[]
 ): void {
-	for (const warning of warnings) logService.warn(renderDiagnostic(warning));
+	for (const diagnostic of diagnostics) logService.diagnostic(diagnostic);
 }
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
@@ -62,7 +64,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const indexService = accessor.get(IndexService);
 
 		if (args["show-config"]) {
-			logService.info(showConfig(configService.configs));
+			logService.print(showConfig(configService.configs));
 			const broken = configService.configs.filter(
 				(entry) => entryErrors(entry).length > 0
 			);
@@ -75,58 +77,74 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				: ok(undefined);
 		}
 
-		const configs = requireValidConfigs(configService);
-		if (configs.isErr()) return configs;
+		const valid = requireValidConfigs(configService);
+		if (valid.isErr()) return valid;
 
+		const entries = configService.configs.flatMap((entry) =>
+			entry.resolved ? [{ file: entry.file, ...entry.resolved }] : []
+		);
 		const notice = await unrequestedConfigNotice(
 			fileSystemService,
 			environmentService.cwd,
 			configService.configs.map((entry) => entry.file)
 		);
-		if (notice) logService.info(notice);
 
-		const entries = configService.configs.flatMap((entry) =>
-			entry.resolved ? [{ file: entry.file, ...entry.resolved }] : []
-		);
 		const upfront = [
 			...checkRoutes(entries),
 			...findOutputClashes(entries),
 		];
 		if (upfront.length > 0) return err(new DiagnosticsError(upfront));
 
-		await indexService.initialize(rootsToIndex(configs.value));
+		logService.intro(
+			`rogen build · ${entries.map(({ file }) => configLabel(file)).join(", ")}`
+		);
+		if (notice) logService.info(notice);
+
+		await indexService.initialize(rootsToIndex(entries));
 
 		const built = [];
 		const errors: Diagnostic[] = [];
-		for (const config of configs.value) {
+		for (const config of entries) {
 			const result = build(config, indexService);
 			if (result.isErr()) {
 				errors.push(...result.error);
 				continue;
 			}
-			built.push({ config, tree: result.value.value });
-			logWarnings(logService, result.value.warnings);
+			built.push({
+				config,
+				tree: result.value.value,
+				warnings: result.value.warnings,
+			});
 		}
-		if (errors.length > 0) return err(new DiagnosticsError(errors));
+		if (errors.length > 0) {
+			for (const { warnings } of built)
+				logDiagnostics(logService, warnings);
+			return err(new DiagnosticsError(errors));
+		}
 
-		for (const { config, tree } of built) {
+		for (const { config, tree, warnings } of built) {
+			if (built.length > 1) logService.step(configLabel(config.file));
 			const written = await writeOutput(fileSystemService, config, tree);
 			if (written.isErr())
 				return err(new DiagnosticsError(written.error));
 
 			const outFile =
 				path.relative(environmentService.cwd, config.outFile) || ".";
-			logService.info(
+			logService.success(
 				written.value.value.written
 					? `Wrote ${outFile}.`
 					: `${outFile} is up to date.`
 			);
-			logWarnings(logService, [
+			logDiagnostics(logService, [
+				...warnings,
 				...written.value.warnings,
 				...(await checkSyncDir(fileSystemService, config)),
 			]);
 		}
 
+		logService.outro(
+			`Built ${built.length} ${built.length === 1 ? "config" : "configs"}.`
+		);
 		return ok(undefined);
 	},
 });

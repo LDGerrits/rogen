@@ -31,10 +31,7 @@ export interface MultiSelectPromptOptions<
 	readonly initialValues?: readonly T[];
 }
 
-/**
- * Every prompt resolves to `undefined` when the user cancels. A text prompt
- * starts empty and resolves to its placeholder when nothing is typed.
- */
+/** Every prompt resolves to `undefined` when the user cancels; an empty text answer resolves to its placeholder. */
 export interface PromptService {
 	readonly _serviceBrand: undefined;
 	readonly isInteractive: boolean;

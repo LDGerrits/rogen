@@ -9,7 +9,10 @@ import { Watcher } from "../../platform/watcher/watcher.js";
 import { FileChange } from "../../platform/fs/file-events.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { unrequestedConfigNotice } from "../../domain/config/config-discovery.js";
+import {
+	configLabel,
+	unrequestedConfigNotice,
+} from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -19,7 +22,6 @@ import {
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { BuildOutput, build, checkRoutes } from "../../domain/build/build.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
@@ -27,6 +29,10 @@ import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { dropSourceUpdates } from "../../domain/watch/drop-source-updates.js";
+import {
+	clockTime,
+	describeChange,
+} from "../../domain/watch/describe-change.js";
 import { PrintedDiagnostics } from "../../domain/watch/printed-diagnostics.js";
 import { createWatchPlan } from "../../domain/watch/watch-plan.js";
 import { Registry } from "../../platform/registry/registry.js";
@@ -34,6 +40,19 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../../platform/commands/commands.js";
+
+interface RebuildReport {
+	readonly outFile: string;
+	readonly outcome: "wrote" | "unchanged" | "failed";
+	readonly elapsedMs: number;
+	readonly diagnostics: readonly Diagnostic[];
+}
+
+interface ConfigNotice {
+	readonly file: string;
+	readonly errors: readonly Diagnostic[];
+	readonly warnings: readonly Diagnostic[];
+}
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "watch",
@@ -69,7 +88,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			environmentService.cwd,
 			configService.configs.map((entry) => entry.file)
 		);
-		if (notice) logService.info(notice);
 
 		const liveEntries = () =>
 			configService.configs.flatMap((entry) =>
@@ -81,62 +99,65 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		];
 		if (upfront.length > 0) return err(new DiagnosticsError(upfront));
 
+		logService.intro(
+			`rogen watch · ${liveEntries()
+				.map(({ file }) => configLabel(file))
+				.join(", ")}`
+		);
+		if (notice) logService.info(notice);
+
 		const store = new DisposableStore();
 		const shutdown = new DeferredPromise<void>();
 		const intake = new Sequencer();
 		const rebuilds = new Map<string, Sequencer>();
+		const printer = new Sequencer();
+		const notices: ConfigNotice[] = [];
 		const printed = new PrintedDiagnostics();
 		const changedConfigs = new Set<string>();
 		let plan = createWatchPlan(liveEntries());
 		let activeWatch = "";
 
-		const logDiagnostic = (diagnostic: Diagnostic): void => {
-			const line = renderDiagnostic(diagnostic);
-			if (diagnostic.severity === DiagnosticSeverity.Error) {
-				logService.error(line);
-			} else {
-				logService.warn(line);
-			}
-		};
-
-		const report = (
+		const unseen = (
 			file: string,
 			stream: "build" | "sync",
 			diagnostics: readonly Diagnostic[]
-		): void => {
-			for (const diagnostic of printed.unseen(
-				`${file}#${stream}`,
-				diagnostics
-			)) {
-				logDiagnostic(diagnostic);
-			}
-		};
+		): readonly Diagnostic[] =>
+			printed.unseen(`${file}#${stream}`, diagnostics);
 
 		const reportConfig = (entry: ConfigEntry): void => {
-			const unseen = printed.unseen(
+			const fresh = printed.unseen(
 				`${entry.file}#config`,
 				entry.diagnostics
 			);
-			const errors = unseen.filter(
-				(diagnostic) => diagnostic.severity === DiagnosticSeverity.Error
-			);
-			if (errors.length > 0) {
-				logService.error(
-					`${errors.map(renderDiagnostic).join("\n")}\nStill building from the last valid ${path.basename(entry.file)}.`
-				);
-			}
-			for (const diagnostic of unseen) {
-				if (diagnostic.severity === DiagnosticSeverity.Warning) {
-					logDiagnostic(diagnostic);
-				}
-			}
+			const isError = (diagnostic: Diagnostic) =>
+				diagnostic.severity === DiagnosticSeverity.Error;
+			const errors = fresh.filter(isError);
+			const warnings = fresh.filter((diagnostic) => !isError(diagnostic));
+			if (errors.length + warnings.length > 0)
+				notices.push({ file: entry.file, errors, warnings });
 		};
 
-		const rebuild = async (file: string, load: boolean): Promise<void> => {
+		const rebuild = async (
+			file: string,
+			load: boolean
+		): Promise<RebuildReport | undefined> => {
 			const config = configService.configs.find(
 				(entry) => entry.file === file
 			)?.resolved;
-			if (!config) return;
+			if (!config) return undefined;
+
+			const startedAt = performance.now();
+			const outFile =
+				path.relative(environmentService.cwd, config.outFile) || ".";
+			const finish = (
+				outcome: RebuildReport["outcome"],
+				diagnostics: readonly Diagnostic[]
+			): RebuildReport => ({
+				outFile,
+				outcome,
+				elapsedMs: performance.now() - startedAt,
+				diagnostics,
+			});
 
 			const missingRoutes = checkRoutes([
 				{ file, routes: config.routes },
@@ -145,65 +166,118 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				missingRoutes.length > 0
 					? err(missingRoutes)
 					: build(config, indexService);
-			if (built.isErr()) {
-				report(file, "build", built.error);
-				return;
-			}
+			if (built.isErr())
+				return finish("failed", unseen(file, "build", built.error));
 
 			const written = await writeOutput(
 				fileSystemService,
 				config,
 				built.value.value
 			);
-			if (written.isErr()) {
-				report(file, "build", written.error);
-				return;
-			}
-			report(file, "build", [
-				...built.value.warnings,
-				...written.value.warnings,
-			]);
+			if (written.isErr())
+				return finish("failed", unseen(file, "build", written.error));
 
-			const outFile =
-				path.relative(environmentService.cwd, config.outFile) || ".";
-			if (written.value.value.written) {
-				logService.info(`Wrote ${outFile}.`);
-			} else if (load) {
-				logService.info(`${outFile} is up to date.`);
-			}
-			if (load) {
-				report(
-					file,
-					"sync",
-					await checkSyncDir(fileSystemService, config)
+			const diagnostics = [
+				...unseen(file, "build", [
+					...built.value.warnings,
+					...written.value.warnings,
+				]),
+				...(load
+					? unseen(
+							file,
+							"sync",
+							await checkSyncDir(fileSystemService, config)
+						)
+					: []),
+			];
+			return finish(
+				written.value.value.written ? "wrote" : "unchanged",
+				diagnostics
+			);
+		};
+
+		const printNotice = ({ file, errors, warnings }: ConfigNotice) => {
+			for (const diagnostic of errors) logService.diagnostic(diagnostic);
+			if (errors.length > 0) {
+				logService.error(
+					`Still building from the last valid ${path.basename(file)}.`
 				);
 			}
+			for (const diagnostic of warnings)
+				logService.diagnostic(diagnostic);
+		};
+
+		const printReport = (report: RebuildReport) => {
+			if (report.outcome === "failed") {
+				logService.error(`${report.outFile} · not written`);
+			} else {
+				logService.success(
+					`${report.outFile} · ${
+						report.outcome === "wrote"
+							? `${Math.round(report.elapsedMs)}ms`
+							: "unchanged"
+					}`
+				);
+			}
+			for (const diagnostic of report.diagnostics)
+				logService.diagnostic(diagnostic);
 		};
 
 		const pending = new Set<Promise<void>>();
 
 		const guarded =
-			(task: () => Promise<void>) => async (): Promise<void> => {
-				if (shutdown.isSettled) return;
+			<T>(task: () => Promise<T>) =>
+			async (): Promise<T | undefined> => {
+				if (shutdown.isSettled) return undefined;
 				try {
-					await task();
+					return await task();
 				} catch (error) {
 					logService.error(ErrorUtils.fromUnknown(error).message);
+					return undefined;
 				}
 			};
 
-		const track = (queued: Promise<void>): void => {
-			pending.add(queued);
-			void queued.finally(() => pending.delete(queued));
+		const track = (queued: Promise<unknown>): void => {
+			const tracked = queued.then(
+				() => undefined,
+				() => undefined
+			);
+			pending.add(tracked);
+			void tracked.finally(() => pending.delete(tracked));
 		};
 
-		const queueRebuild = (file: string, load: boolean): void => {
+		const queueRebuild = (
+			file: string,
+			load: boolean
+		): Promise<RebuildReport | undefined> => {
 			let sequencer = rebuilds.get(file);
 			if (!sequencer) {
 				sequencer = new Sequencer();
 				rebuilds.set(file, sequencer);
 			}
-			track(sequencer.queue(guarded(() => rebuild(file, load))));
+			const queued = sequencer.queue(guarded(() => rebuild(file, load)));
+			track(queued);
+			return queued;
+		};
+
+		const announce = (
+			title: string,
+			results: readonly Promise<RebuildReport | undefined>[]
+		): void => {
+			const at = new Date();
+			const raised = notices.splice(0);
+			if (raised.length === 0 && results.length === 0) return;
+			track(
+				printer.queue(
+					guarded(async () => {
+						const reports = await Promise.all(results);
+						logService.step(`${clockTime(at)} · ${title}`);
+						raised.forEach(printNotice);
+						for (const report of reports)
+							if (report) printReport(report);
+					})
+				)
+			);
 		};
 
 		const enqueue = (task: () => Promise<void>): void => {
@@ -271,7 +345,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			let reloaded: string[] = [];
 			let reindexed = false;
 			if (configFiles.length > 0) {
-				logService.info("Config change detected. Reloading...");
 				({ reloaded, reindexed } =
 					await applyConfigChanges(configFiles));
 			}
@@ -290,22 +363,30 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 					plan.configsFor(change.path)
 				),
 			]);
-			for (const file of affected) {
-				queueRebuild(file, reloaded.includes(file));
-			}
+			const results = [...affected].map((file) =>
+				queueRebuild(file, reloaded.includes(file))
+			);
+			announce(
+				describeChange({
+					sourceFiles: sourceChanges.length,
+					configFiles: configFiles.map((file) => path.basename(file)),
+					reloaded: reloaded.length > 0,
+				}),
+				results
+			);
 		};
 
 		const onBurst = async (): Promise<void> => {
-			logService.info(
-				"Burst threshold reached. Executing full rebuild..."
-			);
 			const { reloaded, reindexed } = await applyConfigChanges([
 				...configService.files,
 			]);
 			if (!reindexed) await indexService.initialize(plan.roots);
-			for (const { file } of liveEntries()) {
-				queueRebuild(file, reloaded.includes(file));
-			}
+			announce(
+				"many changes · full rebuild",
+				liveEntries().map(({ file }) =>
+					queueRebuild(file, reloaded.includes(file))
+				)
+			);
 		};
 
 		try {
@@ -339,14 +420,18 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				)
 			);
 
-			logService.info("Starting watch mode...");
 			configService.configs.forEach(reportConfig);
 
 			// Build only once the watcher is live, so no change goes unseen.
 			await watchPlan();
-			for (const { file } of liveEntries()) queueRebuild(file, true);
+			announce(
+				"initial build",
+				liveEntries().map(({ file }) => queueRebuild(file, true))
+			);
 
 			await shutdown.p;
+			await Promise.allSettled([...pending]);
+			logService.outro("Stopped watching.");
 
 			return ok(undefined);
 		} catch (error) {

@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import "../list-command.js";
 import "../../../domain/config/config.js";
 import { DisposableStore } from "../../../base/disposable.js";
@@ -11,15 +10,13 @@ import { EnvironmentService } from "../../../platform/environment/environment-se
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 
 describe("list command", () => {
 	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
-	let info: jest.SpiedFunction<NullLogService["info"]>;
+	let logService: MockLogService;
 	let run: () => Promise<Result<void, Error>>;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
@@ -28,14 +25,28 @@ describe("list command", () => {
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
 
-	const printed = () => info.mock.calls.map(([message]) => message);
+	const steps = () =>
+		logService.entries
+			.filter(({ kind }) => kind === "step")
+			.map(({ text }) => text);
+
+	const under = (step: string) => {
+		const entries = logService.entries;
+		const start = entries.findIndex(
+			({ kind, text }) => kind === "step" && text === step
+		);
+		const end = entries.findIndex(
+			({ kind }, index) =>
+				index > start && (kind === "step" || kind === "outro")
+		);
+		return entries.slice(start + 1, end).map(({ text }) => text);
+	};
 
 	beforeEach(async () => {
 		store = new DisposableStore();
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
-		const logService = new NullLogService();
-		info = jest.spyOn(logService, "info");
+		logService = new MockLogService();
 		const environment = new MockEnvironmentService(undefined, "/repo");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
@@ -65,13 +76,13 @@ describe("list command", () => {
 		const result = await run();
 
 		expect(result.isOk()).toBe(true);
-		expect(printed()).toEqual([
+		expect(steps()).toEqual(["default.rogen.json"]);
+		expect(under("default.rogen.json")).toEqual([
 			[
-				"default.rogen.json",
-				"  root dirs: src, lobby",
-				"  sync dir: out",
-				"  project file: default.project.json",
-				"  tags: mock, prod",
+				"root dirs: src, lobby",
+				"sync dir: out",
+				"project file: default.project.json",
+				"tags: mock, prod",
 			].join("\n"),
 		]);
 	});
@@ -81,8 +92,9 @@ describe("list command", () => {
 
 		await run();
 
-		expect(printed()[0]).toContain("  sync dir: (none)");
-		expect(printed()[0]).toContain("  tags: (none)");
+		const [details] = under("default.rogen.json");
+		expect(details).toContain("sync dir: (none)");
+		expect(details).toContain("tags: (none)");
 	});
 
 	it("should show the extends chain of a config", async () => {
@@ -92,10 +104,9 @@ describe("list command", () => {
 
 		await run();
 
-		const row = printed().find((text) =>
-			text.startsWith("default.rogen.json")
+		expect(under("default.rogen.json")).toContain(
+			"extends: base.rogen.json -> root.rogen.json"
 		);
-		expect(row).toContain("  extends: base.rogen.json -> root.rogen.json");
 	});
 
 	it("should list every config here, in name order", async () => {
@@ -105,10 +116,7 @@ describe("list command", () => {
 
 		await run();
 
-		expect(printed().map((text) => text.split("\n")[0])).toEqual([
-			"default.rogen.json",
-			"lobby.rogen.json",
-		]);
+		expect(steps()).toEqual(["default.rogen.json", "lobby.rogen.json"]);
 	});
 
 	it("should report a broken config in place, print the rest and fail", async () => {
@@ -118,13 +126,14 @@ describe("list command", () => {
 
 		const result = await run();
 
-		expect(printed().map((text) => text.split("\n")[0])).toEqual([
+		expect(steps()).toEqual([
 			"a.rogen.json",
 			"b.rogen.json",
 			"c.rogen.json",
 		]);
-		expect(printed()[1]).toContain("/repo/b.rogen.json:2:2 - error:");
-		expect(printed()[1]).not.toContain("project file");
+		expect(under("b.rogen.json")).toEqual([
+			expect.stringContaining("/repo/b.rogen.json:2:2 - error:"),
+		]);
 		expect(result.isErr()).toBe(true);
 	});
 
@@ -134,11 +143,9 @@ describe("list command", () => {
 
 		await run();
 
-		const row = printed().find((text) =>
-			text.startsWith("broken.rogen.json")
-		);
-		expect(row).toContain("  extends: base.rogen.json");
-		expect(row).toContain("error:");
+		const lines = under("broken.rogen.json");
+		expect(lines).toContain("extends: base.rogen.json");
+		expect(lines.join("\n")).toContain("error:");
 	});
 
 	it("should fail when there is no config here", async () => {

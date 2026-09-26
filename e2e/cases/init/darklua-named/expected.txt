@@ -1,8 +1,10 @@
 $ rogen init lobby
 exit 0
 stdout:
+  rogen init
   Created lobby-source.rogen.json.
   Created lobby.rogen.json.
+  Wrote 2 files.
 
 written:
   lobby-source.rogen.json

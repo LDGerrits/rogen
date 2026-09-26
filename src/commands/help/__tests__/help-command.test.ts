@@ -35,7 +35,7 @@ describe("help command", () => {
 	beforeEach(() => {
 		store = new DisposableStore();
 		logService = new NullLogService();
-		info = jest.spyOn(logService, "info");
+		info = jest.spyOn(logService, "print");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		commandService = store.add(

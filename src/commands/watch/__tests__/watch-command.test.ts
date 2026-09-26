@@ -27,6 +27,7 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
@@ -39,7 +40,7 @@ describe("watch command", () => {
 	let configService: CoreConfigService;
 	let store: DisposableStore;
 	let lifecycle: MockLifecycleService;
-	let logService: NullLogService;
+	let logService: MockLogService;
 
 	const settle = async () => {
 		await jest.advanceTimersByTimeAsync(150);
@@ -105,7 +106,7 @@ describe("watch command", () => {
 		watcher = new MemoryWatcher(memFs, new NullLogService());
 		store = new DisposableStore();
 		lifecycle = new MockLifecycleService();
-		logService = new NullLogService();
+		logService = new MockLogService();
 		reconciliation = new CoreReconciliationService(logService, {
 			burstThreshold: 200,
 			debounceMs: 100,
@@ -149,12 +150,11 @@ describe("watch command", () => {
 
 		it("should name the configs here that it was not asked to watch", async () => {
 			await write("/repo/source.rogen.json", config());
-			const info = jest.spyOn(logService, "info");
 			void startWatch(["default"]);
 			await settle();
 
-			expect(info).toHaveBeenCalledWith(
-				"Not building: source.rogen.json."
+			expect(logService.lines).toContain(
+				"info: Not building: source.rogen.json."
 			);
 		});
 
@@ -191,7 +191,7 @@ describe("watch command", () => {
 			);
 		});
 
-		it("should report that an unchanged project file is up to date", async () => {
+		it("should report that an unchanged project file is unchanged", async () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			void startWatch();
 			await settle();
@@ -199,7 +199,7 @@ describe("watch command", () => {
 			await settle();
 			lifecycle = new MockLifecycleService();
 			await watcher.stop();
-			const info = jest.spyOn(logService, "info");
+			logService.entries.length = 0;
 			configService = new CoreConfigService(
 				memFs,
 				new MockEnvironmentService(undefined, "/repo"),
@@ -209,8 +209,8 @@ describe("watch command", () => {
 			void startWatch();
 			await settle();
 
-			expect(info).toHaveBeenCalledWith(
-				"default.project.json is up to date."
+			expect(logService.lines).toContain(
+				"success: default.project.json · unchanged"
 			);
 		});
 	});
@@ -633,7 +633,7 @@ describe("watch command", () => {
 		it("should print an invalid config once", async () => {
 			await write("/repo/prod.rogen.json", config());
 			await run(["default", "prod"]);
-			const error = jest.spyOn(logService, "error");
+			logService.entries.length = 0;
 
 			await write("/repo/prod.rogen.json", "{ broken");
 			await settle();
@@ -642,7 +642,14 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/B.luau", "");
 			await settle();
 
-			expect(error).toHaveBeenCalledTimes(1);
+			expect(
+				logService.entries.filter(({ kind }) => kind === "error")
+			).toEqual([
+				{
+					kind: "error",
+					text: "Still building from the last valid prod.rogen.json.",
+				},
+			]);
 		});
 
 		it("should build from a config again once it is valid", async () => {
@@ -669,7 +676,6 @@ describe("watch command", () => {
 				config({ routes: { server: "ServerScriptService" } })
 			);
 			await memFs.writeFile("/repo/src/A.luau", "");
-			const warn = jest.spyOn(logService, "warn");
 			await run();
 
 			await memFs.writeFile("/repo/src/B.server.luau", "");
@@ -677,7 +683,154 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/C.server.luau", "");
 			await settle();
 
-			expect(warn).toHaveBeenCalledTimes(1);
+			expect(
+				logService.entries.filter(
+					({ kind }) => kind === "diagnosticWarning"
+				)
+			).toHaveLength(1);
+		});
+	});
+
+	describe("output", () => {
+		const blocks = () => {
+			const result: { title: string; lines: string[] }[] = [];
+			for (const { kind, text } of logService.entries) {
+				if (kind === "step")
+					result.push({
+						title: text.replace(/^\d\d:\d\d:\d\d · /, ""),
+						lines: [],
+					});
+				else if (kind === "success" || kind === "error")
+					result
+						.at(-1)
+						?.lines.push(text.replace(/ · \d+ms$/, " · Nms"));
+				else if (kind.startsWith("diagnostic"))
+					result.at(-1)?.lines.push(`${kind}: ${text}`);
+			}
+			return result;
+		};
+
+		it("should open with a header naming the configs it watches", async () => {
+			await write("/repo/source.rogen.json", config());
+
+			await run(["default", "source"]);
+
+			expect(logService.entries[0]).toEqual({
+				kind: "intro",
+				text: "rogen watch · default, source",
+			});
+		});
+
+		it("should print the initial build as one block with a result per config", async () => {
+			await write("/repo/source.rogen.json", config());
+
+			await run(["default", "source"]);
+
+			expect(blocks()).toEqual([
+				{
+					title: "initial build",
+					lines: [
+						"default.project.json · Nms",
+						"source.project.json · Nms",
+					],
+				},
+			]);
+		});
+
+		it("should print one block for a change that rebuilds several configs", async () => {
+			await write("/repo/source.rogen.json", config());
+			await run(["default", "source"]);
+			logService.entries.length = 0;
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await memFs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(blocks()).toEqual([
+				{
+					title: "2 files changed",
+					lines: [
+						"default.project.json · Nms",
+						"source.project.json · Nms",
+					],
+				},
+			]);
+		});
+
+		it("should print a block for each rebuild", async () => {
+			await run();
+			logService.entries.length = 0;
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			await memFs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(blocks().map(({ title }) => title)).toEqual([
+				"1 file changed",
+				"1 file changed",
+			]);
+		});
+
+		it("should name a config change and its reload in the header", async () => {
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await run();
+			logService.entries.length = 0;
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ routes: { "*": "Workspace" } })
+			);
+			await settle();
+
+			expect(blocks()).toEqual([
+				{
+					title: "default.rogen.json changed · reloaded",
+					lines: ["default.project.json · Nms"],
+				},
+			]);
+		});
+
+		it("should nest a warning under the output that raised it", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ routes: { server: "ServerScriptService" } })
+			);
+			await memFs.writeFile("/repo/src/A.luau", "");
+
+			await run();
+
+			const [block] = blocks();
+			expect(block.lines).toEqual([
+				"default.project.json · Nms",
+				expect.stringMatching(
+					/^diagnosticWarning: .*default\.project\.json - warning: 1 file matched no route/
+				),
+			]);
+		});
+
+		it("should not print a block when a change leaves every output as it was", async () => {
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await run();
+			logService.entries.length = 0;
+
+			await write("/repo/default.rogen.json", config());
+			await settle();
+
+			expect(blocks()).toEqual([]);
+		});
+
+		it("should close with a result line when it stops", async () => {
+			const running = startWatch();
+			await settle();
+
+			lifecycle.shutdown();
+			await running;
+
+			expect(logService.entries.at(-1)).toEqual({
+				kind: "outro",
+				text: "Stopped watching.",
+			});
 		});
 	});
 
