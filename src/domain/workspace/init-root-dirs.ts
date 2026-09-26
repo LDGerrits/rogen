@@ -22,7 +22,10 @@ export function otherCodeFoldersHint(
 	workspace: DetectedWorkspace,
 	rootDir: string
 ): string | undefined {
-	const others = workspace.codeFolders.filter((folder) => folder !== rootDir);
+	const [topLevel] = rootDir.split("/");
+	const others = workspace.codeFolders.filter(
+		(folder) => folder !== topLevel
+	);
 	return others.length > 0
 		? `Also found code in: ${others.join(", ")}`
 		: undefined;

@@ -10,17 +10,19 @@ import {
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { layerConfig } from "../config/config-layers.js";
-import { DEFAULT_OUT_DIR, DetectedWorkspace } from "./detect-workspace.js";
+import { DetectedWorkspace } from "./detect-workspace.js";
 import {
+	DARKLUA_SYNC_DIR,
 	InitPlan,
 	PlannedFile,
 	SCHEMA_URL,
+	compiledDirOf,
+	configFile,
 	existingFileDiagnostics,
 	serialize,
 } from "./init-plan.js";
 
 export const DEFAULT_CONFIG_FILE = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
-const DARKLUA_SYNC_DIR = "dist";
 
 export interface PlaceChoices {
 	readonly name: string;
@@ -51,7 +53,9 @@ export const placeFileNames = (
 	workspace: DetectedWorkspace
 ): string[] => [
 	`${name}${CONFIG_SUFFIX}`,
-	`${name}-source${CONFIG_SUFFIX}`,
+	...(workspace.language === "luau" && workspace.darklua
+		? [`${name}-source${CONFIG_SUFFIX}`]
+		: []),
 	...(workspace.language === "roblox-ts" ? [tsconfigFileName(name)] : []),
 ];
 
@@ -79,10 +83,8 @@ export async function readBaseConfig(
 	});
 }
 
-const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
-	fileName: `${stem}${CONFIG_SUFFIX}`,
-	content: serialize({ $schema: SCHEMA_URL, ...config }),
-});
+const placeConfig = (stem: string, config: RogenConfig): PlannedFile =>
+	configFile(stem, { $schema: SCHEMA_URL, ...config });
 
 const extendsRef = (file: string): string => `./${file}`;
 
@@ -115,7 +117,7 @@ function planLuauPlace({
 	if (!workspace.darklua) {
 		return {
 			configs: [
-				configFile(name, {
+				placeConfig(name, {
 					extends: extendsRef(DEFAULT_CONFIG_FILE),
 					rootDirs,
 				}),
@@ -129,7 +131,7 @@ function planLuauPlace({
 	if (!base.parent) {
 		return {
 			configs: [
-				configFile(name, {
+				placeConfig(name, {
 					extends: extendsRef(DEFAULT_CONFIG_FILE),
 					rootDirs,
 					syncDir,
@@ -142,11 +144,11 @@ function planLuauPlace({
 	const sourceStem = `${name}-source`;
 	return {
 		configs: [
-			configFile(sourceStem, {
+			placeConfig(sourceStem, {
 				extends: extendsRef(base.parent),
 				rootDirs,
 			}),
-			configFile(name, {
+			placeConfig(name, {
 				extends: extendsRef(`${sourceStem}${CONFIG_SUFFIX}`),
 				syncDir,
 			}),
@@ -161,8 +163,8 @@ function planRobloxTsPlace({
 	workspace,
 }: PlacePlanOptions): InitPlan {
 	const rootDirs = [...base.rootDirs, folder];
-	const outDir = `${workspace.outDir ?? DEFAULT_OUT_DIR}/${name}`;
-	const syncDir = `${base.syncDir ?? workspace.outDir ?? DEFAULT_OUT_DIR}/${name}`;
+	const outDir = `${compiledDirOf(workspace)}/${name}`;
+	const syncDir = `${base.syncDir ?? compiledDirOf(workspace)}/${name}`;
 	const tsconfigFile = tsconfigFileName(name);
 
 	const steps = [
@@ -181,7 +183,7 @@ function planRobloxTsPlace({
 
 	return {
 		configs: [
-			configFile(name, {
+			placeConfig(name, {
 				extends: extendsRef(DEFAULT_CONFIG_FILE),
 				rootDirs,
 				syncDir,

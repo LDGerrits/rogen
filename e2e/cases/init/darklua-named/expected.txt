@@ -8,7 +8,7 @@ stdout:
     rogen watch lobby
     rojo serve lobby.project.json
     Darklua must process each root dir into dist (darklua process src dist).
-    Add your own routes under "routes" in lobby.rogen.json.
+    Add your own routes under "routes" in lobby-source.rogen.json.
   Wrote 2 files.
 
 written:

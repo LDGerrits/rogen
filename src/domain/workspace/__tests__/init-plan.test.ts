@@ -279,6 +279,18 @@ describe("planInit", () => {
 			);
 		});
 
+		it("should point the routes hint at the source config for luau with darklua", () => {
+			expect(planFor("luau", true, "lobby").nextSteps.at(-1)).toBe(
+				'Add your own routes under "routes" in lobby-source.rogen.json.'
+			);
+		});
+
+		it("should tell roblox-ts with darklua to process the compiled output", () => {
+			expect(planFor("roblox-ts", true).nextSteps).toContain(
+				"Darklua must process build into dist (darklua process build dist)."
+			);
+		});
+
 		it("should carry the config name into the commands", () => {
 			expect(planFor("luau", false, "lobby").nextSteps).toEqual([
 				"rogen watch lobby",

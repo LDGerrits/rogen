@@ -1,22 +1,20 @@
 import path from "path";
-import { Result, ok, err } from "../../base/result.js";
+import { ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { CONFIG_SUFFIX } from "../../domain/config/config-discovery.js";
 import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
-import { InitContext, askInit } from "../../domain/workspace/init-questions.js";
 import {
-	planPlace,
-	readBaseConfig,
-} from "../../domain/workspace/init-place.js";
+	InitAnswers,
+	InitContext,
+	askInit,
+} from "../../domain/workspace/init-questions.js";
 import {
-	InitPlan,
 	PlannedFile,
 	defaultInitChoices,
 	existingFileDiagnostics,
 	parseInitName,
-	planInit,
 } from "../../domain/workspace/init-plan.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { planAnswers } from "../../domain/workspace/plan-answers.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -84,45 +82,30 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
-		const projectName = path.basename(cwd) || DEFAULT_PROJECT_NAME;
-		let planned: Result<InitPlan, Diagnostic[]>;
+		const context: InitContext = {
+			workspace,
+			directory: cwd,
+			existingFiles,
+		};
+		let answers: InitAnswers | undefined;
 		if (promptService.isInteractive) {
-			const context: InitContext = {
-				workspace,
-				directory: cwd,
-				existingFiles,
-			};
 			const asked = await askInit(promptService, context, givenName);
 			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
-			const answers = asked.value;
-			if (!answers) return err(new Error("init cancelled."));
-
-			if (answers.kind === "place") {
-				const base = await readBaseConfig(fileSystemService, cwd);
-				if (base.isErr()) return err(new DiagnosticsError(base.error));
-				planned = planPlace({
-					choices: answers.choices,
-					base: base.value,
-					workspace,
-					directory: cwd,
-					existingFiles,
-				});
-			} else {
-				planned = planInit({
-					choices: answers.choices,
-					projectName,
-					directory: cwd,
-					existingFiles,
-				});
-			}
+			answers = asked.value;
 		} else {
-			planned = planInit({
+			answers = {
+				kind: "project",
 				choices: defaultInitChoices(workspace, nameResult.value),
-				projectName,
-				directory: cwd,
-				existingFiles,
-			});
+			};
 		}
+		if (!answers) return err(new Error("init cancelled."));
+
+		const planned = await planAnswers(
+			fileSystemService,
+			context,
+			answers,
+			path.basename(cwd) || DEFAULT_PROJECT_NAME
+		);
 		if (planned.isErr()) return err(new DiagnosticsError(planned.error));
 		const plan = planned.value;
 

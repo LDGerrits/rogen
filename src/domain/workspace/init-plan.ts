@@ -39,6 +39,8 @@ export interface InitChoices {
 	readonly darklua: boolean;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
+	/** Where roblox-ts compiles to; Darklua reads it when both are used. */
+	readonly outDir?: string;
 	readonly mounts: readonly TemplateMount[];
 	readonly routes: readonly RouteId[];
 	/** Whether files that match no route go to the shared target, or are left out. */
@@ -65,12 +67,12 @@ export const InitDiagnostics = {
 
 export const SCHEMA_URL = "https://rogen.dev/schema/2/rogen.json";
 export const TEMPLATE_FILE = "template.project.json";
-const DARKLUA_SYNC_DIR = "dist";
+export const DARKLUA_SYNC_DIR = "dist";
 
 export const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
 
-const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
+export const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 	fileName: `${stem}${CONFIG_SUFFIX}`,
 	content: serialize(config),
 });
@@ -85,6 +87,9 @@ export function syncDirFor(
 		? (workspace.outDir ?? DEFAULT_OUT_DIR)
 		: undefined;
 }
+
+export const compiledDirOf = (workspace: DetectedWorkspace): string =>
+	workspace.outDir ?? DEFAULT_OUT_DIR;
 
 export const sourceStemOf = (name: string): string =>
 	name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
@@ -116,6 +121,7 @@ export function defaultInitChoices(
 		darklua,
 		rootDirs: [defaultRootDir(workspace, language)],
 		...(syncDir && { syncDir }),
+		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
 		mounts: defaultMounts(workspace, language),
 		routes: DEFAULT_ROUTES,
 		fallback: true,
@@ -173,6 +179,7 @@ function nextSteps({
 	darklua,
 	rootDirs,
 	syncDir,
+	outDir,
 }: InitChoices): string[] {
 	const steps = [
 		...(language === "roblox-ts" ? ["rbxtsc -w"] : []),
@@ -181,11 +188,16 @@ function nextSteps({
 	];
 	if (darklua && syncDir) {
 		steps.push(
-			`Darklua must process each root dir into ${syncDir} (darklua process ${rootDirs[0]} ${syncDir}).`
+			language === "roblox-ts"
+				? `Darklua must process ${outDir ?? DEFAULT_OUT_DIR} into ${syncDir} (darklua process ${outDir ?? DEFAULT_OUT_DIR} ${syncDir}).`
+				: `Darklua must process each root dir into ${syncDir} (darklua process ${rootDirs[0]} ${syncDir}).`
 		);
 	}
+	const routesStem = hasSourceConfig(language, darklua)
+		? sourceStemOf(name)
+		: name;
 	steps.push(
-		`Add your own routes under "routes" in ${name}${CONFIG_SUFFIX}.`
+		`Add your own routes under "routes" in ${routesStem}${CONFIG_SUFFIX}.`
 	);
 	return steps;
 }

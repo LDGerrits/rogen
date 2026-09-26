@@ -146,6 +146,17 @@ describe("askInitChoices", () => {
 			).rejects.toThrow(message);
 		});
 
+		it("should trim the name that was typed", async () => {
+			const prompts = new MockPromptService(["  test ", ...acceptAll(6)]);
+
+			const result = await askInitChoices(
+				prompts,
+				contextOf(luau, ["default.rogen.json"])
+			);
+
+			expect(result.unwrap()?.name).toBe("test");
+		});
+
 		it("should reject a name whose source config exists", async () => {
 			await expect(
 				ask(luau, ["lobby"], undefined, [
@@ -318,6 +329,17 @@ describe("askInitChoices", () => {
 					})
 				)?.placeholder
 			).toBe("src");
+		});
+
+		it("should not list the top folder of a nested root dir as another", async () => {
+			const prompt = await rootDirsPrompt({
+				...rbxts,
+				rootDir: "src/main",
+				codeFolders: ["places", "src"],
+			});
+
+			expect(prompt?.placeholder).toBe("src/main");
+			expect(prompt?.hint).toBe("Also found code in: places");
 		});
 
 		it("should hint at the other code folders, never as a choice", async () => {

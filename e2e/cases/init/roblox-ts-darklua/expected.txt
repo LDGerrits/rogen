@@ -8,7 +8,7 @@ stdout:
     rbxtsc -w
     rogen watch
     rojo serve default.project.json
-    Darklua must process each root dir into dist (darklua process src dist).
+    Darklua must process out into dist (darklua process out dist).
     Add your own routes under "routes" in default.rogen.json.
   Wrote 2 files.
 

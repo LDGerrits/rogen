@@ -20,6 +20,7 @@ import {
 import {
 	InitChoices,
 	TEMPLATE_FILE,
+	compiledDirOf,
 	configFileNames,
 	existingFileDiagnostics,
 	parseInitName,
@@ -140,6 +141,7 @@ export async function askInitChoices(
 		darklua,
 		rootDirs: splitList(rootDirs),
 		...(syncDir && { syncDir }),
+		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
 		mounts,
 		routes: routes.routes,
 		fallback: routes.fallback,
@@ -225,19 +227,22 @@ function askName(
 	existingFiles: ReadonlySet<string>,
 	{ message, description, filesFor }: NameQuestion
 ): Promise<string | undefined> {
-	return promptService.text({
-		message,
-		description,
-		validate: (value) => {
-			if (value.trim() === "") return "Enter a name.";
-			const parsed = parseInitName([value]);
-			if (parsed.isErr()) return parsed.error.message;
-			const taken = filesFor(value).find((file) =>
-				existingFiles.has(file)
-			);
-			return taken && `${taken} already exists.`;
-		},
-	});
+	return promptService
+		.text({
+			message,
+			description,
+			validate: (value) => {
+				const trimmed = value.trim();
+				if (trimmed === "") return "Enter a name.";
+				const parsed = parseInitName([trimmed]);
+				if (parsed.isErr()) return parsed.error.message;
+				const taken = filesFor(trimmed).find((file) =>
+					existingFiles.has(file)
+				);
+				return taken && `${taken} already exists.`;
+			},
+		})
+		.then((answer) => answer?.trim());
 }
 
 async function askConfigName(
@@ -277,6 +282,14 @@ export async function askInit(
 		});
 		if (addPlace === undefined) return ok(undefined);
 		if (addPlace) {
+			const conflicts = name
+				? existingFileDiagnostics(
+						placeFileNames(name, context.workspace),
+						context.directory,
+						context.existingFiles
+					)
+				: [];
+			if (conflicts.length > 0) return err(conflicts);
 			const choices = await askPlaceChoices(promptService, context, name);
 			return ok(choices && { kind: "place", choices });
 		}

@@ -652,6 +652,32 @@ describe("init command", () => {
 			expect(await exists("lobby.rogen.json")).toBe(true);
 		});
 
+		it("should fail before the place folder when a given name would overwrite a Darklua source", async () => {
+			await write(".darklua.json");
+			await write("default.rogen.json", "{}");
+			await write("lobby-source.rogen.json", "{}");
+			const prompts = offerAnd();
+
+			const result = await runInit(["lobby"], prompts);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "lobby-source.rogen.json"),
+				},
+			]);
+			expect(prompts.asked).toHaveLength(1);
+		});
+
+		it("should allow a place name whose -source file exists when no source config is written", async () => {
+			await setUpLuau();
+			await write("lobby-source.rogen.json", "{}");
+
+			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should reject a place name that is taken", async () => {
 			await setUpLuau();
 			await write("lobby.rogen.json", "{}");
