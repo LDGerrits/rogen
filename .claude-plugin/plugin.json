@@ -1,8 +1,9 @@
 {
 	"name": "rogen",
 	"description": "Teaches agents how Rogen generates Rojo project files, and how to add files to a Rogen repo.",
-	"author": { "name": "LDGerrits" },
+	"author": {
+		"name": "LDGerrits"
+	},
 	"repository": "https://github.com/LDGerrits/rogen",
-	"license": "MIT",
-	"skills": ["./skills/rogen"]
+	"license": "MIT"
 }
