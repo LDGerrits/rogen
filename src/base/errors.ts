@@ -36,7 +36,7 @@ export const ErrorUtils = {
 	},
 };
 
-/** The user backed out; there is nothing to report beyond the message that closes the command's output. */
+/** The user backed out: not a failure to report, only a message to end on. */
 export class CancelledError extends Error {
 	override readonly name = "CancelledError";
 }

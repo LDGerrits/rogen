@@ -26,7 +26,7 @@ const withDetails = (message: string, { description, hint }: PromptDetails) => {
 	].join("\n");
 };
 
-export interface PromptStreams {
+interface PromptStreams {
 	readonly input?: Readable & { readonly isTTY?: boolean };
 	readonly output?: Writable & { readonly isTTY?: boolean };
 }
