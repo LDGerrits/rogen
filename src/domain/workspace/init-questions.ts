@@ -7,15 +7,27 @@ import {
 } from "../config/config-discovery.js";
 import { DetectedWorkspace, Language } from "./detect-workspace.js";
 import {
+	TemplateMount,
+	defaultMounts,
+	offeredMounts,
+	selectMounts,
+} from "./init-mounts.js";
+import {
 	InitChoices,
+	TEMPLATE_FILE,
 	configFileNames,
-	defaultInitChoices,
 	existingFileDiagnostics,
-	mountCandidates,
 	parseInitName,
 	sourceStemOf,
 	syncDirFor,
 } from "./init-plan.js";
+import { defaultRootDir, otherCodeFoldersHint } from "./init-root-dirs.js";
+import {
+	RouteId,
+	routeKey,
+	routeOptions,
+	sharedTarget,
+} from "./starting-routes.js";
 
 export interface InitContext {
 	readonly workspace: DetectedWorkspace;
@@ -82,11 +94,13 @@ export async function askInitChoices(
 	);
 	if (conflicts.length > 0) return err(conflicts);
 
+	const rootPlaceholder = defaultRootDir(workspace, language);
 	const rootDirs = await promptService.text({
 		message: "Root dirs",
 		description:
-			"Folders Rogen scans for scripts. Separate several with commas.",
-		placeholder: "src",
+			"Folders Rogen scans for scripts, relative to here. Separate several with commas; they're merged into one tree, and on a clash the later one wins.",
+		hint: otherCodeFoldersHint(workspace, rootPlaceholder),
+		placeholder: rootPlaceholder,
 		validate: (value) =>
 			splitList(value).length === 0
 				? "Enter at least one root dir."
@@ -108,18 +122,11 @@ export async function askInitChoices(
 		syncDir = answer.trim();
 	}
 
-	const candidates = mountCandidates(workspace);
-	const defaults = defaultInitChoices(workspace, chosenName);
-	const mounted = await promptService.multiSelect({
-		message: "Template mounts",
-		choices: candidates.map(({ path, installed }) => ({
-			value: path,
-			label: path,
-			hint: installed ? "found" : "not installed, mounted as optional",
-		})),
-		initialValues: defaults.mounts.map(({ path }) => path),
-	});
-	if (mounted === undefined) return ok(undefined);
+	const mounts = await askMounts(promptService, context, language);
+	if (mounts === undefined) return ok(undefined);
+
+	const routes = await askRoutes(promptService, language);
+	if (routes === undefined) return ok(undefined);
 
 	return ok({
 		name: chosenName,
@@ -127,10 +134,77 @@ export async function askInitChoices(
 		darklua,
 		rootDirs: splitList(rootDirs),
 		...(syncDir && { syncDir }),
-		mounts: candidates
-			.filter(({ path }) => mounted.includes(path))
-			.map(({ path, installed }) => ({ path, optional: !installed })),
+		mounts,
+		routes: routes.routes,
+		fallback: routes.fallback,
 	});
+}
+
+async function askMounts(
+	promptService: PromptService,
+	{ workspace, existingFiles }: InitContext,
+	language: Language
+): Promise<readonly TemplateMount[] | undefined> {
+	const offered = offeredMounts(workspace, language);
+	if (offered.length === 0 || existingFiles.has(TEMPLATE_FILE)) {
+		return defaultMounts(workspace, language);
+	}
+
+	const ticked = await promptService.multiSelect({
+		message: "Packages",
+		description:
+			language === "roblox-ts"
+				? "Folders placed in the game as they are. Rogen doesn't scan or route them. include and @rbxts are always mounted."
+				: "Folders placed in the game as they are. Rogen doesn't scan or route them.",
+		choices: offered.map(({ path, installed, landing }) => ({
+			value: path,
+			label: path,
+			hint: `→ ${landing}${installed ? "" : " · not installed yet"}`,
+		})),
+		initialValues: offered
+			.filter(({ installed }) => installed)
+			.map(({ path }) => path),
+	});
+	return ticked && selectMounts(workspace, language, ticked);
+}
+
+async function askRoutes(
+	promptService: PromptService,
+	language: Language
+): Promise<{ routes: readonly RouteId[]; fallback: boolean } | undefined> {
+	const options = routeOptions(language);
+	const server = routeKey("server", language);
+	const routes = await promptService.multiSelect<RouteId>({
+		message: "Routes",
+		description: `A route sends code to a service. A ${server} folder, a ${server}.luau marker file or a Foo.server.luau suffix all send code to ServerScriptService. Add your own later under "routes".`,
+		choices: options.map(({ id, key, target, hint }) => ({
+			value: id,
+			label: key,
+			hint: `→ ${target} · ${hint}`,
+		})),
+		initialValues: options
+			.filter(({ ticked }) => ticked)
+			.map(({ id }) => id),
+	});
+	if (routes === undefined) return undefined;
+	if (routes.length === 0) return { routes, fallback: true };
+
+	const fallback = await promptService.select<"shared" | "leave">({
+		message: "Files that match no route",
+		description: "Most loose modules in a feature folder are shared code.",
+		choices: [
+			{
+				value: "shared",
+				label: `Put them in ${sharedTarget(language)}`,
+			},
+			{
+				value: "leave",
+				label: "Leave them out (Rogen warns when it does)",
+			},
+		],
+		initialValue: "shared",
+	});
+	return fallback && { routes, fallback: fallback === "shared" };
 }
 
 async function askName(

@@ -11,7 +11,13 @@ import {
 	planInit,
 } from "../init-plan.js";
 
-const STARTING_ROUTES = {
+const LUAU_ROUTES = {
+	Server: "ServerScriptService",
+	Client: "StarterPlayer/StarterPlayerScripts",
+	Shared: "ReplicatedStorage/Shared",
+	"*": "ReplicatedStorage/Shared",
+};
+const ROBLOX_TS_ROUTES = {
 	server: "ServerScriptService",
 	client: "StarterPlayer/StarterPlayerScripts",
 	shared: "ReplicatedStorage/shared",
@@ -23,6 +29,8 @@ const directory = path.resolve("/mock/my-game");
 const luau: DetectedWorkspace = {
 	language: "luau",
 	darklua: false,
+	codeFolders: [],
+	hasSrc: false,
 	packageDirs: new Set(),
 	rbxtsScopes: [],
 	hasInclude: false,
@@ -87,7 +95,7 @@ describe("planInit", () => {
 	it("should write the starting routes explicitly", () => {
 		const config = configOf(plan(luau), "default.rogen.json");
 
-		expect(config.routes).toEqual(STARTING_ROUTES);
+		expect(config.routes).toEqual(LUAU_ROUTES);
 	});
 
 	it("should write fields in pipeline order", () => {
@@ -144,7 +152,7 @@ describe("planInit", () => {
 			const source = configOf(files, "source.rogen.json");
 			const child = configOf(files, "default.rogen.json");
 			expect(source.syncDir).toBeUndefined();
-			expect(source.routes).toEqual(STARTING_ROUTES);
+			expect(source.routes).toEqual(LUAU_ROUTES);
 			expect(child.extends).toBe("source.rogen.json");
 			expect(child.syncDir).toBe("dist");
 		});
@@ -280,6 +288,80 @@ describe("planInit", () => {
 		});
 	});
 
+	describe("routes", () => {
+		const routesOf = (choices: Partial<InitChoices>, language = "luau") => {
+			const workspace = {
+				...luau,
+				language,
+			} as DetectedWorkspace;
+			const files = planInit({
+				choices: {
+					...defaultInitChoices(workspace, "default"),
+					...choices,
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(),
+			}).unwrap();
+			return configOf(files, "default.rogen.json").routes;
+		};
+
+		it("should write the standard routes with capitalised keys for luau", () => {
+			expect(routesOf({})).toEqual(LUAU_ROUTES);
+		});
+
+		it("should write the standard routes with lowercase keys for roblox-ts", () => {
+			expect(routesOf({}, "roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
+		});
+
+		it("should write exactly the ticked routes in a fixed order", () => {
+			expect(
+				routesOf({
+					routes: ["starterGui", "server", "replicatedFirst"],
+				})
+			).toEqual({
+				Server: "ServerScriptService",
+				ReplicatedFirst: "ReplicatedFirst",
+				StarterGui: "StarterGui",
+				"*": "ReplicatedStorage/Shared",
+			});
+		});
+
+		it("should camel-case the optional routes for roblox-ts", () => {
+			expect(
+				routesOf(
+					{
+						routes: [
+							"replicatedFirst",
+							"serverStorage",
+							"starterGui",
+						],
+					},
+					"roblox-ts"
+				)
+			).toEqual({
+				replicatedFirst: "ReplicatedFirst",
+				serverStorage: "ServerStorage",
+				starterGui: "StarterGui",
+				"*": "ReplicatedStorage/shared",
+			});
+		});
+
+		it("should omit * when files that match no route are left out", () => {
+			expect(routesOf({ fallback: false })).toEqual({
+				Server: "ServerScriptService",
+				Client: "StarterPlayer/StarterPlayerScripts",
+				Shared: "ReplicatedStorage/Shared",
+			});
+		});
+
+		it("should write * when no route is ticked, because a config with no routes can't build", () => {
+			expect(routesOf({ routes: [], fallback: false })).toEqual({
+				"*": "ReplicatedStorage/Shared",
+			});
+		});
+	});
+
 	describe("template", () => {
 		it("should write template.project.json when mounts were detected", () => {
 			const files = plan({ ...luau, ...withPackages });
@@ -313,9 +395,12 @@ describe("planInit", () => {
 	});
 
 	describe("package mounts", () => {
-		it("should mount rbxts scopes and include", () => {
+		const rbxts: Partial<DetectedWorkspace> = { language: "roblox-ts" };
+
+		it("should mount include and @rbxts for roblox-ts, and the scopes it found", () => {
 			expect(
 				treeOf({
+					...rbxts,
 					rbxtsScopes: ["@rbxts", "@flamework"],
 					hasInclude: true,
 				})
@@ -334,21 +419,34 @@ describe("planInit", () => {
 			});
 		});
 
-		it("should not mount include when it does not exist", () => {
-			expect(
-				treeOf({ rbxtsScopes: ["@rbxts"] }).ReplicatedStorage
-			).toEqual({
+		it("should mount include and @rbxts as optional for roblox-ts when missing", () => {
+			expect(treeOf(rbxts).ReplicatedStorage).toEqual({
 				rbxts_include: {
+					$path: { optional: "include" },
 					node_modules: {
 						$className: "Folder",
-						"@rbxts": { $path: "node_modules/@rbxts" },
+						"@rbxts": {
+							$path: { optional: "node_modules/@rbxts" },
+						},
 					},
 				},
 			});
 		});
 
-		it("should not mount include without rbxts scopes", () => {
-			expect(treeOf({ hasInclude: true })).toBeUndefined();
+		it("should not mount a scope that is not installed by default", () => {
+			const scopes = treeOf({
+				...rbxts,
+				rbxtsScopes: ["@rbxts"],
+				hasInclude: true,
+			}).ReplicatedStorage.rbxts_include.node_modules;
+
+			expect(Object.keys(scopes)).toEqual(["$className", "@rbxts"]);
+		});
+
+		it("should never mount include or a scope for luau", () => {
+			expect(
+				treeOf({ hasInclude: true, rbxtsScopes: ["@rbxts"] })
+			).toBeUndefined();
 		});
 
 		it("should mount wally packages that exist", () => {
@@ -404,16 +502,34 @@ describe("planInit", () => {
 			).toBeUndefined();
 		});
 
-		it("should not mount a package directory without a manager", () => {
+		it("should assume wally for luau without a manager", () => {
 			expect(
 				treeOf({
 					packageDirs: new Set(["Packages", "roblox_packages"]),
 				})
+			).toEqual({
+				$className: "DataModel",
+				...mounts,
+			});
+		});
+
+		it("should not mount package directories for roblox-ts without a manager", () => {
+			expect(
+				treeOf({
+					language: "roblox-ts",
+					rbxtsScopes: ["@rbxts"],
+					hasInclude: true,
+					packageDirs: new Set(["Packages"]),
+				}).ReplicatedStorage.Packages
 			).toBeUndefined();
 		});
 
 		it("should combine mounts from several sources under one service", () => {
-			const tree = treeOf({ ...withPackages, rbxtsScopes: ["@rbxts"] });
+			const tree = treeOf({
+				...withPackages,
+				language: "roblox-ts",
+				rbxtsScopes: ["@rbxts"],
+			});
 
 			expect(Object.keys(tree)).toEqual([
 				"$className",

@@ -2,6 +2,7 @@ $ rogen init
 exit 0
 stdout:
   rogen init
+  Created template.project.json.
   Created default.rogen.json.
   Next steps
     rbxtsc -w
@@ -9,7 +10,7 @@ stdout:
     rojo serve default.project.json
     Darklua must process each root dir into dist (darklua process src dist).
     Add your own routes under "routes" in default.rogen.json.
-  Wrote 1 file.
+  Wrote 2 files.
 
 $ rogen build
 exit 0
@@ -21,6 +22,7 @@ stdout:
 written:
   default.project.json
   default.rogen.json
+  template.project.json
 
 default.rogen.json:
 {
@@ -34,10 +36,16 @@ default.rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
+	"template": "template.project.json",
 	"syncDir": "dist"
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
+  ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
     main: Script  <- dist/server/main.server.luau
+
+$ rojo sourcemap template.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage

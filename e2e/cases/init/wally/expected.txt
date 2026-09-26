@@ -29,10 +29,10 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	},
 	"template": "template.project.json"
 }
@@ -42,7 +42,7 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Packages: Folder
       Roact: ModuleScript  <- Packages/Roact.luau
-    shared: Folder
+    Shared: Folder
       A: ModuleScript  <- src/A.luau
 
 $ rojo sourcemap template.project.json

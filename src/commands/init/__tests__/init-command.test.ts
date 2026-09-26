@@ -26,7 +26,13 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 
-const STARTING_ROUTES = {
+const LUAU_ROUTES = {
+	Server: "ServerScriptService",
+	Client: "StarterPlayer/StarterPlayerScripts",
+	Shared: "ReplicatedStorage/Shared",
+	"*": "ReplicatedStorage/Shared",
+};
+const ROBLOX_TS_ROUTES = {
 	server: "ServerScriptService",
 	client: "StarterPlayer/StarterPlayerScripts",
 	shared: "ReplicatedStorage/shared",
@@ -117,10 +123,20 @@ describe("init command", () => {
 			expect(result.isOk()).toBe(true);
 			const config = await readJson("default.rogen.json");
 			expect(config.rootDirs).toEqual(["src"]);
-			expect(config.routes).toEqual(STARTING_ROUTES);
+			expect(config.routes).toEqual(LUAU_ROUTES);
 			expect(config.syncDir).toBeUndefined();
 			expect(config.template).toBeUndefined();
 			expect(await exists("template.project.json")).toBe(false);
+		});
+
+		it("should write lowercase route keys for roblox-ts", async () => {
+			await write("tsconfig.json", "{}");
+
+			await runInit();
+
+			expect((await readJson("default.rogen.json")).routes).toEqual(
+				ROBLOX_TS_ROUTES
+			);
 		});
 
 		it("should use the tsconfig outDir as syncDir for roblox-ts", async () => {
@@ -170,7 +186,7 @@ describe("init command", () => {
 			const source = await readJson("source.rogen.json");
 			const config = await readJson("default.rogen.json");
 			expect(source.syncDir).toBeUndefined();
-			expect(source.routes).toEqual(STARTING_ROUTES);
+			expect(source.routes).toEqual(LUAU_ROUTES);
 			expect(config.extends).toBe("source.rogen.json");
 			expect(config.syncDir).toBe("dist");
 			expect(config.routes).toBeUndefined();
@@ -194,11 +210,6 @@ describe("init command", () => {
 		it.each([
 			["wally.toml", "Packages", "Packages"],
 			["pesde.toml", "roblox_packages", "roblox_packages"],
-			[
-				"node_modules/@rbxts/types/package.json",
-				"",
-				"node_modules/@rbxts",
-			],
 		])(
 			"should write a template with mounts when %s is found",
 			async (file, dir, mounted) => {
@@ -217,9 +228,22 @@ describe("init command", () => {
 			}
 		);
 
-		it("should not write a template without mounts", async () => {
+		it("should mount include and @rbxts as optional for roblox-ts", async () => {
 			await write("tsconfig.json", "{}");
 
+			await runInit();
+
+			const template = await readJson("template.project.json");
+			expect(template.tree.ReplicatedStorage.rbxts_include).toEqual({
+				$path: { optional: "include" },
+				node_modules: {
+					$className: "Folder",
+					"@rbxts": { $path: { optional: "node_modules/@rbxts" } },
+				},
+			});
+		});
+
+		it("should not write a template without mounts", async () => {
 			await runInit();
 
 			expect(await exists("template.project.json")).toBe(false);
@@ -315,6 +339,16 @@ describe("init command", () => {
 	});
 
 	describe("names", () => {
+		it("should write the detected root dir without a terminal", async () => {
+			await write("lib/Main.luau");
+
+			await runInit();
+
+			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
+				"lib",
+			]);
+		});
+
 		it("should write default.rogen.json for a bare init", async () => {
 			await runInit();
 
@@ -354,7 +388,7 @@ describe("init command", () => {
 			await write("Packages/x.luau");
 			await write("wally.toml");
 			const prompts = new MockPromptService(
-				Array(5).fill(ACCEPT_DEFAULT)
+				Array(7).fill(ACCEPT_DEFAULT)
 			);
 
 			const result = await runInit([], prompts);
@@ -380,6 +414,8 @@ describe("init command", () => {
 				"src, lib",
 				"out",
 				[],
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
 			]);
 
 			await runInit([], prompts);
@@ -389,12 +425,45 @@ describe("init command", () => {
 			expect((await readJson("game.rogen.json")).syncDir).toBe("out");
 		});
 
+		it("should write the ticked routes and leave unmatched files out", async () => {
+			const prompts = new MockPromptService([
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				["server", "starterGui"],
+				"leave",
+			]);
+
+			await runInit([], prompts);
+
+			expect((await readJson("default.rogen.json")).routes).toEqual({
+				Server: "ServerScriptService",
+				StarterGui: "StarterGui",
+			});
+		});
+
+		it("should take the root dir placeholder from the code it finds", async () => {
+			await write("game/Main.server.luau");
+			const prompts = new MockPromptService(
+				Array(6).fill(ACCEPT_DEFAULT)
+			);
+
+			await runInit([], prompts);
+
+			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
+				"game",
+			]);
+		});
+
 		it("should mount a folder that is not installed as optional", async () => {
 			const prompts = new MockPromptService([
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				["Packages"],
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
 			]);
 
 			await runInit([], prompts);
@@ -406,7 +475,7 @@ describe("init command", () => {
 
 		it("should not ask for a name when default.rogen.json does not exist", async () => {
 			const prompts = new MockPromptService(
-				Array(4).fill(ACCEPT_DEFAULT)
+				Array(6).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit([], prompts);
@@ -419,7 +488,7 @@ describe("init command", () => {
 			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService([
 				"test",
-				...Array(4).fill(ACCEPT_DEFAULT),
+				...Array(6).fill(ACCEPT_DEFAULT),
 			]);
 
 			await runInit([], prompts);
@@ -459,7 +528,7 @@ describe("init command", () => {
 
 		it("should not ask for a name that was given", async () => {
 			const prompts = new MockPromptService(
-				Array(4).fill(ACCEPT_DEFAULT)
+				Array(6).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit(["lobby"], prompts);

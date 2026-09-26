@@ -36,14 +36,21 @@ default.rogen.json:
 		"*": "ReplicatedStorage/shared"
 	},
 	"template": "template.project.json",
-	"syncDir": "dist-ts"
+	"syncDir": "out"
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
-    main: Script  <- dist-ts/server/main.server.luau
+    Inventory: Folder
+      Save: ModuleScript  <- out/Inventory/Server/Save.luau
+    Trading: Folder
+      Trade: ModuleScript  <- out/Trading/server/Trade.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Trading: Folder
+        Window: ModuleScript  <- out/Trading/client/Window.luau
 
 $ rojo sourcemap template.project.json
 project: DataModel

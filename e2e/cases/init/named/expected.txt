@@ -27,15 +27,15 @@ lobby.rogen.json:
 		"src"
 	],
 	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 
 $ rojo sourcemap lobby.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       A: ModuleScript  <- src/A.luau

@@ -40,6 +40,14 @@ project: DataModel
     Shared: Folder
       Inventory: Folder
         Types: ModuleScript  <- src/Inventory/Types.luau
+      Trading: Folder
+        Rules: ModuleScript  <- src/Trading/shared/Rules.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      Save: Script  <- src/Inventory/Save.server.luau
+      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+    Trading: Folder
+      Trade: ModuleScript  <- src/Trading/server/Trade.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Trading: Folder
+        Window: ModuleScript  <- src/Trading/Client/Window.luau
