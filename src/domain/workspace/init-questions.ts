@@ -34,7 +34,8 @@ export async function askInitChoices(
 		name ??
 		(await promptService.text({
 			message: "Config name",
-			initialValue: DEFAULT_CONFIG_STEM,
+			description: `Writes <name>.rogen.json. "${DEFAULT_CONFIG_STEM}" is the one a bare command finds.`,
+			placeholder: DEFAULT_CONFIG_STEM,
 			validate: (value) => {
 				const parsed = parseInitName([value]);
 				return parsed.isErr() ? parsed.error.message : undefined;
@@ -50,8 +51,10 @@ export async function askInitChoices(
 	if (toolchain === undefined) return undefined;
 
 	const rootDirs = await promptService.text({
-		message: "Root dirs (comma-separated)",
-		initialValue: "src",
+		message: "Root dirs",
+		description:
+			"Folders Rogen scans for scripts. Separate several with commas.",
+		placeholder: "src",
 		validate: (value) =>
 			splitList(value).length === 0
 				? "Enter at least one root dir."
@@ -63,7 +66,8 @@ export async function askInitChoices(
 	if (toolchain !== "luau") {
 		const answer = await promptService.text({
 			message: "Sync dir",
-			initialValue: syncDirFor(toolchain, workspace),
+			description: "The folder Rojo syncs from.",
+			placeholder: syncDirFor(toolchain, workspace),
 			validate: required("a sync dir"),
 		});
 		if (answer === undefined) return undefined;

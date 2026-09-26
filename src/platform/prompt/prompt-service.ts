@@ -6,25 +6,35 @@ export interface PromptChoice<T extends string> {
 	readonly hint?: string;
 }
 
-export interface TextPromptOptions {
+export interface PromptDetails {
+	readonly description?: string;
+	readonly hint?: string;
+}
+
+export interface TextPromptOptions extends PromptDetails {
 	readonly message: string;
-	readonly initialValue?: string;
+	readonly placeholder?: string;
 	readonly validate?: (value: string) => string | undefined;
 }
 
-export interface SelectPromptOptions<T extends string> {
+export interface SelectPromptOptions<T extends string> extends PromptDetails {
 	readonly message: string;
 	readonly choices: readonly PromptChoice<T>[];
 	readonly initialValue?: T;
 }
 
-export interface MultiSelectPromptOptions<T extends string> {
+export interface MultiSelectPromptOptions<
+	T extends string,
+> extends PromptDetails {
 	readonly message: string;
 	readonly choices: readonly PromptChoice<T>[];
 	readonly initialValues?: readonly T[];
 }
 
-/** Every prompt resolves to `undefined` when the user cancels. */
+/**
+ * Every prompt resolves to `undefined` when the user cancels. A text prompt
+ * starts empty and resolves to its placeholder when nothing is typed.
+ */
 export interface PromptService {
 	readonly _serviceBrand: undefined;
 	readonly isInteractive: boolean;
