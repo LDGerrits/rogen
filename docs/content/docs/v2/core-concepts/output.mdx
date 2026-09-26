@@ -1,0 +1,103 @@
+---
+title: Output and Sync
+description: The project file Rogen writes, and how its paths reach your compiled code.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+A **build** is one complete run that turns root directories into an **output** for one config. Everything on this page is about that output.
+
+## Output
+
+The output is the Rojo project file a config writes, named by `outFile`. It defaults to the config's own name: `default.rogen.json` writes `default.project.json`, and `lobby.rogen.json` writes `lobby.project.json`. `outFile` is never inherited through `extends`, so every config writes its own file.
+
+**Rogen owns the output.** A build creates the file when it's absent and replaces whatever is there, hand-written or not. Anything Rogen can't know belongs in the [template](#template). Rogen leaves the file untouched when its bytes wouldn't change, so Rojo doesn't re-sync and `watch` doesn't rebuild on its own write.
+
+One config writes one output. A second project file is a second config.
+
+<Callout type="info" title="The default output is the one to serve">
+	`rojo serve` with no argument picks up `default.project.json`, so the config named `default` is the one that should be safe to sync. See the [Darklua guide](/docs/v2/setups/darklua) for what that means when a processor is involved.
+</Callout>
+
+## Template
+
+The **template** is the Rojo project file that Rogen merges its generated tree into, set by `template`. It's a path to a `.project.json`, never an inline tree. It holds what Rogen can't know: the DataModel name, package mounts and `$properties`.
+
+- Where the template and the generated tree define the same instance, **the template wins**, and Rogen warns.
+- A child config's `template` replaces its parent's, and `--template` replaces both.
+- Without a template, Rogen starts from an empty `DataModel` named after the config's directory.
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    ```json title="template.project.json"
+    {
+    	"name": "my-game",
+    	"tree": {
+    		"$className": "DataModel",
+    		"ReplicatedStorage": {
+    			"Packages": { "$path": { "optional": "Packages" } }
+    		}
+    	}
+    }
+    ```
+  </Tab>
+  <Tab value="roblox-ts">
+    ```json title="template.project.json"
+    {
+    	"name": "my-game",
+    	"tree": {
+    		"$className": "DataModel",
+    		"ReplicatedStorage": {
+    			"rbxts_include": {
+    				"$path": { "optional": "include" },
+    				"node_modules": {
+    					"$className": "Folder",
+    					"@rbxts": { "$path": { "optional": "node_modules/@rbxts" } }
+    				}
+    			}
+    		}
+    	}
+    }
+    ```
+  </Tab>
+</Tabs>
+
+`rogen init` writes a template when it finds packages to mount, and references it from the config.
+
+## Sync Directory
+
+Rojo syncs from your compiler's output, not from your source. The **sync directory**, set by `syncDir`, is that output: `out` for roblox-ts, `dist` for Darklua. Emitted `$path` entries point there instead of at the root directories. Plain Luau has none, so its paths point at the root directories themselves.
+
+A file at `p` is emitted at `syncDir / relative(commonRoot, p)`, with `.ts` and `.tsx` rewritten to `.luau`. The **common root** is the deepest directory that contains every root directory. It's derived, never written in the config, and `rogen build --show-config` prints it. With one root directory the common root *is* that directory, so `syncDir` simply replaces it:
+
+<Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
+  <Tab value="Luau">
+    Darklua processes `src` into `dist`, so with `"syncDir": "dist"`:
+
+    ```
+    src/Inventory/Server/Save.luau  ->  $path: dist/Inventory/Server/Save.luau
+    ```
+  </Tab>
+  <Tab value="roblox-ts">
+    `rbxtsc` compiles `src` into `out`, so with `"syncDir": "out"`:
+
+    ```
+    src/Inventory/server/Save.ts  ->  $path: out/Inventory/server/Save.luau
+    ```
+  </Tab>
+</Tabs>
+
+With several root directories the common root moves up, and each path keeps the part that tells the root directories apart. `["core", "places/lobby"]` has the repo root as its common root, so paths land at `dist/core/…` and `dist/places/lobby/…`. That's what compilers do: `tsc` roots its output at the common prefix of its inputs.
+
+- `syncDir` applies only to paths Rogen generates. A `$path` that comes from the template, like Wally's `Packages`, is copied through untouched.
+- After a build, Rogen warns once for each root directory whose emitted paths all fail to exist, naming the path it expected and the nearest one that does exist. That usually means the compiler hasn't run or roots its output differently.
+- Rogen never reads the sync directory. Output left in it by a source that no longer exists still syncs, so clean the directory as part of the compile step.
+
+### One Tree, Two Renderings
+
+A **rendering** is the tree written out as a project file, with its `$path`s rooted at one directory. The same tree rendered from a different directory is a second config that `extends` the first and adds a `syncDir`. That's how Darklua setups get a project file for Studio and one for Darklua. See the [Darklua guide](/docs/v2/setups/darklua).
+
+## Building While Watching
+
+`rogen build` is safe to run while `rogen watch` writes the same output. Each process stages its write through a file of its own before renaming it into place, and neither writes when the bytes wouldn't change. After adding, moving or renaming files, `rogen build` is always correct, whether or not `watch` is running.

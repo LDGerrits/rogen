@@ -1,0 +1,15 @@
+{
+	"title": "Rogen v1",
+	"root": true,
+	"pages": [
+		"---Overview---",
+		"index",
+		"core-concepts",
+		"---Getting Started---",
+		"installation",
+		"setups",
+		"---Reference---",
+		"configuration",
+		"cli"
+	]
+}

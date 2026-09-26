@@ -173,6 +173,11 @@ export function planInit(
 	return existing.length > 0 ? err(existing) : ok(plan);
 }
 
+export function tagsStep(language: Language, configName: string): string {
+	const extension = language === "roblox-ts" ? "ts" : "luau";
+	return `Add tags under "tags" in ${configName} to swap in variants like Analytics.mock.${extension}.`;
+}
+
 function nextSteps({
 	name,
 	language,
@@ -196,8 +201,10 @@ function nextSteps({
 	const routesStem = hasSourceConfig(language, darklua)
 		? sourceStemOf(name)
 		: name;
+	const configName = `${routesStem}${CONFIG_SUFFIX}`;
 	steps.push(
-		`Add your own routes under "routes" in ${routesStem}${CONFIG_SUFFIX}.`
+		`Add your own routes under "routes" in ${configName}.`,
+		tagsStep(language, configName)
 	);
 	return steps;
 }

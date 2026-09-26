@@ -26,11 +26,19 @@ stdout:
   both.project.json · wrote
   Built 1 config.
 
+$ rogen build -o short.project.json -t mock -T dev
+exit 0
+stdout:
+  rogen build · default
+  short.project.json · wrote
+  Built 1 config.
+
 written:
   both.project.json
   mocked.project.json
   nodev.project.json
   plain.project.json
+  short.project.json
 
 $ rojo sourcemap both.project.json
 project: DataModel
@@ -63,3 +71,11 @@ project: DataModel
       Analytics: Folder
         Analytics: ModuleScript  <- src/Analytics/Analytics.luau
         Service: ModuleScript  <- src/Analytics/dev/Service.luau
+
+$ rojo sourcemap short.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder
+        Analytics: ModuleScript  <- src/Analytics/Analytics.mock.luau
+        Service: ModuleScript  <- src/Analytics/Service.luau

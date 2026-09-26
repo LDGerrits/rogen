@@ -1,3 +1,4 @@
+import { isIgnored } from "../../../platform/watcher/ignored-paths.js";
 import { createWatchPlan, WatchPlanConfig } from "../watch-plan.js";
 
 const config = (
@@ -124,7 +125,7 @@ describe("domain/watch/watch-plan", () => {
 	});
 
 	describe("ignored", () => {
-		it("should list each output file, its staging file and its sync directory", () => {
+		it("should list each output file, its sync directory and a pattern for its staging files", () => {
 			const plan = createWatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
 					syncDir: "/repo/out",
@@ -133,9 +134,49 @@ describe("domain/watch/watch-plan", () => {
 
 			expect(plan.ignored).toEqual([
 				"/repo/default.project.json",
-				"/repo/default.project.json.tmp",
 				"/repo/out",
+				expect.any(RegExp),
 			]);
+		});
+
+		it("should ignore the staging file of any process writing an output", () => {
+			const plan = createWatchPlan([
+				config("/repo/default.rogen.json", ["/repo/src"]),
+			]);
+
+			expect(
+				isIgnored(
+					"/repo/default.project.json.1234-abcd.tmp",
+					plan.ignored
+				)
+			).toBe(true);
+			expect(isIgnored("/repo/default.project.json", plan.ignored)).toBe(
+				true
+			);
+		});
+
+		it("should not ignore the staging file of an unrelated output", () => {
+			const plan = createWatchPlan([
+				config("/repo/default.rogen.json", ["/repo/src"]),
+			]);
+
+			expect(
+				isIgnored("/repo/other.project.json.1234.tmp", plan.ignored)
+			).toBe(false);
+			expect(isIgnored("/repo/src/A.tmp", plan.ignored)).toBe(false);
+		});
+
+		it("should escape regex characters in the output path", () => {
+			const plan = createWatchPlan([
+				config("/repo (x)/default.rogen.json", ["/repo (x)/src"]),
+			]);
+
+			expect(
+				isIgnored("/repo (x)/default.project.json.1.tmp", plan.ignored)
+			).toBe(true);
+			expect(
+				isIgnored("/repoXx)/default.project.json.1.tmp", plan.ignored)
+			).toBe(false);
 		});
 
 		it("should keep a sync directory that lies inside a root", () => {
@@ -171,6 +212,9 @@ describe("domain/watch/watch-plan", () => {
 			expect(plan.ignored.filter((p) => p === "/repo/out")).toHaveLength(
 				1
 			);
+			expect(
+				plan.ignored.filter((p) => p instanceof RegExp)
+			).toHaveLength(2);
 		});
 	});
 });

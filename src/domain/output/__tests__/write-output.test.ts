@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
-import { writeOutput } from "../write-output.js";
+import { stagingFile, stagingPattern, writeOutput } from "../write-output.js";
 
 const outFile = path.resolve("/repo", "default.project.json");
 
@@ -41,8 +41,47 @@ describe("domain/output/write-output", () => {
 
 			await writeOutput(fs, { outFile }, treeOf());
 
-			expect(events).toContain(`${outFile.replace(/\\/g, "/")}.tmp`);
-			expect(await fs.exists(`${outFile}.tmp`)).toBe(false);
+			const staged = events.filter((event) =>
+				stagingPattern(outFile).test(event)
+			);
+			expect(staged.length).toBeGreaterThan(0);
+			for (const file of staged)
+				expect(await fs.exists(file)).toBe(false);
+		});
+
+		it("should stage each write through its own file", async () => {
+			const events = new Set<string>();
+			fs.onDidMutateFile((event) => {
+				if (stagingPattern(outFile).test(event.path))
+					events.add(event.path);
+			});
+
+			await writeOutput(fs, { outFile }, treeOf());
+			await writeOutput(fs, { outFile }, { ...treeOf(), name: "other" });
+
+			expect(events.size).toBe(2);
+		});
+
+		it("should let two concurrent writes to one output both succeed", async () => {
+			const other = { ...treeOf(), name: "other" };
+
+			const [first, second] = await Promise.all([
+				writeOutput(fs, { outFile }, treeOf()),
+				writeOutput(fs, { outFile }, other),
+			]);
+
+			expect(first.isOk()).toBe(true);
+			expect(second.isOk()).toBe(true);
+			const written = JSON.parse(await fs.readFile(outFile));
+			expect([treeOf(), other]).toContainEqual(written);
+		});
+
+		it("should match the staging files of any writer with stagingPattern", () => {
+			expect(stagingPattern(outFile).test(stagingFile(outFile))).toBe(
+				true
+			);
+			expect(stagingPattern(outFile).test(`${outFile}.tmp`)).toBe(false);
+			expect(stagingPattern(outFile).test(outFile)).toBe(false);
 		});
 
 		it("should not touch the file when the bytes are unchanged", async () => {
@@ -91,7 +130,10 @@ describe("domain/output/write-output", () => {
 				code: "output.writeFailed",
 				resource: outFile,
 			});
-			expect(await fs.exists(`${outFile}.tmp`)).toBe(false);
+			const entries = await fs.readDirectory(path.dirname(outFile));
+			expect(entries.map(([name]) => name)).toEqual([
+				path.basename(outFile),
+			]);
 		});
 	});
 });

@@ -1,0 +1,97 @@
+---
+title: Roblox-ts
+description: Step-by-step setup guide for roblox-ts projects.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rogen integrates smoothly with [roblox-ts](https://roblox-ts.com/). Rogen reads the uncompiled `src` folder to decide where each file goes, swaps `.ts` for `.luau` in the paths it emits, and points Rojo at the compiled output. `rbxtsc` and `rojo serve` both find the one generated project file.
+
+<Steps>
+
+<Step>
+### Create the Config
+
+Run the initialization command in the project root. `init` detects roblox-ts from `tsconfig.json`:
+
+```bash
+rogen init
+```
+
+```
+Created template.project.json.
+Created default.rogen.json.
+Next steps
+  rbxtsc -w
+  rogen watch
+  rojo serve default.project.json
+  Add your own routes under "routes" in default.rogen.json.
+  Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
+```
+
+```json title="default.rogen.json"
+{
+	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"rootDirs": ["src"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"template": "template.project.json",
+	"syncDir": "out"
+}
+```
+
+The `syncDir` is the `outDir` from `tsconfig.json`, or `out` when that isn't set. The template mounts `include` and `node_modules/@rbxts`, the way roblox-ts projects expect.
+
+</Step>
+
+<Step>
+### Lay Out a Feature
+
+roblox-ts projects name routing folders in lower case:
+
+```
+src/Inventory/server/InventoryService.ts
+src/Inventory/client/InventoryController.ts
+src/Inventory/shared/InventoryTypes.ts
+```
+
+Rogen sends them to `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/shared/Inventory`, pointing at `out/Inventory/…`.
+
+</Step>
+
+<Step>
+### Run the Pipeline
+
+Run the `rbxtsc` compiler and Rogen simultaneously. Install `concurrently` to manage both processes:
+
+```bash
+npm install -D concurrently
+```
+
+Update the `package.json` script to run both watchers:
+
+```json
+"scripts": {
+	"watch": "concurrently \"rogen watch\" \"rbxtsc -w\""
+}
+```
+
+Run the script, and start Rojo in a separate terminal:
+
+```bash
+npm run watch
+rojo serve
+```
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+	Emitted paths are optional, so the project file works on a clean checkout before `rbxtsc` has written `out`.
+</Callout>

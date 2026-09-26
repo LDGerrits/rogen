@@ -15,7 +15,7 @@ stdout:
     -s, --sync-dir <value>  Overrides syncDir.
         --template <value>  Overrides template.
     -t, --tag <value>       Turns a tag on. (repeatable)
-        --no-tag <value>    Turns a tag off. (repeatable)
+    -T, --no-tag <value>    Turns a tag off. (repeatable)
         --show-config       Prints the resolved config and exits.
   
   Global options:
@@ -41,7 +41,7 @@ stdout:
     -s, --sync-dir <value>  Overrides syncDir.
         --template <value>  Overrides template.
     -t, --tag <value>       Turns a tag on. (repeatable)
-        --no-tag <value>    Turns a tag off. (repeatable)
+    -T, --no-tag <value>    Turns a tag off. (repeatable)
   
   Global options:
     -h, --help     Print help.
@@ -97,7 +97,7 @@ stdout:
     -s, --sync-dir <value>  Overrides syncDir.
         --template <value>  Overrides template.
     -t, --tag <value>       Turns a tag on. (repeatable)
-        --no-tag <value>    Turns a tag off. (repeatable)
+    -T, --no-tag <value>    Turns a tag off. (repeatable)
         --show-config       Prints the resolved config and exits.
   
   Global options:

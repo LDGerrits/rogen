@@ -27,6 +27,15 @@
 			"mock",
 			"--no-tag",
 			"dev"
+		],
+		[
+			"build",
+			"-o",
+			"short.project.json",
+			"-t",
+			"mock",
+			"-T",
+			"dev"
 		]
 	]
 }

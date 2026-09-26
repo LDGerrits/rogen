@@ -140,4 +140,18 @@ describe("MemoryWatcher", () => {
 
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
+
+	it("should skip a path that matches an ignored pattern", async () => {
+		const listener = jest.fn();
+		watcher.onDidChangeFile(listener);
+
+		await watcher.watch([{ path: "src", recursive: true }], {
+			ignored: [/^src\/a\.project\.json\.[^/]+\.tmp$/],
+		});
+
+		await memoryFs.writeFile("src/a.project.json.abc.tmp", "");
+		await memoryFs.writeFile("src/a.project.json", "");
+
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
 });

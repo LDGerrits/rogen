@@ -35,6 +35,7 @@ export const ConfigOptions: readonly OptionDescriptor[] = [
 	},
 	{
 		name: "no-tag",
+		short: "T",
 		type: "string",
 		multiple: true,
 		description: "Turns a tag off.",
