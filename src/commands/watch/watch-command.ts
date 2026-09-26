@@ -270,11 +270,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			track(
 				printer.queue(
 					guarded(async () => {
-						const reports = await Promise.all(results);
+						const reports = (await Promise.all(results)).filter(
+							(report) => report !== undefined
+						);
+						if (raised.length === 0 && reports.length === 0) return;
 						logService.step(`${clockTime(at)} · ${title}`);
 						raised.forEach(printNotice);
-						for (const report of reports)
-							if (report) printReport(report);
+						reports.forEach(printReport);
 					})
 				)
 			);

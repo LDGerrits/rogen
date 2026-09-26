@@ -14,6 +14,10 @@ export class MockLogService extends AbstractLogService {
 		return this.entries.map(({ kind, text }) => `${kind}: ${text}`);
 	}
 
+	clear(): void {
+		this.entries.length = 0;
+	}
+
 	protected write(kind: LogKind, text: string): void {
 		this.entries.push({ kind, text });
 	}

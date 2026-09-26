@@ -191,7 +191,7 @@ describe("watch command", () => {
 			);
 		});
 
-		it("should report that an unchanged project file is unchanged", async () => {
+		it("should mark a project file that needs no rewrite as unchanged", async () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			void startWatch();
 			await settle();
@@ -199,7 +199,7 @@ describe("watch command", () => {
 			await settle();
 			lifecycle = new MockLifecycleService();
 			await watcher.stop();
-			logService.entries.length = 0;
+			logService.clear();
 			configService = new CoreConfigService(
 				memFs,
 				new MockEnvironmentService(undefined, "/repo"),
@@ -633,7 +633,7 @@ describe("watch command", () => {
 		it("should print an invalid config once", async () => {
 			await write("/repo/prod.rogen.json", config());
 			await run(["default", "prod"]);
-			logService.entries.length = 0;
+			logService.clear();
 
 			await write("/repo/prod.rogen.json", "{ broken");
 			await settle();
@@ -740,7 +740,7 @@ describe("watch command", () => {
 		it("should print one block for a change that rebuilds several configs", async () => {
 			await write("/repo/source.rogen.json", config());
 			await run(["default", "source"]);
-			logService.entries.length = 0;
+			logService.clear();
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await memFs.writeFile("/repo/src/B.luau", "");
@@ -759,7 +759,7 @@ describe("watch command", () => {
 
 		it("should print a block for each rebuild", async () => {
 			await run();
-			logService.entries.length = 0;
+			logService.clear();
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
@@ -775,7 +775,7 @@ describe("watch command", () => {
 		it("should name a config change and its reload in the header", async () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await run();
-			logService.entries.length = 0;
+			logService.clear();
 
 			await write(
 				"/repo/default.rogen.json",
@@ -812,7 +812,7 @@ describe("watch command", () => {
 		it("should not print a block when a change leaves every output as it was", async () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await run();
-			logService.entries.length = 0;
+			logService.clear();
 
 			await write("/repo/default.rogen.json", config());
 			await settle();
