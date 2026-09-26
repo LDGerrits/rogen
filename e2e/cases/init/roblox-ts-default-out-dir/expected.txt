@@ -3,6 +3,11 @@ exit 0
 stdout:
   rogen init
   Created default.rogen.json.
+  Next steps
+    rbxtsc -w
+    rogen watch
+    rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 1 file.
 
 written:

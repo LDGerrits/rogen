@@ -15,13 +15,13 @@ describe("detectWorkspace", () => {
 		await fs.createDirectory(cwd);
 	});
 
-	describe("toolchain", () => {
-		it("should be luau when nothing is found", async () => {
+	describe("language and darklua", () => {
+		it("should be luau without darklua when nothing is found", async () => {
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("luau");
 			expect(workspace).toEqual({
-				toolchain: "luau",
+				language: "luau",
+				darklua: false,
 				packageDirs: new Set(),
 				rbxtsScopes: [],
 				hasInclude: false,
@@ -33,7 +33,8 @@ describe("detectWorkspace", () => {
 
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("roblox-ts");
+			expect(workspace.language).toBe("roblox-ts");
+			expect(workspace.darklua).toBe(false);
 		});
 
 		it.each([".darklua.json", ".darklua.json5"])(
@@ -43,18 +44,20 @@ describe("detectWorkspace", () => {
 
 				const workspace = await detectWorkspace(fs, cwd);
 
-				expect(workspace.toolchain).toBe("darklua");
+				expect(workspace.language).toBe("luau");
+				expect(workspace.darklua).toBe(true);
 				expect(workspace.outDir).toBeUndefined();
 			}
 		);
 
-		it("should prefer roblox-ts when both are present", async () => {
+		it("should report roblox-ts and darklua together", async () => {
 			await write("tsconfig.json", "{}");
 			await write(".darklua.json");
 
 			const workspace = await detectWorkspace(fs, cwd);
 
-			expect(workspace.toolchain).toBe("roblox-ts");
+			expect(workspace.language).toBe("roblox-ts");
+			expect(workspace.darklua).toBe(true);
 		});
 	});
 

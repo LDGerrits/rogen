@@ -4,6 +4,11 @@ stdout:
   rogen init
   Created source.rogen.json.
   Created default.rogen.json.
+  Next steps
+    rogen watch
+    rojo serve default.project.json
+    Darklua must process each root dir into dist (darklua process src dist).
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 2 files.
 
 $ rogen build default source

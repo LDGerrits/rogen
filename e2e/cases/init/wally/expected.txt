@@ -4,6 +4,10 @@ stdout:
   rogen init
   Created template.project.json.
   Created default.rogen.json.
+  Next steps
+    rogen watch
+    rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 2 files.
 
 $ rogen build

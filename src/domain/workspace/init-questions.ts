@@ -1,19 +1,28 @@
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM } from "../config/config-discovery.js";
-import { DetectedWorkspace, Toolchain } from "./detect-workspace.js";
+import {
+	CONFIG_SUFFIX,
+	DEFAULT_CONFIG_STEM,
+} from "../config/config-discovery.js";
+import { DetectedWorkspace, Language } from "./detect-workspace.js";
 import {
 	InitChoices,
+	configFileNames,
 	defaultInitChoices,
+	existingFileDiagnostics,
 	mountCandidates,
 	parseInitName,
+	sourceStemOf,
 	syncDirFor,
 } from "./init-plan.js";
 
-const TOOLCHAINS = [
-	{ value: "roblox-ts", label: "roblox-ts" },
-	{ value: "darklua", label: "Darklua" },
-	{ value: "luau", label: "Plain Luau" },
-] as const satisfies readonly { value: Toolchain; label: string }[];
+export interface InitContext {
+	readonly workspace: DetectedWorkspace;
+	readonly directory: string;
+	/** The names of the entries already in `directory`. */
+	readonly existingFiles: ReadonlySet<string>;
+}
 
 const required = (what: string) => (value: string) =>
 	value.trim() === "" ? `Enter ${what}.` : undefined;
@@ -24,31 +33,54 @@ const splitList = (value: string): string[] =>
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");
 
-/** Resolves to `undefined` when the user cancels. `name` skips the name question. */
+/**
+ * Resolves to `ok(undefined)` when the user cancels, and to `err` as soon as a
+ * file the answers would write already exists. `name` skips the name question.
+ */
 export async function askInitChoices(
 	promptService: PromptService,
-	workspace: DetectedWorkspace,
+	context: InitContext,
 	name?: string
-): Promise<InitChoices | undefined> {
-	const chosenName =
-		name ??
-		(await promptService.text({
-			message: "Config name",
-			description: `Writes <name>.rogen.json. "${DEFAULT_CONFIG_STEM}" is the one a bare command finds.`,
-			placeholder: DEFAULT_CONFIG_STEM,
-			validate: (value) => {
-				const parsed = parseInitName([value]);
-				return parsed.isErr() ? parsed.error.message : undefined;
-			},
-		}));
-	if (chosenName === undefined) return undefined;
+): Promise<Result<InitChoices | undefined, Diagnostic[]>> {
+	const { workspace, directory, existingFiles } = context;
 
-	const toolchain = await promptService.select<Toolchain>({
-		message: "Toolchain",
-		choices: TOOLCHAINS,
-		initialValue: workspace.toolchain,
+	const chosenName = name ?? (await askName(promptService, existingFiles));
+	if (chosenName === undefined) return ok(undefined);
+
+	const language = await promptService.select<Language>({
+		message: "Language",
+		description:
+			"Sets the route key casing and which packages are offered.",
+		choices: [
+			{ value: "luau", label: "Luau" },
+			{
+				value: "roblox-ts",
+				label: "roblox-ts",
+				hint:
+					workspace.language === "roblox-ts"
+						? "found tsconfig.json"
+						: undefined,
+			},
+		],
+		initialValue: workspace.language,
 	});
-	if (toolchain === undefined) return undefined;
+	if (language === undefined) return ok(undefined);
+
+	const darklua = await promptService.confirm({
+		message: "Does Darklua process your code before Rojo syncs it?",
+		description:
+			"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
+		hint: workspace.darklua ? "found .darklua.json" : undefined,
+		initialValue: workspace.darklua,
+	});
+	if (darklua === undefined) return ok(undefined);
+
+	const conflicts = existingFileDiagnostics(
+		configFileNames(chosenName, language, darklua),
+		directory,
+		existingFiles
+	);
+	if (conflicts.length > 0) return err(conflicts);
 
 	const rootDirs = await promptService.text({
 		message: "Root dirs",
@@ -60,17 +92,19 @@ export async function askInitChoices(
 				? "Enter at least one root dir."
 				: undefined,
 	});
-	if (rootDirs === undefined) return undefined;
+	if (rootDirs === undefined) return ok(undefined);
 
 	let syncDir: string | undefined;
-	if (toolchain !== "luau") {
+	if (language === "roblox-ts" || darklua) {
 		const answer = await promptService.text({
 			message: "Sync dir",
-			description: "The folder Rojo syncs from.",
-			placeholder: syncDirFor(toolchain, workspace),
+			description: darklua
+				? "The folder Darklua writes into. Rojo syncs from here."
+				: "The folder roblox-ts compiles into (outDir in tsconfig.json). Rojo syncs from here.",
+			placeholder: syncDirFor(language, darklua, workspace),
 			validate: required("a sync dir"),
 		});
-		if (answer === undefined) return undefined;
+		if (answer === undefined) return ok(undefined);
 		syncDir = answer.trim();
 	}
 
@@ -85,15 +119,39 @@ export async function askInitChoices(
 		})),
 		initialValues: defaults.mounts.map(({ path }) => path),
 	});
-	if (mounted === undefined) return undefined;
+	if (mounted === undefined) return ok(undefined);
 
-	return {
+	return ok({
 		name: chosenName,
-		toolchain,
+		language,
+		darklua,
 		rootDirs: splitList(rootDirs),
 		...(syncDir && { syncDir }),
 		mounts: candidates
 			.filter(({ path }) => mounted.includes(path))
 			.map(({ path, installed }) => ({ path, optional: !installed })),
-	};
+	});
+}
+
+async function askName(
+	promptService: PromptService,
+	existingFiles: ReadonlySet<string>
+): Promise<string | undefined> {
+	const defaultFile = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
+	if (!existingFiles.has(defaultFile)) return DEFAULT_CONFIG_STEM;
+
+	return promptService.text({
+		message: "Config name",
+		description: `Writes <name>.rogen.json. ${defaultFile} already exists, so pick another name, such as test.`,
+		validate: (value) => {
+			if (value.trim() === "") return "Enter a name.";
+			const parsed = parseInitName([value]);
+			if (parsed.isErr()) return parsed.error.message;
+			const taken = [
+				`${value}${CONFIG_SUFFIX}`,
+				`${sourceStemOf(value)}${CONFIG_SUFFIX}`,
+			].find((file) => existingFiles.has(file));
+			return taken && `${taken} already exists.`;
+		},
+	});
 }

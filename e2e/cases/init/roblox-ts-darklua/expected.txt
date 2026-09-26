@@ -7,6 +7,7 @@ stdout:
     rbxtsc -w
     rogen watch
     rojo serve default.project.json
+    Darklua must process each root dir into dist (darklua process src dist).
     Add your own routes under "routes" in default.rogen.json.
   Wrote 1 file.
 
@@ -33,10 +34,10 @@ default.rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"syncDir": "dist-ts"
+	"syncDir": "dist"
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
-    main: Script  <- dist-ts/server/main.server.luau
+    main: Script  <- dist/server/main.server.luau

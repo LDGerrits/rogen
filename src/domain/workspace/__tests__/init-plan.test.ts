@@ -21,7 +21,8 @@ const STARTING_ROUTES = {
 const directory = path.resolve("/mock/my-game");
 
 const luau: DetectedWorkspace = {
-	toolchain: "luau",
+	language: "luau",
+	darklua: false,
 	packageDirs: new Set(),
 	rbxtsScopes: [],
 	hasInclude: false,
@@ -91,7 +92,7 @@ describe("planInit", () => {
 
 	it("should write fields in pipeline order", () => {
 		const { configs } = plan(
-			{ ...luau, ...withPackages, toolchain: "roblox-ts", outDir: "out" },
+			{ ...luau, ...withPackages, language: "roblox-ts", outDir: "out" },
 			"default"
 		);
 
@@ -122,7 +123,7 @@ describe("planInit", () => {
 	it("should write the detected outDir as syncDir for roblox-ts", () => {
 		const { configs } = plan({
 			...luau,
-			toolchain: "roblox-ts",
+			language: "roblox-ts",
 			outDir: "build",
 		});
 
@@ -131,7 +132,7 @@ describe("planInit", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: DetectedWorkspace = { ...luau, toolchain: "darklua" };
+		const darklua: DetectedWorkspace = { ...luau, darklua: true };
 
 		it("should write a source config and a default config extending it", () => {
 			const files = plan(darklua);
@@ -179,6 +180,103 @@ describe("planInit", () => {
 			expect(
 				configOf(files, "default.rogen.json").template
 			).toBeUndefined();
+		});
+	});
+
+	describe("language and darklua", () => {
+		const planFor = (
+			language: DetectedWorkspace["language"],
+			darklua: boolean,
+			name = "default"
+		) =>
+			planInit({
+				choices: defaultInitChoices(
+					{ ...luau, language, darklua, outDir: "build" },
+					name
+				),
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(),
+			}).unwrap();
+
+		it("should write one config without a sync dir for luau", () => {
+			const files = planFor("luau", false);
+
+			expect(files.configs.map((file) => file.fileName)).toEqual([
+				"default.rogen.json",
+			]);
+			expect(
+				configOf(files, "default.rogen.json").syncDir
+			).toBeUndefined();
+		});
+
+		it("should write a source config and a dist config for luau with darklua", () => {
+			const files = planFor("luau", true);
+
+			expect(files.configs.map((file) => file.fileName)).toEqual([
+				"source.rogen.json",
+				"default.rogen.json",
+			]);
+			expect(
+				configOf(files, "source.rogen.json").syncDir
+			).toBeUndefined();
+			expect(configOf(files, "default.rogen.json")).toMatchObject({
+				extends: "source.rogen.json",
+				syncDir: "dist",
+			});
+		});
+
+		it("should write one config with the outDir for roblox-ts", () => {
+			const files = planFor("roblox-ts", false);
+
+			expect(files.configs.map((file) => file.fileName)).toEqual([
+				"default.rogen.json",
+			]);
+			expect(configOf(files, "default.rogen.json").syncDir).toBe("build");
+		});
+
+		it("should write one config synced from dist for roblox-ts with darklua", () => {
+			const files = planFor("roblox-ts", true);
+
+			expect(files.configs.map((file) => file.fileName)).toEqual([
+				"default.rogen.json",
+			]);
+			expect(configOf(files, "default.rogen.json")).toMatchObject({
+				syncDir: "dist",
+			});
+			expect(
+				configOf(files, "default.rogen.json").extends
+			).toBeUndefined();
+		});
+
+		it("should say how to run luau", () => {
+			expect(planFor("luau", false).nextSteps).toEqual([
+				"rogen watch",
+				"rojo serve default.project.json",
+				'Add your own routes under "routes" in default.rogen.json.',
+			]);
+		});
+
+		it("should start rbxtsc first for roblox-ts", () => {
+			expect(planFor("roblox-ts", false).nextSteps.slice(0, 3)).toEqual([
+				"rbxtsc -w",
+				"rogen watch",
+				"rojo serve default.project.json",
+			]);
+		});
+
+		it("should say what Darklua must process", () => {
+			expect(planFor("luau", true).nextSteps).toContain(
+				"Darklua must process each root dir into dist (darklua process src dist)."
+			);
+		});
+
+		it("should carry the config name into the commands", () => {
+			expect(planFor("luau", false, "lobby").nextSteps).toEqual([
+				"rogen watch lobby",
+				"rojo serve lobby.project.json",
+				'Add your own routes under "routes" in lobby.rogen.json.',
+			]);
 		});
 	});
 
@@ -348,7 +446,7 @@ describe("planInit", () => {
 
 		it("should write the chosen sync dir", () => {
 			const files = planChoices({
-				toolchain: "roblox-ts",
+				language: "roblox-ts",
 				syncDir: "lib",
 			});
 
@@ -385,7 +483,7 @@ describe("planInit", () => {
 
 		it("should extend the source config without a sync dir when none was chosen", () => {
 			const files = planChoices({
-				toolchain: "darklua",
+				darklua: true,
 				syncDir: undefined,
 			});
 
@@ -415,11 +513,10 @@ describe("planInit", () => {
 		});
 
 		it("should report every darklua config that already exists", () => {
-			const result = planResult(
-				{ ...luau, toolchain: "darklua" },
-				"default",
-				["source.rogen.json", "default.rogen.json"]
-			);
+			const result = planResult({ ...luau, darklua: true }, "default", [
+				"source.rogen.json",
+				"default.rogen.json",
+			]);
 
 			expect(errorsOf(result).map((error) => error.resource)).toEqual([
 				path.join(directory, "source.rogen.json"),

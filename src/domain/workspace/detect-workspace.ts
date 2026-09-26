@@ -3,11 +3,12 @@ import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-export type Toolchain = "roblox-ts" | "darklua" | "luau";
+export type Language = "luau" | "roblox-ts";
 export type PackageManager = "wally" | "pesde";
 
 export interface DetectedWorkspace {
-	readonly toolchain: Toolchain;
+	readonly language: Language;
+	readonly darklua: boolean;
 	readonly outDir?: string;
 	readonly packageManager?: PackageManager;
 	/** The installed package directories, of any manager. */
@@ -70,6 +71,7 @@ export async function detectWorkspace(
 			? "wally"
 			: undefined;
 	const facts = {
+		darklua: isDarklua,
 		...(packageManager && { packageManager }),
 		packageDirs: new Set(packageDirs),
 		rbxtsScopes,
@@ -78,7 +80,7 @@ export async function detectWorkspace(
 
 	if (isTs) {
 		return {
-			toolchain: "roblox-ts",
+			language: "roblox-ts",
 			outDir: await readOutDir(
 				fileSystem,
 				path.join(cwd, "tsconfig.json")
@@ -86,7 +88,7 @@ export async function detectWorkspace(
 			...facts,
 		};
 	}
-	return { toolchain: isDarklua ? "darklua" : "luau", ...facts };
+	return { language: "luau", ...facts };
 }
 
 function outDirOf(tsconfig: unknown): string | undefined {

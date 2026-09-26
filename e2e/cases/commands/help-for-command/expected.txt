@@ -52,7 +52,7 @@ stdout:
 $ rogen help init
 exit 0
 stdout:
-  Writes a starting config, detecting the toolchain and asking in a terminal.
+  Writes a starting config, detecting the workspace and asking in a terminal.
   
   Usage:
     rogen init [name] [options]

@@ -14,9 +14,9 @@ import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
 import {
 	DEFAULT_OUT_DIR,
 	DetectedWorkspace,
+	Language,
 	PACKAGE_DIRS,
 	RBXTS_SCOPES,
-	Toolchain,
 } from "./detect-workspace.js";
 
 export interface PlannedFile {
@@ -27,6 +27,7 @@ export interface PlannedFile {
 export interface InitPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
+	readonly nextSteps: readonly string[];
 }
 
 export interface TemplateMount {
@@ -41,7 +42,8 @@ export interface MountCandidate {
 
 export interface InitChoices {
 	readonly name: string;
-	readonly toolchain: Toolchain;
+	readonly language: Language;
+	readonly darklua: boolean;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
 	readonly mounts: readonly TemplateMount[];
@@ -90,11 +92,32 @@ const mountNode = (mount: TemplateMount): RojoNode => ({
 });
 
 export function syncDirFor(
-	toolchain: Toolchain,
+	language: Language,
+	darklua: boolean,
 	workspace: DetectedWorkspace
 ): string | undefined {
-	if (toolchain === "roblox-ts") return workspace.outDir ?? DEFAULT_OUT_DIR;
-	return toolchain === "darklua" ? DARKLUA_SYNC_DIR : undefined;
+	if (darklua) return DARKLUA_SYNC_DIR;
+	return language === "roblox-ts"
+		? (workspace.outDir ?? DEFAULT_OUT_DIR)
+		: undefined;
+}
+
+export const sourceStemOf = (name: string): string =>
+	name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
+
+const hasSourceConfig = (language: Language, darklua: boolean): boolean =>
+	language === "luau" && darklua;
+
+/** Every config file `init` writes for `name`. */
+export function configFileNames(
+	name: string,
+	language: Language,
+	darklua: boolean
+): string[] {
+	const stems = hasSourceConfig(language, darklua)
+		? [sourceStemOf(name), name]
+		: [name];
+	return stems.map((stem) => `${stem}${CONFIG_SUFFIX}`);
 }
 
 /** Everything a template could mount, found or not. */
@@ -124,10 +147,15 @@ export function defaultInitChoices(
 ): InitChoices {
 	const candidates = mountCandidates(workspace);
 	const hasScopes = workspace.rbxtsScopes.length > 0;
-	const syncDir = syncDirFor(workspace.toolchain, workspace);
+	const syncDir = syncDirFor(
+		workspace.language,
+		workspace.darklua,
+		workspace
+	);
 	return {
 		name,
-		toolchain: workspace.toolchain,
+		language: workspace.language,
+		darklua: workspace.darklua,
 		rootDirs: ["src"],
 		...(syncDir && { syncDir }),
 		mounts: candidates
@@ -209,22 +237,58 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 	return ok(name);
 }
 
+/** One diagnostic per file in `fileNames` that already exists in `directory`. */
+export const existingFileDiagnostics = (
+	fileNames: readonly string[],
+	directory: string,
+	existingFiles: ReadonlySet<string>
+): Diagnostic[] =>
+	fileNames
+		.filter((fileName) => existingFiles.has(fileName))
+		.map((fileName) =>
+			InitDiagnostics.configExists({
+				resource: path.join(directory, fileName),
+			})
+		);
+
 export function planInit(
 	options: InitPlanOptions
 ): Result<InitPlan, Diagnostic[]> {
 	const plan = buildPlan(options);
-	const existing = plan.configs
-		.filter(({ fileName }) => options.existingFiles.has(fileName))
-		.map(({ fileName }) =>
-			InitDiagnostics.configExists({
-				resource: path.join(options.directory, fileName),
-			})
-		);
+	const existing = existingFileDiagnostics(
+		plan.configs.map(({ fileName }) => fileName),
+		options.directory,
+		options.existingFiles
+	);
 	return existing.length > 0 ? err(existing) : ok(plan);
 }
 
+function nextSteps({
+	name,
+	language,
+	darklua,
+	rootDirs,
+	syncDir,
+}: InitChoices): string[] {
+	const steps = [
+		...(language === "roblox-ts" ? ["rbxtsc -w"] : []),
+		name === DEFAULT_CONFIG_STEM ? "rogen watch" : `rogen watch ${name}`,
+		`rojo serve ${name}.project.json`,
+	];
+	if (darklua && syncDir) {
+		steps.push(
+			`Darklua must process each root dir into ${syncDir} (darklua process ${rootDirs[0]} ${syncDir}).`
+		);
+	}
+	steps.push(
+		`Add your own routes under "routes" in ${name}${CONFIG_SUFFIX}.`
+	);
+	return steps;
+}
+
 function buildPlan(options: InitPlanOptions): InitPlan {
-	const { name, toolchain, rootDirs, syncDir, mounts } = options.choices;
+	const { name, language, darklua, rootDirs, syncDir, mounts } =
+		options.choices;
 	const tree = templateTree(mounts);
 	const hasMounts = Object.keys(tree).length > 0;
 	const templateExists = options.existingFiles.has(TEMPLATE_FILE);
@@ -253,11 +317,13 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 		...(starterSyncDir && { syncDir: starterSyncDir }),
 	});
 
-	if (toolchain === "darklua") {
-		const sourceStem =
-			name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
+	const steps = nextSteps(options.choices);
+
+	if (hasSourceConfig(language, darklua)) {
+		const sourceStem = sourceStemOf(name);
 		return {
 			template,
+			nextSteps: steps,
 			configs: [
 				configFile(sourceStem, starter()),
 				configFile(name, {
@@ -269,5 +335,9 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 		};
 	}
 
-	return { template, configs: [configFile(name, starter(syncDir))] };
+	return {
+		template,
+		configs: [configFile(name, starter(syncDir))],
+		nextSteps: steps,
+	};
 }

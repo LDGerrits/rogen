@@ -3,6 +3,10 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  Next steps
+    rogen watch lobby
+    rojo serve lobby.project.json
+    Add your own routes under "routes" in lobby.rogen.json.
   Wrote 1 file.
 
 $ rogen build lobby

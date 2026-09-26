@@ -1,11 +1,17 @@
 import path from "path";
 import { ok, err } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
+import { CONFIG_SUFFIX } from "../../domain/config/config-discovery.js";
 import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
-import { askInitChoices } from "../../domain/workspace/init-questions.js";
 import {
+	InitContext,
+	askInitChoices,
+} from "../../domain/workspace/init-questions.js";
+import {
+	InitChoices,
 	PlannedFile,
 	defaultInitChoices,
+	existingFileDiagnostics,
 	parseInitName,
 	planInit,
 } from "../../domain/workspace/init-plan.js";
@@ -26,7 +32,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "init",
 	metadata: {
 		description:
-			"Writes a starting config, detecting the toolchain and asking in a terminal.",
+			"Writes a starting config, detecting the workspace and asking in a terminal.",
 		args: [
 			{
 				name: "name",
@@ -64,13 +70,35 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		const workspace = await detectWorkspace(fileSystemService, cwd);
 		logService.intro("rogen init");
-		const choices = promptService.isInteractive
-			? await askInitChoices(
-					promptService,
-					workspace,
-					names.length > 0 ? nameResult.value : undefined
-				)
-			: defaultInitChoices(workspace, nameResult.value);
+
+		const givenName = names.length > 0 ? nameResult.value : undefined;
+		const knownName =
+			givenName ??
+			(promptService.isInteractive ? undefined : nameResult.value);
+		const taken = existingFileDiagnostics(
+			knownName ? [`${knownName}${CONFIG_SUFFIX}`] : [],
+			cwd,
+			existingFiles
+		);
+		if (taken.length > 0) return err(new DiagnosticsError(taken));
+
+		let choices: InitChoices | undefined;
+		if (promptService.isInteractive) {
+			const context: InitContext = {
+				workspace,
+				directory: cwd,
+				existingFiles,
+			};
+			const asked = await askInitChoices(
+				promptService,
+				context,
+				givenName
+			);
+			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
+			choices = asked.value;
+		} else {
+			choices = defaultInitChoices(workspace, nameResult.value);
+		}
 		if (!choices) return err(new Error("init cancelled."));
 
 		const planned = planInit({
@@ -103,6 +131,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.success(`Created ${fileName}.`);
 		}
 
+		logService.step("Next steps");
+		for (const line of plan.nextSteps) logService.info(line);
 		logService.outro(
 			`Wrote ${files.length} ${files.length === 1 ? "file" : "files"}.`
 		);

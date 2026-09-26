@@ -87,6 +87,10 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"success: Created default.rogen.json.",
+				"step: Next steps",
+				"info: rogen watch",
+				"info: rojo serve default.project.json",
+				'info: Add your own routes under "routes" in default.rogen.json.',
 				"outro: Wrote 1 file.",
 			]);
 		});
@@ -106,7 +110,7 @@ describe("init command", () => {
 		});
 	});
 
-	describe("toolchains", () => {
+	describe("language and darklua", () => {
 		it("should write a plain config when no toolchain is found", async () => {
 			const result = await runInit();
 
@@ -146,6 +150,16 @@ describe("init command", () => {
 			await runInit();
 
 			expect(await exists("source.rogen.json")).toBe(false);
+		});
+
+		it("should write one config synced from dist for roblox-ts with darklua", async () => {
+			await write("tsconfig.json", "{}");
+			await write(".darklua.json");
+
+			await runInit();
+
+			expect(await exists("source.rogen.json")).toBe(false);
+			expect((await readJson("default.rogen.json")).syncDir).toBe("dist");
 		});
 
 		it("should write a source config and a synced default config for darklua", async () => {
@@ -358,9 +372,11 @@ describe("init command", () => {
 		});
 
 		it("should write the answers", async () => {
+			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService([
 				"game",
-				"darklua",
+				"luau",
+				true,
 				"src, lib",
 				"out",
 				[],
@@ -386,6 +402,59 @@ describe("init command", () => {
 			expect(
 				(await readJson("template.project.json")).tree.ReplicatedStorage
 			).toEqual({ Packages: { $path: { optional: "Packages" } } });
+		});
+
+		it("should not ask for a name when default.rogen.json does not exist", async () => {
+			const prompts = new MockPromptService(
+				Array(4).fill(ACCEPT_DEFAULT)
+			);
+
+			await runInit([], prompts);
+
+			expect(prompts.asked).not.toContain("Config name");
+			expect(await exists("default.rogen.json")).toBe(true);
+		});
+
+		it("should ask for a name when default.rogen.json exists", async () => {
+			await write("default.rogen.json", "{}");
+			const prompts = new MockPromptService([
+				"test",
+				...Array(4).fill(ACCEPT_DEFAULT),
+			]);
+
+			await runInit([], prompts);
+
+			expect(prompts.asked[0]).toBe("Config name");
+			expect(await exists("test.rogen.json")).toBe(true);
+			expect(await read("default.rogen.json")).toBe("{}");
+		});
+
+		it("should fail before any question when the given name is taken", async () => {
+			await write("lobby.rogen.json", "{}");
+			const prompts = new MockPromptService([]);
+
+			const result = await runInit(["lobby"], prompts);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+			expect(prompts.asked).toEqual([]);
+		});
+
+		it("should fail after the Darklua question when a file it would write exists", async () => {
+			await write("source.rogen.json", "{}");
+			const prompts = new MockPromptService([ACCEPT_DEFAULT, true]);
+
+			const result = await runInit([], prompts);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "source.rogen.json"),
+				},
+			]);
+			expect(prompts.asked).toHaveLength(2);
+			expect(await exists("default.rogen.json")).toBe(false);
 		});
 
 		it("should not ask for a name that was given", async () => {
