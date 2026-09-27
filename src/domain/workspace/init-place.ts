@@ -10,7 +10,7 @@ import {
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { layerConfig } from "../config/config-layers.js";
-import { DetectedWorkspace } from "./detect-workspace.js";
+import { DetectedWorkspace, Language } from "./detect-workspace.js";
 import {
 	DARKLUA_SYNC_DIR,
 	InitPlan,
@@ -20,8 +20,10 @@ import {
 	configFile,
 	existingFileDiagnostics,
 	serialize,
-	tagsStep,
+	watchCommand,
 } from "./init-plan.js";
+import { darkluaCommands, tagsStep } from "./init-steps.js";
+import { PROJECT_SUFFIX } from "./init-template.js";
 
 export const DEFAULT_CONFIG_FILE = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
 
@@ -41,6 +43,7 @@ export interface BaseConfig {
 export interface PlacePlanOptions {
 	readonly choices: PlaceChoices;
 	readonly base: BaseConfig;
+	/** The language and Darklua of the project the place joins. */
 	readonly workspace: DetectedWorkspace;
 	/** The absolute directory init writes into. */
 	readonly directory: string;
@@ -48,16 +51,24 @@ export interface PlacePlanOptions {
 	readonly existingFiles: ReadonlySet<string>;
 }
 
-/** The files a place named `name` may write. */
+/** The files a place named `name` writes, plus its project file, which mustn't exist either. */
 export const placeFileNames = (
 	name: string,
-	workspace: DetectedWorkspace
+	language: Language,
+	darklua: boolean
 ): string[] => [
 	`${name}${CONFIG_SUFFIX}`,
-	...(workspace.language === "luau" && workspace.darklua
+	...(language === "luau" && darklua
 		? [`${name}-source${CONFIG_SUFFIX}`]
 		: []),
-	...(workspace.language === "roblox-ts" ? [tsconfigFileName(name)] : []),
+	...(language === "roblox-ts" ? [tsconfigFileName(name)] : []),
+	`${name}${PROJECT_SUFFIX}`,
+];
+
+/** The files a variant named `name` writes, plus its project file. */
+export const variantFileNames = (name: string): string[] => [
+	`${name}${CONFIG_SUFFIX}`,
+	`${name}${PROJECT_SUFFIX}`,
 ];
 
 const tsconfigFileName = (name: string) => `tsconfig.${name}.json`;
@@ -89,64 +100,88 @@ const placeConfig = (stem: string, config: RogenConfig): PlannedFile =>
 
 const extendsRef = (file: string): string => `./${file}`;
 
+const checked = (
+	plan: InitPlan,
+	{
+		directory,
+		existingFiles,
+	}: Pick<PlacePlanOptions, "directory" | "existingFiles">
+): Result<InitPlan, Diagnostic[]> => {
+	const existing = existingFileDiagnostics(
+		[...plan.configs, ...plan.tsconfigs].map(({ fileName }) => fileName),
+		directory,
+		existingFiles
+	);
+	return existing.length > 0 ? err(existing) : ok(plan);
+};
+
 export function planPlace(
 	options: PlacePlanOptions
 ): Result<InitPlan, Diagnostic[]> {
-	const plan =
+	return checked(
 		options.workspace.language === "roblox-ts"
 			? planRobloxTsPlace(options)
-			: planLuauPlace(options);
-	const existing = existingFileDiagnostics(
-		[
-			...plan.configs.map(({ fileName }) => fileName),
-			...(plan.tsconfig ? [plan.tsconfig.fileName] : []),
-		],
-		options.directory,
-		options.existingFiles
+			: planLuauPlace(options),
+		options
 	);
-	return existing.length > 0 ? err(existing) : ok(plan);
 }
 
 function planLuauPlace({
 	choices: { name, folder },
 	base,
 	workspace,
+	directory,
 }: PlacePlanOptions): InitPlan {
 	const rootDirs = [...base.rootDirs, folder];
-	const steps = [`rogen watch ${name}`, `rojo serve ${name}.project.json`];
+	const serve = `rojo serve ${name}${PROJECT_SUFFIX}`;
 	const tags = (configStem: string) =>
 		tagsStep(workspace.language, `${configStem}${CONFIG_SUFFIX}`);
+	const plan = (
+		configs: PlannedFile[],
+		run: string[],
+		darklua: string[],
+		tagsStem: string
+	): InitPlan => ({
+		configs,
+		tsconfigs: [],
+		notes: [],
+		nextSteps: { setup: [], run, darklua, edits: [tags(tagsStem)] },
+	});
 
 	if (!workspace.darklua) {
-		return {
-			configs: [
+		return plan(
+			[
 				placeConfig(name, {
 					extends: extendsRef(DEFAULT_CONFIG_FILE),
 					rootDirs,
 				}),
 			],
-			nextSteps: [...steps, tags(name)],
-		};
+			[watchCommand([name]), serve],
+			[],
+			name
+		);
 	}
 
 	const syncDir = `${base.syncDir ?? DARKLUA_SYNC_DIR}/${name}`;
-	const darkluaStep = `Darklua must also process ${folder} into ${syncDir}.`;
+	const darklua = darkluaCommands(directory, rootDirs, syncDir);
 	if (!base.parent) {
-		return {
-			configs: [
+		return plan(
+			[
 				placeConfig(name, {
 					extends: extendsRef(DEFAULT_CONFIG_FILE),
 					rootDirs,
 					syncDir,
 				}),
 			],
-			nextSteps: [...steps, darkluaStep, tags(name)],
-		};
+			[watchCommand([name]), serve],
+			darklua,
+			name
+		);
 	}
 
 	const sourceStem = `${name}-source`;
-	return {
-		configs: [
+	return plan(
+		[
 			placeConfig(sourceStem, {
 				extends: extendsRef(base.parent),
 				rootDirs,
@@ -156,8 +191,10 @@ function planLuauPlace({
 				syncDir,
 			}),
 		],
-		nextSteps: [...steps, darkluaStep, tags(sourceStem)],
-	};
+		[watchCommand([name, sourceStem]), serve],
+		darklua,
+		sourceStem
+	);
 }
 
 function planRobloxTsPlace({
@@ -170,21 +207,6 @@ function planRobloxTsPlace({
 	const syncDir = `${base.syncDir ?? compiledDirOf(workspace)}/${name}`;
 	const tsconfigFile = tsconfigFileName(name);
 
-	const steps = [
-		...(workspace.tsconfigHasInclude
-			? []
-			: [
-					`Add "include": ${JSON.stringify(base.rootDirs)} to tsconfig.json, so its build skips ${folder}.`,
-				]),
-		`rbxtsc -w -p ${tsconfigFile} --rojo ${name}.project.json`,
-		`rogen watch ${name}`,
-		`rojo serve ${name}.project.json`,
-		...(workspace.darklua
-			? [`Darklua must also process ${outDir} into ${syncDir}.`]
-			: []),
-		tagsStep(workspace.language, `${name}${CONFIG_SUFFIX}`),
-	];
-
 	return {
 		configs: [
 			placeConfig(name, {
@@ -193,21 +215,75 @@ function planRobloxTsPlace({
 				syncDir,
 			}),
 		],
-		tsconfig: {
-			fileName: tsconfigFile,
-			content: serialize({
-				extends: "./tsconfig.json",
-				compilerOptions: {
-					rootDir: null,
-					rootDirs,
-					outDir,
-					...(workspace.tsBuildInfoFile && {
-						tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
-					}),
-				},
-				include: rootDirs,
-			}),
+		tsconfigs: [
+			{
+				fileName: tsconfigFile,
+				content: serialize({
+					extends: "./tsconfig.json",
+					compilerOptions: {
+						rootDir: null,
+						rootDirs,
+						outDir,
+						...(workspace.tsBuildInfoFile && {
+							tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
+						}),
+					},
+					include: rootDirs,
+				}),
+			},
+		],
+		notes: [],
+		nextSteps: {
+			setup: workspace.tsconfigHasInclude
+				? []
+				: [
+						`Add "include": ${JSON.stringify(base.rootDirs)} to tsconfig.json, so its own build leaves out the place folders.`,
+					],
+			run: [
+				`rbxtsc -w -p ${tsconfigFile} --rojo ${name}${PROJECT_SUFFIX}`,
+				watchCommand([name]),
+				`rojo serve ${name}${PROJECT_SUFFIX}`,
+			],
+			darklua: workspace.darklua
+				? [`darklua process ${outDir} ${syncDir}`]
+				: [],
+			edits: [tagsStep(workspace.language, `${name}${CONFIG_SUFFIX}`)],
 		},
-		nextSteps: steps,
 	};
+}
+
+export interface VariantPlanOptions {
+	readonly name: string;
+	readonly directory: string;
+	readonly existingFiles: ReadonlySet<string>;
+}
+
+/** A variant inherits everything from default; its own file is where tags and excludes go. */
+export function planVariant(
+	options: VariantPlanOptions
+): Result<InitPlan, Diagnostic[]> {
+	const { name } = options;
+	return checked(
+		{
+			configs: [
+				placeConfig(name, {
+					extends: extendsRef(DEFAULT_CONFIG_FILE),
+				}),
+			],
+			tsconfigs: [],
+			notes: [],
+			nextSteps: {
+				setup: [],
+				run: [
+					watchCommand([name]),
+					`rojo serve ${name}${PROJECT_SUFFIX}`,
+				],
+				darklua: [],
+				edits: [
+					`Turn tags on or off under "tags", or add "exclude", in ${name}${CONFIG_SUFFIX}.`,
+				],
+			},
+		},
+		options
+	);
 }

@@ -29,13 +29,15 @@ Keep shared code in `src`, and each place's own code in `places/<name>`.
 <Step>
 ### Add the Place
 
-When `default.rogen.json` already exists, run `rogen init` in a terminal. It offers to add a place, then asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project.
+Starting fresh, run `rogen init` and pick **Several places that share code**; with folders already in `places/`, that's the default. It asks the usual questions for the shared config, then the place names, and writes one config per place.
+
+To add a place later, run `rogen init` again in a terminal and pick **A place**. It asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project.
 
 ```bash
 rogen init
 ```
 
-Places are never added without a terminal, and `init` never edits an existing file. What it writes depends on the toolchain:
+A place folder may not overlap the shared root directories, and `init` never edits an existing file. What it writes depends on the toolchain:
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">

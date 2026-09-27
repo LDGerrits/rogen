@@ -5,8 +5,9 @@ stdout:
   Created template.project.json.
   Created default.rogen.json.
   Next steps
-    rogen watch
-    rojo serve default.project.json
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
     Add your own routes under "routes" in default.rogen.json.
     Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
   Wrote 2 files.
@@ -45,9 +46,11 @@ project: DataModel
       Roact: ModuleScript  <- Packages/Roact.luau
     Shared: Folder
       A: ModuleScript  <- src/A.luau
+  ServerScriptService: ServerScriptService
 
 $ rojo sourcemap template.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Packages: Folder
       Roact: ModuleScript  <- Packages/Roact.luau
+  ServerScriptService: ServerScriptService

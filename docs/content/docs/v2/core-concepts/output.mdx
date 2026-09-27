@@ -63,7 +63,7 @@ The **template** is the Rojo project file that Rogen merges its generated tree i
   </Tab>
 </Tabs>
 
-`rogen init` writes a template when it finds packages to mount, and references it from the config.
+`rogen init` writes a template when it finds packages to mount, and references it from the config. When a hand-written project file exists that the build would replace, `init` copies it to `template.project.json` instead, or lets you reference another project file as it is.
 
 ## Sync Directory
 

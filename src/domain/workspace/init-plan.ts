@@ -16,22 +16,63 @@ import {
 	DEFAULT_OUT_DIR,
 	DetectedWorkspace,
 	Language,
+	PLACES_DIR,
 } from "./detect-workspace.js";
 import { TemplateMount, defaultMounts, templateTree } from "./init-mounts.js";
 import { defaultRootDir } from "./init-root-dirs.js";
+import {
+	darkluaCommands,
+	darkluaSteps,
+	tagsStep,
+	terminalSteps,
+} from "./init-steps.js";
+import {
+	PROJECT_SUFFIX,
+	TEMPLATE_FILE,
+	TemplateChoice,
+	defaultTemplateChoice,
+	handWrittenProjectFiles,
+} from "./init-template.js";
 import { DEFAULT_ROUTES, RouteId, startingRoutes } from "./starting-routes.js";
+
+export { TEMPLATE_FILE };
 
 export interface PlannedFile {
 	readonly fileName: string;
 	readonly content: string;
 }
 
+/** What to do after `init`, grouped so a plan can be combined with its places'. */
+export interface NextSteps {
+	/** One-time edits before anything runs. */
+	readonly setup: readonly string[];
+	/** Long-running commands, one terminal each. */
+	readonly run: readonly string[];
+	readonly darklua: readonly string[];
+	/** Pointers to what to change in the written files. */
+	readonly edits: readonly string[];
+}
+
+export const renderSteps = ({
+	setup,
+	run,
+	darklua,
+	edits,
+}: NextSteps): string[] => [
+	...setup,
+	...(run.length > 0 ? terminalSteps(run) : []),
+	...(darklua.length > 0 ? darkluaSteps(darklua) : []),
+	...edits,
+];
+
 export interface InitPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
 	/** A roblox-ts place's own tsconfig, written after the configs. */
-	readonly tsconfig?: PlannedFile;
-	readonly nextSteps: readonly string[];
+	readonly tsconfigs: readonly PlannedFile[];
+	/** Lines printed before the files are written. */
+	readonly notes: readonly string[];
+	readonly nextSteps: NextSteps;
 }
 
 export interface InitChoices {
@@ -42,10 +83,13 @@ export interface InitChoices {
 	readonly syncDir?: string;
 	/** Where roblox-ts compiles to; Darklua reads it when both are used. */
 	readonly outDir?: string;
+	readonly template: TemplateChoice;
 	readonly mounts: readonly TemplateMount[];
 	readonly routes: readonly RouteId[];
 	/** Whether files that match no route go to the shared target, or are left out. */
 	readonly fallback: boolean;
+	/** Places set up alongside, each extending this config from `places/<name>`. */
+	readonly places: readonly string[];
 }
 
 export interface InitPlanOptions {
@@ -55,6 +99,8 @@ export interface InitPlanOptions {
 	readonly directory: string;
 	/** The names of the entries already in `directory`. */
 	readonly existingFiles: ReadonlySet<string>;
+	/** The contents of the file a `copy` template choice copies. */
+	readonly copiedTemplate?: string;
 }
 
 export const InitDiagnostics = {
@@ -67,8 +113,8 @@ export const InitDiagnostics = {
 };
 
 export const SCHEMA_URL = schemaUrlFor("2.0.0");
-export const TEMPLATE_FILE = "template.project.json";
 export const DARKLUA_SYNC_DIR = "dist";
+export const placeFolder = (name: string): string => `${PLACES_DIR}/${name}`;
 
 export const serialize = (value: unknown): string =>
 	`${JSON.stringify(value, null, "\t")}\n`;
@@ -78,15 +124,14 @@ export const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 	content: serialize(config),
 });
 
+/** The sync dir `init` writes: Darklua's output, or roblox-ts's outDir. */
 export function syncDirFor(
 	language: Language,
 	darklua: boolean,
 	workspace: DetectedWorkspace
 ): string | undefined {
 	if (darklua) return DARKLUA_SYNC_DIR;
-	return language === "roblox-ts"
-		? (workspace.outDir ?? DEFAULT_OUT_DIR)
-		: undefined;
+	return language === "roblox-ts" ? compiledDirOf(workspace) : undefined;
 }
 
 export const compiledDirOf = (workspace: DetectedWorkspace): string =>
@@ -95,27 +140,46 @@ export const compiledDirOf = (workspace: DetectedWorkspace): string =>
 export const sourceStemOf = (name: string): string =>
 	name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
 
-const hasSourceConfig = (language: Language, darklua: boolean): boolean =>
-	language === "luau" && darklua;
+export const hasSourceConfig = (
+	language: Language,
+	darklua: boolean
+): boolean => language === "luau" && darklua;
+
+const configStems = (name: string, language: Language, darklua: boolean) =>
+	hasSourceConfig(language, darklua) ? [sourceStemOf(name), name] : [name];
 
 /** Every config file `init` writes for `name`. */
-export function configFileNames(
+export const configFileNames = (
 	name: string,
 	language: Language,
 	darklua: boolean
-): string[] {
-	const stems = hasSourceConfig(language, darklua)
-		? [sourceStemOf(name), name]
-		: [name];
-	return stems.map((stem) => `${stem}${CONFIG_SUFFIX}`);
-}
+): string[] =>
+	configStems(name, language, darklua).map(
+		(stem) => `${stem}${CONFIG_SUFFIX}`
+	);
+
+/** The project files the configs for `name` write, the synced one first. */
+export const outputFileNames = (
+	name: string,
+	language: Language,
+	darklua: boolean
+): string[] =>
+	configStems(name, language, darklua)
+		.reverse()
+		.map((stem) => `${stem}${PROJECT_SUFFIX}`);
 
 export function defaultInitChoices(
 	workspace: DetectedWorkspace,
-	name: string
+	name: string,
+	existingFiles: ReadonlySet<string>,
+	withPlaces: boolean
 ): InitChoices {
 	const { language, darklua } = workspace;
 	const syncDir = syncDirFor(language, darklua, workspace);
+	const template = defaultTemplateChoice(
+		existingFiles,
+		outputFileNames(name, language, darklua)
+	);
 	return {
 		name,
 		language,
@@ -123,9 +187,12 @@ export function defaultInitChoices(
 		rootDirs: [defaultRootDir(workspace, language)],
 		...(syncDir && { syncDir }),
 		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
-		mounts: defaultMounts(workspace, language),
+		template,
+		mounts:
+			template.kind === "new" ? defaultMounts(workspace, language) : [],
 		routes: DEFAULT_ROUTES,
 		fallback: true,
+		places: withPlaces ? workspace.places : [],
 	};
 }
 
@@ -142,6 +209,13 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 		return err(
 			new Error(
 				`"${name}" is not a valid config name: it can't contain path separators.`
+			)
+		);
+	}
+	if (`${name}${PROJECT_SUFFIX}` === TEMPLATE_FILE) {
+		return err(
+			new Error(
+				`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`
 			)
 		);
 	}
@@ -174,88 +248,146 @@ export function planInit(
 	return existing.length > 0 ? err(existing) : ok(plan);
 }
 
-export function tagsStep(language: Language, configName: string): string {
-	const extension = language === "roblox-ts" ? "ts" : "luau";
-	return `Add tags under "tags" in ${configName} to swap in variants like Analytics.mock.${extension}.`;
-}
+export const watchCommand = (names: readonly string[]): string =>
+	names.length === 1 && names[0] === DEFAULT_CONFIG_STEM
+		? "rogen watch"
+		: `rogen watch ${names.join(" ")}`;
 
-function nextSteps({
-	name,
-	language,
-	darklua,
-	rootDirs,
-	syncDir,
-	outDir,
-}: InitChoices): string[] {
-	const steps = [
-		...(language === "roblox-ts" ? ["rbxtsc -w"] : []),
-		name === DEFAULT_CONFIG_STEM ? "rogen watch" : `rogen watch ${name}`,
-		`rojo serve ${name}.project.json`,
-	];
-	if (darklua && syncDir) {
-		steps.push(
-			language === "roblox-ts"
-				? `Darklua must process ${outDir ?? DEFAULT_OUT_DIR} into ${syncDir} (darklua process ${outDir ?? DEFAULT_OUT_DIR} ${syncDir}).`
-				: `Darklua must process each root dir into ${syncDir} (darklua process ${rootDirs[0]} ${syncDir}).`
-		);
-	}
-	const routesStem = hasSourceConfig(language, darklua)
-		? sourceStemOf(name)
-		: name;
-	const configName = `${routesStem}${CONFIG_SUFFIX}`;
-	steps.push(
-		`Add your own routes under "routes" in ${configName}.`,
-		tagsStep(language, configName)
-	);
-	return steps;
-}
-
-function buildPlan(options: InitPlanOptions): InitPlan {
-	const {
+function nextSteps(
+	{
 		name,
 		language,
 		darklua,
 		rootDirs,
 		syncDir,
-		mounts,
-		routes,
-		fallback,
-	} = options.choices;
-	const tree = templateTree(mounts);
-	const hasMounts = Object.keys(tree).length > 0;
-	const templateExists = options.existingFiles.has(TEMPLATE_FILE);
+		outDir,
+		template,
+	}: InitChoices,
+	directory: string
+): NextSteps {
+	// Darklua reads the source-rooted project, so both are kept current.
+	const watched = hasSourceConfig(language, darklua)
+		? [name, sourceStemOf(name)]
+		: [name];
+	const routesStem = hasSourceConfig(language, darklua)
+		? sourceStemOf(name)
+		: name;
+	const configName = `${routesStem}${CONFIG_SUFFIX}`;
+	return {
+		setup: [],
+		run: [
+			...(language === "roblox-ts" ? ["rbxtsc -w"] : []),
+			watchCommand(watched),
+			`rojo serve ${name}${PROJECT_SUFFIX}`,
+		],
+		darklua:
+			darklua && syncDir
+				? language === "roblox-ts"
+					? [
+							`darklua process ${outDir ?? DEFAULT_OUT_DIR} ${syncDir}`,
+						]
+					: darkluaCommands(directory, rootDirs, syncDir)
+				: [],
+		edits: [
+			...(template.kind === "copy"
+				? [
+						`Remove the nodes in ${TEMPLATE_FILE} that point into ${rootDirs.join(", ")}; Rogen generates those now.`,
+					]
+				: []),
+			`Add your own routes under "routes" in ${configName}.`,
+			tagsStep(language, configName),
+		],
+	};
+}
 
-	const template: PlannedFile | undefined =
-		hasMounts && !templateExists
-			? {
-					fileName: TEMPLATE_FILE,
-					content: serialize({
-						name: options.projectName,
-						tree: {
-							$className: "DataModel",
-							...tree,
-						},
-					} satisfies RojoTree),
-				}
-			: undefined;
+function templateOf({
+	choices,
+	projectName,
+	existingFiles,
+	copiedTemplate,
+}: InitPlanOptions): {
+	file?: PlannedFile;
+	reference?: string;
+	notes: string[];
+} {
+	const { template, mounts, name, language, darklua } = choices;
+	if (existingFiles.has(TEMPLATE_FILE)) {
+		const handWritten = handWrittenProjectFiles(existingFiles);
+		const replaced = outputFileNames(name, language, darklua).filter(
+			(file) => handWritten.includes(file)
+		);
+		return {
+			reference: TEMPLATE_FILE,
+			notes: [
+				`Using ${TEMPLATE_FILE}.`,
+				...replaced.map(
+					(file) =>
+						`Rogen replaces ${file} on every build; move anything you need from it into ${TEMPLATE_FILE} first.`
+				),
+			],
+		};
+	}
+	if (template.kind === "copy") {
+		return {
+			file: { fileName: TEMPLATE_FILE, content: copiedTemplate ?? "" },
+			reference: TEMPLATE_FILE,
+			notes: [
+				`Copying ${template.from} to ${TEMPLATE_FILE}, since Rogen replaces ${template.from} on every build.`,
+			],
+		};
+	}
+	if (template.kind === "use") {
+		return {
+			reference: template.file,
+			notes: [`Using ${template.file} as the template.`],
+		};
+	}
+
+	const tree = templateTree(mounts);
+	if (Object.keys(tree).length === 0) return { notes: [] };
+	return {
+		file: {
+			fileName: TEMPLATE_FILE,
+			content: serialize({
+				name: projectName,
+				tree: { $className: "DataModel", ...tree },
+			} satisfies RojoTree),
+		},
+		reference: TEMPLATE_FILE,
+		notes: [],
+	};
+}
+
+function buildPlan(options: InitPlanOptions): InitPlan {
+	const { name, language, darklua, rootDirs, syncDir, routes, fallback } =
+		options.choices;
+	const template = templateOf(options);
+	const notes = [
+		...template.notes,
+		...(language === "roblox-ts" && !darklua && syncDir
+			? [`Syncing from ${syncDir}, where roblox-ts compiles to.`]
+			: []),
+	];
 
 	const starter = (starterSyncDir?: string): RogenConfig => ({
 		$schema: SCHEMA_URL,
 		rootDirs: [...rootDirs],
 		routes: startingRoutes(language, routes, fallback),
-		...((hasMounts || templateExists) && {
-			template: TEMPLATE_FILE,
-		}),
+		...(template.reference && { template: template.reference }),
 		...(starterSyncDir && { syncDir: starterSyncDir }),
 	});
 
-	const steps = nextSteps(options.choices);
+	const common = {
+		template: template.file,
+		tsconfigs: [],
+		notes,
+		nextSteps: nextSteps(options.choices, options.directory),
+	};
 
 	if (hasSourceConfig(language, darklua)) {
 		const sourceStem = sourceStemOf(name);
 		return {
-			template,
-			nextSteps: steps,
+			...common,
 			configs: [
 				configFile(sourceStem, starter()),
 				configFile(name, {
@@ -267,9 +399,5 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 		};
 	}
 
-	return {
-		template,
-		configs: [configFile(name, starter(syncDir))],
-		nextSteps: steps,
-	};
+	return { ...common, configs: [configFile(name, starter(syncDir))] };
 }

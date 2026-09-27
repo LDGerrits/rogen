@@ -97,8 +97,9 @@ describe("init command", () => {
 				"intro: rogen init",
 				"success: Created default.rogen.json.",
 				"step: Next steps",
-				"info: rogen watch",
-				"info: rojo serve default.project.json",
+				"info: Run each in its own terminal:",
+				"info:   rogen watch",
+				"info:   rojo serve default.project.json",
 				'info: Add your own routes under "routes" in default.rogen.json.',
 				'info: Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.',
 				"outro: Wrote 1 file.",
@@ -392,7 +393,7 @@ describe("init command", () => {
 			await write("Packages/x.luau");
 			await write("wally.toml");
 			const prompts = new MockPromptService(
-				Array(7).fill(ACCEPT_DEFAULT)
+				Array(9).fill(ACCEPT_DEFAULT)
 			);
 
 			const result = await runInit([], prompts);
@@ -412,7 +413,7 @@ describe("init command", () => {
 		it("should write the answers", async () => {
 			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService([
-				false,
+				"separate",
 				"game",
 				"luau",
 				true,
@@ -436,6 +437,7 @@ describe("init command", () => {
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
 				["server", "starterGui"],
 				"leave",
 			]);
@@ -451,7 +453,7 @@ describe("init command", () => {
 		it("should take the root dir placeholder from the code it finds", async () => {
 			await write("game/Main.server.luau");
 			const prompts = new MockPromptService(
-				Array(6).fill(ACCEPT_DEFAULT)
+				Array(9).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit([], prompts);
@@ -463,6 +465,7 @@ describe("init command", () => {
 
 		it("should mount a folder that is not installed as optional", async () => {
 			const prompts = new MockPromptService([
+				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
@@ -480,7 +483,7 @@ describe("init command", () => {
 
 		it("should not ask for a name when default.rogen.json does not exist", async () => {
 			const prompts = new MockPromptService(
-				Array(6).fill(ACCEPT_DEFAULT)
+				Array(9).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit([], prompts);
@@ -492,9 +495,9 @@ describe("init command", () => {
 		it("should ask for a name when default.rogen.json exists", async () => {
 			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService([
-				false,
+				"separate",
 				"test",
-				...Array(6).fill(ACCEPT_DEFAULT),
+				...Array(9).fill(ACCEPT_DEFAULT),
 			]);
 
 			await runInit([], prompts);
@@ -518,7 +521,11 @@ describe("init command", () => {
 
 		it("should fail after the Darklua question when a file it would write exists", async () => {
 			await write("source.rogen.json", "{}");
-			const prompts = new MockPromptService([ACCEPT_DEFAULT, true]);
+			const prompts = new MockPromptService([
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				true,
+			]);
 
 			const result = await runInit([], prompts);
 
@@ -528,13 +535,13 @@ describe("init command", () => {
 					resource: path.join(cwd, "source.rogen.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(2);
+			expect(prompts.asked).toHaveLength(3);
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 
 		it("should not ask for a name that was given", async () => {
 			const prompts = new MockPromptService(
-				Array(6).fill(ACCEPT_DEFAULT)
+				Array(9).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit(["lobby"], prompts);
@@ -571,31 +578,28 @@ describe("init command", () => {
 			await write("src/A.luau");
 		};
 		const offerAnd = (...answers: ScriptedAnswer[]) =>
-			new MockPromptService([true, ...answers]);
+			new MockPromptService(["place", ...answers]);
 
-		it("should offer a place, preselected, when default.rogen.json exists", async () => {
+		it("should ask what to add when default.rogen.json exists", async () => {
 			await setUpLuau();
 			const prompts = new MockPromptService([CANCEL]);
 
 			await runInit([], prompts);
 
 			expect(prompts.asked).toEqual([
-				"Add a place that extends default.rogen.json?",
+				"default.rogen.json exists. What do you want to add?",
 			]);
-			expect(prompts.prompts[0].description).toContain(
-				"A place is another Roblox place"
-			);
 		});
 
 		it("should not offer a place when default.rogen.json does not exist", async () => {
 			const prompts = new MockPromptService(
-				Array(6).fill(ACCEPT_DEFAULT)
+				Array(9).fill(ACCEPT_DEFAULT)
 			);
 
 			await runInit([], prompts);
 
 			expect(prompts.asked).not.toContain(
-				"Add a place that extends default.rogen.json?"
+				"default.rogen.json exists. What do you want to add?"
 			);
 		});
 
@@ -634,7 +638,7 @@ describe("init command", () => {
 			await runInit([], prompts);
 
 			expect(prompts.asked).toEqual([
-				"Add a place that extends default.rogen.json?",
+				"default.rogen.json exists. What do you want to add?",
 				"Place name",
 				"Place folder",
 			]);
@@ -766,13 +770,15 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
+				"info: ",
 				"success: Created lobby.rogen.json.",
 				"success: Created tsconfig.lobby.json.",
 				"step: Next steps",
-				'info: Add "include": ["src"] to tsconfig.json, so its build skips places/lobby.',
-				"info: rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-				"info: rogen watch lobby",
-				"info: rojo serve lobby.project.json",
+				'info: Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
+				"info: Run each in its own terminal:",
+				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+				"info:   rogen watch lobby",
+				"info:   rojo serve lobby.project.json",
 				'info: Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
 				"outro: Wrote 2 files.",
 			]);
@@ -790,9 +796,9 @@ describe("init command", () => {
 		it("should fall through to the full flow when declined", async () => {
 			await setUpLuau();
 			const prompts = new MockPromptService([
-				false,
+				"separate",
 				"test",
-				...Array(6).fill(ACCEPT_DEFAULT),
+				...Array(9).fill(ACCEPT_DEFAULT),
 			]);
 
 			await runInit([], prompts);
@@ -812,15 +818,15 @@ describe("init command", () => {
 			await write("test.rogen.json", "{}");
 
 			await expect(
-				runInit([], new MockPromptService([false, "test"]))
+				runInit([], new MockPromptService(["separate", "test"]))
 			).rejects.toThrow("test.rogen.json already exists.");
 		});
 
 		it("should use the given name for the full flow when declined", async () => {
 			await setUpLuau();
 			const prompts = new MockPromptService([
-				false,
-				...Array(6).fill(ACCEPT_DEFAULT),
+				"separate",
+				...Array(9).fill(ACCEPT_DEFAULT),
 			]);
 
 			await runInit(["test"], prompts);
@@ -836,6 +842,77 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(await exists("lobby.rogen.json")).toBe(false);
+		});
+	});
+
+	describe("several places", () => {
+		it("should write default and one config per detected place without a terminal", async () => {
+			await write("src/A.luau");
+			await write("places/lobby/B.luau");
+			await write("places/match/C.luau");
+
+			const result = await runInit();
+
+			expect(result.isOk()).toBe(true);
+			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
+				"src",
+			]);
+			expect(await readJson("lobby.rogen.json")).toEqual({
+				$schema: SCHEMA_URL,
+				extends: "./default.rogen.json",
+				rootDirs: ["src", "places/lobby"],
+			});
+			expect((await readJson("match.rogen.json")).rootDirs).toEqual([
+				"src",
+				"places/match",
+			]);
+		});
+
+		it("should write one config when a name is given", async () => {
+			await write("places/lobby/B.luau");
+
+			await runInit(["game"]);
+
+			expect(await exists("game.rogen.json")).toBe(true);
+			expect(await exists("lobby.rogen.json")).toBe(false);
+		});
+
+		it("should write a tsconfig per roblox-ts place and say how to switch", async () => {
+			await write("tsconfig.json", '{ "include": ["src"] }');
+			await write("places/lobby/B.ts");
+			await write("places/match/C.ts");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(await exists("tsconfig.lobby.json")).toBe(true);
+			expect(await exists("tsconfig.match.json")).toBe(true);
+			expect(logService.lines).toEqual(
+				expect.arrayContaining([
+					"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+					"info: Swap lobby for match to work on another place.",
+				])
+			);
+		});
+	});
+
+	describe("variants", () => {
+		it("should write a config that extends default", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ rootDirs: ["src"] })
+			);
+
+			const result = await runInit(
+				[],
+				new MockPromptService(["variant", "prod"])
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await readJson("prod.rogen.json")).toEqual({
+				$schema: SCHEMA_URL,
+				extends: "./default.rogen.json",
+			});
 		});
 	});
 
@@ -892,18 +969,38 @@ describe("init command", () => {
 			expect(await exists("template.project.json")).toBe(false);
 		});
 
-		it("should ignore an existing default.project.json", async () => {
+		it("should keep a hand-written default.project.json as the template", async () => {
 			await write("default.project.json", '{"name":"hand-written"}');
+			const logService = new MockLogService();
 
-			const result = await runInit();
+			const result = await runInit(
+				[],
+				new MockPromptService([], false),
+				logService
+			);
 
 			expect(result.isOk()).toBe(true);
 			expect(await read("default.project.json")).toBe(
 				'{"name":"hand-written"}'
 			);
-			expect(
-				(await readJson("default.rogen.json")).template
-			).toBeUndefined();
+			expect(await read("template.project.json")).toBe(
+				'{"name":"hand-written"}'
+			);
+			expect((await readJson("default.rogen.json")).template).toBe(
+				"template.project.json"
+			);
+			expect(logService.lines).toContain(
+				"info: Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build."
+			);
+		});
+
+		it("should leave a project file that another config writes alone", async () => {
+			await write("lobby.rogen.json", "{}");
+			await write("lobby.project.json", "{}");
+
+			await runInit();
+
+			expect(await exists("template.project.json")).toBe(false);
 		});
 	});
 

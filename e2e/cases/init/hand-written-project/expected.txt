@@ -2,16 +2,16 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Syncing from dist-ts, where roblox-ts compiles to.
+  Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
   Created template.project.json.
   Created default.rogen.json.
   Next steps
     Run each in its own terminal:
-      rbxtsc -w
       rogen watch
       rojo serve default.project.json
+    Remove the nodes in template.project.json that point into src; Rogen generates those now.
     Add your own routes under "routes" in default.rogen.json.
-    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
   Wrote 2 files.
 
 $ rogen build
@@ -33,21 +33,21 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	},
-	"template": "template.project.json",
-	"syncDir": "dist-ts"
+	"template": "template.project.json"
 }
 
 $ rojo sourcemap default.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
+my-game: DataModel
   ServerScriptService: ServerScriptService
-    main: Script  <- dist-ts/server/main.server.luau
+    Combat: Folder
+      Damage: Script  <- src/Combat/Damage.server.luau
+  Workspace: Workspace
 
 $ rojo sourcemap template.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
+my-game: DataModel
+  Workspace: Workspace
