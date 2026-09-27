@@ -31,19 +31,22 @@ jobs:
             - name: Check Tag Matches Package Version
               run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
 
-            - name: Generate Schema
-              run: npx tsx scripts/generate-schema.ts
-
-            - name: Publish to gh-pages
+            - name: Prepare gh-pages Worktree
               run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   if git ls-remote --exit-code --heads origin gh-pages > /dev/null; then
                       git fetch origin gh-pages
                       git worktree add site gh-pages
                   else
                       git worktree add --orphan -b gh-pages site
                   fi
+
+            - name: Generate Schema
+              run: npx tsx scripts/generate-schema.ts site/schema
+
+            - name: Publish to gh-pages
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   cp -r public/schema site/
                   touch site/.nojekyll
                   cd site
