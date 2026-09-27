@@ -5,6 +5,7 @@ import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
+import { SCHEMA_URL } from "../../../domain/workspace/init-plan.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { readConfigFile } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
@@ -618,7 +619,7 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(await readJson("lobby.rogen.json")).toEqual({
-				$schema: "https://rogen.dev/schema/2/rogen.json",
+				$schema: SCHEMA_URL,
 				extends: "./default.rogen.json",
 				rootDirs: ["src", "places/lobby"],
 			});

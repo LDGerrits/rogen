@@ -6,18 +6,26 @@ import {
 	ConfigRegistry,
 } from "../src/platform/config/config-registry.js";
 import "../src/domain/config/config.js";
+import { schemaChannels } from "../src/domain/config/schema-url.js";
+
+const { version } = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
+	version: string;
+};
+
+const publishedDir = process.argv[2];
+const published =
+	publishedDir && fs.existsSync(publishedDir)
+		? fs
+				.readdirSync(publishedDir)
+				.filter((entry) => /^\d+\.\d+\.\d+(-.+)?$/.test(entry))
+		: [];
 
 const registry = Registry.as<ConfigRegistry>(Extensions.Config);
-const schema = registry.getJsonSchema();
+const content = JSON.stringify(registry.getJsonSchema(), null, "\t");
 
-const outDir = path.resolve(process.cwd(), "public");
-if (!fs.existsSync(outDir)) {
-	fs.mkdirSync(outDir);
+for (const channel of schemaChannels(version, published)) {
+	const dir = path.resolve("public", "schema", channel);
+	fs.mkdirSync(dir, { recursive: true });
+	fs.writeFileSync(path.join(dir, "rogen.json"), content);
+	console.log(`Generated schema/${channel}/rogen.json`);
 }
-
-fs.writeFileSync(
-	path.join(outDir, "schema.json"),
-	JSON.stringify(schema, null, "\t")
-);
-
-console.log("Successfully generated schema.json");

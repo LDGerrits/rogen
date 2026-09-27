@@ -85,5 +85,6 @@ jobs:
               uses: softprops/action-gh-release@v2
               with:
                   files: final-assets/*
+                  prerelease: ${{ contains(github.ref_name, '-') }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

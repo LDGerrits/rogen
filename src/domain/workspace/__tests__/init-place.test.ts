@@ -4,6 +4,7 @@ import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
+import { SCHEMA_URL as SCHEMA } from "../init-plan.js";
 import {
 	BaseConfig,
 	PlaceChoices,
@@ -58,8 +59,6 @@ const written = (result: ReturnType<typeof plan>) => {
 		nextSteps: value.nextSteps,
 	};
 };
-
-const SCHEMA = "https://rogen.dev/schema/2/rogen.json";
 
 describe("planPlace", () => {
 	describe("luau", () => {
