@@ -29,6 +29,84 @@ describe("ConsolePromptService", () => {
 		});
 	});
 
+	describe("frame", () => {
+		const details = {
+			description: "Folders to scan.",
+			hint: "Found code in: src",
+		};
+		const prompts = {
+			text: () => service.text({ message: "Root dirs", ...details }),
+			confirm: () =>
+				service.confirm({ message: "Root dirs", ...details }),
+			select: () =>
+				service.select({
+					message: "Root dirs",
+					choices: [{ value: "a", label: "A" }],
+					...details,
+				}),
+			multiSelect: () =>
+				service.multiSelect({
+					message: "Root dirs",
+					choices: [{ value: "a", label: "A" }],
+					...details,
+				}),
+		};
+
+		for (const [kind, ask] of Object.entries(prompts)) {
+			it(`should show the details while a ${kind} is open and drop them once answered`, async () => {
+				const answer = ask();
+				await terminal.press();
+				const open = terminal.screen;
+				await terminal.press(KEY.enter);
+				await answer;
+				const answered = terminal.screen.slice(open.length);
+
+				expect(open).toContain("Folders to scan.");
+				expect(open).toContain("Found code in: src");
+				expect(answered).toContain("Root dirs");
+				expect(answered).not.toContain("Folders to scan.");
+				expect(answered).not.toContain("Found code in: src");
+			});
+
+			it(`should draw one gutter per line for a ${kind}`, async () => {
+				const answer = ask();
+				await terminal.press(KEY.enter);
+				await answer;
+				expect(terminal.screen).not.toMatch(/│\s+│/);
+			});
+		}
+
+		it("should wrap a long description under the gutter", async () => {
+			const words = Array(30).fill("scan").join(" ");
+			const answer = service.text({
+				message: "Root dirs",
+				description: words,
+			});
+			await terminal.press(KEY.ctrlC);
+			await answer;
+			const lines = terminal.screen
+				.split("\n")
+				.filter((line) => line.includes("scan"));
+			expect(lines.length).toBeGreaterThan(1);
+			for (const line of lines) expect(line).toMatch(/^│/);
+		});
+
+		it("should show every choice's hint, not only the focused one", async () => {
+			const answer = service.multiSelect({
+				message: "Routes",
+				choices: [
+					{ value: "a", label: "A", hint: "→ first" },
+					{ value: "b", label: "B", hint: "→ second" },
+				],
+			});
+			await terminal.press();
+			expect(terminal.screen).toContain("→ first");
+			expect(terminal.screen).toContain("→ second");
+			await terminal.press(KEY.ctrlC);
+			await answer;
+		});
+	});
+
 	describe("text", () => {
 		it("should resolve to the placeholder when Enter is pressed on an empty field", async () => {
 			const answer = service.text({

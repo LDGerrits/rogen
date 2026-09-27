@@ -1,30 +1,99 @@
-import * as clack from "@clack/prompts";
+import {
+	ConfirmPrompt,
+	MultiSelectPrompt,
+	Prompt,
+	SelectPrompt,
+	TextPrompt,
+	isCancel,
+	wrapTextWithPrefix,
+} from "@clack/core";
+import {
+	MULTISELECT_INSTRUCTIONS,
+	SELECT_INSTRUCTIONS,
+	S_BAR,
+	S_BAR_END,
+	S_CHECKBOX_ACTIVE,
+	S_CHECKBOX_INACTIVE,
+	S_CHECKBOX_SELECTED,
+	S_RADIO_ACTIVE,
+	S_RADIO_INACTIVE,
+	formatInstructionFooter,
+	limitOptions,
+	symbol,
+	symbolBar,
+} from "@clack/prompts";
 import { Readable, Writable } from "stream";
 import { styleText } from "util";
 import {
 	ConfirmPromptOptions,
 	MultiSelectPromptOptions,
-	PromptDetails,
 	PromptChoice,
+	PromptDetails,
 	PromptService,
 	SelectPromptOptions,
 	TextPromptOptions,
 } from "./prompt-service.js";
 
-const toOption = <T extends string>({ value, label, hint }: PromptChoice<T>) =>
-	({ value, label, hint }) as clack.Option<T>;
+type State = Prompt<unknown>["state"];
 
-const GUTTER = styleText("gray", "│");
+const dim = (text: string) => styleText("dim", text);
+const struck = (text: string) => styleText(["strikethrough", "dim"], text);
 
-const withDetails = (message: string, { description, hint }: PromptDetails) => {
-	const lines = [description, hint]
+const choiceText = <T extends string>(
+	{ label, hint }: PromptChoice<T>,
+	styleLabel: (label: string) => string = (text) => text
+) => `${styleLabel(label)}${hint ? ` ${dim(`(${hint})`)}` : ""}`;
+
+interface Frame {
+	readonly state: State;
+	readonly message: string;
+	readonly details: PromptDetails;
+	/** Lines under the title while the prompt is open. */
+	readonly body: readonly string[];
+	/** The answer shown once the prompt is submitted or cancelled. */
+	readonly answer: string;
+	/** Lines under the closing corner, such as the keys or an error. */
+	readonly footer?: readonly string[];
+}
+
+/** Draws one prompt: its description and hint only while it's open, then just the title and answer. */
+function drawFrame(output: Writable, frame: Frame): string {
+	const { state, message, details } = frame;
+	const bar = `${symbolBar(state) ?? styleText("gray", S_BAR)}  `;
+	const gray = `${styleText("gray", S_BAR)}  `;
+	const wrap = (text: string, prefix: string, first = prefix) =>
+		wrapTextWithPrefix(output, text, prefix, first);
+	const head = [
+		styleText("gray", S_BAR),
+		wrap(message, bar, `${symbol(state)}  `),
+	];
+
+	if (state === "submit") {
+		return [...head, wrap(dim(frame.answer), gray)].join("\n");
+	}
+	if (state === "cancel") {
+		return [
+			...head,
+			...(frame.answer ? [wrap(struck(frame.answer), gray)] : []),
+			styleText("gray", S_BAR),
+		].join("\n");
+	}
+
+	const detailLines = [details.description, details.hint]
 		.filter((text): text is string => text !== undefined)
-		.flatMap((text) => text.split("\n"));
-	return [
-		message,
-		...lines.map((line) => `${GUTTER}  ${styleText("dim", line)}`),
-	].join("\n");
-};
+		.flatMap((text) => text.split("\n"))
+		.map((line) => wrap(dim(line), bar));
+	return `${[
+		...head,
+		...detailLines,
+		...frame.body.map((line) => `${bar}${line}`),
+		...(frame.footer ?? [styleText("cyan", S_BAR_END)]),
+	].join("\n")}\n`;
+}
+
+const errorFooter = (error: string) => [
+	`${styleText("yellow", S_BAR_END)}  ${styleText("yellow", error)}`,
+];
 
 interface PromptStreams {
 	readonly input?: Readable & { readonly isTTY?: boolean };
@@ -46,50 +115,132 @@ export class ConsolePromptService implements PromptService {
 	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {
-		const { placeholder = "" } = options;
-		const answer = await clack.text({
+		const { placeholder = "", validate } = options;
+		const { output } = this.streams;
+		const answer = await new TextPrompt({
 			...this.streams,
-			message: withDetails(options.message, options),
 			placeholder,
 			defaultValue: placeholder,
-			validate:
-				options.validate &&
-				((value) => options.validate?.(value || placeholder)),
-		});
-		return clack.isCancel(answer) ? undefined : answer;
+			validate: validate && ((value) => validate(value || placeholder)),
+			render() {
+				const empty = placeholder
+					? `${styleText("inverse", placeholder[0])}${dim(placeholder.slice(1))}`
+					: styleText(["inverse", "hidden"], "_");
+				return drawFrame(output, {
+					state: this.state,
+					message: options.message,
+					details: options,
+					body: [this.userInput ? this.userInputWithCursor : empty],
+					answer: this.value ?? "",
+					...(this.state === "error" && {
+						footer: errorFooter(this.error),
+					}),
+				});
+			},
+		}).prompt();
+		return isCancel(answer) ? undefined : answer;
 	}
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
-		const answer = await clack.confirm({
+		const { output } = this.streams;
+		const [yes, no] = ["Yes", "No"];
+		const answer = await new ConfirmPrompt({
 			...this.streams,
-			message: withDetails(options.message, options),
-			initialValue: options.initialValue,
-		});
-		return clack.isCancel(answer) ? undefined : answer;
+			active: yes,
+			inactive: no,
+			initialValue: options.initialValue ?? true,
+			render() {
+				const radio = (on: boolean, label: string) =>
+					on
+						? `${styleText("green", S_RADIO_ACTIVE)} ${label}`
+						: `${dim(S_RADIO_INACTIVE)} ${dim(label)}`;
+				return drawFrame(output, {
+					state: this.state,
+					message: options.message,
+					details: options,
+					body: [
+						`${radio(Boolean(this.value), yes)} ${dim("/")} ${radio(!this.value, no)}`,
+					],
+					answer: this.value ? yes : no,
+				});
+			},
+		}).prompt();
+		return isCancel(answer) ? undefined : answer;
 	}
 
 	async select<T extends string>(
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
-		const answer = await clack.select<T>({
+		const { output } = this.streams;
+		const answer = await new SelectPrompt<PromptChoice<T>>({
 			...this.streams,
-			message: withDetails(options.message, options),
-			options: options.choices.map(toOption),
+			options: [...options.choices],
 			initialValue: options.initialValue,
-		});
-		return clack.isCancel(answer) ? undefined : answer;
+			render() {
+				const rows = limitOptions({
+					output,
+					cursor: this.cursor,
+					options: this.options,
+					style: (choice, active) =>
+						active
+							? `${styleText("green", S_RADIO_ACTIVE)} ${choiceText(choice)}`
+							: `${dim(S_RADIO_INACTIVE)} ${choiceText(choice, dim)}`,
+				});
+				return drawFrame(output, {
+					state: this.state,
+					message: options.message,
+					details: options,
+					body: rows,
+					answer: this.options[this.cursor]?.label ?? "",
+					footer: formatInstructionFooter(SELECT_INSTRUCTIONS, true),
+				});
+			},
+		}).prompt();
+		return isCancel(answer) ? undefined : (answer as T);
 	}
 
 	async multiSelect<T extends string>(
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined> {
-		const answer = await clack.multiselect<T>({
+		const { output } = this.streams;
+		const answer = await new MultiSelectPrompt<PromptChoice<T>>({
 			...this.streams,
-			message: withDetails(options.message, options),
-			options: options.choices.map(toOption),
+			options: [...options.choices],
 			initialValues: options.initialValues && [...options.initialValues],
 			required: false,
-		});
-		return clack.isCancel(answer) ? undefined : answer;
+			render() {
+				const ticked = (this.value ?? []) as T[];
+				const rows = limitOptions({
+					output,
+					cursor: this.cursor,
+					options: this.options,
+					style: (choice, active) => {
+						const box = ticked.includes(choice.value)
+							? styleText("green", S_CHECKBOX_SELECTED)
+							: active
+								? styleText("cyan", S_CHECKBOX_ACTIVE)
+								: dim(S_CHECKBOX_INACTIVE);
+						return `${box} ${choiceText(choice, active ? undefined : dim)}`;
+					},
+				});
+				const labels = this.options
+					.filter(({ value }) => ticked.includes(value))
+					.map(({ label }) => label);
+				return drawFrame(output, {
+					state: this.state,
+					message: options.message,
+					details: options,
+					body: rows,
+					answer:
+						labels.join(", ") ||
+						(this.state === "submit" ? "none" : ""),
+					footer: formatInstructionFooter(
+						MULTISELECT_INSTRUCTIONS,
+						true
+					),
+				});
+			},
+		}).prompt();
+		return isCancel(answer) ? undefined : (answer as T[]);
 	}
 }
