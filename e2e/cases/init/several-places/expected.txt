@@ -1,0 +1,96 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Created default.rogen.json.
+  Created lobby.rogen.json.
+  Created match.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch lobby
+      rojo serve lobby.project.json
+    Swap lobby for match to work on another place.
+    Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 3 files.
+
+$ rogen build default lobby match
+exit 0
+stdout:
+  rogen build · default, lobby, match
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · wrote
+  match
+    match.project.json · wrote
+  Built 3 configs.
+
+written:
+  default.project.json
+  default.rogen.json
+  lobby.project.json
+  lobby.rogen.json
+  match.project.json
+  match.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}
+
+match.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/match"
+	]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+  ServerScriptService: ServerScriptService
+    Lobby: Folder
+      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+  ServerScriptService: ServerScriptService
+    Match: Folder
+      Arena: ModuleScript  <- places/match/Match/Server/Arena.luau

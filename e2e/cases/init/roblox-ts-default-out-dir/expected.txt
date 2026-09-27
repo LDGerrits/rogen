@@ -2,12 +2,14 @@ $ rogen init
 exit 0
 stdout:
   rogen init
+  Syncing from out, where roblox-ts compiles to.
   Created template.project.json.
   Created default.rogen.json.
   Next steps
-    rbxtsc -w
-    rogen watch
-    rojo serve default.project.json
+    Run each in its own terminal:
+      rbxtsc -w
+      rogen watch
+      rojo serve default.project.json
     Add your own routes under "routes" in default.rogen.json.
     Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
   Wrote 2 files.

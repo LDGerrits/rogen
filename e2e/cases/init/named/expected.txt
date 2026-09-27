@@ -4,8 +4,9 @@ stdout:
   rogen init
   Created lobby.rogen.json.
   Next steps
-    rogen watch lobby
-    rojo serve lobby.project.json
+    Run each in its own terminal:
+      rogen watch lobby
+      rojo serve lobby.project.json
     Add your own routes under "routes" in lobby.rogen.json.
     Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.
   Wrote 1 file.

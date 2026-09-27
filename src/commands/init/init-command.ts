@@ -13,7 +13,12 @@ import {
 	defaultInitChoices,
 	existingFileDiagnostics,
 	parseInitName,
+	renderSteps,
 } from "../../domain/workspace/init-plan.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	readBaseConfig,
+} from "../../domain/workspace/init-place.js";
 import { planAnswers } from "../../domain/workspace/plan-answers.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -86,6 +91,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			workspace,
 			directory: cwd,
 			existingFiles,
+			...(promptService.isInteractive &&
+				existingFiles.has(DEFAULT_CONFIG_FILE) && {
+					base: await readBaseConfig(fileSystemService, cwd),
+				}),
 		};
 		let answers: InitAnswers | undefined;
 		if (promptService.isInteractive) {
@@ -95,7 +104,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		} else {
 			answers = {
 				kind: "project",
-				choices: defaultInitChoices(workspace, nameResult.value),
+				choices: defaultInitChoices(
+					workspace,
+					nameResult.value,
+					existingFiles,
+					givenName === undefined
+				),
 			};
 		}
 		if (!answers) return err(new CancelledError("init cancelled."));
@@ -112,8 +126,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const files: PlannedFile[] = [
 			...(plan.template ? [plan.template] : []),
 			...plan.configs,
-			...(plan.tsconfig ? [plan.tsconfig] : []),
+			...plan.tsconfigs,
 		];
+		// A blank gutter line sets the results apart from the last answer.
+		if (promptService.isInteractive) logService.info("");
+		for (const note of plan.notes) logService.info(note);
 		for (const { fileName, content } of files) {
 			try {
 				await fileSystemService.writeFile(
@@ -132,7 +149,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		}
 
 		logService.step("Next steps");
-		for (const line of plan.nextSteps) logService.info(line);
+		for (const line of renderSteps(plan.nextSteps)) logService.info(line);
 		logService.outro(
 			`Wrote ${files.length} ${files.length === 1 ? "file" : "files"}.`
 		);

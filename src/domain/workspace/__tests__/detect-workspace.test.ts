@@ -27,6 +27,7 @@ describe("detectWorkspace", () => {
 				packageDirs: new Set(),
 				rbxtsScopes: [],
 				hasInclude: false,
+				places: [],
 			});
 		});
 
@@ -160,18 +161,27 @@ describe("detectWorkspace", () => {
 	describe("code folders", () => {
 		it("should list top-level folders holding code, sorted", async () => {
 			await write("src/a/b/Deep.luau");
-			await write("places/lobby/Game.server.lua");
+			await write("lib/Game.server.lua");
 			await write("shared/Util.ts");
 			await write("web/App.tsx");
 
 			const workspace = await detectWorkspace(fs, cwd);
 
 			expect(workspace.codeFolders).toEqual([
-				"places",
+				"lib",
 				"shared",
 				"src",
 				"web",
 			]);
+		});
+
+		it("should leave out places, whose folders are places rather than code", async () => {
+			await write("src/Util.luau");
+			await write("places/lobby/Game.server.lua");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.codeFolders).toEqual(["src"]);
 		});
 
 		it("should skip folders without code, dot-folders and node_modules", async () => {
@@ -265,6 +275,23 @@ describe("detectWorkspace", () => {
 			const workspace = await detectWorkspace(fs, cwd);
 
 			expect(workspace.hasInclude).toBe(true);
+		});
+	});
+
+	describe("places", () => {
+		it("should list the folders in places, sorted", async () => {
+			await write("places/match/Game.luau");
+			await write("places/lobby/.gitkeep");
+			await write("places/.hidden/x.luau");
+			await write("places/notes.md");
+
+			const workspace = await detectWorkspace(fs, cwd);
+
+			expect(workspace.places).toEqual(["lobby", "match"]);
+		});
+
+		it("should find none without a places folder", async () => {
+			expect((await detectWorkspace(fs, cwd)).places).toEqual([]);
 		});
 	});
 });

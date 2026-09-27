@@ -16,6 +16,8 @@ export interface MountCandidate {
 	readonly installed: boolean;
 	/** Where the folder lands in the game. */
 	readonly landing: string;
+	/** Whether the packages question starts with it ticked. */
+	readonly ticked: boolean;
 }
 
 const INCLUDE_DIR = "include";
@@ -29,8 +31,9 @@ const scopePath = (scope: string) => `${SCOPE_PARENT}${scope}`;
 const candidate = (
 	mountPath: string,
 	installed: boolean,
-	landing: string
-): MountCandidate => ({ path: mountPath, installed, landing });
+	landing: string,
+	ticked = installed
+): MountCandidate => ({ path: mountPath, installed, landing, ticked });
 
 function offeredManager(
 	workspace: DetectedWorkspace,
@@ -65,17 +68,22 @@ export function offeredMounts(
 ): readonly MountCandidate[] {
 	const manager = offeredManager(workspace, language);
 	const dirs = manager ? PACKAGE_DIRS[manager] : undefined;
+	// A manifest means packages are coming, so their folders start ticked.
+	const packageDir = (dir: string, landing: string) => {
+		const installed = workspace.packageDirs.has(dir);
+		return candidate(
+			dir,
+			installed,
+			landing,
+			installed || workspace.packageManager !== undefined
+		);
+	};
 	return [
 		...(dirs
 			? [
-					candidate(
-						dirs.shared,
-						workspace.packageDirs.has(dirs.shared),
-						"ReplicatedStorage/Packages"
-					),
-					candidate(
+					packageDir(dirs.shared, "ReplicatedStorage/Packages"),
+					packageDir(
 						dirs.server,
-						workspace.packageDirs.has(dirs.server),
 						"ServerScriptService/ServerPackages"
 					),
 				]
@@ -97,7 +105,10 @@ export function offeredMounts(
 export const toMount = ({
 	path,
 	installed,
-}: MountCandidate): TemplateMount => ({ path, optional: !installed });
+}: Pick<MountCandidate, "path" | "installed">): TemplateMount => ({
+	path,
+	optional: !installed,
+});
 
 /** The always-mounted folders plus the offered ones in `ticked`. */
 export function selectMounts(
@@ -122,7 +133,7 @@ export const defaultMounts = (
 		workspace,
 		language,
 		offeredMounts(workspace, language)
-			.filter(({ installed }) => installed)
+			.filter(({ ticked }) => ticked)
 			.map(({ path }) => path)
 	);
 

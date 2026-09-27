@@ -28,11 +28,14 @@ export interface DetectedWorkspace {
 	readonly packageDirs: ReadonlySet<string>;
 	readonly rbxtsScopes: readonly string[];
 	readonly hasInclude: boolean;
+	/** The folders directly inside `places/`, sorted. */
+	readonly places: readonly string[];
 }
 
 export const DEFAULT_OUT_DIR = "out";
 const CODE_EXTENSIONS = [".luau", ".lua", ".ts", ".tsx"];
 const INCLUDE_DIR_NAME = "include";
+export const PLACES_DIR = "places";
 export const RBXTS_SCOPES = ["@rbxts", "@flamework", "@rbxts-js"] as const;
 export const PACKAGE_DIRS = {
 	wally: { shared: "Packages", server: "ServerPackages" },
@@ -90,10 +93,12 @@ export async function detectWorkspace(
 	const tsconfig = isTs
 		? await readTsconfig(fileSystem, path.join(cwd, "tsconfig.json"))
 		: undefined;
+	const places = await findPlaces(fileSystem, path.join(cwd, PLACES_DIR));
 	const codeFolders = await findCodeFolders(fileSystem, cwd, [
 		...packageDirs,
 		INCLUDE_DIR_NAME,
 		...(tsconfig ? [firstSegment(tsconfig.outDir)] : []),
+		...(places.length > 0 ? [PLACES_DIR] : []),
 	]);
 	const facts = {
 		darklua: isDarklua,
@@ -103,6 +108,7 @@ export async function detectWorkspace(
 		packageDirs: new Set(packageDirs),
 		rbxtsScopes,
 		hasInclude,
+		places,
 	};
 
 	if (tsconfig) {
@@ -222,4 +228,21 @@ async function findCodeFolders(
 		candidates.map((name) => holdsCode(fileSystem, path.join(cwd, name)))
 	);
 	return candidates.filter((_, index) => holding[index]).sort();
+}
+
+async function findPlaces(
+	fileSystem: FileSystemService,
+	dir: string
+): Promise<string[]> {
+	try {
+		return (await fileSystem.readDirectory(dir))
+			.filter(
+				([name, type]) =>
+					isDirectoryType(type) && !isHiddenOrVendored(name)
+			)
+			.map(([name]) => name)
+			.sort();
+	} catch {
+		return [];
+	}
 }

@@ -4,11 +4,12 @@ import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { DetectedWorkspace } from "../detect-workspace.js";
-import { SCHEMA_URL as SCHEMA } from "../init-plan.js";
+import { SCHEMA_URL as SCHEMA, renderSteps } from "../init-plan.js";
 import {
 	BaseConfig,
 	PlaceChoices,
 	planPlace,
+	planVariant,
 	readBaseConfig,
 } from "../init-place.js";
 
@@ -22,6 +23,7 @@ const luau: DetectedWorkspace = {
 	packageDirs: new Set(),
 	rbxtsScopes: [],
 	hasInclude: false,
+	places: [],
 };
 const darklua: DetectedWorkspace = { ...luau, darklua: true };
 const rbxts: DetectedWorkspace = {
@@ -55,8 +57,8 @@ const written = (result: ReturnType<typeof plan>) => {
 				JSON.parse(content),
 			])
 		),
-		tsconfig: value.tsconfig && JSON.parse(value.tsconfig.content),
-		nextSteps: value.nextSteps,
+		tsconfig: value.tsconfigs[0] && JSON.parse(value.tsconfigs[0].content),
+		nextSteps: renderSteps(value.nextSteps),
 	};
 };
 
@@ -103,8 +105,9 @@ describe("planPlace", () => {
 			expect(
 				written(plan(luau, { rootDirs: ["src"] })).nextSteps
 			).toEqual([
-				"rogen watch lobby",
-				"rojo serve lobby.project.json",
+				"Run each in its own terminal:",
+				"  rogen watch lobby",
+				"  rojo serve lobby.project.json",
 				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
@@ -144,11 +147,14 @@ describe("planPlace", () => {
 			);
 		});
 
-		it("should say that Darklua must process the place folder", () => {
+		it("should process each root dir to its path under the place's sync dir", () => {
 			expect(written(plan(darklua, base)).nextSteps).toEqual([
-				"rogen watch lobby",
-				"rojo serve lobby.project.json",
-				"Darklua must also process places/lobby into dist/lobby.",
+				"Run each in its own terminal:",
+				"  rogen watch lobby lobby-source",
+				"  rojo serve lobby.project.json",
+				"Have Darklua process your code into the sync dir:",
+				"  darklua process src dist/lobby/src",
+				"  darklua process places/lobby dist/lobby/places/lobby",
 				'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
@@ -224,9 +230,10 @@ describe("planPlace", () => {
 
 		it("should say how to compile, watch and serve the place", () => {
 			expect(written(plan(rbxts, base)).nextSteps).toEqual([
-				"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-				"rogen watch lobby",
-				"rojo serve lobby.project.json",
+				"Run each in its own terminal:",
+				"  rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+				"  rogen watch lobby",
+				"  rojo serve lobby.project.json",
 				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
 			]);
 		});
@@ -240,7 +247,7 @@ describe("planPlace", () => {
 			);
 
 			expect(nextSteps[0]).toBe(
-				'Add "include": ["src","shared"] to tsconfig.json, so its build skips places/lobby.'
+				'Add "include": ["src","shared"] to tsconfig.json, so its own build leaves out the place folders.'
 			);
 		});
 
@@ -253,7 +260,7 @@ describe("planPlace", () => {
 			);
 
 			expect(nextSteps).toContain(
-				"Darklua must also process out/lobby into dist/lobby."
+				"  darklua process out/lobby dist/lobby"
 			);
 		});
 	});
@@ -344,5 +351,39 @@ describe("readBaseConfig", () => {
 		expect(
 			(result as ResultError<Diagnostic[]>).error.length
 		).toBeGreaterThan(0);
+	});
+});
+
+describe("planVariant", () => {
+	it("should write a config that only extends default", () => {
+		const plan = planVariant({
+			name: "prod",
+			directory,
+			existingFiles: new Set(),
+		}).unwrap();
+
+		expect(plan.configs.map(({ fileName }) => fileName)).toEqual([
+			"prod.rogen.json",
+		]);
+		expect(JSON.parse(plan.configs[0].content)).toEqual({
+			$schema: SCHEMA,
+			extends: "./default.rogen.json",
+		});
+		expect(renderSteps(plan.nextSteps)).toEqual([
+			"Run each in its own terminal:",
+			"  rogen watch prod",
+			"  rojo serve prod.project.json",
+			'Turn tags on or off under "tags", or add "exclude", in prod.rogen.json.',
+		]);
+	});
+
+	it("should fail when the variant's config exists", () => {
+		const result = planVariant({
+			name: "prod",
+			directory,
+			existingFiles: new Set(["prod.rogen.json"]),
+		});
+
+		expect(result.isErr()).toBe(true);
 	});
 });

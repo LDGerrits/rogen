@@ -5,9 +5,11 @@ stdout:
   Created source.rogen.json.
   Created default.rogen.json.
   Next steps
-    rogen watch
-    rojo serve default.project.json
-    Darklua must process each root dir into dist (darklua process src dist).
+    Run each in its own terminal:
+      rogen watch default source
+      rojo serve default.project.json
+    Have Darklua process your code into the sync dir:
+      darklua process src dist
     Add your own routes under "routes" in source.rogen.json.
     Add tags under "tags" in source.rogen.json to swap in variants like Analytics.mock.luau.
   Wrote 2 files.

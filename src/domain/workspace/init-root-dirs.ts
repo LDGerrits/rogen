@@ -1,3 +1,4 @@
+import path from "path";
 import { toPosix } from "../../base/path.js";
 import { DetectedWorkspace, Language } from "./detect-workspace.js";
 
@@ -9,7 +10,7 @@ export function defaultRootDir(
 	language: Language
 ): string {
 	if (language === "roblox-ts" && workspace.rootDir) {
-		return toPosix(workspace.rootDir).replace(/^\.\//, "");
+		return normalizeRootDir(workspace.rootDir);
 	}
 	if (workspace.hasSrc) return DEFAULT_ROOT_DIR;
 	return workspace.codeFolders.length === 1
@@ -29,4 +30,69 @@ export function otherCodeFoldersHint(
 	return others.length > 0
 		? `Also found code in: ${others.join(", ")}`
 		: undefined;
+}
+
+/** Forward slashes, no leading `./` and no trailing `/`. */
+export const normalizeRootDir = (entry: string): string =>
+	path.posix.normalize(toPosix(entry.trim())).replace(/(.)\/+$/, "$1");
+
+/** A comma-separated answer, normalized. */
+export const parseRootDirs = (value: string): string[] =>
+	value
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter((entry) => entry !== "")
+		.map(normalizeRootDir);
+
+const isInside = (inner: string, outer: string): boolean =>
+	outer === "." || inner.startsWith(`${outer}/`);
+
+/**
+ * The first reason `entries` can't be a config's root dirs, or `undefined`.
+ * Checks what the config validator would reject, so init never writes a config
+ * that can't build.
+ */
+export function rootDirsProblem(
+	entries: readonly string[]
+): string | undefined {
+	if (entries.length === 0) return "Enter at least one root dir.";
+	for (const entry of entries) {
+		if (path.posix.isAbsolute(entry) || path.win32.isAbsolute(entry)) {
+			return `Use a path relative to here, not ${entry}.`;
+		}
+		const normalized = normalizeRootDir(entry);
+		if (normalized === ".." || normalized.startsWith("../")) {
+			return `${entry} is outside this folder.`;
+		}
+	}
+	const normalized = entries.map(normalizeRootDir);
+	for (const [index, entry] of normalized.entries()) {
+		if (normalized.indexOf(entry) !== index) {
+			return `${entry} is listed twice.`;
+		}
+		const outer = normalized.find(
+			(other) => other !== entry && isInside(entry, other)
+		);
+		if (outer !== undefined) {
+			return `${entry} is inside ${outer}. List only one of them.`;
+		}
+	}
+	return undefined;
+}
+
+/** The first reason `folder` can't join `rootDirs` as a place's own code, or `undefined`. */
+export function placeFolderProblem(
+	rootDirs: readonly string[],
+	folder: string
+): string | undefined {
+	const normalized = normalizeRootDir(folder);
+	const overlapping = rootDirs.find(
+		(dir) =>
+			dir === normalized ||
+			isInside(normalized, dir) ||
+			isInside(dir, normalized)
+	);
+	return overlapping === undefined
+		? rootDirsProblem([...rootDirs, folder])
+		: `${normalized} overlaps ${overlapping}, one of default's root dirs. Pick a folder outside it.`;
 }

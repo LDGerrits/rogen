@@ -49,9 +49,11 @@ Each rebuild prints a block headed by the time and what triggered it:
 
 Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It detects the language (roblox-ts when there is a `tsconfig.json`, else Luau), Darklua and packages once, and writes the result down as plain fields. Builds never guess.
 
-In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. When `default.rogen.json` already exists, it offers to add a **place**. It never overwrites, and never touches `.gitignore` or editor settings.
+In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. On a first run it asks whether you're setting up one place or several; with folders in `places/` it sets up several, writing one config per place that extends `default`. When `default.rogen.json` already exists, it asks what to add: a **place**, a **variant** of default, or a separate config.
 
-It ends with the next steps to run: the compiler watcher (roblox-ts), `rogen watch`, `rojo serve`, and where to add routes and tags.
+Answers are checked where they're typed: root directories may not nest or repeat, and a roblox-ts project takes one. It never overwrites, and never touches `.gitignore` or editor settings. When a hand-written project file such as `default.project.json` exists, which a build would replace, `init` copies it to `template.project.json` first, so its name, properties and packages carry over.
+
+It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and tags.
 
 ### `list`
 

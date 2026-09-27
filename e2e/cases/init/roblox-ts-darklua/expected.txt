@@ -5,10 +5,12 @@ stdout:
   Created template.project.json.
   Created default.rogen.json.
   Next steps
-    rbxtsc -w
-    rogen watch
-    rojo serve default.project.json
-    Darklua must process out into dist (darklua process out dist).
+    Run each in its own terminal:
+      rbxtsc -w
+      rogen watch
+      rojo serve default.project.json
+    Have Darklua process your code into the sync dir:
+      darklua process out dist
     Add your own routes under "routes" in default.rogen.json.
     Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.
   Wrote 2 files.

@@ -88,8 +88,11 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
     ```
-    Darklua must process each root dir into dist (darklua process src dist).
+    Have Darklua process your code into the sync dir:
+      darklua process src dist
     ```
+
+    With several root directories, each one lands at its own path under `dist` (`darklua process lib dist/lib`), and `init` prints one command per directory.
 
     ```bash
     darklua process src dist --watch
@@ -103,7 +106,8 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
   </Tab>
   <Tab value="roblox-ts">
     ```
-    Darklua must process out into dist (darklua process out dist).
+    Have Darklua process your code into the sync dir:
+      darklua process out dist
     ```
 
     ```bash
