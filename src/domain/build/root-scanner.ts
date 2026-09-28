@@ -158,9 +158,8 @@ function scanRoot(
 				);
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
-			} else if (name.startsWith(".")) {
-				markers.push(relativeTo(name));
 			} else {
+				// A key can't contain a dot, so a dot-file with a file type is never a marker.
 				const kind = classifyFile(name);
 				if (kind) {
 					entries.push({
@@ -168,6 +167,8 @@ function scanRoot(
 						rootDir,
 						relativePath: relativeTo(name),
 					});
+				} else if (name.startsWith(".")) {
+					markers.push(relativeTo(name));
 				}
 			}
 		}

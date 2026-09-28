@@ -244,6 +244,30 @@ describe("scanRootDirs", () => {
 			]);
 		});
 
+		it("should scan a dot-file with a file type as an entry", async () => {
+			await write(
+				"src/.hidden.luau",
+				"src/.hidden2.server.luau",
+				"src/.eslintrc.json",
+				"src/.gitkeep",
+				"src/.hidden.meta.json",
+				"src/.server"
+			);
+
+			const { roots } = await scan();
+
+			expect(files(roots[0])).toEqual([
+				"data:.eslintrc.json",
+				"script:.hidden.luau",
+				"script:.hidden2.server.luau",
+			]);
+			expect(roots[0].markers).toEqual([
+				".gitkeep",
+				".hidden.meta.json",
+				".server",
+			]);
+		});
+
 		it("should not list a dot-file inside an excluded directory", async () => {
 			await write("src/legacy/.server");
 
