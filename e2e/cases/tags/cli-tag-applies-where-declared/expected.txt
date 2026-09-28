@@ -5,8 +5,20 @@ stdout:
   rogen build · lobby, match
   lobby
     lobby.project.json · wrote
+    [debug] src: 2 files
+    [debug] route server -> ServerScriptService: 0 files
+    [debug] route client -> StarterPlayer/StarterPlayerScripts: 0 files
+    [debug] route shared -> ReplicatedStorage/shared: 0 files
+    [debug] route * -> ReplicatedStorage/shared: 1 file
+    [debug] tag mock on: 1 file
+    [debug] left out: 1 replaced by a file with the same name
   match
     match.project.json · wrote
+    [debug] src: 2 files
+    [debug] route server -> ServerScriptService: 0 files
+    [debug] route client -> StarterPlayer/StarterPlayerScripts: 0 files
+    [debug] route shared -> ReplicatedStorage/shared: 0 files
+    [debug] route * -> ReplicatedStorage/shared: 2 files
   Built 2 configs.
 
 written:

@@ -40,6 +40,8 @@ export interface FolderNode {
 
 export interface RoutedFile {
 	readonly entry: ScannedEntry;
+	/** The governing route key, or `*`. */
+	readonly route: string;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
 	/** Routing, tag and invisible folders name no node, so they have none. */
@@ -237,7 +239,8 @@ function routeEntry(
 		if (entry.kind === "script") name = rojoAssignedName(name);
 	}
 
-	const target = context.targets.get(governing ?? FALLBACK_ROUTE);
+	const route = governing ?? FALLBACK_ROUTE;
+	const target = context.targets.get(route);
 	if (!target) return undefined;
 	const folderNodes: FolderNode[] = [];
 	let parent: readonly string[] = [target.service, ...target.folders];
@@ -246,6 +249,7 @@ function routeEntry(
 		folderNodes.push({ instancePath: parent, dir: folder.dir });
 	}
 	return {
+		route,
 		instancePath: [...parent, name],
 		folderNodes,
 		tags,

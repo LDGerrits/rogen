@@ -94,6 +94,16 @@ describe("PlainLogService", () => {
 		expect(out).toEqual(["[debug] detail"]);
 	});
 
+	it("should indent debug lines inside a step", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Debug);
+
+		logService.step("default.rogen.json");
+		logService.debug("detail");
+
+		expect(out).toEqual(["default.rogen.json", "  [debug] detail"]);
+	});
+
 	it("should print only errors at the error level", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Error);

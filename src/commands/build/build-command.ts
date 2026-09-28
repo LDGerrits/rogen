@@ -1,7 +1,13 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
 import { readFolderMeta } from "../../domain/build/read-folder-meta.js";
-import { build, checkRoutes, rootsToIndex } from "../../domain/build/build.js";
+import {
+	BuildSummary,
+	build,
+	checkRoutes,
+	rootsToIndex,
+} from "../../domain/build/build.js";
+import { describeBuild } from "../../domain/build/describe-build.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
 import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
@@ -9,6 +15,7 @@ import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexService } from "../../platform/fs/index-service.js";
+import { RojoTree } from "../../domain/rojo/rojo-tree.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -104,7 +111,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		await indexService.initialize(rootsToIndex(entries));
 
-		const built = [];
+		const built: {
+			config: (typeof entries)[number];
+			tree: RojoTree;
+			warnings: readonly Diagnostic[];
+			summary: BuildSummary;
+		}[] = [];
 		const errors: Diagnostic[] = [];
 		for (const config of entries) {
 			const folderMeta = await readFolderMeta(
@@ -123,6 +135,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				config,
 				tree: result.value.value,
 				warnings: result.value.warnings,
+				summary: result.value.summary,
 			});
 		}
 		if (errors.length > 0) {
@@ -131,7 +144,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			return err(new DiagnosticsError(errors));
 		}
 
-		for (const { config, tree, warnings } of built) {
+		for (const { config, tree, warnings, summary } of built) {
 			if (built.length > 1) logService.step(configLabel(config.file));
 			const written = await writeOutput(fileSystemService, config, tree);
 			if (written.isErr())
@@ -142,6 +155,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.success(
 				`${outFile} · ${written.value.value.written ? "wrote" : "unchanged"}`
 			);
+			for (const line of describeBuild(summary, environmentService.cwd))
+				logService.debug(line);
 			logDiagnostics(logService, [
 				...warnings,
 				...written.value.warnings,

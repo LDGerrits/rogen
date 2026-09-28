@@ -34,7 +34,9 @@ import { dropSourceUpdates } from "../../domain/watch/drop-source-updates.js";
 import {
 	clockTime,
 	describeChange,
+	describeFileChanges,
 } from "../../domain/watch/describe-change.js";
+import { describeBuild } from "../../domain/build/describe-build.js";
 import { PrintedDiagnostics } from "../../domain/watch/printed-diagnostics.js";
 import { createWatchPlan } from "../../domain/watch/watch-plan.js";
 import { Registry } from "../../platform/registry/registry.js";
@@ -47,6 +49,7 @@ interface RebuildReport {
 	readonly outFile: string;
 	readonly outcome: "wrote" | "unchanged" | "failed";
 	readonly diagnostics: readonly Diagnostic[];
+	readonly details: readonly string[];
 }
 
 interface ConfigNotice {
@@ -151,11 +154,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				path.relative(environmentService.cwd, config.outFile) || ".";
 			const finish = (
 				outcome: RebuildReport["outcome"],
-				diagnostics: readonly Diagnostic[]
+				diagnostics: readonly Diagnostic[],
+				details: readonly string[] = []
 			): RebuildReport => ({
 				outFile,
 				outcome,
 				diagnostics,
+				details,
 			});
 
 			const missingRoutes = checkRoutes([
@@ -201,7 +206,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			];
 			return finish(
 				written.value.value.written ? "wrote" : "unchanged",
-				diagnostics
+				diagnostics,
+				describeBuild(built.value.summary, environmentService.cwd)
 			);
 		};
 
@@ -220,6 +226,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			outFile,
 			outcome,
 			diagnostics,
+			details,
 		}: RebuildReport) => {
 			if (outcome === "failed") {
 				logService.error(
@@ -230,6 +237,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			} else {
 				logService.success(`${outFile} · ${outcome}`);
 			}
+			for (const line of details) logService.debug(line);
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
 		};
@@ -277,7 +285,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		const announce = (
 			title: string,
-			results: readonly Promise<RebuildReport | undefined>[]
+			results: readonly Promise<RebuildReport | undefined>[],
+			changedFiles: readonly FileChange[] = []
 		): void => {
 			const at = new Date();
 			const raised = notices.splice(0);
@@ -290,6 +299,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 						);
 						if (raised.length === 0 && reports.length === 0) return;
 						logService.step(`${clockTime(at)} · ${title}`);
+						for (const line of describeFileChanges(
+							changedFiles,
+							environmentService.cwd
+						))
+							logService.debug(line);
 						raised.forEach(printNotice);
 						reports.forEach(printReport);
 					})
@@ -391,7 +405,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 					configFiles: configFiles.map((file) => path.basename(file)),
 					reloaded: reloaded.length > 0,
 				}),
-				results
+				results,
+				sourceChanges
 			);
 		};
 

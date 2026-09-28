@@ -1,0 +1,7 @@
+{
+	"rootDirs": ["src", "lib"],
+	"routes": {
+		"server": "ServerScriptService"
+	},
+	"tags": { "mock": true }
+}

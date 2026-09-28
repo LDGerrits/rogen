@@ -11,12 +11,36 @@ import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
-import { routeFiles } from "./route-files.js";
+import { RoutedFile, routeFiles } from "./route-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
+
+export interface BuildSummary {
+	readonly roots: readonly {
+		readonly rootDir: string;
+		readonly files: number;
+		readonly excluded: number;
+		readonly skippedLinks: number;
+	}[];
+	/** In the order the config declares them. */
+	readonly routes: readonly {
+		readonly key: string;
+		readonly target: string;
+		readonly files: number;
+	}[];
+	/** Files carrying each declared tag: placed when it's on, left out when it's off. */
+	readonly tags: readonly {
+		readonly tag: string;
+		readonly on: boolean;
+		readonly files: number;
+	}[];
+	readonly unrouted: number;
+	readonly superseded: number;
+}
 
 export interface BuildOutput {
 	readonly value: RojoTree;
 	readonly warnings: readonly Diagnostic[];
+	readonly summary: BuildSummary;
 }
 
 /** An error per config whose chain declares no routes, so the caller can refuse before scanning anything. */
@@ -61,8 +85,36 @@ export function build(
 	if (assembly.isErr()) return assembly;
 
 	const unclaimedMeta = findUnclaimedMeta(index, scan.roots);
+	const countOf = (
+		files: readonly RoutedFile[],
+		has: (file: RoutedFile) => boolean
+	) => files.filter(has).length;
+	const summary: BuildSummary = {
+		roots: scan.roots.map((root) => ({
+			rootDir: root.rootDir,
+			files: root.entries.length,
+			excluded: root.excluded.length,
+			skippedLinks: root.skippedLinks.length,
+		})),
+		routes: Object.entries(config.routes).map(([key, target]) => ({
+			key,
+			target,
+			files: countOf(tagging.value.files, (file) => file.route === key),
+		})),
+		tags: Object.entries(config.tags).map(([tag, on]) => ({
+			tag,
+			on,
+			files: countOf(routing.value.routed, (file) =>
+				file.tags.some((match) => match.tag === tag)
+			),
+		})),
+		unrouted: routing.value.unrouted.length,
+		superseded: tagging.value.superseded.length,
+	};
+
 	return ok({
 		value: assembly.value.value,
+		summary,
 		warnings: [
 			...scan.warnings,
 			...(unclaimedMeta.length > 0
