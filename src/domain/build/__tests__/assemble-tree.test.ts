@@ -1,5 +1,6 @@
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
@@ -910,6 +911,55 @@ describe("assembleTree", () => {
 			expect(warnings[0].message).toContain("Combat.meta.json");
 		});
 
+		it("should name the init folder's own meta when a folder shares its instance with one", async () => {
+			await write(
+				"src/Combat/Hit.server.luau",
+				"src/server/Combat/init.server.luau"
+			);
+			await writeMeta("src/Combat/init.meta.json", {
+				className: "Actor",
+			});
+
+			const { warnings } = await assemble({ routes: SPLIT });
+
+			expect(warnings).toMatchObject([{ code: "meta.sharedWithScript" }]);
+			expect(warnings[0].message).toContain(
+				`${toPosix(abs("src/server/Combat"))}/init.meta.json`
+			);
+			expect(warnings[0].message).not.toContain("beside the script");
+		});
+
+		it("should let the template's $id win without counting the meta's", async () => {
+			await write(
+				"src/Combat/server/Hit.luau",
+				"src/Combat/client/Aim.luau"
+			);
+			await writeMeta("src/Combat/init.meta.json", { id: "combat" });
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: {
+						$className: "ServerScriptService",
+						Combat: { $className: "Folder", $id: "server" },
+					},
+				},
+			});
+
+			const { value } = await assemble({ routes: SPLIT, template });
+
+			expect(
+				nodeAt(value.tree, "ServerScriptService", "Combat").$id
+			).toBe("server");
+			expect(
+				nodeAt(
+					value.tree,
+					"StarterPlayer",
+					"StarterPlayerScripts",
+					"Combat"
+				).$id
+			).toBe("combat");
+		});
+
 		it("should copy nothing from a folder whose files were all pruned", async () => {
 			await write("src/Mocks/Http.mock.luau", "src/A.luau");
 			await writeMeta("src/Mocks/init.meta.json", { className: "Actor" });
@@ -1135,7 +1185,12 @@ describe("assembleTree", () => {
 			expect(
 				nodeAt(value.tree, "ServerScriptService", "Packages").$className
 			).toBeUndefined();
-			expect(warnings).toMatchObject([{ code: "tree.templateClash" }]);
+			expect(warnings).toMatchObject([
+				{
+					code: "meta.templatePath",
+					resource: abs("src/Packages/init.meta.json"),
+				},
+			]);
 		});
 
 		it("should warn once about meta in a routing, tag or invisible folder or a root dir", async () => {

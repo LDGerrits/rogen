@@ -10,6 +10,11 @@ import { UnclaimedMeta } from "./unclaimed-meta.js";
 export type InstancelessFolder =
 	"root dir" | "routing folder" | "tag folder" | "invisible folder";
 
+export interface InstancelessMeta {
+	readonly file: string;
+	readonly kind: InstancelessFolder;
+}
+
 export const MetaDiagnostics = {
 	unreadable: (location: DiagnosticLocation, detail: string): Diagnostic =>
 		errorDiagnostic(
@@ -92,6 +97,27 @@ export const MetaDiagnostics = {
 			`this folder shares "${instance}" with ${fileName}, which is what Rojo reads there, so its meta applies to nothing. Put it in ${fix} beside the script, or turn the folder into an init folder.`
 		),
 
+	sharedWithInitFolder: (
+		location: DiagnosticLocation,
+		instance: string,
+		initMeta: string
+	): Diagnostic =>
+		warningDiagnostic(
+			"meta.sharedWithScript",
+			location,
+			`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${initMeta} instead.`
+		),
+
+	templatePath: (
+		location: DiagnosticLocation,
+		instance: string
+	): Diagnostic =>
+		warningDiagnostic(
+			"meta.templatePath",
+			location,
+			`the template gives "${instance}" its own $path, so this meta isn't copied there. Set the fields on the template's node instead.`
+		),
+
 	templateClass: (
 		location: DiagnosticLocation,
 		instance: string,
@@ -107,10 +133,7 @@ export const MetaDiagnostics = {
 
 	appliesToNothing: (
 		location: DiagnosticLocation,
-		metas: readonly {
-			readonly file: string;
-			readonly kind: InstancelessFolder;
-		}[]
+		metas: readonly InstancelessMeta[]
 	): Diagnostic =>
 		warningDiagnostic(
 			"meta.appliesToNothing",

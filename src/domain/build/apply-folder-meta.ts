@@ -5,16 +5,18 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoNode } from "../rojo/rojo-tree.js";
 import { matchFolderKey, unwrapInvisibleFolder } from "./declared-key.js";
-import { MetaDiagnostics, InstancelessFolder } from "./meta-diagnostics.js";
+import {
+	InstancelessFolder,
+	InstancelessMeta,
+	MetaDiagnostics,
+} from "./meta-diagnostics.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { INIT_META_FILE } from "./root-scanner.js";
 import { RojoProject } from "./rojo-project.js";
-import { RoutedFile } from "./route-files.js";
-import { TreeDiagnostics } from "./tree-diagnostics.js";
+import { FALLBACK_ROUTE, RoutedFile } from "./route-files.js";
 import { metaFileFor } from "./unclaimed-meta.js";
 
 const INSTANCE_SEPARATOR = "/";
-const FALLBACK_ROUTE = "*";
 
 export interface FolderMetaInput {
 	readonly files: readonly RoutedFile[];
@@ -32,6 +34,7 @@ interface ReachedNode {
 interface Copy {
 	readonly instancePath: readonly string[];
 	readonly meta: FolderMeta;
+	readonly templateNode: RojoNode;
 }
 
 /** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last root dir wins, and the template beats both. */
@@ -91,12 +94,16 @@ export function applyFolderMeta(
 		const templateNode = template.getNode(node.instancePath);
 		if (templateNode?.$path !== undefined) {
 			warnings.push(
-				TreeDiagnostics.templateClash(location, instance, meta.file)
+				MetaDiagnostics.templatePath({ resource: meta.file }, instance)
 			);
 			continue;
 		}
 		if (project.getNode(node.instancePath))
-			copies.push({ instancePath: node.instancePath, meta });
+			copies.push({
+				instancePath: node.instancePath,
+				meta,
+				templateNode: templateNode ?? {},
+			});
 	}
 
 	for (const [meta, instances] of copiesById(copies))
@@ -110,8 +117,7 @@ export function applyFolderMeta(
 			);
 	if (errors.length > 0) return err(errors);
 
-	for (const { instancePath, meta } of copies) {
-		const templateNode = template.getNode(instancePath) ?? {};
+	for (const { instancePath, meta, templateNode } of copies) {
 		if (
 			templateNode.$className !== undefined &&
 			meta.className !== undefined &&
@@ -160,8 +166,8 @@ function sameRootClashes(metas: readonly FolderMeta[]): FolderMeta[][] {
 
 function copiesById(copies: readonly Copy[]): Map<FolderMeta, string[]> {
 	const byMeta = new Map<FolderMeta, string[]>();
-	for (const { instancePath, meta } of copies)
-		if (meta.id !== undefined)
+	for (const { instancePath, meta, templateNode } of copies)
+		if (meta.id !== undefined && templateNode.$id === undefined)
 			byMeta.set(meta, [
 				...(byMeta.get(meta) ?? []),
 				instancePath.join(INSTANCE_SEPARATOR),
@@ -199,12 +205,21 @@ function sharedWithScript(
 	file: RoutedFile,
 	instance: string
 ): Diagnostic {
-	const fileName = path.posix.basename(file.entry.relativePath);
+	const { entry } = file;
+	if (entry.kind === "init-folder")
+		return MetaDiagnostics.sharedWithInitFolder(
+			{ resource: meta.file },
+			instance,
+			toPosix(
+				path.join(entry.rootDir, entry.relativePath, INIT_META_FILE)
+			)
+		);
+	const fileName = path.posix.basename(entry.relativePath);
 	return MetaDiagnostics.sharedWithScript(
 		{ resource: meta.file },
 		instance,
 		fileName,
-		metaFileFor(fileName) ?? `${fileName}/${INIT_META_FILE}`
+		metaFileFor(fileName) ?? `${fileName}.meta.json`
 	);
 }
 
@@ -212,7 +227,7 @@ function sharedWithScript(
 function metaOnNothing(
 	metas: readonly FolderMeta[],
 	config: Pick<ResolvedConfig, "routes" | "tags">
-): { readonly file: string; readonly kind: InstancelessFolder }[] {
+): InstancelessMeta[] {
 	const routeKeys = new Set(
 		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
 	);
