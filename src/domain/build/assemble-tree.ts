@@ -182,7 +182,7 @@ function collapsibleDirs(
 	const entriesByDir = new Map<string, PlacedEntry[]>();
 	const namedDirs = new Set<string>();
 	for (const entry of placed) {
-		const { instancePath, folderDirs, entry: scanned } = entry.file;
+		const { instancePath, folderNodes, entry: scanned } = entry.file;
 		for (let length = 1; length <= instancePath.length; length++)
 			increment(
 				claims,
@@ -190,7 +190,7 @@ function collapsibleDirs(
 			);
 
 		const rootDir = toPosix(scanned.rootDir);
-		for (const dir of folderDirs)
+		for (const { dir } of folderNodes)
 			namedDirs.add(path.posix.join(rootDir, dir));
 		for (
 			let dir = path.posix.dirname(entry.source);

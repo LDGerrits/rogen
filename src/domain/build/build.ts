@@ -39,7 +39,7 @@ export function build(
 	const tagging = applyTags(routing.value.routed, config);
 	if (tagging.isErr()) return tagging;
 
-	const inRoots = (paths: (root: ScannedRoot) => readonly string[]) =>
+	const sourcePaths = (paths: (root: ScannedRoot) => readonly string[]) =>
 		scan.roots.flatMap((root) =>
 			paths(root).map((relativePath) =>
 				toPosix(path.join(root.rootDir, relativePath))
@@ -47,8 +47,8 @@ export function build(
 		);
 	const assembly = assembleTree(config, {
 		files: tagging.value.files,
-		excluded: inRoots((root) => root.excluded),
-		skippedLinks: inRoots((root) => root.skippedLinks),
+		excluded: sourcePaths((root) => root.excluded),
+		skippedLinks: sourcePaths((root) => root.skippedLinks),
 		pruned: tagging.value.pruned,
 		unrouted: routing.value.unrouted,
 		superseded: tagging.value.superseded,

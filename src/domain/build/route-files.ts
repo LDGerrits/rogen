@@ -32,12 +32,18 @@ export interface TagMatch {
 	readonly form: TagForm;
 }
 
+/** A node one of the file's own folders becomes, with that folder relative to the root dir. */
+export interface FolderNode {
+	readonly instancePath: readonly string[];
+	readonly dir: string;
+}
+
 export interface RoutedFile {
 	readonly entry: ScannedEntry;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
-	/** The folder, relative to the root dir, behind each of the file's own folders in `instancePath`. */
-	readonly folderDirs: readonly string[];
+	/** Routing, tag and invisible folders name no node, so they have none. */
+	readonly folderNodes: readonly FolderNode[];
 	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
 	readonly tags: readonly TagMatch[];
 	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
@@ -171,8 +177,7 @@ function routeEntry(
 	};
 
 	applyMarkers("");
-	const folders: string[] = [];
-	const folderDirs: string[] = [];
+	const folders: { readonly name: string; readonly dir: string }[] = [];
 	let dir = "";
 	for (const segment of segments) {
 		dir = dir ? `${dir}/${segment}` : segment;
@@ -182,10 +187,7 @@ function routeEntry(
 		if (routeKey) governing ??= routeKey;
 		else if (tagKey) tags.push({ tag: tagKey, form: "folder" });
 		else {
-			if (!invisible) {
-				folders.push(segment);
-				folderDirs.push(dir);
-			}
+			if (!invisible) folders.push({ name: segment, dir });
 			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
 			if (nearMiss)
 				context.noteNearMiss(
@@ -237,9 +239,15 @@ function routeEntry(
 
 	const target = context.targets.get(governing ?? FALLBACK_ROUTE);
 	if (!target) return undefined;
+	const folderNodes: FolderNode[] = [];
+	let parent: readonly string[] = [target.service, ...target.folders];
+	for (const folder of folders) {
+		parent = [...parent, folder.name];
+		folderNodes.push({ instancePath: parent, dir: folder.dir });
+	}
 	return {
-		instancePath: [target.service, ...target.folders, ...folders, name],
-		folderDirs,
+		instancePath: [...parent, name],
+		folderNodes,
 		tags,
 		buriedScriptSuffix,
 	};
