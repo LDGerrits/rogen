@@ -36,6 +36,8 @@ export interface RoutedFile {
 	readonly entry: ScannedEntry;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
+	/** The folder, relative to the root dir, behind each of the file's own folders in `instancePath`. */
+	readonly folderDirs: readonly string[];
 	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
 	readonly tags: readonly TagMatch[];
 	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
@@ -170,6 +172,7 @@ function routeEntry(
 
 	applyMarkers("");
 	const folders: string[] = [];
+	const folderDirs: string[] = [];
 	let dir = "";
 	for (const segment of segments) {
 		dir = dir ? `${dir}/${segment}` : segment;
@@ -179,7 +182,10 @@ function routeEntry(
 		if (routeKey) governing ??= routeKey;
 		else if (tagKey) tags.push({ tag: tagKey, form: "folder" });
 		else {
-			if (!invisible) folders.push(segment);
+			if (!invisible) {
+				folders.push(segment);
+				folderDirs.push(dir);
+			}
 			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
 			if (nearMiss)
 				context.noteNearMiss(
@@ -233,6 +239,7 @@ function routeEntry(
 	if (!target) return undefined;
 	return {
 		instancePath: [target.service, ...target.folders, ...folders, name],
+		folderDirs,
 		tags,
 		buriedScriptSuffix,
 	};

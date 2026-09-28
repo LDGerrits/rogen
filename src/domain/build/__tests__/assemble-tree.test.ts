@@ -369,13 +369,58 @@ describe("assembleTree", () => {
 			).toEqual({ $path: optional("src/Inventory") });
 		});
 
-		it("should collapse an invisible folder onto the instance it stands for", async () => {
+		it("should not collapse an invisible folder into its parent's node", async () => {
 			await write("src/Inventory/(group)/Save.luau");
 
 			const storage = await storageOf();
 
 			expect(storage.Inventory).toEqual({
-				$path: optional("src/Inventory/(group)"),
+				...FOLDER,
+				Save: { $path: optional("src/Inventory/(group)/Save.luau") },
+			});
+		});
+
+		it("should not collapse a routing folder into its parent's node, but collapse a folder inside it", async () => {
+			await write(
+				"src/Combat/server/Hit.luau",
+				"src/Combat/server/Moves/Punch.luau"
+			);
+
+			const { value } = await assemble({
+				routes: { server: "ServerScriptService" },
+			});
+
+			expect(value.tree.ServerScriptService).toEqual({
+				$className: "ServerScriptService",
+				Combat: {
+					...FOLDER,
+					Hit: { $path: optional("src/Combat/server/Hit.luau") },
+					Moves: { $path: optional("src/Combat/server/Moves") },
+				},
+			});
+		});
+
+		it("should not collapse a routing folder into its route's target folder", async () => {
+			await write("src/shared/Types.luau");
+
+			const storage = await storageOf({
+				routes: { shared: "ReplicatedStorage/shared" },
+			});
+
+			expect(storage.shared).toEqual({
+				...FOLDER,
+				Types: { $path: optional("src/shared/Types.luau") },
+			});
+		});
+
+		it("should not collapse an active tag folder into its parent's node", async () => {
+			await write("src/Combat/dev/Cheats.luau");
+
+			const storage = await storageOf({ tags: { dev: true } });
+
+			expect(storage.Combat).toEqual({
+				...FOLDER,
+				Cheats: { $path: optional("src/Combat/dev/Cheats.luau") },
 			});
 		});
 
