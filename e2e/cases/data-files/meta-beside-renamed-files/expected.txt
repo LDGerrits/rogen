@@ -1,0 +1,21 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Analytics: ModuleScript  <- src/Inventory/Analytics.mock.luau, src/Inventory/Analytics.mock.meta.json
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Combat: ModuleScript  <- src/Inventory/Combat@server.luau, src/Inventory/Combat@server.meta.json
+      Foo: Script  <- src/Inventory/Foo.mock.meta.json, src/Inventory/Foo.mock.server.luau
+      Hit: ModuleScript  <- src/Inventory/HitServer.luau, src/Inventory/HitServer.meta.json

@@ -1,11 +1,13 @@
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { build, checkRoutes, rootsToIndex } from "../build.js";
+import { readFolderMeta } from "../read-folder-meta.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -29,6 +31,15 @@ describe("domain/build/build", () => {
 		return index;
 	};
 
+	const buildOf = async (config: ResolvedConfig) => {
+		const index = await indexOf(config.rootDirs);
+		return build(
+			config,
+			index,
+			(await readFolderMeta(fs, index, config)).unwrap()
+		);
+	};
+
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		store = new DisposableStore();
@@ -43,7 +54,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toEqual([]);
 			expectRojoProject(result.unwrap().value);
@@ -60,7 +71,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/HttpMock.luau"), "");
 			const config = configOf({ tags: { mock: false } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
 				{ code: "tag.dormantCapitalSuffix" },
@@ -72,7 +83,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.dev.luau"), "");
 			const config = configOf({ tags: { mock: true, dev: true } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.isErr() ? result.error : []).toMatchObject([
 				{ code: "tag.activeClash" },
@@ -83,7 +94,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({ rootDirs: [abs("core"), abs("lobby")] });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
 				{
@@ -101,7 +112,7 @@ describe("domain/build/build", () => {
 				routes: {},
 			});
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(
 				result.unwrap().warnings.map((warning) => warning.code)
@@ -112,7 +123,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ routes: { "*": "Nowhere" } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.isErr() ? result.error : []).toMatchObject([
 				{ code: "roblox.unsupportedService" },
@@ -124,7 +135,7 @@ describe("domain/build/build", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.tree).toEqual({
@@ -142,7 +153,7 @@ describe("domain/build/build", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Two"));
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().value.tree).toEqual({
 				$className: "DataModel",
@@ -158,10 +169,157 @@ describe("domain/build/build", () => {
 			await fs.createDirectory(abs("src"));
 			const config = configOf({ name: "lobby" });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.name).toBe("lobby");
+		});
+
+		describe("unclaimed meta", () => {
+			const warningsFor = async (
+				files: readonly string[],
+				overrides: Partial<ResolvedConfig> = {}
+			) => {
+				for (const file of files)
+					await fs.writeFile(
+						abs(file),
+						file.endsWith(".meta.json") ? "{}" : ""
+					);
+				const config = configOf(overrides);
+				return (await buildOf(config))
+					.unwrap()
+					.warnings.filter(({ code }) => code === "meta.unclaimed");
+			};
+
+			it("should not warn about meta that a sibling claims under the name Rojo gives it", async () => {
+				const warnings = await warningsFor(
+					[
+						"src/Plain.luau",
+						"src/Plain.meta.json",
+						"src/Save.server.luau",
+						"src/Save.meta.json",
+						"src/Foo.mock.server.luau",
+						"src/Foo.mock.meta.json",
+						"src/Combat@server.luau",
+						"src/Combat@server.meta.json",
+						"src/Hud.client.ts",
+						"src/Hud.meta.json",
+						"src/Tool.plugin.lua",
+						"src/Tool.meta.json",
+						"src/Items.csv",
+						"src/Items.meta.json",
+						"src/Stats.server.json",
+						"src/Stats.server.meta.json",
+						"src/Bots/init.meta.json",
+						"src/Bots/A.luau",
+					],
+					{
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					}
+				);
+
+				expect(warnings).toEqual([]);
+			});
+
+			it("should read .model and .project as part of the name outside .json files", async () => {
+				const warnings = await warningsFor([
+					"src/Cfg.model.toml",
+					"src/Cfg.model.meta.json",
+					"src/Notes.project.txt",
+					"src/Notes.project.meta.json",
+				]);
+
+				expect(warnings).toEqual([]);
+			});
+
+			it("should count a claim from a pruned or excluded sibling", async () => {
+				const warnings = await warningsFor(
+					[
+						"src/Analytics.mock.luau",
+						"src/Analytics.mock.meta.json",
+						"src/Legacy.luau",
+						"src/Legacy.meta.json",
+					],
+					{
+						tags: { mock: false },
+						exclude: [toPosix(abs("src/Legacy.luau"))],
+					}
+				);
+
+				expect(warnings).toEqual([]);
+			});
+
+			it("should warn once with the name Rojo reads, the folder's meta, or that the file takes none", async () => {
+				const warnings = await warningsFor([
+					"src/Save.server.luau",
+					"src/Save.server.meta.json",
+					"src/Foo/A.luau",
+					"src/Foo.meta.json",
+					"src/Bar/init.luau",
+					"src/Bar.meta.json",
+					"src/Crate.model.json",
+					"src/Crate.meta.json",
+					"src/Tree.rbxm",
+					"src/Tree.meta.json",
+					"src/Nothing.meta.json",
+				]);
+
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0].resource).toBe(abs("default.project.json"));
+				expect(warnings[0].message).toMatch(
+					/^6 meta files belong to no file/
+				);
+				for (const entry of [
+					`${toPosix(abs("src/Bar.meta.json"))} (a folder's meta is Bar/init.meta.json)`,
+					`${toPosix(abs("src/Crate.meta.json"))} (Crate.model.json takes no meta)`,
+					`${toPosix(abs("src/Foo.meta.json"))} (a folder's meta is Foo/init.meta.json)`,
+				])
+					expect(warnings[0].message).toContain(entry);
+			});
+
+			it("should give the folder hint for a folder holding no file Rogen places", async () => {
+				await fs.createDirectory(abs("src/Empty"));
+				const warnings = await warningsFor(
+					[
+						"src/Notes/readme.md",
+						"src/Notes.meta.json",
+						"src/Legacy/A.luau",
+						"src/Legacy.meta.json",
+						"src/Empty.meta.json",
+					],
+					{ exclude: [toPosix(abs("src/Legacy"))] }
+				);
+
+				for (const name of ["Empty", "Legacy", "Notes"])
+					expect(warnings[0].message).toContain(
+						`${toPosix(abs(`src/${name}.meta.json`))} (a folder's meta is ${name}/init.meta.json)`
+					);
+			});
+
+			it("should name the meta Rojo reads for a script's full stem", async () => {
+				const warnings = await warningsFor([
+					"src/Save.server.luau",
+					"src/Save.server.meta.json",
+				]);
+
+				expect(warnings[0].message).toContain(
+					`${toPosix(abs("src/Save.server.meta.json"))} (Rojo reads Save.meta.json)`
+				);
+			});
+
+			it("should say a model file takes no meta", async () => {
+				const warnings = await warningsFor([
+					"src/Tree.rbxm",
+					"src/Tree.meta.json",
+				]);
+
+				expect(warnings[0].message).toContain(
+					`${toPosix(abs("src/Tree.meta.json"))} (Tree.rbxm takes no meta)`
+				);
+			});
 		});
 	});
 

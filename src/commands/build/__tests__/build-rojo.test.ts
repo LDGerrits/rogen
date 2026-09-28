@@ -120,4 +120,46 @@ describeWithRojo("build command against Rojo", () => {
 			classes(sourcemap(dir, "source.project.json"))
 		);
 	});
+
+	it("should write copied folder meta that Rojo accepts", async () => {
+		write("src/Combat/server/Hit.server.luau", "print('hit')");
+		write("src/Combat/server/Moves/Punch.luau", "return 1");
+		write("src/Combat/Other.luau", "return 1");
+		write(
+			"src/Combat/init.meta.json",
+			JSON.stringify({
+				className: "Actor",
+				properties: { Archivable: false },
+				attributes: { Priority: 1 },
+				id: "combat",
+			})
+		);
+		write(
+			"default.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { server: "ServerScriptService", "*": "Workspace" },
+				exclude: ["src/Combat/Other.luau"],
+			})
+		);
+
+		const result = await build([]);
+
+		expect(result.isOk()).toBe(true);
+		const project = JSON.parse(
+			fs.readFileSync(path.join(dir, "default.project.json"), "utf8")
+		);
+		expect(project.tree.ServerScriptService.Combat).toMatchObject({
+			$className: "Actor",
+			$properties: { Archivable: false },
+			$attributes: { Priority: 1 },
+			$id: "combat",
+		});
+		expect(classes(sourcemap(dir, "default.project.json"))).toEqual(
+			expect.arrayContaining([
+				expect.stringMatching(/\/ServerScriptService\/Combat: Actor$/),
+				expect.stringMatching(/\/Combat\/Hit: Script$/),
+			])
+		);
+	});
 });

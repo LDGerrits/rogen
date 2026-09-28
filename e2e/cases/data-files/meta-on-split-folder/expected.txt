@@ -1,0 +1,23 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Bots: Actor
+      Brain: ModuleScript  <- src/Bots/server/Brain.luau
+    Combat: Actor
+      Hit: Script  <- src/Combat/Hit.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Bots: Actor
+        Eyes: ModuleScript  <- src/Bots/client/Eyes.luau
+      Combat: Actor
+        Aim: LocalScript  <- src/Combat/Aim.client.luau

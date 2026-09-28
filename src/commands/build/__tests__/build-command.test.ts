@@ -225,6 +225,27 @@ describe("build command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	it("should report an invalid folder meta once when two configs read it, and write nothing", async () => {
+		await fs.writeFile(abs("src/Combat/A.luau"), "");
+		await fs.writeFile(abs("src/Combat/init.meta.json"), '{"id": 1}');
+
+		const result = await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable(
+					{ outFile: abs("source.project.json") },
+					"/repo/source.rogen.json"
+				),
+			]),
+			new NullLogService()
+		);
+
+		const message = (result as ResultError<Error>).error.message;
+		expect(message.match(/init\.meta\.json/g)).toHaveLength(1);
+		expect(message).toContain('"id": expected a string, found a number.');
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
 	it("should warn about unrouted files without failing", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();

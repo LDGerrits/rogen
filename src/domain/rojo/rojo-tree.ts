@@ -8,7 +8,9 @@ export interface RojoNode {
 	$className?: string;
 	$path?: RojoPath;
 	$properties?: Record<string, unknown>;
+	$attributes?: Record<string, unknown>;
 	$ignoreUnknownInstances?: boolean;
+	$id?: string;
 	[key: string]: unknown;
 }
 

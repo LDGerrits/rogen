@@ -1,7 +1,9 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
+import { readFolderMeta } from "../../domain/build/read-folder-meta.js";
 import { build, checkRoutes, rootsToIndex } from "../../domain/build/build.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
+import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -105,7 +107,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const built = [];
 		const errors: Diagnostic[] = [];
 		for (const config of entries) {
-			const result = build(config, indexService);
+			const folderMeta = await readFolderMeta(
+				fileSystemService,
+				indexService,
+				config
+			);
+			const result = folderMeta.isOk()
+				? build(config, indexService, folderMeta.value)
+				: folderMeta;
 			if (result.isErr()) {
 				errors.push(...result.error);
 				continue;
@@ -137,6 +146,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				...warnings,
 				...written.value.warnings,
 				...(await checkSyncDir(fileSystemService, config)),
+				...(await checkSyncMeta(
+					fileSystemService,
+					indexService,
+					config
+				)),
 			]);
 		}
 

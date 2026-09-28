@@ -1,10 +1,13 @@
 import path from "path";
 import { isObject } from "../../base/object.js";
 import { toPosix } from "../../base/path.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { rojoAssignedName, rojoModelName } from "../rojo/rojo-assigned-name.js";
 import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
+import { applyFolderMeta } from "./apply-folder-meta.js";
+import { FolderMeta } from "./read-folder-meta.js";
 import { ScannedEntry } from "./root-scanner.js";
 import { RojoProject } from "./rojo-project.js";
 import { RoutedFile } from "./route-files.js";
@@ -26,6 +29,7 @@ export interface AssemblyInput {
 	readonly skippedLinks: readonly string[];
 	/** Files that lost their instance path to another; they block a collapse but aren't ignored. */
 	readonly superseded: readonly string[];
+	readonly folderMeta: readonly FolderMeta[];
 }
 
 export interface AssemblyOutput {
@@ -50,10 +54,16 @@ const PLAYER_SCRIPT_CONTAINERS = new Set([
 export function assembleTree(
 	config: Pick<
 		ResolvedConfig,
-		"name" | "rootDirs" | "routes" | "template" | "syncDir" | "outFile"
+		| "name"
+		| "rootDirs"
+		| "routes"
+		| "tags"
+		| "template"
+		| "syncDir"
+		| "outFile"
 	>,
 	input: AssemblyInput
-): AssemblyOutput {
+): Result<AssemblyOutput, Diagnostic[]> {
 	const location = { resource: config.outFile };
 	const projectDir = path.dirname(config.outFile);
 	const layout: SyncLayout = {
@@ -117,6 +127,15 @@ export function assembleTree(
 		});
 	}
 
+	const copied = applyFolderMeta(project, template, config, {
+		files: input.files,
+		folderMeta: input.folderMeta,
+		isReadByRojo: (dir) =>
+			collapsed.has(dir) || isCollapsed(dir, collapsed),
+	});
+	if (copied.isErr()) return copied;
+	warnings.push(...copied.value);
+
 	const globIgnorePaths = [
 		...new Set([
 			...rebasedGlobs(config, projectDir),
@@ -132,7 +151,7 @@ export function assembleTree(
 	if (globIgnorePaths.length > 0) value.globIgnorePaths = globIgnorePaths;
 	else delete value.globIgnorePaths;
 
-	return { value, warnings };
+	return ok({ value, warnings });
 }
 
 function routesIntoPlayerScripts(

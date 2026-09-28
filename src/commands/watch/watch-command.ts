@@ -23,9 +23,11 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexService } from "../../platform/fs/index-service.js";
+import { readFolderMeta } from "../../domain/build/read-folder-meta.js";
 import { BuildOutput, build, checkRoutes } from "../../domain/build/build.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
+import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { dropSourceUpdates } from "../../domain/watch/drop-source-updates.js";
@@ -159,10 +161,17 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			const missingRoutes = checkRoutes([
 				{ file, routes: config.routes },
 			]);
-			const built: Result<BuildOutput, Diagnostic[]> =
+			const folderMeta =
 				missingRoutes.length > 0
 					? err(missingRoutes)
-					: build(config, indexService);
+					: await readFolderMeta(
+							fileSystemService,
+							indexService,
+							config
+						);
+			const built: Result<BuildOutput, Diagnostic[]> = folderMeta.isOk()
+				? build(config, indexService, folderMeta.value)
+				: folderMeta;
 			if (built.isErr())
 				return finish("failed", unseen(file, "build", built.error));
 
@@ -180,11 +189,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 					...written.value.warnings,
 				]),
 				...(load
-					? unseen(
-							file,
-							"sync",
-							await checkSyncDir(fileSystemService, config)
-						)
+					? unseen(file, "sync", [
+							...(await checkSyncDir(fileSystemService, config)),
+							...(await checkSyncMeta(
+								fileSystemService,
+								indexService,
+								config
+							)),
+						])
 					: []),
 			];
 			return finish(

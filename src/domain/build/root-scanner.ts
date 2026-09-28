@@ -31,6 +31,8 @@ export interface ScannedRoot {
 	readonly rootDir: string;
 	readonly entries: readonly ScannedEntry[];
 	readonly markers: readonly string[];
+	/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
+	readonly metaFiles: readonly string[];
 	readonly excluded: readonly string[];
 	/** Links that loop back to an ancestor or point at nothing, which Rojo must never walk. */
 	readonly skippedLinks: readonly string[];
@@ -57,13 +59,13 @@ const DATA_EXTENSIONS = new Set([
 	".yaml",
 	".yml",
 ]);
-// Rojo applies these to the file beside them; on their own they are not instances.
-const METADATA_JSON = /\.meta\.json$/;
+export const META_FILE_SUFFIX = ".meta.json";
+export const INIT_META_FILE = `init${META_FILE_SUFFIX}`;
 const INIT_SCRIPT = /^(init|index)([.@-][a-z0-9_]+)?\./i;
 
-function classifyFile(name: string): SourceKind | undefined {
+export function classifyFile(name: string): SourceKind | undefined {
 	const lower = name.toLowerCase();
-	if (lower.endsWith(".d.ts") || METADATA_JSON.test(lower)) return undefined;
+	if (lower.endsWith(".d.ts") || isMetaFile(name)) return undefined;
 
 	const extension = path.extname(lower);
 	if (SCRIPT_EXTENSIONS.has(extension)) return "script";
@@ -109,6 +111,7 @@ function emptyRoot(rootDir: string): ScannedRoot {
 		rootDir,
 		entries: [],
 		markers: [],
+		metaFiles: [],
 		excluded: [],
 		skippedLinks: [],
 	};
@@ -122,6 +125,7 @@ function scanRoot(
 ): ScannedRoot | undefined {
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
+	const metaFiles: string[] = [];
 	const excluded: string[] = [];
 	const skippedLinks: string[] = [];
 
@@ -150,6 +154,8 @@ function scanRoot(
 			.map(([name]) => name)
 			.sort()[0];
 		if (initFile && relativeDir) {
+			if (kept.some(([name]) => name === INIT_META_FILE))
+				metaFiles.push(relativeTo(INIT_META_FILE));
 			entries.push({
 				kind: "init-folder",
 				rootDir,
@@ -171,7 +177,9 @@ function scanRoot(
 			} else {
 				// A key can't contain a dot, so a dot-file with a file type is never a marker.
 				const kind = classifyFile(name);
-				if (kind) {
+				if (isMetaFile(name)) {
+					metaFiles.push(relativeTo(name));
+				} else if (kind) {
 					entries.push({
 						kind,
 						rootDir,
@@ -193,9 +201,14 @@ function scanRoot(
 		rootDir,
 		entries: entries.sort(byRelativePath),
 		markers: markers.sort(),
+		metaFiles: metaFiles.sort(),
 		excluded: excluded.sort(),
 		skippedLinks: skippedLinks.sort(),
 	};
+}
+
+export function isMetaFile(name: string): boolean {
+	return name.toLowerCase().endsWith(META_FILE_SUFFIX);
 }
 
 function isInitScript(name: string): boolean {

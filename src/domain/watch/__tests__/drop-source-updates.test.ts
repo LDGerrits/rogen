@@ -35,6 +35,24 @@ describe("domain/watch/drop-source-updates", () => {
 		expect(dropSourceUpdates([updated], contentFiles)).toEqual([updated]);
 	});
 
+	it("should keep an update to a folder's meta, which the build reads", () => {
+		const updated = change(
+			FileChangeType.UPDATED,
+			"/repo/src/Combat/init.meta.json"
+		);
+
+		expect(dropSourceUpdates([updated], contentFiles)).toEqual([updated]);
+	});
+
+	it("should drop an update to a file's meta, which Rojo reads itself", () => {
+		const updated = change(
+			FileChangeType.UPDATED,
+			"/repo/src/Save.meta.json"
+		);
+
+		expect(dropSourceUpdates([updated], contentFiles)).toEqual([]);
+	});
+
 	it("should keep additions and deletions of source files", () => {
 		const changes = [
 			change(FileChangeType.ADDED, "/repo/src/A.luau"),

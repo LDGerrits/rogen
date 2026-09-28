@@ -80,12 +80,51 @@ describe("scanRootDirs", () => {
 			]);
 		});
 
-		it("should drop a .meta.json file, which Rojo applies to the file beside it", async () => {
-			await write("src/A.luau", "src/A.meta.json");
+		it("should record a .meta.json file as meta, not an entry", async () => {
+			await write(
+				"src/A.luau",
+				"src/A.meta.json",
+				"src/Inventory/init.meta.json",
+				"src/Inventory/B.luau"
+			);
 
 			const { roots } = await scan();
 
-			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(files(roots[0])).toEqual([
+				"script:A.luau",
+				"script:Inventory/B.luau",
+			]);
+			expect(roots[0].metaFiles).toEqual([
+				"A.meta.json",
+				"Inventory/init.meta.json",
+			]);
+		});
+
+		it("should record an init folder's own init.meta.json and nothing else inside it", async () => {
+			await write(
+				"src/Bots/init.luau",
+				"src/Bots/init.meta.json",
+				"src/Bots/Brain.luau",
+				"src/Bots/Brain.meta.json"
+			);
+
+			const { roots } = await scan();
+
+			expect(roots[0].metaFiles).toEqual(["Bots/init.meta.json"]);
+		});
+
+		it("should leave an excluded .meta.json out of the meta files", async () => {
+			await write(
+				"src/A.luau",
+				"src/A.meta.json",
+				"src/legacy/init.meta.json"
+			);
+
+			const { roots } = await scan({
+				exclude: [glob("src/A.meta.json"), glob("src/legacy")],
+			});
+
+			expect(roots[0].metaFiles).toEqual([]);
 		});
 
 		it("should drop unrecognised extensions", async () => {
@@ -261,11 +300,8 @@ describe("scanRootDirs", () => {
 				"script:.hidden.luau",
 				"script:.hidden2.server.luau",
 			]);
-			expect(roots[0].markers).toEqual([
-				".gitkeep",
-				".hidden.meta.json",
-				".server",
-			]);
+			expect(roots[0].markers).toEqual([".gitkeep", ".server"]);
+			expect(roots[0].metaFiles).toEqual([".hidden.meta.json"]);
 		});
 
 		it("should not list a dot-file inside an excluded directory", async () => {
@@ -531,6 +567,7 @@ describe("scanRootDirs", () => {
 				rootDir: abs("lobby"),
 				entries: [],
 				markers: [],
+				metaFiles: [],
 				excluded: [],
 				skippedLinks: [],
 			});

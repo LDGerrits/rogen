@@ -23,7 +23,7 @@ import {
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
-const FALLBACK_ROUTE = "*";
+export const FALLBACK_ROUTE = "*";
 
 export type TagForm = "folder" | "marker" | SuffixForm;
 

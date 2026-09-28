@@ -1,0 +1,18 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  <dir>/default.project.json - warning: 1 meta file has no copy under "dist" (<dir>/src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- dist/Inventory/Save.server.luau
+      Save.meta: ModuleScript  <- dist/Inventory/Save.meta.lua

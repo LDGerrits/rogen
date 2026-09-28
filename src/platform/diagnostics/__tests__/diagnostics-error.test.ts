@@ -19,8 +19,20 @@ describe("platform/diagnostics/diagnostics-error", () => {
 		});
 
 		it("should keep the diagnostics it was made from", () => {
-			expect(new DiagnosticsError(diagnostics).diagnostics).toBe(
+			expect(new DiagnosticsError(diagnostics).diagnostics).toEqual(
 				diagnostics
+			);
+		});
+
+		it("should keep one of each identical diagnostic", () => {
+			const error = new DiagnosticsError([
+				...diagnostics,
+				diagnostics[0],
+			]);
+
+			expect(error.diagnostics).toEqual(diagnostics);
+			expect(error.message).toBe(
+				"/repo/a.json:2:5 - error: first.\n/repo - error: second."
 			);
 		});
 

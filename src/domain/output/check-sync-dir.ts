@@ -27,13 +27,12 @@ export async function checkSyncDir(
 	const warnings: Diagnostic[] = [];
 
 	for (const rootDir of config.rootDirs) {
-		if (!(await fileSystem.isDirectory(rootDir))) continue;
-
-		const emitted = (await fileSystem.readDirectory(rootDir))
-			.filter(([name]) => !name.startsWith("."))
-			.map(([name]) =>
-				emittedPath(path.join(rootDir, name), common, syncDir)
-			);
+		const emitted = await topLevelEmitted(
+			fileSystem,
+			rootDir,
+			common,
+			syncDir
+		);
 		if (emitted.length === 0 || (await anyExists(fileSystem, emitted)))
 			continue;
 
@@ -56,6 +55,34 @@ export async function checkSyncDir(
 		);
 	}
 	return warnings;
+}
+
+/** Whether any top-level entry of `rootDir` has its emitted counterpart under `syncDir`. */
+export async function hasSyncedOutput(
+	fileSystem: FileSystemService,
+	rootDir: string,
+	common: string,
+	syncDir: string
+): Promise<boolean> {
+	return anyExists(
+		fileSystem,
+		await topLevelEmitted(fileSystem, rootDir, common, syncDir)
+	);
+}
+
+/** Skips dot-files, which are mostly markers a compiler never emits. */
+async function topLevelEmitted(
+	fileSystem: FileSystemService,
+	rootDir: string,
+	common: string,
+	syncDir: string
+): Promise<string[]> {
+	if (!(await fileSystem.isDirectory(rootDir))) return [];
+	return (await fileSystem.readDirectory(rootDir))
+		.filter(([name]) => !name.startsWith("."))
+		.map(([name]) =>
+			emittedPath(path.join(rootDir, name), common, syncDir)
+		);
 }
 
 async function anyExists(
