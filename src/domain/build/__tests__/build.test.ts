@@ -280,6 +280,25 @@ describe("domain/build/build", () => {
 					expect(warnings[0].message).toContain(entry);
 			});
 
+			it("should give the folder hint for a folder holding no file Rogen places", async () => {
+				await fs.createDirectory(abs("src/Empty"));
+				const warnings = await warningsFor(
+					[
+						"src/Notes/readme.md",
+						"src/Notes.meta.json",
+						"src/Legacy/A.luau",
+						"src/Legacy.meta.json",
+						"src/Empty.meta.json",
+					],
+					{ exclude: [toPosix(abs("src/Legacy"))] }
+				);
+
+				for (const name of ["Empty", "Legacy", "Notes"])
+					expect(warnings[0].message).toContain(
+						`${toPosix(abs(`src/${name}.meta.json`))} (a folder's meta is ${name}/init.meta.json)`
+					);
+			});
+
 			it("should name the meta Rojo reads for a script's full stem", async () => {
 				const warnings = await warningsFor([
 					"src/Save.server.luau",

@@ -80,7 +80,7 @@ describe("domain/output/check-sync-meta", () => {
 				resource: abs("default.project.json"),
 			});
 			expect(warnings[0].message).toContain(
-				'2 meta files have no copy under "dist" (src/Inventory/Save.meta.json, src/Inventory/init.meta.json)'
+				`2 meta files have no copy under "dist" (${abs("src/Inventory/Save.meta.json")}, ${abs("src/Inventory/init.meta.json")})`
 			);
 			expect(warnings[0].message).not.toContain(".meta.lua");
 		});

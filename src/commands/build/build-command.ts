@@ -8,7 +8,6 @@ import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
@@ -129,11 +128,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		if (errors.length > 0) {
 			for (const { warnings } of built)
 				logDiagnostics(logService, warnings);
-			// Configs that share a root dir read the same folder meta.
-			const unique = new Map(
-				errors.map((error) => [renderDiagnostic(error), error])
-			);
-			return err(new DiagnosticsError([...unique.values()]));
+			return err(new DiagnosticsError(errors));
 		}
 
 		for (const { config, tree, warnings } of built) {

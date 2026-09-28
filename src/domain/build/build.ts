@@ -60,7 +60,7 @@ export function build(
 	});
 	if (assembly.isErr()) return assembly;
 
-	const unclaimedMeta = findUnclaimedMeta(scan.roots);
+	const unclaimedMeta = findUnclaimedMeta(index, scan.roots);
 	return ok({
 		value: assembly.value.value,
 		warnings: [

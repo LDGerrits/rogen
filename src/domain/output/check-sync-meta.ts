@@ -29,7 +29,9 @@ export async function checkSyncMeta(
 	let converted = 0;
 
 	const { roots } = scanRootDirs(index, config);
-	const unclaimed = new Set(findUnclaimedMeta(roots).map(({ path }) => path));
+	const unclaimed = new Set(
+		findUnclaimedMeta(index, roots).map(({ path }) => path)
+	);
 	for (const root of roots) {
 		if (!(await hasSyncedOutput(fileSystem, root.rootDir, common, syncDir)))
 			continue;
@@ -38,7 +40,7 @@ export async function checkSyncMeta(
 			if (unclaimed.has(toPosix(source))) continue;
 			const emitted = emittedPath(source, common, syncDir);
 			if (await fileSystem.exists(emitted)) continue;
-			missing.push(relativeToProject(source, projectDir));
+			missing.push(toPosix(source));
 			if (
 				await fileSystem.exists(
 					`${emitted.slice(0, -META_FILE_SUFFIX.length)}.meta.lua`

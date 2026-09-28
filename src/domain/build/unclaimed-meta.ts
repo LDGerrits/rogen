@@ -1,6 +1,12 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
 import {
+	FileType,
+	isDirectoryType,
+	isFileType,
+} from "../../platform/fs/file-system-service.js";
+import { IndexService } from "../../platform/fs/index-service.js";
+import {
 	rojoAssignedName,
 	stripRojoDataSuffix,
 } from "../rojo/rojo-assigned-name.js";
@@ -17,30 +23,38 @@ export interface UnclaimedMeta {
 	readonly hint?: string;
 }
 
-/** Meta no sibling claims under Rojo's naming rule, pruned and excluded siblings included. */
+/** Meta no sibling on disk claims under Rojo's naming rule; pruned and excluded siblings still claim theirs. */
 export function findUnclaimedMeta(
+	index: IndexService,
 	roots: readonly ScannedRoot[]
 ): UnclaimedMeta[] {
-	return roots.flatMap((root) => {
-		const siblings = siblingsByDir(root);
-		const dirs = dirsOf(root);
-		return root.metaFiles.flatMap((metaFile) => {
+	return roots.flatMap((root) =>
+		root.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
 			if (fileName === INIT_META_FILE) return [];
-			const dir = parentOf(metaFile);
+			const listing =
+				index.getEntries(
+					path.join(root.rootDir, path.posix.dirname(metaFile))
+				) ?? new Map<string, FileType>();
+			const siblings = [...listing]
+				.filter(([, type]) => isFileType(type))
+				.map(([sibling]) => sibling);
 			const name = fileName.slice(0, -META_FILE_SUFFIX.length);
+			if (siblings.some((file) => metaNameOf(file) === name)) return [];
 
-			const inDir = siblings.get(dir) ?? [];
-			if (inDir.some((file) => metaNameOf(file) === name)) return [];
-
+			const folder = listing.get(name);
 			return [
 				{
 					path: toPosix(path.join(root.rootDir, metaFile)),
-					hint: hintFor(name, inDir, dirs.has(childPath(dir, name))),
+					hint: hintFor(
+						name,
+						siblings,
+						folder !== undefined && isDirectoryType(folder)
+					),
 				},
 			];
-		});
-	});
+		})
+	);
 }
 
 function hintFor(
@@ -84,51 +98,6 @@ function rojoDataName(fileName: string): string {
 	return path.extname(fileName).toLowerCase() === ".json"
 		? stripRojoDataSuffix(stem)
 		: stem;
-}
-
-/** File names per directory, relative to the root dir, counting excluded paths too. */
-function siblingsByDir(root: ScannedRoot): Map<string, string[]> {
-	const byDir = new Map<string, string[]>();
-	const files = [
-		...root.entries.flatMap((entry) =>
-			entry.kind === "init-folder" ? [] : [entry.relativePath]
-		),
-		...root.excluded,
-	];
-	for (const file of files) {
-		const dir = parentOf(file);
-		byDir.set(dir, [...(byDir.get(dir) ?? []), path.posix.basename(file)]);
-	}
-	return byDir;
-}
-
-/** Every directory the scan saw a path in, relative to the root dir. */
-function dirsOf(root: ScannedRoot): Set<string> {
-	const dirs = new Set<string>();
-	const paths = [
-		...root.entries.map((entry) =>
-			entry.kind === "init-folder"
-				? `${entry.relativePath}/${entry.initFile}`
-				: entry.relativePath
-		),
-		...root.markers,
-		...root.metaFiles,
-		...root.excluded,
-		...root.skippedLinks,
-	];
-	for (const relativePath of paths)
-		for (let dir = parentOf(relativePath); dir; dir = parentOf(dir))
-			dirs.add(dir);
-	return dirs;
-}
-
-function parentOf(relativePath: string): string {
-	const dir = path.posix.dirname(relativePath);
-	return dir === "." ? "" : dir;
-}
-
-function childPath(dir: string, name: string): string {
-	return dir ? `${dir}/${name}` : name;
 }
 
 function stemOf(fileName: string): string {
