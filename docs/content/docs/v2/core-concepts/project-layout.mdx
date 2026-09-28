@@ -40,7 +40,7 @@ Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data fi
 
 A `.meta.json` file sets what a file or folder can't express itself: a class, properties or attributes. It is never placed as an instance.
 
-- A **file's** metadata file shares its stem: `Analytics.mock.meta.json` belongs to `Analytics.mock.luau`.
+- A **file's** metadata file is named after the name Rojo gives the file: `Save.meta.json` belongs to `Save.server.luau`, and `Analytics.mock.meta.json` to `Analytics.mock.luau`.
 - A **folder's** `init.meta.json` applies to every node Rogen generates for that folder, which is how a feature folder becomes an `Actor`:
 
 ```json title="src/Inventory/init.meta.json"
