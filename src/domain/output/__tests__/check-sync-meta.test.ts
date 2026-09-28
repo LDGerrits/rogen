@@ -96,7 +96,35 @@ describe("domain/output/check-sync-meta", () => {
 			const warnings = await check();
 
 			expect(warnings).toHaveLength(1);
-			expect(warnings[0].message).toContain(".meta.lua");
+			expect(warnings[0].message).toContain(
+				"The processor turned it into .meta.lua"
+			);
+		});
+
+		it("should count only the meta files the processor converted", async () => {
+			await write(
+				"src/Inventory/Save.server.luau",
+				"src/Inventory/Save.meta.json",
+				"src/Inventory/init.meta.json",
+				"dist/Inventory/Save.server.luau",
+				"dist/Inventory/Save.meta.lua"
+			);
+
+			const warnings = await check();
+
+			expect(warnings[0].message).toContain(
+				"The processor turned 1 of them into .meta.lua"
+			);
+		});
+
+		it("should leave out meta that no file claims", async () => {
+			await write(
+				"src/Inventory/Save.server.luau",
+				"src/Inventory/Save.server.meta.json",
+				"dist/Inventory/Save.server.luau"
+			);
+
+			expect(await check()).toEqual([]);
 		});
 
 		it("should skip a root dir with no output under the sync dir", async () => {

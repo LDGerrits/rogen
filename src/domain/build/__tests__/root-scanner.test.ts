@@ -100,6 +100,19 @@ describe("scanRootDirs", () => {
 			]);
 		});
 
+		it("should record an init folder's own init.meta.json and nothing else inside it", async () => {
+			await write(
+				"src/Bots/init.luau",
+				"src/Bots/init.meta.json",
+				"src/Bots/Brain.luau",
+				"src/Bots/Brain.meta.json"
+			);
+
+			const { roots } = await scan();
+
+			expect(roots[0].metaFiles).toEqual(["Bots/init.meta.json"]);
+		});
+
 		it("should leave an excluded .meta.json out of the meta files", async () => {
 			await write(
 				"src/A.luau",

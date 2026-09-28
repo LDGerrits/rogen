@@ -210,6 +210,17 @@ describe("domain/build/build", () => {
 				expect(warnings).toEqual([]);
 			});
 
+			it("should read .model and .project as part of the name outside .json files", async () => {
+				const warnings = await warningsFor([
+					"src/Cfg.model.toml",
+					"src/Cfg.model.meta.json",
+					"src/Notes.project.txt",
+					"src/Notes.project.meta.json",
+				]);
+
+				expect(warnings).toEqual([]);
+			});
+
 			it("should count a claim from a pruned or excluded sibling", async () => {
 				const warnings = await warningsFor(
 					[

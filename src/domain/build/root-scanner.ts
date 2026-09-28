@@ -59,12 +59,13 @@ const DATA_EXTENSIONS = new Set([
 	".yaml",
 	".yml",
 ]);
-const METADATA_JSON = /\.meta\.json$/;
+export const META_FILE_SUFFIX = ".meta.json";
+export const INIT_META_FILE = `init${META_FILE_SUFFIX}`;
 const INIT_SCRIPT = /^(init|index)([.@-][a-z0-9_]+)?\./i;
 
 export function classifyFile(name: string): SourceKind | undefined {
 	const lower = name.toLowerCase();
-	if (lower.endsWith(".d.ts") || METADATA_JSON.test(lower)) return undefined;
+	if (lower.endsWith(".d.ts") || isMetaFile(name)) return undefined;
 
 	const extension = path.extname(lower);
 	if (SCRIPT_EXTENSIONS.has(extension)) return "script";
@@ -153,6 +154,8 @@ function scanRoot(
 			.map(([name]) => name)
 			.sort()[0];
 		if (initFile && relativeDir) {
+			if (kept.some(([name]) => name === INIT_META_FILE))
+				metaFiles.push(relativeTo(INIT_META_FILE));
 			entries.push({
 				kind: "init-folder",
 				rootDir,
@@ -204,8 +207,8 @@ function scanRoot(
 	};
 }
 
-function isMetaFile(name: string): boolean {
-	return METADATA_JSON.test(name.toLowerCase());
+export function isMetaFile(name: string): boolean {
+	return name.toLowerCase().endsWith(META_FILE_SUFFIX);
 }
 
 function isInitScript(name: string): boolean {

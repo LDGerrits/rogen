@@ -43,14 +43,18 @@ export const OutputDiagnostics = {
 		location: DiagnosticLocation,
 		syncDir: string,
 		paths: readonly string[],
-		converted: boolean
-	): Diagnostic =>
-		warningDiagnostic(
+		converted: number
+	): Diagnostic => {
+		const them = paths.length === 1 ? "it" : "them";
+		const convertedOf =
+			converted === paths.length ? them : `${converted} of them`;
+		return warningDiagnostic(
 			"output.metaNotSynced",
 			location,
-			`${paths.length} meta ${paths.length === 1 ? "file has" : "files have"} no copy under "${syncDir}" (${listPaths(paths)}), so Rojo doesn't apply ${paths.length === 1 ? "it" : "them"}. ` +
-				(converted
-					? `The processor turned ${paths.length === 1 ? "it" : "them"} into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.`
+			`${paths.length} meta ${paths.length === 1 ? "file has" : "files have"} no copy under "${syncDir}" (${listPaths(paths)}), so Rojo doesn't apply ${them}. ` +
+				(converted > 0
+					? `The processor turned ${convertedOf} into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.`
 					: "Have the compiler copy .meta.json files into its output.")
-		),
+		);
+	},
 };

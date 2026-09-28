@@ -4,33 +4,41 @@ import {
 	rojoAssignedName,
 	stripRojoDataSuffix,
 } from "../rojo/rojo-assigned-name.js";
-import { classifyFile, ScannedRoot } from "./root-scanner.js";
+import {
+	INIT_META_FILE,
+	META_FILE_SUFFIX,
+	ScannedRoot,
+	classifyFile,
+} from "./root-scanner.js";
 
-const META_SUFFIX = ".meta.json";
-const FOLDER_META = "init";
+export interface UnclaimedMeta {
+	/** Absolute, POSIX-style. */
+	readonly path: string;
+	readonly hint?: string;
+}
 
-/**
- * Every `.meta.json` other than `init.meta.json` that no sibling claims under
- * Rojo's naming rule, as its absolute POSIX path followed by the likely fix.
- * Pruned and excluded siblings still claim theirs.
- */
-export function findUnclaimedMeta(roots: readonly ScannedRoot[]): string[] {
+/** Meta no sibling claims under Rojo's naming rule, pruned and excluded siblings included. */
+export function findUnclaimedMeta(
+	roots: readonly ScannedRoot[]
+): UnclaimedMeta[] {
 	return roots.flatMap((root) => {
 		const siblings = siblingsByDir(root);
 		const dirs = dirsOf(root);
 		return root.metaFiles.flatMap((metaFile) => {
+			const fileName = path.posix.basename(metaFile);
+			if (fileName === INIT_META_FILE) return [];
 			const dir = parentOf(metaFile);
-			const name = path.posix
-				.basename(metaFile)
-				.slice(0, -META_SUFFIX.length);
-			if (name === FOLDER_META) return [];
+			const name = fileName.slice(0, -META_FILE_SUFFIX.length);
 
 			const inDir = siblings.get(dir) ?? [];
 			if (inDir.some((file) => metaNameOf(file) === name)) return [];
 
-			const hint = hintFor(name, inDir, dirs.has(join(dir, name)));
-			const shown = toPosix(path.join(root.rootDir, metaFile));
-			return [hint ? `${shown} (${hint})` : shown];
+			return [
+				{
+					path: toPosix(path.join(root.rootDir, metaFile)),
+					hint: hintFor(name, inDir, dirs.has(childPath(dir, name))),
+				},
+			];
 		});
 	});
 }
@@ -40,17 +48,17 @@ function hintFor(
 	siblings: readonly string[],
 	isFolder: boolean
 ): string | undefined {
-	if (isFolder) return `a folder's meta is ${name}/init${META_SUFFIX}`;
+	if (isFolder) return `a folder's meta is ${name}/init${META_FILE_SUFFIX}`;
 	for (const file of siblings) {
 		if (stemOf(file) !== name) continue;
 		const metaName = metaNameOf(file);
-		if (metaName) return `Rojo reads ${metaName}${META_SUFFIX}`;
+		if (metaName) return `Rojo reads ${metaName}${META_FILE_SUFFIX}`;
 	}
 	const withoutMeta = siblings.find(
 		(file) =>
 			metaNameOf(file) === undefined &&
 			classifyFile(file) !== undefined &&
-			[stemOf(file), stripRojoDataSuffix(stemOf(file))].includes(name)
+			[stemOf(file), rojoDataName(file)].includes(name)
 	);
 	return withoutMeta ? `${withoutMeta} takes no meta` : undefined;
 }
@@ -60,8 +68,16 @@ function metaNameOf(fileName: string): string | undefined {
 	const kind = classifyFile(fileName);
 	const stem = stemOf(fileName);
 	if (kind === "script") return rojoAssignedName(stem);
-	if (kind === "data" && stripRojoDataSuffix(stem) === stem) return stem;
+	if (kind === "data" && rojoDataName(fileName) === stem) return stem;
 	return undefined;
+}
+
+// Rojo only reads `.model` and `.project` as a suffix on `.json` files.
+function rojoDataName(fileName: string): string {
+	const stem = stemOf(fileName);
+	return path.extname(fileName).toLowerCase() === ".json"
+		? stripRojoDataSuffix(stem)
+		: stem;
 }
 
 /** File names per directory, relative to the root dir, counting excluded paths too. */
@@ -105,7 +121,7 @@ function parentOf(relativePath: string): string {
 	return dir === "." ? "" : dir;
 }
 
-function join(dir: string, name: string): string {
+function childPath(dir: string, name: string): string {
 	return dir ? `${dir}/${name}` : name;
 }
 
