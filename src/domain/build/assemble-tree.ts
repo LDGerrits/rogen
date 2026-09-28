@@ -23,6 +23,7 @@ export interface AssemblyInput {
 	readonly excluded: readonly string[];
 	readonly pruned: readonly string[];
 	readonly unrouted: readonly string[];
+	readonly skippedLinks: readonly string[];
 	/** Files that lost their instance path to another; they block a collapse but aren't ignored. */
 	readonly superseded: readonly string[];
 }
@@ -80,6 +81,7 @@ export function assembleTree(
 		...input.excluded,
 		...input.pruned,
 		...input.unrouted,
+		...input.skippedLinks,
 	].filter((source) => !DECLARATION_FILE.test(source));
 	const collapsed = collapsibleDirs(
 		placed,
@@ -168,7 +170,8 @@ function rojoNameOf(entry: ScannedEntry): string {
 /**
  * Directories whose every file on disk is placed under its Rojo name, mapped
  * to the instance path the directory becomes. Only the outermost of nested
- * candidates is kept.
+ * candidates is kept, and only a directory that names its own node: Rojo would
+ * apply a routing, tag or invisible folder's `init.meta.json` to its parent.
  */
 function collapsibleDirs(
 	placed: readonly PlacedEntry[],
@@ -177,8 +180,9 @@ function collapsibleDirs(
 ): Map<string, readonly string[]> {
 	const claims = new Map<string, number>();
 	const entriesByDir = new Map<string, PlacedEntry[]>();
+	const namedDirs = new Set<string>();
 	for (const entry of placed) {
-		const { instancePath, entry: scanned } = entry.file;
+		const { instancePath, folderNodes, entry: scanned } = entry.file;
 		for (let length = 1; length <= instancePath.length; length++)
 			increment(
 				claims,
@@ -186,6 +190,8 @@ function collapsibleDirs(
 			);
 
 		const rootDir = toPosix(scanned.rootDir);
+		for (const { dir } of folderNodes)
+			namedDirs.add(path.posix.join(rootDir, dir));
 		for (
 			let dir = path.posix.dirname(entry.source);
 			isBelow(dir, rootDir);
@@ -213,7 +219,12 @@ function collapsibleDirs(
 		(a, b) => depthOf(a) - depthOf(b)
 	);
 	for (const dir of outermostFirst) {
-		if (blocked.has(dir) || isCollapsed(dir, collapsed)) continue;
+		if (
+			blocked.has(dir) ||
+			!namedDirs.has(dir) ||
+			isCollapsed(dir, collapsed)
+		)
+			continue;
 		const entries = entriesByDir.get(dir) as PlacedEntry[];
 		const instancePath = instancePathOf(dir, entries);
 		if (

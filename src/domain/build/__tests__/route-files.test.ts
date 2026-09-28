@@ -57,6 +57,45 @@ describe("routeFiles", () => {
 		store[Symbol.dispose]();
 	});
 
+	describe("folder nodes", () => {
+		it("should pair each node a folder names with that folder, skipping routing, tag and invisible folders", async () => {
+			await write("src/Combat/(group)/server/dev/Moves/Punch.luau");
+
+			const [file] = (await route({ tags: { dev: true } })).unwrap()
+				.routed;
+
+			expect(file.instancePath).toEqual([
+				"ServerScriptService",
+				"Combat",
+				"Moves",
+				"Punch",
+			]);
+			expect(file.folderNodes).toEqual([
+				{
+					instancePath: ["ServerScriptService", "Combat"],
+					dir: "Combat",
+				},
+				{
+					instancePath: ["ServerScriptService", "Combat", "Moves"],
+					dir: "Combat/(group)/server/dev/Moves",
+				},
+			]);
+		});
+
+		it("should place folder nodes below the route target's own folders", async () => {
+			await write("src/Inventory/Types.luau");
+
+			const [file] = (await route()).unwrap().routed;
+
+			expect(file.folderNodes).toEqual([
+				{
+					instancePath: ["ReplicatedStorage", "shared", "Inventory"],
+					dir: "Inventory",
+				},
+			]);
+		});
+	});
+
 	describe("governing route", () => {
 		it("should let a route folder outside a suffix govern, and ignore the suffix", async () => {
 			await write("src/ReplicatedFirst/main.client.luau");
@@ -115,7 +154,11 @@ describe("routeFiles", () => {
 		});
 
 		it("should match a lower-case folder and marker against a key declared with a capital", async () => {
-			await write("src/server/A.luau", "src/Inventory/.server", "src/Inventory/B.luau");
+			await write(
+				"src/server/A.luau",
+				"src/Inventory/.server",
+				"src/Inventory/B.luau"
+			);
 
 			expect(
 				await paths({
@@ -266,9 +309,9 @@ describe("routeFiles", () => {
 
 	describe("letter case mismatches", () => {
 		const caseWarnings = async (overrides: Partial<ResolvedConfig> = {}) =>
-			(await route(overrides)).unwrap().warnings.filter(
-				({ code }) => code === "route.caseMismatch"
-			);
+			(await route(overrides))
+				.unwrap()
+				.warnings.filter(({ code }) => code === "route.caseMismatch");
 
 		it("should warn about a folder named like a route in different case", async () => {
 			await write("src/SERVER/Save.luau");

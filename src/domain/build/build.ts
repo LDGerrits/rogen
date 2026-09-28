@@ -7,7 +7,7 @@ import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
-import { scanRootDirs } from "./root-scanner.js";
+import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { routeFiles } from "./route-files.js";
 
@@ -39,13 +39,16 @@ export function build(
 	const tagging = applyTags(routing.value.routed, config);
 	if (tagging.isErr()) return tagging;
 
-	const assembly = assembleTree(config, {
-		files: tagging.value.files,
-		excluded: scan.roots.flatMap((root) =>
-			root.excluded.map((relativePath) =>
+	const sourcePaths = (paths: (root: ScannedRoot) => readonly string[]) =>
+		scan.roots.flatMap((root) =>
+			paths(root).map((relativePath) =>
 				toPosix(path.join(root.rootDir, relativePath))
 			)
-		),
+		);
+	const assembly = assembleTree(config, {
+		files: tagging.value.files,
+		excluded: sourcePaths((root) => root.excluded),
+		skippedLinks: sourcePaths((root) => root.skippedLinks),
 		pruned: tagging.value.pruned,
 		unrouted: routing.value.unrouted,
 		superseded: tagging.value.superseded,
