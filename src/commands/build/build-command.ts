@@ -20,7 +20,10 @@ import { RojoTree } from "../../domain/rojo/rojo-tree.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+import {
+	ConfigEntry,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import {
 	configLabel,
 	unrequestedConfigNotice,
@@ -90,9 +93,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const valid = requireValidConfigs(configService);
 		if (valid.isErr()) return valid;
 
-		const entries = configService.configs.flatMap((entry) =>
-			entry.resolved ? [{ file: entry.file, ...entry.resolved }] : []
+		const loaded = configService.configs.flatMap((entry) =>
+			entry.resolved
+				? [{ entry, config: { file: entry.file, ...entry.resolved } }]
+				: []
 		);
+		const entries = loaded.map(({ config }) => config);
 		const notice = await unrequestedConfigNotice(
 			fileSystemService,
 			environmentService.cwd,
@@ -113,13 +119,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		await indexService.initialize(rootsToIndex(entries));
 
 		const built: {
+			entry: ConfigEntry;
 			config: (typeof entries)[number];
 			tree: RojoTree;
 			warnings: readonly Diagnostic[];
 			summary: BuildSummary;
 		}[] = [];
 		const errors: Diagnostic[] = [];
-		for (const config of entries) {
+		for (const { entry, config } of loaded) {
 			const folderMeta = await readFolderMeta(
 				fileSystemService,
 				indexService,
@@ -133,6 +140,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				continue;
 			}
 			built.push({
+				entry,
 				config,
 				tree: result.value.value,
 				warnings: result.value.warnings,
@@ -145,7 +153,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			return err(new DiagnosticsError(errors));
 		}
 
-		for (const { config, tree, warnings, summary } of built) {
+		for (const { entry, config, tree, warnings, summary } of built) {
 			if (built.length > 1) logService.step(configLabel(config.file));
 			const written = await writeOutput(fileSystemService, config, tree);
 			if (written.isErr())
@@ -156,11 +164,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.success(
 				`${outFile} · ${written.value.value.written ? "wrote" : "unchanged"}`
 			);
-			const entry = configService.configs.find(
-				({ file }) => file === config.file
-			);
 			for (const line of [
-				...(entry ? describeConfig(entry, environmentService.cwd) : []),
+				...describeConfig(entry, environmentService.cwd),
 				...describeBuild(summary, environmentService.cwd),
 			])
 				logService.debug(line);

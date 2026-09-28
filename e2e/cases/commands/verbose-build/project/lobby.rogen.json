@@ -1,5 +1,5 @@
 {
-	"extends": "./base.rogen.json",
+	"extends": "./shared/base.rogen.json",
 	"rootDirs": ["src"],
 	"tags": { "mock": false },
 	"exclude": ["**/*.spec.luau"]

@@ -2,10 +2,9 @@ $ rogen build lobby match --verbose
 exit 0
 stdout:
   rogen build · lobby, match
-  Not building: base.rogen.json.
   lobby
     lobby.project.json · wrote
-    [debug] extends: base.rogen.json
+    [debug] extends: shared/base.rogen.json
     [debug] src: 4 files, 1 excluded
     [debug] route server -> ServerScriptService: 1 file
     [debug] route client -> StarterPlayer/StarterPlayerScripts: 1 file

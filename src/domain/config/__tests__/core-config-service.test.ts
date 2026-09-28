@@ -1069,6 +1069,20 @@ describe("domain/config/core-config-service", () => {
 			]);
 		});
 
+		it("should keep the skipped tags of the last valid config when a reload breaks it", async () => {
+			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+			await write("/repo/match.rogen.json", {});
+			await start({
+				names: ["lobby", "match"],
+				overrides: { tags: { mock: true } },
+			});
+
+			await write("/repo/match.rogen.json", "{ nope");
+			await service.reload(["/repo/match.rogen.json"]);
+
+			expect(service.configs[1].skippedTags).toEqual(["mock"]);
+		});
+
 		it("should not fail on a tag when a named config could not be read", async () => {
 			await write("/repo/lobby.rogen.json", "{ nope");
 

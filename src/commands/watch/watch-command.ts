@@ -180,7 +180,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				? build(config, indexService, folderMeta.value)
 				: folderMeta;
 			if (built.isErr())
-				return finish("failed", unseen(file, "build", built.error));
+				return finish(
+					"failed",
+					unseen(file, "build", built.error),
+					describeConfig(entry, environmentService.cwd)
+				);
 
 			const written = await writeOutput(
 				fileSystemService,
@@ -188,7 +192,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				built.value.value
 			);
 			if (written.isErr())
-				return finish("failed", unseen(file, "build", written.error));
+				return finish(
+					"failed",
+					unseen(file, "build", written.error),
+					describeConfig(entry, environmentService.cwd)
+				);
 
 			const diagnostics = [
 				...unseen(file, "build", [

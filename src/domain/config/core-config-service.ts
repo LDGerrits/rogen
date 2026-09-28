@@ -148,7 +148,10 @@ export class CoreConfigService
 				chain: chain.files,
 				resolved: previous?.entry.resolved,
 				diagnostics,
-				skippedTags: undeclaredTags ?? [],
+				// Match the last valid value, which is what still gets built.
+				skippedTags: previous?.entry.resolved
+					? previous.entry.skippedTags
+					: (undeclaredTags ?? []),
 			},
 		});
 		if (chain.diagnostics.length > 0) return failed(chain.diagnostics);
