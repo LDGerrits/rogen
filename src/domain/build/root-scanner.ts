@@ -32,6 +32,8 @@ export interface ScannedRoot {
 	readonly entries: readonly ScannedEntry[];
 	readonly markers: readonly string[];
 	readonly excluded: readonly string[];
+	/** Links that loop back to an ancestor or point at nothing, which Rojo must never walk. */
+	readonly skippedLinks: readonly string[];
 }
 
 export interface ScanOptions {
@@ -103,7 +105,13 @@ export function scanRootDirs(
 }
 
 function emptyRoot(rootDir: string): ScannedRoot {
-	return { rootDir, entries: [], markers: [], excluded: [] };
+	return {
+		rootDir,
+		entries: [],
+		markers: [],
+		excluded: [],
+		skippedLinks: [],
+	};
 }
 
 function scanRoot(
@@ -115,6 +123,7 @@ function scanRoot(
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
 	const excluded: string[] = [];
+	const skippedLinks: string[] = [];
 
 	const isExcluded = (absolutePath: string) => {
 		const posixPath = toPosix(absolutePath);
@@ -153,6 +162,7 @@ function scanRoot(
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
 			if (type === FileType.SymbolicLink) {
+				skippedLinks.push(relativeTo(name));
 				unresolvedLinks.push(
 					ScanDiagnostics.unresolvedLink(path.join(dir, name))
 				);
@@ -184,6 +194,7 @@ function scanRoot(
 		entries: entries.sort(byRelativePath),
 		markers: markers.sort(),
 		excluded: excluded.sort(),
+		skippedLinks: skippedLinks.sort(),
 	};
 }
 

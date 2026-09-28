@@ -469,6 +469,7 @@ describe("scanRootDirs", () => {
 			const { roots, warnings } = await scan();
 
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(roots[0].skippedLinks).toEqual(["Broken"]);
 			expect(warnings).toMatchObject([
 				{
 					severity: DiagnosticSeverity.Warning,
@@ -485,6 +486,7 @@ describe("scanRootDirs", () => {
 			const { roots, warnings } = await scan();
 
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
+			expect(roots[0].skippedLinks).toEqual(["Loop"]);
 			expect(warnings).toMatchObject([
 				{ code: "scan.unresolvedLink", resource: abs("src/Loop") },
 			]);
@@ -530,6 +532,7 @@ describe("scanRootDirs", () => {
 				entries: [],
 				markers: [],
 				excluded: [],
+				skippedLinks: [],
 			});
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
 			expect(warnings).toMatchObject([

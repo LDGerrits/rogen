@@ -424,6 +424,23 @@ describe("assembleTree", () => {
 			});
 		});
 
+		it("should not collapse a directory holding a skipped link, and ignore the link", async () => {
+			await write("src/Real/Thing.luau");
+			await fs.createSymbolicLink(abs("src"), abs("src/Real/Back"));
+			await fs.createSymbolicLink(abs("missing"), abs("src/Real/Gone"));
+
+			const { value } = await assemble();
+
+			expect((value.tree.ReplicatedStorage as RojoNode).Real).toEqual({
+				...FOLDER,
+				Thing: { $path: optional("src/Real/Thing.luau") },
+			});
+			expect(value.globIgnorePaths).toEqual([
+				"src/Real/Back",
+				"src/Real/Gone",
+			]);
+		});
+
 		it("should not collapse a directory with a dormant-tag file", async () => {
 			await write(
 				"src/Inventory/Analytics.luau",
