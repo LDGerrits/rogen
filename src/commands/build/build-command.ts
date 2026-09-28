@@ -8,6 +8,7 @@ import {
 	rootsToIndex,
 } from "../../domain/build/build.js";
 import { describeBuild } from "../../domain/build/describe-build.js";
+import { describeConfig } from "../../domain/config/describe-config.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
 import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
@@ -155,7 +156,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			logService.success(
 				`${outFile} · ${written.value.value.written ? "wrote" : "unchanged"}`
 			);
-			for (const line of describeBuild(summary, environmentService.cwd))
+			const entry = configService.configs.find(
+				({ file }) => file === config.file
+			);
+			for (const line of [
+				...(entry ? describeConfig(entry, environmentService.cwd) : []),
+				...describeBuild(summary, environmentService.cwd),
+			])
 				logService.debug(line);
 			logDiagnostics(logService, [
 				...warnings,

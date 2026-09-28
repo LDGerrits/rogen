@@ -37,6 +37,7 @@ import {
 	describeFileChanges,
 } from "../../domain/watch/describe-change.js";
 import { describeBuild } from "../../domain/build/describe-build.js";
+import { describeConfig } from "../../domain/config/describe-config.js";
 import { PrintedDiagnostics } from "../../domain/watch/printed-diagnostics.js";
 import { createWatchPlan } from "../../domain/watch/watch-plan.js";
 import { Registry } from "../../platform/registry/registry.js";
@@ -145,10 +146,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			file: string,
 			load: boolean
 		): Promise<RebuildReport | undefined> => {
-			const config = configService.configs.find(
-				(entry) => entry.file === file
-			)?.resolved;
-			if (!config) return undefined;
+			const entry = configService.configs.find(
+				(candidate) => candidate.file === file
+			);
+			const config = entry?.resolved;
+			if (!entry || !config) return undefined;
 
 			const outFile =
 				path.relative(environmentService.cwd, config.outFile) || ".";
@@ -207,7 +209,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			return finish(
 				written.value.value.written ? "wrote" : "unchanged",
 				diagnostics,
-				describeBuild(built.value.summary, environmentService.cwd)
+				[
+					...describeConfig(entry, environmentService.cwd),
+					...describeBuild(
+						built.value.summary,
+						environmentService.cwd
+					),
+				]
 			);
 		};
 

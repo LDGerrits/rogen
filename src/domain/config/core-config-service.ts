@@ -1,4 +1,3 @@
-import path from "path";
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
@@ -9,7 +8,6 @@ import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { LogService } from "../../platform/log/log-service.js";
 import { loadConfigChain } from "./config-chain.js";
 import { discoverConfigPaths } from "./config-discovery.js";
 import { layerConfig, locateConfigValue } from "./config-layers.js";
@@ -58,8 +56,7 @@ export class CoreConfigService
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService,
-		private readonly logService: LogService
+		private readonly environmentService: EnvironmentService
 	) {
 		super();
 	}
@@ -129,11 +126,6 @@ export class CoreConfigService
 					)
 				);
 			}
-			for (const slot of skipped) {
-				this.logService.debug(
-					`Tag "${tag}" is not declared in ${path.basename(slot.entry.file)}; skipped there.`
-				);
-			}
 		}
 		return ok(undefined);
 	}
@@ -156,6 +148,7 @@ export class CoreConfigService
 				chain: chain.files,
 				resolved: previous?.entry.resolved,
 				diagnostics,
+				skippedTags: undeclaredTags ?? [],
 			},
 		});
 		if (chain.diagnostics.length > 0) return failed(chain.diagnostics);
@@ -200,6 +193,7 @@ export class CoreConfigService
 				chain: chain.files,
 				resolved: resolved.value,
 				diagnostics: [],
+				skippedTags: layered.undeclaredTags,
 			},
 		};
 	}

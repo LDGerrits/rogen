@@ -5,14 +5,12 @@ import { ConfigChangeEvent } from "../../../platform/config/config.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { NullLogService } from "../../../platform/log/log-service.js";
 import { ConfigRefs } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 describe("domain/config/core-config-service", () => {
 	let fs: MemoryFileSystemService;
 	let service: CoreConfigService;
-	let logService: NullLogService;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
 		fs.writeFile(
@@ -32,11 +30,9 @@ describe("domain/config/core-config-service", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
-		logService = new NullLogService();
 		service = new CoreConfigService(
 			fs,
-			new MockEnvironmentService({ _: [] }, "/repo"),
-			logService
+			new MockEnvironmentService({ _: [] }, "/repo")
 		);
 	});
 
@@ -307,8 +303,7 @@ describe("domain/config/core-config-service", () => {
 			await fs.createDirectory("/repo");
 			service = new CoreConfigService(
 				fs,
-				new MockEnvironmentService({ _: [] }, "/repo"),
-				logService
+				new MockEnvironmentService({ _: [] }, "/repo")
 			);
 			await write("/repo/core.rogen.json", { rootDirs: ["core"] });
 			await write("/repo/default.rogen.json", {
@@ -637,8 +632,7 @@ describe("domain/config/core-config-service", () => {
 				fs = new MemoryFileSystemService();
 				service = new CoreConfigService(
 					fs,
-					new MockEnvironmentService({ _: [] }, "/"),
-					logService
+					new MockEnvironmentService({ _: [] }, "/")
 				);
 				await write("/default.rogen.json", {});
 
@@ -1058,7 +1052,6 @@ describe("domain/config/core-config-service", () => {
 		it("should apply a tag where it is declared and say where it was skipped", async () => {
 			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
 			await write("/repo/match.rogen.json", {});
-			const debug = jest.spyOn(logService, "debug");
 
 			const result = await start({
 				names: ["lobby", "match"],
@@ -1070,10 +1063,10 @@ describe("domain/config/core-config-service", () => {
 				{ mock: true },
 				{},
 			]);
-			expect(debug).toHaveBeenCalledWith(
-				expect.stringContaining("match.rogen.json")
-			);
-			expect(debug).toHaveBeenCalledTimes(1);
+			expect(service.configs.map((c) => c.skippedTags)).toEqual([
+				[],
+				["mock"],
+			]);
 		});
 
 		it("should not fail on a tag when a named config could not be read", async () => {

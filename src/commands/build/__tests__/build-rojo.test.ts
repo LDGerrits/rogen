@@ -40,7 +40,7 @@ describeWithRojo("build command against Rojo", () => {
 		const fileSystem = new DiskFileSystemService();
 		const logService = new NullLogService();
 		const configService = store.add(
-			new CoreConfigService(fileSystem, environment, logService)
+			new CoreConfigService(fileSystem, environment)
 		);
 		const refs = configRefsFromArgs(args).unwrap();
 		(await configService.initialize(refs)).unwrap();

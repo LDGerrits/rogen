@@ -107,7 +107,7 @@ async function main(): Promise<void> {
 		const services = new ServiceCollection();
 
 		const configService = disposables.add(
-			new CoreConfigService(fileSystemService, environment, logService)
+			new CoreConfigService(fileSystemService, environment)
 		);
 		services.set(ConfigService, configService);
 

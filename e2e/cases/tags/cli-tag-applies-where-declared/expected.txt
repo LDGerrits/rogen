@@ -1,7 +1,6 @@
 $ rogen build lobby match --tag mock --verbose
 exit 0
 stdout:
-  [debug] Tag "mock" is not declared in match.rogen.json; skipped there.
   rogen build · lobby, match
   lobby
     lobby.project.json · wrote
@@ -14,6 +13,7 @@ stdout:
     [debug] left out: 1 replaced by a file with the same name
   match
     match.project.json · wrote
+    [debug] tag mock skipped: not declared in this config
     [debug] src: 2 files
     [debug] route server -> ServerScriptService: 0 files
     [debug] route client -> StarterPlayer/StarterPlayerScripts: 0 files

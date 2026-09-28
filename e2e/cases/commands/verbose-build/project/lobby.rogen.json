@@ -1,10 +1,6 @@
 {
+	"extends": "./base.rogen.json",
 	"rootDirs": ["src"],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"*": "ReplicatedStorage/shared"
-	},
 	"tags": { "mock": false },
 	"exclude": ["**/*.spec.luau"]
 }
