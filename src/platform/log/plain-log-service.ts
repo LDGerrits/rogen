@@ -40,11 +40,11 @@ export class PlainLogService extends AbstractLogService {
 				console.error(text);
 				break;
 			case "debug":
-				console.debug(`[debug] ${text}`);
+			case "trace": {
+				const line = `[${kind}] ${text}`;
+				console.debug(this.inStep ? indented(line) : line);
 				break;
-			case "trace":
-				console.debug(`[trace] ${text}`);
-				break;
+			}
 			default:
 				console.info(text);
 		}

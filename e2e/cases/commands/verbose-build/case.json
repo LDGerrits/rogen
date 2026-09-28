@@ -1,0 +1,3 @@
+{
+	"steps": [["build", "lobby", "match", "--verbose"]]
+}

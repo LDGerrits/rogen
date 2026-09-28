@@ -12,6 +12,7 @@ export function mockEntry(
 		file,
 		chain: [file],
 		diagnostics: [],
+		skippedTags: [],
 		resolved: {
 			name: "repo",
 			rootDirs: [],

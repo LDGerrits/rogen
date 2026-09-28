@@ -27,6 +27,8 @@ export interface ConfigEntry {
 	/** The last valid version, or `undefined` if the config has never been valid. */
 	readonly resolved: ResolvedConfig | undefined;
 	readonly diagnostics: readonly Diagnostic[];
+	/** Tags turned on or off from the command line that this config doesn't declare. */
+	readonly skippedTags: readonly string[];
 }
 
 export interface ConfigService {

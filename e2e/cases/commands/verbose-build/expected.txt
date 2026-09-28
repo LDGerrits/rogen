@@ -1,0 +1,42 @@
+$ rogen build lobby match --verbose
+exit 0
+stdout:
+  rogen build · lobby, match
+  lobby
+    lobby.project.json · wrote
+    [debug] extends: shared/base.rogen.json
+    [debug] src: 4 files, 1 excluded
+    [debug] route server -> ServerScriptService: 1 file
+    [debug] route client -> StarterPlayer/StarterPlayerScripts: 1 file
+    [debug] route * -> ReplicatedStorage/shared: 1 file
+    [debug] tag mock off: 1 file left out
+  match
+    match.project.json · wrote
+    [debug] src: 5 files
+    [debug] lib: 1 file
+    [debug] route server -> ServerScriptService: 1 file
+    [debug] tag mock on: 1 file
+    [debug] left out: 4 unrouted, 1 replaced by a file with the same name
+  Built 2 configs.
+stderr:
+  <dir>/match.project.json - warning: 4 files matched no route and were left out (<dir>/src/Util.luau, <dir>/src/Util.spec.luau, <dir>/src/client/Hud.client.luau, …). Add a "*" route to place them.
+
+written:
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Util: ModuleScript  <- src/Util.luau
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/server/Save.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Hud: LocalScript  <- src/client/Hud.client.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/server/Save.mock.server.luau

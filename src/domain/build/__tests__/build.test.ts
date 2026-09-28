@@ -321,6 +321,125 @@ describe("domain/build/build", () => {
 				);
 			});
 		});
+
+		describe("summary", () => {
+			it("should count each root dir's files, exclusions and skipped links", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/B.luau"), "");
+				await fs.writeFile(abs("src/Old.luau"), "");
+				await fs.writeFile(abs("lib/C.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						rootDirs: [abs("src"), abs("lib")],
+						exclude: [toPosix(abs("src/Old.luau"))],
+					})
+				);
+
+				expect(result.unwrap().summary.roots).toEqual([
+					{
+						rootDir: abs("src"),
+						files: 2,
+						excluded: 1,
+						skippedLinks: 0,
+					},
+					{
+						rootDir: abs("lib"),
+						files: 1,
+						excluded: 0,
+						skippedLinks: 0,
+					},
+				]);
+			});
+
+			it("should count the files each route places, in declared order", async () => {
+				await fs.writeFile(abs("src/A.server.luau"), "");
+				await fs.writeFile(abs("src/B.luau"), "");
+				await fs.writeFile(abs("src/C.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						routes: {
+							server: "ServerScriptService",
+							client: "StarterPlayer/StarterPlayerScripts",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				);
+
+				expect(result.unwrap().summary.routes).toEqual([
+					{ key: "server", target: "ServerScriptService", files: 1 },
+					{
+						key: "client",
+						target: "StarterPlayer/StarterPlayerScripts",
+						files: 0,
+					},
+					{ key: "*", target: "ReplicatedStorage/shared", files: 2 },
+				]);
+			});
+
+			it("should count the files each tag marks, whether on or off", async () => {
+				await fs.writeFile(abs("src/A.mock.luau"), "");
+				await fs.writeFile(abs("src/debug/B.luau"), "");
+				await fs.writeFile(abs("src/debug/C.luau"), "");
+
+				const result = await buildOf(
+					configOf({ tags: { mock: true, debug: false } })
+				);
+
+				expect(result.unwrap().summary.tags).toEqual([
+					{ tag: "mock", on: true, files: 1 },
+					{ tag: "debug", on: false, files: 2 },
+				]);
+			});
+
+			it("should count only placed files for a tag that's on", async () => {
+				await fs.writeFile(abs("src/A.mock.luau"), "");
+				await fs.writeFile(abs("src/B.mock.debug.luau"), "");
+
+				const result = await buildOf(
+					configOf({ tags: { mock: true, debug: false } })
+				);
+
+				expect(result.unwrap().summary.tags).toEqual([
+					{ tag: "mock", on: true, files: 1 },
+					{ tag: "debug", on: false, files: 1 },
+				]);
+			});
+
+			it("should count the files no route governs", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/B.client.luau"), "");
+
+				const result = await buildOf(
+					configOf({ routes: { server: "ServerScriptService" } })
+				);
+
+				expect(result.unwrap().summary.unrouted).toBe(2);
+			});
+
+			it("should count the files another with the same name replaced", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/A.mock.luau"), "");
+
+				const result = await buildOf(
+					configOf({ tags: { mock: true } })
+				);
+
+				expect(result.unwrap().summary.superseded).toBe(1);
+			});
+
+			it("should count a file the last root dir replaced", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("lib/A.luau"), "");
+
+				const result = await buildOf(
+					configOf({ rootDirs: [abs("src"), abs("lib")] })
+				);
+
+				expect(result.unwrap().summary.superseded).toBe(1);
+			});
+		});
 	});
 
 	describe("checkRoutes", () => {

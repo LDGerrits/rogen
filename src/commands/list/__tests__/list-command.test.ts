@@ -55,7 +55,7 @@ describe("list command", () => {
 		services.set(EnvironmentService, environment);
 		services.set(
 			ConfigService,
-			store.add(new CoreConfigService(fs, environment, logService))
+			store.add(new CoreConfigService(fs, environment))
 		);
 		const commandService = store.add(
 			new CoreCommandService(services, logService)

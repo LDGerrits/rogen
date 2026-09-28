@@ -117,8 +117,7 @@ describe("watch command", () => {
 		});
 		configService = new CoreConfigService(
 			memFs,
-			new MockEnvironmentService(undefined, "/repo"),
-			logService
+			new MockEnvironmentService(undefined, "/repo")
 		);
 		await write("/repo/default.rogen.json", config());
 	});
@@ -206,8 +205,7 @@ describe("watch command", () => {
 			logService.clear();
 			configService = new CoreConfigService(
 				memFs,
-				new MockEnvironmentService(undefined, "/repo"),
-				logService
+				new MockEnvironmentService(undefined, "/repo")
 			);
 
 			void startWatch();
