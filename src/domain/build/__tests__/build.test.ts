@@ -393,29 +393,51 @@ describe("domain/build/build", () => {
 				]);
 			});
 
-			it("should count unrouted files and files another replaced", async () => {
-				await fs.writeFile(abs("src/A.luau"), "");
+			it("should count only placed files for a tag that's on", async () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
+				await fs.writeFile(abs("src/B.mock.debug.luau"), "");
+
+				const result = await buildOf(
+					configOf({ tags: { mock: true, debug: false } })
+				);
+
+				expect(result.unwrap().summary.tags).toEqual([
+					{ tag: "mock", on: true, files: 1 },
+					{ tag: "debug", on: false, files: 1 },
+				]);
+			});
+
+			it("should count the files no route governs", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.client.luau"), "");
 
 				const result = await buildOf(
-					configOf({
-						routes: { server: "ServerScriptService" },
-						tags: { mock: true },
-					})
+					configOf({ routes: { server: "ServerScriptService" } })
 				);
-				const { unrouted, superseded } = result.unwrap().summary;
 
-				expect({ unrouted, superseded }).toEqual({
-					unrouted: 3,
-					superseded: 0,
-				});
+				expect(result.unwrap().summary.unrouted).toBe(2);
+			});
 
-				const routed = await buildOf(
+			it("should count the files another with the same name replaced", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/A.mock.luau"), "");
+
+				const result = await buildOf(
 					configOf({ tags: { mock: true } })
 				);
 
-				expect(routed.unwrap().summary.superseded).toBe(1);
+				expect(result.unwrap().summary.superseded).toBe(1);
+			});
+
+			it("should count a file the last root dir replaced", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("lib/A.luau"), "");
+
+				const result = await buildOf(
+					configOf({ rootDirs: [abs("src"), abs("lib")] })
+				);
+
+				expect(result.unwrap().summary.superseded).toBe(1);
 			});
 		});
 	});

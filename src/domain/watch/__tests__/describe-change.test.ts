@@ -84,4 +84,16 @@ describe("describeFileChanges", () => {
 			"deleted src/Old.luau",
 		]);
 	});
+
+	it("should list only the first files of a large change", () => {
+		const changes = Array.from({ length: 25 }, (_, i) =>
+			change(FileChangeType.UPDATED, `src/F${i}.luau`)
+		);
+
+		const lines = describeFileChanges(changes, cwd);
+
+		expect(lines).toHaveLength(21);
+		expect(lines[19]).toBe("changed src/F19.luau");
+		expect(lines[20]).toBe("and 5 more");
+	});
 });

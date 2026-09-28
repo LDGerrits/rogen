@@ -34,13 +34,19 @@ const CHANGE_VERBS: Record<FileChangeType, string> = {
 	[FileChangeType.DELETED]: "deleted",
 };
 
-/** One line per changed file, for `--verbose`. */
+const LISTED_CHANGES = 20;
+
+/** One line per changed file, up to a limit, for `--verbose`. */
 export function describeFileChanges(
 	changes: readonly FileChange[],
 	cwd: string
 ): string[] {
-	return changes.map(
-		(change) =>
-			`${CHANGE_VERBS[change.type]} ${path.relative(cwd, change.path) || "."}`
-	);
+	const hidden = changes.length - LISTED_CHANGES;
+	const lines = changes
+		.slice(0, LISTED_CHANGES)
+		.map(
+			(change) =>
+				`${CHANGE_VERBS[change.type]} ${path.relative(cwd, change.path) || "."}`
+		);
+	return hidden > 0 ? [...lines, `and ${hidden} more`] : lines;
 }
