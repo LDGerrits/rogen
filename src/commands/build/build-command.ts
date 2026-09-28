@@ -2,6 +2,7 @@ import path from "path";
 import { err, ok } from "../../base/result.js";
 import { build, checkRoutes, rootsToIndex } from "../../domain/build/build.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
+import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
 import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -137,6 +138,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				...warnings,
 				...written.value.warnings,
 				...(await checkSyncDir(fileSystemService, config)),
+				...(await checkSyncMeta(
+					fileSystemService,
+					indexService,
+					config
+				)),
 			]);
 		}
 

@@ -8,8 +8,10 @@ import { RojoTree } from "../rojo/rojo-tree.js";
 import { applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
+import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { routeFiles } from "./route-files.js";
+import { findUnclaimedMeta } from "./unclaimed-meta.js";
 
 export interface BuildOutput {
 	readonly value: RojoTree;
@@ -54,10 +56,19 @@ export function build(
 		superseded: tagging.value.superseded,
 	});
 
+	const unclaimedMeta = findUnclaimedMeta(scan.roots);
 	return ok({
 		value: assembly.value,
 		warnings: [
 			...scan.warnings,
+			...(unclaimedMeta.length > 0
+				? [
+						MetaDiagnostics.unclaimed(
+							{ resource: config.outFile },
+							unclaimedMeta
+						),
+					]
+				: []),
 			...routing.value.warnings,
 			...tagging.value.warnings,
 			...assembly.warnings,

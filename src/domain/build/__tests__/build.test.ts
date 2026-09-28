@@ -1,5 +1,6 @@
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -162,6 +163,119 @@ describe("domain/build/build", () => {
 
 			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.name).toBe("lobby");
+		});
+
+		describe("unclaimed meta", () => {
+			const warningsFor = async (
+				files: readonly string[],
+				overrides: Partial<ResolvedConfig> = {}
+			) => {
+				for (const file of files) await fs.writeFile(abs(file), "");
+				const config = configOf(overrides);
+				return build(config, await indexOf(config.rootDirs))
+					.unwrap()
+					.warnings.filter(({ code }) => code === "meta.unclaimed");
+			};
+
+			it("should not warn about meta that a sibling claims under the name Rojo gives it", async () => {
+				const warnings = await warningsFor(
+					[
+						"src/Plain.luau",
+						"src/Plain.meta.json",
+						"src/Save.server.luau",
+						"src/Save.meta.json",
+						"src/Foo.mock.server.luau",
+						"src/Foo.mock.meta.json",
+						"src/Combat@server.luau",
+						"src/Combat@server.meta.json",
+						"src/Hud.client.ts",
+						"src/Hud.meta.json",
+						"src/Tool.plugin.lua",
+						"src/Tool.meta.json",
+						"src/Items.csv",
+						"src/Items.meta.json",
+						"src/Stats.server.json",
+						"src/Stats.server.meta.json",
+						"src/Bots/init.meta.json",
+						"src/Bots/A.luau",
+					],
+					{
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					}
+				);
+
+				expect(warnings).toEqual([]);
+			});
+
+			it("should count a claim from a pruned or excluded sibling", async () => {
+				const warnings = await warningsFor(
+					[
+						"src/Analytics.mock.luau",
+						"src/Analytics.mock.meta.json",
+						"src/Legacy.luau",
+						"src/Legacy.meta.json",
+					],
+					{
+						tags: { mock: false },
+						exclude: [toPosix(abs("src/Legacy.luau"))],
+					}
+				);
+
+				expect(warnings).toEqual([]);
+			});
+
+			it("should warn once with the name Rojo reads, the folder's meta, or that the file takes none", async () => {
+				const warnings = await warningsFor([
+					"src/Save.server.luau",
+					"src/Save.server.meta.json",
+					"src/Foo/A.luau",
+					"src/Foo.meta.json",
+					"src/Bar/init.luau",
+					"src/Bar.meta.json",
+					"src/Crate.model.json",
+					"src/Crate.meta.json",
+					"src/Tree.rbxm",
+					"src/Tree.meta.json",
+					"src/Nothing.meta.json",
+				]);
+
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0].resource).toBe(abs("default.project.json"));
+				expect(warnings[0].message).toMatch(
+					/^6 meta files belong to no file/
+				);
+				for (const entry of [
+					`${toPosix(abs("src/Bar.meta.json"))} (a folder's meta is Bar/init.meta.json)`,
+					`${toPosix(abs("src/Crate.meta.json"))} (Crate.model.json takes no meta)`,
+					`${toPosix(abs("src/Foo.meta.json"))} (a folder's meta is Foo/init.meta.json)`,
+				])
+					expect(warnings[0].message).toContain(entry);
+			});
+
+			it("should name the meta Rojo reads for a script's full stem", async () => {
+				const warnings = await warningsFor([
+					"src/Save.server.luau",
+					"src/Save.server.meta.json",
+				]);
+
+				expect(warnings[0].message).toContain(
+					`${toPosix(abs("src/Save.server.meta.json"))} (Rojo reads Save.meta.json)`
+				);
+			});
+
+			it("should say a model file takes no meta", async () => {
+				const warnings = await warningsFor([
+					"src/Tree.rbxm",
+					"src/Tree.meta.json",
+				]);
+
+				expect(warnings[0].message).toContain(
+					`${toPosix(abs("src/Tree.meta.json"))} (Tree.rbxm takes no meta)`
+				);
+			});
 		});
 	});
 

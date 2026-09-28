@@ -4,6 +4,7 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { listPaths } from "../build/path-list.js";
 
 export const OutputDiagnostics = {
 	writeFailed: (location: DiagnosticLocation, detail: string): Diagnostic =>
@@ -36,5 +37,20 @@ export const OutputDiagnostics = {
 				(nearest.found
 					? `Found "${nearest.path}" — is the compiler's output rooted differently?`
 					: `The nearest path that exists is "${nearest.path}" — has the compiler run?`)
+		),
+
+	metaNotSynced: (
+		location: DiagnosticLocation,
+		syncDir: string,
+		paths: readonly string[],
+		converted: boolean
+	): Diagnostic =>
+		warningDiagnostic(
+			"output.metaNotSynced",
+			location,
+			`${paths.length} meta ${paths.length === 1 ? "file has" : "files have"} no copy under "${syncDir}" (${listPaths(paths)}), so Rojo doesn't apply ${paths.length === 1 ? "it" : "them"}. ` +
+				(converted
+					? `The processor turned ${paths.length === 1 ? "it" : "them"} into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.`
+					: "Have the compiler copy .meta.json files into its output.")
 		),
 };
