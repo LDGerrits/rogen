@@ -9,6 +9,7 @@ import { applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
+import { FolderMeta } from "./read-folder-meta.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { routeFiles } from "./route-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
@@ -27,10 +28,11 @@ export function checkRoutes(
 		.map(({ file }) => RouteDiagnostics.noRoutes({ resource: file }));
 }
 
-/** Reads only the in-memory `index`, which the caller initialized with `rootsToIndex`. */
+/** Reads only the in-memory `index`, which the caller initialized with `rootsToIndex`, and the `readFolderMeta` result. */
 export function build(
 	config: ResolvedConfig,
-	index: IndexService
+	index: IndexService,
+	folderMeta: readonly FolderMeta[]
 ): Result<BuildOutput, Diagnostic[]> {
 	const scan = scanRootDirs(index, {
 		rootDirs: config.rootDirs,
@@ -54,11 +56,13 @@ export function build(
 		pruned: tagging.value.pruned,
 		unrouted: routing.value.unrouted,
 		superseded: tagging.value.superseded,
+		folderMeta,
 	});
+	if (assembly.isErr()) return assembly;
 
 	const unclaimedMeta = findUnclaimedMeta(scan.roots);
 	return ok({
-		value: assembly.value,
+		value: assembly.value.value,
 		warnings: [
 			...scan.warnings,
 			...(unclaimedMeta.length > 0
@@ -71,7 +75,7 @@ export function build(
 				: []),
 			...routing.value.warnings,
 			...tagging.value.warnings,
-			...assembly.warnings,
+			...assembly.value.warnings,
 		],
 	});
 }

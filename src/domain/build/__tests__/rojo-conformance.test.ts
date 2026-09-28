@@ -12,6 +12,7 @@ import {
 	sourcemap,
 } from "../../rojo/__tests__/rojo-cli.js";
 import { build } from "../build.js";
+import { readFolderMeta } from "../read-folder-meta.js";
 
 const FILES: Record<string, string> = {
 	"A.luau": "",
@@ -112,7 +113,11 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			...overrides,
 		};
 		await index.initialize(config.rootDirs);
-		const built = build(config, index).unwrap();
+		const built = build(
+			config,
+			index,
+			(await readFolderMeta(fileSystem, index, config)).unwrap()
+		).unwrap();
 		(await writeOutput(fileSystem, config, built.value)).unwrap();
 	};
 

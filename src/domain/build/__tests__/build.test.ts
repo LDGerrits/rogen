@@ -7,6 +7,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { build, checkRoutes, rootsToIndex } from "../build.js";
+import { readFolderMeta } from "../read-folder-meta.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -30,6 +31,15 @@ describe("domain/build/build", () => {
 		return index;
 	};
 
+	const buildOf = async (config: ResolvedConfig) => {
+		const index = await indexOf(config.rootDirs);
+		return build(
+			config,
+			index,
+			(await readFolderMeta(fs, index, config)).unwrap()
+		);
+	};
+
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		store = new DisposableStore();
@@ -44,7 +54,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toEqual([]);
 			expectRojoProject(result.unwrap().value);
@@ -61,7 +71,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/HttpMock.luau"), "");
 			const config = configOf({ tags: { mock: false } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
 				{ code: "tag.dormantCapitalSuffix" },
@@ -73,7 +83,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.dev.luau"), "");
 			const config = configOf({ tags: { mock: true, dev: true } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.isErr() ? result.error : []).toMatchObject([
 				{ code: "tag.activeClash" },
@@ -84,7 +94,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({ rootDirs: [abs("core"), abs("lobby")] });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
 				{
@@ -102,7 +112,7 @@ describe("domain/build/build", () => {
 				routes: {},
 			});
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(
 				result.unwrap().warnings.map((warning) => warning.code)
@@ -113,7 +123,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ routes: { "*": "Nowhere" } });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.isErr() ? result.error : []).toMatchObject([
 				{ code: "roblox.unsupportedService" },
@@ -125,7 +135,7 @@ describe("domain/build/build", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.tree).toEqual({
@@ -143,7 +153,7 @@ describe("domain/build/build", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Two"));
 			const config = configOf();
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expect(result.unwrap().value.tree).toEqual({
 				$className: "DataModel",
@@ -159,7 +169,7 @@ describe("domain/build/build", () => {
 			await fs.createDirectory(abs("src"));
 			const config = configOf({ name: "lobby" });
 
-			const result = build(config, await indexOf(config.rootDirs));
+			const result = await buildOf(config);
 
 			expectRojoProject(result.unwrap().value);
 			expect(result.unwrap().value.name).toBe("lobby");
@@ -170,9 +180,13 @@ describe("domain/build/build", () => {
 				files: readonly string[],
 				overrides: Partial<ResolvedConfig> = {}
 			) => {
-				for (const file of files) await fs.writeFile(abs(file), "");
+				for (const file of files)
+					await fs.writeFile(
+						abs(file),
+						file.endsWith(".meta.json") ? "{}" : ""
+					);
 				const config = configOf(overrides);
-				return build(config, await indexOf(config.rootDirs))
+				return (await buildOf(config))
 					.unwrap()
 					.warnings.filter(({ code }) => code === "meta.unclaimed");
 			};

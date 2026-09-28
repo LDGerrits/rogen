@@ -336,6 +336,37 @@ describe("watch command", () => {
 			expect(queueEvents).not.toHaveBeenCalled();
 		});
 
+		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ routes: { server: "ServerScriptService" } })
+			);
+			await memFs.writeFile("/repo/src/Combat/server/Hit.luau", "");
+			await write("/repo/src/Combat/init.meta.json", {
+				className: "Actor",
+			});
+			const combatClass = async () =>
+				JSON.parse(await memFs.readFile("/repo/default.project.json"))
+					.tree.ServerScriptService.Combat.$className;
+			await run();
+			expect(await combatClass()).toBe("Actor");
+
+			await write("/repo/src/Combat/init.meta.json", {
+				className: "Configuration",
+			});
+			await settle();
+			expect(await combatClass()).toBe("Configuration");
+
+			logService.clear();
+			await write("/repo/src/Combat/init.meta.json", "{ broken");
+			await settle();
+			expect(await combatClass()).toBe("Configuration");
+			expect(logService.entries).toContainEqual({
+				kind: "error",
+				text: "default.project.json · not written",
+			});
+		});
+
 		it("should reach every config that claims the path, each once", async () => {
 			await write("/repo/source.rogen.json", config());
 			await run(["default", "source"]);

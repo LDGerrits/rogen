@@ -1,5 +1,6 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
+import { readFolderMeta } from "../../domain/build/read-folder-meta.js";
 import { build, checkRoutes, rootsToIndex } from "../../domain/build/build.js";
 import { checkSyncDir } from "../../domain/output/check-sync-dir.js";
 import { checkSyncMeta } from "../../domain/output/check-sync-meta.js";
@@ -7,6 +8,7 @@ import { findOutputClashes } from "../../domain/output/find-output-clashes.js";
 import { writeOutput } from "../../domain/output/write-output.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { showConfig } from "./show-config.js";
 import { ConfigOptions } from "../config-options.js";
@@ -106,7 +108,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const built = [];
 		const errors: Diagnostic[] = [];
 		for (const config of entries) {
-			const result = build(config, indexService);
+			const folderMeta = await readFolderMeta(
+				fileSystemService,
+				indexService,
+				config
+			);
+			const result = folderMeta.isOk()
+				? build(config, indexService, folderMeta.value)
+				: folderMeta;
 			if (result.isErr()) {
 				errors.push(...result.error);
 				continue;
@@ -120,7 +129,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		if (errors.length > 0) {
 			for (const { warnings } of built)
 				logDiagnostics(logService, warnings);
-			return err(new DiagnosticsError(errors));
+			// Configs that share a root dir read the same folder meta.
+			const unique = new Map(
+				errors.map((error) => [renderDiagnostic(error), error])
+			);
+			return err(new DiagnosticsError([...unique.values()]));
 		}
 
 		for (const { config, tree, warnings } of built) {

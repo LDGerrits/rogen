@@ -63,6 +63,12 @@ function hintFor(
 	return withoutMeta ? `${withoutMeta} takes no meta` : undefined;
 }
 
+/** The `.meta.json` Rojo reads for `fileName`, or none for a file that takes no meta. */
+export function metaFileFor(fileName: string): string | undefined {
+	const name = metaNameOf(fileName);
+	return name === undefined ? undefined : `${name}${META_FILE_SUFFIX}`;
+}
+
 /** The meta name Rojo reads for `fileName`, or none for a file that takes no meta. */
 function metaNameOf(fileName: string): string | undefined {
 	const kind = classifyFile(fileName);

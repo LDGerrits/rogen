@@ -1,0 +1,5 @@
+{
+	// an actor
+	"className": "Actor",
+	"attributes": ["Priority"]
+}

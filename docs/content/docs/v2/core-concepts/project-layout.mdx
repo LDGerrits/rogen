@@ -41,18 +41,32 @@ Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data fi
 A `.meta.json` file sets what a file or folder can't express itself: a class, properties or attributes. It is never placed as an instance.
 
 - A **file's** metadata file is named after the name Rojo gives the file: its name without the extension and without a final `.server`, `.client` or `.plugin`. `Save.server.luau` takes `Save.meta.json`, and Rojo ignores a `Save.server.meta.json`. `Analytics.mock.luau` takes `Analytics.mock.meta.json`, even when an active tag renames it to `Analytics`: Rojo finds the metadata from the file, not from the name Rogen gives it. Models (`.rbxm`, `.rbxmx`, `.model.json`) and `.project.json` files take none.
-- A **folder's** `init.meta.json` applies to every node Rogen generates for that folder, which is how a feature folder becomes an `Actor`:
+- A **folder's** `init.meta.json` applies to every node that folder becomes, which is how a feature folder becomes an `Actor`:
 
-```json title="src/Inventory/init.meta.json"
+```json title="src/Combat/init.meta.json"
 { "className": "Actor" }
 ```
 
-An `init.meta.json` inside a routing folder or tag folder applies to nothing, and Rogen warns about it.
+With `Combat/server/` and `Combat/client/`, or `.server` and `.client` files side by side, `Combat` becomes one node in each service, and both are `Actor`s. Rojo applies a folder's meta itself where the project points at the folder, so collapsed folders and init folders are left to Rojo. On every other node Rogen copies `className`, `properties`, `attributes` and `ignoreUnknownInstances` for you, and an `id` becomes the node's `$id`. The meta files are JSONC, and fields Rojo doesn't know, such as `$schema`, are ignored.
+
+When several folders become the same node:
+
+- Across root directories, the last one with an `init.meta.json` wins, whole. A later folder without one leaves the earlier meta in place.
+- Within one root directory, two metas reaching one node is an error, for example `src/server/Combat/` next to `src/Combat/`.
+- An `id` that would land on more than one node is an error, since refs must be unique.
+- Where the template defines the same node, the template wins: its `$properties` are merged over the meta's key by key, its `$attributes` replace the meta's, and its `$className` is kept, with a warning when the two differ.
+
+Some `init.meta.json` files apply to nothing, and Rogen warns about them:
+
+- One in a routing folder, tag folder or invisible folder, or at the top of a root directory. None of these ever becomes an instance, so put the meta in the feature folder instead.
+- One in a folder that shares its instance with a script, such as `Combat/` beside `Combat.server.luau`. Rojo reads the script there, so put the meta in `Combat.meta.json` beside it, or turn the folder into an init folder.
+
+An invalid `init.meta.json` stops the build, with the file and position of the problem.
 
 Rogen warns about a `.meta.json` that no file beside it claims, and names the file Rojo reads instead.
 
 <Callout type="warn">
-With a `syncDir`, Rojo reads the metadata files in your compiler's output. roblox-ts copies them unchanged. Darklua turns each one into a `.meta.lua` module, so the metadata is lost and Rojo syncs a stray `Save.meta` ModuleScript. Rogen warns when a `.meta.json` has no copy under the `syncDir`.
+With a `syncDir`, Rojo reads the metadata files in your compiler's output. roblox-ts copies them unchanged. Darklua turns each one into a `.meta.lua` module, so the metadata is lost and Rojo syncs a stray `Save.meta` ModuleScript. Rogen reads folder meta from the root directories, so the meta it copies survives. For the rest, Rogen warns when a `.meta.json` has no copy under the `syncDir`.
 </Callout>
 
 </Step>

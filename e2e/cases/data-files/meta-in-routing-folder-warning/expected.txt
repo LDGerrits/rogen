@@ -1,0 +1,17 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  <dir>/default.project.json - warning: 1 init.meta.json file applies to nothing, because its folder never becomes an instance (<dir>/src/Combat/server/init.meta.json (routing folder)). Move the meta into the folder that should get it.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/server/Hit.luau
