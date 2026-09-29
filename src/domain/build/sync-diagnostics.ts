@@ -4,7 +4,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { MetaReplacement } from "../toolchain/toolchain.js";
-import { listPaths } from "./path-list.js";
+import { listPaths } from "./rules/path-list.js";
 
 /** Problems with what the sync dir holds, which Rojo reads instead of the root dirs. */
 export const SyncDiagnostics = {

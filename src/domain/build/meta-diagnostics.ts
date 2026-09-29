@@ -4,7 +4,7 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { listPaths } from "./path-list.js";
+import { listPaths } from "./rules/path-list.js";
 
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */

@@ -8,9 +8,9 @@ import { RojoFileKind } from "../rojo/rojo-files.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
 import { SyncTool } from "../toolchain/toolchain.js";
-import { FolderReading, SuffixForm, SuffixMatch } from "./declared-key.js";
-import { SyncLayout, syncLayoutOf } from "./sync-path.js";
-import { templateProject } from "./template.js";
+import { FolderReading, SuffixForm, SuffixMatch } from "./keys/declared-key.js";
+import { SyncLayout, syncLayoutOf } from "./layout/sync-path.js";
+import { templateProject } from "./layout/template.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;

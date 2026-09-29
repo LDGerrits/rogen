@@ -11,10 +11,10 @@ import {
 	BuiltProject,
 	FileLocation,
 } from "./build-service.js";
-import { summarizeBuild } from "./summarize-build.js";
-import { locateFiles } from "./locate-files.js";
-import { assemble, check, checkSync, place } from "./pipeline.js";
-import { withPlannedFiles } from "./planned-files.js";
+import { summarizeBuild } from "./reports/summarize-build.js";
+import { locateFiles } from "./reports/locate-files.js";
+import { assemble, check, checkSync, place } from "./pipeline/pipeline.js";
+import { withPlannedFiles } from "./reports/planned-files.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
 export class CoreBuildService implements BuildService {

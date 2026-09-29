@@ -4,7 +4,7 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { withFirstLetterFlipped } from "./declared-key.js";
+import { withFirstLetterFlipped } from "./keys/declared-key.js";
 
 export const RouteDiagnostics = {
 	noRoutes: (location: DiagnosticLocation): Diagnostic =>
