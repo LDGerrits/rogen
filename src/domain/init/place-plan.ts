@@ -5,8 +5,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { ConfigEntry } from "../config/config-service.js";
 import { projectFileName } from "../rojo/rojo-project.js";
-import { Darklua } from "../toolchain/darklua.js";
 import {
+	Darklua,
 	DetectedWorkspace,
 	Language,
 	PlannedFile,

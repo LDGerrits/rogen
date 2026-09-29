@@ -1,15 +1,10 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { Registry } from "../../../platform/registry/registry.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
-import {
-	Extensions,
-	SyncToolRegistry,
-} from "../../toolchain/toolchain.js";
-import "../../toolchain/roblox-ts.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
 import { placeFiles } from "../placement.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
@@ -32,7 +27,10 @@ describe("TreeAssembler", () => {
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-		const assembleResult = async (overrides: Partial<ResolvedConfig> = {}) => {
+		const assembleResult = async (
+			overrides: Partial<ResolvedConfig> = {},
+			extraTools: readonly SyncTool[] = []
+		) => {
 			const config: ResolvedConfig = {
 				file: abs("default.rogen.json"),
 				name: "repo",
@@ -44,11 +42,16 @@ describe("TreeAssembler", () => {
 				...overrides,
 			};
 			const index = await indexOf(store, fs, config.rootDirs);
-			return buildServiceOf(fs, index).build(config);
+			return buildServiceOf(fs, index, extraTools).build(config);
 		};
 
-		const assemble = async (overrides: Partial<ResolvedConfig> = {}) => {
-			const output = (await assembleResult(overrides)).unwrap();
+		const assemble = async (
+			overrides: Partial<ResolvedConfig> = {},
+			extraTools: readonly SyncTool[] = []
+		) => {
+			const output = (
+				await assembleResult(overrides, extraTools)
+			).unwrap();
 			expectRojoProject(output.tree);
 			return output;
 		};
@@ -648,19 +651,17 @@ describe("TreeAssembler", () => {
 		});
 
 		it("should keep out of the ignore list whatever a processor says it only reads", async () => {
-			store.add(
-				Registry.as<SyncToolRegistry>(
-					Extensions.SyncTools
-				).registerSyncTool({
-					id: "protobuf",
-					readsOnly: (source) => source.endsWith(".proto"),
-				})
-			);
 			await write("src/Inventory/Save.luau", "src/Inventory/Save.proto");
 
-			const { tree: value } = await assemble({
-				exclude: [abs("**/*.proto")],
-			});
+			const { tree: value } = await assemble(
+				{ exclude: [abs("**/*.proto")] },
+				[
+					{
+						id: "protobuf",
+						readsOnly: (source) => source.endsWith(".proto"),
+					},
+				]
+			);
 
 			expect(value.globIgnorePaths).toBeUndefined();
 		});

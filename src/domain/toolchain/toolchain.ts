@@ -1,6 +1,5 @@
-import { Disposable } from "../../base/disposable.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { Registry } from "../../platform/registry/registry.js";
+import path from "path";
+import { commonAncestor, toPosix } from "../../base/path.js";
 
 export type PackageManager = "wally" | "pesde";
 
@@ -119,8 +118,6 @@ export interface Language {
 	readonly id: string;
 	/** As the language question shows it. */
 	readonly label: string;
-	/** Where the language question lists it; the first is also the one assumed when none is detected. */
-	readonly order: number;
 	/** The script extension written in examples, such as `Analytics.mock.luau`. */
 	readonly extension: string;
 	/** The language question's hint when this language was detected. */
@@ -132,10 +129,7 @@ export interface Language {
 	/** Set when code is compiled before Rojo syncs it. */
 	readonly compiler?: Compiler;
 
-	detect(
-		fileSystem: FileSystemService,
-		cwd: string
-	): Promise<LanguageDetection>;
+	detect(cwd: string): Promise<LanguageDetection>;
 	/** How a route key is spelled, such as Luau's `Server` or roblox-ts's `server`. */
 	routeKey(id: string): string;
 	/** The root dir the language's own config names, if any; `init` prefers it. */
@@ -144,40 +138,6 @@ export interface Language {
 	alwaysMounted(workspace: DetectedWorkspace): readonly MountCandidate[];
 	/** Folders the packages question offers beside the package manager's. */
 	offeredMounts(workspace: DetectedWorkspace): readonly MountCandidate[];
-}
-
-export interface LanguageRegistry {
-	/** @throws Error if `language.id` is already registered. */
-	registerLanguage(language: Language): Disposable;
-	getLanguage(id: string): Language | undefined;
-	/** Every registered language, in `order`. */
-	getLanguages(): readonly Language[];
-}
-
-class CoreLanguageRegistry implements LanguageRegistry {
-	private readonly languages = new Map<string, Language>();
-
-	registerLanguage(language: Language): Disposable {
-		if (this.languages.has(language.id)) {
-			throw new Error(`Language "${language.id}" is already registered.`);
-		}
-		this.languages.set(language.id, language);
-		return {
-			[Symbol.dispose]: () => {
-				if (this.languages.get(language.id) === language) {
-					this.languages.delete(language.id);
-				}
-			},
-		};
-	}
-
-	getLanguage(id: string): Language | undefined {
-		return this.languages.get(id);
-	}
-
-	getLanguages(): readonly Language[] {
-		return [...this.languages.values()].sort((a, b) => a.order - b.order);
-	}
 }
 
 /** What a tool writes in place of a `.meta.json`. */
@@ -198,38 +158,86 @@ export interface SyncTool {
 	readonly metaReplacement?: MetaReplacement;
 }
 
-export interface SyncToolRegistry {
-	/** @throws Error if `tool.id` is already registered. */
-	registerSyncTool(tool: SyncTool): Disposable;
-	getSyncTools(): readonly SyncTool[];
+export interface PackageManagerLayout {
+	readonly manifest: string;
+	/** Installed packages every side requires. */
+	readonly shared: string;
+	/** Installed packages only the server requires. */
+	readonly server: string;
 }
 
-class CoreSyncToolRegistry implements SyncToolRegistry {
-	private readonly tools = new Map<string, SyncTool>();
-
-	registerSyncTool(tool: SyncTool): Disposable {
-		if (this.tools.has(tool.id)) {
-			throw new Error(`Sync tool "${tool.id}" is already registered.`);
-		}
-		this.tools.set(tool.id, tool);
-		return {
-			[Symbol.dispose]: () => {
-				if (this.tools.get(tool.id) === tool) {
-					this.tools.delete(tool.id);
-				}
-			},
-		};
-	}
-
-	getSyncTools(): readonly SyncTool[] {
-		return [...this.tools.values()];
-	}
-}
-
-export const Extensions = {
-	Languages: "domain.contributions.languages",
-	SyncTools: "domain.contributions.syncTools",
+export const PACKAGE_MANAGERS: Readonly<
+	Record<PackageManager, PackageManagerLayout>
+> = {
+	wally: {
+		manifest: "wally.toml",
+		shared: "Packages",
+		server: "ServerPackages",
+	},
+	pesde: {
+		manifest: "pesde.toml",
+		shared: "roblox_packages",
+		server: "roblox_server_packages",
+	},
 };
 
-Registry.add(Extensions.Languages, new CoreLanguageRegistry());
-Registry.add(Extensions.SyncTools, new CoreSyncToolRegistry());
+const SHARED_LANDING = "ReplicatedStorage/Packages";
+const SERVER_LANDING = "ServerScriptService/ServerPackages";
+
+/** The package manager's folders, offered for `language`; a manifest means packages are coming, so they start ticked. */
+export function packageMounts(
+	workspace: DetectedWorkspace,
+	language: Language
+): MountCandidate[] {
+	const manager = workspace.packageManager ?? language.defaultPackageManager;
+	if (!manager) return [];
+	const { shared, server } = PACKAGE_MANAGERS[manager];
+	const offer = (dir: string, landing: string): MountCandidate => {
+		const installed = workspace.packageDirs.has(dir);
+		return {
+			path: dir,
+			installed,
+			landing,
+			ticked: installed || workspace.packageManager !== undefined,
+		};
+	};
+	return [offer(shared, SHARED_LANDING), offer(server, SERVER_LANDING)];
+}
+
+/**
+ * Darklua, the one processor `init` sets up: it rewrites code into a folder
+ * of its own, which becomes the sync dir. A language without a compiler has
+ * Darklua read the root dirs themselves, so it also needs a project file
+ * rooted at the source to resolve requires from.
+ */
+export const Darklua = {
+	/** Where Darklua writes unless told otherwise. */
+	defaultSyncDir: "dist",
+	detectedHint: "found .darklua.json",
+	configFiles: [".darklua.json", ".darklua.json5"],
+
+	syncTool: {
+		id: "darklua",
+		metaReplacement: {
+			suffix: ".meta.lua",
+			note: "Darklua converts every .meta.json this way.",
+		},
+	} satisfies SyncTool,
+
+	/**
+	 * One `darklua process` per directory it reads. Each lands at its path
+	 * relative to their common root, which is where the synced project points.
+	 */
+	processCommands(
+		directory: string,
+		sourceDirs: readonly string[],
+		syncDir: string
+	): string[] {
+		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
+		const common = commonAncestor(absolute);
+		return sourceDirs.map((dir, index) => {
+			const relative = toPosix(path.relative(common, absolute[index]));
+			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
+		});
+	},
+};

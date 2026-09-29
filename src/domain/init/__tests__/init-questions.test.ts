@@ -1,3 +1,4 @@
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import path from "path";
 import { ResultError, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -7,13 +8,13 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
 import { InitContext, InitQuestions } from "../init-questions.js";
 
 const directory = path.resolve("/mock/my-game");
-const toolchain = createToolchainService();
+const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 const askInit = (
 	prompts: MockPromptService,

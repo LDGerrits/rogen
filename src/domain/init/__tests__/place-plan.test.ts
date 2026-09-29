@@ -5,7 +5,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { SCHEMA_URL as SCHEMA } from "../init-files.js";
 import {
@@ -17,7 +17,7 @@ import {
 } from "../place-plan.js";
 
 const directory = path.resolve("/mock/my-game");
-const toolchain = createToolchainService();
+const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 const luau: DetectedWorkspace = {
 	language: "luau",

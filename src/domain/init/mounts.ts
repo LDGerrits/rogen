@@ -1,9 +1,9 @@
-import { packageMounts } from "../toolchain/packages.js";
 import {
 	DetectedWorkspace,
 	Language,
 	Mount,
 	MountCandidate,
+	packageMounts,
 } from "../toolchain/toolchain.js";
 
 /** What the packages question offers: the package manager's folders, then the language's own. */

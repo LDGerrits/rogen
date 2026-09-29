@@ -1,42 +1,48 @@
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { detectWorkspace } from "./detect-workspace.js";
+import { Luau } from "./luau.js";
+import { RobloxTs, robloxTsSyncTool } from "./roblox-ts.js";
 import {
+	Darklua,
 	DetectedWorkspace,
 	Language,
-	LanguageRegistry,
 	SyncTool,
-	SyncToolRegistry,
 } from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
+import { WorkspaceDetector } from "./workspace-detector.js";
 
 export class CoreToolchainService implements ToolchainService {
 	declare readonly _serviceBrand: undefined;
 
-	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly languageRegistry: LanguageRegistry,
-		private readonly syncToolRegistry: SyncToolRegistry
-	) {}
+	private readonly languages: readonly [Language, ...Language[]];
+	private readonly syncTools: readonly SyncTool[] = [
+		Darklua.syncTool,
+		robloxTsSyncTool,
+	];
+	private readonly detector: WorkspaceDetector;
 
-	detect(directory: string): Promise<DetectedWorkspace> {
-		return detectWorkspace(
-			this.fileSystemService,
-			this.languageRegistry.getLanguages(),
-			directory
+	constructor(fileSystemService: FileSystemService) {
+		this.languages = [new Luau(), new RobloxTs(fileSystemService)];
+		this.detector = new WorkspaceDetector(
+			fileSystemService,
+			this.languages
 		);
 	}
 
+	detect(directory: string): Promise<DetectedWorkspace> {
+		return this.detector.detect(directory);
+	}
+
 	getLanguage(id: string): Language {
-		const language = this.languageRegistry.getLanguage(id);
+		const language = this.languages.find((language) => language.id === id);
 		if (!language) throw new Error(`Language "${id}" is not registered.`);
 		return language;
 	}
 
 	getLanguages(): readonly Language[] {
-		return this.languageRegistry.getLanguages();
+		return this.languages;
 	}
 
 	getSyncTools(): readonly SyncTool[] {
-		return this.syncToolRegistry.getSyncTools();
+		return this.syncTools;
 	}
 }

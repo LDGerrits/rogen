@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import "../../config/config.js";
-import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
@@ -37,7 +37,7 @@ describe("CoreInitService", () => {
 			fileSystem,
 			promptService,
 			environmentService,
-			createToolchainService(fileSystem),
+			new CoreToolchainService(fileSystem),
 			new CoreConfigService(fileSystem, environmentService)
 		);
 	};

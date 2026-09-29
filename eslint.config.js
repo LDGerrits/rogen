@@ -20,7 +20,7 @@ const domainModules = {
 	output: ["find-output-clashes", "output-service", "staging-file"],
 	roblox: ["container-class-name", "target"],
 	rojo: ["rojo-assigned-name", "rojo-files", "rojo-project", "rojo-tree"],
-	toolchain: ["darklua", "packages", "toolchain", "toolchain-service"],
+	toolchain: ["toolchain", "toolchain-service"],
 	watch: ["watch-session"],
 };
 

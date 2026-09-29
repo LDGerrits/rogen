@@ -1,20 +1,35 @@
 import { capitalized } from "../../base/string.js";
-import { Registry } from "../../platform/registry/registry.js";
-import { Extensions, Language, LanguageRegistry } from "./toolchain.js";
+import {
+	Language,
+	LanguageDetection,
+	MountCandidate,
+	PackageManager,
+} from "./toolchain.js";
 
 /** Plain Luau: Rojo syncs the root dirs as they are. It's what `init` assumes when no other language is found. */
-const luau: Language = {
-	id: "luau",
-	label: "Luau",
-	order: 0,
-	extension: "luau",
-	defaultPackageManager: "wally",
+export class Luau implements Language {
+	readonly id = "luau";
+	readonly label = "Luau";
+	readonly extension = "luau";
+	readonly defaultPackageManager: PackageManager = "wally";
 
-	detect: async () => ({ present: false, facts: {}, reservedFolders: [] }),
-	routeKey: capitalized,
-	configuredRootDir: () => undefined,
-	alwaysMounted: () => [],
-	offeredMounts: () => [],
-};
+	async detect(): Promise<LanguageDetection> {
+		return { present: false, facts: {}, reservedFolders: [] };
+	}
 
-Registry.as<LanguageRegistry>(Extensions.Languages).registerLanguage(luau);
+	routeKey(id: string): string {
+		return capitalized(id);
+	}
+
+	configuredRootDir(): undefined {
+		return undefined;
+	}
+
+	alwaysMounted(): readonly MountCandidate[] {
+		return [];
+	}
+
+	offeredMounts(): readonly MountCandidate[] {
+		return [];
+	}
+}

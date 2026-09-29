@@ -3,8 +3,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
-import { Darklua } from "../toolchain/darklua.js";
-import { Language, PlannedFile } from "../toolchain/toolchain.js";
+import { Darklua, Language, PlannedFile } from "../toolchain/toolchain.js";
 import { InitChoices } from "./init-choices.js";
 import {
 	SCHEMA_URL,

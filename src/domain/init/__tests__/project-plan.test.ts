@@ -1,9 +1,10 @@
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
-import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
 	InitChoices,
@@ -48,7 +49,7 @@ const mounts = {
 	},
 };
 
-const toolchain = createToolchainService();
+const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 const defaultInitChoices = (
 	workspace: DetectedWorkspace,

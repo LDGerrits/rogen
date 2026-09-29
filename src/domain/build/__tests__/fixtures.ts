@@ -5,15 +5,29 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
+import { ToolchainService } from "../../toolchain/toolchain-service.js";
 import { CoreBuildService } from "../core-build-service.js";
 
-const toolchain = createToolchainService();
+const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 export const syncTools = toolchain.getSyncTools();
 
-export const buildServiceOf = (fs: FileSystemService, index: IndexService) =>
-	new CoreBuildService(fs, index, toolchain);
+/** The real toolchain with `extraTools` added to its sync tools. */
+const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
+	_serviceBrand: undefined,
+	detect: (directory) => toolchain.detect(directory),
+	getLanguage: (id) => toolchain.getLanguage(id),
+	getLanguages: () => toolchain.getLanguages(),
+	getSyncTools: () => [...syncTools, ...extraTools],
+});
+
+export const buildServiceOf = (
+	fs: FileSystemService,
+	index: IndexService,
+	extraTools: readonly SyncTool[] = []
+) => new CoreBuildService(fs, index, toolchainWith(extraTools));
 
 export const abs = (...segments: string[]): string =>
 	path.resolve("/repo", ...segments);

@@ -1,11 +1,11 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { createToolchainService } from "./create-toolchain-service.js";
+import { CoreToolchainService } from "../core-toolchain-service.js";
 
 describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
 	let fs: MemoryFileSystemService;
-	const toolchain = () => createToolchainService(fs);
+	const toolchain = () => new CoreToolchainService(fs);
 
 	const write = async (file: string, content = "") => {
 		await fs.writeFile(path.join(cwd, file), content);
@@ -293,6 +293,51 @@ describe("CoreToolchainService.detect", () => {
 
 		it("should find none without a places folder", async () => {
 			expect((await toolchain().detect(cwd)).places).toEqual([]);
+		});
+	});
+});
+
+describe("CoreToolchainService", () => {
+	const toolchain = new CoreToolchainService(new MemoryFileSystemService());
+
+	describe("getLanguages", () => {
+		it("should list Luau first, which is the language assumed when none is detected", () => {
+			expect(toolchain.getLanguages().map(({ id }) => id)).toEqual([
+				"luau",
+				"roblox-ts",
+			]);
+		});
+	});
+
+	describe("getLanguage", () => {
+		it("should find a language by id", () => {
+			expect(toolchain.getLanguage("roblox-ts").compiler?.name).toBe(
+				"roblox-ts"
+			);
+		});
+
+		it("should throw for a language that isn't known", () => {
+			expect(() => toolchain.getLanguage("python")).toThrow(
+				'Language "python" is not registered.'
+			);
+		});
+
+		it("should capitalize Luau route keys and keep roblox-ts keys as written", () => {
+			expect(
+				toolchain.getLanguage("luau").routeKey("serverStorage")
+			).toBe("ServerStorage");
+			expect(
+				toolchain.getLanguage("roblox-ts").routeKey("serverStorage")
+			).toBe("serverStorage");
+		});
+	});
+
+	describe("getSyncTools", () => {
+		it("should list Darklua and roblox-ts", () => {
+			expect(toolchain.getSyncTools().map(({ id }) => id)).toEqual([
+				"darklua",
+				"roblox-ts",
+			]);
 		});
 	});
 });
