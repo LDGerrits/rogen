@@ -1,7 +1,7 @@
+import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import path from "path";
 import { configLabel } from "../../domain/config/config-discovery.js";
 import {
 	ConfigEntry,
