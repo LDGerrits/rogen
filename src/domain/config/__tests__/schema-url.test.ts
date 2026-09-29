@@ -1,5 +1,5 @@
 import fs from "fs";
-import { SCHEMA_URL } from "../../workspace/init-plan.js";
+import { SCHEMA_URL } from "../../init/init-files.js";
 import {
 	compareVersions,
 	isPrerelease,

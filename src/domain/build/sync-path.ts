@@ -1,6 +1,6 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { OptionalRojoPath, RojoPath } from "../rojo/rojo-tree.js";
+import { OptionalRojoPath } from "../rojo/rojo-tree.js";
 
 export interface SyncLayout {
 	readonly commonRoot: string;
@@ -10,28 +10,6 @@ export interface SyncLayout {
 
 const COMPILED_EXTENSION = /\.tsx?$/i;
 
-/** All paths must be absolute. Throws when `rootDirs` is empty. */
-export function commonRoot(rootDirs: readonly string[]): string {
-	if (rootDirs.length === 0) {
-		throw new Error("commonRoot needs at least one root dir.");
-	}
-
-	const { root } = path.parse(rootDirs[0]);
-	const split = (dir: string) =>
-		path.relative(root, dir).split(path.sep).filter(Boolean);
-
-	let shared = split(rootDirs[0]);
-	for (const dir of rootDirs.slice(1)) {
-		const segments = split(dir);
-		const length = shared.findIndex(
-			(segment, index) => segments[index] !== segment
-		);
-		shared = shared.slice(0, length === -1 ? shared.length : length);
-	}
-
-	return path.join(root, ...shared);
-}
-
 export function relativeToProject(
 	absolutePath: string,
 	projectDir: string
@@ -40,21 +18,16 @@ export function relativeToProject(
 }
 
 /**
- * A `$path` from the template is real source on disk (Wally's `Packages`,
- * rbxts's `include`), so it is only rebased, never moved under `syncDir`.
- * Its form, plain or optional, is the template author's and is kept.
+ * A `$path` target from the template is real source on disk (Wally's
+ * `Packages`, rbxts's `include`), so it is only rebased, never moved under
+ * `syncDir`.
  */
 export function rebaseTemplatePath(
-	templatePath: RojoPath,
+	target: string,
 	templateDir: string,
 	projectDir: string
-): RojoPath {
-	const rebase = (target: string) =>
-		relativeToProject(path.resolve(templateDir, target), projectDir);
-
-	return typeof templatePath === "string"
-		? rebase(templatePath)
-		: { optional: rebase(templatePath.optional) };
+): string {
+	return relativeToProject(path.resolve(templateDir, target), projectDir);
 }
 
 /** The absolute path a compiler emits for `filePath` under `syncDir`. */

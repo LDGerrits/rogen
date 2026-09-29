@@ -21,7 +21,9 @@ function capitalized(key: string): string {
 function withFirstLetterFlipped(name: string): string {
 	const first = name[0];
 	const flipped =
-		first === first.toLowerCase() ? first.toUpperCase() : first.toLowerCase();
+		first === first.toLowerCase()
+			? first.toUpperCase()
+			: first.toLowerCase();
 	return flipped + name.slice(1);
 }
 

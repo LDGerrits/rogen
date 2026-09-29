@@ -4,6 +4,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { readFolderMeta } from "../read-folder-meta.js";
+import { scanRootDirs } from "../root-scanner.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -21,7 +22,7 @@ describe("readFolderMeta", () => {
 		};
 		const index = store.add(new CoreIndexService(fs));
 		await index.initialize([...config.rootDirs]);
-		return readFolderMeta(fs, index, config);
+		return readFolderMeta(fs, scanRootDirs(index, config).roots);
 	};
 
 	beforeEach(() => {

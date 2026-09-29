@@ -6,8 +6,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
-import { build } from "../build.js";
-import { readFolderMeta } from "../read-folder-meta.js";
+import { buildProject } from "../build.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -25,6 +24,7 @@ describe("assembleTree", () => {
 
 	const assembleResult = async (overrides: Partial<ResolvedConfig> = {}) => {
 		const config: ResolvedConfig = {
+			file: abs("default.rogen.json"),
 			name: "repo",
 			rootDirs: [abs("src")],
 			routes: { "*": "ReplicatedStorage" },
@@ -35,21 +35,17 @@ describe("assembleTree", () => {
 		};
 		const index = store.add(new CoreIndexService(fs));
 		await index.initialize([...config.rootDirs]);
-		return build(
-			config,
-			index,
-			(await readFolderMeta(fs, index, config)).unwrap()
-		);
+		return buildProject(fs, index, config);
 	};
 
 	const assemble = async (overrides: Partial<ResolvedConfig> = {}) => {
 		const output = (await assembleResult(overrides)).unwrap();
-		expectRojoProject(output.value);
+		expectRojoProject(output.tree);
 		return output;
 	};
 
 	const storageOf = async (overrides: Partial<ResolvedConfig> = {}) =>
-		(await assemble(overrides)).value.tree.ReplicatedStorage as RojoNode;
+		(await assemble(overrides)).tree.tree.ReplicatedStorage as RojoNode;
 
 	const templateOf = (
 		project: Partial<RojoTree>,
@@ -67,7 +63,7 @@ describe("assembleTree", () => {
 
 	describe("template", () => {
 		it("should start from a bare DataModel with the resolved name when there is no template", async () => {
-			const { value } = await assemble({ name: "game" });
+			const { tree: value } = await assemble({ name: "game" });
 
 			expect(value).toEqual({
 				name: "game",
@@ -85,7 +81,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value } = await assemble({ name: "game", template });
+			const { tree: value } = await assemble({ name: "game", template });
 
 			expect(value).toEqual({
 				name: "game",
@@ -162,7 +158,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value, warnings } = await assemble({ template });
+			const { tree: value, warnings } = await assemble({ template });
 
 			expect((value.tree.ReplicatedStorage as RojoNode).Packages).toEqual(
 				{ $path: "Packages" }
@@ -199,7 +195,7 @@ describe("assembleTree", () => {
 		it("should create a service node for each service and folders below it", async () => {
 			await write("src/Combat.luau");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { "*": "ServerScriptService/server" },
 			});
 
@@ -215,7 +211,7 @@ describe("assembleTree", () => {
 		it("should create StarterPlayer's script containers with their own class", async () => {
 			await write("src/Hud.client.luau");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { "*": "StarterPlayer/StarterPlayerScripts" },
 			});
 
@@ -320,7 +316,7 @@ describe("assembleTree", () => {
 				emitLegacyScripts: false,
 			});
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { "*": "StarterPlayer/StarterPlayerScripts" },
 				template,
 			});
@@ -371,7 +367,7 @@ describe("assembleTree", () => {
 		it("should collapse a directory holding data files, which Rojo names by stem", async () => {
 			await write("src/Inventory/Save.luau", "src/Inventory/Items.json");
 
-			const { value, warnings } = await assemble();
+			const { tree: value, warnings } = await assemble();
 
 			expect(warnings).toEqual([]);
 			expect(
@@ -396,7 +392,7 @@ describe("assembleTree", () => {
 				"src/Combat/server/Moves/Punch.luau"
 			);
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { server: "ServerScriptService" },
 			});
 
@@ -439,7 +435,7 @@ describe("assembleTree", () => {
 			await fs.createSymbolicLink(abs("src"), abs("src/Real/Back"));
 			await fs.createSymbolicLink(abs("missing"), abs("src/Real/Gone"));
 
-			const { value } = await assemble();
+			const { tree: value } = await assemble();
 
 			expect((value.tree.ReplicatedStorage as RojoNode).Real).toEqual({
 				...FOLDER,
@@ -487,7 +483,7 @@ describe("assembleTree", () => {
 				"src/Inventory/Hud.client.luau"
 			);
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { client: "StarterPlayer/StarterPlayerScripts" },
 			});
 
@@ -538,7 +534,7 @@ describe("assembleTree", () => {
 		it("should not collapse a directory holding a file Rojo would name differently, and emit it under its instance name", async () => {
 			await write("src/Save/Save+mock.server.luau");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				tags: { mock: true },
 				routes: { server: "ServerScriptService" },
 			});
@@ -584,7 +580,7 @@ describe("assembleTree", () => {
 		it("should never collapse a directory into a service", async () => {
 			await write("src/server/Save.luau");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				routes: { server: "ServerScriptService" },
 			});
 
@@ -609,7 +605,7 @@ describe("assembleTree", () => {
 		it("should ignore .d.ts files when deciding to collapse and never list them", async () => {
 			await write("src/Inventory/Save.ts", "src/Inventory/Save.d.ts");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				exclude: [abs("**/*.d.ts")],
 			});
 
@@ -635,7 +631,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value, warnings } = await assemble({ template });
+			const { tree: value, warnings } = await assemble({ template });
 
 			expect(warnings).toEqual([]);
 			expect(
@@ -702,7 +698,7 @@ describe("assembleTree", () => {
 		it("should place a standalone data file as its own instance", async () => {
 			await write("src/Items.json", "src/Foo.luau");
 
-			const { value, warnings } = await assemble();
+			const { tree: value, warnings } = await assemble();
 
 			expect(value.tree.ReplicatedStorage).toEqual({
 				$className: "ReplicatedStorage",
@@ -746,7 +742,7 @@ describe("assembleTree", () => {
 				"src/Inventory/Analytics.mock.luau"
 			);
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				syncDir: abs("dist"),
 				tags: { mock: false },
 			});
@@ -763,7 +759,7 @@ describe("assembleTree", () => {
 				"src/Inventory/Save.spec.ts"
 			);
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				syncDir: abs("dist"),
 				tags: { mock: false },
 				exclude: [abs("**/*.spec.ts")],
@@ -778,7 +774,7 @@ describe("assembleTree", () => {
 		it("should list an unrouted file", async () => {
 			await write("src/Hud.ts", "src/Combat.server.ts");
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				syncDir: abs("dist"),
 				routes: { server: "ServerScriptService" },
 			});
@@ -796,7 +792,7 @@ describe("assembleTree", () => {
 				abs("templates/base.project.json")
 			);
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				template,
 				exclude: [abs("src/Foo.spec.luau")],
 			});
@@ -830,7 +826,7 @@ describe("assembleTree", () => {
 				className: "Actor",
 			});
 
-			const { value, warnings } = await assemble({ routes: SPLIT });
+			const { tree: value, warnings } = await assemble({ routes: SPLIT });
 
 			expect(warnings).toEqual([]);
 			expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
@@ -894,7 +890,7 @@ describe("assembleTree", () => {
 				className: "Actor",
 			});
 
-			const { value, warnings } = await assemble({ routes: SPLIT });
+			const { tree: value, warnings } = await assemble({ routes: SPLIT });
 
 			expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
 				{
@@ -945,7 +941,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value } = await assemble({ routes: SPLIT, template });
+			const { tree: value } = await assemble({ routes: SPLIT, template });
 
 			expect(
 				nodeAt(value.tree, "ServerScriptService", "Combat").$id
@@ -978,7 +974,7 @@ describe("assembleTree", () => {
 				className: "Actor",
 			});
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				rootDirs: [abs("core"), abs("lobby")],
 				routes: SPLIT,
 			});
@@ -995,7 +991,7 @@ describe("assembleTree", () => {
 			await write("src/Combat/server/Hit.luau");
 			await writeMeta("src/Combat/init.meta.json", { id: "combat" });
 
-			const { value } = await assemble({ routes: SPLIT });
+			const { tree: value } = await assemble({ routes: SPLIT });
 
 			expect(
 				nodeAt(value.tree, "ServerScriptService", "Combat")
@@ -1031,7 +1027,7 @@ describe("assembleTree", () => {
 				ignoreUnknownInstances: true,
 			});
 
-			const { value } = await assemble({ routes: SPLIT });
+			const { tree: value } = await assemble({ routes: SPLIT });
 
 			expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
 				{
@@ -1057,7 +1053,7 @@ describe("assembleTree", () => {
 				attributes: { Lobby: true },
 			});
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				rootDirs: [abs("core"), abs("lobby")],
 				routes: SPLIT,
 			});
@@ -1087,7 +1083,7 @@ describe("assembleTree", () => {
 				className: "Actor",
 			});
 
-			const { value } = await assemble({
+			const { tree: value } = await assemble({
 				rootDirs: [abs("core"), abs("lobby")],
 				routes: SPLIT,
 			});
@@ -1144,7 +1140,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value, warnings } = await assemble({
+			const { tree: value, warnings } = await assemble({
 				routes: SPLIT,
 				template,
 			});
@@ -1177,7 +1173,7 @@ describe("assembleTree", () => {
 				},
 			});
 
-			const { value, warnings } = await assemble({
+			const { tree: value, warnings } = await assemble({
 				routes: SPLIT,
 				template,
 			});

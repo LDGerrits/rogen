@@ -19,7 +19,5 @@ export function requireValidConfigs(
 	const errors = configService.configs.flatMap(entryErrors);
 	if (errors.length > 0) return err(new DiagnosticsError(errors));
 
-	return ok(
-		configService.configs.flatMap((entry) => entry.resolved ?? [])
-	);
+	return ok(configService.configs.flatMap((entry) => entry.resolved ?? []));
 }

@@ -34,9 +34,7 @@ export async function loadConfigChain(
 			return {
 				files,
 				layers,
-				diagnostics: [
-					ConfigDiagnostics.extendsCycle(referrer, cycle),
-				],
+				diagnostics: [ConfigDiagnostics.extendsCycle(referrer, cycle)],
 			};
 		}
 

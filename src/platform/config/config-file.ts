@@ -1,10 +1,7 @@
 import { ErrorUtils } from "../../base/errors.js";
 import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	DiagnosticPosition,
-} from "../diagnostics/diagnostic.js";
+import { Diagnostic, DiagnosticPosition } from "../diagnostics/diagnostic.js";
 import { FileSystemService } from "../fs/file-system-service.js";
 import { Registry } from "../registry/registry.js";
 import { ConfigFileDiagnostics } from "./config-file-diagnostics.js";

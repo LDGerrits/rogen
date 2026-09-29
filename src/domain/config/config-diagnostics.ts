@@ -52,11 +52,7 @@ export const ConfigDiagnostics = {
 			location,
 			`tag "${name}" has the same name as a route key; rename one of them.`
 		),
-	ambiguousKey: (
-		location: DiagnosticLocation,
-		name: string,
-		other: string
-	) =>
+	ambiguousKey: (location: DiagnosticLocation, name: string, other: string) =>
 		error(
 			"config.ambiguousKey",
 			location,

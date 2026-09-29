@@ -12,7 +12,7 @@ import {
 } from "./meta-diagnostics.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { INIT_META_FILE } from "./root-scanner.js";
-import { RojoProject } from "./rojo-project.js";
+import { RojoProject } from "../rojo/rojo-project.js";
 import { FALLBACK_ROUTE, RoutedFile } from "./route-files.js";
 import { metaFileFor } from "./unclaimed-meta.js";
 

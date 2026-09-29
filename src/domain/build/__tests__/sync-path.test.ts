@@ -1,36 +1,12 @@
 import path from "path";
 import {
-	commonRoot,
 	rebaseTemplatePath,
 	relativeToProject,
 	syncPath,
 } from "../sync-path.js";
+import { commonRoot } from "../../config/common-root.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
-
-describe("commonRoot", () => {
-	it("should be the root dir itself when there is one", () => {
-		expect(commonRoot([abs("src")])).toBe(abs("src"));
-	});
-
-	it("should be the shared parent of sibling root dirs", () => {
-		expect(commonRoot([abs("core"), abs("lobby")])).toBe(abs("."));
-	});
-
-	it("should be the deepest directory containing every root dir", () => {
-		expect(
-			commonRoot([abs("places/main/src"), abs("places/common/src")])
-		).toBe(abs("places"));
-	});
-
-	it("should not match on a shared name prefix that is not a whole segment", () => {
-		expect(commonRoot([abs("src"), abs("src-extra")])).toBe(abs("."));
-	});
-
-	it("should throw when there are no root dirs", () => {
-		expect(() => commonRoot([])).toThrow();
-	});
-});
 
 describe("syncPath", () => {
 	const projectDir = abs(".");
@@ -215,21 +191,5 @@ describe("rebaseTemplatePath", () => {
 		expect(
 			rebaseTemplatePath("../Packages", abs("places/main"), abs("."))
 		).toBe("places/Packages");
-	});
-
-	it("should keep the optional form of an optional template path", () => {
-		expect(
-			rebaseTemplatePath(
-				{ optional: "include" },
-				abs("."),
-				abs("places/main")
-			)
-		).toEqual({ optional: "../../include" });
-	});
-
-	it("should leave a plain template path plain", () => {
-		expect(typeof rebaseTemplatePath("include", abs("."), abs("."))).toBe(
-			"string"
-		);
 	});
 });

@@ -5,10 +5,8 @@ import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
-import { INIT_META_FILE, scanRootDirs } from "./root-scanner.js";
+import { INIT_META_FILE, ScannedRoot } from "./root-scanner.js";
 
 export interface FolderMetaFields {
 	readonly className?: string;
@@ -42,16 +40,15 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	null: "null",
 };
 
-/** Reads every `init.meta.json` in the root dirs' non-excluded folders; any invalid one fails the whole read. */
+/** Reads every `init.meta.json` the scan found, which leaves out excluded folders; any invalid one fails the whole read. */
 export async function readFolderMeta(
 	fileSystem: FileSystemService,
-	index: IndexService,
-	config: Pick<ResolvedConfig, "rootDirs" | "exclude">
+	roots: readonly ScannedRoot[]
 ): Promise<Result<FolderMeta[], Diagnostic[]>> {
 	const metas: FolderMeta[] = [];
 	const errors: Diagnostic[] = [];
 
-	for (const root of scanRootDirs(index, config).roots) {
+	for (const root of roots) {
 		for (const metaFile of root.metaFiles) {
 			if (path.posix.basename(metaFile) !== INIT_META_FILE) continue;
 			const file = path.join(root.rootDir, metaFile);

@@ -13,6 +13,11 @@ export function isRojoPath(value: unknown): value is RojoPath {
 	);
 }
 
+/** The file or directory a `$path` points at, whichever form it's written in. */
+export function rojoPathTarget(rojoPath: RojoPath): string {
+	return typeof rojoPath === "string" ? rojoPath : rojoPath.optional;
+}
+
 export interface RojoNode {
 	$className?: string;
 	$path?: RojoPath;
@@ -21,6 +26,14 @@ export interface RojoNode {
 	$ignoreUnknownInstances?: boolean;
 	$id?: string;
 	[key: string]: unknown;
+}
+
+/** A node's children: every key Rojo reads as an instance name, in file order. */
+export function childNodes(node: RojoNode): [string, RojoNode][] {
+	return Object.entries(node).filter(
+		(entry): entry is [string, RojoNode] =>
+			!entry[0].startsWith("$") && isObject(entry[1])
+	);
 }
 
 export interface RojoTree {

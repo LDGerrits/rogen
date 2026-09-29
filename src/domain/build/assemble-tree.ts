@@ -1,23 +1,23 @@
 import path from "path";
-import { isObject } from "../../base/object.js";
 import { toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { rojoAssignedName, rojoModelName } from "../rojo/rojo-assigned-name.js";
-import { RojoNode, RojoTree, isRojoPath } from "../rojo/rojo-tree.js";
+import { containerClassName } from "../roblox/container-class-name.js";
+import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
 import { applyFolderMeta } from "./apply-folder-meta.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { ScannedEntry } from "./root-scanner.js";
-import { RojoProject } from "./rojo-project.js";
+import { RojoProject } from "../rojo/rojo-project.js";
 import { RoutedFile } from "./route-files.js";
 import {
 	SyncLayout,
-	commonRoot,
 	rebaseTemplatePath,
 	relativeToProject,
 	syncPath,
 } from "./sync-path.js";
+import { commonRoot } from "../config/common-root.js";
 import { RunContextRoute, TreeDiagnostics } from "./tree-diagnostics.js";
 
 export interface AssemblyInput {
@@ -83,8 +83,14 @@ export function assembleTree(
 		);
 
 	const templateTree = rebasedTemplateTree(config, projectDir);
-	const template = new RojoProject({ name: config.name, tree: templateTree });
-	const project = new RojoProject({ name: config.name, tree: templateTree });
+	const template = new RojoProject(
+		{ name: config.name, tree: templateTree },
+		generatedContainer
+	);
+	const project = new RojoProject(
+		{ name: config.name, tree: templateTree },
+		generatedContainer
+	);
 
 	const placed = input.files.map(placeEntry);
 	const ignored = [
@@ -316,30 +322,27 @@ function increment(counts: Map<string, number>, key: string): void {
 }
 
 function rebasedTemplateTree(
-	config: Pick<ResolvedConfig, "template">,
+	config: Pick<ResolvedConfig, "name" | "template">,
 	projectDir: string
 ): RojoNode {
 	const { template } = config;
 	const tree = template?.project.tree ?? { $className: "DataModel" };
-	if (!template || path.dirname(template.file) === projectDir)
-		return structuredClone(tree);
-	return rebaseNode(tree, path.dirname(template.file), projectDir);
+	const rebased = new RojoProject({ tree }, generatedContainer);
+	if (template && path.dirname(template.file) !== projectDir) {
+		const templateDir = path.dirname(template.file);
+		rebased.mapPaths((target) =>
+			rebaseTemplatePath(target, templateDir, projectDir)
+		);
+	}
+	return rebased.getTree().tree;
 }
 
-function rebaseNode(
-	node: RojoNode,
-	templateDir: string,
-	projectDir: string
-): RojoNode {
-	const rebased: RojoNode = {};
-	for (const [key, value] of Object.entries(node)) {
-		if (key === "$path" && isRojoPath(value))
-			rebased.$path = rebaseTemplatePath(value, templateDir, projectDir);
-		else if (!key.startsWith("$") && isObject(value))
-			rebased[key] = rebaseNode(value, templateDir, projectDir);
-		else rebased[key] = structuredClone(value);
-	}
-	return rebased;
+/** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */
+function generatedContainer(instancePath: readonly string[]): RojoNode {
+	const $className = containerClassName(instancePath);
+	return $className === "Folder"
+		? { $className, $ignoreUnknownInstances: false }
+		: { $className };
 }
 
 function rebasedGlobs(

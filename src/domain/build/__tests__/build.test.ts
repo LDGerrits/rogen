@@ -6,12 +6,12 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { build, checkRoutes, rootsToIndex } from "../build.js";
-import { readFolderMeta } from "../read-folder-meta.js";
+import { buildProject, checkBuildable, rootsToIndex } from "../build.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
+	file: abs("default.rogen.json"),
 	name: "repo",
 	rootDirs: [abs("src")],
 	routes: { "*": "ReplicatedStorage" },
@@ -33,11 +33,7 @@ describe("domain/build/build", () => {
 
 	const buildOf = async (config: ResolvedConfig) => {
 		const index = await indexOf(config.rootDirs);
-		return build(
-			config,
-			index,
-			(await readFolderMeta(fs, index, config)).unwrap()
-		);
+		return buildProject(fs, index, config);
 	};
 
 	beforeEach(() => {
@@ -57,8 +53,8 @@ describe("domain/build/build", () => {
 			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toEqual([]);
-			expectRojoProject(result.unwrap().value);
-			expect(result.unwrap().value.tree).toEqual({
+			expectRojoProject(result.unwrap().tree);
+			expect(result.unwrap().tree.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -109,7 +105,7 @@ describe("domain/build/build", () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({
 				rootDirs: [abs("core"), abs("lobby")],
-				routes: {},
+				routes: { server: "ServerScriptService" },
 			});
 
 			const result = await buildOf(config);
@@ -137,8 +133,8 @@ describe("domain/build/build", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().value);
-			expect(result.unwrap().value.tree).toEqual({
+			expectRojoProject(result.unwrap().tree);
+			expect(result.unwrap().tree.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -155,7 +151,7 @@ describe("domain/build/build", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().value.tree).toEqual({
+			expect(result.unwrap().tree.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -171,8 +167,8 @@ describe("domain/build/build", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().value);
-			expect(result.unwrap().value.name).toBe("lobby");
+			expectRojoProject(result.unwrap().tree);
+			expect(result.unwrap().tree.name).toBe("lobby");
 		});
 
 		describe("unclaimed meta", () => {
@@ -442,14 +438,15 @@ describe("domain/build/build", () => {
 		});
 	});
 
-	describe("checkRoutes", () => {
+	describe("checkBuildable", () => {
 		it("should name each config file that declares no routes", () => {
-			const diagnostics = checkRoutes([
-				{
-					file: abs("default.rogen.json"),
-					routes: { "*": "Workspace" },
-				},
-				{ file: abs("bare.rogen.json"), routes: {} },
+			const diagnostics = checkBuildable([
+				configOf({ routes: { "*": "Workspace" } }),
+				configOf({
+					file: abs("bare.rogen.json"),
+					outFile: abs("bare.project.json"),
+					routes: {},
+				}),
 			]);
 
 			expect(diagnostics).toMatchObject([
@@ -457,15 +454,67 @@ describe("domain/build/build", () => {
 			]);
 		});
 
-		it("should report nothing when every config declares a route", () => {
-			expect(
-				checkRoutes([
-					{
-						file: abs("a.rogen.json"),
-						routes: { server: "Workspace" },
-					},
-				])
-			).toEqual([]);
+		it("should refuse two configs that write one file", () => {
+			const diagnostics = checkBuildable([
+				configOf(),
+				configOf({ file: abs("other.rogen.json") }),
+			]);
+
+			expect(diagnostics).toMatchObject([
+				{
+					code: "output.sameOutFile",
+					resource: abs("default.project.json"),
+				},
+			]);
+		});
+
+		it("should report nothing when every config can be built", () => {
+			expect(checkBuildable([configOf()])).toEqual([]);
+		});
+	});
+
+	describe("buildProject", () => {
+		it("should refuse a config that declares no routes before scanning", async () => {
+			const result = await buildProject(
+				fs,
+				await indexOf([]),
+				configOf({ routes: {} })
+			);
+
+			expect(result.isErr() && result.error).toMatchObject([
+				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
+			]);
+		});
+
+		it("should fail on an invalid folder meta file", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("src/init.meta.json"), "[]");
+
+			const result = await buildProject(
+				fs,
+				await indexOf([abs("src")]),
+				configOf()
+			);
+
+			expect(result.isErr() && result.error).toMatchObject([
+				{ code: "meta.notAnObject" },
+			]);
+		});
+
+		it("should check the sync dir only when asked", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const config = configOf({ syncDir: abs("dist") });
+			const index = await indexOf(config.rootDirs);
+
+			const unchecked = await buildProject(fs, index, config);
+			const checked = await buildProject(fs, index, config, {
+				checkSyncDir: true,
+			});
+
+			expect(unchecked.unwrap().syncWarnings).toEqual([]);
+			expect(checked.unwrap().syncWarnings).toMatchObject([
+				{ code: "output.nothingEmitted" },
+			]);
 		});
 	});
 

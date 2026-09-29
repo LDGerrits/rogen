@@ -24,6 +24,8 @@ export interface ResolvedTemplate {
 }
 
 export interface ResolvedConfig {
+	/** The config file itself, the leaf of its `extends` chain. */
+	readonly file: string;
 	readonly name: string;
 	readonly rootDirs: string[];
 	readonly routes: Record<string, string>;

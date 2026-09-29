@@ -16,3 +16,8 @@ export function isInside(dir: string, parent: string): boolean {
 		!path.isAbsolute(relative)
 	);
 }
+
+/** A relative directory with forward slashes, no leading `./` and no trailing `/`. */
+export function normalizeDir(entry: string): string {
+	return path.posix.normalize(toPosix(entry.trim())).replace(/(.)\/+$/, "$1");
+}

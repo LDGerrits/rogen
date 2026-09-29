@@ -1,15 +1,19 @@
 import path from "path";
 import { isInside, toPosix } from "../../base/path.js";
-import { Result, ok } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { findOutputClashes } from "../output/find-output-clashes.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { TagResult, applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
-import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
+import { checkSyncDir } from "./check-sync-dir.js";
+import { checkSyncMeta } from "./check-sync-meta.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
-import { FolderMeta } from "./read-folder-meta.js";
+import { readFolderMeta } from "./read-folder-meta.js";
+import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { RouteResult, RoutedFile, routeFiles } from "./route-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
@@ -43,31 +47,54 @@ export interface BuildSummary {
 	readonly superseded: number;
 }
 
-export interface BuildOutput {
-	readonly value: RojoTree;
+export interface BuildOptions {
+	/**
+	 * Also check that the sync dir holds the compiler's output for every root
+	 * dir and meta file. That only changes when the compiler runs, so a watch
+	 * checks it when a config loads rather than on every rebuild.
+	 */
+	readonly checkSyncDir?: boolean;
+}
+
+/** One config built in memory; writing it is the caller's step. */
+export interface BuiltProject {
+	readonly tree: RojoTree;
 	readonly warnings: readonly Diagnostic[];
+	/** What `checkSyncDir` found; empty when it wasn't asked for. */
+	readonly syncWarnings: readonly Diagnostic[];
 	readonly summary: BuildSummary;
 }
 
-/** An error per config whose chain declares no routes, so the caller can refuse before scanning anything. */
-export function checkRoutes(
-	configs: readonly { file: string; routes: ResolvedConfig["routes"] }[]
+/** What must hold across the configs before any is built: each declares routes, and no two write one file. */
+export function checkBuildable(
+	configs: readonly ResolvedConfig[]
 ): Diagnostic[] {
-	return configs
-		.filter(({ routes }) => Object.keys(routes).length === 0)
-		.map(({ file }) => RouteDiagnostics.noRoutes({ resource: file }));
+	return [
+		...configs
+			.filter(({ routes }) => Object.keys(routes).length === 0)
+			.map(({ file }) => RouteDiagnostics.noRoutes({ resource: file })),
+		...findOutputClashes(configs),
+	];
 }
 
-/** Reads only the in-memory `index`, which the caller initialized with `rootsToIndex`, and the `readFolderMeta` result. */
-export function build(
-	config: ResolvedConfig,
+/**
+ * Builds `config` from the in-memory `index`, which the caller initialized
+ * with `rootsToIndex`, reading only the folder meta from `fileSystem`. The
+ * root dirs are scanned once, and every stage reads that scan.
+ */
+export async function buildProject(
+	fileSystem: FileSystemService,
 	index: IndexService,
-	folderMeta: readonly FolderMeta[]
-): Result<BuildOutput, Diagnostic[]> {
-	const scan = scanRootDirs(index, {
-		rootDirs: config.rootDirs,
-		exclude: config.exclude,
-	});
+	config: ResolvedConfig,
+	options: BuildOptions = {}
+): Promise<Result<BuiltProject, Diagnostic[]>> {
+	if (Object.keys(config.routes).length === 0) {
+		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
+	}
+
+	const scan = scanRootDirs(index, config);
+	const folderMeta = await readFolderMeta(fileSystem, scan.roots);
+	if (folderMeta.isErr()) return folderMeta;
 	const routing = routeFiles(scan.roots, config);
 	if (routing.isErr()) return routing;
 	const tagging = applyTags(routing.value.routed, config);
@@ -86,21 +113,31 @@ export function build(
 		pruned: tagging.value.pruned,
 		unrouted: routing.value.unrouted,
 		superseded: tagging.value.superseded,
-		folderMeta,
+		folderMeta: folderMeta.value,
 	});
 	if (assembly.isErr()) return assembly;
 
 	const unclaimedMeta = findUnclaimedMeta(index, scan.roots);
-	const summary = summarizeBuild(
-		config,
-		scan.roots,
-		routing.value,
-		tagging.value
-	);
+	const syncWarnings = options.checkSyncDir
+		? [
+				...(await checkSyncDir(fileSystem, config)),
+				...(await checkSyncMeta(
+					fileSystem,
+					config,
+					scan.roots,
+					new Set(unclaimedMeta.map(({ path }) => path))
+				)),
+			]
+		: [];
 
 	return ok({
-		value: assembly.value.value,
-		summary,
+		tree: assembly.value.value,
+		summary: summarizeBuild(
+			config,
+			scan.roots,
+			routing.value,
+			tagging.value
+		),
 		warnings: [
 			...scan.warnings,
 			...(unclaimedMeta.length > 0
@@ -115,6 +152,7 @@ export function build(
 			...tagging.value.warnings,
 			...assembly.value.warnings,
 		],
+		syncWarnings,
 	});
 }
 

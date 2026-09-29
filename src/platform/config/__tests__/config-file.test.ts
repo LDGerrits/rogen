@@ -169,9 +169,9 @@ describe("platform/config/config-file", () => {
 		it("should report every unknown field", async () => {
 			const result = await read('{ "a": 1, "b": 2 }');
 
-			expect(diagnosticsOf(result).map((d) => d.position?.column)).toEqual(
-				[3, 11]
-			);
+			expect(
+				diagnosticsOf(result).map((d) => d.position?.column)
+			).toEqual([3, 11]);
 		});
 
 		it("should reject a value of the wrong type", async () => {
@@ -192,7 +192,10 @@ describe("platform/config/config-file", () => {
 			const result = await read('{ "list": ["a", 1] }');
 
 			expect(
-				diagnosticsOf(result).map((d) => [d.message, d.position?.column])
+				diagnosticsOf(result).map((d) => [
+					d.message,
+					d.position?.column,
+				])
 			).toEqual([['"list[1]": expected a string, found a number.', 17]]);
 		});
 
@@ -200,8 +203,13 @@ describe("platform/config/config-file", () => {
 			const result = await read('{ "flags": { "on": "yes" } }');
 
 			expect(
-				diagnosticsOf(result).map((d) => [d.message, d.position?.column])
-			).toEqual([['"flags.on": expected a boolean, found a string.', 20]]);
+				diagnosticsOf(result).map((d) => [
+					d.message,
+					d.position?.column,
+				])
+			).toEqual([
+				['"flags.on": expected a boolean, found a string.', 20],
+			]);
 		});
 
 		it("should reject null wherever it appears", async () => {
@@ -225,7 +233,10 @@ describe("platform/config/config-file", () => {
 			it("should return the line and column of a value", async () => {
 				const file = (await read(text)).unwrap();
 
-				expect(file.positionOf("name")).toEqual({ line: 2, column: 10 });
+				expect(file.positionOf("name")).toEqual({
+					line: 2,
+					column: 10,
+				});
 				expect(file.positionOf("words.k")).toEqual({
 					line: 4,
 					column: 18,
@@ -242,7 +253,9 @@ describe("platform/config/config-file", () => {
 			});
 
 			it("should accept segments for a key containing a dot", async () => {
-				const file = (await read('{ "words": { "a.b": "v" } }')).unwrap();
+				const file = (
+					await read('{ "words": { "a.b": "v" } }')
+				).unwrap();
 
 				expect(file.positionOf(["words", "a.b"])).toEqual({
 					line: 1,

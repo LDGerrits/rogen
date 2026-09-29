@@ -5,13 +5,11 @@ import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { stagingPattern } from "../output/write-output.js";
 
-export interface WatchPlanConfig extends Pick<
+/** `file` names the config in `configsFor`. */
+export type WatchPlanConfig = Pick<
 	ResolvedConfig,
-	"rootDirs" | "outFile" | "syncDir"
-> {
-	/** The config file, which names the config in `configsFor`. */
-	readonly file: string;
-}
+	"file" | "rootDirs" | "outFile" | "syncDir"
+>;
 
 export interface WatchPlan {
 	/** The dirs to watch and index: every config's root dirs, minus any inside another. */

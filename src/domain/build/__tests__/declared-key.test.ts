@@ -176,11 +176,15 @@ describe("matchSuffixKeys", () => {
 	});
 
 	it("has no near miss for a first-letter match", () => {
-		expect(matchSuffixKeys("Foo.Server", ROUTES).nearMissKey).toBeUndefined();
+		expect(
+			matchSuffixKeys("Foo.Server", ROUTES).nearMissKey
+		).toBeUndefined();
 	});
 
 	it("has no near miss for an exact match or an unrelated name", () => {
-		expect(matchSuffixKeys("Foo.server", ROUTES).nearMissKey).toBeUndefined();
+		expect(
+			matchSuffixKeys("Foo.server", ROUTES).nearMissKey
+		).toBeUndefined();
 		expect(matchSuffixKeys("Foo.beta", ROUTES).nearMissKey).toBeUndefined();
 	});
 });

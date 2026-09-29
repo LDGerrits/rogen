@@ -13,7 +13,10 @@ describe("domain/config/valid-configs", () => {
 	describe("requireValidConfigs", () => {
 		const problem = errorDiagnostic(
 			"config.unknownField",
-			{ resource: "/repo/prod.rogen.json", position: { line: 2, column: 3 } },
+			{
+				resource: "/repo/prod.rogen.json",
+				position: { line: 2, column: 3 },
+			},
 			'unknown field "x".'
 		);
 
@@ -34,7 +37,10 @@ describe("domain/config/valid-configs", () => {
 		it("should fail with the errors of every invalid entry", () => {
 			const service = new MockConfigService([
 				mockEntry({}, "/repo/a.rogen.json"),
-				{ ...mockEntry({}, "/repo/prod.rogen.json"), diagnostics: [problem] },
+				{
+					...mockEntry({}, "/repo/prod.rogen.json"),
+					diagnostics: [problem],
+				},
 			]);
 
 			const result = requireValidConfigs(service);

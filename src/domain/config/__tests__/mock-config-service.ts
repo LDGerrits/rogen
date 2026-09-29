@@ -14,6 +14,7 @@ export function mockEntry(
 		diagnostics: [],
 		skippedTags: [],
 		resolved: {
+			file,
 			name: "repo",
 			rootDirs: [],
 			routes: {},

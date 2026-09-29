@@ -1,5 +1,5 @@
 import path from "path";
-import { commonRoot } from "../../domain/build/sync-path.js";
+import { commonRoot } from "../../domain/config/common-root.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { entryErrors } from "../../domain/config/valid-configs.js";

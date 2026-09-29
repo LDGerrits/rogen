@@ -5,14 +5,10 @@ import { safeStringify } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { loadConfigChain } from "./config-chain.js";
 import { discoverConfigPaths } from "./config-discovery.js";
-import { layerConfig, locateConfigValue } from "./config-layers.js";
-import { resolveConfig } from "./config-resolver.js";
-import { readTemplate } from "./config-template.js";
+import { loadConfig } from "./load-config.js";
 import {
 	ConfigEntry,
 	ConfigOverrides,
@@ -134,69 +130,39 @@ export class CoreConfigService
 		file: string,
 		previous: ConfigSlot | undefined
 	): Promise<ConfigSlot> {
-		const chain = await loadConfigChain(this.fileSystemService, file);
-		const failed = (
-			diagnostics: readonly Diagnostic[],
-			files: readonly string[] = chain.files,
-			undeclaredTags?: readonly string[]
-		): ConfigSlot => ({
-			config: previous?.config,
-			files,
-			undeclaredTags,
-			entry: {
-				file,
-				chain: chain.files,
-				resolved: previous?.entry.resolved,
-				diagnostics,
-				// Match the last valid value, which is what still gets built.
-				skippedTags: previous?.entry.resolved
-					? previous.entry.skippedTags
-					: (undeclaredTags ?? []),
-			},
-		});
-		if (chain.diagnostics.length > 0) return failed(chain.diagnostics);
-
-		const layered = layerConfig(
-			chain.layers,
+		const loaded = await loadConfig(
+			this.fileSystemService,
+			file,
 			this.overrides,
 			this.environmentService.cwd
 		);
-		const templateFile = layered.config.getValue<string | undefined>(
-			"template"
-		);
-		const files = templateFile
-			? [...chain.files, templateFile]
-			: chain.files;
-
-		const template = templateFile
-			? await readTemplate(
-					this.fileSystemService,
-					templateFile,
-					locateConfigValue(layered, "template")
-				)
-			: undefined;
-		if (template?.isErr()) {
-			return failed(template.error, files, layered.undeclaredTags);
+		if (loaded.resolved.isOk()) {
+			return {
+				config: loaded.config,
+				files: loaded.files,
+				undeclaredTags: loaded.undeclaredTags,
+				entry: {
+					file,
+					chain: loaded.chain,
+					resolved: loaded.resolved.value,
+					diagnostics: [],
+					skippedTags: loaded.undeclaredTags ?? [],
+				},
+			};
 		}
-
-		const resolved = resolveConfig(
-			layered,
-			template?.isOk() ? template.value : undefined
-		);
-		if (resolved.isErr()) {
-			return failed(resolved.error, files, layered.undeclaredTags);
-		}
-
+		// A failed load keeps the last valid config, which is what still gets built.
 		return {
-			config: layered.config,
-			files,
-			undeclaredTags: layered.undeclaredTags,
+			config: previous?.config,
+			files: loaded.files,
+			undeclaredTags: loaded.undeclaredTags,
 			entry: {
 				file,
-				chain: chain.files,
-				resolved: resolved.value,
-				diagnostics: [],
-				skippedTags: layered.undeclaredTags,
+				chain: loaded.chain,
+				resolved: previous?.entry.resolved,
+				diagnostics: loaded.resolved.error,
+				skippedTags: previous?.entry.resolved
+					? previous.entry.skippedTags
+					: (loaded.undeclaredTags ?? []),
 			},
 		};
 	}
