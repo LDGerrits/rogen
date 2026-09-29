@@ -1,23 +1,29 @@
 import { groupBy } from "../../../../base/collection.js";
-import { err, ok } from "../../../../base/result.js";
+import { Result, err, ok } from "../../../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../../../platform/diagnostics/diagnostic.js";
 import { instanceKey } from "../../../rojo/rojo-tree.js";
-import {
-	InstanceClash,
-	LeftOut,
-	PlacementStage,
-	RoutedFile,
-} from "../../build-record.js";
+import { PreparedBuild } from "../../model/build-phases.js";
+import { InstanceClash, LeftOut, RoutedFile } from "../../model/routed.js";
+
+export interface Tagging {
+	/** Every instance path appears once per build; the last root dir wins across roots. */
+	readonly files: readonly RoutedFile[];
+	/** The files pruned by a dormant tag and those another file replaced. */
+	readonly leftOut: ReadonlyMap<string, LeftOut>;
+	readonly clashes: readonly InstanceClash[];
+}
 
 /** Prunes what dormant tags remove, then resolves files that share an instance path. */
-export const applyTags: PlacementStage = (build) => {
-	const { config } = build;
-	const leftOut = new Map<string, LeftOut>(build.leftOut);
+export function applyTags(
+	{ config }: Pick<PreparedBuild, "config">,
+	routed: readonly RoutedFile[]
+): Result<Tagging, Diagnostic[]> {
+	const leftOut = new Map<string, LeftOut>();
 	const kept: RoutedFile[] = [];
-	for (const file of build.routed) {
+	for (const file of routed) {
 		const dormant = file.tags.filter(({ tag }) => !config.tags[tag]);
 		if (dormant.length === 0) kept.push(file);
 		else
@@ -56,10 +62,5 @@ export const applyTags: PlacementStage = (build) => {
 				by: winner.entry.source,
 			});
 	}
-	return ok({
-		...build,
-		files: [...new Set(winners.values())],
-		leftOut,
-		clashes,
-	});
-};
+	return ok({ files: [...new Set(winners.values())], leftOut, clashes });
+}

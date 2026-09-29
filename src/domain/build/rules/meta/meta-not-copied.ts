@@ -7,7 +7,8 @@ import {
 import { Registry } from "../../../../platform/registry/registry.js";
 import { rojoMetaFile } from "../../../rojo/rojo-assigned-name.js";
 import { INIT_META_FILE } from "../../../rojo/rojo-files.js";
-import { FolderMeta, RoutedFile } from "../../build-record.js";
+import { FolderMeta } from "../../model/folder-meta.js";
+import { RoutedFile } from "../../model/routed.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 
 /** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the template's `$path` is. */

@@ -1,26 +1,28 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../../../base/path.js";
-import { ok } from "../../../../base/result.js";
 import { stripRojoDataSuffix } from "../../../rojo/rojo-assigned-name.js";
 import { RojoFileKind } from "../../../rojo/rojo-files.js";
 import {
-	EntryRead,
-	FolderRead,
-	MarkerRead,
-	PlacementStage,
-	ScannedEntry,
-} from "../../build-record.js";
-import {
-	declaredKeysOf,
 	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
 	readFolderName,
 } from "../../keys/declared-key.js";
+import { PreparedBuild } from "../../model/build-phases.js";
+import {
+	EntryRead,
+	FolderRead,
+	MarkerRead,
+	PathReadings,
+} from "../../model/readings.js";
+import { ScannedEntry, ScannedRoot } from "../../model/scanned.js";
 
 /** Reads every folder, marker and suffix against the declared keys, once, for the stages and rules after it. */
-export const readPaths: PlacementStage = (build) => {
-	const { routeKeys, tagKeys, all } = declaredKeysOf(build.config);
+export function readPaths(
+	{ keys }: Pick<PreparedBuild, "keys">,
+	roots: readonly ScannedRoot[]
+): PathReadings {
+	const { routeKeys, tagKeys, all } = keys;
 	const folders = new Map<string, FolderRead>();
 	const markers = new Map<string, MarkerRead>();
 	const entries = new Map<string, EntryRead>();
@@ -55,7 +57,7 @@ export const readPaths: PlacementStage = (build) => {
 		return above;
 	};
 
-	for (const root of build.roots) {
+	for (const root of roots) {
 		for (const marker of root.markers) {
 			readFoldersAbove(root.rootDir, marker);
 			const name = path.posix.basename(marker);
@@ -77,8 +79,8 @@ export const readPaths: PlacementStage = (build) => {
 			});
 		}
 	}
-	return ok({ ...build, readings: { folders, markers, entries } });
-};
+	return { folders, markers, entries };
+}
 
 function suffixedNameOf(entry: ScannedEntry): {
 	readonly fileName: string;

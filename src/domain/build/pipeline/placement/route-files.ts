@@ -1,9 +1,7 @@
 import path from "path";
 import { groupBy } from "../../../../base/collection.js";
 import { joinPosix } from "../../../../base/path.js";
-import { err, ok } from "../../../../base/result.js";
-import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
-import { Target, parseTarget } from "../../../roblox/target.js";
+import { Target } from "../../../roblox/target.js";
 import {
 	RojoScriptSuffix,
 	rojoAssignedName,
@@ -12,25 +10,25 @@ import {
 } from "../../../rojo/rojo-assigned-name.js";
 import { RojoFileKind } from "../../../rojo/rojo-files.js";
 import {
-	EntryRead,
-	FolderNode,
-	FolderRead,
-	LeftOut,
-	MarkerRead,
-	MatchForm,
-	PlacementStage,
-	RoutedFile,
-	ScannedEntry,
-	ScannedRoot,
-	TagMatch,
-} from "../../build-record.js";
-import {
 	FALLBACK_ROUTE,
 	SuffixSpan,
-	declaredKeysOf,
 	withSeparatorSuffix,
 } from "../../keys/declared-key.js";
-import { findConfigsWithoutRoutes } from "../prepare-build.js";
+import { PreparedBuild } from "../../model/build-phases.js";
+import {
+	EntryRead,
+	FolderRead,
+	MarkerRead,
+	PathReadings,
+} from "../../model/readings.js";
+import {
+	FolderNode,
+	LeftOut,
+	MatchForm,
+	RoutedFile,
+	TagMatch,
+} from "../../model/routed.js";
+import { ScannedEntry, ScannedRoot } from "../../model/scanned.js";
 
 type RouteOutcome = Omit<RoutedFile, "entry">;
 
@@ -41,48 +39,39 @@ interface RouteContext {
 	readonly targets: ReadonlyMap<string, Target>;
 }
 
+export interface Routing {
+	/** Every file a route governs, in scan order. */
+	readonly routed: readonly RoutedFile[];
+	/** The files no route governs. */
+	readonly leftOut: ReadonlyMap<string, LeftOut>;
+}
+
 /** Finds each scanned file's governing route and instance path; files no route governs are left out. */
-export const routeFiles: PlacementStage = (build) => {
-	const { config } = build;
-	const location = { resource: config.outFile };
-	const withoutRoutes = findConfigsWithoutRoutes([config]);
-	if (withoutRoutes.length > 0) return err(withoutRoutes);
-
-	const targets = new Map<string, Target>();
-	const errors: Diagnostic[] = [];
-	for (const [key, value] of Object.entries(config.routes)) {
-		const target = parseTarget(value, location);
-		if (target.isOk()) targets.set(key, target.value);
-		else errors.push(...target.error);
-	}
-	if (errors.length > 0) return err(errors);
-
-	const { routeKeys, tagKeys } = declaredKeysOf(config);
+export function routeFiles(
+	{ keys, targets }: Pick<PreparedBuild, "keys" | "targets">,
+	roots: readonly ScannedRoot[],
+	readings: PathReadings
+): Routing {
 	const context: RouteContext = {
-		routeKeys,
-		tagKeys,
-		markers: build.readings.markers,
+		routeKeys: keys.routeKeys,
+		tagKeys: keys.tagKeys,
+		markers: readings.markers,
 		targets,
 	};
 
 	const routed: RoutedFile[] = [];
-	const unrouted: [string, LeftOut][] = [];
-	for (const root of build.roots) {
+	const leftOut = new Map<string, LeftOut>();
+	for (const root of roots) {
 		const markers = markersByDir(root);
 		for (const entry of root.entries) {
-			const read = build.readings.entries.get(entry.source) as EntryRead;
+			const read = readings.entries.get(entry.source) as EntryRead;
 			const outcome = routeEntry(entry, read, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
-			else unrouted.push([entry.source, { status: "unrouted" }]);
+			else leftOut.set(entry.source, { status: "unrouted" });
 		}
 	}
-	return ok({
-		...build,
-		routed,
-		files: routed,
-		leftOut: new Map([...build.leftOut, ...unrouted]),
-	});
-};
+	return { routed, leftOut };
+}
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
 function markersByDir(root: ScannedRoot): ReadonlyMap<string, string[]> {

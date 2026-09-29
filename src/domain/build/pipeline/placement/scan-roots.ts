@@ -2,7 +2,6 @@ import path from "path";
 import { compareStrings } from "../../../../base/collection.js";
 import { isMatch } from "../../../../base/glob.js";
 import { joinPosix, toPosix } from "../../../../base/path.js";
-import { ok } from "../../../../base/result.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -15,29 +14,19 @@ import {
 	isInitScript,
 	isMetaFile,
 } from "../../../rojo/rojo-files.js";
-import {
-	PlacementStage,
-	ScanLeftOut,
-	ScannedEntry,
-	ScannedRoot,
-} from "../../build-record.js";
+import { PreparedBuild } from "../../model/build-phases.js";
+import { ScanLeftOut, ScannedEntry, ScannedRoot } from "../../model/scanned.js";
 
 /** Reads the root dirs from the index, in `rootDirs` order, which decides clashes between them. */
-export const scanRoots: PlacementStage = (build) => {
-	const roots = build.config.rootDirs.map(
+export function scanRoots({
+	config,
+	index,
+}: Pick<PreparedBuild, "config" | "index">): ScannedRoot[] {
+	return config.rootDirs.map(
 		(rootDir) =>
-			scanRoot(build.index, rootDir, build.config.exclude) ??
-			emptyRoot(rootDir)
+			scanRoot(index, rootDir, config.exclude) ?? emptyRoot(rootDir)
 	);
-	return ok({
-		...build,
-		roots,
-		leftOut: new Map([
-			...build.leftOut,
-			...roots.flatMap((root) => [...root.leftOut]),
-		]),
-	});
-};
+}
 
 function emptyRoot(rootDir: string): ScannedRoot {
 	return {

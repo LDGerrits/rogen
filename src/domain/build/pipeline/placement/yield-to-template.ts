@@ -1,23 +1,26 @@
-import { ok } from "../../../../base/result.js";
+import { PreparedBuild } from "../../model/build-phases.js";
+import { LeftOut, RoutedFile } from "../../model/routed.js";
 import { RojoProject } from "../../../rojo/rojo-project.js";
-import { LeftOut, PlacementStage, RoutedFile } from "../../build-record.js";
+
+export interface TemplateYield {
+	readonly files: readonly RoutedFile[];
+	readonly leftOut: ReadonlyMap<string, LeftOut>;
+}
 
 /** Leaves out the files whose node the template already defines; the template wins. */
-export const yieldToTemplate: PlacementStage = (build) => {
+export function yieldToTemplate(
+	{ template }: Pick<PreparedBuild, "template">,
+	placed: readonly RoutedFile[]
+): TemplateYield {
 	const files: RoutedFile[] = [];
-	const displaced: [string, LeftOut][] = [];
-	for (const file of build.files) {
-		const node = displacingNode(build.template, file);
-		if (node)
-			displaced.push([file.entry.source, { status: "displaced", node }]);
+	const leftOut = new Map<string, LeftOut>();
+	for (const file of placed) {
+		const node = displacingNode(template, file);
+		if (node) leftOut.set(file.entry.source, { status: "displaced", node });
 		else files.push(file);
 	}
-	return ok({
-		...build,
-		files,
-		leftOut: new Map([...build.leftOut, ...displaced]),
-	});
-};
+	return { files, leftOut };
+}
 
 /** The file's own node, or a folder of its that the template gives a `$path`, which is that folder's whole content. */
 function displacingNode(

@@ -8,7 +8,7 @@ import { CoreIndexService } from "../../../../../platform/fs/core-index-service.
 import { MemoryFileSystemService } from "../../../../../platform/fs/memory-file-system-service.js";
 import { IndexReader } from "../../../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../../../config/config.js";
-import { ScannedRoot } from "../../../build-record.js";
+import { ScannedRoot } from "../../../model/scanned.js";
 import { place } from "../../pipeline.js";
 import {
 	abs,

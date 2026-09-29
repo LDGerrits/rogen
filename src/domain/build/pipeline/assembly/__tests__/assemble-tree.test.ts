@@ -5,9 +5,17 @@ import { MemoryFileSystemService } from "../../../../../platform/fs/memory-file-
 import { ResolvedConfig } from "../../../../config/config.js";
 import { expectRojoProject } from "../../../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../../../rojo/rojo-tree.js";
-import { Extensions, SyncToolRegistry } from "../../../../toolchain/toolchain.js";
+import {
+	Extensions,
+	SyncToolRegistry,
+} from "../../../../toolchain/toolchain.js";
 import "../../../../toolchain/roblox-ts.js";
-import { abs, buildServiceOf, indexOf, writeFiles } from "../../../__tests__/fixtures.js";
+import {
+	abs,
+	buildServiceOf,
+	indexOf,
+	writeFiles,
+} from "../../../__tests__/fixtures.js";
 
 const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
 

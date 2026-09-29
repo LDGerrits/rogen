@@ -33,7 +33,8 @@ describe("RuleRegistry", () => {
 	});
 
 	afterEach(() => {
-		for (const registration of registrations) registration[Symbol.dispose]();
+		for (const registration of registrations)
+			registration[Symbol.dispose]();
 	});
 
 	describe("getRules", () => {
@@ -42,28 +43,33 @@ describe("RuleRegistry", () => {
 			register(rule("early", 10));
 			register(rule("middle", 20));
 
-			expect(registry().getRules().map(({ id }) => id)).toEqual([
-				"early",
-				"middle",
-				"late",
-			]);
+			expect(
+				registry()
+					.getRules()
+					.map(({ id }) => id)
+			).toEqual(["early", "middle", "late"]);
 		});
 
 		it("should break a tie by id", () => {
 			register(rule("b", 10));
 			register(rule("a", 10));
 
-			expect(registry().getRules().map(({ id }) => id)).toEqual([
-				"a",
-				"b",
-			]);
+			expect(
+				registry()
+					.getRules()
+					.map(({ id }) => id)
+			).toEqual(["a", "b"]);
 		});
 
 		it("should not list a disposed rule", () => {
 			register(rule("kept", 10));
 			register(rule("gone", 20))[Symbol.dispose]();
 
-			expect(registry().getRules().map(({ id }) => id)).toEqual(["kept"]);
+			expect(
+				registry()
+					.getRules()
+					.map(({ id }) => id)
+			).toEqual(["kept"]);
 		});
 	});
 
@@ -82,9 +88,11 @@ describe("RuleRegistry", () => {
 			register(rule("same", 20));
 			first[Symbol.dispose]();
 
-			expect(registry().getRules().map(({ order }) => order)).toEqual([
-				20,
-			]);
+			expect(
+				registry()
+					.getRules()
+					.map(({ order }) => order)
+			).toEqual([20]);
 		});
 	});
 
@@ -96,11 +104,16 @@ describe("RuleRegistry", () => {
 				registry().registerSyncDirRule(syncDirRule("first", 10))
 			);
 
-			expect(registry().getRules().map(({ id }) => id)).toEqual(["build"]);
-			expect(registry().getSyncDirRules().map(({ id }) => id)).toEqual([
-				"first",
-				"second",
-			]);
+			expect(
+				registry()
+					.getRules()
+					.map(({ id }) => id)
+			).toEqual(["build"]);
+			expect(
+				registry()
+					.getSyncDirRules()
+					.map(({ id }) => id)
+			).toEqual(["first", "second"]);
 		});
 
 		it("should throw when the id is already registered", () => {

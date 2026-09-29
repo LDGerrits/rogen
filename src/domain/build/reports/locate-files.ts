@@ -8,12 +8,13 @@ import {
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { rojoFileName } from "../../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../../rojo/rojo-files.js";
-import { BuildRecord, ScannedRoot } from "../build-record.js";
+import { PlacedBuild } from "../model/build-phases.js";
+import { ScannedRoot } from "../model/scanned.js";
 import { FileLocation } from "../build-service.js";
 
 /** Every scanned path's location, or only those `paths` name, where a directory stands for what's in it. */
 export function locateFiles(
-	build: BuildRecord,
+	build: PlacedBuild,
 	paths?: readonly string[]
 ): FileLocation[] {
 	const { index, roots } = build;
@@ -31,7 +32,7 @@ function locateScanned({
 	index,
 	files,
 	leftOut,
-}: BuildRecord): Map<string, FileLocation> {
+}: PlacedBuild): Map<string, FileLocation> {
 	const all = new Map<string, FileLocation>();
 	const add = (location: FileLocation) => all.set(location.source, location);
 

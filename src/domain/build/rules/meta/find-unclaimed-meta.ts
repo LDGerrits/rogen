@@ -6,13 +6,16 @@ import {
 	isFileType,
 } from "../../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../../platform/fs/index-service.js";
-import { rojoDataName, rojoMetaName } from "../../../rojo/rojo-assigned-name.js";
+import {
+	rojoDataName,
+	rojoMetaName,
+} from "../../../rojo/rojo-assigned-name.js";
 import {
 	INIT_META_FILE,
 	META_FILE_SUFFIX,
 	classifyFile,
 } from "../../../rojo/rojo-files.js";
-import { ScannedRoot } from "../../build-record.js";
+import { ScannedRoot } from "../../model/scanned.js";
 
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */

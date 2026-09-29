@@ -5,7 +5,7 @@ import {
 } from "../../../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../../../config/config.js";
-import { BuildRecord } from "../../../build-record.js";
+import { PlacedBuild } from "../../../model/build-phases.js";
 import { place } from "../../pipeline.js";
 import {
 	abs,
@@ -16,7 +16,7 @@ import {
 	writeFiles,
 } from "../../../__tests__/fixtures.js";
 
-type TagResult = Pick<BuildRecord, "files" | "leftOut"> & {
+type TagResult = Pick<PlacedBuild, "files" | "leftOut"> & {
 	readonly warnings: readonly Diagnostic[];
 };
 

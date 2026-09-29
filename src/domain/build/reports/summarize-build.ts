@@ -1,4 +1,5 @@
-import { BuildRecord, LeftOut, TagMatch } from "../build-record.js";
+import { PlacedBuild } from "../model/build-phases.js";
+import { LeftOut, TagMatch } from "../model/routed.js";
 import { BuildSummary } from "../build-service.js";
 
 export function summarizeBuild({
@@ -6,7 +7,7 @@ export function summarizeBuild({
 	roots,
 	files,
 	leftOut,
-}: BuildRecord): BuildSummary {
+}: PlacedBuild): BuildSummary {
 	const countOf = (
 		status: LeftOut["status"],
 		paths: Iterable<LeftOut> = leftOut.values()

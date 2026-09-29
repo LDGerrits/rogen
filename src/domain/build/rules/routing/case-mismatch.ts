@@ -1,10 +1,7 @@
 import { joinPosix } from "../../../../base/path.js";
 import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.js";
 import { Registry } from "../../../../platform/registry/registry.js";
-import {
-	declaredKeysOf,
-	withFirstLetterFlipped,
-} from "../../keys/declared-key.js";
+import { withFirstLetterFlipped } from "../../keys/declared-key.js";
 import { diagnosePaths } from "../path-list.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 
@@ -12,8 +9,7 @@ import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 export const caseMismatch: BuildRule = {
 	id: "case-mismatch",
 	order: 40,
-	check: ({ config, roots, readings }) => {
-		const { tagKeys } = declaredKeysOf(config);
+	check: ({ keys, roots, readings }) => {
 		const nearMisses = new Map<string, string>();
 		const note = (resource: string, key: string | undefined) => {
 			if (key && !nearMisses.has(resource)) nearMisses.set(resource, key);
@@ -37,7 +33,7 @@ export const caseMismatch: BuildRule = {
 
 		return diagnosePaths([...nearMisses.keys()], (resource) => {
 			const key = nearMisses.get(resource) as string;
-			const kind = tagKeys.has(key) ? "tag" : "route";
+			const kind = keys.tagKeys.has(key) ? "tag" : "route";
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },

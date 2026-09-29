@@ -3,7 +3,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { BuildRecord } from "./build-record.js";
+import { AssembledBuild } from "./model/build-phases.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -70,7 +70,7 @@ export class CoreBuildService implements BuildService {
 		);
 	}
 
-	private async checkSyncDir(build: BuildRecord): Promise<Diagnostic[]> {
+	private async checkSyncDir(build: AssembledBuild): Promise<Diagnostic[]> {
 		const warnings: Diagnostic[] = [];
 		for (const rule of this.ruleRegistry.getSyncDirRules())
 			warnings.push(...(await rule.check(build, this.fileSystemService)));

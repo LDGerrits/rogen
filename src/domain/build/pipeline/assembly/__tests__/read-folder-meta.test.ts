@@ -2,7 +2,12 @@ import { DisposableStore } from "../../../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../../../config/config.js";
 import { assemble, place } from "../../pipeline.js";
-import { abs, configOf, indexOf, syncTools } from "../../../__tests__/fixtures.js";
+import {
+	abs,
+	configOf,
+	indexOf,
+	syncTools,
+} from "../../../__tests__/fixtures.js";
 
 type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
 

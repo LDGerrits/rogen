@@ -1,20 +1,23 @@
 import { compareStrings, groupBy } from "../../../../base/collection.js";
 import { joinPosix } from "../../../../base/path.js";
-import { err, ok } from "../../../../base/result.js";
+import { Result, err, ok } from "../../../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../../../platform/diagnostics/diagnostic.js";
 import { RojoProject } from "../../../rojo/rojo-project.js";
 import { RojoNode, instanceKey } from "../../../rojo/rojo-tree.js";
-import {
-	AssemblyStage,
-	FolderMeta,
-	FolderMetaOutcome,
-	RoutedFile,
-} from "../../build-record.js";
 import { generatedContainer } from "../../layout/template.js";
-import { isCollapsed } from "./assemble-tree.js";
+import { PlacedBuild } from "../../model/build-phases.js";
+import { FolderMeta, FolderMetaOutcome } from "../../model/folder-meta.js";
+import { RoutedFile } from "../../model/routed.js";
+import { TreeAssembly } from "./assemble-tree.js";
+import { isCollapsed } from "./collapse-folders.js";
+
+export interface FolderMetaApplication {
+	readonly tree: TreeAssembly["tree"];
+	readonly metaOutcomes: readonly FolderMetaOutcome[];
+}
 
 interface ReachedNode {
 	readonly instancePath: readonly string[];
@@ -25,28 +28,26 @@ interface ReachedNode {
 type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
 
 /** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last root dir wins, and the template beats both. */
-export const applyFolderMeta: AssemblyStage = (build) => {
-	const { config, template, collapsed } = build;
-	const project = new RojoProject(build.tree, generatedContainer);
+export function applyFolderMeta(
+	{ config, template, files, routed, leftOut }: PlacedBuild,
+	folderMeta: readonly FolderMeta[],
+	{ tree, collapsed }: TreeAssembly
+): Result<FolderMetaApplication, Diagnostic[]> {
+	const project = new RojoProject(tree, generatedContainer);
 	const errors: Diagnostic[] = [];
-	const metaByDir = new Map(
-		build.folderMeta.map((meta) => [dirOf(meta), meta])
-	);
+	const metaByDir = new Map(folderMeta.map((meta) => [dirOf(meta), meta]));
 	const sharedWithFile = new Map(
-		build.files.map((file) => [instanceKey(file.instancePath), file])
+		files.map((file) => [instanceKey(file.instancePath), file])
 	);
 	const isReadByRojo = (dir: string) =>
 		collapsed.has(dir) || isCollapsed(dir, collapsed);
 
 	const outcomes: FolderMetaOutcome[] = [];
 	const reportedClashes = new Set<string>();
-	const displaced = build.routed.filter(
-		(file) => build.leftOut.get(file.entry.source)?.status === "displaced"
+	const displaced = routed.filter(
+		(file) => leftOut.get(file.entry.source)?.status === "displaced"
 	);
-	for (const [instance, node] of reachedNodes([
-		...build.files,
-		...displaced,
-	])) {
+	for (const [instance, node] of reachedNodes([...files, ...displaced])) {
 		const metas = [...node.dirs]
 			.filter((dir) => !isReadByRojo(dir))
 			.flatMap((dir) => metaByDir.get(dir) ?? [])
@@ -105,8 +106,8 @@ export const applyFolderMeta: AssemblyStage = (build) => {
 
 	for (const { instancePath, meta, templateNode } of copies)
 		project.insertNode(instancePath, fieldsUnder(templateNode, meta));
-	return ok({ ...build, tree: project.getTree(), metaOutcomes: outcomes });
-};
+	return ok({ tree: project.getTree(), metaOutcomes: outcomes });
+}
 
 function reachedNodes(files: readonly RoutedFile[]): Map<string, ReachedNode> {
 	const reached = new Map<string, ReachedNode>();

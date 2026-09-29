@@ -3,7 +3,13 @@ import { toPosix } from "../../../../../base/path.js";
 import { MemoryFileSystemService } from "../../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../../../config/config.js";
 import { place } from "../../pipeline.js";
-import { abs, configOf, indexOf, syncTools, writeFiles } from "../../../__tests__/fixtures.js";
+import {
+	abs,
+	configOf,
+	indexOf,
+	syncTools,
+	writeFiles,
+} from "../../../__tests__/fixtures.js";
 
 const at = (...segments: string[]) => toPosix(abs(...segments));
 

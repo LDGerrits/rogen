@@ -9,11 +9,8 @@ import {
 } from "../../../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../../../platform/fs/file-system-service.js";
 import { INIT_META_FILE } from "../../../rojo/rojo-files.js";
-import {
-	AssemblyStage,
-	FolderMeta,
-	FolderMetaFields,
-} from "../../build-record.js";
+import { FolderMeta, FolderMetaFields } from "../../model/folder-meta.js";
+import { ScannedRoot } from "../../model/scanned.js";
 
 const FIELD_KINDS: Record<keyof FolderMetaFields, JsoncNode["kind"]> = {
 	className: "string",
@@ -33,11 +30,14 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 };
 
 /** Reads every `init.meta.json` the scan found, which leaves out excluded folders; any invalid one fails the whole read. */
-export const readFolderMeta: AssemblyStage = async (build, fileSystem) => {
+export async function readFolderMeta(
+	roots: readonly ScannedRoot[],
+	fileSystem: FileSystemService
+): Promise<Result<FolderMeta[], Diagnostic[]>> {
 	const metas: FolderMeta[] = [];
 	const errors: Diagnostic[] = [];
 
-	for (const root of build.roots) {
+	for (const root of roots) {
 		for (const metaFile of root.metaFiles) {
 			if (path.posix.basename(metaFile) !== INIT_META_FILE) continue;
 			const file = path.join(root.rootDir, metaFile);
@@ -56,10 +56,8 @@ export const readFolderMeta: AssemblyStage = async (build, fileSystem) => {
 		}
 	}
 
-	return errors.length > 0
-		? err(errors)
-		: ok({ ...build, folderMeta: metas });
-};
+	return errors.length > 0 ? err(errors) : ok(metas);
+}
 
 async function readMetaFile(
 	fileSystem: FileSystemService,

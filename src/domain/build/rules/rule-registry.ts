@@ -2,7 +2,7 @@ import { Disposable } from "../../../base/disposable.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
-import { BuildRecord } from "../build-record.js";
+import { AssembledBuild, PlacedBuild } from "../model/build-phases.js";
 
 /** Reports on a finished build and decides nothing. */
 export interface BuildRule {
@@ -10,7 +10,7 @@ export interface BuildRule {
 	readonly id: string;
 	/** Warnings are reported in ascending order, ties broken by id. */
 	readonly order: number;
-	check(build: BuildRecord): Diagnostic[];
+	check(build: AssembledBuild): Diagnostic[];
 }
 
 /** Reports on what the sync dir holds, which only changes when the compiler runs. */
@@ -19,7 +19,7 @@ export interface SyncDirRule {
 	readonly id: string;
 	readonly order: number;
 	check(
-		build: BuildRecord,
+		build: PlacedBuild,
 		fileSystem: FileSystemService
 	): Promise<Diagnostic[]>;
 }

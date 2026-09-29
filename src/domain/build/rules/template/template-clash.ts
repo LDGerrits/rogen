@@ -2,7 +2,7 @@ import { joinPosix } from "../../../../base/path.js";
 import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.js";
 import { Registry } from "../../../../platform/registry/registry.js";
 import { instanceKey } from "../../../rojo/rojo-tree.js";
-import { RoutedFile } from "../../build-record.js";
+import { RoutedFile } from "../../model/routed.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 
 /** One warning per template node and the file or folder it displaced. */

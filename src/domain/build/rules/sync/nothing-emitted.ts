@@ -27,10 +27,7 @@ export const nothingEmitted: SyncDirRule = {
 			if (emitted.length === 0 || (await anyExists(fileSystem, emitted)))
 				continue;
 
-			const expected = path.join(
-				syncDir,
-				path.relative(common, rootDir)
-			);
+			const expected = path.join(syncDir, path.relative(common, rootDir));
 			const found = await findShifted(fileSystem, syncDir, emitted[0]);
 			const nearest = found
 				? `Found "${shown(found)}" — is the compiler's output rooted differently?`

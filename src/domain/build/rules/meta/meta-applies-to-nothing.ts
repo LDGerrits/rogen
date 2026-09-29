@@ -1,7 +1,7 @@
 import { joinPosix, toPosix } from "../../../../base/path.js";
 import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.js";
 import { Registry } from "../../../../platform/registry/registry.js";
-import { FolderMeta } from "../../build-record.js";
+import { FolderMeta } from "../../model/folder-meta.js";
 import { listPaths } from "../path-list.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 

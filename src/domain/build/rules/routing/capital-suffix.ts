@@ -1,8 +1,7 @@
 import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.js";
 import { Registry } from "../../../../platform/registry/registry.js";
 import { instanceKey } from "../../../rojo/rojo-tree.js";
-import { RoutedFile } from "../../build-record.js";
-import { declaredKeysOf } from "../../keys/declared-key.js";
+import { RoutedFile } from "../../model/routed.js";
 import { diagnosePaths } from "../path-list.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 
@@ -10,13 +9,13 @@ import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
 export const capitalSuffix: BuildRule = {
 	id: "capital-suffix",
 	order: 50,
-	check: ({ config, routed }) => {
+	check: ({ keys, routed }) => {
 		const bySource = new Map<string, RoutedFile>(
 			routed
 				.filter(({ separatorName }) => separatorName)
 				.map((file) => [file.entry.source, file])
 		);
-		const shared = [...declaredKeysOf(config).routeKeys].find(
+		const shared = [...keys.routeKeys].find(
 			(key) => key.toLowerCase() === "shared"
 		);
 		const keep = shared
