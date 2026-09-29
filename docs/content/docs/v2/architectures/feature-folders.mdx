@@ -1,0 +1,149 @@
+---
+title: Feature Folders
+description: One folder per feature, with its server, client and shared code inside.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+The baseline, and the reason Rogen exists. Also known as **package by feature**, or **vertical slices**.
+
+## The Rule
+
+Everything one feature needs goes in one folder, and nothing else does. Inside the feature folder, a routing folder per side says where each piece runs:
+
+- `Server/` for code only the server runs,
+- `Client/` for code only clients run,
+- `Shared/` for code both sides require: types, config, remote definitions.
+
+Features stay independent of each other. Code that several features need becomes a feature of its own, named after what it does.
+
+## Where It Comes From
+
+- **Package by feature.** John O'Hanley's [_Package by feature, not layer_](http://www.javapractices.com/topic/TopicAction.do?Id=205) argues that grouping by feature gives "packages with high cohesion and high modularity, and with minimal coupling between packages". His test for modularity is deletion: "an item has maximum modularity only if it can be deleted in a single operation".
+- **Vertical slices.** Jimmy Bogard's [vertical slice architecture](https://www.jimmybogard.com/vertical-slice-architecture/) says the same for backends: "Minimize coupling between slices, and maximize coupling in a slice". A feature folder is a vertical slice.
+- **Domain-driven design.** Eric Evans' [_DDD Reference_](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf) asks for modules that "tell the story of the system", named in the language of the domain. On Roblox, that means `Trading/` and `Quests/`, not `Services/`.
+- **Game engines.** Godot's [project organization](https://docs.godotengine.org/en/stable/tutorials/best_practices/project_organization.html) advice is to "group assets as close to scenes as possible", because it keeps a growing project maintainable.
+- **Roblox.** [Nevermore](https://github.com/Quenty/NevermoreEngine) puts `Client/`, `Server/` and `Shared/` inside every package, the same shape as a Rogen feature folder.
+
+## On Disk
+
+A small game with three features:
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder name="Door" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFile name="DoorClient.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="DoorServer.luau" level={3} />
+	<TreeFolder name="Shared" level={2} open dim />
+	<TreeFile name="DoorConfig.luau" level={3} />
+	<TreeFolder name="Inventory" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFile name="InventoryController.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="InventoryService.luau" level={3} />
+	<TreeFolder name="Shared" level={2} open dim />
+	<TreeFile name="InventoryTypes.luau" level={3} />
+	<TreeFolder name="Shop" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFolder name="(Ui)" level={3} open dim />
+	<TreeFile name="ShopItemCard.luau" level={4} />
+	<TreeFile name="ShopWindow.luau" level={4} />
+	<TreeFile name="ShopState.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="ShopService.luau" level={3} />
+	<TreeFolder name="Shared" level={2} open dim />
+	<TreeFile name="ShopCatalog.luau" level={3} />
+</SystemWindow>
+
+`Inventory` is the plain case: a service on the server, a controller on the client and the types both sides share. The other two show that common game patterns fit inside a feature folder.
+
+### A Component: `Door`
+
+The [component pattern](https://gameprogrammingpatterns.com/component.html) lets "a single entity span multiple domains without coupling the domains to each other". On Roblox, a component is usually bound to every instance with a [tag](https://create.roblox.com/docs/studio/properties#instance-tags), and tags replicate from the server to the client, so both sides find the same doors.
+
+- `DoorServer` owns the state: it checks who may open a door, and opens it.
+- `DoorClient` animates the door and plays its sound.
+- `DoorConfig` holds the tag name and timings both sides read.
+
+`DoorServer` ends in `Server`, which is also a route key. The `Server/` folder around it is the outer route, so it governs and the suffix is ignored: the module keeps its full name. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+
+### UI With a View Model: `Shop`
+
+In [MVVM](https://learn.microsoft.com/en-us/archive/blogs/johngossman/introduction-to-modelviewviewmodel-pattern-for-building-wpf-apps), a view model holds the state of a view, and the view only draws it. The split maps onto the sides of a game:
+
+- **Model:** `ShopCatalog` (the items and prices, shared) and `ShopService` (the purchase, which only the server may decide).
+- **View model:** `ShopState`, the client-side state of the window: whether it's open, which item is selected.
+- **View:** `ShopWindow` and `ShopItemCard`, written with a UI library such as [Fusion](https://elttob.uk/Fusion/0.3/) or [react-lua](https://github.com/jsdotlua/react-lua).
+
+`(Ui)` is an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders): it groups the views on disk and disappears from Studio.
+
+## The Config
+
+The routes `rogen init` writes are all this layout needs. The invisible folder needs no config.
+
+```json title="default.rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+## In Studio
+
+Each feature folder appears once in every service it has code in. The routing folders and `(Ui)` are gone.
+
+<StudioWindow>
+	<TreeService name="ReplicatedStorage" type="replicated" />
+	<TreeFolder name="Shared" level={1} />
+	<TreeFolder name="Door" level={2} highlight />
+	<StudioFile name="DoorConfig" level={3} />
+	<TreeFolder name="Inventory" level={2} highlight />
+	<StudioFile name="InventoryTypes" level={3} />
+	<TreeFolder name="Shop" level={2} highlight />
+	<StudioFile name="ShopCatalog" level={3} />
+
+	<TreeService name="ServerScriptService" type="server" mt />
+	<TreeFolder name="Door" level={1} highlight />
+	<StudioFile name="DoorServer" level={2} />
+	<TreeFolder name="Inventory" level={1} highlight />
+	<StudioFile name="InventoryService" level={2} />
+	<TreeFolder name="Shop" level={1} highlight />
+	<StudioFile name="ShopService" level={2} />
+
+	<TreeService name="StarterPlayer" type="player" mt />
+	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+	<TreeFolder name="Door" level={2} highlight />
+	<StudioFile name="DoorClient" level={3} />
+	<TreeFolder name="Inventory" level={2} highlight />
+	<StudioFile name="InventoryController" level={3} />
+	<TreeFolder name="Shop" level={2} highlight />
+	<StudioFile name="ShopItemCard" level={3} />
+	<StudioFile name="ShopState" level={3} />
+	<StudioFile name="ShopWindow" level={3} />
+</StudioWindow>
+
+## Why It Fits a Game
+
+- **A gameplay feature spans every side.** Input on the client, validation on the server, types in between. A feature folder keeps all three in one place, so a change to the shop is a change to `Shop/`.
+- **Removing a feature is one delete.** `Shop/` goes, and so does every script it placed in Studio. That's O'Hanley's test for modularity.
+- **Server code stays on the server.** `Server/` routes to `ServerScriptService`, which isn't replicated, so exploiters can't read it. Keeping the split inside the feature makes it visible in every folder, not just at the root.
+- **The tree tells you what the game is.** The top level reads `Door`, `Inventory`, `Shop`, not `server`, `client`, `shared`.
+
+## Trade-offs
+
+- **Code used everywhere needs a home.** A `Signal` class or a remote wrapper belongs to no single feature. Give it a feature folder of its own, named after what it does. When there are many of these, the [layered](/docs/v2/architectures/layered) layout gives them a place.
+- **Nothing stops a feature from reaching into another.** Rogen doesn't check requires. Agree on which module of a feature others may require, and keep the rule in review.
+- **Paths get one level deeper.** Requires read `ReplicatedStorage.Shared.Shop.ShopCatalog` instead of `ReplicatedStorage.Shared.ShopCatalog`.
+- **Big features need sub-folders.** A feature can hold folders of its own, and routing folders can sit at any depth inside them.
+
+<Callout type="info">
+	Routing folders are the recommended way to route here. Suffixes such as `Door-server.luau` work too, but read confusingly next to Rojo's `.server.luau`. See [Suffixes](/docs/v2/core-concepts/routing#suffixes).
+</Callout>

@@ -1,7 +1,18 @@
 ---
-title: Using Rogen with agents
-description: Tell a coding agent how Rogen lays out and builds a project.
+title: Working with agents
+description: Why a Rogen layout suits coding agents, and how to tell an agent about Rogen.
 ---
+
+## Why
+
+A coding agent works best when the context it needs is in one place, and when you can check what it did. A Rogen layout gives it both.
+
+1. **One folder, one feature.** Everything about the shop is in `Shop/`. Point the agent at that folder and it has the right context, without reading three trees to find the pieces.
+2. **Reviewable diffs.** An agent's change shows up as files in the folders it touched. A diff confined to `Shop/` touched the shop and nothing else, and you can see that from the file list before reading a line.
+3. **Boundaries you can state in a sentence.** "Features don't require each other." "`Shared` requires only `Shared`." Rules like these are visible in the paths and easy to state, so they're easy to put in `AGENTS.md` and to check in review. Rogen doesn't enforce them. The [architecture pages](/docs/v2/architectures) give the rules for each layout.
+4. **Placement is declared.** Where a file ends up in Studio is decided by a short `routes` map in the config, not by conventions the agent has to guess from the tree.
+5. **No generated file to break.** The `*.project.json` is output. Rogen replaces it on every build, so there's no hand-maintained project file for an agent to corrupt.
+6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` prints diagnostics for files that match no route, names that look like a route but aren't, and instances that clash. The agent runs both after moving files and fixes what they report.
 
 An agent that doesn't know Rogen reads the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or names a file `HttpClient.luau` without noticing that the `Client` suffix sends it to the client. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install it as a skill, or paste it into your `AGENTS.md`.
 

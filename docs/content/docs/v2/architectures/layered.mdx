@@ -1,0 +1,215 @@
+---
+title: Layered
+description: VS Code's layers, with feature folders inside them.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Feature folders, stacked in layers. Each layer may only require the layers below it, so the direction of every dependency is visible from the path.
+
+## The Rule
+
+The top level has five layers. Each one holds modules, or feature folders with `Server/`, `Client/` and `Shared/` inside:
+
+| Layer | Holds | May require |
+|---|---|---|
+| `base` | Pure utilities that know nothing about the game: `Signal`, `Promise` | `base` |
+| `platform` | Wrappers around Roblox and infrastructure: networking, data stores | `base`, `platform` |
+| `core` | Game rules most features build on: combat, characters | `base`, `platform`, `core` |
+| `features` | Gameplay features: inventory, trading, quests | `base`, `platform`, `core` |
+| `app` | The entry points: one `Script` and one `LocalScript` | everything |
+
+Features don't require each other. When two features need the same thing, it moves down into `core`.
+
+Inside every feature, the sides follow one more rule:
+
+- `Shared` requires only `Shared`.
+- `Server` and `Client` require `Shared`, never each other.
+
+## Where It Comes From
+
+- **VS Code.** Its [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) splits the code into layers (`base`, `platform`, `editor`, `workbench`, and `code` as the entry point that "stitches everything together"), each depending only on the layers below. "Inside each layer the code is organised by the target runtime environment", and workbench features live in `contrib/<feature>/`, with no dependency from outside `contrib` into it. VS Code checks its runtime rules with an ESLint rule of its own, `code-layering`.
+- **Game engines.** Jason Gregory's _Game Engine Architecture_ ([CRC Press](https://www.gameenginebook.com/)) describes a runtime engine as layers, from the platform independence layer up through core systems to gameplay foundations and game-specific code. On Roblox, the engine layers _are_ Roblox. What's left for a game is the top of that stack, which is this page's `platform`, `core` and `features`.
+- **Unreal's Lyra.** Epic's [Lyra sample](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine) keeps a small, generic core and ships gameplay as [Game Feature plugins](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine), "fully encapsulated within the plugin". That's the `core` and `features` split.
+- **Roblox.** [Script locations](https://create.roblox.com/docs/scripting/locations) recommends "a single entry point on the client and server sides". That's `app`.
+
+## On Disk
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder name="app" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFile name="main.client.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="main.server.luau" level={3} />
+	<TreeFolder name="base" level={1} open highlight />
+	<TreeFile name="Promise.luau" level={2} />
+	<TreeFile name="Signal.luau" level={2} />
+	<TreeFolder name="core" level={1} open highlight />
+	<TreeFolder name="Combat" level={2} open />
+	<TreeFolder name="Client" level={3} open dim />
+	<TreeFile name="CombatController.luau" level={4} />
+	<TreeFolder name="Server" level={3} open dim />
+	<TreeFile name="CombatService.luau" level={4} />
+	<TreeFolder name="Shared" level={3} open dim />
+	<TreeFile name="DamageTypes.luau" level={4} />
+	<TreeFolder name="features" level={1} open highlight />
+	<TreeFolder name="Inventory" level={2} open />
+	<TreeFolder name="Client" level={3} open dim />
+	<TreeFolder name="(Ui)" level={4} open dim />
+	<TreeFile name="InventoryPanel.luau" level={5} />
+	<TreeFile name="InventoryController.luau" level={4} />
+	<TreeFolder name="Server" level={3} open dim />
+	<TreeFile name="InventoryService.luau" level={4} />
+	<TreeFolder name="Shared" level={3} open dim />
+	<TreeFile name="InventoryTypes.luau" level={4} />
+	<TreeFolder name="platform" level={1} open highlight />
+	<TreeFolder name="Data" level={2} open />
+	<TreeFolder name="Server" level={3} open dim />
+	<TreeFile name="PlayerDataStore.luau" level={4} />
+	<TreeFolder name="Network" level={2} open />
+	<TreeFolder name="Client" level={3} open dim />
+	<TreeFile name="ClientNetwork.luau" level={4} />
+	<TreeFolder name="Server" level={3} open dim />
+	<TreeFile name="ServerNetwork.luau" level={4} />
+	<TreeFolder name="Shared" level={3} open dim />
+	<TreeFile name="Remotes.luau" level={4} />
+</SystemWindow>
+
+`base/` has no routing folder, because everything in it runs on both sides. `app/` holds nothing but the two entry points.
+
+## The Config
+
+The routes `rogen init` writes are enough:
+
+```json title="default.rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+`base/` matches no route, so the `*` route sends it to `ReplicatedStorage/Shared`. That's the Roblox version of VS Code's rule that `base` code runs everywhere.
+
+### Dropping a Layer From Studio
+
+The layers show up in Studio, as in `ServerScriptService/features/Inventory`. To keep a layer on disk only, write it as an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders). With every layer invisible:
+
+```
+src/(base)/Signal.luau                                 ->  ReplicatedStorage/Shared/Signal
+src/(features)/Inventory/Server/InventoryService.luau  ->  ServerScriptService/Inventory/InventoryService
+src/(app)/Server/main.server.luau                      ->  ServerScriptService/main
+```
+
+<Callout type="warn" title="Invisible layers share one namespace">
+	Two layers can then produce the same instance. A `Combat` folder in both `(core)` and `(features)` becomes one `Combat` folder in Studio, and a module with the same name in both is a clash: Rogen warns, and the last one wins. Keep layers visible if feature names repeat across them.
+</Callout>
+
+## In Studio
+
+<StudioWindow>
+	<TreeService name="ReplicatedStorage" type="replicated" />
+	<TreeFolder name="Shared" level={1} />
+	<TreeFolder name="base" level={2} highlight />
+	<StudioFile name="Promise" level={3} />
+	<StudioFile name="Signal" level={3} />
+	<TreeFolder name="core" level={2} highlight />
+	<TreeFolder name="Combat" level={3} />
+	<StudioFile name="DamageTypes" level={4} />
+	<TreeFolder name="features" level={2} highlight />
+	<TreeFolder name="Inventory" level={3} />
+	<StudioFile name="InventoryTypes" level={4} />
+	<TreeFolder name="platform" level={2} highlight />
+	<TreeFolder name="Network" level={3} />
+	<StudioFile name="Remotes" level={4} />
+
+	<TreeService name="ServerScriptService" type="server" mt />
+	<TreeFolder name="app" level={1} highlight />
+	<StudioFile name="main" level={2} />
+	<TreeFolder name="core" level={1} highlight />
+	<TreeFolder name="Combat" level={2} />
+	<StudioFile name="CombatService" level={3} />
+	<TreeFolder name="features" level={1} highlight />
+	<TreeFolder name="Inventory" level={2} />
+	<StudioFile name="InventoryService" level={3} />
+	<TreeFolder name="platform" level={1} highlight />
+	<TreeFolder name="Data" level={2} />
+	<StudioFile name="PlayerDataStore" level={3} />
+	<TreeFolder name="Network" level={2} />
+	<StudioFile name="ServerNetwork" level={3} />
+
+	<TreeService name="StarterPlayer" type="player" mt />
+	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+	<TreeFolder name="app" level={2} highlight />
+	<StudioFile name="main" level={3} />
+	<TreeFolder name="core" level={2} highlight />
+	<TreeFolder name="Combat" level={3} />
+	<StudioFile name="CombatController" level={4} />
+	<TreeFolder name="features" level={2} highlight />
+	<TreeFolder name="Inventory" level={3} />
+	<StudioFile name="InventoryController" level={4} />
+	<StudioFile name="InventoryPanel" level={4} />
+	<TreeFolder name="platform" level={2} highlight />
+	<TreeFolder name="Network" level={3} />
+	<StudioFile name="ClientNetwork" level={4} />
+</StudioWindow>
+
+`app/Server/main.server.luau` becomes a `Script` named `main`, and `app/Client/main.client.luau` a `LocalScript`. The routing folder governs them, so `.server` and `.client` keep Rojo's meaning.
+
+## Why It Fits a Game
+
+- **The server/client problem is VS Code's problem.** VS Code splits by runtime so that code for one environment never calls another's APIs. That's the rule between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
+- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about the other features, because nothing in `features` requires another feature.
+- **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` that can be required, tested or disabled on its own.
+- **Live games change their feature set.** New modes and events are new folders in `features/`, on top of a core that changes less often.
+
+## Trade-offs
+
+- **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers when utilities and infrastructure start piling up.
+- **Every module needs a layer.** Deciding between `core` and `features`, or `platform` and `base`, is a judgement call. Write down what each layer means for your game.
+- **The rules are conventions.** Rogen doesn't read requires, and Luau has no common equivalent of VS Code's ESLint rule. A `features` module that requires another feature still works. Keep the rule in review, or in your `AGENTS.md`.
+- **Longer paths in Studio**, unless you make the layers invisible, which trades the paths for possible name clashes.
+
+## Feature-Sliced Design
+
+[Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as popularised in frontend development, with one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
+
+- "A module (file) in a slice can only import other slices when they are located on layers strictly below."
+- "Slices cannot use other slices on the same layer." Two features can't require each other.
+
+That second rule is what makes it stricter: nothing is ever required sideways. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder name="app" level={1} open highlight />
+	<TreeFolder name="Client" level={2} dim />
+	<TreeFolder name="Server" level={2} dim />
+	<TreeFolder name="entities" level={1} open highlight />
+	<TreeFolder name="Item" level={2} open />
+	<TreeFolder name="Server" level={3} open dim />
+	<TreeFile name="ItemRegistry.luau" level={4} />
+	<TreeFolder name="Shared" level={3} open dim />
+	<TreeFile name="ItemTypes.luau" level={4} />
+	<TreeFolder name="features" level={1} open highlight />
+	<TreeFolder name="Equip" level={2} />
+	<TreeFolder name="Trade" level={2} />
+	<TreeFolder name="shared" level={1} open highlight />
+	<TreeFile name="Remotes.luau" level={2} />
+	<TreeFile name="Signal.luau" level={2} />
+	<TreeFolder name="widgets" level={1} open highlight />
+	<TreeFolder name="Hotbar" level={2} open />
+	<TreeFolder name="Client" level={3} open dim />
+	<TreeFile name="Hotbar.luau" level={4} />
+</SystemWindow>
+
+<Callout type="warn" title="shared is a route key">
+	FSD's `shared` layer has the same name as the `Shared` route, so it's a routing folder: its modules land directly in `ReplicatedStorage/Shared`, and a `Server/` folder inside it is ignored, because the outer route governs. Server-only code in `shared/` would be sent to every client. Keep `shared/` for code both sides run, or give the layer another name.
+</Callout>
+
+Pick FSD over the layout above when your team wants the stricter rule, or already knows it from the web.
