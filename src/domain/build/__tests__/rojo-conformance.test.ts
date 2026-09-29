@@ -4,7 +4,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { writeOutput } from "../../output/write-output.js";
+import { CoreOutputService } from "../../output/core-output-service.js";
 import {
 	SourcemapNode,
 	describeWithRojo,
@@ -112,11 +112,12 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
 		};
-		await index.initialize(config.rootDirs);
 		const built = (
 			await new CoreBuildService(fileSystem, index).build(config)
 		).unwrap();
-		(await writeOutput(fileSystem, config, built.tree)).unwrap();
+		(
+			await new CoreOutputService(fileSystem).write(config, built.tree)
+		).unwrap();
 	};
 
 	it("should place every Rojo-native file as Rojo would", async () => {

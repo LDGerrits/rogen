@@ -7,7 +7,6 @@ import {
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange } from "../../platform/fs/file-events.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
@@ -15,7 +14,7 @@ import { BuildService, BuildSummary } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { resolvedConfigs } from "../config/valid-configs.js";
-import { writeOutput } from "../output/write-output.js";
+import { OutputService } from "../output/output-service.js";
 import { dropSourceUpdates } from "./drop-source-updates.js";
 import { PrintedDiagnostics } from "./printed-diagnostics.js";
 import { WatchPlan, createWatchPlan } from "./watch-plan.js";
@@ -94,7 +93,7 @@ export class WatchSession extends AbstractDisposable {
 		private readonly configService: ConfigService,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService,
-		private readonly fileSystemService: FileSystemService
+		private readonly outputService: OutputService
 	) {
 		super();
 		this.plan = createWatchPlan(resolvedConfigs(this.configService));
@@ -194,8 +193,7 @@ export class WatchSession extends AbstractDisposable {
 			checkSyncDir: load,
 		});
 		if (built.isErr()) return failed(built.error);
-		const written = await writeOutput(
-			this.fileSystemService,
+		const written = await this.outputService.write(
 			config,
 			built.value.tree
 		);

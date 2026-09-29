@@ -32,6 +32,8 @@ import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
 import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
+import { CoreOutputService } from "./domain/output/core-output-service.js";
+import { OutputService } from "./domain/output/output-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
@@ -145,6 +147,7 @@ async function main(): Promise<void> {
 			BuildService,
 			new CoreBuildService(fileSystemService, indexService)
 		);
+		services.set(OutputService, new CoreOutputService(fileSystemService));
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())

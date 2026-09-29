@@ -5,6 +5,7 @@ import { ErrorUtils } from "../../base/errors.js";
 import { err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
+import { OutputService } from "../../domain/output/output-service.js";
 import {
 	ConfigNotice,
 	RebuildReport,
@@ -78,6 +79,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const fileSystemService = accessor.get(FileSystemService);
 		const indexService = accessor.get(IndexService);
 		const buildService = accessor.get(BuildService);
+		const outputService = accessor.get(OutputService);
 		const watcher = accessor.get(Watcher);
 		const reconciliationService = accessor.get(ReconciliationService);
 		const cwd = accessor.get(EnvironmentService).cwd;
@@ -154,7 +156,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				configService,
 				indexService,
 				buildService,
-				fileSystemService
+				outputService
 			)
 		);
 		try {

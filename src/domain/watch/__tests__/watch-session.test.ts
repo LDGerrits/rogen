@@ -9,6 +9,7 @@ import { CoreReconciliationService } from "../../../platform/watcher/core-reconc
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { CoreOutputService } from "../../output/core-output-service.js";
 import { WatchSession, WatchUpdate } from "../watch-session.js";
 
 describe("WatchSession", () => {
@@ -49,7 +50,7 @@ describe("WatchSession", () => {
 				configService,
 				indexService,
 				new CoreBuildService(fs, indexService),
-				fs
+				new CoreOutputService(fs)
 			)
 		);
 		store.add(session.onDidUpdate((update) => updates.push(update)));

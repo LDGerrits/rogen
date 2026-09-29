@@ -6,7 +6,7 @@ import {
 import { configLabel } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { entryErrors } from "../../domain/config/valid-configs.js";
-import { writeOutput } from "../../domain/output/write-output.js";
+import { OutputService } from "../../domain/output/output-service.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -51,6 +51,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const fileSystemService = accessor.get(FileSystemService);
 		const environmentService = accessor.get(EnvironmentService);
 		const buildService = accessor.get(BuildService);
+		const outputService = accessor.get(OutputService);
 		const logDiagnostics = (diagnostics: readonly Diagnostic[]) => {
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
@@ -99,11 +100,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		for (const { entry, config, project } of built) {
 			if (built.length > 1) logService.step(configLabel(config.file));
-			const written = await writeOutput(
-				fileSystemService,
-				config,
-				project.tree
-			);
+			const written = await outputService.write(config, project.tree);
 			if (written.isErr())
 				return err(new DiagnosticsError(written.error));
 
