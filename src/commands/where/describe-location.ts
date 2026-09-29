@@ -32,7 +32,7 @@ function outcomeOf(
 			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${tagged}`;
 		}
 		case "pruned":
-			return `pruned · tag ${location.tag.tag} is off (${MATCH_LABELS[location.tag.form]})`;
+			return `pruned · tag ${location.tags[0].tag} is off (${MATCH_LABELS[location.tags[0].form]})`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "unrouted":

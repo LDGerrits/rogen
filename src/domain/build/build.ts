@@ -1,5 +1,5 @@
 import path from "path";
-import { isInside, joinPosix } from "../../base/path.js";
+import { isInside } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -7,17 +7,18 @@ import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
-import { TagResult, applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { checkSyncDir } from "./check-sync-dir.js";
 import { checkSyncMeta } from "./check-sync-meta.js";
 import { syncLayoutOf } from "./sync-path.js";
-import { FileLocation, Placement, locate } from "./locate-files.js";
+import { LeftOut } from "./left-out.js";
+import { FileLocation, locate } from "./locate-files.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { readFolderMeta } from "./read-folder-meta.js";
-import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
+import { Placement, placeFiles } from "./place-files.js";
+import { scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
-import { RouteResult, RoutedFile, routeFiles } from "./route-files.js";
+import { TagMatch } from "./route-files.js";
 export { addPlannedFiles } from "./locate-files.js";
 export type { FileLocation } from "./locate-files.js";
 export type { RouteMatch } from "./route-files.js";
@@ -102,22 +103,12 @@ export async function buildProject(
 	if (folderMeta.isErr()) return folderMeta;
 	const placed = placeFiles(scan.roots, config);
 	if (placed.isErr()) return placed;
-	const { routing, tagging } = placed.value;
+	const placement = placed.value;
 
-	const sourcePaths = (paths: (root: ScannedRoot) => readonly string[]) =>
-		scan.roots.flatMap((root) =>
-			paths(root).map((relativePath) =>
-				joinPosix(root.rootDir, relativePath)
-			)
-		);
 	const layout = syncLayoutOf(config);
 	const assembly = assembleTree(config, layout, {
-		files: tagging.files,
-		excluded: sourcePaths((root) => root.excluded),
-		skippedLinks: sourcePaths((root) => root.skippedLinks),
-		pruned: tagging.pruned,
-		unrouted: routing.unrouted,
-		superseded: tagging.superseded,
+		files: placement.files,
+		leftOut: placement.leftOut,
 		folderMeta: folderMeta.value,
 	});
 	if (assembly.isErr()) return assembly;
@@ -138,7 +129,7 @@ export async function buildProject(
 
 	return ok({
 		tree: assembly.value.value,
-		summary: summarizeBuild(config, scan.roots, routing, tagging),
+		summary: summarizeBuild(config, placement),
 		warnings: [
 			...scan.warnings,
 			...(unclaimedMeta.length > 0
@@ -149,8 +140,7 @@ export async function buildProject(
 						),
 					]
 				: []),
-			...routing.warnings,
-			...tagging.warnings,
+			...placement.warnings,
 			...assembly.value.warnings,
 		],
 		syncWarnings,
@@ -172,49 +162,41 @@ export function locateFiles(
 	return ok(locate(index, placed.value, paths));
 }
 
-function placeFiles(
-	roots: readonly ScannedRoot[],
-	config: ResolvedConfig
-): Result<Placement, Diagnostic[]> {
-	const routing = routeFiles(roots, config);
-	if (routing.isErr()) return routing;
-	const tagging = applyTags(routing.value.routed, config);
-	if (tagging.isErr()) return tagging;
-	return ok({ roots, routing: routing.value, tagging: tagging.value });
-}
-
 function summarizeBuild(
 	config: Pick<ResolvedConfig, "routes" | "tags">,
-	roots: readonly ScannedRoot[],
-	routing: RouteResult,
-	tagging: TagResult
+	{ roots, files, leftOut }: Placement
 ): BuildSummary {
 	const countOf = (
-		files: readonly RoutedFile[],
-		has: (file: RoutedFile) => boolean
-	) => files.filter(has).length;
-	const hasTag = (tag: string) => (file: RoutedFile) =>
-		file.tags.some((match) => match.tag === tag);
+		status: LeftOut["status"],
+		paths: Iterable<LeftOut> = leftOut.values()
+	) => [...paths].filter((why) => why.status === status).length;
+	const carrying = (tag: string, tagSets: readonly (readonly TagMatch[])[]) =>
+		tagSets.filter((tags) => tags.some((match) => match.tag === tag))
+			.length;
+	const placedTags = files.map((file) => file.tags);
+	const prunedTags = [...leftOut.values()].flatMap((why) =>
+		why.status === "pruned" ? [why.tags] : []
+	);
 	return {
 		roots: roots.map((root) => ({
 			rootDir: root.rootDir,
 			files: root.entries.length,
-			excluded: root.excluded.length,
-			skippedLinks: root.skippedLinks.length,
+			excluded: countOf("excluded", root.leftOut.values()),
+			skippedLinks: countOf("skipped", root.leftOut.values()),
 		})),
 		routes: Object.entries(config.routes).map(([key, target]) => ({
 			key,
 			target,
-			files: countOf(tagging.files, (file) => file.route === key),
+			files: files.filter((file) => file.route === key).length,
 		})),
 		// Every routed file with an off tag was pruned, so off tags count those.
 		tags: Object.entries(config.tags).map(([tag, on]) => ({
 			tag,
 			on,
-			files: countOf(on ? tagging.files : routing.routed, hasTag(tag)),
+			files: carrying(tag, on ? placedTags : prunedTags),
 		})),
-		unrouted: routing.unrouted.length,
-		superseded: tagging.superseded.length,
+		unrouted: countOf("unrouted"),
+		superseded: countOf("replaced"),
 	};
 }
 

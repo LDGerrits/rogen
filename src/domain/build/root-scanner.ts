@@ -37,17 +37,20 @@ export interface ScannedInitFolder {
 
 export type ScannedEntry = ScannedFile | ScannedInitFolder;
 
+/** Why the scan left a path out; the path is the key it is stored under. */
+export type ScanLeftOut =
+	| { readonly status: "excluded"; readonly pattern: string }
+	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
+	| { readonly status: "skipped" };
+
 export interface ScannedRoot {
 	readonly rootDir: string;
 	readonly entries: readonly ScannedEntry[];
 	readonly markers: readonly string[];
 	/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
 	readonly metaFiles: readonly string[];
-	readonly excluded: readonly string[];
-	/** The glob that excluded each path in `excluded`. */
-	readonly excludedBy: ReadonlyMap<string, string>;
-	/** Links that loop back to an ancestor or point at nothing, which Rojo must never walk. */
-	readonly skippedLinks: readonly string[];
+	/** The paths the scan left out, by absolute POSIX path. */
+	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 }
 
 export interface ScanOptions {
@@ -97,9 +100,7 @@ function emptyRoot(rootDir: string): ScannedRoot {
 		entries: [],
 		markers: [],
 		metaFiles: [],
-		excluded: [],
-		excludedBy: new Map(),
-		skippedLinks: [],
+		leftOut: new Map(),
 	};
 }
 
@@ -112,8 +113,7 @@ function scanRoot(
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
 	const metaFiles: string[] = [];
-	const excludedBy = new Map<string, string>();
-	const skippedLinks: string[] = [];
+	const leftOut = new Map<string, ScanLeftOut>();
 
 	const excludingGlob = (absolutePath: string) => {
 		const posixPath = toPosix(absolutePath);
@@ -131,7 +131,11 @@ function scanRoot(
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
 			const glob = excludingGlob(path.join(dir, name));
-			if (glob) excludedBy.set(relativeTo(name), glob);
+			if (glob)
+				leftOut.set(joinPosix(dir, name), {
+					status: "excluded",
+					pattern: glob,
+				});
 			else kept.push([name, type]);
 		}
 
@@ -155,7 +159,9 @@ function scanRoot(
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
 			if (type === FileType.SymbolicLink) {
-				skippedLinks.push(relativeTo(name));
+				leftOut.set(joinPosix(dir, name), {
+					status: "skipped",
+				});
 				unresolvedLinks.push(
 					ScanDiagnostics.unresolvedLink(path.join(dir, name))
 				);
@@ -171,7 +177,7 @@ function scanRoot(
 						kind,
 						rootDir,
 						relativePath: relativeTo(name),
-						source: joinPosix(rootDir, relativeTo(name)),
+						source: joinPosix(dir, name),
 					});
 				} else if (name.startsWith(".")) {
 					markers.push(relativeTo(name));
@@ -190,9 +196,7 @@ function scanRoot(
 		entries: entries.sort(byRelativePath),
 		markers: markers.sort(),
 		metaFiles: metaFiles.sort(),
-		excluded: [...excludedBy.keys()].sort(),
-		excludedBy,
-		skippedLinks: skippedLinks.sort(),
+		leftOut,
 	};
 }
 

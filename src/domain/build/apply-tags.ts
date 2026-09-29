@@ -3,21 +3,16 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { instanceKey } from "../rojo/rojo-tree.js";
-import { RoutedFile, TagMatch } from "./route-files.js";
+import { LeftOut } from "./left-out.js";
+import { RoutedFile } from "./route-files.js";
 import { diagnosePaths } from "./path-list.js";
 import { TagDiagnostics } from "./tag-diagnostics.js";
 
 export interface TagResult {
 	/** Every instance path appears once; the last root dir wins across roots. */
 	readonly files: readonly RoutedFile[];
-	/** Absolute POSIX source paths of the files that lost their instance path to another. */
-	readonly superseded: readonly string[];
-	/** Each superseded path, with the path of the file that took its instance path. */
-	readonly supersededBy: ReadonlyMap<string, string>;
-	/** Absolute POSIX source paths of the files a dormant tag removed. */
-	readonly pruned: readonly string[];
-	/** Each pruned path, with the first dormant tag it carries. */
-	readonly prunedBy: ReadonlyMap<string, TagMatch>;
+	/** The files a dormant tag removed and the files that lost their instance path to another, by absolute POSIX path. */
+	readonly leftOut: ReadonlyMap<string, LeftOut>;
 	readonly warnings: readonly Diagnostic[];
 }
 
@@ -31,7 +26,7 @@ export function applyTags(
 	const errors: Diagnostic[] = [];
 
 	const kept: RoutedFile[] = [];
-	const prunedBy = new Map<string, TagMatch>();
+	const leftOut = new Map<string, LeftOut>();
 	const prunedOnCapital = new Map<string, Map<string, string>>();
 	for (const file of routed) {
 		const dormant = file.tags.filter(({ tag }) => !config.tags[tag]);
@@ -39,7 +34,7 @@ export function applyTags(
 			kept.push(file);
 			continue;
 		}
-		prunedBy.set(file.entry.source, dormant[0]);
+		leftOut.set(file.entry.source, { status: "pruned", tags: dormant });
 		for (const { tag, separatorName } of dormant)
 			if (separatorName)
 				prunedOnCapital.set(
@@ -98,18 +93,17 @@ export function applyTags(
 	}
 
 	if (errors.length > 0) return err(errors);
-	const supersededBy = new Map<string, string>();
 	for (const file of kept) {
 		const winner = winners.get(instanceKey(file.instancePath));
 		if (winner && winner !== file)
-			supersededBy.set(file.entry.source, winner.entry.source);
+			leftOut.set(file.entry.source, {
+				status: "replaced",
+				by: winner.entry.source,
+			});
 	}
 	return ok({
 		files: [...new Set(winners.values())],
-		superseded: [...supersededBy.keys()],
-		supersededBy,
-		pruned: [...prunedBy.keys()],
-		prunedBy,
+		leftOut,
 		warnings,
 	});
 }

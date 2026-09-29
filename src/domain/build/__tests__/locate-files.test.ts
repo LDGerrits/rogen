@@ -142,16 +142,18 @@ describe("locateFiles", () => {
 			{
 				status: "pruned",
 				source: abs("src/Net/DataMock.luau"),
-				tag: {
-					tag: "mock",
-					form: "capital",
-					separatorName: "Data.mock.luau",
-				},
+				tags: [
+					{
+						tag: "mock",
+						form: "capital",
+						separatorName: "Data.mock.luau",
+					},
+				],
 			},
 			{
 				status: "pruned",
 				source: abs("src/Net/Http.mock.luau"),
-				tag: { tag: "mock", form: "separator" },
+				tags: [{ tag: "mock", form: "separator" }],
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Store.dev.luau"),

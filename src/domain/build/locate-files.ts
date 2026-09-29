@@ -1,12 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collection.js";
-import {
-	ancestors,
-	contains,
-	isInside,
-	joinPosix,
-	toPosix,
-} from "../../base/path.js";
+import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { FileChangeType } from "../../platform/fs/file-events.js";
 import {
 	FileType,
@@ -16,9 +10,10 @@ import {
 import { IndexService } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
-import { TagResult } from "./apply-tags.js";
 import { ScannedRoot } from "./root-scanner.js";
-import { RouteMatch, RouteResult, TagMatch } from "./route-files.js";
+import { LeftOut } from "./left-out.js";
+import { Placement } from "./place-files.js";
+import { RouteMatch, TagMatch } from "./route-files.js";
 
 interface Located {
 	/** An absolute POSIX path. */
@@ -34,41 +29,14 @@ export interface PlacedLocation extends Located {
 	readonly tags: readonly TagMatch[];
 }
 
-export interface PrunedLocation extends Located {
-	readonly status: "pruned";
-	readonly tag: TagMatch;
-}
-
-export interface ReplacedLocation extends Located {
-	readonly status: "replaced";
-	readonly by: string;
-}
-
-export interface ExcludedLocation extends Located {
-	readonly status: "excluded";
-	/** The absolute glob that excluded it. */
-	readonly pattern: string;
-}
-
 export interface UnplacedLocation extends Located {
-	/** `skipped` is a link Rojo must not walk; `ignored` exists but isn't an instance. */
-	readonly status:
-		"unrouted" | "skipped" | "outside" | "ignored" | "missing" | "empty";
+	/** `ignored` exists but isn't an instance. */
+	readonly status: "outside" | "ignored" | "missing" | "empty";
 }
 
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
-	| PlacedLocation
-	| PrunedLocation
-	| ReplacedLocation
-	| ExcludedLocation
-	| UnplacedLocation;
-
-export interface Placement {
-	readonly roots: readonly ScannedRoot[];
-	readonly routing: RouteResult;
-	readonly tagging: TagResult;
-}
+	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
 
 /** Adds each path that names a source file and doesn't exist yet to `index`, with the folders it needs. */
 export function addPlannedFiles(
@@ -124,28 +92,14 @@ export function locate(
 
 function locateScanned(
 	index: IndexService,
-	{ roots, routing, tagging }: Placement
+	{ files, leftOut }: Placement
 ): Map<string, FileLocation> {
 	const all = new Map<string, FileLocation>();
 	const add = (location: FileLocation) => all.set(location.source, location);
 
-	for (const root of roots) {
-		for (const [relativePath, pattern] of root.excludedBy)
-			add({
-				status: "excluded",
-				source: joinPosix(root.rootDir, relativePath),
-				pattern,
-			});
-		for (const link of root.skippedLinks)
-			add({ status: "skipped", source: joinPosix(root.rootDir, link) });
-	}
-	for (const source of routing.unrouted) add({ status: "unrouted", source });
-	for (const [source, tag] of tagging.prunedBy)
-		add({ status: "pruned", source, tag });
-	for (const [source, by] of tagging.supersededBy)
-		add({ status: "replaced", source, by });
+	for (const [source, why] of leftOut) add({ ...why, source });
 
-	for (const file of tagging.files) {
+	for (const file of files) {
 		const folder = file.entry.source;
 		const members =
 			file.entry.kind === "init-folder"

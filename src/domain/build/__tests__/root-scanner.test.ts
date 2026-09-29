@@ -366,7 +366,10 @@ describe("scanRootDirs", () => {
 				exclude: [glob("**/tests"), glob("**/*.spec.luau")],
 			});
 
-			expect(roots[0].excluded).toEqual(["X.spec.luau", "tests"]);
+			expect([...roots[0].leftOut.keys()].sort()).toEqual([
+				abs("src/X.spec.luau"),
+				abs("src/tests"),
+			]);
 		});
 
 		it("should name the glob that excluded each path", async () => {
@@ -376,10 +379,16 @@ describe("scanRootDirs", () => {
 				exclude: [glob("**/tests"), glob("**/*.spec.luau")],
 			});
 
-			expect(roots[0].excludedBy).toEqual(
+			expect(roots[0].leftOut).toEqual(
 				new Map([
-					["X.spec.luau", glob("**/*.spec.luau")],
-					["tests", glob("**/tests")],
+					[
+						abs("src/X.spec.luau"),
+						{ status: "excluded", pattern: glob("**/*.spec.luau") },
+					],
+					[
+						abs("src/tests"),
+						{ status: "excluded", pattern: glob("**/tests") },
+					],
 				])
 			);
 		});
@@ -503,7 +512,9 @@ describe("scanRootDirs", () => {
 			});
 
 			expect(files(roots[0])).toEqual(["script:Shared/Util.luau"]);
-			expect(roots[0].excluded).toEqual(["Shared/Util.spec.luau"]);
+			expect([...roots[0].leftOut.keys()]).toEqual([
+				abs("src/Shared/Util.spec.luau"),
+			]);
 		});
 
 		it("should not read what an excluded link points at", async () => {
@@ -515,7 +526,7 @@ describe("scanRootDirs", () => {
 			});
 
 			expect(roots[0].entries).toEqual([]);
-			expect(roots[0].excluded).toEqual(["Shared"]);
+			expect([...roots[0].leftOut.keys()]).toEqual([abs("src/Shared")]);
 			expect(warnings).toEqual([]);
 		});
 
@@ -526,7 +537,9 @@ describe("scanRootDirs", () => {
 			const { roots, warnings } = await scan();
 
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
-			expect(roots[0].skippedLinks).toEqual(["Broken"]);
+			expect(roots[0].leftOut).toEqual(
+				new Map([[abs("src/Broken"), { status: "skipped" }]])
+			);
 			expect(warnings).toMatchObject([
 				{
 					severity: DiagnosticSeverity.Warning,
@@ -543,7 +556,9 @@ describe("scanRootDirs", () => {
 			const { roots, warnings } = await scan();
 
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
-			expect(roots[0].skippedLinks).toEqual(["Loop"]);
+			expect(roots[0].leftOut).toEqual(
+				new Map([[abs("src/Loop"), { status: "skipped" }]])
+			);
 			expect(warnings).toMatchObject([
 				{ code: "scan.unresolvedLink", resource: abs("src/Loop") },
 			]);
@@ -589,9 +604,7 @@ describe("scanRootDirs", () => {
 				entries: [],
 				markers: [],
 				metaFiles: [],
-				excluded: [],
-				excludedBy: new Map(),
-				skippedLinks: [],
+				leftOut: new Map(),
 			});
 			expect(files(roots[0])).toEqual(["script:A.luau"]);
 			expect(warnings).toMatchObject([

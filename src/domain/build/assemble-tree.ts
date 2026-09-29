@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings } from "../../base/collection.js";
 import { ancestors, isInside, toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -17,17 +18,13 @@ import {
 	relativeToProject,
 	syncPath,
 } from "./sync-path.js";
+import { LeftOut } from "./left-out.js";
 import { RunContextRoute, TreeDiagnostics } from "./tree-diagnostics.js";
 
 export interface AssemblyInput {
 	readonly files: readonly RoutedFile[];
-	/** Absolute POSIX source paths Rogen deliberately left out, by reason. */
-	readonly excluded: readonly string[];
-	readonly pruned: readonly string[];
-	readonly unrouted: readonly string[];
-	readonly skippedLinks: readonly string[];
-	/** Files that lost their instance path to another; they block a collapse but aren't ignored. */
-	readonly superseded: readonly string[];
+	/** The paths Rogen deliberately left out; a replaced file blocks a collapse but isn't ignored. */
+	readonly leftOut: ReadonlyMap<string, LeftOut>;
 	readonly folderMeta: readonly FolderMeta[];
 }
 
@@ -81,15 +78,16 @@ export function assembleTree(
 	);
 
 	const placed = input.files.map(placeEntry);
-	const ignored = [
-		...input.excluded,
-		...input.pruned,
-		...input.unrouted,
-		...input.skippedLinks,
-	].filter((source) => !DECLARATION_FILE.test(source));
+	const leftOut = [...input.leftOut].filter(
+		([source]) => !DECLARATION_FILE.test(source)
+	);
+	const ignored = leftOut
+		.filter(([, why]) => why.status !== "replaced")
+		.map(([source]) => source)
+		.sort(compareStrings);
 	const collapsed = collapsibleDirs(
 		placed,
-		[...ignored, ...input.superseded],
+		leftOut.map(([source]) => source),
 		(instancePath) => isTemplateContainer(template.getNode(instancePath))
 	);
 

@@ -44,11 +44,13 @@ describe("describeLocation", () => {
 			describe1({
 				status: "pruned",
 				source: "/repo/src/HttpMock.luau",
-				tag: {
-					tag: "mock",
-					form: "capital",
-					separatorName: "Http.mock.luau",
-				},
+				tags: [
+					{
+						tag: "mock",
+						form: "capital",
+						separatorName: "Http.mock.luau",
+					},
+				],
 			})
 		).toBe(
 			"src/HttpMock.luau -> pruned · tag mock is off (capital suffix)"

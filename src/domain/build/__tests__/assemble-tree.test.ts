@@ -752,7 +752,7 @@ describe("assembleTree", () => {
 			]);
 		});
 
-		it("should list excluded and pruned files, translated to sync paths", async () => {
+		it("should list excluded and pruned files in path order, translated to sync paths", async () => {
 			await write(
 				"src/Inventory/Analytics.luau",
 				"src/Inventory/Analytics.mock.luau",
@@ -766,8 +766,8 @@ describe("assembleTree", () => {
 			});
 
 			expect(value.globIgnorePaths).toEqual([
-				"dist/Inventory/Save.spec.luau",
 				"dist/Inventory/Analytics.mock.luau",
+				"dist/Inventory/Save.spec.luau",
 			]);
 		});
 

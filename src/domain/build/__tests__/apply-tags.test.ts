@@ -4,7 +4,7 @@ import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js"
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { applyTags } from "../apply-tags.js";
+import { TagResult, applyTags } from "../apply-tags.js";
 import { scanRootDirs } from "../root-scanner.js";
 import { routeFiles } from "../route-files.js";
 
@@ -38,6 +38,11 @@ describe("applyTags", () => {
 		const { roots } = scanRootDirs(index, { rootDirs, exclude: [] });
 		return applyTags(routeFiles(roots, config).unwrap().routed, config);
 	};
+
+	const prunedPaths = (result: TagResult) =>
+		[...result.leftOut]
+			.filter(([, why]) => why.status === "pruned")
+			.map(([source]) => source);
 
 	const instances = async (
 		tags: Record<string, boolean>,
@@ -74,7 +79,7 @@ describe("applyTags", () => {
 			const result = (await apply({ mock: false })).unwrap();
 
 			expect(result.files).toEqual([]);
-			expect(result.pruned).toEqual([
+			expect(prunedPaths(result)).toEqual([
 				abs("src/Analytics/mock/Service.luau"),
 				abs("src/Analytics/mock/deep/Data.luau"),
 			]);
@@ -103,7 +108,7 @@ describe("applyTags", () => {
 			expect(result.files.map((file) => file.instancePath)).toEqual([
 				["ReplicatedStorage", "Other"],
 			]);
-			expect(result.pruned).toEqual([
+			expect(prunedPaths(result)).toEqual([
 				abs("src/Experimental/Save.luau"),
 				abs("src/Experimental/deep/Load.luau"),
 			]);
@@ -125,7 +130,9 @@ describe("applyTags", () => {
 			const result = (await apply({ mock: false })).unwrap();
 
 			expect(result.files).toEqual([]);
-			expect(result.pruned).toEqual([abs("src/Analytics.mock.luau")]);
+			expect(prunedPaths(result)).toEqual([
+				abs("src/Analytics.mock.luau"),
+			]);
 			expect(result.warnings).toEqual([]);
 		});
 
@@ -134,26 +141,56 @@ describe("applyTags", () => {
 
 			const result = (await apply({ mock: false, dev: false })).unwrap();
 
-			expect(result.prunedBy).toEqual(
+			expect(result.leftOut).toEqual(
 				new Map([
 					[
 						abs("src/Analytics.mock.luau"),
-						{ tag: "mock", form: "separator" },
+						{
+							status: "pruned",
+							tags: [{ tag: "mock", form: "separator" }],
+						},
 					],
-					[abs("src/dev/Save.luau"), { tag: "dev", form: "folder" }],
+					[
+						abs("src/dev/Save.luau"),
+						{
+							status: "pruned",
+							tags: [{ tag: "dev", form: "folder" }],
+						},
+					],
 				])
 			);
 		});
 
-		it("should report the file an active tag replaced as superseded", async () => {
+		it("should list every dormant tag a pruned file carries, the first first", async () => {
+			await write("src/dev/Analytics.mock.luau");
+
+			const result = (await apply({ mock: false, dev: false })).unwrap();
+
+			expect(
+				result.leftOut.get(abs("src/dev/Analytics.mock.luau"))
+			).toEqual({
+				status: "pruned",
+				tags: [
+					{ tag: "dev", form: "folder" },
+					{ tag: "mock", form: "separator" },
+				],
+			});
+		});
+
+		it("should report the file an active tag replaced", async () => {
 			await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
 			const result = (await apply({ mock: true })).unwrap();
 
-			expect(result.superseded).toEqual([abs("src/Analytics.luau")]);
-			expect(result.supersededBy).toEqual(
+			expect(result.leftOut).toEqual(
 				new Map([
-					[abs("src/Analytics.luau"), abs("src/Analytics.mock.luau")],
+					[
+						abs("src/Analytics.luau"),
+						{
+							status: "replaced",
+							by: abs("src/Analytics.mock.luau"),
+						},
+					],
 				])
 			);
 		});
@@ -165,17 +202,22 @@ describe("applyTags", () => {
 				await apply({}, [abs("core"), abs("lobby")])
 			).unwrap();
 
-			expect(result.supersededBy).toEqual(
-				new Map([[abs("core/Types.luau"), abs("lobby/Types.luau")]])
+			expect(result.leftOut).toEqual(
+				new Map([
+					[
+						abs("core/Types.luau"),
+						{ status: "replaced", by: abs("lobby/Types.luau") },
+					],
+				])
 			);
 		});
 
 		it("should prune models by a dormant suffix too", async () => {
 			await write("src/Gun.mock.rbxm");
 
-			expect((await apply({ mock: false })).unwrap().pruned).toEqual([
-				abs("src/Gun.mock.rbxm"),
-			]);
+			expect(
+				prunedPaths((await apply({ mock: false })).unwrap())
+			).toEqual([abs("src/Gun.mock.rbxm")]);
 		});
 
 		it("should prune a file carrying one dormant tag among active ones", async () => {
@@ -196,7 +238,7 @@ describe("applyTags", () => {
 			const result = (await apply({ mock: false })).unwrap();
 
 			expect(result.files).toEqual([]);
-			expect(result.pruned).toHaveLength(3);
+			expect(prunedPaths(result)).toHaveLength(3);
 			expect(result.warnings.map(({ resource }) => resource)).toEqual([
 				abs("src/DataMock.luau"),
 				abs("src/HttpMock.luau"),
@@ -255,7 +297,7 @@ describe("applyTags", () => {
 			expect(
 				result.files.map((file) => file.instancePath.join("/"))
 			).toEqual(["ReplicatedStorage/Analytics/Service"]);
-			expect(result.pruned).toEqual([
+			expect(prunedPaths(result)).toEqual([
 				abs("src/Analytics/prod/Service.luau"),
 			]);
 		});
