@@ -1,6 +1,7 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { CoreBuildService } from "../core-build-service.js";
@@ -37,9 +38,9 @@ describe("CoreBuildService.locate", () => {
 		const config = configOf(overrides);
 		const index = await indexOfConfig(config);
 		const absolute = paths?.map((p) => abs(p));
-		return new CoreBuildService(fs, index)
-			.locate(config, absolute)
-			.unwrap();
+		return (
+			await new CoreBuildService(fs, index).locate(config, absolute)
+		).unwrap();
 	};
 
 	const instancePaths = (located: Awaited<ReturnType<typeof locate>>) =>
@@ -317,7 +318,7 @@ describe("CoreBuildService.locate", () => {
 			const updates: unknown[] = [];
 			store.add(index.onDidUpdate((changes) => updates.push(changes)));
 
-			new CoreBuildService(fs, index).locate(config, [
+			await new CoreBuildService(fs, index).locate(config, [
 				abs("src/Combat/Server/Hit.luau"),
 			]);
 
@@ -394,9 +395,11 @@ describe("CoreBuildService.locate", () => {
 			const { config, index } = await unknownEntry("src/Pipe.md");
 
 			expect(
-				new CoreBuildService(fs, index)
-					.locate(config, [abs("src/Pipe.md")])
-					.unwrap()
+				(
+					await new CoreBuildService(fs, index).locate(config, [
+						abs("src/Pipe.md"),
+					])
+				).unwrap()
 			).toEqual([{ status: "ignored", source: abs("src/Pipe.md") }]);
 		});
 
@@ -404,13 +407,13 @@ describe("CoreBuildService.locate", () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
 			const buildService = new CoreBuildService(fs, index);
 
-			const named = buildService
-				.locate(config, [abs("src/Pipe.luau")])
-				.unwrap();
+			const named = await buildService.locate(config, [
+				abs("src/Pipe.luau"),
+			]);
+			const all = await buildService.locate(config);
 
-			expect(named).toEqual(
-				buildService
-					.locate(config)
+			expect(named.unwrap()).toEqual(
+				all
 					.unwrap()
 					.filter(({ source }) => source === abs("src/Pipe.luau"))
 			);
@@ -490,12 +493,25 @@ describe("CoreBuildService.locate", () => {
 		});
 	});
 
+	it("should index the root dirs it reads itself", async () => {
+		await write("src/A.luau");
+
+		const located = await new CoreBuildService(
+			fs,
+			store.add(new CoreIndexService(fs))
+		).locate(configOf());
+
+		expect(located.unwrap()).toMatchObject([
+			{ status: "placed", source: abs("src/A.luau") },
+		]);
+	});
+
 	it("should fail with the build's errors", async () => {
 		await write("src/A.luau");
 		const config = configOf({ routes: {} });
 		const index = await indexOfConfig(config);
 
-		const result = new CoreBuildService(fs, index).locate(config);
+		const result = await new CoreBuildService(fs, index).locate(config);
 
 		expect(result.isErr() && result.error.map(({ code }) => code)).toEqual([
 			"route.noRoutes",

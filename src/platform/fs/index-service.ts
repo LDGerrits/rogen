@@ -23,6 +23,8 @@ export interface IndexService extends IndexReader {
 
 	/** Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
 	initialize(sourcePaths: readonly string[]): Promise<void>;
+	/** Indexes the dirs no earlier call covered, a dir inside a covered one included; the rest is left as it is. */
+	ensureIndexed(dirs: readonly string[]): Promise<void>;
 	applyChanges(changes: FileChange[]): void;
 }
 

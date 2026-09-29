@@ -3,7 +3,6 @@ import {
 	BuildService,
 	BuiltProject,
 } from "../../domain/build/build-service.js";
-import { rootsToIndex } from "../../domain/build/roots-to-index.js";
 import { configLabel } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { entryErrors } from "../../domain/config/valid-configs.js";
@@ -16,7 +15,6 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigOptions } from "../config-options.js";
@@ -52,7 +50,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const fileSystemService = accessor.get(FileSystemService);
 		const environmentService = accessor.get(EnvironmentService);
-		const indexService = accessor.get(IndexService);
 		const buildService = accessor.get(BuildService);
 		const logDiagnostics = (diagnostics: readonly Diagnostic[]) => {
 			for (const diagnostic of diagnostics)
@@ -84,9 +81,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		});
 		if (began.isErr()) return began;
 		const targets = began.value;
-		await indexService.initialize(
-			rootsToIndex(targets.map(({ config }) => config))
-		);
 
 		// Every config builds before any is written, so a failure writes nothing.
 		const built: (BuildTarget & { project: BuiltProject })[] = [];

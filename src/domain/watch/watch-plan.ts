@@ -1,6 +1,5 @@
 import path from "path";
-import { contains } from "../../base/path.js";
-import { rootsToIndex } from "../build/roots-to-index.js";
+import { contains, isInside } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { stagingPattern } from "../output/write-output.js";
@@ -28,7 +27,7 @@ export function createWatchPlan(
 		file: config.file,
 		roots: config.rootDirs.map((dir) => path.resolve(dir)),
 	}));
-	const roots = rootsToIndex(configs);
+	const roots = rootsToWatch(configs);
 
 	const outFiles = [
 		...new Set(configs.map((config) => path.resolve(config.outFile))),
@@ -59,4 +58,20 @@ export function createWatchPlan(
 			return roots.some((root) => contains(root, target));
 		},
 	};
+}
+
+/** Every config's root dirs, absolute, minus any dir inside another. */
+function rootsToWatch(
+	configs: readonly Pick<ResolvedConfig, "rootDirs">[]
+): string[] {
+	const dirs = [
+		...new Set(
+			configs.flatMap((config) =>
+				config.rootDirs.map((dir) => path.resolve(dir))
+			)
+		),
+	];
+	return dirs.filter(
+		(dir) => !dirs.some((other) => other !== dir && isInside(dir, other))
+	);
 }

@@ -4,9 +4,10 @@ import {
 	FileType,
 	isDirectoryType,
 } from "./file-system-service.js";
+import { Sequencer } from "../../base/async.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { ancestors, toPosix } from "../../base/path.js";
+import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "./file-events.js";
 import { IndexService } from "./index-service.js";
@@ -20,6 +21,9 @@ export class CoreIndexService
 	declare readonly _serviceBrand: undefined;
 
 	private tree = new Map<string, Map<string, FileType>>();
+	/** The dirs asked for, whether or not they exist; none lies inside another. */
+	private covered: readonly string[] = [];
+	private readonly indexing = new Sequencer();
 
 	private readonly _onDidUpdate = this._register(new Emitter<FileChange[]>());
 	readonly onDidUpdate: Event<FileChange[]> = this._onDidUpdate.event;
@@ -28,7 +32,30 @@ export class CoreIndexService
 		super();
 	}
 
-	async initialize(sourcePaths: readonly string[]): Promise<void> {
+	initialize(sourcePaths: readonly string[]): Promise<void> {
+		return this.indexing.queue(async () => {
+			this.tree = await this.scan(sourcePaths);
+			this.covered = outermost(sourcePaths);
+		});
+	}
+
+	ensureIndexed(dirs: readonly string[]): Promise<void> {
+		return this.indexing.queue(async () => {
+			const missing = outermost(
+				dirs.filter(
+					(dir) => !this.covered.some((root) => contains(root, dir))
+				)
+			);
+			if (missing.length === 0) return;
+			for (const [dir, entries] of await this.scan(missing))
+				this.tree.set(dir, entries);
+			this.covered = outermost([...this.covered, ...missing]);
+		});
+	}
+
+	private async scan(
+		dirs: readonly string[]
+	): Promise<Map<string, Map<string, FileType>>> {
 		const next = new Map<string, Map<string, FileType>>();
 
 		const traverse = async (currentDir: string): Promise<void> => {
@@ -65,8 +92,8 @@ export class CoreIndexService
 			await Promise.all(subdirs.map((subdir) => traverse(subdir)));
 		};
 
-		await Promise.all(sourcePaths.map((root) => traverse(root)));
-		this.tree = next;
+		await Promise.all(dirs.map((root) => traverse(root)));
+		return next;
 	}
 
 	private async linksToAncestor(linkPath: string): Promise<boolean> {
@@ -155,4 +182,11 @@ export class CoreIndexService
 
 		this.tree.delete(dirPath);
 	}
+}
+
+function outermost(dirs: readonly string[]): string[] {
+	const unique = [...new Set(dirs)];
+	return unique.filter(
+		(dir) => !unique.some((other) => isInside(dir, other))
+	);
 }

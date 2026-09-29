@@ -1,3 +1,4 @@
+import path from "path";
 import { isIgnored } from "../../../platform/watcher/ignored-paths.js";
 import { createWatchPlan, WatchPlanConfig } from "../watch-plan.js";
 
@@ -44,6 +45,36 @@ describe("domain/watch/watch-plan", () => {
 				"/repo/places/lobby",
 				"/repo/places/shared",
 			]);
+		});
+
+		it("should keep roots that only share a name prefix", () => {
+			const plan = createWatchPlan([
+				config("/repo/default.rogen.json", [
+					"/repo/src",
+					"/repo/src-extra",
+				]),
+			]);
+
+			expect(plan.roots).toEqual(["/repo/src", "/repo/src-extra"]);
+		});
+
+		it("should drop a nested root even when it comes first", () => {
+			const plan = createWatchPlan([
+				config("/repo/default.rogen.json", [
+					"/repo/src/shared",
+					"/repo/src",
+				]),
+			]);
+
+			expect(plan.roots).toEqual(["/repo/src"]);
+		});
+
+		it("should resolve relative roots to absolute ones", () => {
+			const plan = createWatchPlan([
+				config("/repo/default.rogen.json", ["src"]),
+			]);
+
+			expect(plan.roots).toEqual([path.resolve("src")]);
 		});
 	});
 

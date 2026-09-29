@@ -106,8 +106,7 @@ describe("build command", () => {
 
 	it("should write one file per config from a shared scan", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
-		const index = store.add(new CoreIndexService(fs));
-		const initialize = jest.spyOn(index, "initialize");
+		const readDirectory = jest.spyOn(fs, "readDirectory");
 
 		const result = await run(
 			new MockConfigService([
@@ -118,13 +117,13 @@ describe("build command", () => {
 				),
 			]),
 			new NullLogService(),
-			{ _: ["build"] },
-			index
+			{ _: ["build"] }
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(initialize).toHaveBeenCalledTimes(1);
-		expect(initialize).toHaveBeenCalledWith([abs("src")]);
+		expect(
+			readDirectory.mock.calls.filter(([dir]) => dir === abs("src"))
+		).toHaveLength(1);
 		expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		expect(await fs.exists(abs("source.project.json"))).toBe(true);
 	});

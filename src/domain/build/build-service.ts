@@ -89,7 +89,7 @@ export interface BuildService {
 	/** What must hold across the configs before any is built: each declares routes, and no two write one file. */
 	checkBuildable(configs: readonly ResolvedConfig[]): Diagnostic[];
 
-	/** Builds `config` from the index, which the caller initialized with `rootsToIndex`; reads only folder meta from disk. */
+	/** Builds `config` in memory from an index of its root dirs, reading only folder meta from disk. */
 	build(
 		config: ResolvedConfig,
 		options?: BuildOptions
@@ -103,7 +103,7 @@ export interface BuildService {
 	locate(
 		config: ResolvedConfig,
 		paths?: readonly string[]
-	): Result<FileLocation[], Diagnostic[]>;
+	): Promise<Result<FileLocation[], Diagnostic[]>>;
 }
 
 export const BuildService =

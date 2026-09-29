@@ -333,4 +333,72 @@ describe("CoreIndexService", () => {
 			expect(listener).toHaveBeenCalledWith(changes);
 		});
 	});
+
+	describe("ensureIndexed", () => {
+		it("should index a dir that isn't indexed yet and keep the others", async () => {
+			await memoryFs.writeFile("a/one.ts", "");
+			await memoryFs.writeFile("b/two.ts", "");
+			await indexService.initialize(["a"]);
+
+			await indexService.ensureIndexed(["b"]);
+
+			expect(indexService.hasEntry("a", "one.ts")).toBe(true);
+			expect(indexService.hasEntry("b", "two.ts")).toBe(true);
+		});
+
+		it("should not rescan a dir that is already indexed, or one inside it", async () => {
+			await memoryFs.writeFile("src/shared/a.ts", "");
+			await indexService.ensureIndexed(["src"]);
+			await memoryFs.writeFile("src/b.ts", "");
+			await memoryFs.writeFile("src/shared/c.ts", "");
+
+			await indexService.ensureIndexed(["src", "src/shared"]);
+
+			expect(indexService.hasEntry("src", "b.ts")).toBe(false);
+			expect(indexService.hasEntry("src/shared", "c.ts")).toBe(false);
+		});
+
+		it("should index a dir around one already indexed", async () => {
+			await memoryFs.writeFile("src/shared/a.ts", "");
+			await memoryFs.writeFile("src/b.ts", "");
+			await indexService.ensureIndexed(["src/shared"]);
+
+			await indexService.ensureIndexed(["src"]);
+
+			expect(indexService.hasEntry("src", "b.ts")).toBe(true);
+			expect(indexService.hasEntry("src/shared", "a.ts")).toBe(true);
+		});
+
+		it("should scan once when asked for one dir twice at the same time", async () => {
+			await memoryFs.writeFile("src/a.ts", "");
+			const readDirectory = jest.spyOn(memoryFs, "readDirectory");
+
+			await Promise.all([
+				indexService.ensureIndexed(["src"]),
+				indexService.ensureIndexed(["src"]),
+			]);
+
+			expect(readDirectory).toHaveBeenCalledTimes(1);
+		});
+
+		it("should count a dir that doesn't exist as indexed", async () => {
+			await indexService.ensureIndexed(["src"]);
+			await memoryFs.writeFile("src/a.ts", "");
+
+			await indexService.ensureIndexed(["src"]);
+
+			expect(indexService.getEntries("src")).toBeUndefined();
+		});
+
+		it("should forget the dirs a later initialize leaves out", async () => {
+			await memoryFs.writeFile("a/one.ts", "");
+			await indexService.ensureIndexed(["a"]);
+			await indexService.initialize(["b"]);
+			await memoryFs.writeFile("a/two.ts", "");
+
+			await indexService.ensureIndexed(["a"]);
+
+			expect(indexService.hasEntry("a", "two.ts")).toBe(true);
+		});
+	});
 });

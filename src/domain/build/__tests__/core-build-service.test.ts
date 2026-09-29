@@ -472,6 +472,16 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
+		it("should index the root dirs it reads itself", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const result = await buildServiceOf().build(configOf());
+
+			expect(result.unwrap().summary.roots).toMatchObject([
+				{ rootDir: abs("src"), files: 1 },
+			]);
+		});
+
 		it("should check the sync dir only when asked", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
