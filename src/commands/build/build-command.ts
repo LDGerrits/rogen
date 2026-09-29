@@ -35,6 +35,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				description: "A config to build.",
 				isOptional: true,
 				isVariadic: true,
+				namesConfig: true,
 			},
 		],
 		options: [

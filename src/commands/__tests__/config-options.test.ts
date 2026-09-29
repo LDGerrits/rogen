@@ -1,5 +1,5 @@
 import { ParsedArgs } from "../../platform/environment/args.js";
-import { configRefsFromArgs } from "../config-options.js";
+import { configRefsForCommand, configRefsFromArgs } from "../config-options.js";
 
 const refs = (args: Partial<ParsedArgs>) =>
 	configRefsFromArgs({ _: ["build"], ...args });
@@ -92,5 +92,35 @@ describe("configRefsFromArgs", () => {
 		expect(result.isErr() && result.error.code).toBe(
 			"cli.singleConfigFlag"
 		);
+	});
+});
+
+describe("configRefsForCommand", () => {
+	const args: ParsedArgs = {
+		_: ["where", "src/Hud.luau"],
+		config: ["extra.rogen.json"],
+	};
+
+	it("should take the positionals as config names when the command says they name configs", () => {
+		const result = configRefsForCommand(
+			{
+				description: "",
+				args: [{ name: "name", description: "", namesConfig: true }],
+			},
+			args
+		).unwrap();
+
+		expect(result.names).toEqual(["src/Hud.luau"]);
+		expect(result.paths).toEqual(["extra.rogen.json"]);
+	});
+
+	it("should read only the flags when the positionals are something else", () => {
+		const result = configRefsForCommand(
+			{ description: "", args: [{ name: "path", description: "" }] },
+			args
+		).unwrap();
+
+		expect(result.names).toEqual([]);
+		expect(result.paths).toEqual(["extra.rogen.json"]);
 	});
 });

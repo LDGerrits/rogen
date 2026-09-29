@@ -30,7 +30,7 @@ import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { ConfigService } from "./domain/config/config-service.js";
-import { configRefsFromArgs } from "./commands/config-options.js";
+import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
 import "./domain/toolchain/luau.js";
@@ -114,8 +114,9 @@ async function main(): Promise<void> {
 		);
 		services.set(ConfigService, configService);
 
-		if (commandRegistry.getCommand(command)?.metadata.requiresConfig) {
-			const refs = configRefsFromArgs(cliArgs);
+		const metadata = commandRegistry.getCommand(command)?.metadata;
+		if (metadata?.requiresConfig) {
+			const refs = configRefsForCommand(metadata, cliArgs);
 			const initialized = refs.isOk()
 				? await configService.initialize(refs.value)
 				: refs;

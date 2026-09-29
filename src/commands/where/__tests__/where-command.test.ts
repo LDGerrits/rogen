@@ -4,6 +4,13 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { Result } from "../../../base/result.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
+import { configRefsForCommand } from "../../config-options.js";
+import {
+	Command,
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { ParsedArgs } from "../../../platform/environment/args.js";
@@ -53,18 +60,22 @@ describe("where command", () => {
 		services.set(FileSystemService, fs);
 		services.set(EnvironmentService, environment);
 		services.set(IndexService, store.add(new CoreIndexService(fs)));
-		services.set(
-			ConfigService,
-			store.add(new CoreConfigService(fs, environment))
-		);
+		const configService = store.add(new CoreConfigService(fs, environment));
+		services.set(ConfigService, configService);
 		const commandService = store.add(
 			new CoreCommandService(services, logService)
 		);
-		run = ({ _ = [], ...options }) =>
-			commandService.executeCommand("where", {
-				_: ["where", ..._],
-				...options,
-			});
+		const { metadata } = Registry.as<CommandRegistry>(
+			Extensions.Commands
+		).getCommand("where") as Command;
+		run = async ({ _ = [], ...options }) => {
+			const args = { _: ["where", ..._], ...options };
+			const refs = configRefsForCommand(metadata, args);
+			if (refs.isErr()) return refs;
+			const initialized = await configService.initialize(refs.value);
+			if (initialized.isErr()) return initialized;
+			return commandService.executeCommand("where", args);
+		};
 	});
 
 	afterEach(() => {

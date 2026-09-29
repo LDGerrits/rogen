@@ -1,6 +1,7 @@
 import { Result, err, ok } from "../base/result.js";
 import { OptionDescriptor, ParsedArgs } from "../platform/environment/args.js";
 import { ConfigRefs } from "../domain/config/config-service.js";
+import { CommandMetadata } from "../platform/commands/commands.js";
 
 const AllOption: OptionDescriptor = {
 	name: "all",
@@ -133,4 +134,13 @@ export function configRefsFromArgs(
 			},
 		},
 	});
+}
+
+/** The configs a command loads: its positionals name them when its metadata says so, and otherwise only its flags pick them. */
+export function configRefsForCommand(
+	metadata: CommandMetadata,
+	args: ParsedArgs
+): Result<ConfigRefs, ConfigRefsError> {
+	const named = metadata.args?.some((arg) => arg.namesConfig) ?? false;
+	return configRefsFromArgs(args, named ? undefined : []);
 }

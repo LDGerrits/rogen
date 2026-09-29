@@ -46,6 +46,8 @@ export interface CommandMetadata {
 		readonly description: string;
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
+		/** Whether what is given here names the configs the command loads. */
+		readonly namesConfig?: boolean;
 	}[];
 	readonly options?: readonly OptionDescriptor[];
 }

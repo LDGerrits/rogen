@@ -65,6 +65,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				description: "A config to watch.",
 				isOptional: true,
 				isVariadic: true,
+				namesConfig: true,
 			},
 		],
 		options: ConfigOptions,
