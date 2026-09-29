@@ -62,9 +62,7 @@ export function validateConfig(
 	}
 
 	resolved.rootDirs.forEach((inner, index) => {
-		const outer = resolved.rootDirs.find(
-			(other) => other !== inner && isInside(inner, other)
-		);
+		const outer = outerRootDir(inner, resolved.rootDirs);
 		if (outer !== undefined) {
 			problems.push(
 				ConfigDiagnostics.nestedRootDir(
@@ -77,4 +75,14 @@ export function validateConfig(
 	});
 
 	return problems;
+}
+
+/** The root dir among `rootDirs` that `rootDir` sits inside, if any; a file under both would belong to both. All paths absolute. */
+export function outerRootDir(
+	rootDir: string,
+	rootDirs: readonly string[]
+): string | undefined {
+	return rootDirs.find(
+		(other) => other !== rootDir && isInside(rootDir, other)
+	);
 }

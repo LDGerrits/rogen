@@ -75,6 +75,7 @@ const firstSegment = (dir: string): string =>
 const compiler: Compiler = {
 	name: "roblox-ts",
 	outDir: (workspace) => workspace.outDir ?? DEFAULT_OUT_DIR,
+	defaultOutDir: DEFAULT_OUT_DIR,
 	watchCommand: "rbxtsc -w",
 	rootDirDescription:
 		"The folder roblox-ts compiles (rootDir in tsconfig.json).",

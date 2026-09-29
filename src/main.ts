@@ -33,6 +33,8 @@ import { ConfigService } from "./domain/config/config-service.js";
 import { configRefsFromArgs } from "./domain/config/config-refs.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
+import "./domain/toolchain/luau.js";
+import "./domain/toolchain/roblox-ts.js";
 import "./commands/build/build-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";

@@ -11,7 +11,12 @@ import { FolderMeta } from "./read-folder-meta.js";
 import { ScannedEntry } from "./root-scanner.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { RoutedFile } from "./route-files.js";
-import { SyncLayout, rebaseTemplatePath, relativeToProject, syncPath } from "./sync-path.js";
+import {
+	SyncLayout,
+	rebaseTemplatePath,
+	relativeToProject,
+	syncPath,
+} from "./sync-path.js";
 import { commonRoot } from "../config/common-root.js";
 import { RunContextRoute, TreeDiagnostics } from "./tree-diagnostics.js";
 

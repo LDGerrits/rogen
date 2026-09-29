@@ -1,25 +1,7 @@
 import path from "path";
 import { ok, err } from "../../base/result.js";
 import { CancelledError, ErrorUtils } from "../../base/errors.js";
-import { CONFIG_SUFFIX } from "../../domain/config/config-discovery.js";
-import { detectWorkspace } from "../../domain/workspace/detect-workspace.js";
-import {
-	InitAnswers,
-	InitContext,
-	askInit,
-} from "../../domain/workspace/init-questions.js";
-import {
-	PlannedFile,
-	defaultInitChoices,
-	existingFileDiagnostics,
-	parseInitName,
-	renderSteps,
-} from "../../domain/workspace/init-plan.js";
-import {
-	DEFAULT_CONFIG_FILE,
-	readBaseConfig,
-} from "../../domain/workspace/init-place.js";
-import { planAnswers } from "../../domain/workspace/plan-answers.js";
+import { planInit, prepareInit } from "../../domain/init/plan-init.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -30,8 +12,7 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../../platform/commands/commands.js";
-
-const DEFAULT_PROJECT_NAME = "roblox-game";
+import { renderSteps } from "./render-steps.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "init",
@@ -52,81 +33,28 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const logService = accessor.get(LogService);
 		const promptService = accessor.get(PromptService);
 
-		const names = args._.slice(1);
-		const nameResult = parseInitName(names);
-		if (nameResult.isErr()) return nameResult;
-
 		const cwd = environmentService.cwd;
-		let existingFiles: ReadonlySet<string>;
-		try {
-			existingFiles = new Set(
-				(await fileSystemService.readDirectory(cwd)).map(
-					([name]) => name
-				)
-			);
-		} catch (error) {
-			return err(
-				new Error(
-					`Failed to read ${cwd}: ${ErrorUtils.fromUnknown(error).message}`,
-					{ cause: error }
-				)
-			);
-		}
-
-		const workspace = await detectWorkspace(fileSystemService, cwd);
-		logService.intro("rogen init");
-
-		const givenName = names.length > 0 ? nameResult.value : undefined;
-		const knownName =
-			givenName ??
-			(promptService.isInteractive ? undefined : nameResult.value);
-		const taken = existingFileDiagnostics(
-			knownName ? [`${knownName}${CONFIG_SUFFIX}`] : [],
-			cwd,
-			existingFiles
-		);
-		if (taken.length > 0) return err(new DiagnosticsError(taken));
-
-		const context: InitContext = {
-			workspace,
-			directory: cwd,
-			existingFiles,
-			...(promptService.isInteractive &&
-				existingFiles.has(DEFAULT_CONFIG_FILE) && {
-					base: await readBaseConfig(fileSystemService, cwd),
-				}),
-		};
-		let answers: InitAnswers | undefined;
-		if (promptService.isInteractive) {
-			const asked = await askInit(promptService, context, givenName);
-			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
-			answers = asked.value;
-		} else {
-			answers = {
-				kind: "project",
-				choices: defaultInitChoices(
-					workspace,
-					nameResult.value,
-					existingFiles,
-					givenName === undefined
-				),
-			};
-		}
-		if (!answers) return err(new CancelledError("init cancelled."));
-
-		const planned = await planAnswers(
+		const request = await prepareInit(
 			fileSystemService,
-			context,
-			answers,
-			path.basename(cwd) || DEFAULT_PROJECT_NAME
+			cwd,
+			args._.slice(1)
+		);
+		if (request.isErr()) return request;
+
+		logService.intro("rogen init");
+		const planned = await planInit(
+			fileSystemService,
+			promptService,
+			request.value
 		);
 		if (planned.isErr()) return err(new DiagnosticsError(planned.error));
 		const plan = planned.value;
+		if (!plan) return err(new CancelledError("init cancelled."));
 
-		const files: PlannedFile[] = [
+		const files = [
 			...(plan.template ? [plan.template] : []),
 			...plan.configs,
-			...plan.tsconfigs,
+			...plan.compilerConfigs,
 		];
 		// A blank gutter line sets the results apart from the last answer.
 		if (promptService.isInteractive) logService.info("");

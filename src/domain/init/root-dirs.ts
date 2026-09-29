@@ -1,17 +1,19 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
-import { DetectedWorkspace, Language } from "./detect-workspace.js";
+import { normalizeDir } from "../../base/path.js";
+import { outerRootDir } from "../config/config-validation.js";
+import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
 const DEFAULT_ROOT_DIR = "src";
+// Relative answers are compared as if they sat under one directory.
+const ANCHOR = path.resolve("/");
 
-/** The first that applies: tsconfig's `rootDir`, `src`, the only code folder, else `src`. */
+/** The first that applies: the language's own config, `src`, the only code folder, else `src`. */
 export function defaultRootDir(
 	workspace: DetectedWorkspace,
 	language: Language
 ): string {
-	if (language === "roblox-ts" && workspace.rootDir) {
-		return normalizeRootDir(workspace.rootDir);
-	}
+	const configured = language.configuredRootDir(workspace);
+	if (configured !== undefined) return configured;
 	if (workspace.hasSrc) return DEFAULT_ROOT_DIR;
 	return workspace.codeFolders.length === 1
 		? workspace.codeFolders[0]
@@ -32,20 +34,17 @@ export function otherCodeFoldersHint(
 		: undefined;
 }
 
-/** Forward slashes, no leading `./` and no trailing `/`. */
-export const normalizeRootDir = (entry: string): string =>
-	path.posix.normalize(toPosix(entry.trim())).replace(/(.)\/+$/, "$1");
-
 /** A comma-separated answer, normalized. */
 export const parseRootDirs = (value: string): string[] =>
 	value
 		.split(",")
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "")
-		.map(normalizeRootDir);
+		.map(normalizeDir);
 
 const isInside = (inner: string, outer: string): boolean =>
-	outer === "." || inner.startsWith(`${outer}/`);
+	outerRootDir(path.resolve(ANCHOR, inner), [path.resolve(ANCHOR, outer)]) !==
+	undefined;
 
 /**
  * The first reason `entries` can't be a config's root dirs, or `undefined`.
@@ -60,12 +59,12 @@ export function rootDirsProblem(
 		if (path.posix.isAbsolute(entry) || path.win32.isAbsolute(entry)) {
 			return `Use a path relative to here, not ${entry}.`;
 		}
-		const normalized = normalizeRootDir(entry);
+		const normalized = normalizeDir(entry);
 		if (normalized === ".." || normalized.startsWith("../")) {
 			return `${entry} is outside this folder.`;
 		}
 	}
-	const normalized = entries.map(normalizeRootDir);
+	const normalized = entries.map(normalizeDir);
 	for (const [index, entry] of normalized.entries()) {
 		if (normalized.indexOf(entry) !== index) {
 			return `${entry} is listed twice.`;
@@ -85,7 +84,7 @@ export function placeFolderProblem(
 	rootDirs: readonly string[],
 	folder: string
 ): string | undefined {
-	const normalized = normalizeRootDir(folder);
+	const normalized = normalizeDir(folder);
 	const overlapping = rootDirs.find(
 		(dir) =>
 			dir === normalized ||

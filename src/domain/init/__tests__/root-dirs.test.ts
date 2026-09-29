@@ -1,21 +1,8 @@
 import {
-	normalizeRootDir,
 	parseRootDirs,
 	placeFolderProblem,
 	rootDirsProblem,
-} from "../init-root-dirs.js";
-
-describe("normalizeRootDir", () => {
-	it.each([
-		["src", "src"],
-		["./src/", "src"],
-		["src\\shared", "src/shared"],
-		["src//shared/", "src/shared"],
-		[".", "."],
-	])("should write %j as %j", (entry, expected) => {
-		expect(normalizeRootDir(entry)).toBe(expected);
-	});
-});
+} from "../root-dirs.js";
 
 describe("parseRootDirs", () => {
 	it("should split on commas, drop empty entries and normalize", () => {

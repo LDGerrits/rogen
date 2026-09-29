@@ -1,4 +1,4 @@
-import { Language } from "./detect-workspace.js";
+import { Language } from "../toolchain/toolchain.js";
 
 export type RouteId =
 	| "server"
@@ -18,6 +18,7 @@ export interface RouteOption {
 
 interface RouteTemplate {
 	readonly id: RouteId;
+	/** The shared route's target is spelled like its key, so it has none here. */
 	readonly target?: string;
 	readonly hint: string;
 	readonly ticked: boolean;
@@ -61,17 +62,13 @@ export const DEFAULT_ROUTES: readonly RouteId[] = ROUTES.filter(
 	({ ticked }) => ticked
 ).map(({ id }) => id);
 
-/** Luau keys start with a capital, roblox-ts keys with a lowercase letter. */
-export const routeKey = (id: RouteId, language: Language): string =>
-	language === "luau" ? `${id[0].toUpperCase()}${id.slice(1)}` : id;
-
 export const sharedTarget = (language: Language): string =>
-	`ReplicatedStorage/${routeKey("shared", language)}`;
+	`ReplicatedStorage/${language.routeKey("shared")}`;
 
 export const routeOptions = (language: Language): RouteOption[] =>
 	ROUTES.map(({ id, target, hint, ticked }) => ({
 		id,
-		key: routeKey(id, language),
+		key: language.routeKey(id),
 		target: target ?? sharedTarget(language),
 		hint,
 		ticked,

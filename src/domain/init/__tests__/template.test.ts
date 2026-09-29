@@ -1,7 +1,4 @@
-import {
-	defaultTemplateChoice,
-	handWrittenProjectFiles,
-} from "../init-template.js";
+import { defaultTemplateChoice, handWrittenProjectFiles } from "../template.js";
 
 describe("handWrittenProjectFiles", () => {
 	it("should list project files that no config beside them writes", () => {

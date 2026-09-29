@@ -1,0 +1,223 @@
+import path from "path";
+import { toPosix } from "../../base/path.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { RogenConfig } from "../config/config.js";
+import { loadConfig } from "../config/load-config.js";
+import { Darklua } from "../toolchain/darklua.js";
+import {
+	DetectedWorkspace,
+	PlannedFile,
+	languageOf,
+} from "../toolchain/toolchain.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	SCHEMA_URL,
+	configFile,
+	existingFileDiagnostics,
+	extendsRef,
+	hasSourceConfig,
+} from "./init-files.js";
+import { InitPlan, tagsStep, watchCommand } from "./init-plan.js";
+import { PROJECT_SUFFIX } from "./template.js";
+
+export interface PlaceChoices {
+	readonly name: string;
+	readonly folder: string;
+}
+
+/** What a place inherits from `default.rogen.json`, with paths relative to the working directory. */
+export interface BaseConfig {
+	readonly rootDirs: readonly string[];
+	readonly syncDir?: string;
+	/** The config `default` extends, which holds the shared source setup of a Darklua repo. */
+	readonly parent?: string;
+}
+
+export interface PlacePlanOptions {
+	readonly choices: PlaceChoices;
+	readonly base: BaseConfig;
+	/** The language of the project the place joins, as a registered id. */
+	readonly language: string;
+	/** Whether Darklua processes the project the place joins. */
+	readonly darklua: boolean;
+	readonly workspace: DetectedWorkspace;
+	/** The absolute directory init writes into. */
+	readonly directory: string;
+	/** The names of the entries already in `directory`. */
+	readonly existingFiles: ReadonlySet<string>;
+}
+
+/** Resolves `default.rogen.json` in `directory` the way a build would, so a place joins a config that builds. */
+export async function readBaseConfig(
+	fileSystem: FileSystemService,
+	directory: string
+): Promise<Result<BaseConfig, Diagnostic[]>> {
+	const loaded = await loadConfig(
+		fileSystem,
+		path.join(directory, DEFAULT_CONFIG_FILE),
+		{ tags: {} },
+		directory
+	);
+	if (loaded.resolved.isErr()) return err(loaded.resolved.error);
+
+	const relative = (absolute: string) =>
+		toPosix(path.relative(directory, absolute));
+	const { rootDirs, syncDir } = loaded.resolved.value;
+	const parent = loaded.chain[1];
+	return ok({
+		rootDirs: rootDirs.map(relative),
+		...(syncDir && { syncDir: relative(syncDir) }),
+		...(parent && { parent: relative(parent) }),
+	});
+}
+
+const placeConfig = (stem: string, config: RogenConfig): PlannedFile =>
+	configFile(stem, { $schema: SCHEMA_URL, ...config });
+
+const checked = (
+	plan: InitPlan,
+	{
+		directory,
+		existingFiles,
+	}: Pick<PlacePlanOptions, "directory" | "existingFiles">
+): Result<InitPlan, Diagnostic[]> => {
+	const existing = existingFileDiagnostics(
+		[...plan.configs, ...plan.compilerConfigs].map(
+			({ fileName }) => fileName
+		),
+		directory,
+		existingFiles
+	);
+	return existing.length > 0 ? err(existing) : ok(plan);
+};
+
+/**
+ * A place extends `default.rogen.json` and adds its own folder to the root
+ * dirs. When code is compiled or processed before Rojo syncs it, the place
+ * syncs from its own subfolder of the sync dir; plain Luau syncs from the
+ * root dirs themselves.
+ */
+export function planPlace(
+	options: PlacePlanOptions
+): Result<InitPlan, Diagnostic[]> {
+	const {
+		choices: { name, folder },
+		base,
+		darklua,
+		workspace,
+		directory,
+	} = options;
+	const language = languageOf(options.language);
+	const { compiler } = language;
+	const rootDirs = [...base.rootDirs, folder];
+	const projectFile = `${name}${PROJECT_SUFFIX}`;
+
+	const outDir = compiler && `${compiler.outDir(workspace)}/${name}`;
+	const syncBase =
+		compiler || darklua
+			? (base.syncDir ??
+				compiler?.outDir(workspace) ??
+				Darklua.defaultSyncDir)
+			: undefined;
+	const syncDir = syncBase && `${syncBase}/${name}`;
+	const compiled =
+		compiler &&
+		outDir &&
+		compiler.planPlace({
+			name,
+			rootDirs,
+			sharedRootDirs: base.rootDirs,
+			outDir,
+			projectFile,
+			workspace,
+		});
+
+	const sourceStem = `${name}-source`;
+	const sourced = hasSourceConfig(language, darklua) && base.parent;
+	const configs = sourced
+		? [
+				placeConfig(sourceStem, {
+					extends: extendsRef(sourced),
+					rootDirs,
+				}),
+				placeConfig(name, {
+					extends: extendsRef(`${sourceStem}${CONFIG_SUFFIX}`),
+					syncDir,
+				}),
+			]
+		: [
+				placeConfig(name, {
+					extends: extendsRef(DEFAULT_CONFIG_FILE),
+					rootDirs,
+					...(syncDir && { syncDir }),
+				}),
+			];
+
+	return checked(
+		{
+			configs,
+			compilerConfigs: compiled ? compiled.files : [],
+			notes: [],
+			nextSteps: {
+				setup: compiled ? compiled.setup : [],
+				run: [
+					...(compiled ? [compiled.watchCommand] : []),
+					watchCommand(sourced ? [name, sourceStem] : [name]),
+					`rojo serve ${projectFile}`,
+				],
+				darklua:
+					darklua && syncDir
+						? Darklua.processCommands(
+								directory,
+								outDir ? [outDir] : rootDirs,
+								syncDir
+							)
+						: [],
+				edits: [
+					tagsStep(
+						language,
+						`${sourced ? sourceStem : name}${CONFIG_SUFFIX}`
+					),
+				],
+			},
+		},
+		options
+	);
+}
+
+export interface VariantPlanOptions {
+	readonly name: string;
+	readonly directory: string;
+	readonly existingFiles: ReadonlySet<string>;
+}
+
+/** A variant inherits everything from default; its own file is where tags and excludes go. */
+export function planVariant(
+	options: VariantPlanOptions
+): Result<InitPlan, Diagnostic[]> {
+	const { name } = options;
+	return checked(
+		{
+			configs: [
+				placeConfig(name, { extends: extendsRef(DEFAULT_CONFIG_FILE) }),
+			],
+			compilerConfigs: [],
+			notes: [],
+			nextSteps: {
+				setup: [],
+				run: [
+					watchCommand([name]),
+					`rojo serve ${name}${PROJECT_SUFFIX}`,
+				],
+				darklua: [],
+				edits: [
+					`Turn tags on or off under "tags", or add "exclude", in ${name}${CONFIG_SUFFIX}.`,
+				],
+			},
+		},
+		options
+	);
+}

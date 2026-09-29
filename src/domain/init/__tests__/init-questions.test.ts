@@ -7,8 +7,10 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { DetectedWorkspace } from "../detect-workspace.js";
-import { defaultInitChoices } from "../init-plan.js";
+import "../../toolchain/luau.js";
+import "../../toolchain/roblox-ts.js";
+import { DetectedWorkspace } from "../../toolchain/toolchain.js";
+import { defaultInitChoices } from "../init-choices.js";
 import { askInit, askInitChoices } from "../init-questions.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -531,8 +533,17 @@ describe("askInitChoices", () => {
 			]);
 
 			expect(choices.mounts).toEqual([
-				{ path: "include", optional: false },
-				{ path: "node_modules/@rbxts", optional: false },
+				{
+					path: "include",
+					optional: false,
+					landing: "ReplicatedStorage/rbxts_include",
+				},
+				{
+					path: "node_modules/@rbxts",
+					optional: false,
+					landing:
+						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
+				},
 			]);
 		});
 	});
@@ -545,10 +556,26 @@ describe("askInitChoices", () => {
 		]);
 
 		expect(choices.mounts).toEqual([
-			{ path: "include", optional: false },
-			{ path: "node_modules/@rbxts", optional: false },
-			{ path: "Packages", optional: false },
-			{ path: "ServerPackages", optional: true },
+			{
+				path: "include",
+				optional: false,
+				landing: "ReplicatedStorage/rbxts_include",
+			},
+			{
+				path: "node_modules/@rbxts",
+				optional: false,
+				landing: "ReplicatedStorage/rbxts_include/node_modules/@rbxts",
+			},
+			{
+				path: "Packages",
+				optional: false,
+				landing: "ReplicatedStorage/Packages",
+			},
+			{
+				path: "ServerPackages",
+				optional: true,
+				landing: "ServerScriptService/ServerPackages",
+			},
 		]);
 	});
 
@@ -860,8 +887,16 @@ describe("askInitChoices template", () => {
 			from: "default.project.json",
 		});
 		expect(result?.mounts).toEqual([
-			{ path: "Packages", optional: true },
-			{ path: "ServerPackages", optional: true },
+			{
+				path: "Packages",
+				optional: true,
+				landing: "ReplicatedStorage/Packages",
+			},
+			{
+				path: "ServerPackages",
+				optional: true,
+				landing: "ServerScriptService/ServerPackages",
+			},
 		]);
 		expect(prompts.asked).toContain("Packages");
 	});

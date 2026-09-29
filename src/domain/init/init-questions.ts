@@ -1,59 +1,52 @@
 import { Result, err, ok } from "../../base/result.js";
+import { normalizeDir } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
+import { Registry } from "../../platform/registry/registry.js";
 import {
 	CONFIG_SUFFIX,
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
-import { DetectedWorkspace, Language } from "./detect-workspace.js";
+import { Darklua } from "../toolchain/darklua.js";
 import {
-	BaseConfig,
+	DetectedWorkspace,
+	Extensions,
+	Language,
+	LanguageRegistry,
+	Mount,
+	languageOf,
+} from "../toolchain/toolchain.js";
+import { InitChoices, defaultSyncDir } from "./init-choices.js";
+import {
 	DEFAULT_CONFIG_FILE,
-	PlaceChoices,
-	placeFileNames,
-	variantFileNames,
-} from "./init-place.js";
-import {
-	TemplateMount,
-	defaultMounts,
-	offeredMounts,
-	selectMounts,
-} from "./init-mounts.js";
-import {
-	DARKLUA_SYNC_DIR,
-	InitChoices,
-	compiledDirOf,
 	configFileNames,
 	existingFileDiagnostics,
 	outputFileNames,
 	parseInitName,
+	placeFileNames,
 	placeFolder,
 	sourceStemOf,
-	syncDirFor,
-} from "./init-plan.js";
+	variantFileNames,
+} from "./init-files.js";
+import { defaultMounts, offeredMounts, selectMounts } from "./mounts.js";
+import { BaseConfig, PlaceChoices } from "./place-plan.js";
 import {
 	defaultRootDir,
-	normalizeRootDir,
 	otherCodeFoldersHint,
 	parseRootDirs,
 	placeFolderProblem,
 	rootDirsProblem,
-} from "./init-root-dirs.js";
+} from "./root-dirs.js";
+import { RouteId, routeOptions, sharedTarget } from "./starting-routes.js";
 import {
 	TEMPLATE_FILE,
 	TemplateChoice,
 	defaultTemplateChoice,
 	handWrittenProjectFiles,
-} from "./init-template.js";
-import {
-	RouteId,
-	routeKey,
-	routeOptions,
-	sharedTarget,
-} from "./starting-routes.js";
+} from "./template.js";
 
 export interface InitContext {
 	readonly workspace: DetectedWorkspace;
@@ -125,7 +118,11 @@ export async function askInit(
 
 	const filesFor = (candidate: string) =>
 		addition === "place"
-			? placeFileNames(candidate, workspace.language, workspace.darklua)
+			? placeFileNames(
+					candidate,
+					languageOf(workspace.language),
+					workspace.darklua
+				)
 			: variantFileNames(candidate);
 	if (name) {
 		const conflicts = existingFileDiagnostics(
@@ -205,28 +202,25 @@ export async function askInitChoices(
 			: await askConfigName(promptService, existingFiles));
 	if (chosenName === undefined) return ok(undefined);
 
-	const language = await promptService.select<Language>({
+	const languageId = await promptService.select({
 		message: "Language",
-		choices: [
-			{ value: "luau", label: "Luau" },
-			{
-				value: "roblox-ts",
-				label: "roblox-ts",
-				hint:
-					workspace.language === "roblox-ts"
-						? "found tsconfig.json"
-						: undefined,
-			},
-		],
+		choices: Registry.as<LanguageRegistry>(Extensions.Languages)
+			.getLanguages()
+			.map(({ id, label, detectedHint }) => ({
+				value: id,
+				label,
+				hint: id === workspace.language ? detectedHint : undefined,
+			})),
 		initialValue: workspace.language,
 	});
-	if (language === undefined) return ok(undefined);
+	if (languageId === undefined) return ok(undefined);
+	const language = languageOf(languageId);
 
 	const darklua = await promptService.confirm({
 		message: "Does Darklua process your code before Rojo syncs it?",
 		description:
 			"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-		hint: workspace.darklua ? "found .darklua.json" : undefined,
+		hint: workspace.darklua ? Darklua.detectedHint : undefined,
 		initialValue: workspace.darklua,
 	});
 	if (darklua === undefined) return ok(undefined);
@@ -250,17 +244,17 @@ export async function askInitChoices(
 	const template = await askTemplate(promptService, existingFiles, outputs);
 	if (template === undefined) return ok(undefined);
 
-	let syncDir = syncDirFor(language, darklua, workspace);
+	let syncDir = defaultSyncDir(language, darklua, workspace);
 	if (darklua) {
 		const answer = await promptService.text({
 			message: "Sync dir",
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
-			placeholder: DARKLUA_SYNC_DIR,
+			placeholder: Darklua.defaultSyncDir,
 			validate: required("a sync dir"),
 		});
 		if (answer === undefined) return ok(undefined);
-		syncDir = normalizeRootDir(answer);
+		syncDir = normalizeDir(answer);
 	}
 
 	const mounts =
@@ -288,13 +282,14 @@ export async function askInitChoices(
 		places = answer;
 	}
 
+	const outDir = language.compiler?.outDir(workspace);
 	return ok({
 		name: chosenName,
-		language,
+		language: language.id,
 		darklua,
 		rootDirs,
 		...(syncDir && { syncDir }),
-		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
+		...(outDir && { outDir }),
 		template,
 		mounts,
 		routes: routes.routes,
@@ -310,11 +305,11 @@ async function askRootDirs(
 	layout: Layout
 ): Promise<string[] | undefined> {
 	const placeholder = defaultRootDir(workspace, language);
-	const robloxTs = language === "roblox-ts";
+	const { compiler } = language;
 	const answer = await promptService.text({
-		message: robloxTs ? "Root dir" : "Root dirs",
-		description: robloxTs
-			? "The folder roblox-ts compiles (rootDir in tsconfig.json)."
+		message: compiler ? "Root dir" : "Root dirs",
+		description: compiler
+			? compiler.rootDirDescription
 			: layout === "several"
 				? "Folders with the code every place shares, relative to here. Separate several with commas."
 				: "Folders with your scripts, relative to here. Separate several with commas.",
@@ -324,8 +319,8 @@ async function askRootDirs(
 			const entries = splitList(value);
 			const problem = rootDirsProblem(entries);
 			if (problem) return problem;
-			return robloxTs && entries.length > 1
-				? "roblox-ts compiles one folder. For code per place, set up several places."
+			return compiler && entries.length > 1
+				? compiler.severalRootDirs
 				: undefined;
 		},
 	});
@@ -384,7 +379,7 @@ async function askMounts(
 	promptService: PromptService,
 	{ workspace, existingFiles }: InitContext,
 	language: Language
-): Promise<readonly TemplateMount[] | undefined> {
+): Promise<readonly Mount[] | undefined> {
 	const offered = offeredMounts(workspace, language);
 	if (offered.length === 0 || existingFiles.has(TEMPLATE_FILE)) {
 		return defaultMounts(workspace, language);
@@ -392,10 +387,10 @@ async function askMounts(
 
 	const ticked = await promptService.multiSelect({
 		message: "Packages",
-		description:
-			language === "roblox-ts"
-				? "Folders placed in the game as they are. Rogen doesn't scan or route them. include and @rbxts are always mounted."
-				: "Folders placed in the game as they are. Rogen doesn't scan or route them.",
+		description: [
+			"Folders placed in the game as they are. Rogen doesn't scan or route them.",
+			...(language.packagesNote ? [language.packagesNote] : []),
+		].join(" "),
 		choices: offered.map(({ path, installed, landing }) => ({
 			value: path,
 			label: path,
@@ -413,8 +408,8 @@ async function askRoutes(
 	language: Language
 ): Promise<{ routes: readonly RouteId[]; fallback: boolean } | undefined> {
 	const options = routeOptions(language);
-	const server = routeKey("server", language);
-	const extension = language === "roblox-ts" ? "ts" : "luau";
+	const server = language.routeKey("server");
+	const { extension } = language;
 	const routes = await promptService.multiSelect<RouteId>({
 		message: "Routes",
 		description: `Where code goes. A ${server} folder, a .server marker file or a Foo.server.${extension} suffix all send code to ServerScriptService.`,
@@ -568,5 +563,5 @@ async function askPlaceChoices(
 	});
 	return folder === undefined
 		? undefined
-		: { name: placeName, folder: normalizeRootDir(folder) };
+		: { name: placeName, folder: normalizeDir(folder) };
 }

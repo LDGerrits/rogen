@@ -1,5 +1,5 @@
 import path from "path";
-import { isInside, toPosix } from "../path.js";
+import { isInside, toPosix, normalizeDir } from "../path.js";
 
 describe("Path", () => {
 	describe("toPosix", () => {
@@ -36,5 +36,17 @@ describe("Path", () => {
 		it("should accept a dir whose name starts with two dots", () => {
 			expect(isInside(abs("src/..hidden"), abs("src"))).toBe(true);
 		});
+	});
+});
+
+describe("normalizeDir", () => {
+	it.each([
+		["src", "src"],
+		["./src/", "src"],
+		["src\\shared", "src/shared"],
+		["src//shared/", "src/shared"],
+		[".", "."],
+	])("should write %j as %j", (entry, expected) => {
+		expect(normalizeDir(entry)).toBe(expected);
 	});
 });

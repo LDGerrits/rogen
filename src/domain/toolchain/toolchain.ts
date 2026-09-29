@@ -95,6 +95,8 @@ export interface Compiler {
 	readonly name: string;
 	/** Where it writes, and so what Rojo or a processor reads instead of the root dirs. */
 	outDir(workspace: DetectedWorkspace): string;
+	/** Where it writes when its own config doesn't say. */
+	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly watchCommand: string;
 	/** A compiler reads one root dir; this explains it in the root dir question. */
