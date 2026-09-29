@@ -1,4 +1,5 @@
-import path from "path";
+import { stemOf } from "../../base/path.js";
+import { RojoFileKind } from "./rojo-files.js";
 
 const ROJO_SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
@@ -25,14 +26,9 @@ export function stripRojoDataSuffix(stem: string): string {
 	return stem.replace(/(?<=.)\.(model|project)$/, "");
 }
 
-export type RojoFileKind = "script" | "model" | "data";
-
 /** The name Rojo gives a file when it enumerates the directory itself. */
 export function rojoFileName(kind: RojoFileKind, fileName: string): string {
-	const stem = fileName.slice(
-		0,
-		fileName.length - path.extname(fileName).length
-	);
+	const stem = stemOf(fileName);
 	if (kind === "script") return rojoAssignedName(stem);
 	return kind === "data" ? rojoModelName(stem) : stem;
 }

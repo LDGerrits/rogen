@@ -5,6 +5,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
+import { SCRIPT_EXTENSIONS } from "../rojo/rojo-files.js";
 import { Darklua } from "./darklua.js";
 import { detectPackages } from "./packages.js";
 import {
@@ -15,7 +16,6 @@ import {
 
 /** Where a repo that builds several places keeps each place's own code. */
 export const PLACES_DIR = "places";
-const CODE_EXTENSIONS = [".luau", ".lua", ".ts", ".tsx"];
 
 /** Only `init` may call this: builds do what the config says. Throws when no language is registered. */
 export async function detectWorkspace(
@@ -78,7 +78,7 @@ async function holdsCode(
 		visible.some(
 			([name, type]) =>
 				isFileType(type) &&
-				CODE_EXTENSIONS.some((extension) => name.endsWith(extension))
+				SCRIPT_EXTENSIONS.some((extension) => name.endsWith(extension))
 		)
 	) {
 		return true;

@@ -1,6 +1,6 @@
 import path from "path";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
-import { INIT_META_FILE } from "../build/root-scanner.js";
+import { INIT_META_FILE } from "../rojo/rojo-files.js";
 
 /** The tree is a function of the directory listing and folder meta, so only `contentFiles` (configs, templates) and `init.meta.json` matter when they are updated. */
 export function dropSourceUpdates(

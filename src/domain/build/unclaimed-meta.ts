@@ -13,9 +13,9 @@ import {
 import {
 	INIT_META_FILE,
 	META_FILE_SUFFIX,
-	ScannedRoot,
 	classifyFile,
-} from "./root-scanner.js";
+} from "../rojo/rojo-files.js";
+import { ScannedRoot } from "./root-scanner.js";
 
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */

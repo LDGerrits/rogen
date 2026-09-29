@@ -6,7 +6,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
-import { INIT_META_FILE, ScannedRoot } from "./root-scanner.js";
+import { INIT_META_FILE } from "../rojo/rojo-files.js";
+import { ScannedRoot } from "./root-scanner.js";
 
 export interface FolderMetaFields {
 	readonly className?: string;

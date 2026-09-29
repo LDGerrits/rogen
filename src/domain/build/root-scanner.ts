@@ -9,13 +9,17 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
-import { RojoFileKind } from "../rojo/rojo-assigned-name.js";
+import {
+	INIT_META_FILE,
+	RojoFileKind,
+	classifyFile,
+	isInitScript,
+	isMetaFile,
+} from "../rojo/rojo-files.js";
 import { ScanDiagnostics } from "./scan-diagnostics.js";
 
-export type SourceKind = RojoFileKind;
-
 export interface ScannedFile {
-	readonly kind: SourceKind;
+	readonly kind: RojoFileKind;
 	readonly rootDir: string;
 	readonly relativePath: string;
 }
@@ -56,31 +60,6 @@ export interface ScanOptions {
 export interface ScanResult {
 	readonly roots: readonly ScannedRoot[];
 	readonly warnings: readonly Diagnostic[];
-}
-
-const SCRIPT_EXTENSIONS = new Set([".luau", ".lua", ".ts", ".tsx"]);
-const MODEL_EXTENSIONS = new Set([".rbxm", ".rbxmx"]);
-const DATA_EXTENSIONS = new Set([
-	".json",
-	".toml",
-	".csv",
-	".txt",
-	".yaml",
-	".yml",
-]);
-export const META_FILE_SUFFIX = ".meta.json";
-export const INIT_META_FILE = `init${META_FILE_SUFFIX}`;
-const INIT_SCRIPT = /^(init|index)([.@-][a-z0-9_]+)?\./i;
-
-export function classifyFile(name: string): SourceKind | undefined {
-	const lower = name.toLowerCase();
-	if (lower.endsWith(".d.ts") || isMetaFile(name)) return undefined;
-
-	const extension = path.extname(lower);
-	if (SCRIPT_EXTENSIONS.has(extension)) return "script";
-	if (MODEL_EXTENSIONS.has(extension)) return "model";
-	if (DATA_EXTENSIONS.has(extension)) return "data";
-	return undefined;
 }
 
 /**
@@ -214,14 +193,6 @@ function scanRoot(
 		excludedBy,
 		skippedLinks: skippedLinks.sort(),
 	};
-}
-
-export function isMetaFile(name: string): boolean {
-	return name.toLowerCase().endsWith(META_FILE_SUFFIX);
-}
-
-export function isInitScript(name: string): boolean {
-	return classifyFile(name) === "script" && INIT_SCRIPT.test(name);
 }
 
 function byRelativePath(a: ScannedEntry, b: ScannedEntry): number {

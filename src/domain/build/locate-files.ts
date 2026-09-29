@@ -15,13 +15,9 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
+import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
 import { TagResult } from "./apply-tags.js";
-import {
-	ScannedRoot,
-	classifyFile,
-	isInitScript,
-	sourceOf,
-} from "./root-scanner.js";
+import { ScannedRoot, sourceOf } from "./root-scanner.js";
 import { RouteMatch, RouteResult, TagMatch } from "./route-files.js";
 
 interface Located {

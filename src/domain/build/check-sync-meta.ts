@@ -4,7 +4,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { hasSyncedOutput } from "./check-sync-dir.js";
-import { META_FILE_SUFFIX, ScannedRoot } from "./root-scanner.js";
+import { META_FILE_SUFFIX } from "../rojo/rojo-files.js";
+import { ScannedRoot } from "./root-scanner.js";
 import { SyncDiagnostics } from "./sync-diagnostics.js";
 import { SyncLayout, emittedPath, relativeToProject } from "./sync-path.js";
 
