@@ -3,7 +3,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { findOutputClashes } from "../output/find-output-clashes.js";
+import { findOutputClashes } from "../output/output.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildOptions,

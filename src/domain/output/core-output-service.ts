@@ -5,9 +5,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
-import { OutputDiagnostics } from "./output-diagnostics.js";
+import { OutputDiagnostics, stagingFile } from "./output.js";
 import { OutputService, OutputWriteResult } from "./output-service.js";
-import { stagingFile } from "./staging-file.js";
 
 export class CoreOutputService implements OutputService {
 	declare readonly _serviceBrand: undefined;

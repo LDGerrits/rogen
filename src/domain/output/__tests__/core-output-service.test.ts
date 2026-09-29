@@ -4,7 +4,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
 import { CoreOutputService } from "../core-output-service.js";
-import { stagingPattern } from "../staging-file.js";
+import { stagingPattern } from "../output.js";
 
 const outFile = path.resolve("/repo", "default.project.json");
 

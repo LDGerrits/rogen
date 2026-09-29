@@ -1,9 +1,11 @@
 import path from "path";
-import { findOutputClashes } from "../find-output-clashes.js";
+import { findOutputClashes, stagingFile, stagingPattern } from "../output.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
-describe("domain/output/find-output-clashes", () => {
+const outFile = abs("default.project.json");
+
+describe("domain/output/output", () => {
 	describe("findOutputClashes", () => {
 		it("should report nothing for configs with different outputs", () => {
 			expect(
@@ -45,6 +47,16 @@ describe("domain/output/find-output-clashes", () => {
 			]);
 
 			expect(diagnostics).toHaveLength(1);
+		});
+	});
+
+	describe("stagingPattern", () => {
+		it("should match the staging files of any writer", () => {
+			expect(stagingPattern(outFile).test(stagingFile(outFile))).toBe(
+				true
+			);
+			expect(stagingPattern(outFile).test(`${outFile}.tmp`)).toBe(false);
+			expect(stagingPattern(outFile).test(outFile)).toBe(false);
 		});
 	});
 });

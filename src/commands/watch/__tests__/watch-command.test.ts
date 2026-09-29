@@ -12,7 +12,7 @@ import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { stagingPattern } from "../../../domain/output/staging-file.js";
+import { stagingPattern } from "../../../domain/output/output.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import {
 	FileChange,

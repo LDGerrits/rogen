@@ -2,7 +2,7 @@ import path from "path";
 import { contains, outermostDirs } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
-import { stagingPattern } from "../output/staging-file.js";
+import { stagingPattern } from "../output/output.js";
 
 /** `file` names the config in `configsFor`. */
 export type WatchPlanConfig = Pick<
