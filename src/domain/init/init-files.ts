@@ -12,8 +12,7 @@ import {
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { schemaUrlFor } from "../config/schema-url.js";
-import { PLACES_DIR } from "../toolchain/detect-workspace.js";
-import { Language, PlannedFile } from "../toolchain/toolchain.js";
+import { Language, PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { TEMPLATE_FILE } from "./template.js";
 

@@ -4,6 +4,9 @@ import { Registry } from "../../platform/registry/registry.js";
 
 export type PackageManager = "wally" | "pesde";
 
+/** Where a repo that builds several places keeps each place's own code. */
+export const PLACES_DIR = "places";
+
 /**
  * What `init` found in the workspace: facts only, never decisions. A
  * language fills the facts it reads itself, and only that language reads them.

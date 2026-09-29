@@ -7,10 +7,7 @@ import {
 import { SCRIPT_EXTENSIONS } from "../rojo/rojo-files.js";
 import { Darklua } from "./darklua.js";
 import { detectPackages } from "./packages.js";
-import { DetectedWorkspace, Language } from "./toolchain.js";
-
-/** Where a repo that builds several places keeps each place's own code. */
-export const PLACES_DIR = "places";
+import { DetectedWorkspace, Language, PLACES_DIR } from "./toolchain.js";
 
 /** Throws when `languages` is empty. */
 export async function detectWorkspace(
