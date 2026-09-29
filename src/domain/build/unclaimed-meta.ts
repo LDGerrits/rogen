@@ -5,7 +5,7 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexReader } from "../../platform/fs/index-service.js";
 import {
 	rojoAssignedName,
 	stripRojoDataSuffix,
@@ -25,7 +25,7 @@ export interface UnclaimedMeta {
 
 /** Meta no sibling on disk claims under Rojo's naming rule; pruned and excluded siblings still claim theirs. */
 export function findUnclaimedMeta(
-	index: IndexService,
+	index: IndexReader,
 	roots: readonly ScannedRoot[]
 ): UnclaimedMeta[] {
 	return roots.flatMap((root) =>

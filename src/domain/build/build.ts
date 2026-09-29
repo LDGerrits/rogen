@@ -3,7 +3,7 @@ import { isInside } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
@@ -19,7 +19,7 @@ import { Placement, placeFiles } from "./place-files.js";
 import { scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { TagMatch } from "./route-files.js";
-export { addPlannedFiles } from "./locate-files.js";
+export { withPlannedFiles } from "./planned-files.js";
 export type { FileLocation } from "./locate-files.js";
 export type { RouteMatch } from "./route-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
@@ -90,7 +90,7 @@ export function checkBuildable(
  */
 export async function buildProject(
 	fileSystem: FileSystemService,
-	index: IndexService,
+	index: IndexReader,
 	config: ResolvedConfig,
 	options: BuildOptions = {}
 ): Promise<Result<BuiltProject, Diagnostic[]>> {
@@ -149,7 +149,7 @@ export async function buildProject(
 
 /** Where each path lands in `config`'s tree, or why it lands nowhere; every scanned path without `paths`. */
 export function locateFiles(
-	index: IndexService,
+	index: IndexReader,
 	config: ResolvedConfig,
 	paths?: readonly string[]
 ): Result<FileLocation[], Diagnostic[]> {

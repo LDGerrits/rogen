@@ -1,9 +1,9 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
 import {
-	addPlannedFiles,
 	locateFiles,
 	rootsToIndex,
+	withPlannedFiles,
 } from "../../domain/build/build.js";
 import { configLabel } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
@@ -54,7 +54,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		const paths = args._.slice(1).map((file) => path.resolve(cwd, file));
 		await indexService.initialize(rootsToIndex(configs.value));
-		addPlannedFiles(
+		const index = withPlannedFiles(
 			indexService,
 			configs.value.flatMap(({ rootDirs }) => rootDirs),
 			paths
@@ -63,7 +63,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const answers: ConfigLines[] = [];
 		for (const config of configs.value) {
 			const located = locateFiles(
-				indexService,
+				index,
 				config,
 				paths.length > 0 ? paths : undefined
 			);

@@ -1,13 +1,11 @@
 import path from "path";
 import { compareStrings } from "../../base/collection.js";
-import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
-import { FileChangeType } from "../../platform/fs/file-events.js";
+import { ancestors, contains, toPosix } from "../../base/path.js";
 import {
-	FileType,
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexReader } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
 import { ScannedRoot } from "./root-scanner.js";
@@ -38,45 +36,9 @@ export interface UnplacedLocation extends Located {
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
 
-/** Adds each path that names a source file and doesn't exist yet to `index`, with the folders it needs. */
-export function addPlannedFiles(
-	index: IndexService,
-	rootDirs: readonly string[],
-	paths: readonly string[]
-): void {
-	for (const target of paths) {
-		const rootDir = rootDirs.find((dir) => isInside(target, dir));
-		if (!rootDir || !classifyFile(path.basename(target))) continue;
-		if (index.hasEntry(path.dirname(target), path.basename(target)))
-			continue;
-
-		const missing: string[] = [];
-		for (const dir of ancestors(target)) {
-			if (
-				dir === rootDir ||
-				index.hasEntry(path.dirname(dir), path.basename(dir))
-			)
-				break;
-			missing.unshift(dir);
-		}
-		index.applyChanges([
-			...missing.map((dir) => ({
-				type: FileChangeType.ADDED,
-				path: dir,
-				fileType: FileType.Directory,
-			})),
-			{
-				type: FileChangeType.ADDED,
-				path: target,
-				fileType: FileType.File,
-			},
-		]);
-	}
-}
-
 /** Every scanned path's location, or only those `paths` name, where a directory stands for what's in it. */
 export function locate(
-	index: IndexService,
+	index: IndexReader,
 	placement: Placement,
 	paths?: readonly string[]
 ): FileLocation[] {
@@ -91,7 +53,7 @@ export function locate(
 }
 
 function locateScanned(
-	index: IndexService,
+	index: IndexReader,
 	{ files, leftOut }: Placement
 ): Map<string, FileLocation> {
 	const all = new Map<string, FileLocation>();
@@ -120,7 +82,7 @@ function locateScanned(
 
 /** Rojo reads everything in an init folder as children of the folder's instance, and its init script as the folder itself. */
 function membersOfInitFolder(
-	index: IndexService,
+	index: IndexReader,
 	folder: string,
 	folderInstance: readonly string[]
 ): { source: string; instancePath: readonly string[] }[] {
@@ -151,7 +113,7 @@ function membersOfInitFolder(
 }
 
 function locatePath(
-	index: IndexService,
+	index: IndexReader,
 	roots: readonly ScannedRoot[],
 	all: ReadonlyMap<string, FileLocation>,
 	target: string

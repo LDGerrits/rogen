@@ -8,7 +8,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexReader } from "../../platform/fs/index-service.js";
 import {
 	INIT_META_FILE,
 	RojoFileKind,
@@ -70,7 +70,7 @@ export interface ScanResult {
  * A root that isn't in the index yields an empty root and a warning.
  */
 export function scanRootDirs(
-	index: IndexService,
+	index: IndexReader,
 	options: ScanOptions
 ): ScanResult {
 	const unresolvedLinks: Diagnostic[] = [];
@@ -105,7 +105,7 @@ function emptyRoot(rootDir: string): ScannedRoot {
 }
 
 function scanRoot(
-	index: IndexService,
+	index: IndexReader,
 	rootDir: string,
 	options: ScanOptions,
 	unresolvedLinks: Diagnostic[]

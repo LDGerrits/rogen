@@ -5,7 +5,7 @@ import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { addPlannedFiles, locateFiles } from "../build.js";
+import { locateFiles, withPlannedFiles } from "../build.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -45,8 +45,10 @@ describe("locateFiles", () => {
 		const config = configOf(overrides);
 		const index = await indexOf(config);
 		const absolute = paths?.map((p) => abs(p));
-		if (absolute) addPlannedFiles(index, config.rootDirs, absolute);
-		return locateFiles(index, config, absolute).unwrap();
+		const planned = absolute
+			? withPlannedFiles(index, config.rootDirs, absolute)
+			: index;
+		return locateFiles(planned, config, absolute).unwrap();
 	};
 
 	const instancePaths = (located: Awaited<ReturnType<typeof locate>>) =>
@@ -277,6 +279,30 @@ describe("locateFiles", () => {
 			]);
 		});
 
+		it("should never be written to the index it is layered over", async () => {
+			await write("src/Other.luau");
+			const config = configOf();
+			const index = await indexOf(config);
+			const updates: unknown[] = [];
+			index.onDidUpdate((changes) => updates.push(changes));
+
+			const planned = withPlannedFiles(index, config.rootDirs, [
+				abs("src/Combat/Server/Hit.luau"),
+			]);
+
+			expect(planned.hasEntry(abs("src/Combat/Server"), "Hit.luau")).toBe(
+				true
+			);
+			expect([...(planned.getEntries(abs("src/Combat")) ?? [])]).toEqual([
+				["Server", FileType.Directory],
+			]);
+			expect(planned.getEntries(abs("src"))?.has("Other.luau")).toBe(
+				true
+			);
+			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
+			expect(updates).toEqual([]);
+		});
+
 		it("should not be added by locating alone", async () => {
 			await write("src/Other.luau");
 			const config = configOf();
@@ -346,9 +372,11 @@ describe("locateFiles", () => {
 		it("should not be replaced by a planned file", async () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
 
-			addPlannedFiles(index, config.rootDirs, [abs("src/Pipe.luau")]);
+			const planned = withPlannedFiles(index, config.rootDirs, [
+				abs("src/Pipe.luau"),
+			]);
 
-			expect(index.getEntryType(abs("src"), "Pipe.luau")).toBe(
+			expect(planned.getEntryType(abs("src"), "Pipe.luau")).toBe(
 				FileType.Unknown
 			);
 		});
