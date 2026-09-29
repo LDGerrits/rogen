@@ -1,5 +1,5 @@
 {
-	"$schema": "https://rogen.dev/schema/2/rogen.json",
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"rootDirs": [
 		"src"
 	],

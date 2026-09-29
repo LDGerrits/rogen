@@ -1,3 +1,4 @@
 {
-	"steps": [["init"], ["build"]]
+	"steps": [["init"], ["build"]],
+	"show": ["default.project.json"]
 }

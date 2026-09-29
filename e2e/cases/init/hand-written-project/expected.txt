@@ -25,6 +25,27 @@ written:
   default.rogen.json
   template.project.json
 
+default.project.json:
+{
+  "name": "my-game",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Combat": {
+        "$path": {
+          "optional": "src/Combat"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 50
+      }
+    }
+  }
+}
+
 default.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",

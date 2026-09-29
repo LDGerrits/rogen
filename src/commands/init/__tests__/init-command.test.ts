@@ -914,6 +914,68 @@ describe("init command", () => {
 				extends: "./default.rogen.json",
 			});
 		});
+
+		it("should not ask for a variant name that was given", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ rootDirs: ["src"] })
+			);
+			const prompts = new MockPromptService(["variant"]);
+
+			const result = await runInit(["prod"], prompts);
+
+			expect(result.isOk()).toBe(true);
+			expect(prompts.asked).toEqual([
+				"default.rogen.json exists. What do you want to add?",
+			]);
+			expect(await exists("prod.rogen.json")).toBe(true);
+		});
+
+		it("should say how to run the variant and where its tags go", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ rootDirs: ["src"] })
+			);
+			const logService = new MockLogService();
+
+			await runInit(
+				[],
+				new MockPromptService(["variant", "prod"]),
+				logService
+			);
+
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"info: ",
+				"success: Created prod.rogen.json.",
+				"step: Next steps",
+				"info: Run each in its own terminal:",
+				"info:   rogen watch prod",
+				"info:   rojo serve prod.project.json",
+				'info: Turn tags on or off under "tags", or add "exclude", in prod.rogen.json.',
+				"outro: Wrote 1 file.",
+			]);
+		});
+
+		it("should fail at once when a given variant name would replace a project file", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ rootDirs: ["src"] })
+			);
+			await write("prod.project.json", "{}");
+
+			const result = await runInit(
+				["prod"],
+				new MockPromptService(["variant"])
+			);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "prod.project.json"),
+				},
+			]);
+		});
 	});
 
 	describe("existing files", () => {
