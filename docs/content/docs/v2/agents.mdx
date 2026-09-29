@@ -7,15 +7,10 @@ An agent that doesn't know Rogen tends to edit the generated `*.project.json`, o
 
 ## Install the skill
 
-The skill lives at `skills/rogen/SKILL.md` in the [Rogen repository](https://github.com/LDGerrits/rogen).
+The skill lives at `skills/rogen/SKILL.md` in the [Rogen repository](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format. Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents read it. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to install it for:
 
-```bash title="Any agent"
+```bash
 npx skills add LDGerrits/rogen
-```
-
-```text title="Claude Code"
-/plugin marketplace add LDGerrits/rogen
-/plugin install rogen@rogen
 ```
 
 ## Or add it to `AGENTS.md`
