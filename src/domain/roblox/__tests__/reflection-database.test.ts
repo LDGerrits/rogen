@@ -2,7 +2,7 @@ import {
 	ReflectionDatabase,
 	renderServicesModule,
 	selectServices,
-} from "../select-services.js";
+} from "../reflection-database.js";
 
 const database: ReflectionDatabase = [
 	[0, 697],
@@ -17,7 +17,7 @@ const database: ReflectionDatabase = [
 	{},
 ];
 
-describe("domain/roblox/select-services", () => {
+describe("domain/roblox/reflection-database", () => {
 	describe("selectServices", () => {
 		it("should keep classes tagged Service, sorted", () => {
 			expect(selectServices(database)).toEqual(["Teams", "Workspace"]);

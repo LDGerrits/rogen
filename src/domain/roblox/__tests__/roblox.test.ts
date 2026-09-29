@@ -1,12 +1,12 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { parseTarget } from "../target.js";
+import { containerClassName, parseTarget } from "../roblox.js";
 
 const location = {
 	resource: "/repo/default.rogen.json",
 	position: { line: 4, column: 15 },
 };
 
-describe("domain/roblox/target", () => {
+describe("domain/roblox/roblox", () => {
 	describe("parseTarget", () => {
 		it("should read a bare service", () => {
 			expect(
@@ -63,5 +63,29 @@ describe("domain/roblox/target", () => {
 				]);
 			}
 		);
+	});
+
+	describe("containerClassName", () => {
+		it("should give a service its own class", () => {
+			expect(containerClassName(["Workspace"])).toBe("Workspace");
+		});
+
+		it("should give StarterPlayer's script containers their own class", () => {
+			expect(
+				containerClassName(["StarterPlayer", "StarterCharacterScripts"])
+			).toBe("StarterCharacterScripts");
+		});
+
+		it("should make anything else a Folder", () => {
+			expect(containerClassName(["ReplicatedStorage", "shared"])).toBe(
+				"Folder"
+			);
+			expect(
+				containerClassName([
+					"ReplicatedStorage",
+					"StarterPlayerScripts",
+				])
+			).toBe("Folder");
+		});
 	});
 });

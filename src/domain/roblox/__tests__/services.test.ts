@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { renderServicesModule } from "../select-services.js";
+import { renderServicesModule } from "../reflection-database.js";
 import {
 	SERVICES_ROJO_VERSION,
 	SUPPORTED_SERVICES,

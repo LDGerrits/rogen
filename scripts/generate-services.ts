@@ -8,7 +8,7 @@ import {
 	ReflectionDatabase,
 	renderServicesModule,
 	selectServices,
-} from "../src/domain/roblox/select-services.js";
+} from "../src/domain/roblox/reflection-database.js";
 
 const OUTPUT = path.resolve("src/domain/roblox/services.ts");
 

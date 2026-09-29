@@ -14,7 +14,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { Target, parseTarget } from "../roblox/target.js";
+import { Target, parseTarget } from "../roblox/roblox.js";
 import {
 	INIT_META_FILE,
 	RojoFileKind,

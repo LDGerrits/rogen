@@ -1,6 +1,6 @@
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { Target } from "../roblox/target.js";
+import { Target } from "../roblox/roblox.js";
 import { RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-files.js";
 import { RojoNode, RojoProject, RojoTree } from "../rojo/rojo-project.js";
 import {

@@ -26,7 +26,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { projectFileName } from "../rojo/rojo-project.js";
-import { parseTarget } from "../roblox/target.js";
+import { parseTarget } from "../roblox/roblox.js";
 import { ConfigDiagnostics } from "./config-diagnostics.js";
 import { ConfigOverrides } from "./config-service.js";
 import {
