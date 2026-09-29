@@ -13,6 +13,7 @@ stdout:
     list             Lists every config here with its root dirs, sync dir, project file and tags.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
+    where [path...]  Prints where each file lands in the game, and why.
   
   Options:
     -h, --help     Print help.
@@ -37,6 +38,7 @@ stdout:
     list             Lists every config here with its root dirs, sync dir, project file and tags.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
+    where [path...]  Prints where each file lands in the game, and why.
   
   Options:
     -h, --help     Print help.

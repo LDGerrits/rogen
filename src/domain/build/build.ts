@@ -11,6 +11,12 @@ import { TagResult, applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { checkSyncDir } from "./check-sync-dir.js";
 import { checkSyncMeta } from "./check-sync-meta.js";
+import {
+	FileLocation,
+	Placement,
+	addUnwrittenFiles,
+	locate,
+} from "./locate-files.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { readFolderMeta } from "./read-folder-meta.js";
 import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
@@ -95,10 +101,9 @@ export async function buildProject(
 	const scan = scanRootDirs(index, config);
 	const folderMeta = await readFolderMeta(fileSystem, scan.roots);
 	if (folderMeta.isErr()) return folderMeta;
-	const routing = routeFiles(scan.roots, config);
-	if (routing.isErr()) return routing;
-	const tagging = applyTags(routing.value.routed, config);
-	if (tagging.isErr()) return tagging;
+	const placed = placeFiles(scan.roots, config);
+	if (placed.isErr()) return placed;
+	const { routing, tagging } = placed.value;
 
 	const sourcePaths = (paths: (root: ScannedRoot) => readonly string[]) =>
 		scan.roots.flatMap((root) =>
@@ -107,12 +112,12 @@ export async function buildProject(
 			)
 		);
 	const assembly = assembleTree(config, {
-		files: tagging.value.files,
+		files: tagging.files,
 		excluded: sourcePaths((root) => root.excluded),
 		skippedLinks: sourcePaths((root) => root.skippedLinks),
-		pruned: tagging.value.pruned,
-		unrouted: routing.value.unrouted,
-		superseded: tagging.value.superseded,
+		pruned: tagging.pruned,
+		unrouted: routing.unrouted,
+		superseded: tagging.superseded,
 		folderMeta: folderMeta.value,
 	});
 	if (assembly.isErr()) return assembly;
@@ -132,12 +137,7 @@ export async function buildProject(
 
 	return ok({
 		tree: assembly.value.value,
-		summary: summarizeBuild(
-			config,
-			scan.roots,
-			routing.value,
-			tagging.value
-		),
+		summary: summarizeBuild(config, scan.roots, routing, tagging),
 		warnings: [
 			...scan.warnings,
 			...(unclaimedMeta.length > 0
@@ -148,12 +148,43 @@ export async function buildProject(
 						),
 					]
 				: []),
-			...routing.value.warnings,
-			...tagging.value.warnings,
+			...routing.warnings,
+			...tagging.warnings,
 			...assembly.value.warnings,
 		],
 		syncWarnings,
 	});
+}
+
+/**
+ * Where each path lands in `config`'s tree, or why it lands nowhere. Every
+ * scanned path without `paths`. A path that doesn't exist yet and names a
+ * source file is added to `index` and placed as if it did.
+ */
+export function locateFiles(
+	index: IndexService,
+	config: ResolvedConfig,
+	paths?: readonly string[]
+): Result<FileLocation[], Diagnostic[]> {
+	if (Object.keys(config.routes).length === 0) {
+		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
+	}
+	if (paths) addUnwrittenFiles(index, config.rootDirs, paths);
+	const scan = scanRootDirs(index, config);
+	const placed = placeFiles(scan.roots, config);
+	if (placed.isErr()) return placed;
+	return ok(locate(index, placed.value, config.tags, paths));
+}
+
+function placeFiles(
+	roots: readonly ScannedRoot[],
+	config: ResolvedConfig
+): Result<Placement, Diagnostic[]> {
+	const routing = routeFiles(roots, config);
+	if (routing.isErr()) return routing;
+	const tagging = applyTags(routing.value.routed, config);
+	if (tagging.isErr()) return tagging;
+	return ok({ roots, routing: routing.value, tagging: tagging.value });
 }
 
 function summarizeBuild(

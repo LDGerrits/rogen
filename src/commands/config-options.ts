@@ -68,11 +68,14 @@ function flagOf(name: string): string {
 	return short ? `-${short}` : `--${name}`;
 }
 
-/** The configs a command names, and the overrides that sit above every layer of each. */
+/**
+ * The configs a command names, and the overrides that sit above every layer
+ * of each. `names` defaults to the positionals after the command.
+ */
 export function configRefsFromArgs(
-	args: ParsedArgs
+	args: ParsedArgs,
+	names: readonly string[] = args._.slice(1)
 ): Result<ConfigRefs, ConfigRefsError> {
-	const names = args._.slice(1);
 	const paths = args.config ?? [];
 	const all = args.all === true;
 

@@ -45,6 +45,22 @@ Each rebuild prints a block headed by the time and what triggered it:
 
 `watch` is safe next to `build`: see [Building While Watching](/docs/v2/core-concepts/output#building-while-watching). Press Ctrl+C to stop.
 
+### `where [path…]`
+
+Prints where each path lands in the game, and why, without writing anything. A directory stands for every file inside it, and no path means every file in the tree:
+
+```
+$ rogen where src/Net src/Combat/Server/Hit.luau
+src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+src/Net/HttpMock.luau -> pruned · tag mock is off
+src/Net/Types.lua -> replaced by src/Net/Types.luau
+src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
+```
+
+The reason names the governing route and how it matched (`folder`, `marker`, `suffix` or `fallback`), and any active tags. A file that isn't placed says why: `pruned`, `replaced by`, `unrouted`, `excluded`, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
+
+Positionals are paths here, not config names. `where` reads the default config; pick others with `-c` or `--all`, and turn tags on or off with `-t` and `-T`. With several configs, each one's lines sit under its name.
+
 ### `init [name]`
 
 Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It detects the language (roblox-ts when there is a `tsconfig.json`, else Luau), Darklua and packages once, and writes the result down as plain fields. Builds never guess.

@@ -28,6 +28,9 @@ export const FALLBACK_ROUTE = "*";
 
 export type TagForm = "folder" | "marker" | SuffixForm;
 
+/** How the governing route matched the file; `fallback` is the `*` route. */
+export type RouteMatch = "folder" | "marker" | "suffix" | "fallback";
+
 export interface TagMatch {
 	readonly tag: string;
 	readonly form: TagForm;
@@ -43,6 +46,7 @@ export interface RoutedFile {
 	readonly entry: ScannedEntry;
 	/** The governing route key, or `*`. */
 	readonly route: string;
+	readonly routeMatch: RouteMatch;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
 	/** Routing, tag and invisible folders name no node, so they have none. */
@@ -197,6 +201,12 @@ function routeEntry(
 	const leaf = segments.pop() as string;
 
 	let governing: string | undefined;
+	let routeMatch: RouteMatch = "fallback";
+	const govern = (key: string, match: RouteMatch) => {
+		if (governing !== undefined) return;
+		governing = key;
+		routeMatch = match;
+	};
 	const tags: TagMatch[] = [];
 	const applyMarkers = (dir: string) => {
 		for (const fileName of markers.get(dir) ?? []) {
@@ -204,7 +214,7 @@ function routeEntry(
 			if (key === undefined) continue;
 			if (context.tagKeys.has(key))
 				tags.push({ tag: key, form: "marker" });
-			else governing ??= key;
+			else govern(key, "marker");
 		}
 	};
 
@@ -216,7 +226,7 @@ function routeEntry(
 		const { name, invisible } = unwrapInvisibleFolder(segment);
 		const routeKey = matchFolderKey(name, context.routeKeys);
 		const tagKey = matchFolderKey(name, context.tagKeys);
-		if (routeKey) governing ??= routeKey;
+		if (routeKey) govern(routeKey, "folder");
 		else if (tagKey) tags.push({ tag: tagKey, form: "folder" });
 		else {
 			if (!invisible) folders.push({ name: segment, dir });
@@ -239,9 +249,10 @@ function routeEntry(
 			context.declaredKeys
 		);
 		noteSuffixNearMiss(entry, match, context);
-		governing ??= match.spans.find((span) =>
+		const routeKey = match.spans.find((span) =>
 			context.routeKeys.has(span.key)
 		)?.key;
+		if (routeKey) govern(routeKey, "suffix");
 		tags.push(...tagSpansOf(match.spans, context).map(asTagMatch));
 	} else {
 		const rawStem = stemOf(leaf);
@@ -257,7 +268,7 @@ function routeEntry(
 			? undefined
 			: match.spans.find((span) => context.routeKeys.has(span.key));
 		if (routeSpan) {
-			governing = routeSpan.key;
+			govern(routeSpan.key, "suffix");
 			stripped.push(routeSpan);
 			if (routeSpan.form === "capital")
 				separatorName = `${stem.slice(0, routeSpan.start)}-${routeSpan.key}${stem.slice(routeSpan.start + routeSpan.length)}${leaf.slice(stem.length)}`;
@@ -291,6 +302,7 @@ function routeEntry(
 		});
 	return {
 		route,
+		routeMatch,
 		instancePath,
 		folderNodes,
 		tags,

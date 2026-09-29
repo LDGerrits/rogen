@@ -45,7 +45,7 @@ export const RouteDiagnostics = {
 		warningDiagnostic(
 			"route.unrouted",
 			location,
-			`${count} more ${count === 1 ? "file" : "files"} matched no route and ${count === 1 ? "was" : "were"} left out.`
+			`${count} more ${count === 1 ? "file" : "files"} matched no route and ${count === 1 ? "was" : "were"} left out. Run 'rogen where' to list them all.`
 		),
 
 	capitalSuffix: (
@@ -67,6 +67,6 @@ export const RouteDiagnostics = {
 		warningDiagnostic(
 			"route.capitalSuffix",
 			location,
-			`${count} more ${count === 1 ? "file was" : "files were"} routed by a capital suffix.`
+			`${count} more ${count === 1 ? "file was" : "files were"} routed by a capital suffix. Run 'rogen where' to list them all.`
 		),
 };

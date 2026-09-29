@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["where"],
+		["where", "src/Net", "src/Combat/Server/Hit.luau", "README.md"],
+		["where", "src/Net/HttpMock.luau", "-t", "mock"]
+	],
+	"rojo": false
+}

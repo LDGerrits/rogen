@@ -48,7 +48,7 @@ export const TagDiagnostics = {
 		warningDiagnostic(
 			"tag.dormantCapitalSuffix",
 			location,
-			`${count} more ${count === 1 ? "file was" : "files were"} pruned by the dormant tag "${tag}" on a capital suffix.`
+			`${count} more ${count === 1 ? "file was" : "files were"} pruned by the dormant tag "${tag}" on a capital suffix. Run 'rogen where' to list them all.`
 		),
 
 	buriedScriptSuffix: (

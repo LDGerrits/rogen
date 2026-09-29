@@ -4,6 +4,7 @@ import "../init/init-command.js";
 import "../list/list-command.js";
 import "../version/version-command.js";
 import "../watch/watch-command.js";
+import "../where/where-command.js";
 import { DisposableStore } from "../../base/disposable.js";
 import {
 	CommandRegistry,
@@ -28,6 +29,7 @@ describe("CLI surface", () => {
 			"list",
 			"version",
 			"watch",
+			"where",
 		]);
 	});
 
@@ -95,6 +97,24 @@ describe("CLI surface", () => {
 		expect(parse("build", "--all").unwrap().options.all).toBe(true);
 		expect(parse("watch", "--all").unwrap().options.all).toBe(true);
 		expect(parse("list", "--all").isErr()).toBe(true);
+	});
+
+	it("should accept the config-picking flags on where, but not the output overrides", () => {
+		expect(
+			parse(
+				"where",
+				"src",
+				"--all",
+				"-c",
+				"a.rogen.json",
+				"-t",
+				"mock",
+				"-T",
+				"dev"
+			).isOk()
+		).toBe(true);
+		expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
+		expect(parse("where", "-s", "dist").isErr()).toBe(true);
 	});
 
 	it("should not accept override flags on commands they don't apply to", () => {

@@ -41,6 +41,7 @@ import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
 import "./commands/version/version-command.js";
 import "./commands/watch/watch-command.js";
+import "./commands/where/where-command.js";
 
 export default function run(): void {
 	main().catch((error) => {
