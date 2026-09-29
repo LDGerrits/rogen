@@ -178,109 +178,48 @@ function markersByDir(root: ScannedRoot): ReadonlyMap<string, string[]> {
 	);
 }
 
+/** What the folders and markers above a file, then its own suffixes, claim for it. */
+interface Claims {
+	route: { readonly key: string; readonly match: MatchForm } | undefined;
+	readonly tags: TagMatch[];
+}
+
+interface FolderStep {
+	readonly name: string;
+	readonly dir: string;
+}
+
+interface LeafReading {
+	readonly name: string;
+	readonly separatorName: string | undefined;
+	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
+}
+
 function routeEntry(
 	entry: ScannedEntry,
 	markers: ReadonlyMap<string, string[]>,
 	context: RouteContext
 ): RouteOutcome | undefined {
-	const segments = entry.relativePath.split("/");
-	const leaf = segments.pop() as string;
+	const folderNames = entry.relativePath.split("/");
+	const leaf = folderNames.pop() as string;
 
-	let governing: string | undefined;
-	let routeMatch: RouteMatch = "fallback";
-	const govern = (key: string, match: RouteMatch) => {
-		if (governing !== undefined) return;
-		governing = key;
-		routeMatch = match;
-	};
-	const tags: TagMatch[] = [];
-	const applyMarkers = (dir: string) => {
-		for (const fileName of markers.get(dir) ?? []) {
-			const key = matchMarkerKey(fileName, context.declaredKeys);
-			if (key === undefined) continue;
-			if (context.tagKeys.has(key))
-				tags.push({ tag: key, form: "marker" });
-			else govern(key, "marker");
-		}
-	};
+	const { claims, folders } = walkFolders(
+		entry,
+		folderNames,
+		markers,
+		context
+	);
+	const { name, separatorName, buriedScriptSuffix } = readLeaf(
+		entry,
+		leaf,
+		claims,
+		context
+	);
 
-	applyMarkers("");
-	const folders: { readonly name: string; readonly dir: string }[] = [];
-	let dir = "";
-	for (const segment of segments) {
-		dir = dir ? `${dir}/${segment}` : segment;
-		const { name, invisible } = unwrapInvisibleFolder(segment);
-		const routeKey = matchFolderKey(name, context.routeKeys);
-		const tagKey = matchFolderKey(name, context.tagKeys);
-		if (routeKey) govern(routeKey, "folder");
-		else if (tagKey) tags.push({ tag: tagKey, form: "folder" });
-		else {
-			if (!invisible) folders.push({ name: segment, dir });
-			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
-			if (nearMiss)
-				context.noteNearMiss(joinPosix(entry.rootDir, dir), nearMiss);
-		}
-		applyMarkers(dir);
-	}
-
-	let name = leaf;
-	let buriedScriptSuffix: RojoScriptSuffix | undefined;
-	let separatorName: string | undefined;
-	if (entry.kind === "init-folder") {
-		const match = matchSuffixKeys(
-			stemOf(entry.initFile),
-			context.declaredKeys
-		);
-		noteSuffixNearMiss(entry, match, context);
-		const routeSpan = match.spans.find((span) =>
-			context.routeKeys.has(span.key)
-		);
-		if (routeSpan && governing === undefined) {
-			govern(routeSpan.key, routeSpan.form);
-			separatorName = separatorNameOf(
-				entry.initFile,
-				"script",
-				routeSpan
-			);
-		}
-		tags.push(
-			...tagSpansOf(match.spans, context).map((span) =>
-				asTagMatch(span, entry.initFile, "script")
-			)
-		);
-	} else {
-		const rawStem = stemOf(leaf);
-		const stem =
-			entry.kind === "data" ? stripRojoDataSuffix(rawStem) : rawStem;
-		const match = matchSuffixKeys(stem, context.declaredKeys);
-		noteSuffixNearMiss(entry, match, context);
-		const tagSpans = tagSpansOf(match.spans, context);
-		tags.push(
-			...tagSpans.map((span) => asTagMatch(span, leaf, entry.kind))
-		);
-
-		const stripped = [...tagSpans];
-		const routeSpan = governing
-			? undefined
-			: match.spans.find((span) => context.routeKeys.has(span.key));
-		if (routeSpan) {
-			govern(routeSpan.key, routeSpan.form);
-			stripped.push(routeSpan);
-			separatorName = separatorNameOf(leaf, entry.kind, routeSpan);
-		}
-		if (entry.kind === "script") {
-			if (tagSpans.length > 0 && !rojoScriptSuffix(stem))
-				buriedScriptSuffix = rojoScriptSuffix(
-					stripSpans(stem, tagSpans)
-				);
-		}
-		name = stripSpans(stem, stripped);
-		if (entry.kind === "script") name = rojoAssignedName(name);
-	}
-
-	const route = governing ?? FALLBACK_ROUTE;
+	const route = claims.route?.key ?? FALLBACK_ROUTE;
 	const target = context.targets.get(route);
 	if (!target) return undefined;
+
 	const folderNodes: FolderNode[] = [];
 	let parent: readonly string[] = [target.service, ...target.folders];
 	for (const folder of folders) {
@@ -289,11 +228,94 @@ function routeEntry(
 	}
 	return {
 		route,
-		routeMatch,
+		routeMatch: claims.route?.match ?? "fallback",
 		separatorName,
 		instancePath: [...parent, name],
 		folderNodes,
-		tags,
+		tags: claims.tags,
+		buriedScriptSuffix,
+	};
+}
+
+/** Routing, tag and invisible folders and markers claim the file; every other folder becomes a node. */
+function walkFolders(
+	entry: ScannedEntry,
+	folderNames: readonly string[],
+	markers: ReadonlyMap<string, string[]>,
+	context: RouteContext
+): { claims: Claims; folders: FolderStep[] } {
+	const claims: Claims = { route: undefined, tags: [] };
+	const applyMarkers = (dir: string) => {
+		for (const fileName of markers.get(dir) ?? []) {
+			const key = matchMarkerKey(fileName, context.declaredKeys);
+			if (key === undefined) continue;
+			if (context.tagKeys.has(key))
+				claims.tags.push({ tag: key, form: "marker" });
+			else claims.route ??= { key, match: "marker" };
+		}
+	};
+
+	applyMarkers("");
+	const folders: FolderStep[] = [];
+	let dir = "";
+	for (const segment of folderNames) {
+		dir = dir ? `${dir}/${segment}` : segment;
+		const { name, invisible } = unwrapInvisibleFolder(segment);
+		const routeKey = matchFolderKey(name, context.routeKeys);
+		const tagKey = matchFolderKey(name, context.tagKeys);
+		if (routeKey) claims.route ??= { key: routeKey, match: "folder" };
+		else if (tagKey) claims.tags.push({ tag: tagKey, form: "folder" });
+		else {
+			if (!invisible) folders.push({ name: segment, dir });
+			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
+			if (nearMiss)
+				context.noteNearMiss(joinPosix(entry.rootDir, dir), nearMiss);
+		}
+		applyMarkers(dir);
+	}
+	return { claims, folders };
+}
+
+/** Reads the suffixes of a file, or of an init folder's script, into `claims` and returns the instance name. */
+function readLeaf(
+	entry: ScannedEntry,
+	leaf: string,
+	claims: Claims,
+	context: RouteContext
+): LeafReading {
+	const isInitFolder = entry.kind === "init-folder";
+	const fileName = isInitFolder ? entry.initFile : leaf;
+	const kind: RojoFileKind = isInitFolder ? "script" : entry.kind;
+	const rawStem = stemOf(fileName);
+	const stem = kind === "data" ? stripRojoDataSuffix(rawStem) : rawStem;
+
+	const match = matchSuffixKeys(stem, context.declaredKeys);
+	noteSuffixNearMiss(entry, match, context);
+	const tagSpans = tagSpansOf(match.spans, context);
+	claims.tags.push(
+		...tagSpans.map((span) => asTagMatch(span, fileName, kind))
+	);
+	const routeSpan = claims.route
+		? undefined
+		: match.spans.find((span) => context.routeKeys.has(span.key));
+	if (routeSpan) claims.route = { key: routeSpan.key, match: routeSpan.form };
+	const separatorName =
+		routeSpan && separatorNameOf(fileName, kind, routeSpan);
+
+	if (isInitFolder)
+		return { name: leaf, separatorName, buriedScriptSuffix: undefined };
+
+	const buriedScriptSuffix =
+		kind === "script" && tagSpans.length > 0 && !rojoScriptSuffix(stem)
+			? rojoScriptSuffix(stripSpans(stem, tagSpans))
+			: undefined;
+	const stripped = stripSpans(
+		stem,
+		routeSpan ? [...tagSpans, routeSpan] : tagSpans
+	);
+	return {
+		name: kind === "script" ? rojoAssignedName(stripped) : stripped,
+		separatorName,
 		buriedScriptSuffix,
 	};
 }
