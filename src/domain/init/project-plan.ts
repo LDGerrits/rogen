@@ -1,7 +1,7 @@
 import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { configFileName } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { Darklua } from "../toolchain/darklua.js";
@@ -18,9 +18,9 @@ import {
 	sourceStemOf,
 } from "./init-files.js";
 import { InitPlan, NextSteps, tagsStep, watchCommand } from "./init-plan.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { startingRoutes } from "./starting-routes.js";
 import {
-	PROJECT_SUFFIX,
 	TEMPLATE_FILE,
 	addMissingMounts,
 	handWrittenProjectFiles,
@@ -67,14 +67,14 @@ function nextSteps(
 	const sourced = hasSourceConfig(language, darklua);
 	// Darklua reads the source-rooted project, so both are kept current.
 	const watched = sourced ? [name, sourceStemOf(name)] : [name];
-	const configName = `${sourced ? sourceStemOf(name) : name}${CONFIG_SUFFIX}`;
+	const configName = configFileName(sourced ? sourceStemOf(name) : name);
 	const processed = compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs;
 	return {
 		setup: [],
 		run: [
 			...(compiler ? [compiler.compileCommand] : []),
 			watchCommand(watched),
-			`rojo serve ${name}${PROJECT_SUFFIX}`,
+			`rojo serve ${projectFileName(name)}`,
 		],
 		darklua:
 			darklua && syncDir
@@ -231,7 +231,7 @@ function buildPlan(options: ProjectPlanOptions): InitPlan {
 					configFile(sourceStem, starter()),
 					configFile(name, {
 						$schema: SCHEMA_URL,
-						extends: extendsRef(`${sourceStem}${CONFIG_SUFFIX}`),
+						extends: extendsRef(configFileName(sourceStem)),
 						...(syncDir && { syncDir }),
 					}),
 				]

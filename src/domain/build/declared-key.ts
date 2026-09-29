@@ -1,3 +1,5 @@
+import { capitalized } from "../../base/string.js";
+
 const SEPARATOR_CHARS = "+._@-";
 
 const INVISIBLE_FOLDER = /^\((.+)\)$/;
@@ -11,10 +13,6 @@ export function unwrapInvisibleFolder(folderName: string): {
 	return inner === undefined
 		? { name: folderName, invisible: false }
 		: { name: inner, invisible: true };
-}
-
-export function capitalized(key: string): string {
-	return key[0].toUpperCase() + key.slice(1);
 }
 
 /** The same name with the first letter in the other case. */

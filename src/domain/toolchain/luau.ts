@@ -1,3 +1,4 @@
+import { capitalized } from "../../base/string.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { Extensions, Language, LanguageRegistry } from "./toolchain.js";
 
@@ -10,7 +11,7 @@ const luau: Language = {
 	defaultPackageManager: "wally",
 
 	detect: async () => ({ present: false, facts: {}, reservedFolders: [] }),
-	routeKey: (id) => `${id[0].toUpperCase()}${id.slice(1)}`,
+	routeKey: capitalized,
 	configuredRootDir: () => undefined,
 	alwaysMounted: () => [],
 	offeredMounts: () => [],

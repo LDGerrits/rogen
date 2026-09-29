@@ -7,16 +7,17 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	CONFIG_SUFFIX,
+	configFileName,
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { schemaUrlFor } from "../config/schema-url.js";
 import { PLACES_DIR } from "../toolchain/detect-workspace.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
-import { PROJECT_SUFFIX, TEMPLATE_FILE } from "./template.js";
+import { projectFileName } from "../rojo/rojo-project.js";
+import { TEMPLATE_FILE } from "./template.js";
 
-export const DEFAULT_CONFIG_FILE = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
+export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
 export const SCHEMA_URL = schemaUrlFor("2.0.0");
 
 export const InitDiagnostics = {
@@ -37,7 +38,7 @@ export const InitDiagnostics = {
 export const placeFolder = (name: string): string => `${PLACES_DIR}/${name}`;
 
 export const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
-	fileName: `${stem}${CONFIG_SUFFIX}`,
+	fileName: configFileName(stem),
 	content: formatJsonFile(config),
 });
 
@@ -66,10 +67,7 @@ export const configFileNames = (
 	name: string,
 	language: Language,
 	darklua: boolean
-): string[] =>
-	configStems(name, language, darklua).map(
-		(stem) => `${stem}${CONFIG_SUFFIX}`
-	);
+): string[] => configStems(name, language, darklua).map(configFileName);
 
 /** The project files the configs for `name` write, the synced one first. */
 export const outputFileNames = (
@@ -77,9 +75,7 @@ export const outputFileNames = (
 	language: Language,
 	darklua: boolean
 ): string[] =>
-	configStems(name, language, darklua)
-		.reverse()
-		.map((stem) => `${stem}${PROJECT_SUFFIX}`);
+	configStems(name, language, darklua).reverse().map(projectFileName);
 
 /** The files a place named `name` writes, plus its project file, which mustn't exist either. */
 export const placeFileNames = (
@@ -87,18 +83,18 @@ export const placeFileNames = (
 	language: Language,
 	darklua: boolean
 ): string[] => [
-	`${name}${CONFIG_SUFFIX}`,
+	configFileName(name),
 	...(hasSourceConfig(language, darklua)
-		? [`${name}-source${CONFIG_SUFFIX}`]
+		? [configFileName(`${name}-source`)]
 		: []),
 	...(language.compiler?.placeFileNames(name) ?? []),
-	`${name}${PROJECT_SUFFIX}`,
+	projectFileName(name),
 ];
 
 /** The files a variant named `name` writes, plus its project file. */
 export const variantFileNames = (name: string): string[] => [
-	`${name}${CONFIG_SUFFIX}`,
-	`${name}${PROJECT_SUFFIX}`,
+	configFileName(name),
+	projectFileName(name),
 ];
 
 /** `names` are the positionals after `init`. */
@@ -117,7 +113,7 @@ export function parseInitName(names: readonly string[]): Result<string, Error> {
 			)
 		);
 	}
-	if (`${name}${PROJECT_SUFFIX}` === TEMPLATE_FILE) {
+	if (projectFileName(name) === TEMPLATE_FILE) {
 		return err(
 			new Error(
 				`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`

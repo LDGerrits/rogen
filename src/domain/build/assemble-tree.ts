@@ -5,7 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { containerClassName } from "../roblox/container-class-name.js";
-import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
+import { RojoNode, RojoTree, instanceKey } from "../rojo/rojo-tree.js";
 import { applyFolderMeta } from "./apply-folder-meta.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { ScannedEntry, sourceOf } from "./root-scanner.js";
@@ -44,7 +44,6 @@ interface PlacedEntry {
 }
 
 const DECLARATION_FILE = /\.d\.ts$/i;
-const INSTANCE_SEPARATOR = "/";
 const PLAYER_SCRIPT_CONTAINERS = new Set([
 	"StarterPlayerScripts",
 	"StarterCharacterScripts",
@@ -114,7 +113,7 @@ export function assembleTree(
 			warnings.push(
 				TreeDiagnostics.templateClash(
 					location,
-					instancePath.join(INSTANCE_SEPARATOR),
+					instanceKey(instancePath),
 					source
 				)
 			);
@@ -165,7 +164,7 @@ function routesIntoPlayerScripts(
 ): RunContextRoute[] {
 	return Object.entries(routes)
 		.filter(([, target]) => {
-			const [service, container] = target.split(INSTANCE_SEPARATOR);
+			const [service, container] = target.split("/");
 			return (
 				service === "StarterPlayer" &&
 				PLAYER_SCRIPT_CONTAINERS.has(container)
@@ -206,10 +205,7 @@ function collapsibleDirs(
 	for (const entry of placed) {
 		const { instancePath, folderNodes, entry: scanned } = entry.file;
 		for (let length = 1; length <= instancePath.length; length++)
-			increment(
-				claims,
-				instancePath.slice(0, length).join(INSTANCE_SEPARATOR)
-			);
+			increment(claims, instanceKey(instancePath.slice(0, length)));
 
 		const rootDir = toPosix(scanned.rootDir);
 		for (const { dir } of folderNodes)
@@ -245,7 +241,7 @@ function collapsibleDirs(
 		if (
 			instancePath &&
 			!isReserved(instancePath) &&
-			claims.get(instancePath.join(INSTANCE_SEPARATOR)) === entries.length
+			claims.get(instanceKey(instancePath)) === entries.length
 		)
 			collapsed.set(dir, instancePath);
 	}
@@ -271,11 +267,7 @@ function instancePathOf(
 			tail.some((segment, index) => segment !== expected[index])
 		)
 			return undefined;
-		if (
-			base &&
-			base.join(INSTANCE_SEPARATOR) !== head.join(INSTANCE_SEPARATOR)
-		)
-			return undefined;
+		if (base && instanceKey(base) !== instanceKey(head)) return undefined;
 		base = head;
 	}
 	return base;

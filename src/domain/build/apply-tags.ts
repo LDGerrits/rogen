@@ -2,6 +2,7 @@ import { groupBy } from "../../base/collection.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
+import { instanceKey } from "../rojo/rojo-tree.js";
 import { sourceOf } from "./root-scanner.js";
 import { RoutedFile, TagMatch } from "./route-files.js";
 import { diagnosePaths } from "./path-list.js";
@@ -73,7 +74,7 @@ export function applyTags(
 	const winners = new Map<string, RoutedFile>();
 	for (const root of groupBy(kept, (file) => file.entry.rootDir).values()) {
 		for (const [instance, claimants] of groupBy(root, (file) =>
-			file.instancePath.join("/")
+			instanceKey(file.instancePath)
 		)) {
 			const tagged = claimants.filter((file) => file.tags.length > 0);
 			const untagged = claimants.filter((file) => file.tags.length === 0);
@@ -100,7 +101,7 @@ export function applyTags(
 	if (errors.length > 0) return err(errors);
 	const supersededBy = new Map<string, string>();
 	for (const file of kept) {
-		const winner = winners.get(file.instancePath.join("/"));
+		const winner = winners.get(instanceKey(file.instancePath));
 		if (winner && winner !== file)
 			supersededBy.set(sourceOf(file.entry), sourceOf(winner.entry));
 	}

@@ -1,5 +1,5 @@
 import path from "path";
-import { joinPosix } from "../../base/path.js";
+import { joinPosix, stemOf } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -98,8 +98,4 @@ function rojoDataName(fileName: string): string {
 	return path.extname(fileName).toLowerCase() === ".json"
 		? stripRojoDataSuffix(stem)
 		: stem;
-}
-
-function stemOf(fileName: string): string {
-	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }

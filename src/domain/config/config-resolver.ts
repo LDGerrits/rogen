@@ -1,12 +1,12 @@
 import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { CONFIG_SUFFIX } from "./config-discovery.js";
 import { LayeredConfig } from "./config-layers.js";
 import { validateConfig } from "./config-validation.js";
 import { ResolvedConfig, ResolvedTemplate } from "./config.js";
 
-const PROJECT_FILE_SUFFIX = ".project.json";
 const FALLBACK_NAME = "project";
 
 export function resolveConfig(
@@ -33,7 +33,7 @@ export function resolveConfig(
 		syncDir: config.getValue<string | undefined>("syncDir"),
 		outFile:
 			config.getValue<string | undefined>("outFile") ??
-			path.join(dir, `${stem}${PROJECT_FILE_SUFFIX}`),
+			path.join(dir, projectFileName(stem)),
 	};
 
 	const problems = validateConfig(layered, resolved);

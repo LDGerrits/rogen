@@ -1,9 +1,10 @@
 import path from "path";
 import { groupBy } from "../../base/collection.js";
-import { joinPosix } from "../../base/path.js";
+import { joinPosix, stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
+import { instanceKey } from "../rojo/rojo-tree.js";
 import { Target, parseTarget } from "../roblox/target.js";
 import {
 	RojoScriptSuffix,
@@ -151,7 +152,7 @@ export function routeFiles(
 				return RouteDiagnostics.capitalSuffix(
 					{ resource },
 					file.route,
-					file.instancePath.join("/"),
+					instanceKey(file.instancePath),
 					file.separatorName as string,
 					shared
 				);
@@ -336,8 +337,4 @@ function stripSpans(stem: string, spans: readonly SuffixSpan[]): string {
 			stem
 		);
 	return stripped || stem;
-}
-
-function stemOf(fileName: string): string {
-	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }

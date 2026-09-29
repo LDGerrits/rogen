@@ -46,3 +46,8 @@ export function contains(parent: string, child: string): boolean {
 export function relativeTo(from: string, filePath: string): string {
 	return path.relative(from, filePath) || ".";
 }
+
+/** A file name without its last extension. */
+export function stemOf(fileName: string): string {
+	return fileName.slice(0, fileName.length - path.extname(fileName).length);
+}

@@ -3,9 +3,10 @@ import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { configFileName } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { loadConfig } from "../config/load-config.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { Darklua } from "../toolchain/darklua.js";
 import {
 	DetectedWorkspace,
@@ -21,7 +22,6 @@ import {
 	hasSourceConfig,
 } from "./init-files.js";
 import { InitPlan, tagsStep, watchCommand } from "./init-plan.js";
-import { PROJECT_SUFFIX } from "./template.js";
 
 export interface PlaceChoices {
 	readonly name: string;
@@ -113,7 +113,7 @@ export function planPlace(
 	const language = languageOf(options.language);
 	const { compiler } = language;
 	const rootDirs = [...base.rootDirs, folder];
-	const projectFile = `${name}${PROJECT_SUFFIX}`;
+	const projectFile = projectFileName(name);
 
 	const outDir = compiler && `${compiler.outDir(workspace)}/${name}`;
 	const syncBase =
@@ -144,7 +144,7 @@ export function planPlace(
 					rootDirs,
 				}),
 				placeConfig(name, {
-					extends: extendsRef(`${sourceStem}${CONFIG_SUFFIX}`),
+					extends: extendsRef(configFileName(sourceStem)),
 					syncDir,
 				}),
 			]
@@ -179,7 +179,7 @@ export function planPlace(
 				edits: [
 					tagsStep(
 						language,
-						`${sourced ? sourceStem : name}${CONFIG_SUFFIX}`
+						configFileName(sourced ? sourceStem : name)
 					),
 				],
 			},
@@ -210,11 +210,11 @@ export function planVariant(
 				setup: [],
 				run: [
 					watchCommand([name]),
-					`rojo serve ${name}${PROJECT_SUFFIX}`,
+					`rojo serve ${projectFileName(name)}`,
 				],
 				darklua: [],
 				edits: [
-					`Turn tags on or off under "tags", or add "exclude", in ${name}${CONFIG_SUFFIX}.`,
+					`Turn tags on or off under "tags", or add "exclude", in ${configFileName(name)}.`,
 				],
 			},
 		},

@@ -4,7 +4,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { configFileName } from "../config/config-discovery.js";
 import { detectWorkspace } from "../toolchain/detect-workspace.js";
 import { DetectedWorkspace, languageOf } from "../toolchain/toolchain.js";
 import { InitChoices, defaultInitChoices } from "./init-choices.js";
@@ -96,7 +96,7 @@ export async function planInit(
 
 	const knownName = givenName ?? (interactive ? undefined : name);
 	const taken = existingFileDiagnostics(
-		knownName ? [`${knownName}${CONFIG_SUFFIX}`] : [],
+		knownName ? [configFileName(knownName)] : [],
 		directory,
 		existingFiles
 	);
@@ -206,7 +206,7 @@ async function planProjectWithPlaces(
 		rootDirs,
 		...(syncDir && { syncDir }),
 		...(hasSourceConfig(languageOf(language), darklua) && {
-			parent: `${sourceStemOf(name)}${CONFIG_SUFFIX}`,
+			parent: configFileName(sourceStemOf(name)),
 		}),
 	};
 	const places: InitPlan[] = [];

@@ -7,7 +7,7 @@ import {
 } from "../../platform/prompt/prompt-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import {
-	CONFIG_SUFFIX,
+	configFileName,
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { Darklua } from "../toolchain/darklua.js";
@@ -529,8 +529,8 @@ function askConfigName(
 		message: "Config name",
 		description: "Writes <name>.rogen.json.",
 		filesFor: (name) => [
-			`${name}${CONFIG_SUFFIX}`,
-			`${sourceStemOf(name)}${CONFIG_SUFFIX}`,
+			configFileName(name),
+			configFileName(sourceStemOf(name)),
 		],
 	});
 }

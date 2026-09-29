@@ -1,13 +1,21 @@
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { normalizeDir } from "../../base/path.js";
-import { CONFIG_SUFFIX } from "../config/config-discovery.js";
-import { ContainerFactory, RojoProject } from "../rojo/rojo-project.js";
-import { RojoNode, childNodes, rojoPathTarget } from "../rojo/rojo-tree.js";
+import { configFileName } from "../config/config-discovery.js";
+import {
+	ContainerFactory,
+	PROJECT_SUFFIX,
+	RojoProject,
+} from "../rojo/rojo-project.js";
+import {
+	RojoNode,
+	childNodes,
+	instanceKey,
+	rojoPathTarget,
+} from "../rojo/rojo-tree.js";
 import { Mount } from "../toolchain/toolchain.js";
 
 export const TEMPLATE_FILE = "template.project.json";
-export const PROJECT_SUFFIX = ".project.json";
 
 export type TemplateChoice =
 	/** Start `template.project.json` from the package mounts, when there are any. */
@@ -27,7 +35,7 @@ export function handWrittenProjectFiles(
 				file.endsWith(PROJECT_SUFFIX) &&
 				file !== TEMPLATE_FILE &&
 				!existingFiles.has(
-					`${file.slice(0, -PROJECT_SUFFIX.length)}${CONFIG_SUFFIX}`
+					configFileName(file.slice(0, -PROJECT_SUFFIX.length))
 				)
 		)
 		.sort();
@@ -100,7 +108,7 @@ export function stripGeneratedNodes(
 	);
 	return {
 		project: edited.getTree(),
-		removed: removed.map((instancePath) => instancePath.join("/")),
+		removed: removed.map((instancePath) => instanceKey(instancePath)),
 	};
 }
 
@@ -129,7 +137,7 @@ export function addMissingMounts(
 			.getPaths()
 			.map(
 				({ path, instancePath }) =>
-					`${normalizeDir(rojoPathTarget(path))} at ${[...at, ...instancePath].join("/")}`
+					`${normalizeDir(rojoPathTarget(path))} at ${instanceKey([...at, ...instancePath])}`
 			);
 	const merge = (
 		node: RojoNode,

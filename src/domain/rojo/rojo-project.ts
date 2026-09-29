@@ -4,6 +4,7 @@ import {
 	RojoPath,
 	RojoTree,
 	childNodes,
+	instanceKey,
 	isRojoPath,
 	rojoPathTarget,
 } from "./rojo-tree.js";
@@ -27,6 +28,12 @@ export interface ProjectFile {
  * created on its behalf looks like, so the same model serves Rogen's
  * generated tree and the templates `init` writes.
  */
+/** The suffix of a Rojo project file, such as `default.project.json`. */
+export const PROJECT_SUFFIX = ".project.json";
+
+export const projectFileName = (stem: string): string =>
+	`${stem}${PROJECT_SUFFIX}`;
+
 export class RojoProject<T extends ProjectFile = RojoTree> {
 	private readonly project: T;
 
@@ -132,7 +139,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 				);
 			} else if (!isObject(next)) {
 				throw new Error(
-					`Can't insert below "${instancePath.slice(0, depth + 1).join("/")}": it isn't a node.`
+					`Can't insert below "${instanceKey(instancePath.slice(0, depth + 1))}": it isn't a node.`
 				);
 			}
 			current = current[segment] as RojoNode;

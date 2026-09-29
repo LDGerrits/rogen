@@ -6,6 +6,7 @@ import {
 	joinPosix,
 	normalizeDir,
 	relativeTo,
+	stemOf,
 	toPosix,
 } from "../path.js";
 
@@ -120,6 +121,17 @@ describe("normalizeDir", () => {
 
 		it("should name the folder itself with a dot", () => {
 			expect(relativeTo(abs("src"), abs("src"))).toBe(".");
+		});
+	});
+
+	describe("stemOf", () => {
+		it("should drop the extension", () => {
+			expect(stemOf("Save.luau")).toBe("Save");
+			expect(stemOf("Save.server.luau")).toBe("Save.server");
+		});
+
+		it("should keep a name that has no extension", () => {
+			expect(stemOf("Save")).toBe("Save");
 		});
 	});
 });

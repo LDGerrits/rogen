@@ -4,7 +4,7 @@ import { joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
-import { RojoNode } from "../rojo/rojo-tree.js";
+import { RojoNode, instanceKey } from "../rojo/rojo-tree.js";
 import { matchFolderKey, unwrapInvisibleFolder } from "./declared-key.js";
 import {
 	InstancelessFolder,
@@ -16,8 +16,6 @@ import { INIT_META_FILE } from "./root-scanner.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { FALLBACK_ROUTE, RoutedFile } from "./route-files.js";
 import { metaFileFor } from "./unclaimed-meta.js";
-
-const INSTANCE_SEPARATOR = "/";
 
 export interface FolderMetaInput {
 	readonly files: readonly RoutedFile[];
@@ -52,10 +50,7 @@ export function applyFolderMeta(
 		input.folderMeta.map((meta) => [dirOf(meta), meta])
 	);
 	const sharedWithFile = new Map(
-		input.files.map((file) => [
-			file.instancePath.join(INSTANCE_SEPARATOR),
-			file,
-		])
+		input.files.map((file) => [instanceKey(file.instancePath), file])
 	);
 
 	const copies: Copy[] = [];
@@ -127,7 +122,7 @@ export function applyFolderMeta(
 			warnings.push(
 				MetaDiagnostics.templateClass(
 					location,
-					instancePath.join(INSTANCE_SEPARATOR),
+					instanceKey(instancePath),
 					templateNode.$className,
 					meta.file,
 					meta.className
@@ -146,7 +141,7 @@ function reachedNodes(files: readonly RoutedFile[]): Map<string, ReachedNode> {
 	const reached = new Map<string, ReachedNode>();
 	for (const { entry, folderNodes } of files) {
 		for (const { instancePath, dir } of folderNodes) {
-			const key = instancePath.join(INSTANCE_SEPARATOR);
+			const key = instanceKey(instancePath);
 			const node = reached.get(key) ?? { instancePath, dirs: new Set() };
 			node.dirs.add(joinPosix(entry.rootDir, dir));
 			reached.set(key, node);
@@ -169,7 +164,7 @@ function copiesById(copies: readonly Copy[]): Map<FolderMeta, string[]> {
 				meta.id !== undefined && templateNode.$id === undefined
 		),
 		({ meta }) => meta,
-		({ instancePath }) => instancePath.join(INSTANCE_SEPARATOR)
+		({ instancePath }) => instanceKey(instancePath)
 	);
 }
 

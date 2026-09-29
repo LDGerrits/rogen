@@ -1,5 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { FileLocation } from "../../domain/build/build.js";
+import { instanceKey } from "../../domain/rojo/rojo-tree.js";
 
 const FORM_LABELS = {
 	folder: "folder",
@@ -27,7 +28,7 @@ function outcomeOf(
 				tags.length === 0
 					? ""
 					: ` · ${tags.length === 1 ? "tag" : "tags"} ${tags.join(", ")}`;
-			return `${location.instancePath.join("/")} · route ${location.route} (${location.routeMatch})${tagged}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${tagged}`;
 		}
 		case "pruned":
 			return `pruned · tag ${location.tag.tag} is off (${FORM_LABELS[location.tag.form]})`;

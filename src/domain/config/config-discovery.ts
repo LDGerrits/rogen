@@ -10,11 +10,14 @@ import { ErrorUtils } from "../../base/errors.js";
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";
 
+export const configFileName = (stem: string): string =>
+	`${stem}${CONFIG_SUFFIX}`;
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
 
-const DEFAULT_CONFIG_NAME = `${DEFAULT_CONFIG_STEM}${CONFIG_SUFFIX}`;
+const DEFAULT_CONFIG_NAME = configFileName(DEFAULT_CONFIG_STEM);
 
 export async function discoverConfigPaths(
 	fileSystem: FileSystemService,
@@ -33,7 +36,7 @@ export async function discoverConfigPaths(
 		resolved.push(defaultResult.unwrap());
 	} else {
 		for (const name of names) {
-			const candidate = path.join(cwd, `${name}${CONFIG_SUFFIX}`);
+			const candidate = path.join(cwd, configFileName(name));
 			if (!(await fileSystem.exists(candidate))) {
 				return err(
 					new Error(

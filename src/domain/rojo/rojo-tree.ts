@@ -28,6 +28,13 @@ export interface RojoNode {
 	[key: string]: unknown;
 }
 
+const INSTANCE_SEPARATOR = "/";
+
+/** An instance path written as one key, such as `ReplicatedStorage/Shared/Util`. */
+export function instanceKey(instancePath: readonly string[]): string {
+	return instancePath.join(INSTANCE_SEPARATOR);
+}
+
 /** A node's children: every key Rojo reads as an instance name, in file order. */
 export function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(

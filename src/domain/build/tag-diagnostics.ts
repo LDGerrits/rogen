@@ -1,3 +1,4 @@
+import { capitalized } from "../../base/string.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -5,7 +6,6 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { RojoScriptSuffix } from "../rojo/rojo-assigned-name.js";
-import { capitalized } from "./declared-key.js";
 
 export const TagDiagnostics = {
 	activeClash: (
