@@ -5,6 +5,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { RojoScriptSuffix } from "../rojo/rojo-assigned-name.js";
+import { capitalized } from "./declared-key.js";
 
 export const TagDiagnostics = {
 	activeClash: (
@@ -32,23 +33,12 @@ export const TagDiagnostics = {
 	dormantCapitalSuffix: (
 		location: DiagnosticLocation,
 		tag: string,
-		variantName: string
+		separatorName: string
 	): Diagnostic =>
 		warningDiagnostic(
 			"tag.dormantCapitalSuffix",
 			location,
-			`pruned because its capital suffix matches the dormant tag "${tag}". If it's a variant, name it ${variantName}; if not, rename it so it doesn't end in "${tag[0].toUpperCase()}${tag.slice(1)}".`
-		),
-
-	moreDormantCapitalSuffixes: (
-		location: DiagnosticLocation,
-		tag: string,
-		count: number
-	): Diagnostic =>
-		warningDiagnostic(
-			"tag.dormantCapitalSuffix",
-			location,
-			`${count} more ${count === 1 ? "file was" : "files were"} pruned by the dormant tag "${tag}" on a capital suffix. Run 'rogen where' to list them all.`
+			`pruned because its capital suffix matches the dormant tag "${tag}". If it's a variant, name it ${separatorName}; if not, rename it so it doesn't end in "${capitalized(tag)}".`
 		),
 
 	buriedScriptSuffix: (

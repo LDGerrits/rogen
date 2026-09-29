@@ -1,5 +1,4 @@
-import path from "path";
-import { toPosix } from "../../base/path.js";
+import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -28,33 +27,32 @@ export function applyTags(
 
 	const kept: RoutedFile[] = [];
 	const pruned: string[] = [];
-	const prunedOnCapital = new Map<string, string[]>();
+	const prunedOnCapital = new Map<string, Map<string, string>>();
 	for (const file of routed) {
 		const dormant = file.tags.filter(({ tag }) => !config.tags[tag]);
 		if (dormant.length === 0) {
 			kept.push(file);
 			continue;
 		}
-		pruned.push(displayPath(file));
-		for (const { tag } of dormant.filter(({ form }) => form === "capital"))
-			append(prunedOnCapital, tag, displayPath(file));
-	}
-	for (const [tag, paths] of prunedOnCapital)
-		warnings.push(
-			...diagnosePaths(
-				paths,
-				(resource) =>
-					TagDiagnostics.dormantCapitalSuffix(
-						{ resource },
-						tag,
-						variantName(resource, tag)
-					),
-				(count) =>
-					TagDiagnostics.moreDormantCapitalSuffixes(
-						location,
-						tag,
-						count
+		pruned.push(sourcePath(file));
+		for (const { tag, separatorName } of dormant)
+			if (separatorName)
+				prunedOnCapital.set(
+					tag,
+					(prunedOnCapital.get(tag) ?? new Map()).set(
+						sourcePath(file),
+						separatorName
 					)
+				);
+	}
+	for (const [tag, separatorNames] of prunedOnCapital)
+		warnings.push(
+			...diagnosePaths([...separatorNames.keys()], (resource) =>
+				TagDiagnostics.dormantCapitalSuffix(
+					{ resource },
+					tag,
+					separatorNames.get(resource) as string
+				)
 			)
 		);
 
@@ -79,7 +77,7 @@ export function applyTags(
 					TagDiagnostics.activeClash(
 						location,
 						instance,
-						tagged.map(displayPath)
+						tagged.map(sourcePath)
 					)
 				);
 			else if (tagged.length === 0 && untagged.length > 1)
@@ -87,7 +85,7 @@ export function applyTags(
 					TagDiagnostics.untaggedClash(
 						location,
 						instance,
-						untagged.map(displayPath)
+						untagged.map(sourcePath)
 					)
 				);
 			winners.set(instance, tagged[0] ?? untagged[untagged.length - 1]);
@@ -96,26 +94,12 @@ export function applyTags(
 
 	if (errors.length > 0) return err(errors);
 	const won = new Set(winners.values());
-	const superseded = kept.filter((file) => !won.has(file)).map(displayPath);
+	const superseded = kept.filter((file) => !won.has(file)).map(sourcePath);
 	return ok({ files: [...won], superseded, pruned, warnings });
 }
 
-/** The file's name with its capital tag suffix written as a separator suffix. */
-function variantName(source: string, tag: string): string {
-	const name = path.posix.basename(source);
-	const extension = path.posix.extname(name);
-	const stem = name.slice(0, name.length - extension.length);
-	const word = tag[0].toUpperCase() + tag.slice(1);
-	const base = stem.endsWith(word) ? stem.slice(0, -word.length) : stem;
-	return `${base}.${tag}${extension}`;
-}
-
 function sourcePath(file: RoutedFile): string {
-	return path.join(file.entry.rootDir, file.entry.relativePath);
-}
-
-function displayPath(file: RoutedFile): string {
-	return toPosix(sourcePath(file));
+	return joinPosix(file.entry.rootDir, file.entry.relativePath);
 }
 
 function append<T>(groups: Map<string, T[]>, key: string, item: T): void {

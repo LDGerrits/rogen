@@ -1,5 +1,5 @@
 import path from "path";
-import { isInside, toPosix } from "../../base/path.js";
+import { isInside, joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -108,7 +108,7 @@ export async function buildProject(
 	const sourcePaths = (paths: (root: ScannedRoot) => readonly string[]) =>
 		scan.roots.flatMap((root) =>
 			paths(root).map((relativePath) =>
-				toPosix(path.join(root.rootDir, relativePath))
+				joinPosix(root.rootDir, relativePath)
 			)
 		);
 	const assembly = assembleTree(config, {

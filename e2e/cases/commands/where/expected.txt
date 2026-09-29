@@ -2,7 +2,7 @@ $ rogen where
 exit 0
 stdout:
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
-  src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+  src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)
   src/Net/HttpMock.luau -> pruned · tag mock is off
   src/Net/Types.lua -> replaced by src/Net/Types.luau
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
@@ -11,7 +11,7 @@ stdout:
 $ rogen where src/Net src/Combat/Server/Hit.luau README.md
 exit 0
 stdout:
-  src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+  src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)
   src/Net/HttpMock.luau -> pruned · tag mock is off
   src/Net/Types.lua -> replaced by src/Net/Types.luau
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)

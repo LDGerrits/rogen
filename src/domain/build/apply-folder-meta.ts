@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -147,7 +147,7 @@ function reachedNodes(files: readonly RoutedFile[]): Map<string, ReachedNode> {
 		for (const { instancePath, dir } of folderNodes) {
 			const key = instancePath.join(INSTANCE_SEPARATOR);
 			const node = reached.get(key) ?? { instancePath, dirs: new Set() };
-			node.dirs.add(toPosix(path.join(entry.rootDir, dir)));
+			node.dirs.add(joinPosix(entry.rootDir, dir));
 			reached.set(key, node);
 		}
 	}
@@ -210,9 +210,7 @@ function sharedWithScript(
 		return MetaDiagnostics.sharedWithInitFolder(
 			{ resource: meta.file },
 			instance,
-			toPosix(
-				path.join(entry.rootDir, entry.relativePath, INIT_META_FILE)
-			)
+			joinPosix(entry.rootDir, entry.relativePath, INIT_META_FILE)
 		);
 	const fileName = path.posix.basename(entry.relativePath);
 	return MetaDiagnostics.sharedWithScript(
@@ -251,5 +249,5 @@ function instancelessFolderOf(
 }
 
 function dirOf(meta: FolderMeta): string {
-	return toPosix(path.join(meta.rootDir, meta.dir));
+	return joinPosix(meta.rootDir, meta.dir);
 }

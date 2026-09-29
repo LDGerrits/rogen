@@ -88,7 +88,7 @@ describe("locateFiles", () => {
 					"Http",
 				],
 				route: "Client",
-				routeMatch: "suffix",
+				routeMatch: "capital suffix",
 				tags: [],
 			},
 			{

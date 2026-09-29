@@ -1,5 +1,5 @@
 import path from "path";
-import { isInside, toPosix, normalizeDir } from "../path.js";
+import { isInside, joinPosix, toPosix, normalizeDir } from "../path.js";
 
 describe("Path", () => {
 	describe("toPosix", () => {
@@ -10,6 +10,20 @@ describe("Path", () => {
 
 		it("should return POSIX paths unmodified", () => {
 			expect(toPosix("src/core/module.ts")).toBe("src/core/module.ts");
+		});
+	});
+
+	describe("joinPosix", () => {
+		it("should join segments and write the result with forward slashes", () => {
+			expect(joinPosix("/repo/src", "Inventory", "Save.luau")).toBe(
+				"/repo/src/Inventory/Save.luau"
+			);
+		});
+
+		it("should resolve dot segments", () => {
+			expect(joinPosix("/repo/src", "./Net/../Save.luau")).toBe(
+				"/repo/src/Save.luau"
+			);
 		});
 	});
 

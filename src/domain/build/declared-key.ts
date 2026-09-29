@@ -13,12 +13,12 @@ export function unwrapInvisibleFolder(folderName: string): {
 		: { name: inner, invisible: true };
 }
 
-function capitalized(key: string): string {
+export function capitalized(key: string): string {
 	return key[0].toUpperCase() + key.slice(1);
 }
 
 /** The same name with the first letter in the other case. */
-function withFirstLetterFlipped(name: string): string {
+export function withFirstLetterFlipped(name: string): string {
 	const first = name[0];
 	const flipped =
 		first === first.toLowerCase()
@@ -124,6 +124,20 @@ export interface SuffixSpan {
 	readonly start: number;
 	readonly length: number;
 	readonly form: SuffixForm;
+}
+
+/** The file name with the span's suffix rewritten as `<separator><key>`. */
+export function withSeparatorSuffix(
+	fileName: string,
+	span: SuffixSpan,
+	separator: string
+): string {
+	return (
+		fileName.slice(0, span.start) +
+		separator +
+		span.key +
+		fileName.slice(span.start + span.length)
+	);
 }
 
 export interface SuffixMatch {

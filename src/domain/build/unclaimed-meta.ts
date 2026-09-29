@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { joinPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -45,7 +45,7 @@ export function findUnclaimedMeta(
 			const folder = listing.get(name);
 			return [
 				{
-					path: toPosix(path.join(root.rootDir, metaFile)),
+					path: joinPosix(root.rootDir, metaFile),
 					hint: hintFor(
 						name,
 						siblings,

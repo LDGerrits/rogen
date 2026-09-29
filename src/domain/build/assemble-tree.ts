@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { joinPosix, toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -178,7 +178,7 @@ function placeEntry(file: RoutedFile): PlacedEntry {
 	const { entry } = file;
 	return {
 		file,
-		source: toPosix(path.join(entry.rootDir, entry.relativePath)),
+		source: joinPosix(entry.rootDir, entry.relativePath),
 		rojoName: rojoNameOf(entry),
 	};
 }

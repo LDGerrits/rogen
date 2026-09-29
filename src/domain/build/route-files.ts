@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -19,6 +19,7 @@ import {
 	matchMarkerKey,
 	matchSuffixKeys,
 	unwrapInvisibleFolder,
+	withSeparatorSuffix,
 } from "./declared-key.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 import { diagnosePaths } from "./path-list.js";
@@ -29,11 +30,14 @@ export const FALLBACK_ROUTE = "*";
 export type TagForm = "folder" | "marker" | SuffixForm;
 
 /** How the governing route matched the file; `fallback` is the `*` route. */
-export type RouteMatch = "folder" | "marker" | "suffix" | "fallback";
+export type RouteMatch =
+	"folder" | "marker" | "suffix" | "capital suffix" | "fallback";
 
 export interface TagMatch {
 	readonly tag: string;
 	readonly form: TagForm;
+	/** The file name with a capital suffix written as a separator suffix. */
+	readonly separatorName?: string;
 }
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */
@@ -47,6 +51,8 @@ export interface RoutedFile {
 	/** The governing route key, or `*`. */
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
+	/** The file name with a capital route suffix written as a separator suffix; a dot would make Rojo read `.server` as a script class. */
+	readonly separatorName?: string;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
 	/** Routing, tag and invisible folders name no node, so they have none. */
@@ -73,14 +79,6 @@ interface RouteContext {
 	readonly targets: ReadonlyMap<string, Target>;
 	/** Called with the path of a name that only differs from a declared key in letter case. */
 	readonly noteNearMiss: (path: string, key: string) => void;
-	readonly noteCapitalRoute: (capitalRoute: CapitalRoute) => void;
-}
-
-interface CapitalRoute {
-	readonly path: string;
-	readonly key: string;
-	readonly instancePath: readonly string[];
-	readonly separatorName: string;
 }
 
 /** Files that no route governs are left out and reported in one warning. */
@@ -103,15 +101,12 @@ export function routeFiles(
 	);
 	const tagKeys = new Set(Object.keys(config.tags));
 	const nearMisses = new Map<string, string>();
-	const capitalRoutes = new Map<string, CapitalRoute>();
 	const context: RouteContext = {
 		routeKeys,
 		tagKeys,
 		declaredKeys: new Set([...routeKeys, ...tagKeys]),
 		targets,
 		noteNearMiss: (path, key) => nearMisses.set(path, key),
-		noteCapitalRoute: (capitalRoute) =>
-			capitalRoutes.set(capitalRoute.path, capitalRoute),
 	};
 
 	const routed: RoutedFile[] = [];
@@ -123,59 +118,52 @@ export function routeFiles(
 				path.posix.basename(marker).slice(1),
 				context.declaredKeys
 			);
-			if (key) context.noteNearMiss(rootPath(root, marker), key);
+			if (key) context.noteNearMiss(joinPosix(root.rootDir, marker), key);
 		}
 		for (const entry of root.entries) {
 			const outcome = routeEntry(entry, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
-			else
-				unrouted.push(
-					toPosix(path.join(root.rootDir, entry.relativePath))
-				);
+			else unrouted.push(joinPosix(root.rootDir, entry.relativePath));
 		}
 	}
 
+	const capitalRouted = new Map(
+		routed
+			.filter(({ separatorName }) => separatorName)
+			.map((file) => [sourceOf(file), file])
+	);
+	const shared = [...routeKeys].find((key) => key.toLowerCase() === "shared");
 	return ok({
 		routed,
 		unrouted,
 		warnings: [
-			...diagnosePaths(
-				[...nearMisses.keys()],
-				(resource) => {
-					const key = nearMisses.get(resource) as string;
-					return RouteDiagnostics.caseMismatch(
-						{ resource },
-						tagKeys.has(key) ? "tag" : "route",
-						key
-					);
-				},
-				(count) => RouteDiagnostics.moreCaseMismatches(location, count)
-			),
-			...diagnosePaths(
-				[...capitalRoutes.keys()],
-				(resource) => {
-					const { key, instancePath, separatorName } =
-						capitalRoutes.get(resource) as CapitalRoute;
-					return RouteDiagnostics.capitalSuffix(
-						{ resource },
-						key,
-						instancePath.join("/"),
-						separatorName
-					);
-				},
-				(count) => RouteDiagnostics.moreCapitalSuffixes(location, count)
-			),
-			...diagnosePaths(
-				unrouted,
-				(resource) => RouteDiagnostics.unrouted({ resource }),
-				(count) => RouteDiagnostics.moreUnrouted(location, count)
+			...diagnosePaths([...nearMisses.keys()], (resource) => {
+				const key = nearMisses.get(resource) as string;
+				return RouteDiagnostics.caseMismatch(
+					{ resource },
+					tagKeys.has(key) ? "tag" : "route",
+					key
+				);
+			}),
+			...diagnosePaths([...capitalRouted.keys()], (resource) => {
+				const file = capitalRouted.get(resource) as RoutedFile;
+				return RouteDiagnostics.capitalSuffix(
+					{ resource },
+					file.route,
+					file.instancePath.join("/"),
+					file.separatorName as string,
+					shared
+				);
+			}),
+			...diagnosePaths(unrouted, (resource) =>
+				RouteDiagnostics.unrouted({ resource })
 			),
 		],
 	});
 }
 
-function rootPath(root: ScannedRoot, relativePath: string): string {
-	return toPosix(path.join(root.rootDir, relativePath));
+function sourceOf({ entry }: RoutedFile): string {
+	return joinPosix(entry.rootDir, entry.relativePath);
 }
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
@@ -232,10 +220,7 @@ function routeEntry(
 			if (!invisible) folders.push({ name: segment, dir });
 			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
 			if (nearMiss)
-				context.noteNearMiss(
-					toPosix(path.join(entry.rootDir, dir)),
-					nearMiss
-				);
+				context.noteNearMiss(joinPosix(entry.rootDir, dir), nearMiss);
 		}
 		applyMarkers(dir);
 	}
@@ -249,11 +234,18 @@ function routeEntry(
 			context.declaredKeys
 		);
 		noteSuffixNearMiss(entry, match, context);
-		const routeKey = match.spans.find((span) =>
+		const routeSpan = match.spans.find((span) =>
 			context.routeKeys.has(span.key)
-		)?.key;
-		if (routeKey) govern(routeKey, "suffix");
-		tags.push(...tagSpansOf(match.spans, context).map(asTagMatch));
+		);
+		if (routeSpan && governing === undefined) {
+			govern(routeSpan.key, suffixMatchOf(routeSpan));
+			separatorName = separatorNameOf(entry.initFile, routeSpan);
+		}
+		tags.push(
+			...tagSpansOf(match.spans, context).map((span) =>
+				asTagMatch(span, entry.initFile)
+			)
+		);
 	} else {
 		const rawStem = stemOf(leaf);
 		const stem =
@@ -261,17 +253,16 @@ function routeEntry(
 		const match = matchSuffixKeys(stem, context.declaredKeys);
 		noteSuffixNearMiss(entry, match, context);
 		const tagSpans = tagSpansOf(match.spans, context);
-		tags.push(...tagSpans.map(asTagMatch));
+		tags.push(...tagSpans.map((span) => asTagMatch(span, leaf)));
 
 		const stripped = [...tagSpans];
 		const routeSpan = governing
 			? undefined
 			: match.spans.find((span) => context.routeKeys.has(span.key));
 		if (routeSpan) {
-			govern(routeSpan.key, "suffix");
+			govern(routeSpan.key, suffixMatchOf(routeSpan));
 			stripped.push(routeSpan);
-			if (routeSpan.form === "capital")
-				separatorName = `${stem.slice(0, routeSpan.start)}-${routeSpan.key}${stem.slice(routeSpan.start + routeSpan.length)}${leaf.slice(stem.length)}`;
+			separatorName = separatorNameOf(leaf, routeSpan);
 		}
 		if (entry.kind === "script") {
 			if (tagSpans.length > 0 && !rojoScriptSuffix(stem))
@@ -292,18 +283,11 @@ function routeEntry(
 		parent = [...parent, folder.name];
 		folderNodes.push({ instancePath: parent, dir: folder.dir });
 	}
-	const instancePath = [...parent, name];
-	if (separatorName)
-		context.noteCapitalRoute({
-			path: toPosix(path.join(entry.rootDir, entry.relativePath)),
-			key: route,
-			instancePath,
-			separatorName,
-		});
 	return {
 		route,
 		routeMatch,
-		instancePath,
+		separatorName,
+		instancePath: [...parent, name],
 		folderNodes,
 		tags,
 		buriedScriptSuffix,
@@ -317,7 +301,7 @@ function noteSuffixNearMiss(
 ): void {
 	if (match.nearMissKey)
 		context.noteNearMiss(
-			toPosix(path.join(entry.rootDir, entry.relativePath)),
+			joinPosix(entry.rootDir, entry.relativePath),
 			match.nearMissKey
 		);
 }
@@ -329,8 +313,24 @@ function tagSpansOf(
 	return spans.filter((span) => context.tagKeys.has(span.key));
 }
 
-function asTagMatch(span: SuffixSpan): TagMatch {
-	return { tag: span.key, form: span.form };
+function asTagMatch(span: SuffixSpan, fileName: string): TagMatch {
+	const match = { tag: span.key, form: span.form };
+	return span.form === "capital"
+		? { ...match, separatorName: withSeparatorSuffix(fileName, span, ".") }
+		: match;
+}
+
+function suffixMatchOf(span: SuffixSpan): RouteMatch {
+	return span.form === "capital" ? "capital suffix" : "suffix";
+}
+
+function separatorNameOf(
+	fileName: string,
+	span: SuffixSpan
+): string | undefined {
+	return span.form === "capital"
+		? withSeparatorSuffix(fileName, span, "-")
+		: undefined;
 }
 
 /** Keeps the stem whole rather than return an empty name. */

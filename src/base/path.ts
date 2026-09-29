@@ -6,6 +6,10 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
+export function joinPosix(...segments: string[]): string {
+	return toPosix(path.join(...segments));
+}
+
 /** Whether `dir` lies strictly inside `parent`; both must be absolute. */
 export function isInside(dir: string, parent: string): boolean {
 	const relative = path.relative(parent, dir);

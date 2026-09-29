@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  src/Combat/CombatClient.luau - warning: routed to "Client" by its capital suffix, so it becomes StarterPlayer/StarterPlayerScripts/Combat/Combat. If that's intended, name it Combat-Client.luau; if not, move it into a routing folder, where the suffix is ignored.
+  src/Combat/CombatClient.luau - warning: routed to "Client" by its capital suffix, so it becomes StarterPlayer/StarterPlayerScripts/Combat/Combat. To route it on purpose, name it Combat-Client.luau; to keep its name, put it under Shared/ or mark its folder .Shared.
 
 written:
   default.project.json

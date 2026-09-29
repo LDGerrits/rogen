@@ -146,7 +146,7 @@ The `*` route is the **fallback route**. It catches files that no route matched.
 "*": "ReplicatedStorage/Shared"
 ```
 
-Without `*`, those files are **unrouted**: they're left out of the output, and Rogen warns about each one, up to ten, then counts the rest. Rogen never picks a destination itself, so code never reaches the client by accident.
+Without `*`, those files are **unrouted**: they're left out of the output, and Rogen warns about each one, up to ten. The last warning says how many more went unlisted. Rogen never picks a destination itself, so code never reaches the client by accident.
 
 A config that declares no routes at all can't build. That's an error, not an empty project.
 

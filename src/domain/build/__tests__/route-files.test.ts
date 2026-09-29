@@ -323,6 +323,7 @@ describe("routeFiles", () => {
 				resource: abs("src/SERVER"),
 			});
 			expect(warning.message).toContain('"server"');
+			expect(warning.message).toContain('Spell it "server" or "Server"');
 		});
 
 		it("should warn about an invisible folder named like a tag in different case", async () => {
@@ -419,8 +420,10 @@ describe("routeFiles", () => {
 	});
 
 	describe("capital route suffixes", () => {
-		const capitalWarnings = async () =>
-			(await route())
+		const capitalWarnings = async (
+			overrides: Partial<ResolvedConfig> = {}
+		) =>
+			(await route(overrides))
 				.unwrap()
 				.warnings.filter(({ code }) => code === "route.capitalSuffix");
 
@@ -438,6 +441,35 @@ describe("routeFiles", () => {
 				"StarterPlayer/StarterPlayerScripts/Net/Http"
 			);
 			expect(warning.message).toContain("Http-client.luau");
+		});
+
+		it("should name the outer routing folder and marker to keep the name when a shared route is declared", async () => {
+			await write("src/Net/HttpClient.luau");
+
+			const [warning] = await capitalWarnings({
+				routes: { ...ROUTES, shared: "ReplicatedStorage/shared" },
+			});
+
+			expect(warning.message).toContain(
+				"under shared/ or mark its folder .shared"
+			);
+		});
+
+		it("should not name a folder when no shared route is declared", async () => {
+			await write("src/Net/HttpClient.luau");
+
+			const [warning] = await capitalWarnings();
+
+			expect(warning.message).toContain("under another routing folder");
+		});
+
+		it("should warn at the folder of an init script that a capital suffix routes", async () => {
+			await write("src/Net/init.helperServer.luau");
+
+			const [warning] = await capitalWarnings();
+
+			expect(warning.resource).toBe(abs("src/Net"));
+			expect(warning.message).toContain("init.helper-server.luau");
 		});
 
 		it("should keep a model's .model in the separator form", async () => {
@@ -623,7 +655,13 @@ describe("routeFiles", () => {
 
 			expect(await tagsOf()).toEqual([
 				[{ tag: "mock", form: "separator" }],
-				[{ tag: "mock", form: "capital" }],
+				[
+					{
+						tag: "mock",
+						form: "capital",
+						separatorName: "Http.mock.luau",
+					},
+				],
 			]);
 		});
 
@@ -748,7 +786,7 @@ describe("routeFiles", () => {
 			expect(warnings[0].message).toContain('"*"');
 		});
 
-		it("should list at most ten unrouted files and count the rest in one warning", async () => {
+		it("should list at most ten unrouted files, the last noting how many more weren't", async () => {
 			await write(
 				...Array.from({ length: 12 }, (_, n) => `src/F${n + 10}.luau`)
 			);
@@ -757,11 +795,12 @@ describe("routeFiles", () => {
 				.unwrap()
 				.warnings.filter(({ code }) => code === "route.unrouted");
 
-			expect(warnings).toHaveLength(11);
-			expect(warnings[10]).toMatchObject({
-				resource: abs("default.project.json"),
-			});
-			expect(warnings[10].message).toContain("2 more");
+			expect(warnings).toHaveLength(10);
+			expect(warnings[9].resource).toBe(abs("src/F19.luau"));
+			expect(warnings[9].message).toContain(
+				"2 more like it aren't listed"
+			);
+			expect(warnings[8].message).not.toContain("more like it");
 		});
 
 		it("should not warn when every file is routed", async () => {

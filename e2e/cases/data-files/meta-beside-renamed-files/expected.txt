@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  src/Inventory/HitServer.luau - warning: routed to "server" by its capital suffix, so it becomes ServerScriptService/Inventory/Hit. If that's intended, name it Hit-server.luau; if not, move it into a routing folder, where the suffix is ignored.
+  src/Inventory/HitServer.luau - warning: routed to "server" by its capital suffix, so it becomes ServerScriptService/Inventory/Hit. To route it on purpose, name it Hit-server.luau; to keep its name, put it under shared/ or mark its folder .shared.
 
 written:
   default.project.json

@@ -93,7 +93,7 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
-			"src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
+			"src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)",
 			"src/Net/HttpMock.luau -> pruned · tag mock is off",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
