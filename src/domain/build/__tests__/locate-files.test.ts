@@ -1,6 +1,8 @@
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
+import { FileChangeType } from "../../../platform/fs/file-events.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { addPlannedFiles, locateFiles } from "../build.js";
@@ -314,6 +316,40 @@ describe("locateFiles", () => {
 			{ status: "ignored", source: abs("src/Save.meta.json") },
 			{ status: "missing", source: abs("src/Nowhere") },
 		]);
+	});
+
+	describe("an entry of unknown type", () => {
+		const unknownEntry = async (name: string) => {
+			await write("src/Other.luau");
+			const config = configOf();
+			const index = await indexOf(config);
+			index.applyChanges([
+				{
+					type: FileChangeType.ADDED,
+					path: abs(name),
+					fileType: FileType.Unknown,
+				},
+			]);
+			return { config, index };
+		};
+
+		it("should be reported as not an instance rather than missing", async () => {
+			const { config, index } = await unknownEntry("src/Pipe.md");
+
+			expect(
+				locateFiles(index, config, [abs("src/Pipe.md")]).unwrap()
+			).toEqual([{ status: "ignored", source: abs("src/Pipe.md") }]);
+		});
+
+		it("should not be replaced by a planned file", async () => {
+			const { config, index } = await unknownEntry("src/Pipe.luau");
+
+			addPlannedFiles(index, config.rootDirs, [abs("src/Pipe.luau")]);
+
+			expect(index.getEntryType(abs("src"), "Pipe.luau")).toBe(
+				FileType.Unknown
+			);
+		});
 	});
 
 	describe("an init folder", () => {

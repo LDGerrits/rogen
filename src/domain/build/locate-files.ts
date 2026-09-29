@@ -76,8 +76,7 @@ export function addPlannedFiles(
 	for (const target of paths) {
 		const rootDir = rootDirs.find((dir) => isInside(target, dir));
 		if (!rootDir || !classifyFile(path.basename(target))) continue;
-		if (index.getEntryType(path.dirname(target), path.basename(target)))
-			continue;
+		if (index.hasEntry(path.dirname(target), path.basename(target))) continue;
 
 		const missing: string[] = [];
 		for (
@@ -221,7 +220,7 @@ function locatePath(
 	}
 
 	if (index.getEntries(target)) return [{ status: "empty", source: target }];
-	const exists = index.getEntryType(
+	const exists = index.hasEntry(
 		path.posix.dirname(target),
 		path.posix.basename(target)
 	);
