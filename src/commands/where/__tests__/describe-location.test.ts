@@ -12,7 +12,7 @@ describe("describeLocation", () => {
 				source: "/repo/src/Net/HttpClient.luau",
 				instancePath: ["StarterPlayer", "StarterPlayerScripts", "Http"],
 				route: "Client",
-				routeMatch: "capital suffix",
+				routeMatch: "capital",
 				tags: [],
 			})
 		).toBe(

@@ -29,15 +29,15 @@ import { RouteDiagnostics } from "./route-diagnostics.js";
 
 export const FALLBACK_ROUTE = "*";
 
-export type TagForm = "folder" | "marker" | SuffixForm;
+/** How a route or tag key matched a file. */
+export type MatchForm = "folder" | "marker" | SuffixForm;
 
 /** How the governing route matched the file; `fallback` is the `*` route. */
-export type RouteMatch =
-	"folder" | "marker" | "suffix" | "capital suffix" | "fallback";
+export type RouteMatch = MatchForm | "fallback";
 
 export interface TagMatch {
 	readonly tag: string;
-	readonly form: TagForm;
+	readonly form: MatchForm;
 	/** The file name with a capital suffix written as a separator suffix. */
 	readonly separatorName?: string;
 }
@@ -234,7 +234,7 @@ function routeEntry(
 			context.routeKeys.has(span.key)
 		);
 		if (routeSpan && governing === undefined) {
-			govern(routeSpan.key, suffixMatchOf(routeSpan));
+			govern(routeSpan.key, routeSpan.form);
 			separatorName = separatorNameOf(entry.initFile, routeSpan);
 		}
 		tags.push(
@@ -256,7 +256,7 @@ function routeEntry(
 			? undefined
 			: match.spans.find((span) => context.routeKeys.has(span.key));
 		if (routeSpan) {
-			govern(routeSpan.key, suffixMatchOf(routeSpan));
+			govern(routeSpan.key, routeSpan.form);
 			stripped.push(routeSpan);
 			separatorName = separatorNameOf(leaf, routeSpan);
 		}
@@ -311,10 +311,6 @@ function asTagMatch(span: SuffixSpan, fileName: string): TagMatch {
 	return span.form === "capital"
 		? { ...match, separatorName: withSeparatorSuffix(fileName, span, ".") }
 		: match;
-}
-
-function suffixMatchOf(span: SuffixSpan): RouteMatch {
-	return span.form === "capital" ? "capital suffix" : "suffix";
 }
 
 function separatorNameOf(

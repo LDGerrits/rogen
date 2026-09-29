@@ -101,12 +101,12 @@ describe("locateFiles", () => {
 					"Http",
 				],
 				route: "Client",
-				routeMatch: "capital suffix",
+				routeMatch: "capital",
 				tags: [],
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Socket-Client.luau"),
-				routeMatch: "suffix",
+				routeMatch: "separator",
 			}),
 			{
 				status: "placed",

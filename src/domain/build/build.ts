@@ -20,6 +20,7 @@ import { RouteDiagnostics } from "./route-diagnostics.js";
 import { RouteResult, RoutedFile, routeFiles } from "./route-files.js";
 export { addPlannedFiles } from "./locate-files.js";
 export type { FileLocation } from "./locate-files.js";
+export type { RouteMatch } from "./route-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
 
 export interface RootSummary {
