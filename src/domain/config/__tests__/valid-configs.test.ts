@@ -6,10 +6,45 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { requireValidConfigs } from "../valid-configs.js";
+import {
+	requireValidConfigs,
+	resolvedConfigs,
+	resolvedEntries,
+} from "../valid-configs.js";
 import { MockConfigService, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/valid-configs", () => {
+	describe("resolvedEntries and resolvedConfigs", () => {
+		const unresolved = {
+			...mockEntry({}, "/repo/broken.rogen.json"),
+			resolved: undefined,
+		};
+
+		it("should pair each config that resolved with its entry and skip the rest", () => {
+			const good = mockEntry(
+				{ rootDirs: ["/repo/a"] },
+				"/repo/a.rogen.json"
+			);
+			const service = new MockConfigService([unresolved, good]);
+
+			const entries = resolvedEntries(service);
+
+			expect(entries).toHaveLength(1);
+			expect(entries[0].entry).toBe(good);
+			expect(entries[0].config).toBe(good.resolved);
+		});
+
+		it("should list only the configs that resolved", () => {
+			const good = mockEntry(
+				{ rootDirs: ["/repo/a"] },
+				"/repo/a.rogen.json"
+			);
+			const service = new MockConfigService([good, unresolved]);
+
+			expect(resolvedConfigs(service)).toEqual([good.resolved]);
+		});
+	});
+
 	describe("requireValidConfigs", () => {
 		const problem = errorDiagnostic(
 			"config.unknownField",

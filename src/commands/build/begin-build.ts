@@ -9,7 +9,10 @@ import {
 	ConfigEntry,
 	ConfigService,
 } from "../../domain/config/config-service.js";
-import { requireValidConfigs } from "../../domain/config/valid-configs.js";
+import {
+	requireValidConfigs,
+	resolvedEntries,
+} from "../../domain/config/valid-configs.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -57,9 +60,5 @@ export async function beginBuild({
 	if (skipped.length > 0) {
 		logService.info(`Not building: ${skipped.join(", ")}.`);
 	}
-	return ok(
-		configService.configs.flatMap((entry) =>
-			entry.resolved ? [{ entry, config: entry.resolved }] : []
-		)
-	);
+	return ok(resolvedEntries(configService));
 }

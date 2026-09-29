@@ -13,11 +13,26 @@ export function entryErrors(entry: ConfigEntry): Diagnostic[] {
 	);
 }
 
+/** The configs that resolved, each with the entry it came from. */
+export function resolvedEntries(
+	configService: ConfigService
+): { entry: ConfigEntry; config: ResolvedConfig }[] {
+	return configService.configs.flatMap((entry) =>
+		entry.resolved ? [{ entry, config: entry.resolved }] : []
+	);
+}
+
+export function resolvedConfigs(
+	configService: ConfigService
+): ResolvedConfig[] {
+	return resolvedEntries(configService).map(({ config }) => config);
+}
+
 export function requireValidConfigs(
 	configService: ConfigService
 ): Result<ResolvedConfig[], DiagnosticsError> {
 	const errors = configService.configs.flatMap(entryErrors);
 	if (errors.length > 0) return err(new DiagnosticsError(errors));
 
-	return ok(configService.configs.flatMap((entry) => entry.resolved ?? []));
+	return ok(resolvedConfigs(configService));
 }

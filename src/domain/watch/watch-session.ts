@@ -14,6 +14,7 @@ import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
 import { BuildSummary, buildProject } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
+import { resolvedConfigs } from "../config/valid-configs.js";
 import { writeOutput } from "../output/write-output.js";
 import { dropSourceUpdates } from "./drop-source-updates.js";
 import { PrintedDiagnostics } from "./printed-diagnostics.js";
@@ -95,7 +96,7 @@ export class WatchSession extends AbstractDisposable {
 		private readonly fileSystemService: FileSystemService
 	) {
 		super();
-		this.plan = createWatchPlan(this.liveConfigs());
+		this.plan = createWatchPlan(resolvedConfigs(this.configService));
 	}
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
@@ -131,7 +132,9 @@ export class WatchSession extends AbstractDisposable {
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
-			this.liveConfigs().map(({ file }) => this.queueRebuild(file, true))
+			resolvedConfigs(this.configService).map(({ file }) =>
+				this.queueRebuild(file, true)
+			)
 		);
 	}
 
@@ -148,12 +151,6 @@ export class WatchSession extends AbstractDisposable {
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
 		super[Symbol.dispose]();
-	}
-
-	private liveConfigs(): ResolvedConfig[] {
-		return this.configService.configs.flatMap((entry) =>
-			entry.resolved ? [entry.resolved] : []
-		);
 	}
 
 	private unseen(
@@ -320,7 +317,7 @@ export class WatchSession extends AbstractDisposable {
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
-		this.plan = createWatchPlan(this.liveConfigs());
+		this.plan = createWatchPlan(resolvedConfigs(this.configService));
 		if (this.watchKey() === this.activeWatch) return false;
 		await this.watchPlan();
 		return true;
@@ -374,7 +371,9 @@ export class WatchSession extends AbstractDisposable {
 
 		const affected = new Set([
 			...reloaded,
-			...(reindexed ? this.liveConfigs().map(({ file }) => file) : []),
+			...(reindexed
+				? resolvedConfigs(this.configService).map(({ file }) => file)
+				: []),
 			...sourceChanges.flatMap((change) =>
 				this.plan.configsFor(change.path)
 			),
@@ -400,7 +399,7 @@ export class WatchSession extends AbstractDisposable {
 		if (!reindexed) await this.indexService.initialize(this.plan.roots);
 		this.announce(
 			{ kind: "burst" },
-			this.liveConfigs().map(({ file }) =>
+			resolvedConfigs(this.configService).map(({ file }) =>
 				this.queueRebuild(file, reloaded.includes(file))
 			)
 		);
