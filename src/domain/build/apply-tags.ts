@@ -1,8 +1,8 @@
-import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
-import { RoutedFile } from "./route-files.js";
+import { sourceOf } from "./root-scanner.js";
+import { RoutedFile, TagMatch } from "./route-files.js";
 import { diagnosePaths } from "./path-list.js";
 import { TagDiagnostics } from "./tag-diagnostics.js";
 
@@ -11,8 +11,12 @@ export interface TagResult {
 	readonly files: readonly RoutedFile[];
 	/** Absolute POSIX source paths of the files that lost their instance path to another. */
 	readonly superseded: readonly string[];
+	/** Each superseded path, with the path of the file that took its instance path. */
+	readonly supersededBy: ReadonlyMap<string, string>;
 	/** Absolute POSIX source paths of the files a dormant tag removed. */
 	readonly pruned: readonly string[];
+	/** Each pruned path, with the first dormant tag it carries. */
+	readonly prunedBy: ReadonlyMap<string, TagMatch>;
 	readonly warnings: readonly Diagnostic[];
 }
 
@@ -26,7 +30,7 @@ export function applyTags(
 	const errors: Diagnostic[] = [];
 
 	const kept: RoutedFile[] = [];
-	const pruned: string[] = [];
+	const prunedBy = new Map<string, TagMatch>();
 	const prunedOnCapital = new Map<string, Map<string, string>>();
 	for (const file of routed) {
 		const dormant = file.tags.filter(({ tag }) => !config.tags[tag]);
@@ -34,13 +38,13 @@ export function applyTags(
 			kept.push(file);
 			continue;
 		}
-		pruned.push(sourcePath(file));
+		prunedBy.set(sourceOf(file.entry), dormant[0]);
 		for (const { tag, separatorName } of dormant)
 			if (separatorName)
 				prunedOnCapital.set(
 					tag,
 					(prunedOnCapital.get(tag) ?? new Map()).set(
-						sourcePath(file),
+						sourceOf(file.entry),
 						separatorName
 					)
 				);
@@ -60,7 +64,7 @@ export function applyTags(
 		if (file.buriedScriptSuffix)
 			warnings.push(
 				TagDiagnostics.buriedScriptSuffix(
-					{ resource: sourcePath(file) },
+					{ resource: sourceOf(file.entry) },
 					file.buriedScriptSuffix
 				)
 			);
@@ -77,7 +81,7 @@ export function applyTags(
 					TagDiagnostics.activeClash(
 						location,
 						instance,
-						tagged.map(sourcePath)
+						tagged.map(({ entry }) => sourceOf(entry))
 					)
 				);
 			else if (tagged.length === 0 && untagged.length > 1)
@@ -85,7 +89,7 @@ export function applyTags(
 					TagDiagnostics.untaggedClash(
 						location,
 						instance,
-						untagged.map(sourcePath)
+						untagged.map(({ entry }) => sourceOf(entry))
 					)
 				);
 			winners.set(instance, tagged[0] ?? untagged[untagged.length - 1]);
@@ -93,13 +97,20 @@ export function applyTags(
 	}
 
 	if (errors.length > 0) return err(errors);
-	const won = new Set(winners.values());
-	const superseded = kept.filter((file) => !won.has(file)).map(sourcePath);
-	return ok({ files: [...won], superseded, pruned, warnings });
-}
-
-function sourcePath(file: RoutedFile): string {
-	return joinPosix(file.entry.rootDir, file.entry.relativePath);
+	const supersededBy = new Map<string, string>();
+	for (const file of kept) {
+		const winner = winners.get(file.instancePath.join("/"));
+		if (winner && winner !== file)
+			supersededBy.set(sourceOf(file.entry), sourceOf(winner.entry));
+	}
+	return ok({
+		files: [...new Set(winners.values())],
+		superseded: [...supersededBy.keys()],
+		supersededBy,
+		pruned: [...prunedBy.keys()],
+		prunedBy,
+		warnings,
+	});
 }
 
 function append<T>(groups: Map<string, T[]>, key: string, item: T): void {

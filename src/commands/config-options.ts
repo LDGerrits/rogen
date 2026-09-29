@@ -2,20 +2,48 @@ import { Result, err, ok } from "../base/result.js";
 import { OptionDescriptor, ParsedArgs } from "../platform/environment/args.js";
 import { ConfigRefs } from "../domain/config/config-service.js";
 
-/** The flags that override, or pick, the configs a command reads. */
+const AllOption: OptionDescriptor = {
+	name: "all",
+	type: "boolean",
+	description: "Every config in the working directory.",
+};
+
+const ConfigPathOption: OptionDescriptor = {
+	name: "config",
+	short: "c",
+	type: "string",
+	multiple: true,
+	description: "An explicit config path.",
+};
+
+const TagOption: OptionDescriptor = {
+	name: "tag",
+	short: "t",
+	type: "string",
+	multiple: true,
+	description: "Turns a tag on.",
+};
+
+const NoTagOption: OptionDescriptor = {
+	name: "no-tag",
+	short: "T",
+	type: "string",
+	multiple: true,
+	description: "Turns a tag off.",
+};
+
+/** The flags that pick the configs a command reads and which tags are on in them. */
+export const ConfigSelectionOptions: readonly OptionDescriptor[] = [
+	AllOption,
+	ConfigPathOption,
+	TagOption,
+	NoTagOption,
+];
+
+/** The flags that pick, or override, the configs a command builds. */
 export const ConfigOptions: readonly OptionDescriptor[] = [
-	{
-		name: "all",
-		type: "boolean",
-		description: "Every config in the working directory.",
-	},
-	{
-		name: "config",
-		short: "c",
-		type: "string",
-		multiple: true,
-		description: "An explicit config path.",
-	},
+	AllOption,
+	ConfigPathOption,
 	{
 		name: "out-file",
 		short: "o",
@@ -33,20 +61,8 @@ export const ConfigOptions: readonly OptionDescriptor[] = [
 		type: "string",
 		description: "Overrides template.",
 	},
-	{
-		name: "tag",
-		short: "t",
-		type: "string",
-		multiple: true,
-		description: "Turns a tag on.",
-	},
-	{
-		name: "no-tag",
-		short: "T",
-		type: "string",
-		multiple: true,
-		description: "Turns a tag off.",
-	},
+	TagOption,
+	NoTagOption,
 ];
 
 /** Overrides that name one value, which several configs can't share. */
@@ -68,10 +84,7 @@ function flagOf(name: string): string {
 	return short ? `-${short}` : `--${name}`;
 }
 
-/**
- * The configs a command names, and the overrides that sit above every layer
- * of each. `names` defaults to the positionals after the command.
- */
+/** The configs a command names, and the overrides above every layer of each; `names` defaults to the positionals after the command. */
 export function configRefsFromArgs(
 	args: ParsedArgs,
 	names: readonly string[] = args._.slice(1)

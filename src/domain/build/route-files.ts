@@ -21,7 +21,7 @@ import {
 	unwrapInvisibleFolder,
 	withSeparatorSuffix,
 } from "./declared-key.js";
-import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
+import { ScannedEntry, ScannedRoot, sourceOf } from "./root-scanner.js";
 import { diagnosePaths } from "./path-list.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
@@ -123,14 +123,14 @@ export function routeFiles(
 		for (const entry of root.entries) {
 			const outcome = routeEntry(entry, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
-			else unrouted.push(joinPosix(root.rootDir, entry.relativePath));
+			else unrouted.push(sourceOf(entry));
 		}
 	}
 
 	const capitalRouted = new Map(
 		routed
 			.filter(({ separatorName }) => separatorName)
-			.map((file) => [sourceOf(file), file])
+			.map((file) => [sourceOf(file.entry), file])
 	);
 	const shared = [...routeKeys].find((key) => key.toLowerCase() === "shared");
 	return ok({
@@ -160,10 +160,6 @@ export function routeFiles(
 			),
 		],
 	});
-}
-
-function sourceOf({ entry }: RoutedFile): string {
-	return joinPosix(entry.rootDir, entry.relativePath);
 }
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
@@ -300,10 +296,7 @@ function noteSuffixNearMiss(
 	context: RouteContext
 ): void {
 	if (match.nearMissKey)
-		context.noteNearMiss(
-			joinPosix(entry.rootDir, entry.relativePath),
-			match.nearMissKey
-		);
+		context.noteNearMiss(sourceOf(entry), match.nearMissKey);
 }
 
 function tagSpansOf(

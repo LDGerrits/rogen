@@ -11,17 +11,14 @@ import { TagResult, applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { checkSyncDir } from "./check-sync-dir.js";
 import { checkSyncMeta } from "./check-sync-meta.js";
-import {
-	FileLocation,
-	Placement,
-	addUnwrittenFiles,
-	locate,
-} from "./locate-files.js";
+import { FileLocation, Placement, locate } from "./locate-files.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { readFolderMeta } from "./read-folder-meta.js";
 import { ScannedRoot, scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { RouteResult, RoutedFile, routeFiles } from "./route-files.js";
+export { addPlannedFiles } from "./locate-files.js";
+export type { FileLocation } from "./locate-files.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
 
 export interface RootSummary {
@@ -156,11 +153,7 @@ export async function buildProject(
 	});
 }
 
-/**
- * Where each path lands in `config`'s tree, or why it lands nowhere. Every
- * scanned path without `paths`. A path that doesn't exist yet and names a
- * source file is added to `index` and placed as if it did.
- */
+/** Where each path lands in `config`'s tree, or why it lands nowhere; every scanned path without `paths`. */
 export function locateFiles(
 	index: IndexService,
 	config: ResolvedConfig,
@@ -169,11 +162,10 @@ export function locateFiles(
 	if (Object.keys(config.routes).length === 0) {
 		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
 	}
-	if (paths) addUnwrittenFiles(index, config.rootDirs, paths);
 	const scan = scanRootDirs(index, config);
 	const placed = placeFiles(scan.roots, config);
 	if (placed.isErr()) return placed;
-	return ok(locate(index, placed.value, config.tags, paths));
+	return ok(locate(index, placed.value, paths));
 }
 
 function placeFiles(

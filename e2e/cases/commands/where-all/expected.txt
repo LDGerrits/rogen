@@ -1,0 +1,12 @@
+$ rogen where --all
+exit 0
+stdout:
+  lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+  src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
+
+$ rogen where --all places/lobby/Lobby/Server/Queue.luau src/Inventory
+exit 0
+stdout:
+  default: places/lobby/Lobby/Server/Queue.luau -> outside the root dirs
+  lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+  src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)

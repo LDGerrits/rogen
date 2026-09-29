@@ -366,6 +366,21 @@ describe("scanRootDirs", () => {
 
 			expect(roots[0].excluded).toEqual(["X.spec.luau", "tests"]);
 		});
+
+		it("should name the glob that excluded each path", async () => {
+			await write("src/tests/A.luau", "src/X.spec.luau");
+
+			const { roots } = await scan({
+				exclude: [glob("**/tests"), glob("**/*.spec.luau")],
+			});
+
+			expect(roots[0].excludedBy).toEqual(
+				new Map([
+					["X.spec.luau", glob("**/*.spec.luau")],
+					["tests", glob("**/tests")],
+				])
+			);
+		});
 	});
 
 	describe("several root dirs", () => {
@@ -569,6 +584,7 @@ describe("scanRootDirs", () => {
 				markers: [],
 				metaFiles: [],
 				excluded: [],
+				excludedBy: new Map(),
 				skippedLinks: [],
 			});
 			expect(files(roots[0])).toEqual(["script:A.luau"]);

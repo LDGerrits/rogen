@@ -1,6 +1,10 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
-import { locateFiles, rootsToIndex } from "../../domain/build/build.js";
+import {
+	addPlannedFiles,
+	locateFiles,
+	rootsToIndex,
+} from "../../domain/build/build.js";
 import { configLabel } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { requireValidConfigs } from "../../domain/config/valid-configs.js";
@@ -13,10 +17,12 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { IndexService } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { ConfigOptions, configRefsFromArgs } from "../config-options.js";
+import {
+	ConfigSelectionOptions,
+	configRefsFromArgs,
+} from "../config-options.js";
 import { describeLocation } from "./describe-location.js";
-
-const WHERE_OPTIONS = ["all", "config", "tag", "no-tag"];
+import { ConfigLines, mergeLines } from "./merge-locations.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "where",
@@ -26,14 +32,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			{
 				name: "path",
 				description:
-					"A file or directory; a file that doesn't exist yet is placed as if it did. Every file when none is given.",
+					"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. Every file when none is given.",
 				isOptional: true,
 				isVariadic: true,
 			},
 		],
-		options: ConfigOptions.filter(({ name }) =>
-			WHERE_OPTIONS.includes(name)
-		),
+		options: ConfigSelectionOptions,
 	},
 	handler: async (accessor, args) => {
 		const logService = accessor.get(LogService);
@@ -50,8 +54,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		const paths = args._.slice(1).map((file) => path.resolve(cwd, file));
 		await indexService.initialize(rootsToIndex(configs.value));
+		addPlannedFiles(
+			indexService,
+			configs.value.flatMap(({ rootDirs }) => rootDirs),
+			paths
+		);
 
-		const sections: string[][] = [];
+		const answers: ConfigLines[] = [];
 		for (const config of configs.value) {
 			const located = locateFiles(
 				indexService,
@@ -60,21 +69,17 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			);
 			if (located.isErr())
 				return err(new DiagnosticsError(located.error));
-			const lines = located.value.map((location) =>
-				describeLocation(location, cwd)
-			);
-			sections.push(
-				configs.value.length === 1
-					? lines
-					: [
-							configLabel(config.file),
-							...lines.map((line) => `  ${line}`),
-						]
-			);
+			answers.push({
+				label: configLabel(config.file),
+				lines: located.value.map((location) => [
+					location.source,
+					describeLocation(location, cwd),
+				]),
+			});
 		}
 
-		const output = sections.flat();
-		if (output.length > 0) logService.print(output.join("\n"));
+		const lines = mergeLines(answers, paths.length === 0);
+		if (lines.length > 0) logService.print(lines.join("\n"));
 		return ok(undefined);
 	},
 });

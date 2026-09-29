@@ -129,12 +129,48 @@ describe("applyTags", () => {
 			expect(result.warnings).toEqual([]);
 		});
 
+		it("should name the dormant tag that pruned each file, and how it matched", async () => {
+			await write("src/Analytics.mock.luau", "src/dev/Save.luau");
+
+			const result = (await apply({ mock: false, dev: false })).unwrap();
+
+			expect(result.prunedBy).toEqual(
+				new Map([
+					[
+						abs("src/Analytics.mock.luau"),
+						{ tag: "mock", form: "separator" },
+					],
+					[abs("src/dev/Save.luau"), { tag: "dev", form: "folder" }],
+				])
+			);
+		});
+
 		it("should report the file an active tag replaced as superseded", async () => {
 			await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
 			const result = (await apply({ mock: true })).unwrap();
 
 			expect(result.superseded).toEqual([abs("src/Analytics.luau")]);
+			expect(result.supersededBy).toEqual(
+				new Map([
+					[
+						abs("src/Analytics.luau"),
+						abs("src/Analytics.mock.luau"),
+					],
+				])
+			);
+		});
+
+		it("should name the file from the last root dir that replaced another", async () => {
+			await write("core/Types.luau", "lobby/Types.luau");
+
+			const result = (
+				await apply({}, [abs("core"), abs("lobby")])
+			).unwrap();
+
+			expect(result.supersededBy).toEqual(
+				new Map([[abs("core/Types.luau"), abs("lobby/Types.luau")]])
+			);
 		});
 
 		it("should prune models by a dormant suffix too", async () => {

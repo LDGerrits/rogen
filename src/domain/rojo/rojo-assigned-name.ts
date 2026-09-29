@@ -1,3 +1,5 @@
+import path from "path";
+
 const ROJO_SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof ROJO_SCRIPT_SUFFIXES)[number];
@@ -21,4 +23,16 @@ export function rojoModelName(stem: string): string {
 // Rojo reads `.model.json` and `.project.json` as a model and a nested project; only the part before the suffix is ours to name.
 export function stripRojoDataSuffix(stem: string): string {
 	return stem.replace(/(?<=.)\.(model|project)$/, "");
+}
+
+export type RojoFileKind = "script" | "model" | "data";
+
+/** The name Rojo gives a file when it enumerates the directory itself. */
+export function rojoFileName(kind: RojoFileKind, fileName: string): string {
+	const stem = fileName.slice(
+		0,
+		fileName.length - path.extname(fileName).length
+	);
+	if (kind === "script") return rojoAssignedName(stem);
+	return kind === "data" ? rojoModelName(stem) : stem;
 }

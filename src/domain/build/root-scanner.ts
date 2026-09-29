@@ -1,6 +1,6 @@
 import path from "path";
 import { isMatch } from "../../base/glob.js";
-import { toPosix } from "../../base/path.js";
+import { joinPosix, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -8,9 +8,10 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IndexService } from "../../platform/fs/index-service.js";
+import { RojoFileKind } from "../rojo/rojo-assigned-name.js";
 import { ScanDiagnostics } from "./scan-diagnostics.js";
 
-export type SourceKind = "script" | "model" | "data";
+export type SourceKind = RojoFileKind;
 
 export interface ScannedFile {
 	readonly kind: SourceKind;
@@ -27,6 +28,11 @@ export interface ScannedInitFolder {
 
 export type ScannedEntry = ScannedFile | ScannedInitFolder;
 
+/** The entry's absolute POSIX source path; an init folder's is the folder. */
+export function sourceOf({ rootDir, relativePath }: ScannedEntry): string {
+	return joinPosix(rootDir, relativePath);
+}
+
 export interface ScannedRoot {
 	readonly rootDir: string;
 	readonly entries: readonly ScannedEntry[];
@@ -34,6 +40,8 @@ export interface ScannedRoot {
 	/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
 	readonly metaFiles: readonly string[];
 	readonly excluded: readonly string[];
+	/** The glob that excluded each path in `excluded`. */
+	readonly excludedBy: ReadonlyMap<string, string>;
 	/** Links that loop back to an ancestor or point at nothing, which Rojo must never walk. */
 	readonly skippedLinks: readonly string[];
 }
@@ -113,6 +121,7 @@ function emptyRoot(rootDir: string): ScannedRoot {
 		markers: [],
 		metaFiles: [],
 		excluded: [],
+		excludedBy: new Map(),
 		skippedLinks: [],
 	};
 }
@@ -126,12 +135,12 @@ function scanRoot(
 	const entries: ScannedEntry[] = [];
 	const markers: string[] = [];
 	const metaFiles: string[] = [];
-	const excluded: string[] = [];
+	const excludedBy = new Map<string, string>();
 	const skippedLinks: string[] = [];
 
-	const isExcluded = (absolutePath: string) => {
+	const excludingGlob = (absolutePath: string) => {
 		const posixPath = toPosix(absolutePath);
-		return options.exclude.some((glob) => isMatch(posixPath, glob));
+		return options.exclude.find((glob) => isMatch(posixPath, glob));
 	};
 
 	const visit = (dir: string): boolean => {
@@ -144,8 +153,8 @@ function scanRoot(
 
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
-			if (isExcluded(path.join(dir, name)))
-				excluded.push(relativeTo(name));
+			const glob = excludingGlob(path.join(dir, name));
+			if (glob) excludedBy.set(relativeTo(name), glob);
 			else kept.push([name, type]);
 		}
 
@@ -202,7 +211,8 @@ function scanRoot(
 		entries: entries.sort(byRelativePath),
 		markers: markers.sort(),
 		metaFiles: metaFiles.sort(),
-		excluded: excluded.sort(),
+		excluded: [...excludedBy.keys()].sort(),
+		excludedBy,
 		skippedLinks: skippedLinks.sort(),
 	};
 }
@@ -211,7 +221,7 @@ export function isMetaFile(name: string): boolean {
 	return name.toLowerCase().endsWith(META_FILE_SUFFIX);
 }
 
-function isInitScript(name: string): boolean {
+export function isInitScript(name: string): boolean {
 	return classifyFile(name) === "script" && INIT_SCRIPT.test(name);
 }
 

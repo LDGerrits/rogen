@@ -1,5 +1,6 @@
 import {
 	rojoAssignedName,
+	rojoFileName,
 	rojoModelName,
 	stripRojoDataSuffix,
 } from "../rojo-assigned-name.js";
@@ -50,5 +51,18 @@ describe("stripRojoDataSuffix", () => {
 	it("leaves a stem that is only the suffix, and any other stem", () => {
 		expect(stripRojoDataSuffix(".model")).toBe(".model");
 		expect(stripRojoDataSuffix("Gun.model.mock")).toBe("Gun.model.mock");
+	});
+});
+
+describe("rojoFileName", () => {
+	it.each([
+		["script", "Save.server.luau", "Save"],
+		["script", "Types.luau", "Types"],
+		["script", "Foo.server.mock.luau", "Foo.server.mock"],
+		["data", "Crate.model.json", "Crate"],
+		["data", "Config.json", "Config"],
+		["model", "Gun.rbxm", "Gun"],
+	] as const)("should name a %s file %s as %s", (kind, fileName, name) => {
+		expect(rojoFileName(kind, fileName)).toBe(name);
 	});
 });

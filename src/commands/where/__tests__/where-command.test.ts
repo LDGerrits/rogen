@@ -94,7 +94,7 @@ describe("where command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
 			"src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)",
-			"src/Net/HttpMock.luau -> pruned · tag mock is off",
+			"src/Net/HttpMock.luau -> pruned · tag mock is off (capital suffix)",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);
@@ -127,25 +127,61 @@ describe("where command", () => {
 		});
 
 		expect(printed()).toEqual([
-			"src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · tag mock",
+			"src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · tag mock (suffix)",
 		]);
 	});
 
-	it("should head each config's lines with its name when there are several", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await writeConfig("lobby.rogen.json", {
-			routes: ROUTES,
-			rootDirs: ["src", "places/lobby"],
+	describe("with several configs", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("lobby.rogen.json", {
+				routes: ROUTES,
+				rootDirs: ["src", "places/lobby"],
+			});
+			await write("src/Util.luau", "places/lobby/Queue.luau");
 		});
-		await write("places/lobby/Queue.luau");
 
-		await run({ _: ["places/lobby/Queue.luau"], all: true });
+		it("should print a line once when the configs agree and head each config's line when they differ", async () => {
+			await run({
+				_: ["src/Util.luau", "places/lobby/Queue.luau"],
+				all: true,
+			});
 
+			expect(printed()).toEqual([
+				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+				"default: places/lobby/Queue.luau -> outside the root dirs",
+				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
+			]);
+		});
+
+		it("should head only the lines that some configs lack in the whole tree, sorted", async () => {
+			await run({ all: true });
+
+			expect(printed()).toEqual([
+				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
+				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+			]);
+		});
+	});
+
+	it("should place a file that doesn't exist yet in the init folder that holds it", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write(
+			"src/Combat/Server/Moves/init.luau",
+			"src/Combat/Server/Moves/Punch.luau"
+		);
+
+		await run({ _: ["src/Combat/Server/Moves"] });
+		const asked = printed();
+		logService.clear();
+		await run({ _: ["src/Combat/Server/Moves/Sweep.luau"] });
+
+		expect(asked).toEqual([
+			"src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)",
+			"src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)",
+		]);
 		expect(printed()).toEqual([
-			"default",
-			"  places/lobby/Queue.luau -> outside the root dirs",
-			"lobby",
-			"  places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
+			"src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)",
 		]);
 	});
 

@@ -1,24 +1,27 @@
 $ rogen where
 exit 0
 stdout:
+  src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
+  src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
   src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)
-  src/Net/HttpMock.luau -> pruned · tag mock is off
+  src/Net/HttpMock.luau -> pruned · tag mock is off (capital suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
-  src/Specs -> excluded
+  src/Specs -> excluded · matches src/Specs
 
-$ rogen where src/Net src/Combat/Server/Hit.luau README.md
+$ rogen where src/Net src/Combat/Server/Moves/Sweep.luau src/Empty README.md
 exit 0
 stdout:
   src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)
-  src/Net/HttpMock.luau -> pruned · tag mock is off
+  src/Net/HttpMock.luau -> pruned · tag mock is off (capital suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
-  src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
+  src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)
+  src/Empty -> empty · no file in it places
   README.md -> outside the root dirs
 
 $ rogen where src/Net/HttpMock.luau -t mock
 exit 0
 stdout:
-  src/Net/HttpMock.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · tag mock
+  src/Net/HttpMock.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · tag mock (capital suffix)

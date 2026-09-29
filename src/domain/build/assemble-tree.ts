@@ -1,14 +1,14 @@
 import path from "path";
-import { joinPosix, toPosix } from "../../base/path.js";
+import { toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
-import { rojoAssignedName, rojoModelName } from "../rojo/rojo-assigned-name.js";
+import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { containerClassName } from "../roblox/container-class-name.js";
 import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
 import { applyFolderMeta } from "./apply-folder-meta.js";
 import { FolderMeta } from "./read-folder-meta.js";
-import { ScannedEntry } from "./root-scanner.js";
+import { ScannedEntry, sourceOf } from "./root-scanner.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { RoutedFile } from "./route-files.js";
 import {
@@ -178,7 +178,7 @@ function placeEntry(file: RoutedFile): PlacedEntry {
 	const { entry } = file;
 	return {
 		file,
-		source: joinPosix(entry.rootDir, entry.relativePath),
+		source: sourceOf(entry),
 		rojoName: rojoNameOf(entry),
 	};
 }
@@ -186,10 +186,7 @@ function placeEntry(file: RoutedFile): PlacedEntry {
 /** The name Rojo gives the entry when it enumerates the directory itself. */
 function rojoNameOf(entry: ScannedEntry): string {
 	const name = path.posix.basename(entry.relativePath);
-	if (entry.kind === "init-folder") return name;
-	const stem = name.slice(0, name.length - path.extname(name).length);
-	if (entry.kind === "script") return rojoAssignedName(stem);
-	return entry.kind === "data" ? rojoModelName(stem) : stem;
+	return entry.kind === "init-folder" ? name : rojoFileName(entry.kind, name);
 }
 
 /**
