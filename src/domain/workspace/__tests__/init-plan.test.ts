@@ -746,7 +746,7 @@ describe("planInit", () => {
 					$className: "DataModel",
 					ReplicatedStorage: { Deps: { $path: "./Packages" } },
 					ServerScriptService: {
-						ServerPackages: { $path: "vendor/server" },
+						Server: { $path: "ServerPackages" },
 					},
 				},
 			});
@@ -757,6 +757,45 @@ describe("planInit", () => {
 
 			expect(files.template?.content).toBe(content);
 			expect(files.notes).toHaveLength(1);
+		});
+
+		it("should not mount a folder inside one the template already mounts", () => {
+			const content = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						rbxts_include: {
+							$path: "include",
+							node_modules: { $path: "node_modules" },
+						},
+					},
+				},
+			});
+			const files = copyWithMounts(content, [
+				{ path: "include", optional: false },
+				{ path: "node_modules/@rbxts", optional: false },
+			]);
+
+			expect(files.template?.content).toBe(content);
+		});
+
+		it("should say which mounts it left out because the template has a node in their place", () => {
+			const content = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "vendor" } },
+				},
+			});
+			const files = copyWithMounts(content, [
+				{ path: "Packages", optional: false },
+			]);
+
+			expect(files.template?.content).toBe(content);
+			expect(files.notes[1]).toBe(
+				"Didn't add Packages at ReplicatedStorage/Packages to template.project.json, since it already has a node there."
+			);
 		});
 
 		it("should say which packages to mount when it can't parse a copied template", () => {
