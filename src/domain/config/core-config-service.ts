@@ -7,7 +7,7 @@ import { Config } from "../../platform/config/config-models.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { discoverConfigPaths } from "./config-discovery.js";
+import { discoverConfigPaths, findConfigFiles } from "./config-discovery.js";
 import { loadConfig } from "./load-config.js";
 import {
 	ConfigEntry,
@@ -72,6 +72,14 @@ export class CoreConfigService
 			discovered.value.map((file) => this.load(file, undefined))
 		);
 		return this.checkTagOverrides();
+	}
+
+	async listConfigFiles(): Promise<string[]> {
+		const found = await findConfigFiles(
+			this.fileSystemService,
+			this.environmentService.cwd
+		);
+		return found.isOk() ? found.value : [];
 	}
 
 	reload(files: readonly string[]): Promise<void> {

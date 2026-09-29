@@ -18,7 +18,6 @@ import {
 	Extensions,
 } from "../../platform/commands/commands.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -76,7 +75,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const logService = accessor.get(LogService);
 		const lifecycleService = accessor.get(LifecycleService);
 		const configService = accessor.get(ConfigService);
-		const fileSystemService = accessor.get(FileSystemService);
 		const indexService = accessor.get(IndexService);
 		const buildService = accessor.get(BuildService);
 		const outputService = accessor.get(OutputService);
@@ -87,9 +85,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const began = await beginBuild({
 			configService,
 			buildService,
-			fileSystemService,
 			logService,
-			cwd,
 			command: "watch",
 		});
 		if (began.isErr()) return began;

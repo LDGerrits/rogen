@@ -1,6 +1,5 @@
 import { relativeTo } from "../../base/path.js";
 import { err, ok } from "../../base/result.js";
-import { findConfigFiles } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { entryErrors } from "../../domain/config/valid-configs.js";
 import {
@@ -8,7 +7,6 @@ import {
 	Extensions,
 } from "../../platform/commands/commands.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 
@@ -21,15 +19,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	handler: async (accessor) => {
 		const logService = accessor.get(LogService);
 		const configService = accessor.get(ConfigService);
-		const fileSystemService = accessor.get(FileSystemService);
 		const cwd = accessor.get(EnvironmentService).cwd;
-
-		const files = await findConfigFiles(fileSystemService, cwd);
-		if (files.isErr()) return files;
 
 		const initialized = await configService.initialize({
 			names: [],
-			paths: files.value,
+			paths: [],
+			all: true,
 		});
 		if (initialized.isErr()) return initialized;
 
@@ -65,17 +60,12 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			}
 		}
 
+		const count = configService.configs.length;
 		if (broken > 0) {
-			return err(
-				new Error(
-					`${broken} of ${files.value.length} configs have errors.`
-				)
-			);
+			return err(new Error(`${broken} of ${count} configs have errors.`));
 		}
 
-		logService.outro(
-			`${files.value.length} ${files.value.length === 1 ? "config" : "configs"}.`
-		);
+		logService.outro(`${count} ${count === 1 ? "config" : "configs"}.`);
 		return ok(undefined);
 	},
 });

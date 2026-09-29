@@ -43,6 +43,8 @@ export interface ConfigService {
 
 	/** Fails only when the configs cannot be found; a broken config lands on its entry. */
 	initialize(refs: ConfigRefs): Promise<Result<void, Error>>;
+	/** Every `*.rogen.json` directly in the working dir, loaded or not, as sorted absolute paths; none when it can't be read. */
+	listConfigFiles(): Promise<string[]>;
 	/** Reloads every config that reads one of `files`. A failed reload keeps the last valid value. */
 	reload(files: readonly string[]): Promise<void>;
 }

@@ -138,19 +138,6 @@ function configFileNames(entries: readonly [string, FileType][]): string[] {
 		.sort();
 }
 
-/** The file names of the configs in `cwd` that are not among `requested`, sorted. */
-export async function findUnrequestedConfigs(
-	fileSystem: FileSystemService,
-	cwd: string,
-	requested: readonly string[]
-): Promise<string[]> {
-	const found = await findConfigFiles(fileSystem, cwd);
-	if (found.isErr()) return [];
-	return found.value
-		.filter((file) => !requested.includes(file))
-		.map((file) => path.basename(file));
-}
-
 function findDuplicate(paths: readonly string[]): string | undefined {
 	const seen = new Set<string>();
 	for (const candidate of paths) {

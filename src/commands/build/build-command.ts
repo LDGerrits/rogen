@@ -14,7 +14,6 @@ import {
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigOptions } from "../config-options.js";
@@ -48,7 +47,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	handler: async (accessor, args) => {
 		const logService = accessor.get(LogService);
 		const configService = accessor.get(ConfigService);
-		const fileSystemService = accessor.get(FileSystemService);
 		const environmentService = accessor.get(EnvironmentService);
 		const buildService = accessor.get(BuildService);
 		const outputService = accessor.get(OutputService);
@@ -75,9 +73,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const began = await beginBuild({
 			configService,
 			buildService,
-			fileSystemService,
 			logService,
-			cwd,
 			command: "build",
 		});
 		if (began.isErr()) return began;

@@ -128,6 +128,25 @@ describe("domain/config/core-config-service", () => {
 		});
 	});
 
+	describe("listConfigFiles", () => {
+		it("should list every config file in the working dir, sorted", async () => {
+			await write("/repo/lobby.rogen.json", {});
+			await write("/repo/default.rogen.json", {});
+			await fs.writeFile("/repo/README.md", "");
+			await fs.createDirectory("/repo/dir.rogen.json");
+			await write("/repo/nested/match.rogen.json", {});
+
+			expect(await service.listConfigFiles()).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+		});
+
+		it("should list nothing when there is no config file", async () => {
+			expect(await service.listConfigFiles()).toEqual([]);
+		});
+	});
+
 	describe("extends", () => {
 		it("should merge maps key by key with the child winning", async () => {
 			await write("/repo/base.rogen.json", {

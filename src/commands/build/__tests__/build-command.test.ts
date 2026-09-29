@@ -325,14 +325,20 @@ describe("build command", () => {
 	});
 
 	it("should name the configs here that it was not asked to build", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
-		await fs.writeFile("/repo/source.rogen.json", "{}");
-		await fs.writeFile("/repo/base.rogen.json", "{}");
-		await fs.writeFile("/repo/notes.json", "{}");
 		const logService = new NullLogService();
 		const info = jest.spyOn(logService, "info");
 
-		await run(new MockConfigService([buildable()]), logService);
+		await run(
+			new MockConfigService(
+				[buildable()],
+				[
+					"/repo/base.rogen.json",
+					"/repo/default.rogen.json",
+					"/repo/source.rogen.json",
+				]
+			),
+			logService
+		);
 
 		expect(info).toHaveBeenCalledWith(
 			"Not building: base.rogen.json, source.rogen.json."
@@ -340,7 +346,6 @@ describe("build command", () => {
 	});
 
 	it("should print no such line when every config here is built", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
 		const logService = new NullLogService();
 		const info = jest.spyOn(logService, "info");
 

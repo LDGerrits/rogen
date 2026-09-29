@@ -33,7 +33,12 @@ export class MockConfigService implements ConfigService {
 	readonly onDidChangeConfig: Event<ConfigChangeEvent> =
 		this._onDidChangeConfig.event;
 
-	constructor(public configs: readonly ConfigEntry[] = [mockEntry()]) {}
+	constructor(
+		public configs: readonly ConfigEntry[] = [mockEntry()],
+		public configFiles: readonly string[] = configs.map(
+			(entry) => entry.file
+		)
+	) {}
 
 	get files(): ReadonlySet<string> {
 		return new Set(this.configs.flatMap((entry) => entry.chain));
@@ -41,6 +46,10 @@ export class MockConfigService implements ConfigService {
 
 	async initialize(): Promise<Result<void, Error>> {
 		return ok(undefined);
+	}
+
+	async listConfigFiles(): Promise<string[]> {
+		return [...this.configFiles];
 	}
 
 	async reload(_files: readonly string[]): Promise<void> {}
