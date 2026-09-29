@@ -68,4 +68,29 @@ describe("configRefsFromArgs", () => {
 			refs({ _: ["build", "lobby"], "out-file": "a.json" }).isOk()
 		).toBe(true);
 	});
+
+	it("should ask for every config with --all", () => {
+		expect(refs({ all: true }).unwrap()).toMatchObject({
+			names: [],
+			paths: [],
+			all: true,
+		});
+	});
+
+	it.each<[string, Partial<ParsedArgs>]>([
+		["a name", { _: ["build", "lobby"] }],
+		["a -c path", { config: ["lobby.rogen.json"] }],
+	])("should reject --all with %s", (_what, args) => {
+		const result = refs({ all: true, ...args });
+
+		expect(result.isErr() && result.error.code).toBe("cli.allWithNames");
+	});
+
+	it("should reject -o with --all", () => {
+		const result = refs({ all: true, "out-file": "a.json" });
+
+		expect(result.isErr() && result.error.code).toBe(
+			"cli.singleConfigFlag"
+		);
+	});
 });

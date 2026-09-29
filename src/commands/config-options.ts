@@ -5,6 +5,11 @@ import { ConfigRefs } from "../domain/config/config-service.js";
 /** The flags that override, or pick, the configs a command reads. */
 export const ConfigOptions: readonly OptionDescriptor[] = [
 	{
+		name: "all",
+		type: "boolean",
+		description: "Every config in the working directory.",
+	},
+	{
 		name: "config",
 		short: "c",
 		type: "string",
@@ -69,8 +74,18 @@ export function configRefsFromArgs(
 ): Result<ConfigRefs, ConfigRefsError> {
 	const names = args._.slice(1);
 	const paths = args.config ?? [];
+	const all = args.all === true;
 
-	if (names.length + paths.length > 1) {
+	if (all && names.length + paths.length > 0) {
+		return err(
+			new ConfigRefsError(
+				"cli.allWithNames",
+				"--all already builds every config here, so it takes no names or -c paths. Drop one or the other."
+			)
+		);
+	}
+
+	if (all || names.length + paths.length > 1) {
 		const option = SINGLE_CONFIG_OPTIONS.find(
 			(name) => args[name] !== undefined
 		);
@@ -87,6 +102,7 @@ export function configRefsFromArgs(
 	return ok({
 		names,
 		paths,
+		all,
 		overrides: {
 			outFile: args["out-file"],
 			syncDir: args["sync-dir"],

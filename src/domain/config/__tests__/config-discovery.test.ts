@@ -160,6 +160,28 @@ describe("discoverConfigPaths", () => {
 		});
 	});
 
+	describe("with all", () => {
+		it("resolves every *.rogen.json in cwd, sorted", async () => {
+			await fs.writeFile("/repo/match.rogen.json", "{}");
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/lobby.rogen.json", "{}");
+
+			const result = await discoverConfigPaths(fs, cwd, [], [], true);
+
+			expect(result.unwrap()).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+				"/repo/match.rogen.json",
+			]);
+		});
+
+		it("errors clearly when nothing is found", async () => {
+			const result = await discoverConfigPaths(fs, cwd, [], [], true);
+
+			expect(errorMessage(result)).toContain("No config file found");
+		});
+	});
+
 	describe("duplicates", () => {
 		it("errors when a name and a -c path resolve to the same file", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");

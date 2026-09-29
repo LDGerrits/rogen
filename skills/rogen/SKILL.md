@@ -23,7 +23,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 
 ## After a batch of changes
 
-- Run `rogen build` once and fix every warning that names your files; when it names configs it skipped, build those too (`rogen build default lobby`).
+- Run `rogen build --all` once and fix every warning that names your files.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
 ## Requires and imports

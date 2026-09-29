@@ -62,7 +62,8 @@ export class CoreConfigService
 			this.fileSystemService,
 			this.environmentService.cwd,
 			refs.names,
-			refs.paths
+			refs.paths,
+			refs.all
 		);
 		if (discovered.isErr()) return err(discovered.error);
 

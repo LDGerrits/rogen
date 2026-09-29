@@ -21,7 +21,7 @@ The first positional is always a **command**. A bare `rogen` runs `build`. Any f
 
 Writes each named config's project file. This is the default command. Several names build in one process, and two configs writing the same file is an error.
 
-When the working directory holds other `*.rogen.json` files, `build` names the ones it wasn't asked to build. In a Darklua setup only one config feeds Studio, and the other feeds Darklua, so forgetting either should be visible.
+When the working directory holds other `*.rogen.json` files, `build` names the ones it wasn't asked to build. In a Darklua setup only one config feeds Studio, and the other feeds Darklua, so forgetting either should be visible. `rogen build --all` builds every config there is.
 
 ### `watch [name…]`
 
@@ -70,6 +70,10 @@ Prints the installed version.
 ## Options
 
 `build` and `watch` accept the override flags. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
+
+### `--all`
+
+Every `*.rogen.json` in the working directory, as if each were named. It takes no names or `-c` paths, and like several names it rejects `-o`, `-s` and `--template`.
 
 ### `-c, --config <path>`
 

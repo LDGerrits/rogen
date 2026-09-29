@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["build", "--all"],
+		["build", "--all", "lobby"]
+	]
+}

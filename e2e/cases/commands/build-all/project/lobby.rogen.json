@@ -1,0 +1,7 @@
+{
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}

@@ -1,0 +1,32 @@
+$ rogen build --all
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · wrote
+  Built 2 configs.
+
+$ rogen build --all lobby
+exit 1
+stderr:
+  error: --all already builds every config here, so it takes no names or -c paths. Drop one or the other.
+
+written:
+  default.project.json
+  lobby.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+    Lobby: Folder
+      Queue: ModuleScript  <- places/lobby/Lobby/Server/Queue.luau

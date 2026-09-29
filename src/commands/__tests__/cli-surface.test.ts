@@ -91,6 +91,12 @@ describe("CLI surface", () => {
 		expect(parse("watch", "--show-config").isErr()).toBe(true);
 	});
 
+	it("should accept --all on build and watch", () => {
+		expect(parse("build", "--all").unwrap().options.all).toBe(true);
+		expect(parse("watch", "--all").unwrap().options.all).toBe(true);
+		expect(parse("list", "--all").isErr()).toBe(true);
+	});
+
 	it("should not accept override flags on commands they don't apply to", () => {
 		expect(parse("list", "-c", "a.rogen.json").isErr()).toBe(true);
 		expect(parse("init", "-t", "mock").isErr()).toBe(true);

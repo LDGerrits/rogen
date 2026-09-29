@@ -10,6 +10,7 @@ stdout:
     name  A config to build.
   
   Options:
+        --all               Every config in the working directory.
     -c, --config <value>    An explicit config path. (repeatable)
     -o, --out-file <value>  Overrides outFile.
     -s, --sync-dir <value>  Overrides syncDir.
@@ -36,6 +37,7 @@ stdout:
     name  A config to watch.
   
   Options:
+        --all               Every config in the working directory.
     -c, --config <value>    An explicit config path. (repeatable)
     -o, --out-file <value>  Overrides outFile.
     -s, --sync-dir <value>  Overrides syncDir.
@@ -92,6 +94,7 @@ stdout:
     name  A config to build.
   
   Options:
+        --all               Every config in the working directory.
     -c, --config <value>    An explicit config path. (repeatable)
     -o, --out-file <value>  Overrides outFile.
     -s, --sync-dir <value>  Overrides syncDir.

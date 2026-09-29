@@ -17,6 +17,8 @@ export interface ConfigOverrides {
 export interface ConfigRefs {
 	readonly names: readonly string[];
 	readonly paths: readonly string[];
+	/** Every config in the working directory, instead of names or paths. */
+	readonly all?: boolean;
 	readonly overrides?: ConfigOverrides;
 }
 

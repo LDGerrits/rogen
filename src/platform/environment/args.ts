@@ -16,6 +16,7 @@ export interface ParsedArgs {
 	version?: boolean;
 	verbose?: boolean;
 	quiet?: boolean;
+	all?: boolean;
 	config?: string[];
 	"out-file"?: string;
 	"sync-dir"?: string;

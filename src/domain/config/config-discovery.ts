@@ -20,8 +20,11 @@ export async function discoverConfigPaths(
 	fileSystem: FileSystemService,
 	cwd: string,
 	names: readonly string[],
-	explicitPaths: readonly string[] = []
+	explicitPaths: readonly string[] = [],
+	all = false
 ): Promise<Result<string[], Error>> {
+	if (all) return findConfigFiles(fileSystem, cwd);
+
 	const resolved: string[] = [];
 
 	if (names.length === 0 && explicitPaths.length === 0) {
