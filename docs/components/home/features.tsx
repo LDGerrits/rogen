@@ -1,10 +1,12 @@
+import Link from "next/link";
 import {
 	FaFolder,
 	FaMapSigns,
 	FaFolderPlus,
 	FaTags,
-	FaCodeBranch,
+	FaSyncAlt,
 	FaLayerGroup,
+	FaSitemap,
 } from "react-icons/fa";
 
 export function Features() {
@@ -26,33 +28,33 @@ export function Features() {
 					{[
 						{
 							title: "Feature Folders",
-							desc: "Keep related client, server, and shared code inside a single folder",
+							desc: "Keep a feature's client, server and shared code in one folder, named after what it does",
 							icon: <FaFolder className="text-white" />,
 						},
 						{
-							title: "Auto-Routing",
-							desc: "Map files to Roblox services automatically using Rojo or Argon",
+							title: "Declared Routes",
+							desc: "A short map in the config says which service each route goes to. Nothing is guessed",
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
-							title: "Multi-Place Support",
-							desc: "Merge multiple source directories to share core systems across different places",
-							icon: <FaFolderPlus className="text-white" />,
-						},
-						{
-							title: "Environment Tags",
-							desc: "Filter test files and inject mock dependencies at build time using tags",
+							title: "Tags",
+							desc: "Swap in a mock or dev variant of a file at build time, without changing a require",
 							icon: <FaTags className="text-white" />,
 						},
 						{
-							title: "Granular Control",
-							desc: "Shape the project tree using invisible folders, hoisting, and marker files",
-							icon: <FaCodeBranch className="text-white" />,
+							title: "Several Places",
+							desc: "Share code across places. Each place is a config that extends a common one",
+							icon: <FaFolderPlus className="text-white" />,
 						},
 						{
-							title: "Modern Tooling",
-							desc: "Support Luau, roblox-ts, and Darklua pipelines out of the box",
+							title: "Luau, roblox-ts and Darklua",
+							desc: "rogen init detects your toolchain and writes a config for it",
 							icon: <FaLayerGroup className="text-white" />,
+						},
+						{
+							title: "Watch and Diagnostics",
+							desc: "Rebuild as files change, reload the config as you edit it, and get errors with a file and position",
+							icon: <FaSyncAlt className="text-white" />,
 						},
 					].map((feature, i) => (
 						<div
@@ -70,6 +72,29 @@ export function Features() {
 							</p>
 						</div>
 					))}
+
+					<Link
+						href="/docs/v2/architectures"
+						className="glass-card md:col-span-3 flex flex-col md:flex-row md:items-center gap-6 p-8 rounded-xl"
+					>
+						<div className="h-6 flex items-center text-xl">
+							<FaSitemap className="text-white" />
+						</div>
+						<div className="grow">
+							<h3 className="text-base font-semibold text-white mb-2">
+								Any Architecture
+							</h3>
+							<p className="text-gray-400 text-sm leading-relaxed">
+								Feature folders, layers in the style of VS Code,
+								or ECS with Jecs or Matter. Pick the layout that
+								fits your game
+							</p>
+						</div>
+						<span className="text-gray-400 text-sm font-medium flex items-center gap-1">
+							Compare architectures{" "}
+							<span className="font-serif">→</span>
+						</span>
+					</Link>
 				</div>
 			</div>
 		</section>
