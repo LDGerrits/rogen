@@ -5,6 +5,8 @@ import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
+import { BuildService } from "../../../domain/build/build-service.js";
+import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -72,7 +74,9 @@ describe("watch command", () => {
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, memFs);
 		services.set(LifecycleService, lifecycle);
-		services.set(IndexService, store.add(new CoreIndexService(memFs)));
+		const indexService = store.add(new CoreIndexService(memFs));
+		services.set(IndexService, indexService);
+		services.set(BuildService, new CoreBuildService(memFs, indexService));
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")

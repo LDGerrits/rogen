@@ -7,6 +7,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { NullLogService } from "../../../platform/log/log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
+import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { WatchSession, WatchUpdate } from "../watch-session.js";
 
@@ -35,6 +36,7 @@ describe("WatchSession", () => {
 
 	const start = async (names: string[] = []) => {
 		await configService.initialize({ names, paths: [] });
+		const indexService = store.add(new CoreIndexService(fs));
 		const session = store.add(
 			new WatchSession(
 				watcher,
@@ -45,7 +47,8 @@ describe("WatchSession", () => {
 					})
 				),
 				configService,
-				store.add(new CoreIndexService(fs)),
+				indexService,
+				new CoreBuildService(fs, indexService),
 				fs
 			)
 		);

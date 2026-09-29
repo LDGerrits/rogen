@@ -29,6 +29,8 @@ import { CoreReconciliationService } from "./platform/watcher/core-reconciliatio
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
+import { BuildService } from "./domain/build/build-service.js";
+import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
@@ -134,10 +136,14 @@ async function main(): Promise<void> {
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
+		const indexService = disposables.add(
+			new CoreIndexService(fileSystemService)
+		);
 		services.set(FileSystemService, fileSystemService);
+		services.set(IndexService, indexService);
 		services.set(
-			IndexService,
-			disposables.add(new CoreIndexService(fileSystemService))
+			BuildService,
+			new CoreBuildService(fileSystemService, indexService)
 		);
 		services.set(
 			LifecycleService,

@@ -1,7 +1,7 @@
 import path from "path";
 import { toPosix } from "../../../base/path.js";
-import { BuildRule, declaredKeysOf } from "../build-record.js";
-import { readFolderName } from "../declared-key.js";
+import { BuildRule } from "../build-record.js";
+import { declaredKeysOf, readFolderName } from "../declared-key.js";
 import {
 	InstancelessFolder,
 	InstancelessMeta,

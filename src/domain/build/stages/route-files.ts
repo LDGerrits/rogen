@@ -13,19 +13,19 @@ import {
 } from "../../rojo/rojo-assigned-name.js";
 import { RojoFileKind } from "../../rojo/rojo-files.js";
 import {
-	FALLBACK_ROUTE,
 	FolderNode,
 	LeftOut,
 	MatchForm,
 	PlacementStage,
 	RoutedFile,
 	ScannedEntry,
-	declaredKeysOf,
 	ScannedRoot,
 	TagMatch,
 } from "../build-record.js";
 import {
+	FALLBACK_ROUTE,
 	SuffixSpan,
+	declaredKeysOf,
 	matchMarkerKey,
 	matchSuffixKeys,
 	readFolderName,

@@ -3,6 +3,7 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { err, ok } from "../../base/result.js";
+import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	ConfigNotice,
@@ -76,12 +77,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const fileSystemService = accessor.get(FileSystemService);
 		const indexService = accessor.get(IndexService);
+		const buildService = accessor.get(BuildService);
 		const watcher = accessor.get(Watcher);
 		const reconciliationService = accessor.get(ReconciliationService);
 		const cwd = accessor.get(EnvironmentService).cwd;
 
 		const began = await beginBuild({
 			configService,
+			buildService,
 			fileSystemService,
 			logService,
 			cwd,
@@ -150,6 +153,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				reconciliationService,
 				configService,
 				indexService,
+				buildService,
 				fileSystemService
 			)
 		);

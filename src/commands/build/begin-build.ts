@@ -1,5 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import { checkBuildable } from "../../domain/build/build.js";
+import { BuildService } from "../../domain/build/build-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import {
 	configLabel,
@@ -25,6 +25,7 @@ export interface BuildTarget {
 
 export interface BeginBuildOptions {
 	readonly configService: ConfigService;
+	readonly buildService: BuildService;
 	readonly fileSystemService: FileSystemService;
 	readonly logService: LogService;
 	readonly cwd: string;
@@ -38,6 +39,7 @@ export interface BeginBuildOptions {
  */
 export async function beginBuild({
 	configService,
+	buildService,
 	fileSystemService,
 	logService,
 	cwd,
@@ -51,7 +53,7 @@ export async function beginBuild({
 		cwd,
 		configService.configs.map((entry) => entry.file)
 	);
-	const upfront = checkBuildable(valid.value);
+	const upfront = buildService.checkBuildable(valid.value);
 	if (upfront.length > 0) return err(new DiagnosticsError(upfront));
 
 	logService.intro(

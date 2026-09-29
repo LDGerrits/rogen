@@ -1,4 +1,4 @@
-import { FileLocation } from "../../../domain/build/build.js";
+import { FileLocation } from "../../../domain/build/build-service.js";
 import { describeLocation } from "../describe-location.js";
 
 const describe1 = (location: FileLocation) =>

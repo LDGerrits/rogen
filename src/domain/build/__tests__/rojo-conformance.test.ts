@@ -11,7 +11,7 @@ import {
 	makeRojoDir,
 	sourcemap,
 } from "../../rojo/__tests__/rojo-cli.js";
-import { buildProject } from "../build.js";
+import { CoreBuildService } from "../core-build-service.js";
 
 const FILES: Record<string, string> = {
 	"A.luau": "",
@@ -113,7 +113,9 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			...overrides,
 		};
 		await index.initialize(config.rootDirs);
-		const built = (await buildProject(fileSystem, index, config)).unwrap();
+		const built = (
+			await new CoreBuildService(fileSystem, index).build(config)
+		).unwrap();
 		(await writeOutput(fileSystem, config, built.tree)).unwrap();
 	};
 

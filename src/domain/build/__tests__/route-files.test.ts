@@ -2,7 +2,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { buildProject } from "../build.js";
+import { CoreBuildService } from "../core-build-service.js";
 import { place } from "../pipeline.js";
 import { abs, configOf, indexOf, writeFiles } from "./fixtures.js";
 
@@ -29,7 +29,7 @@ describe("routeFiles", () => {
 			...overrides,
 		});
 		const index = await indexOf(store, fs, rootDirs);
-		const built = await buildProject(fs, index, config);
+		const built = await new CoreBuildService(fs, index).build(config);
 		return place(index, config).map((build) => ({
 			routed: build.routed,
 			unrouted: [...build.leftOut]

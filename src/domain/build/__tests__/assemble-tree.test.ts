@@ -4,7 +4,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
-import { buildProject } from "../build.js";
+import { CoreBuildService } from "../core-build-service.js";
 import { abs, indexOf, writeFiles } from "./fixtures.js";
 
 const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
@@ -29,7 +29,7 @@ describe("assembleTree", () => {
 			...overrides,
 		};
 		const index = await indexOf(store, fs, config.rootDirs);
-		return buildProject(fs, index, config);
+		return new CoreBuildService(fs, index).build(config);
 	};
 
 	const assemble = async (overrides: Partial<ResolvedConfig> = {}) => {

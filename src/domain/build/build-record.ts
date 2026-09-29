@@ -11,25 +11,6 @@ import { SuffixForm } from "./declared-key.js";
 import { SyncLayout, syncLayoutOf } from "./sync-path.js";
 import { templateProject } from "./template.js";
 
-export const FALLBACK_ROUTE = "*";
-
-export interface DeclaredKeys {
-	/** Every route key but `*`, which no name can spell. */
-	readonly routeKeys: ReadonlySet<string>;
-	readonly tagKeys: ReadonlySet<string>;
-	readonly all: ReadonlySet<string>;
-}
-
-export function declaredKeysOf(
-	config: Pick<ResolvedConfig, "routes" | "tags">
-): DeclaredKeys {
-	const routeKeys = new Set(
-		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
-	);
-	const tagKeys = new Set(Object.keys(config.tags));
-	return { routeKeys, tagKeys, all: new Set([...routeKeys, ...tagKeys]) };
-}
-
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
 	readonly rootDir: string;

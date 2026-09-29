@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { FileLocation, RouteMatch } from "../../domain/build/build.js";
+import { FileLocation, RouteMatch } from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-tree.js";
 
 const MATCH_LABELS: Record<RouteMatch, string> = {

@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { BuildSummary } from "../../domain/build/build.js";
+import { BuildSummary } from "../../domain/build/build-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { LogService } from "../../platform/log/log-service.js";

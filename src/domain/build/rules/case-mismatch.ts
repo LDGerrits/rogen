@@ -1,7 +1,8 @@
 import path from "path";
 import { joinPosix } from "../../../base/path.js";
-import { BuildRule, declaredKeysOf } from "../build-record.js";
+import { BuildRule } from "../build-record.js";
 import {
+	declaredKeysOf,
 	matchKeyIgnoringCase,
 	matchSuffixKeys,
 	readFolderName,

@@ -3,6 +3,8 @@ import path from "path";
 import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { configRefsFromArgs } from "../../config-options.js";
+import { BuildService } from "../../../domain/build/build-service.js";
+import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import "../../../domain/config/config.js";
@@ -49,7 +51,12 @@ describeWithRojo("build command against Rojo", () => {
 		services.set(ConfigService, configService);
 		services.set(EnvironmentService, environment);
 		services.set(FileSystemService, fileSystem);
-		services.set(IndexService, store.add(new CoreIndexService(fileSystem)));
+		const indexService = store.add(new CoreIndexService(fileSystem));
+		services.set(IndexService, indexService);
+		services.set(
+			BuildService,
+			new CoreBuildService(fileSystem, indexService)
+		);
 		services.set(LogService, logService);
 		return store
 			.add(new CoreCommandService(services, logService))

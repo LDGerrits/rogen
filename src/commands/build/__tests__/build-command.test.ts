@@ -9,6 +9,8 @@ import {
 	MockConfigService,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
+import { BuildService } from "../../../domain/build/build-service.js";
+import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	ConfigEntry,
@@ -55,6 +57,7 @@ describe("build command", () => {
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, fs);
 		services.set(IndexService, index);
+		services.set(BuildService, new CoreBuildService(fs, index));
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")

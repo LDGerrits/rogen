@@ -11,7 +11,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildSummary, buildProject } from "../build/build.js";
+import { BuildService, BuildSummary } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { resolvedConfigs } from "../config/valid-configs.js";
@@ -93,6 +93,7 @@ export class WatchSession extends AbstractDisposable {
 		private readonly reconciliationService: ReconciliationService,
 		private readonly configService: ConfigService,
 		private readonly indexService: IndexService,
+		private readonly buildService: BuildService,
 		private readonly fileSystemService: FileSystemService
 	) {
 		super();
@@ -189,12 +190,9 @@ export class WatchSession extends AbstractDisposable {
 			diagnostics: this.unseen(file, "build", diagnostics),
 		});
 
-		const built = await buildProject(
-			this.fileSystemService,
-			this.indexService,
-			config,
-			{ checkSyncDir: load }
-		);
+		const built = await this.buildService.build(config, {
+			checkSyncDir: load,
+		});
 		if (built.isErr()) return failed(built.error);
 		const written = await writeOutput(
 			this.fileSystemService,

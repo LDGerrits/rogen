@@ -2,6 +2,8 @@ import "../where-command.js";
 import "../../../domain/config/config.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { Result } from "../../../base/result.js";
+import { BuildService } from "../../../domain/build/build-service.js";
+import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { configRefsForCommand } from "../../config-options.js";
@@ -59,7 +61,9 @@ describe("where command", () => {
 		services.set(LogService, logService);
 		services.set(FileSystemService, fs);
 		services.set(EnvironmentService, environment);
-		services.set(IndexService, store.add(new CoreIndexService(fs)));
+		const indexService = store.add(new CoreIndexService(fs));
+		services.set(IndexService, indexService);
+		services.set(BuildService, new CoreBuildService(fs, indexService));
 		const configService = store.add(new CoreConfigService(fs, environment));
 		services.set(ConfigService, configService);
 		const commandService = store.add(

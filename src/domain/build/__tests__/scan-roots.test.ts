@@ -9,7 +9,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { ScannedRoot } from "../build-record.js";
-import { buildProject } from "../build.js";
+import { CoreBuildService } from "../core-build-service.js";
 import { place } from "../pipeline.js";
 import { abs, configOf, writeFiles } from "./fixtures.js";
 
@@ -35,7 +35,7 @@ describe("scanRoots", () => {
 		const index = newIndex();
 		await index.initialize([...scanOptions.rootDirs]);
 		const config = configOf(scanOptions);
-		const built = await buildProject(fs, index, config);
+		const built = await new CoreBuildService(fs, index).build(config);
 		return {
 			roots: place(index, config).unwrap().roots,
 			warnings: built.isOk() ? built.value.warnings : built.error,

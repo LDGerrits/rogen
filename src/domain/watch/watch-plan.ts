@@ -1,6 +1,6 @@
 import path from "path";
 import { contains } from "../../base/path.js";
-import { rootsToIndex } from "../build/build.js";
+import { rootsToIndex } from "../build/roots-to-index.js";
 import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { stagingPattern } from "../output/write-output.js";

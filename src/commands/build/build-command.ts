@@ -1,9 +1,9 @@
 import { err, ok } from "../../base/result.js";
 import {
+	BuildService,
 	BuiltProject,
-	buildProject,
-	rootsToIndex,
-} from "../../domain/build/build.js";
+} from "../../domain/build/build-service.js";
+import { rootsToIndex } from "../../domain/build/roots-to-index.js";
 import { configLabel } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { entryErrors } from "../../domain/config/valid-configs.js";
@@ -53,6 +53,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const fileSystemService = accessor.get(FileSystemService);
 		const environmentService = accessor.get(EnvironmentService);
 		const indexService = accessor.get(IndexService);
+		const buildService = accessor.get(BuildService);
 		const logDiagnostics = (diagnostics: readonly Diagnostic[]) => {
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
@@ -75,6 +76,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const cwd = environmentService.cwd;
 		const began = await beginBuild({
 			configService,
+			buildService,
 			fileSystemService,
 			logService,
 			cwd,
@@ -90,12 +92,9 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const built: (BuildTarget & { project: BuiltProject })[] = [];
 		const errors: Diagnostic[] = [];
 		for (const target of targets) {
-			const project = await buildProject(
-				fileSystemService,
-				indexService,
-				target.config,
-				{ checkSyncDir: true }
-			);
+			const project = await buildService.build(target.config, {
+				checkSyncDir: true,
+			});
 			if (project.isErr()) errors.push(...project.error);
 			else built.push({ ...target, project: project.value });
 		}

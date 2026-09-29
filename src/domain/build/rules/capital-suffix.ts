@@ -1,5 +1,6 @@
 import { instanceKey } from "../../rojo/rojo-tree.js";
-import { BuildRule, RoutedFile, declaredKeysOf } from "../build-record.js";
+import { BuildRule, RoutedFile } from "../build-record.js";
+import { declaredKeysOf } from "../declared-key.js";
 import { diagnosePaths } from "../path-list.js";
 import { RouteDiagnostics } from "../route-diagnostics.js";
 

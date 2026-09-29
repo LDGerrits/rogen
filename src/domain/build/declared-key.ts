@@ -1,6 +1,26 @@
 import { capitalized } from "../../base/string.js";
+import { ResolvedConfig } from "../config/config.js";
 
 const SEPARATOR_CHARS = "+._@-";
+
+export const FALLBACK_ROUTE = "*";
+
+export interface DeclaredKeys {
+	/** Every route key but `*`, which no name can spell. */
+	readonly routeKeys: ReadonlySet<string>;
+	readonly tagKeys: ReadonlySet<string>;
+	readonly all: ReadonlySet<string>;
+}
+
+export function declaredKeysOf(
+	config: Pick<ResolvedConfig, "routes" | "tags">
+): DeclaredKeys {
+	const routeKeys = new Set(
+		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
+	);
+	const tagKeys = new Set(Object.keys(config.tags));
+	return { routeKeys, tagKeys, all: new Set([...routeKeys, ...tagKeys]) };
+}
 
 const INVISIBLE_FOLDER = /^\((.+)\)$/;
 

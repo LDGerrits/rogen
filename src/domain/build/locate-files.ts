@@ -8,39 +8,11 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
-import {
-	BuildRecord,
-	LeftOut,
-	RouteMatch,
-	ScannedRoot,
-	TagMatch,
-} from "./build-record.js";
-
-interface Located {
-	/** An absolute POSIX path. */
-	readonly source: string;
-}
-
-export interface PlacedLocation extends Located {
-	readonly status: "placed";
-	readonly instancePath: readonly string[];
-	readonly route: string;
-	readonly routeMatch: RouteMatch;
-	/** The active tags the file carries. */
-	readonly tags: readonly TagMatch[];
-}
-
-export interface UnplacedLocation extends Located {
-	/** `ignored` exists but isn't an instance. */
-	readonly status: "outside" | "ignored" | "missing" | "empty";
-}
-
-/** Where a path lands in the tree, or why it lands nowhere. */
-export type FileLocation =
-	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
+import { BuildRecord, ScannedRoot } from "./build-record.js";
+import { FileLocation } from "./build-service.js";
 
 /** Every scanned path's location, or only those `paths` name, where a directory stands for what's in it. */
-export function locate(
+export function locateFiles(
 	build: BuildRecord,
 	paths?: readonly string[]
 ): FileLocation[] {

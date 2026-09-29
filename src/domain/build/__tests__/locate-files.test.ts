@@ -3,7 +3,7 @@ import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { locateFiles, withPlannedFiles } from "../build.js";
+import { CoreBuildService } from "../core-build-service.js";
 import {
 	abs,
 	configOf as baseConfigOf,
@@ -21,7 +21,7 @@ const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
 		...overrides,
 	});
 
-describe("locateFiles", () => {
+describe("CoreBuildService.locate", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
@@ -37,10 +37,9 @@ describe("locateFiles", () => {
 		const config = configOf(overrides);
 		const index = await indexOfConfig(config);
 		const absolute = paths?.map((p) => abs(p));
-		const planned = absolute
-			? withPlannedFiles(index, config.rootDirs, absolute)
-			: index;
-		return locateFiles(planned, config, absolute).unwrap();
+		return new CoreBuildService(fs, index)
+			.locate(config, absolute)
+			.unwrap();
 	};
 
 	const instancePaths = (located: Awaited<ReturnType<typeof locate>>) =>
@@ -311,46 +310,44 @@ describe("locateFiles", () => {
 			]);
 		});
 
-		it("should never be written to the index it is layered over", async () => {
+		it("should never be written to the index", async () => {
 			await write("src/Other.luau");
 			const config = configOf();
 			const index = await indexOfConfig(config);
 			const updates: unknown[] = [];
-			index.onDidUpdate((changes) => updates.push(changes));
+			store.add(index.onDidUpdate((changes) => updates.push(changes)));
 
-			const planned = withPlannedFiles(index, config.rootDirs, [
+			new CoreBuildService(fs, index).locate(config, [
 				abs("src/Combat/Server/Hit.luau"),
 			]);
 
-			expect(planned.hasEntry(abs("src/Combat/Server"), "Hit.luau")).toBe(
-				true
-			);
-			expect([...(planned.getEntries(abs("src/Combat")) ?? [])]).toEqual([
-				["Server", FileType.Directory],
-			]);
-			expect(planned.getEntries(abs("src"))?.has("Other.luau")).toBe(
-				true
-			);
 			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
 			expect(updates).toEqual([]);
 		});
 
-		it("should not be added by locating alone", async () => {
+		it("should sit beside the files that exist", async () => {
 			await write("src/Other.luau");
-			const config = configOf();
-			const index = await indexOfConfig(config);
 
-			const located = locateFiles(index, config, [
-				abs("src/Combat/Server/Hit.luau"),
-			]).unwrap();
-
-			expect(located).toEqual([
+			expect(
+				await locate(["src/Combat/Server/Hit.luau", "src/Other.luau"])
+			).toMatchObject([
 				{
-					status: "missing",
-					source: abs("src/Combat/Server/Hit.luau"),
+					status: "placed",
+					instancePath: ["ServerScriptService", "Combat", "Hit"],
+				},
+				{
+					status: "placed",
+					instancePath: ["ReplicatedStorage", "Shared", "Other"],
 				},
 			]);
-			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
+		});
+
+		it("should only be planned when paths are named", async () => {
+			await write("src/Other.luau");
+
+			expect((await locate()).map(({ source }) => source)).toEqual([
+				abs("src/Other.luau"),
+			]);
 		});
 
 		it("should not be added when it isn't a source file", async () => {
@@ -397,19 +394,25 @@ describe("locateFiles", () => {
 			const { config, index } = await unknownEntry("src/Pipe.md");
 
 			expect(
-				locateFiles(index, config, [abs("src/Pipe.md")]).unwrap()
+				new CoreBuildService(fs, index)
+					.locate(config, [abs("src/Pipe.md")])
+					.unwrap()
 			).toEqual([{ status: "ignored", source: abs("src/Pipe.md") }]);
 		});
 
 		it("should not be replaced by a planned file", async () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
+			const buildService = new CoreBuildService(fs, index);
 
-			const planned = withPlannedFiles(index, config.rootDirs, [
-				abs("src/Pipe.luau"),
-			]);
+			const named = buildService
+				.locate(config, [abs("src/Pipe.luau")])
+				.unwrap();
 
-			expect(planned.getEntryType(abs("src"), "Pipe.luau")).toBe(
-				FileType.Unknown
+			expect(named).toEqual(
+				buildService
+					.locate(config)
+					.unwrap()
+					.filter(({ source }) => source === abs("src/Pipe.luau"))
 			);
 		});
 	});
@@ -492,7 +495,7 @@ describe("locateFiles", () => {
 		const config = configOf({ routes: {} });
 		const index = await indexOfConfig(config);
 
-		const result = locateFiles(index, config);
+		const result = new CoreBuildService(fs, index).locate(config);
 
 		expect(result.isErr() && result.error.map(({ code }) => code)).toEqual([
 			"route.noRoutes",
