@@ -108,6 +108,9 @@ interface FoundMount {
 	readonly node: string;
 }
 
+const describeMount = ({ path, node }: FoundMount): string =>
+	`${path} at ${node}`;
+
 /** Every `$path` in `node` and below. */
 function mountsIn(node: RojoNode, at: readonly string[]): FoundMount[] {
 	return [
@@ -123,18 +126,23 @@ function mountsIn(node: RojoNode, at: readonly string[]): FoundMount[] {
 }
 
 /**
- * `project` with the `mounts` it doesn't mount anywhere yet, each as
- * `<path> at <node>`. A node already at a mount's place wins over the mount.
+ * `project` with the `mounts` it doesn't mount yet, itself or through a parent
+ * folder, each as `<path> at <node>`. A node already at a mount's place wins,
+ * and the mount is listed in `skipped`.
  */
 export function addMissingMounts(
 	project: TemplateProject,
 	mounts: readonly TemplateMount[]
-): { project: TemplateProject; added: string[] } {
-	const mounted = new Set(mountsIn(project.tree, []).map(({ path }) => path));
-	const missing = mounts.filter(
-		(mount) => !mounted.has(normalizeRootDir(mount.path))
-	);
+): { project: TemplateProject; added: string[]; skipped: string[] } {
+	const mounted = mountsIn(project.tree, []).map(({ path }) => path);
+	const missing = mounts.filter((mount) => {
+		const target = normalizeRootDir(mount.path);
+		return !mounted.some(
+			(dir) => target === dir || target.startsWith(`${dir}/`)
+		);
+	});
 	const added: FoundMount[] = [];
+	const skipped: FoundMount[] = [];
 	const merge = (
 		node: RojoNode,
 		additions: RojoNode,
@@ -148,6 +156,8 @@ export function addMissingMounts(
 				if (existing === undefined) {
 					merged[key] = value;
 					added.push(...mountsIn(value, [...at, key]));
+				} else {
+					skipped.push(...mountsIn(value, [...at, key]));
 				}
 			} else if (existing === undefined || isObject(existing)) {
 				const before = added.length;
@@ -169,6 +179,7 @@ export function addMissingMounts(
 	const tree = merge(project.tree, templateTree(missing), []);
 	return {
 		project: { ...project, tree },
-		added: added.map(({ path, node }) => `${path} at ${node}`),
+		added: added.map(describeMount),
+		skipped: skipped.map(describeMount),
 	};
 }

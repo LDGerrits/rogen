@@ -346,6 +346,7 @@ function templateOf({
 			project && addMissingMounts(stripped?.project ?? project, mounts);
 		const removed = stripped?.removed ?? [];
 		const added = mounted?.added ?? [];
+		const skipped = mounted?.skipped ?? [];
 		return {
 			file: {
 				fileName: TEMPLATE_FILE,
@@ -365,6 +366,11 @@ function templateOf({
 					: []),
 				...(added.length > 0
 					? [`Added ${joinList(added, "and")} to ${TEMPLATE_FILE}.`]
+					: []),
+				...(skipped.length > 0
+					? [
+							`Didn't add ${joinList(skipped, "and")} to ${TEMPLATE_FILE}, since it already has ${skipped.length === 1 ? "a node" : "nodes"} there.`,
+						]
 					: []),
 			],
 			edits: [
