@@ -7,27 +7,9 @@ import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	AssemblyStage,
 	BuildRecord,
-	BuildRule,
 	PlacementStage,
-	SyncRule,
 	startBuild,
 } from "../build-record.js";
-import { buriedScriptSuffix } from "../rules/tagging/buried-script-suffix.js";
-import { capitalSuffix } from "../rules/routing/capital-suffix.js";
-import { caseMismatch } from "../rules/routing/case-mismatch.js";
-import { dormantCapitalSuffix } from "../rules/tagging/dormant-capital-suffix.js";
-import { metaAppliesToNothing } from "../rules/meta/meta-applies-to-nothing.js";
-import { metaNotCopied } from "../rules/meta/meta-not-copied.js";
-import { metaNotSynced } from "../rules/sync/meta-not-synced.js";
-import { missingRootDir } from "../rules/scan/missing-root-dir.js";
-import { nothingEmitted } from "../rules/sync/nothing-emitted.js";
-import { runContextTarget } from "../rules/template/run-context-target.js";
-import { templateClash } from "../rules/template/template-clash.js";
-import { templateClass } from "../rules/meta/template-class.js";
-import { unclaimedMeta } from "../rules/meta/unclaimed-meta.js";
-import { unresolvedLink } from "../rules/scan/unresolved-link.js";
-import { unrouted } from "../rules/routing/unrouted.js";
-import { untaggedClash } from "../rules/tagging/untagged-clash.js";
 import { applyFolderMeta } from "./assembly/apply-folder-meta.js";
 import { applyTags } from "./placement/apply-tags.js";
 import { assembleTree } from "./assembly/assemble-tree.js";
@@ -50,26 +32,6 @@ const ASSEMBLY: readonly AssemblyStage[] = [
 	assembleTree,
 	applyFolderMeta,
 ];
-
-/** In the order their warnings are reported. */
-const RULES: readonly BuildRule[] = [
-	missingRootDir,
-	unresolvedLink,
-	unclaimedMeta,
-	caseMismatch,
-	capitalSuffix,
-	unrouted,
-	dormantCapitalSuffix,
-	buriedScriptSuffix,
-	untaggedClash,
-	runContextTarget,
-	templateClash,
-	metaNotCopied,
-	templateClass,
-	metaAppliesToNothing,
-];
-
-const SYNC_RULES: readonly SyncRule[] = [nothingEmitted, metaNotSynced];
 
 /** Where every scanned file lands, or why it lands nowhere. */
 export function place(
@@ -98,18 +60,4 @@ export async function assemble(
 		build = next.value;
 	}
 	return ok(build);
-}
-
-export function check(build: BuildRecord): Diagnostic[] {
-	return RULES.flatMap((rule) => rule(build));
-}
-
-export async function checkSync(
-	build: BuildRecord,
-	fileSystem: FileSystemService
-): Promise<Diagnostic[]> {
-	const warnings: Diagnostic[] = [];
-	for (const rule of SYNC_RULES)
-		warnings.push(...(await rule(build, fileSystem)));
-	return warnings;
 }

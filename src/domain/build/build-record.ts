@@ -209,15 +209,6 @@ export type AssemblyStage = (
 	| Result<BuildRecord, Diagnostic[]>
 	| Promise<Result<BuildRecord, Diagnostic[]>>;
 
-/** Reports on a finished build and decides nothing. */
-export type BuildRule = (build: BuildRecord) => Diagnostic[];
-
-/** Reports on what the sync dir holds, which only changes when the compiler runs. */
-export type SyncRule = (
-	build: BuildRecord,
-	fileSystem: FileSystemService
-) => Promise<Diagnostic[]>;
-
 export function startBuild(
 	index: IndexReader,
 	config: ResolvedConfig,

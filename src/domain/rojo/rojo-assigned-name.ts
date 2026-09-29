@@ -1,5 +1,6 @@
+import path from "path";
 import { stemOf } from "../../base/path.js";
-import { RojoFileKind } from "./rojo-files.js";
+import { META_FILE_SUFFIX, RojoFileKind, classifyFile } from "./rojo-files.js";
 
 const ROJO_SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
@@ -43,4 +44,27 @@ function readsAsSuffix(kind: RojoFileKind, key: string): boolean {
 /** A dot, or a dash when Rojo reads `.key` for this kind of file, so the suffix stays in the name. */
 export function suffixSeparator(kind: RojoFileKind, key: string): "." | "-" {
 	return readsAsSuffix(kind, key) ? "-" : ".";
+}
+
+// Rojo only reads `.model` and `.project` as a suffix on `.json` files.
+export function rojoDataName(fileName: string): string {
+	const stem = stemOf(fileName);
+	return path.extname(fileName).toLowerCase() === ".json"
+		? stripRojoDataSuffix(stem)
+		: stem;
+}
+
+/** The name Rojo reads a file's `.meta.json` under, or none for a file that takes no meta. */
+export function rojoMetaName(fileName: string): string | undefined {
+	const kind = classifyFile(fileName);
+	const stem = stemOf(fileName);
+	if (kind === "script") return rojoAssignedName(stem);
+	if (kind === "data" && rojoDataName(fileName) === stem) return stem;
+	return undefined;
+}
+
+/** The `.meta.json` Rojo reads for `fileName`, or none for a file that takes no meta. */
+export function rojoMetaFile(fileName: string): string | undefined {
+	const name = rojoMetaName(fileName);
+	return name === undefined ? undefined : `${name}${META_FILE_SUFFIX}`;
 }

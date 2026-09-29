@@ -23,7 +23,7 @@ describe("nothingEmitted", () => {
 		config: ResolvedConfig
 	): Promise<Diagnostic[]> => {
 		const index = await indexOf(store, fs, config.rootDirs);
-		return nothingEmitted(place(index, config, syncTools).unwrap(), fs);
+		return nothingEmitted.check(place(index, config, syncTools).unwrap(), fs);
 	};
 
 	beforeEach(async () => {

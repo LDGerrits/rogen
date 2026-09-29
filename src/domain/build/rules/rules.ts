@@ -1,0 +1,16 @@
+import "./meta/meta-applies-to-nothing.js";
+import "./meta/meta-not-copied.js";
+import "./meta/template-class.js";
+import "./meta/unclaimed-meta.js";
+import "./routing/capital-suffix.js";
+import "./routing/case-mismatch.js";
+import "./routing/unrouted.js";
+import "./scan/missing-root-dir.js";
+import "./scan/unresolved-link.js";
+import "./sync/meta-not-synced.js";
+import "./sync/nothing-emitted.js";
+import "./tagging/buried-script-suffix.js";
+import "./tagging/dormant-capital-suffix.js";
+import "./tagging/untagged-clash.js";
+import "./template/run-context-target.js";
+import "./template/template-clash.js";

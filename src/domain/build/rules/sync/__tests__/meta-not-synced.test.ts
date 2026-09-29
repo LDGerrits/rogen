@@ -27,7 +27,7 @@ describe("metaNotSynced", () => {
 	) => {
 		const config = configOf(overrides);
 		const index = await indexOf(store, fs, config.rootDirs);
-		return metaNotSynced(place(index, config, tools).unwrap(), fs);
+		return metaNotSynced.check(place(index, config, tools).unwrap(), fs);
 	};
 
 	beforeEach(() => {

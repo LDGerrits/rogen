@@ -30,7 +30,7 @@ import {
 	declaredKeysOf,
 	withSeparatorSuffix,
 } from "../../keys/declared-key.js";
-import { RouteDiagnostics } from "../../route-diagnostics.js";
+import { findConfigsWithoutRoutes } from "../prepare-build.js";
 
 type RouteOutcome = Omit<RoutedFile, "entry">;
 
@@ -45,8 +45,8 @@ interface RouteContext {
 export const routeFiles: PlacementStage = (build) => {
 	const { config } = build;
 	const location = { resource: config.outFile };
-	if (Object.keys(config.routes).length === 0)
-		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
+	const withoutRoutes = findConfigsWithoutRoutes([config]);
+	if (withoutRoutes.length > 0) return err(withoutRoutes);
 
 	const targets = new Map<string, Target>();
 	const errors: Diagnostic[] = [];

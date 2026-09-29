@@ -3,7 +3,10 @@ import { ErrorUtils } from "../../../../base/errors.js";
 import { JsoncNode, parseJsonc } from "../../../../base/jsonc.js";
 import { toPosix } from "../../../../base/path.js";
 import { Result, err, ok } from "../../../../base/result.js";
-import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../../../platform/fs/file-system-service.js";
 import { INIT_META_FILE } from "../../../rojo/rojo-files.js";
 import {
@@ -11,7 +14,6 @@ import {
 	FolderMeta,
 	FolderMetaFields,
 } from "../../build-record.js";
-import { MetaDiagnostics } from "../../meta-diagnostics.js";
 
 const FIELD_KINDS: Record<keyof FolderMetaFields, JsoncNode["kind"]> = {
 	className: "string",
@@ -68,9 +70,10 @@ async function readMetaFile(
 		text = await fileSystem.readFile(file);
 	} catch (error) {
 		return err([
-			MetaDiagnostics.unreadable(
+			errorDiagnostic(
+				"meta.unreadable",
 				{ resource: file },
-				ErrorUtils.fromUnknown(error).message
+				`the meta file could not be read: ${ErrorUtils.fromUnknown(error).message}.`
 			),
 		]);
 	}
@@ -79,18 +82,20 @@ async function readMetaFile(
 	if (errors.length > 0)
 		return err(
 			errors.map(({ message, line, column }) =>
-				MetaDiagnostics.invalidSyntax(
+				errorDiagnostic(
+					"meta.invalidSyntax",
 					{ resource: file, position: { line, column } },
-					message
+					`invalid JSONC: ${message}.`
 				)
 			)
 		);
 	if (root?.kind !== "object")
 		return err([
-			MetaDiagnostics.notAnObject({
-				resource: file,
-				position: { line: 1, column: 1 },
-			}),
+			errorDiagnostic(
+				"meta.notAnObject",
+				{ resource: file, position: { line: 1, column: 1 } },
+				"a meta file must be a JSON object."
+			),
 		]);
 
 	// Rojo ignores fields it doesn't know, such as `$schema`.
@@ -99,7 +104,8 @@ async function readMetaFile(
 		const expected = FIELD_KINDS[property.name as keyof FolderMetaFields];
 		if (property.value.kind === expected) return [];
 		return [
-			MetaDiagnostics.wrongType(
+			errorDiagnostic(
+				"meta.wrongType",
 				{
 					resource: file,
 					position: {
@@ -107,9 +113,7 @@ async function readMetaFile(
 						column: property.value.column,
 					},
 				},
-				property.name,
-				KIND_NAMES[expected],
-				KIND_NAMES[property.value.kind]
+				`"${property.name}": expected ${KIND_NAMES[expected]}, found ${KIND_NAMES[property.value.kind]}.`
 			),
 		];
 	});

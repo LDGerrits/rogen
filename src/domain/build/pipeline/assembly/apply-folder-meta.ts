@@ -1,7 +1,10 @@
 import { compareStrings, groupBy } from "../../../../base/collection.js";
 import { joinPosix } from "../../../../base/path.js";
 import { err, ok } from "../../../../base/result.js";
-import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../../../platform/diagnostics/diagnostic.js";
 import { RojoProject } from "../../../rojo/rojo-project.js";
 import { RojoNode, instanceKey } from "../../../rojo/rojo-tree.js";
 import {
@@ -10,7 +13,6 @@ import {
 	FolderMetaOutcome,
 	RoutedFile,
 } from "../../build-record.js";
-import { MetaDiagnostics } from "../../meta-diagnostics.js";
 import { generatedContainer } from "../../layout/template.js";
 import { isCollapsed } from "./assemble-tree.js";
 
@@ -60,10 +62,10 @@ export const applyFolderMeta: AssemblyStage = (build) => {
 			if (reportedClashes.has(key)) continue;
 			reportedClashes.add(key);
 			errors.push(
-				MetaDiagnostics.sameNode(
+				errorDiagnostic(
+					"meta.sameNode",
 					{ resource: clash[0].file },
-					instance,
-					clash.map(({ file }) => file)
+					`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one root dir, and neither ranks above the other. Keep one of them.`
 				)
 			);
 		}
@@ -93,10 +95,10 @@ export const applyFolderMeta: AssemblyStage = (build) => {
 	for (const [meta, instances] of copiesById(copies))
 		if (instances.length > 1)
 			errors.push(
-				MetaDiagnostics.idOnSeveralNodes(
+				errorDiagnostic(
+					"meta.idOnSeveralNodes",
 					{ resource: meta.file },
-					meta.id as string,
-					instances
+					`id "${meta.id}" would be copied onto ${instances.length} instances (${instances.join(", ")}), but a ref must be unique. Remove the id, or keep the folder's files in one service.`
 				)
 			);
 	if (errors.length > 0) return err(errors);

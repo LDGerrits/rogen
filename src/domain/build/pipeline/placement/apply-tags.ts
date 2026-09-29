@@ -1,6 +1,9 @@
 import { groupBy } from "../../../../base/collection.js";
 import { err, ok } from "../../../../base/result.js";
-import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../../../platform/diagnostics/diagnostic.js";
 import { instanceKey } from "../../../rojo/rojo-tree.js";
 import {
 	InstanceClash,
@@ -8,7 +11,6 @@ import {
 	PlacementStage,
 	RoutedFile,
 } from "../../build-record.js";
-import { TagDiagnostics } from "../../tag-diagnostics.js";
 
 /** Prunes what dormant tags remove, then resolves files that share an instance path. */
 export const applyTags: PlacementStage = (build) => {
@@ -33,10 +35,10 @@ export const applyTags: PlacementStage = (build) => {
 			const untagged = claimants.filter((file) => file.tags.length === 0);
 			if (tagged.length > 1)
 				errors.push(
-					TagDiagnostics.activeClash(
+					errorDiagnostic(
+						"tag.activeClash",
 						{ resource: config.outFile },
-						instance,
-						tagged.map(({ entry }) => entry.source)
+						`${tagged.length} files with active tags all become "${instance}" (${tagged.map(({ entry }) => entry.source).join(", ")}). Only one can apply: turn a tag off or rename a file.`
 					)
 				);
 			else if (claimants.length > 1)

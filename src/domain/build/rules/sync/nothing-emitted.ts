@@ -1,94 +1,51 @@
 import path from "path";
 import { ancestors } from "../../../../base/path.js";
-import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
+import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.js";
 import {
 	FileSystemService,
 	isDirectoryType,
 } from "../../../../platform/fs/file-system-service.js";
-import { SyncRule } from "../../build-record.js";
-import { SyncDiagnostics } from "../../sync-diagnostics.js";
-import {
-	SyncLayout,
-	SyncedLayout,
-	emittedPath,
-	isSynced,
-	relativeToProject,
-} from "../../layout/sync-path.js";
-
-export const nothingEmitted: SyncRule = ({ config, layout }, fileSystem) =>
-	checkSyncDir(fileSystem, config.rootDirs, layout);
+import { Registry } from "../../../../platform/registry/registry.js";
+import { isSynced, relativeToProject } from "../../layout/sync-path.js";
+import { Extensions, RuleRegistry, SyncDirRule } from "../rule-registry.js";
+import { anyExists, topLevelEmitted } from "./synced-output.js";
 
 /** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
-export async function checkSyncDir(
-	fileSystem: FileSystemService,
-	rootDirs: readonly string[],
-	layout: SyncLayout
-): Promise<Diagnostic[]> {
-	if (!isSynced(layout)) return [];
-	const { syncDir, projectDir, commonRoot: common } = layout;
+export const nothingEmitted: SyncDirRule = {
+	id: "nothing-emitted",
+	order: 10,
+	check: async ({ config, layout }, fileSystem) => {
+		if (!isSynced(layout)) return [];
+		const { syncDir, projectDir, commonRoot: common } = layout;
 
-	const shown = (target: string) =>
-		relativeToProject(target, projectDir) || ".";
-	const warnings: Diagnostic[] = [];
+		const shown = (target: string) =>
+			relativeToProject(target, projectDir) || ".";
+		const warnings = [];
 
-	for (const rootDir of rootDirs) {
-		const emitted = await topLevelEmitted(fileSystem, rootDir, layout);
-		if (emitted.length === 0 || (await anyExists(fileSystem, emitted)))
-			continue;
+		for (const rootDir of config.rootDirs) {
+			const emitted = await topLevelEmitted(fileSystem, rootDir, layout);
+			if (emitted.length === 0 || (await anyExists(fileSystem, emitted)))
+				continue;
 
-		const expected = path.join(syncDir, path.relative(common, rootDir));
-		const found = await findShifted(fileSystem, syncDir, emitted[0]);
-		warnings.push(
-			SyncDiagnostics.nothingEmitted(
-				{ resource: rootDir },
-				shown(rootDir),
-				shown(expected),
-				found
-					? { found: true, path: shown(found) }
-					: {
-							found: false,
-							path: shown(
-								await nearestExisting(fileSystem, expected)
-							),
-						}
-			)
-		);
-	}
-	return warnings;
-}
-
-/** Whether any top-level entry of `rootDir` has its emitted counterpart under `syncDir`. */
-export async function hasSyncedOutput(
-	fileSystem: FileSystemService,
-	rootDir: string,
-	layout: SyncedLayout
-): Promise<boolean> {
-	return anyExists(
-		fileSystem,
-		await topLevelEmitted(fileSystem, rootDir, layout)
-	);
-}
-
-/** Skips dot-files, which are mostly markers a compiler never emits. */
-async function topLevelEmitted(
-	fileSystem: FileSystemService,
-	rootDir: string,
-	layout: SyncedLayout
-): Promise<string[]> {
-	if (!(await fileSystem.isDirectory(rootDir))) return [];
-	return (await fileSystem.readDirectory(rootDir))
-		.filter(([name]) => !name.startsWith("."))
-		.map(([name]) => emittedPath(path.join(rootDir, name), layout));
-}
-
-async function anyExists(
-	fileSystem: FileSystemService,
-	paths: readonly string[]
-): Promise<boolean> {
-	for (const target of paths)
-		if (await fileSystem.exists(target)) return true;
-	return false;
-}
+			const expected = path.join(
+				syncDir,
+				path.relative(common, rootDir)
+			);
+			const found = await findShifted(fileSystem, syncDir, emitted[0]);
+			const nearest = found
+				? `Found "${shown(found)}" — is the compiler's output rooted differently?`
+				: `The nearest path that exists is "${shown(await nearestExisting(fileSystem, expected))}" — has the compiler run?`;
+			warnings.push(
+				warningDiagnostic(
+					"output.nothingEmitted",
+					{ resource: rootDir },
+					`nothing emitted for root dir "${shown(rootDir)}" exists under "${shown(expected)}". ${nearest}`
+				)
+			);
+		}
+		return warnings;
+	},
+};
 
 /** Looks for `emitted` one level up or down from where it was expected, the way a shifted common root moves it. */
 async function findShifted(
@@ -120,3 +77,5 @@ async function nearestExisting(
 	for (const dir of chain) if (await fileSystem.exists(dir)) return dir;
 	return chain[chain.length - 1];
 }
+
+Registry.as<RuleRegistry>(Extensions.Rules).registerSyncDirRule(nothingEmitted);

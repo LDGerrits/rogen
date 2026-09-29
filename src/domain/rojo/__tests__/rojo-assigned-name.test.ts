@@ -1,6 +1,8 @@
 import {
 	rojoAssignedName,
 	rojoFileName,
+	rojoMetaFile,
+	rojoMetaName,
 	rojoModelName,
 	stripRojoDataSuffix,
 	suffixSeparator,
@@ -98,5 +100,38 @@ describe("rojoFileName", () => {
 		["model", "Gun.rbxm", "Gun"],
 	] as const)("should name a %s file %s as %s", (kind, fileName, name) => {
 		expect(rojoFileName(kind, fileName)).toBe(name);
+	});
+});
+
+describe("rojoMetaName", () => {
+	it.each([
+		["Save.server.luau", "Save"],
+		["Types.luau", "Types"],
+		["Foo.server.mock.luau", "Foo.server.mock"],
+		["Config.json", "Config"],
+		["Notes.txt", "Notes"],
+	])("should read the meta of %s under %s", (fileName, name) => {
+		expect(rojoMetaName(fileName)).toBe(name);
+	});
+
+	it.each(["Crate.model.json", "Nested.project.json", "Gun.rbxm"])(
+		"should give %s no meta",
+		(fileName) => {
+			expect(rojoMetaName(fileName)).toBeUndefined();
+		}
+	);
+
+	it("should read .model and .project as part of the name outside .json files", () => {
+		expect(rojoMetaName("Crate.model.toml")).toBe("Crate.model");
+	});
+});
+
+describe("rojoMetaFile", () => {
+	it("should name the meta file Rojo reads for a script", () => {
+		expect(rojoMetaFile("Save.server.luau")).toBe("Save.meta.json");
+	});
+
+	it("should name none for a file that takes no meta", () => {
+		expect(rojoMetaFile("Gun.rbxm")).toBeUndefined();
 	});
 });
