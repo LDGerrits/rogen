@@ -1,5 +1,7 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import "../luau.js";
+import "../roblox-ts.js";
 import { detectWorkspace } from "../detect-workspace.js";
 
 describe("detectWorkspace", () => {

@@ -26,7 +26,8 @@ export function validateConfig(
 	const claim = (key: string, location: ReturnType<typeof locate>) => {
 		const other = declared.get(matchIdentity(key));
 		if (other === undefined) declared.set(matchIdentity(key), key);
-		else problems.push(ConfigDiagnostics.ambiguousKey(location, key, other));
+		else
+			problems.push(ConfigDiagnostics.ambiguousKey(location, key, other));
 	};
 	for (const key of routeKeys) {
 		const location = locate("routes", key);

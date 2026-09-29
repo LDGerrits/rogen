@@ -28,3 +28,8 @@ export function safeStringify(obj: unknown): string {
 		return value;
 	});
 }
+
+/** Tab-indented JSON with a trailing newline, as Rogen writes the files a user owns. */
+export function formatJsonFile(value: unknown): string {
+	return `${JSON.stringify(value, null, "\t")}\n`;
+}

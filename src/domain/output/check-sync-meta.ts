@@ -5,11 +5,8 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { META_FILE_SUFFIX, scanRootDirs } from "../build/root-scanner.js";
-import {
-	commonRoot,
-	emittedPath,
-	relativeToProject,
-} from "../build/sync-path.js";
+import { emittedPath, relativeToProject } from "../build/sync-path.js";
+import { commonRoot } from "../config/common-root.js";
 import { findUnclaimedMeta } from "../build/unclaimed-meta.js";
 import { hasSyncedOutput } from "./check-sync-dir.js";
 import { OutputDiagnostics } from "./output-diagnostics.js";

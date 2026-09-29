@@ -5,11 +5,8 @@ import {
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	commonRoot,
-	emittedPath,
-	relativeToProject,
-} from "../build/sync-path.js";
+import { emittedPath, relativeToProject } from "../build/sync-path.js";
+import { commonRoot } from "../config/common-root.js";
 import { OutputDiagnostics } from "./output-diagnostics.js";
 
 /** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */

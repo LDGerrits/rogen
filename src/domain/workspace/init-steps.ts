@@ -1,6 +1,6 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { commonRoot } from "../build/sync-path.js";
+import { commonRoot } from "../config/common-root.js";
 import { Language } from "./detect-workspace.js";
 
 const indent = (line: string) => `  ${line}`;
