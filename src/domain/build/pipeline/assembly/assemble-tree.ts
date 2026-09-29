@@ -4,13 +4,8 @@ import { RojoTree } from "../../../rojo/rojo-tree.js";
 import { isReadOnly, syncPath } from "../../layout/sync-path.js";
 import { generatedContainer, templateGlobs } from "../../layout/template.js";
 import { PlacedBuild } from "../../model/build-phases.js";
+import { TreeAssembly } from "../../model/tree-assembly.js";
 import { collapsibleDirs, isCollapsed } from "./collapse-folders.js";
-
-export interface TreeAssembly {
-	readonly tree: RojoTree;
-	/** Directories written as one `$path`, mapped to the instance each becomes. */
-	readonly collapsed: ReadonlyMap<string, readonly string[]>;
-}
 
 /** Merges the placed files into the template, collapsing a directory into one `$path` where Rojo would see the same files. */
 export function assembleTree({
@@ -19,7 +14,10 @@ export function assembleTree({
 	template,
 	files,
 	leftOut: allLeftOut,
-}: PlacedBuild): TreeAssembly {
+}: Pick<
+	PlacedBuild,
+	"config" | "layout" | "template" | "files" | "leftOut"
+>): TreeAssembly {
 	const project = new RojoProject(template.getTree(), generatedContainer);
 	const leftOut = [...allLeftOut].filter(
 		([source]) => !isReadOnly(source, layout)

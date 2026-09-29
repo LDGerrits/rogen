@@ -2,7 +2,7 @@ import { warningDiagnostic } from "../../../../platform/diagnostics/diagnostic.j
 import { Registry } from "../../../../platform/registry/registry.js";
 import { listPaths } from "../path-list.js";
 import { BuildRule, Extensions, RuleRegistry } from "../rule-registry.js";
-import { findUnclaimedMeta } from "./find-unclaimed-meta.js";
+import { findUnclaimedMeta } from "../find-unclaimed-meta.js";
 
 export const unclaimedMeta: BuildRule = {
 	id: "unclaimed-meta",

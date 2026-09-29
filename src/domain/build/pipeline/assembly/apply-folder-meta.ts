@@ -11,7 +11,7 @@ import { generatedContainer } from "../../layout/template.js";
 import { PlacedBuild } from "../../model/build-phases.js";
 import { FolderMeta, FolderMetaOutcome } from "../../model/folder-meta.js";
 import { RoutedFile } from "../../model/routed.js";
-import { TreeAssembly } from "./assemble-tree.js";
+import { TreeAssembly } from "../../model/tree-assembly.js";
 import { isCollapsed } from "./collapse-folders.js";
 
 export interface FolderMetaApplication {
@@ -29,7 +29,16 @@ type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
 
 /** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last root dir wins, and the template beats both. */
 export function applyFolderMeta(
-	{ config, template, files, routed, leftOut }: PlacedBuild,
+	{
+		config,
+		template,
+		files,
+		routed,
+		leftOut,
+	}: Pick<
+		PlacedBuild,
+		"config" | "template" | "files" | "routed" | "leftOut"
+	>,
 	folderMeta: readonly FolderMeta[],
 	{ tree, collapsed }: TreeAssembly
 ): Result<FolderMetaApplication, Diagnostic[]> {

@@ -1,21 +1,18 @@
 import path from "path";
-import { joinPosix, stemOf } from "../../../../base/path.js";
+import { joinPosix, stemOf } from "../../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
 	isFileType,
-} from "../../../../platform/fs/file-system-service.js";
-import { IndexReader } from "../../../../platform/fs/index-service.js";
-import {
-	rojoDataName,
-	rojoMetaName,
-} from "../../../rojo/rojo-assigned-name.js";
+} from "../../../platform/fs/file-system-service.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { rojoDataName, rojoMetaName } from "../../rojo/rojo-assigned-name.js";
 import {
 	INIT_META_FILE,
 	META_FILE_SUFFIX,
 	classifyFile,
-} from "../../../rojo/rojo-files.js";
-import { ScannedRoot } from "../../model/scanned.js";
+} from "../../rojo/rojo-files.js";
+import { ScannedRoot } from "../model/scanned.js";
 
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */

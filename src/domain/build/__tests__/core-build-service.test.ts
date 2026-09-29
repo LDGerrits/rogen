@@ -8,11 +8,8 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import {
-	BuildRule,
-	RuleRegistry,
-	SyncDirRule,
-} from "../rules/rule-registry.js";
+import { MockRuleRegistry } from "../rules/__tests__/mock-rule-registry.js";
+import { BuildRule, RuleRegistry } from "../rules/rule-registry.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
@@ -510,22 +507,10 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("rules", () => {
-		const noDisposal = { [Symbol.dispose]: () => undefined };
-
-		const registryOf = (
-			rules: readonly BuildRule[],
-			syncDirRules: readonly SyncDirRule[] = []
-		): RuleRegistry => ({
-			registerRule: () => noDisposal,
-			registerSyncDirRule: () => noDisposal,
-			getRules: () => rules,
-			getSyncDirRules: () => syncDirRules,
-		});
-
-		const report = (id: string, message: string): BuildRule => ({
+		const report = (id: string): BuildRule => ({
 			id,
 			order: 0,
-			check: () => [warningDiagnostic(id, { resource: "x" }, message)],
+			check: () => [warningDiagnostic(id, { resource: "x" }, "m")],
 		});
 
 		const buildWith = async (
@@ -539,25 +524,25 @@ describe("CoreBuildService", () => {
 		};
 
 		it("should report no warnings when no rule is registered", async () => {
-			const result = await buildWith(registryOf([]));
+			const result = await buildWith(new MockRuleRegistry());
 
 			expect(result.unwrap().warnings).toEqual([]);
 		});
 
-		it("should report each rule's warnings in the registry's order", async () => {
+		it("should report every registered rule's warnings", async () => {
 			const result = await buildWith(
-				registryOf([report("second", "b"), report("first", "a")])
+				new MockRuleRegistry([report("first"), report("second")])
 			);
 
 			expect(result.unwrap().warnings).toMatchObject([
-				{ code: "second" },
 				{ code: "first" },
+				{ code: "second" },
 			]);
 		});
 
 		it("should hand each rule the finished build", async () => {
 			const result = await buildWith(
-				registryOf([
+				new MockRuleRegistry([
 					{
 						id: "count",
 						order: 0,
@@ -578,14 +563,18 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should run sync dir rules only when asked", async () => {
-			const syncDirRule: SyncDirRule = {
-				id: "sync",
-				order: 0,
-				check: async () => [
-					warningDiagnostic("sync", { resource: "x" }, "m"),
-				],
-			};
-			const registry = registryOf([], [syncDirRule]);
+			const registry = new MockRuleRegistry(
+				[],
+				[
+					{
+						id: "sync",
+						order: 0,
+						check: async () => [
+							warningDiagnostic("sync", { resource: "x" }, "m"),
+						],
+					},
+				]
+			);
 
 			const skipped = await buildWith(registry);
 			const asked = await buildWith(registry, { checkSyncDir: true });

@@ -11,17 +11,15 @@ const PLAYER_SCRIPT_CONTAINERS = new Set([
 export const runContextTarget: BuildRule = {
 	id: "run-context-target",
 	order: 100,
-	check: ({ config }) => {
+	check: ({ config, targets }) => {
 		if (config.template?.project.emitLegacyScripts !== false) return [];
-		const routes = Object.entries(config.routes)
-			.filter(([, target]) => {
-				const [service, container] = target.split("/");
-				return (
+		const routes = [...targets]
+			.filter(
+				([, { service, folders }]) =>
 					service === "StarterPlayer" &&
-					PLAYER_SCRIPT_CONTAINERS.has(container)
-				);
-			})
-			.map(([key, target]) => `"${key}" → ${target}`);
+					PLAYER_SCRIPT_CONTAINERS.has(folders[0])
+			)
+			.map(([key]) => `"${key}" → ${config.routes[key]}`);
 		return routes.length > 0
 			? [
 					warningDiagnostic(

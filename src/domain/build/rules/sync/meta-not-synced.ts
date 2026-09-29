@@ -9,7 +9,7 @@ import {
 	isSynced,
 	relativeToProject,
 } from "../../layout/sync-path.js";
-import { findUnclaimedMeta } from "../meta/find-unclaimed-meta.js";
+import { findUnclaimedMeta } from "../find-unclaimed-meta.js";
 import { listPaths } from "../path-list.js";
 import { Extensions, RuleRegistry, SyncDirRule } from "../rule-registry.js";
 import { hasSyncedOutput } from "./synced-output.js";
