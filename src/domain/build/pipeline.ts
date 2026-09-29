@@ -3,6 +3,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	AssemblyStage,
 	BuildRecord,
@@ -71,9 +72,10 @@ const SYNC_RULES: readonly SyncRule[] = [nothingEmitted, metaNotSynced];
 /** Where every scanned file lands, or why it lands nowhere. */
 export function place(
 	index: IndexReader,
-	config: ResolvedConfig
+	config: ResolvedConfig,
+	tools: readonly SyncTool[]
 ): Result<BuildRecord, Diagnostic[]> {
-	let build = startBuild(index, config);
+	let build = startBuild(index, config, tools);
 	for (const stage of PLACEMENT) {
 		const next = stage(build);
 		if (next.isErr()) return next;

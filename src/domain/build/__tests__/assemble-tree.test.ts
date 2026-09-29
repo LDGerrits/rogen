@@ -1,11 +1,13 @@
+import { Registry } from "../../../platform/registry/registry.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
-import { CoreBuildService } from "../core-build-service.js";
-import { abs, indexOf, writeFiles } from "./fixtures.js";
+import { Extensions, SyncToolRegistry } from "../../toolchain/toolchain.js";
+import "../../toolchain/roblox-ts.js";
+import { abs, buildServiceOf, indexOf, writeFiles } from "./fixtures.js";
 
 const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
 
@@ -29,7 +31,7 @@ describe("assembleTree", () => {
 			...overrides,
 		};
 		const index = await indexOf(store, fs, config.rootDirs);
-		return new CoreBuildService(fs, index).build(config);
+		return buildServiceOf(fs, index).build(config);
 	};
 
 	const assemble = async (overrides: Partial<ResolvedConfig> = {}) => {
@@ -630,6 +632,24 @@ describe("assembleTree", () => {
 			).toEqual({ $path: optional("src/Inventory") });
 			expect(value.globIgnorePaths).toBeUndefined();
 		});
+	});
+
+	it("should keep out of the ignore list whatever a processor says it only reads", async () => {
+		store.add(
+			Registry.as<SyncToolRegistry>(
+				Extensions.SyncTools
+			).registerSyncTool({
+				id: "protobuf",
+				readsOnly: (source) => source.endsWith(".proto"),
+			})
+		);
+		await write("src/Inventory/Save.luau", "src/Inventory/Save.proto");
+
+		const { tree: value } = await assemble({
+			exclude: [abs("**/*.proto")],
+		});
+
+		expect(value.globIgnorePaths).toBeUndefined();
 	});
 
 	describe("template nodes", () => {

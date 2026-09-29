@@ -1,12 +1,14 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
 import { place } from "../pipeline.js";
 import { metaNotSynced } from "../rules/meta-not-synced.js";
 import {
 	abs,
 	configOf as baseConfigOf,
 	indexOf,
+	syncTools,
 	writeFiles,
 } from "./fixtures.js";
 
@@ -19,10 +21,13 @@ describe("metaNotSynced", () => {
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const check = async (overrides: Partial<ResolvedConfig> = {}) => {
+	const check = async (
+		overrides: Partial<ResolvedConfig> = {},
+		tools: readonly SyncTool[] = syncTools
+	) => {
 		const config = configOf(overrides);
 		const index = await indexOf(store, fs, config.rootDirs);
-		return metaNotSynced(place(index, config).unwrap(), fs);
+		return metaNotSynced(place(index, config, tools).unwrap(), fs);
 	};
 
 	beforeEach(() => {
@@ -105,6 +110,71 @@ describe("metaNotSynced", () => {
 			expect(warnings[0].message).toContain(
 				"The processor turned 1 of them into .meta.lua"
 			);
+		});
+
+		it("should describe whatever conversion a processor contributes", async () => {
+			await write(
+				"src/Inventory/Save.server.luau",
+				"src/Inventory/Save.meta.json",
+				"dist/Inventory/Save.server.luau",
+				"dist/Inventory/Save.meta.yaml"
+			);
+
+			const warnings = await check({}, [
+				{
+					id: "yaml",
+					metaReplacement: {
+						suffix: ".meta.yaml",
+						note: "Yaml it is.",
+					},
+				},
+			]);
+
+			expect(warnings[0].message).toContain(
+				"The processor turned it into .meta.yaml"
+			);
+			expect(warnings[0].message).toContain("Yaml it is.");
+		});
+
+		it("should count only the meta files converted the way the message names", async () => {
+			await write(
+				"src/Inventory/Save.server.luau",
+				"src/Inventory/Save.meta.json",
+				"src/Inventory/Load.server.luau",
+				"src/Inventory/Load.meta.json",
+				"dist/Inventory/Save.server.luau",
+				"dist/Inventory/Save.meta.yaml",
+				"dist/Inventory/Load.server.luau",
+				"dist/Inventory/Load.meta.toml"
+			);
+
+			const warnings = await check({}, [
+				{
+					id: "yaml",
+					metaReplacement: { suffix: ".meta.yaml", note: "Yaml." },
+				},
+				{
+					id: "toml",
+					metaReplacement: { suffix: ".meta.toml", note: "Toml." },
+				},
+			]);
+
+			expect(warnings[0].message).toContain(
+				"The processor turned 1 of them into"
+			);
+		});
+
+		it("should not mention a conversion when no processor contributes one", async () => {
+			await write(
+				"src/Inventory/Save.server.luau",
+				"src/Inventory/Save.meta.json",
+				"dist/Inventory/Save.server.luau",
+				"dist/Inventory/Save.meta.lua"
+			);
+
+			const warnings = await check({}, []);
+
+			expect(warnings[0].message).not.toContain("The processor turned");
 		});
 
 		it("should leave out meta that no file claims", async () => {

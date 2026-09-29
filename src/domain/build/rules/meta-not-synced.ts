@@ -5,9 +5,15 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { hasSyncedOutput } from "./nothing-emitted.js";
 import { META_FILE_SUFFIX } from "../../rojo/rojo-files.js";
+import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { ScannedRoot, SyncRule } from "../build-record.js";
 import { SyncDiagnostics } from "../sync-diagnostics.js";
-import { SyncLayout, emittedPath, relativeToProject } from "../sync-path.js";
+import {
+	SyncLayout,
+	emittedPath,
+	isSynced,
+	relativeToProject,
+} from "../sync-path.js";
 import { findUnclaimedMeta } from "./unclaimed-meta.js";
 
 export const metaNotSynced: SyncRule = (
@@ -34,27 +40,32 @@ export async function checkSyncMeta(
 	roots: readonly ScannedRoot[],
 	unclaimed: ReadonlySet<string>
 ): Promise<Diagnostic[]> {
-	const { syncDir, projectDir, commonRoot: common } = layout;
-	if (!syncDir) return [];
+	if (!isSynced(layout)) return [];
+	const { syncDir, projectDir } = layout;
+	const replacements = layout.tools.flatMap(
+		({ metaReplacement }) => metaReplacement ?? []
+	);
 
 	const missing: string[] = [];
 	let converted = 0;
+	let conversion: MetaReplacement | undefined;
 
 	for (const root of roots) {
-		if (!(await hasSyncedOutput(fileSystem, root.rootDir, common, syncDir)))
+		if (!(await hasSyncedOutput(fileSystem, root.rootDir, layout)))
 			continue;
 		for (const metaFile of root.metaFiles) {
 			const source = path.join(root.rootDir, metaFile);
 			if (unclaimed.has(toPosix(source))) continue;
-			const emitted = emittedPath(source, common, syncDir);
+			const emitted = emittedPath(source, layout);
 			if (await fileSystem.exists(emitted)) continue;
 			missing.push(toPosix(source));
-			if (
-				await fileSystem.exists(
-					`${emitted.slice(0, -META_FILE_SUFFIX.length)}.meta.lua`
-				)
-			)
-				converted++;
+			const stem = emitted.slice(0, -META_FILE_SUFFIX.length);
+			for (const replacement of replacements)
+				if (await fileSystem.exists(`${stem}${replacement.suffix}`)) {
+					conversion ??= replacement;
+					if (replacement === conversion) converted++;
+					break;
+				}
 		}
 	}
 
@@ -64,7 +75,7 @@ export async function checkSyncMeta(
 					{ resource: config.outFile },
 					relativeToProject(syncDir, projectDir) || ".",
 					missing,
-					converted
+					conversion && { count: converted, ...conversion }
 				),
 			]
 		: [];

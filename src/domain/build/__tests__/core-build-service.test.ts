@@ -5,19 +5,18 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { CoreBuildService } from "../core-build-service.js";
-import { abs, configOf, indexOf } from "./fixtures.js";
+import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const buildServiceOf = () =>
-		new CoreBuildService(fs, store.add(new CoreIndexService(fs)));
+	const buildServiceOfFs = () =>
+		buildServiceOf(fs, store.add(new CoreIndexService(fs)));
 
 	const buildOf = async (config: ResolvedConfig) => {
 		const index = await indexOf(store, fs, config.rootDirs);
-		return new CoreBuildService(fs, index).build(config);
+		return buildServiceOf(fs, index).build(config);
 	};
 
 	beforeEach(() => {
@@ -448,7 +447,7 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should refuse a config that declares no routes before scanning", async () => {
-			const result = await new CoreBuildService(
+			const result = await buildServiceOf(
 				fs,
 				await indexOf(store, fs, [])
 			).build(configOf({ routes: {} }));
@@ -462,7 +461,7 @@ describe("CoreBuildService", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await fs.writeFile(abs("src/init.meta.json"), "[]");
 
-			const result = await new CoreBuildService(
+			const result = await buildServiceOf(
 				fs,
 				await indexOf(store, fs, [abs("src")])
 			).build(configOf());
@@ -475,7 +474,7 @@ describe("CoreBuildService", () => {
 		it("should index the root dirs it reads itself", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
-			const result = await buildServiceOf().build(configOf());
+			const result = await buildServiceOfFs().build(configOf());
 
 			expect(result.unwrap().summary.roots).toMatchObject([
 				{ rootDir: abs("src"), files: 1 },
@@ -485,7 +484,7 @@ describe("CoreBuildService", () => {
 		it("should check the sync dir only when asked", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
-			const buildService = new CoreBuildService(
+			const buildService = buildServiceOf(
 				fs,
 				await indexOf(store, fs, config.rootDirs)
 			);
@@ -504,7 +503,7 @@ describe("CoreBuildService", () => {
 
 	describe("checkBuildable", () => {
 		it("should name each config file that declares no routes", () => {
-			const diagnostics = buildServiceOf().checkBuildable([
+			const diagnostics = buildServiceOfFs().checkBuildable([
 				configOf({ routes: { "*": "Workspace" } }),
 				configOf({
 					file: abs("bare.rogen.json"),
@@ -519,7 +518,7 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should refuse two configs that write one file", () => {
-			const diagnostics = buildServiceOf().checkBuildable([
+			const diagnostics = buildServiceOfFs().checkBuildable([
 				configOf(),
 				configOf({ file: abs("other.rogen.json") }),
 			]);
@@ -533,7 +532,7 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should report nothing when every config can be built", () => {
-			expect(buildServiceOf().checkBuildable([configOf()])).toEqual([]);
+			expect(buildServiceOfFs().checkBuildable([configOf()])).toEqual([]);
 		});
 	});
 });

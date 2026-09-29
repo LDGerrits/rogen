@@ -4,9 +4,9 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { CoreBuildService } from "../core-build-service.js";
 import {
 	abs,
+	buildServiceOf,
 	configOf as baseConfigOf,
 	indexOf,
 	writeFiles,
@@ -39,7 +39,7 @@ describe("CoreBuildService.locate", () => {
 		const index = await indexOfConfig(config);
 		const absolute = paths?.map((p) => abs(p));
 		return (
-			await new CoreBuildService(fs, index).locate(config, absolute)
+			await buildServiceOf(fs, index).locate(config, absolute)
 		).unwrap();
 	};
 
@@ -318,7 +318,7 @@ describe("CoreBuildService.locate", () => {
 			const updates: unknown[] = [];
 			store.add(index.onDidUpdate((changes) => updates.push(changes)));
 
-			await new CoreBuildService(fs, index).locate(config, [
+			await buildServiceOf(fs, index).locate(config, [
 				abs("src/Combat/Server/Hit.luau"),
 			]);
 
@@ -396,7 +396,7 @@ describe("CoreBuildService.locate", () => {
 
 			expect(
 				(
-					await new CoreBuildService(fs, index).locate(config, [
+					await buildServiceOf(fs, index).locate(config, [
 						abs("src/Pipe.md"),
 					])
 				).unwrap()
@@ -405,7 +405,7 @@ describe("CoreBuildService.locate", () => {
 
 		it("should not be replaced by a planned file", async () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
-			const buildService = new CoreBuildService(fs, index);
+			const buildService = buildServiceOf(fs, index);
 
 			const named = await buildService.locate(config, [
 				abs("src/Pipe.luau"),
@@ -496,7 +496,7 @@ describe("CoreBuildService.locate", () => {
 	it("should index the root dirs it reads itself", async () => {
 		await write("src/A.luau");
 
-		const located = await new CoreBuildService(
+		const located = await buildServiceOf(
 			fs,
 			store.add(new CoreIndexService(fs))
 		).locate(configOf());
@@ -511,7 +511,7 @@ describe("CoreBuildService.locate", () => {
 		const config = configOf({ routes: {} });
 		const index = await indexOfConfig(config);
 
-		const result = await new CoreBuildService(fs, index).locate(config);
+		const result = await buildServiceOf(fs, index).locate(config);
 
 		expect(result.isErr() && result.error.map(({ code }) => code)).toEqual([
 			"route.noRoutes",

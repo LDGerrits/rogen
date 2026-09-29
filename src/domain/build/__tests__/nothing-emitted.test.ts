@@ -4,7 +4,12 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../../config/config.js";
 import { place } from "../pipeline.js";
 import { nothingEmitted } from "../rules/nothing-emitted.js";
-import { abs, configOf as baseConfigOf, indexOf } from "./fixtures.js";
+import {
+	abs,
+	configOf as baseConfigOf,
+	indexOf,
+	syncTools,
+} from "./fixtures.js";
 
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
 	baseConfigOf({ syncDir: abs("out"), ...overrides });
@@ -18,7 +23,7 @@ describe("nothingEmitted", () => {
 		config: ResolvedConfig
 	): Promise<Diagnostic[]> => {
 		const index = await indexOf(store, fs, config.rootDirs);
-		return nothingEmitted(place(index, config).unwrap(), fs);
+		return nothingEmitted(place(index, config, syncTools).unwrap(), fs);
 	};
 
 	beforeEach(async () => {

@@ -10,7 +10,6 @@ import {
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildService } from "../../../domain/build/build-service.js";
-import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { CoreOutputService } from "../../../domain/output/core-output-service.js";
 import { OutputService } from "../../../domain/output/output-service.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
@@ -31,6 +30,7 @@ import {
 	NullLogService,
 } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -59,7 +59,7 @@ describe("build command", () => {
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, fs);
 		services.set(IndexService, index);
-		services.set(BuildService, new CoreBuildService(fs, index));
+		services.set(BuildService, buildServiceOf(fs, index));
 		services.set(OutputService, new CoreOutputService(fs));
 		services.set(
 			EnvironmentService,

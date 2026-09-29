@@ -2,7 +2,18 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { IndexService } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
+import { CoreBuildService } from "../core-build-service.js";
+
+const toolchain = createToolchainService();
+
+export const syncTools = toolchain.getSyncTools();
+
+export const buildServiceOf = (fs: FileSystemService, index: IndexService) =>
+	new CoreBuildService(fs, index, toolchain);
 
 export const abs = (...segments: string[]): string =>
 	path.resolve("/repo", ...segments);

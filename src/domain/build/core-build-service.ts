@@ -1,9 +1,10 @@
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildOptions,
 	BuildService,
@@ -21,7 +22,8 @@ export class CoreBuildService implements BuildService {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly indexService: IndexService
+		private readonly indexService: IndexService,
+		private readonly toolchainService: ToolchainService
 	) {}
 
 	checkBuildable(configs: readonly ResolvedConfig[]): Diagnostic[] {
@@ -40,7 +42,7 @@ export class CoreBuildService implements BuildService {
 		options: BuildOptions = {}
 	): Promise<Result<BuiltProject, Diagnostic[]>> {
 		await this.indexService.ensureIndexed(config.rootDirs);
-		const placed = place(this.indexService, config);
+		const placed = this.place(this.indexService, config);
 		if (placed.isErr()) return placed;
 		const built = await assemble(placed.value, this.fileSystemService);
 		if (built.isErr()) return built;
@@ -62,6 +64,12 @@ export class CoreBuildService implements BuildService {
 		const index = paths
 			? withPlannedFiles(this.indexService, config.rootDirs, paths)
 			: this.indexService;
-		return place(index, config).map((build) => locateFiles(build, paths));
+		return this.place(index, config).map((build) =>
+			locateFiles(build, paths)
+		);
+	}
+
+	private place(index: IndexReader, config: ResolvedConfig) {
+		return place(index, config, this.toolchainService.getSyncTools());
 	}
 }

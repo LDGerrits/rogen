@@ -1,7 +1,9 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { Registry } from "../../platform/registry/registry.js";
 import { commonRoot } from "../config/common-root.js";
+import { Extensions, SyncTool, SyncToolRegistry } from "./toolchain.js";
 
 const CONFIG_FILES = [".darklua.json", ".darklua.json5"];
 
@@ -40,3 +42,15 @@ export const Darklua = {
 		});
 	},
 };
+
+const darkluaTool: SyncTool = {
+	id: "darklua",
+	metaReplacement: {
+		suffix: ".meta.lua",
+		note: "Darklua converts every .meta.json this way.",
+	},
+};
+
+Registry.as<SyncToolRegistry>(Extensions.SyncTools).registerSyncTool(
+	darkluaTool
+);

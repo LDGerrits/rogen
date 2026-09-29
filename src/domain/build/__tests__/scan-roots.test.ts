@@ -9,14 +9,19 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { ScannedRoot } from "../build-record.js";
-import { CoreBuildService } from "../core-build-service.js";
 import { place } from "../pipeline.js";
-import { abs, configOf, writeFiles } from "./fixtures.js";
+import {
+	abs,
+	buildServiceOf,
+	configOf,
+	syncTools,
+	writeFiles,
+} from "./fixtures.js";
 
 type ScanOptions = Pick<ResolvedConfig, "rootDirs" | "exclude">;
 
 const scanRootDirs = (index: IndexReader, options: ScanOptions) =>
-	place(index, configOf(options)).unwrap();
+	place(index, configOf(options), syncTools).unwrap();
 
 const glob = (pattern: string) => toPosix(abs(pattern));
 
@@ -35,9 +40,9 @@ describe("scanRoots", () => {
 		const index = newIndex();
 		await index.initialize([...scanOptions.rootDirs]);
 		const config = configOf(scanOptions);
-		const built = await new CoreBuildService(fs, index).build(config);
+		const built = await buildServiceOf(fs, index).build(config);
 		return {
-			roots: place(index, config).unwrap().roots,
+			roots: place(index, config, syncTools).unwrap().roots,
 			warnings: built.isOk() ? built.value.warnings : built.error,
 		};
 	};

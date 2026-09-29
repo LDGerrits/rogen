@@ -13,6 +13,8 @@ import {
 	LanguageDetection,
 	LanguageRegistry,
 	MountCandidate,
+	SyncTool,
+	SyncToolRegistry,
 } from "./toolchain.js";
 
 const TSCONFIG = "tsconfig.json";
@@ -203,4 +205,16 @@ const robloxTs: Language = {
 		})),
 };
 
+const COMPILED_EXTENSION = /\.tsx?$/i;
+const DECLARATION_FILE = /\.d\.ts$/i;
+
+const robloxTsTool: SyncTool = {
+	id: "roblox-ts",
+	emittedPath: (source) => source.replace(COMPILED_EXTENSION, ".luau"),
+	readsOnly: (source) => DECLARATION_FILE.test(source),
+};
+
 Registry.as<LanguageRegistry>(Extensions.Languages).registerLanguage(robloxTs);
+Registry.as<SyncToolRegistry>(Extensions.SyncTools).registerSyncTool(
+	robloxTsTool
+);

@@ -6,7 +6,6 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { BuildService } from "../../../domain/build/build-service.js";
-import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { CoreOutputService } from "../../../domain/output/core-output-service.js";
 import { OutputService } from "../../../domain/output/output-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
@@ -37,6 +36,7 @@ import { CoreReconciliationService } from "../../../platform/watcher/core-reconc
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
 import { Watcher } from "../../../platform/watcher/watcher.js";
+import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 const isDefaultStaging = (file: string): boolean =>
 	stagingPattern("/repo/default.project.json").test(file);
@@ -78,7 +78,7 @@ describe("watch command", () => {
 		services.set(LifecycleService, lifecycle);
 		const indexService = store.add(new CoreIndexService(memFs));
 		services.set(IndexService, indexService);
-		services.set(BuildService, new CoreBuildService(memFs, indexService));
+		services.set(BuildService, buildServiceOf(memFs, indexService));
 		services.set(OutputService, new CoreOutputService(memFs));
 		services.set(
 			EnvironmentService,

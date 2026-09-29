@@ -40,6 +40,7 @@ import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.
 import {
 	Extensions as ToolchainExtensions,
 	LanguageRegistry,
+	SyncToolRegistry,
 } from "./domain/toolchain/toolchain.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreOutputService } from "./domain/output/core-output-service.js";
@@ -47,6 +48,7 @@ import { OutputService } from "./domain/output/output-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
+import "./domain/toolchain/darklua.js";
 import "./domain/toolchain/luau.js";
 import "./domain/toolchain/roblox-ts.js";
 import "./commands/build/build-command.js";
@@ -153,15 +155,20 @@ async function main(): Promise<void> {
 		);
 		services.set(FileSystemService, fileSystemService);
 		services.set(IndexService, indexService);
-		services.set(
-			BuildService,
-			new CoreBuildService(fileSystemService, indexService)
-		);
 		const toolchainService = new CoreToolchainService(
 			fileSystemService,
-			Registry.as<LanguageRegistry>(ToolchainExtensions.Languages)
+			Registry.as<LanguageRegistry>(ToolchainExtensions.Languages),
+			Registry.as<SyncToolRegistry>(ToolchainExtensions.SyncTools)
 		);
 		services.set(ToolchainService, toolchainService);
+		services.set(
+			BuildService,
+			new CoreBuildService(
+				fileSystemService,
+				indexService,
+				toolchainService
+			)
+		);
 		services.set(
 			InitService,
 			new CoreInitService(

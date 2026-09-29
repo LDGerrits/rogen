@@ -3,6 +3,7 @@ import {
 	DiagnosticLocation,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { MetaReplacement } from "../toolchain/toolchain.js";
 import { listPaths } from "./path-list.js";
 
 /** Problems with what the sync dir holds, which Rojo reads instead of the root dirs. */
@@ -26,17 +27,15 @@ export const SyncDiagnostics = {
 		location: DiagnosticLocation,
 		syncDir: string,
 		paths: readonly string[],
-		converted: number
+		conversion?: MetaReplacement & { readonly count: number }
 	): Diagnostic => {
 		const them = paths.length === 1 ? "it" : "them";
-		const convertedOf =
-			converted === paths.length ? them : `${converted} of them`;
 		return warningDiagnostic(
 			"output.metaNotSynced",
 			location,
 			`${paths.length} meta ${paths.length === 1 ? "file has" : "files have"} no copy under "${syncDir}" (${listPaths(paths)}), so Rojo doesn't apply ${them}. ` +
-				(converted > 0
-					? `The processor turned ${convertedOf} into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.`
+				(conversion
+					? `The processor turned ${conversion.count === paths.length ? them : `${conversion.count} of them`} into ${conversion.suffix}, which Rojo syncs as a ModuleScript instead of applying. ${conversion.note}`
 					: "Have the compiler copy .meta.json files into its output.")
 		);
 	},

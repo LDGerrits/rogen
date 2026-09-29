@@ -180,8 +180,56 @@ class CoreLanguageRegistry implements LanguageRegistry {
 	}
 }
 
+/** What a tool writes in place of a `.meta.json`. */
+export interface MetaReplacement {
+	readonly suffix: string;
+	/** Says why, in the warning about the meta Rojo no longer applies. */
+	readonly note: string;
+}
+
+/** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place. */
+export interface SyncTool {
+	readonly id: string;
+	/** The path the tool writes for a source path, when it renames it. */
+	emittedPath?(source: string): string;
+	/** Whether the tool reads a source but never writes anything for it. */
+	readsOnly?(source: string): boolean;
+	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
+	readonly metaReplacement?: MetaReplacement;
+}
+
+export interface SyncToolRegistry {
+	/** @throws Error if `tool.id` is already registered. */
+	registerSyncTool(tool: SyncTool): Disposable;
+	getSyncTools(): readonly SyncTool[];
+}
+
+class CoreSyncToolRegistry implements SyncToolRegistry {
+	private readonly tools = new Map<string, SyncTool>();
+
+	registerSyncTool(tool: SyncTool): Disposable {
+		if (this.tools.has(tool.id)) {
+			throw new Error(`Sync tool "${tool.id}" is already registered.`);
+		}
+		this.tools.set(tool.id, tool);
+		return {
+			[Symbol.dispose]: () => {
+				if (this.tools.get(tool.id) === tool) {
+					this.tools.delete(tool.id);
+				}
+			},
+		};
+	}
+
+	getSyncTools(): readonly SyncTool[] {
+		return [...this.tools.values()];
+	}
+}
+
 export const Extensions = {
 	Languages: "domain.contributions.languages",
+	SyncTools: "domain.contributions.syncTools",
 };
 
 Registry.add(Extensions.Languages, new CoreLanguageRegistry());
+Registry.add(Extensions.SyncTools, new CoreSyncToolRegistry());

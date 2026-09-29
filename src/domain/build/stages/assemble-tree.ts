@@ -6,7 +6,7 @@ import { rojoFileName } from "../../rojo/rojo-assigned-name.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
 import { RojoTree, instanceKey } from "../../rojo/rojo-tree.js";
 import { AssemblyStage, RoutedFile, ScannedEntry } from "../build-record.js";
-import { syncPath } from "../sync-path.js";
+import { isReadOnly, syncPath } from "../sync-path.js";
 import { generatedContainer, templateGlobs } from "../template.js";
 
 interface PlacedEntry {
@@ -15,8 +15,6 @@ interface PlacedEntry {
 	readonly rojoName: string;
 }
 
-const DECLARATION_FILE = /\.d\.ts$/i;
-
 /** Merges the placed files into the template, collapsing a directory into one `$path` where Rojo would see the same files. */
 export const assembleTree: AssemblyStage = (build) => {
 	const { config, layout, template } = build;
@@ -24,7 +22,7 @@ export const assembleTree: AssemblyStage = (build) => {
 
 	const placed = build.files.map(placeEntry);
 	const leftOut = [...build.leftOut].filter(
-		([source]) => !DECLARATION_FILE.test(source)
+		([source]) => !isReadOnly(source, layout)
 	);
 	// A replaced file may share the winner's emitted path, and the template may mount a displaced one.
 	const ignored = leftOut

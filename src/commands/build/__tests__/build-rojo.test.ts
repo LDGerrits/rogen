@@ -4,7 +4,6 @@ import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { configRefsFromArgs } from "../../config-options.js";
 import { BuildService } from "../../../domain/build/build-service.js";
-import { CoreBuildService } from "../../../domain/build/core-build-service.js";
 import { CoreOutputService } from "../../../domain/output/core-output-service.js";
 import { OutputService } from "../../../domain/output/output-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
@@ -28,6 +27,7 @@ import {
 	LogService,
 	NullLogService,
 } from "../../../platform/log/log-service.js";
+import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 describeWithRojo("build command against Rojo", () => {
 	let store: DisposableStore;
@@ -55,10 +55,7 @@ describeWithRojo("build command against Rojo", () => {
 		services.set(FileSystemService, fileSystem);
 		const indexService = store.add(new CoreIndexService(fileSystem));
 		services.set(IndexService, indexService);
-		services.set(
-			BuildService,
-			new CoreBuildService(fileSystem, indexService)
-		);
+		services.set(BuildService, buildServiceOf(fileSystem, indexService));
 		services.set(OutputService, new CoreOutputService(fileSystem));
 		services.set(LogService, logService);
 		return store

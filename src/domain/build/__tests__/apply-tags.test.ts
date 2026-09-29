@@ -6,9 +6,15 @@ import {
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { BuildRecord } from "../build-record.js";
-import { CoreBuildService } from "../core-build-service.js";
 import { place } from "../pipeline.js";
-import { abs, configOf, indexOf, writeFiles } from "./fixtures.js";
+import {
+	abs,
+	buildServiceOf,
+	configOf,
+	indexOf,
+	syncTools,
+	writeFiles,
+} from "./fixtures.js";
 
 type TagResult = Pick<BuildRecord, "files" | "leftOut"> & {
 	readonly warnings: readonly Diagnostic[];
@@ -36,12 +42,14 @@ describe("applyTags", () => {
 			rootDirs: [...rootDirs],
 		});
 		const index = await indexOf(store, fs, rootDirs);
-		const built = await new CoreBuildService(fs, index).build(config);
-		return place(index, config).map(({ files, leftOut }): TagResult => ({
-			files,
-			leftOut,
-			warnings: built.isOk() ? built.value.warnings : [],
-		}));
+		const built = await buildServiceOf(fs, index).build(config);
+		return place(index, config, syncTools).map(
+			({ files, leftOut }): TagResult => ({
+				files,
+				leftOut,
+				warnings: built.isOk() ? built.value.warnings : [],
+			})
+		);
 	};
 
 	const prunedPaths = (result: TagResult) =>

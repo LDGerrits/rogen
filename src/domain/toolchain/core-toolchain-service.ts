@@ -1,6 +1,12 @@
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { detectWorkspace } from "./detect-workspace.js";
-import { DetectedWorkspace, Language, LanguageRegistry } from "./toolchain.js";
+import {
+	DetectedWorkspace,
+	Language,
+	LanguageRegistry,
+	SyncTool,
+	SyncToolRegistry,
+} from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
 
 export class CoreToolchainService implements ToolchainService {
@@ -8,7 +14,8 @@ export class CoreToolchainService implements ToolchainService {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly languageRegistry: LanguageRegistry
+		private readonly languageRegistry: LanguageRegistry,
+		private readonly syncToolRegistry: SyncToolRegistry
 	) {}
 
 	detect(directory: string): Promise<DetectedWorkspace> {
@@ -27,5 +34,9 @@ export class CoreToolchainService implements ToolchainService {
 
 	getLanguages(): readonly Language[] {
 		return this.languageRegistry.getLanguages();
+	}
+
+	getSyncTools(): readonly SyncTool[] {
+		return this.syncToolRegistry.getSyncTools();
 	}
 }

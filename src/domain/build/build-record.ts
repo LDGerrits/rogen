@@ -7,6 +7,7 @@ import { RojoScriptSuffix } from "../rojo/rojo-assigned-name.js";
 import { RojoFileKind } from "../rojo/rojo-files.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
+import { SyncTool } from "../toolchain/toolchain.js";
 import { SuffixForm } from "./declared-key.js";
 import { SyncLayout, syncLayoutOf } from "./sync-path.js";
 import { templateProject } from "./template.js";
@@ -183,9 +184,10 @@ export type SyncRule = (
 
 export function startBuild(
 	index: IndexReader,
-	config: ResolvedConfig
+	config: ResolvedConfig,
+	tools: readonly SyncTool[]
 ): BuildRecord {
-	const layout = syncLayoutOf(config);
+	const layout = syncLayoutOf(config, tools);
 	const template = templateProject(config, layout.projectDir);
 	return {
 		config,

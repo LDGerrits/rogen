@@ -7,10 +7,10 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { NullLogService } from "../../../platform/log/log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreOutputService } from "../../output/core-output-service.js";
 import { WatchSession, WatchUpdate } from "../watch-session.js";
+import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 
 describe("WatchSession", () => {
 	let fs: MemoryFileSystemService;
@@ -49,7 +49,7 @@ describe("WatchSession", () => {
 				),
 				configService,
 				indexService,
-				new CoreBuildService(fs, indexService),
+				buildServiceOf(fs, indexService),
 				new CoreOutputService(fs)
 			)
 		);

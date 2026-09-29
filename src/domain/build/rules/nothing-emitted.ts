@@ -7,7 +7,13 @@ import {
 } from "../../../platform/fs/file-system-service.js";
 import { SyncRule } from "../build-record.js";
 import { SyncDiagnostics } from "../sync-diagnostics.js";
-import { SyncLayout, emittedPath, relativeToProject } from "../sync-path.js";
+import {
+	SyncLayout,
+	SyncedLayout,
+	emittedPath,
+	isSynced,
+	relativeToProject,
+} from "../sync-path.js";
 
 export const nothingEmitted: SyncRule = ({ config, layout }, fileSystem) =>
 	checkSyncDir(fileSystem, config.rootDirs, layout);
@@ -18,20 +24,15 @@ export async function checkSyncDir(
 	rootDirs: readonly string[],
 	layout: SyncLayout
 ): Promise<Diagnostic[]> {
+	if (!isSynced(layout)) return [];
 	const { syncDir, projectDir, commonRoot: common } = layout;
-	if (!syncDir) return [];
 
 	const shown = (target: string) =>
 		relativeToProject(target, projectDir) || ".";
 	const warnings: Diagnostic[] = [];
 
 	for (const rootDir of rootDirs) {
-		const emitted = await topLevelEmitted(
-			fileSystem,
-			rootDir,
-			common,
-			syncDir
-		);
+		const emitted = await topLevelEmitted(fileSystem, rootDir, layout);
 		if (emitted.length === 0 || (await anyExists(fileSystem, emitted)))
 			continue;
 
@@ -60,12 +61,11 @@ export async function checkSyncDir(
 export async function hasSyncedOutput(
 	fileSystem: FileSystemService,
 	rootDir: string,
-	common: string,
-	syncDir: string
+	layout: SyncedLayout
 ): Promise<boolean> {
 	return anyExists(
 		fileSystem,
-		await topLevelEmitted(fileSystem, rootDir, common, syncDir)
+		await topLevelEmitted(fileSystem, rootDir, layout)
 	);
 }
 
@@ -73,15 +73,12 @@ export async function hasSyncedOutput(
 async function topLevelEmitted(
 	fileSystem: FileSystemService,
 	rootDir: string,
-	common: string,
-	syncDir: string
+	layout: SyncedLayout
 ): Promise<string[]> {
 	if (!(await fileSystem.isDirectory(rootDir))) return [];
 	return (await fileSystem.readDirectory(rootDir))
 		.filter(([name]) => !name.startsWith("."))
-		.map(([name]) =>
-			emittedPath(path.join(rootDir, name), common, syncDir)
-		);
+		.map(([name]) => emittedPath(path.join(rootDir, name), layout));
 }
 
 async function anyExists(

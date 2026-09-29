@@ -1,5 +1,5 @@
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { DetectedWorkspace, Language } from "./toolchain.js";
+import { DetectedWorkspace, Language, SyncTool } from "./toolchain.js";
 
 /** The languages Rogen knows and what a workspace uses of them. */
 export interface ToolchainService {
@@ -13,6 +13,9 @@ export interface ToolchainService {
 
 	/** Every registered language, in `order`. */
 	getLanguages(): readonly Language[];
+
+	/** The tools that rewrite code on its way to the sync dir, which a build reads through instead of assuming any. */
+	getSyncTools(): readonly SyncTool[];
 }
 
 export const ToolchainService =
