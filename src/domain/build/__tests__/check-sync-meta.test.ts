@@ -5,6 +5,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../../config/config.js";
 import { checkSyncMeta } from "../check-sync-meta.js";
 import { scanRootDirs } from "../root-scanner.js";
+import { syncLayoutOf } from "../sync-path.js";
 import { findUnclaimedMeta } from "../unclaimed-meta.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
@@ -38,7 +39,13 @@ describe("domain/build/check-sync-meta", () => {
 		const unclaimed = findUnclaimedMeta(index, roots).map(
 			({ path }) => path
 		);
-		return checkSyncMeta(fs, config, roots, new Set(unclaimed));
+		return checkSyncMeta(
+			fs,
+			config,
+			syncLayoutOf(config),
+			roots,
+			new Set(unclaimed)
+		);
 	};
 
 	beforeEach(() => {

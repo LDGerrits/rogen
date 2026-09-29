@@ -1,11 +1,23 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
+import { commonRoot } from "../config/common-root.js";
+import { ResolvedConfig } from "../config/config.js";
 import { OptionalRojoPath } from "../rojo/rojo-tree.js";
 
 export interface SyncLayout {
 	readonly commonRoot: string;
 	readonly syncDir?: string;
 	readonly projectDir: string;
+}
+
+export function syncLayoutOf(
+	config: Pick<ResolvedConfig, "rootDirs" | "syncDir" | "outFile">
+): SyncLayout {
+	return {
+		commonRoot: commonRoot(config.rootDirs),
+		syncDir: config.syncDir,
+		projectDir: path.dirname(config.outFile),
+	};
 }
 
 const COMPILED_EXTENSION = /\.tsx?$/i;

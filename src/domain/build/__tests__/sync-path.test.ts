@@ -2,11 +2,37 @@ import path from "path";
 import {
 	rebaseTemplatePath,
 	relativeToProject,
+	syncLayoutOf,
 	syncPath,
 } from "../sync-path.js";
 import { commonRoot } from "../../config/common-root.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+
+describe("syncLayoutOf", () => {
+	it("should take the project dir from the out file and the common root from the root dirs", () => {
+		expect(
+			syncLayoutOf({
+				rootDirs: [abs("src/server"), abs("src/shared")],
+				syncDir: abs("out"),
+				outFile: abs("game/default.project.json"),
+			})
+		).toEqual({
+			commonRoot: abs("src"),
+			syncDir: abs("out"),
+			projectDir: abs("game"),
+		});
+	});
+
+	it("should leave the sync dir out when there is none", () => {
+		expect(
+			syncLayoutOf({
+				rootDirs: [abs("src")],
+				outFile: abs("default.project.json"),
+			}).syncDir
+		).toBeUndefined();
+	});
+});
 
 describe("syncPath", () => {
 	const projectDir = abs(".");

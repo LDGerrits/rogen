@@ -5,26 +5,23 @@ import {
 	FileSystemService,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
-import { ResolvedConfig } from "../config/config.js";
-import { emittedPath, relativeToProject } from "./sync-path.js";
-import { commonRoot } from "../config/common-root.js";
+import { SyncLayout, emittedPath, relativeToProject } from "./sync-path.js";
 import { SyncDiagnostics } from "./sync-diagnostics.js";
 
 /** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
 export async function checkSyncDir(
 	fileSystem: FileSystemService,
-	config: Pick<ResolvedConfig, "rootDirs" | "syncDir" | "outFile">
+	rootDirs: readonly string[],
+	layout: SyncLayout
 ): Promise<Diagnostic[]> {
-	const { syncDir } = config;
+	const { syncDir, projectDir, commonRoot: common } = layout;
 	if (!syncDir) return [];
 
-	const projectDir = path.dirname(config.outFile);
 	const shown = (target: string) =>
 		relativeToProject(target, projectDir) || ".";
-	const common = commonRoot(config.rootDirs);
 	const warnings: Diagnostic[] = [];
 
-	for (const rootDir of config.rootDirs) {
+	for (const rootDir of rootDirs) {
 		const emitted = await topLevelEmitted(
 			fileSystem,
 			rootDir,

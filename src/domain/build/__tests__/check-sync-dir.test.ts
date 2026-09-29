@@ -2,6 +2,7 @@ import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { checkSyncDir } from "../check-sync-dir.js";
+import { syncLayoutOf } from "../sync-path.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -14,6 +15,12 @@ const configOf = (overrides: Partial<Checked> = {}): Checked => ({
 	...overrides,
 });
 
+const check = (
+	fs: MemoryFileSystemService,
+	config: Checked
+): ReturnType<typeof checkSyncDir> =>
+	checkSyncDir(fs, config.rootDirs, syncLayoutOf(config));
+
 describe("domain/output/check-sync-dir", () => {
 	let fs: MemoryFileSystemService;
 
@@ -25,16 +32,16 @@ describe("domain/output/check-sync-dir", () => {
 		it("should report nothing without a syncDir", async () => {
 			await fs.writeFile(abs("src/Inventory/A.luau"), "");
 
-			expect(
-				await checkSyncDir(fs, configOf({ syncDir: undefined }))
-			).toEqual([]);
+			expect(await check(fs, configOf({ syncDir: undefined }))).toEqual(
+				[]
+			);
 		});
 
 		it("should report nothing when the emitted paths exist", async () => {
 			await fs.writeFile(abs("src/Inventory/A.ts"), "");
 			await fs.writeFile(abs("out/Inventory/A.luau"), "");
 
-			expect(await checkSyncDir(fs, configOf())).toEqual([]);
+			expect(await check(fs, configOf())).toEqual([]);
 		});
 
 		it("should report nothing when only some of a root dir's paths exist", async () => {
@@ -42,23 +49,23 @@ describe("domain/output/check-sync-dir", () => {
 			await fs.writeFile(abs("src/Combat/B.ts"), "");
 			await fs.writeFile(abs("out/Combat/B.luau"), "");
 
-			expect(await checkSyncDir(fs, configOf())).toEqual([]);
+			expect(await check(fs, configOf())).toEqual([]);
 		});
 
 		it("should skip a root dir that does not exist", async () => {
-			expect(await checkSyncDir(fs, configOf())).toEqual([]);
+			expect(await check(fs, configOf())).toEqual([]);
 		});
 
 		it("should skip a root dir with nothing in it", async () => {
 			await fs.createDirectory(abs("src"));
 
-			expect(await checkSyncDir(fs, configOf())).toEqual([]);
+			expect(await check(fs, configOf())).toEqual([]);
 		});
 
 		it("should warn when the sync dir does not exist, pointing at the nearest path that does", async () => {
 			await fs.writeFile(abs("src/Inventory/A.ts"), "");
 
-			const warnings = await checkSyncDir(fs, configOf());
+			const warnings = await check(fs, configOf());
 
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0]).toMatchObject({
@@ -78,7 +85,7 @@ describe("domain/output/check-sync-dir", () => {
 			await fs.writeFile(abs("out/Inventory/A.luau"), "");
 			await fs.writeFile(abs("out/tests/Inventory.spec.luau"), "");
 
-			const warnings = await checkSyncDir(
+			const warnings = await check(
 				fs,
 				configOf({ rootDirs: [abs("src"), abs("tests")] })
 			);
@@ -94,7 +101,7 @@ describe("domain/output/check-sync-dir", () => {
 			await fs.writeFile(abs("src/Inventory/A.ts"), "");
 			await fs.writeFile(abs("out/src/Inventory/A.luau"), "");
 
-			const warnings = await checkSyncDir(fs, configOf());
+			const warnings = await check(fs, configOf());
 
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0].message).toContain('under "out"');
@@ -106,7 +113,7 @@ describe("domain/output/check-sync-dir", () => {
 			await fs.writeFile(abs("src/Inventory/A.luau"), "");
 			await fs.writeFile(abs("out/Inventory/A.luau"), "");
 
-			expect(await checkSyncDir(fs, configOf())).toEqual([]);
+			expect(await check(fs, configOf())).toEqual([]);
 		});
 	});
 });

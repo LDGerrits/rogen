@@ -17,7 +17,6 @@ import {
 	relativeToProject,
 	syncPath,
 } from "./sync-path.js";
-import { commonRoot } from "../config/common-root.js";
 import { RunContextRoute, TreeDiagnostics } from "./tree-diagnostics.js";
 
 export interface AssemblyInput {
@@ -53,23 +52,13 @@ const PLAYER_SCRIPT_CONTAINERS = new Set([
 export function assembleTree(
 	config: Pick<
 		ResolvedConfig,
-		| "name"
-		| "rootDirs"
-		| "routes"
-		| "tags"
-		| "template"
-		| "syncDir"
-		| "outFile"
+		"name" | "rootDirs" | "routes" | "tags" | "template" | "outFile"
 	>,
+	layout: SyncLayout,
 	input: AssemblyInput
 ): Result<AssemblyOutput, Diagnostic[]> {
 	const location = { resource: config.outFile };
-	const projectDir = path.dirname(config.outFile);
-	const layout: SyncLayout = {
-		commonRoot: commonRoot(config.rootDirs),
-		syncDir: config.syncDir,
-		projectDir,
-	};
+	const { projectDir } = layout;
 	const warnings: Diagnostic[] = [];
 
 	const runContextRoutes =

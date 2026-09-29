@@ -3,11 +3,10 @@ import { toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { commonRoot } from "../config/common-root.js";
 import { hasSyncedOutput } from "./check-sync-dir.js";
 import { META_FILE_SUFFIX, ScannedRoot } from "./root-scanner.js";
 import { SyncDiagnostics } from "./sync-diagnostics.js";
-import { emittedPath, relativeToProject } from "./sync-path.js";
+import { SyncLayout, emittedPath, relativeToProject } from "./sync-path.js";
 
 /**
  * Warns once for claimed meta with no copy under `syncDir`, skipping root
@@ -16,15 +15,14 @@ import { emittedPath, relativeToProject } from "./sync-path.js";
  */
 export async function checkSyncMeta(
 	fileSystem: FileSystemService,
-	config: Pick<ResolvedConfig, "rootDirs" | "syncDir" | "outFile">,
+	config: Pick<ResolvedConfig, "outFile">,
+	layout: SyncLayout,
 	roots: readonly ScannedRoot[],
 	unclaimed: ReadonlySet<string>
 ): Promise<Diagnostic[]> {
-	const { syncDir } = config;
+	const { syncDir, projectDir, commonRoot: common } = layout;
 	if (!syncDir) return [];
 
-	const projectDir = path.dirname(config.outFile);
-	const common = commonRoot(config.rootDirs);
 	const missing: string[] = [];
 	let converted = 0;
 

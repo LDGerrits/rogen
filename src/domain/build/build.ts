@@ -11,6 +11,7 @@ import { TagResult, applyTags } from "./apply-tags.js";
 import { assembleTree } from "./assemble-tree.js";
 import { checkSyncDir } from "./check-sync-dir.js";
 import { checkSyncMeta } from "./check-sync-meta.js";
+import { syncLayoutOf } from "./sync-path.js";
 import { FileLocation, Placement, locate } from "./locate-files.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { readFolderMeta } from "./read-folder-meta.js";
@@ -108,7 +109,8 @@ export async function buildProject(
 				joinPosix(root.rootDir, relativePath)
 			)
 		);
-	const assembly = assembleTree(config, {
+	const layout = syncLayoutOf(config);
+	const assembly = assembleTree(config, layout, {
 		files: tagging.files,
 		excluded: sourcePaths((root) => root.excluded),
 		skippedLinks: sourcePaths((root) => root.skippedLinks),
@@ -122,10 +124,11 @@ export async function buildProject(
 	const unclaimedMeta = findUnclaimedMeta(index, scan.roots);
 	const syncWarnings = options.checkSyncDir
 		? [
-				...(await checkSyncDir(fileSystem, config)),
+				...(await checkSyncDir(fileSystem, config.rootDirs, layout)),
 				...(await checkSyncMeta(
 					fileSystem,
 					config,
+					layout,
 					scan.roots,
 					new Set(unclaimedMeta.map(({ path }) => path))
 				)),
