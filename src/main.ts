@@ -25,6 +25,8 @@ import { TerminalLogService } from "./platform/log/terminal-log-service.js";
 import { DiagnosticsError } from "./platform/diagnostics/diagnostics-error.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
+import { CoreProductService } from "./platform/product/core-product-service.js";
+import { ProductService } from "./platform/product/product-service.js";
 import { CoreReconciliationService } from "./platform/watcher/core-reconciliation-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
@@ -148,6 +150,10 @@ async function main(): Promise<void> {
 			new CoreBuildService(fileSystemService, indexService)
 		);
 		services.set(OutputService, new CoreOutputService(fileSystemService));
+		services.set(
+			ProductService,
+			new CoreProductService(fileSystemService, import.meta.dirname)
+		);
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())
