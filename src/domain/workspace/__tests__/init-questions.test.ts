@@ -859,6 +859,32 @@ describe("askInitChoices template", () => {
 			kind: "copy",
 			from: "default.project.json",
 		});
+		expect(result?.mounts).toEqual([
+			{ path: "Packages", optional: true },
+			{ path: "ServerPackages", optional: true },
+		]);
+		expect(prompts.asked).toContain("Packages");
+	});
+
+	it("should not ask for packages when using a project file as it is", async () => {
+		const prompts = new MockPromptService([
+			...acceptAll(4),
+			"use:base.project.json",
+			...acceptAll(5),
+		]);
+		const result = (
+			await askInitChoices(
+				prompts,
+				contextOf({ ...luau, packageManager: "wally" }, [
+					"base.project.json",
+				])
+			)
+		).unwrap();
+
+		expect(result?.template).toEqual({
+			kind: "use",
+			file: "base.project.json",
+		});
 		expect(result?.mounts).toEqual([]);
 		expect(prompts.asked).not.toContain("Packages");
 	});

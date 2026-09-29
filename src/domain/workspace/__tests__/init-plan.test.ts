@@ -512,8 +512,260 @@ describe("planInit", () => {
 			expect(files.notes).toEqual([
 				"Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.",
 			]);
+			expect(files.nextSteps.edits).not.toContainEqual(
+				expect.stringContaining("Remove the nodes")
+			);
+		});
+
+		it("should leave out of a copied template the nodes that point into the root dirs", () => {
+			const files = withTemplate(
+				{ kind: "copy", from: "default.project.json" },
+				JSON.stringify({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Shared: { $path: "src/shared" },
+							Packages: { $path: "Packages" },
+						},
+						ServerScriptService: {
+							$className: "ServerScriptService",
+							Server: { $path: { optional: "./src/server" } },
+						},
+						StarterPlayer: {
+							StarterPlayerScripts: {
+								Client: { $path: "src/client" },
+							},
+						},
+						Workspace: {
+							Map: {
+								$path: "src",
+								$properties: { Locked: true },
+							},
+						},
+					},
+				})
+			);
+
+			expect(JSON.parse(files.template?.content ?? "")).toEqual({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					ServerScriptService: {
+						$className: "ServerScriptService",
+					},
+					StarterPlayer: { StarterPlayerScripts: {} },
+					Workspace: {},
+				},
+			});
+			expect(files.notes).toEqual([
+				"Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.",
+				"Left out ReplicatedStorage/Shared, ServerScriptService/Server, StarterPlayer/StarterPlayerScripts/Client and Workspace/Map, since they point into src and Rogen generates that code now.",
+			]);
+			expect(files.nextSteps.edits).not.toContainEqual(
+				expect.stringContaining("Remove the nodes")
+			);
+		});
+
+		it("should leave out of a copied template the nodes that point into the sync dir", () => {
+			const files = planInit({
+				choices: {
+					...defaultInitChoices(
+						{ ...luau, language: "roblox-ts" },
+						"default",
+						new Set(),
+						false
+					),
+					template: { kind: "copy", from: "default.project.json" },
+					mounts: [],
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate: JSON.stringify({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: { TS: { $path: "out/server" } },
+					},
+				}),
+			}).unwrap();
+
+			expect(JSON.parse(files.template?.content ?? "").tree).toEqual({
+				$className: "DataModel",
+				ServerScriptService: {},
+			});
+			expect(files.notes[1]).toBe(
+				"Left out ServerScriptService/TS, since it points into src or out and Rogen generates that code now."
+			);
+		});
+
+		it("should leave out of a copied template the nodes that point into a place folder", () => {
+			const files = planInit({
+				choices: {
+					...defaultInitChoices(luau, "default", new Set(), false),
+					template: { kind: "copy", from: "default.project.json" },
+					places: ["lobby"],
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate: JSON.stringify({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: {
+							Lobby: { $path: "places/lobby/Server" },
+						},
+					},
+				}),
+			}).unwrap();
+
+			expect(JSON.parse(files.template?.content ?? "").tree).toEqual({
+				$className: "DataModel",
+				ServerScriptService: {},
+			});
+		});
+
+		it("should keep a $path that isn't a path", () => {
+			const files = withTemplate(
+				{ kind: "copy", from: "default.project.json" },
+				JSON.stringify({
+					name: "my-game",
+					tree: { Odd: { $path: 5 }, Empty: { $path: {} } },
+				})
+			);
+
+			expect(JSON.parse(files.template?.content ?? "").tree).toEqual({
+				Odd: { $path: 5 },
+				Empty: { $path: {} },
+			});
+		});
+
+		it("should copy a template as it is when a root dir is the whole folder, and say what to remove", () => {
+			const content = JSON.stringify({
+				name: "my-game",
+				tree: { Shared: { $path: "shared" } },
+			});
+			const files = planInit({
+				choices: {
+					...defaultInitChoices(luau, "default", new Set(), false),
+					template: { kind: "copy", from: "default.project.json" },
+					rootDirs: ["."],
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate: content,
+			}).unwrap();
+
+			expect(files.template?.content).toBe(content);
+			expect(files.nextSteps.edits[0]).toBe(
+				"Remove the nodes in template.project.json that point into .; Rogen generates those now."
+			);
+		});
+
+		it("should copy a template it can't parse as it is, and say what to remove", () => {
+			const content = '{ "name": "mine", "tree": ';
+			const files = withTemplate(
+				{ kind: "copy", from: "default.project.json" },
+				content
+			);
+
+			expect(files.template?.content).toBe(content);
 			expect(files.nextSteps.edits[0]).toBe(
 				"Remove the nodes in template.project.json that point into src; Rogen generates those now."
+			);
+		});
+
+		const copyWithMounts = (
+			copiedTemplate: string,
+			mountList: InitChoices["mounts"]
+		) =>
+			planInit({
+				choices: {
+					...defaultInitChoices(luau, "default", new Set(), false),
+					template: { kind: "copy", from: "default.project.json" },
+					mounts: mountList,
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate,
+			}).unwrap();
+
+		it("should add the chosen package mounts a copied template lacks", () => {
+			const files = copyWithMounts(
+				JSON.stringify({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Assets: { $path: "assets" } },
+					},
+				}),
+				[
+					{ path: "Packages", optional: false },
+					{ path: "ServerPackages", optional: true },
+				]
+			);
+
+			expect(JSON.parse(files.template?.content ?? "").tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Assets: { $path: "assets" },
+					Packages: { $path: "Packages" },
+				},
+				ServerScriptService: {
+					ServerPackages: { $path: { optional: "ServerPackages" } },
+				},
+			});
+			expect(files.notes[1]).toBe(
+				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to template.project.json."
+			);
+		});
+
+		it("should name every mount it adds under one node", () => {
+			const files = copyWithMounts(
+				JSON.stringify({ name: "my-game", tree: {} }),
+				[
+					{ path: "include", optional: false },
+					{ path: "node_modules/@rbxts", optional: false },
+				]
+			);
+
+			expect(files.notes[1]).toBe(
+				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to template.project.json."
+			);
+		});
+
+		it("should keep a copied template as it is when it already mounts the packages", () => {
+			const content = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Deps: { $path: "./Packages" } },
+					ServerScriptService: {
+						ServerPackages: { $path: "vendor/server" },
+					},
+				},
+			});
+			const files = copyWithMounts(content, [
+				{ path: "Packages", optional: false },
+				{ path: "ServerPackages", optional: false },
+			]);
+
+			expect(files.template?.content).toBe(content);
+			expect(files.notes).toHaveLength(1);
+		});
+
+		it("should say which packages to mount when it can't parse a copied template", () => {
+			const files = copyWithMounts('{ "tree": ', [
+				{ path: "Packages", optional: false },
+			]);
+
+			expect(files.nextSteps.edits).toContain(
+				"Mount Packages in template.project.json; Rogen couldn't read it to add the mount."
 			);
 		});
 

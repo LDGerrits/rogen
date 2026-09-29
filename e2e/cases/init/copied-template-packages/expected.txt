@@ -3,6 +3,7 @@ exit 0
 stdout:
   rogen init
   Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
+  Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to template.project.json.
   Created template.project.json.
   Created default.rogen.json.
   Next steps
@@ -42,11 +43,18 @@ default.rogen.json:
 
 $ rojo sourcemap default.project.json
 my-game: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
   ServerScriptService: ServerScriptService
     Combat: Folder
       Damage: Script  <- src/Combat/Damage.server.luau
-  Workspace: Workspace
 
 $ rojo sourcemap template.project.json
 my-game: DataModel
-  Workspace: Workspace
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+  ServerScriptService: ServerScriptService

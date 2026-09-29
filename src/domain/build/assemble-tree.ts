@@ -5,7 +5,7 @@ import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { rojoAssignedName, rojoModelName } from "../rojo/rojo-assigned-name.js";
-import { RojoNode, RojoPath, RojoTree } from "../rojo/rojo-tree.js";
+import { RojoNode, RojoTree, isRojoPath } from "../rojo/rojo-tree.js";
 import { applyFolderMeta } from "./apply-folder-meta.js";
 import { FolderMeta } from "./read-folder-meta.js";
 import { ScannedEntry } from "./root-scanner.js";
@@ -340,13 +340,6 @@ function rebaseNode(
 		else rebased[key] = structuredClone(value);
 	}
 	return rebased;
-}
-
-function isRojoPath(value: unknown): value is RojoPath {
-	return (
-		typeof value === "string" ||
-		(isObject(value) && typeof value.optional === "string")
-	);
 }
 
 function rebasedGlobs(
