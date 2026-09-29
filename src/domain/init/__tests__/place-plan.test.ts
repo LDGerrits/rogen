@@ -3,8 +3,7 @@ import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import "../../toolchain/luau.js";
-import "../../toolchain/roblox-ts.js";
+import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { SCHEMA_URL as SCHEMA } from "../init-files.js";
 import {
@@ -16,6 +15,7 @@ import {
 } from "../place-plan.js";
 
 const directory = path.resolve("/mock/my-game");
+const toolchain = createToolchainService();
 
 const luau: DetectedWorkspace = {
 	language: "luau",
@@ -45,7 +45,7 @@ const plan = (
 	planPlace({
 		choices,
 		base,
-		language: workspace.language,
+		language: toolchain.getLanguage(workspace.language),
 		darklua: workspace.darklua,
 		workspace,
 		directory,

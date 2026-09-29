@@ -6,8 +6,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { configFileName } from "../config/config-discovery.js";
-import { detectWorkspace } from "../toolchain/detect-workspace.js";
-import { languageOf } from "../toolchain/toolchain.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { InitChoices, defaultInitChoices } from "./init-choices.js";
 import {
 	DEFAULT_CONFIG_FILE,
@@ -37,7 +36,8 @@ export class CoreInitService implements InitService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly promptService: PromptService,
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		private readonly toolchainService: ToolchainService
 	) {}
 
 	async prepare(
@@ -66,7 +66,7 @@ export class CoreInitService implements InitService {
 		return ok({
 			directory,
 			existingFiles,
-			workspace: await detectWorkspace(this.fileSystemService, directory),
+			workspace: await this.toolchainService.detect(directory),
 			...(names.length > 0 && { givenName: name.value }),
 			name: name.value,
 		});
@@ -102,7 +102,12 @@ export class CoreInitService implements InitService {
 
 		let answers: InitAnswers | undefined;
 		if (interactive) {
-			const asked = await askInit(this.promptService, context, givenName);
+			const asked = await askInit(
+				this.promptService,
+				this.toolchainService,
+				context,
+				givenName
+			);
 			if (asked.isErr()) return asked;
 			answers = asked.value;
 		} else {
@@ -110,6 +115,7 @@ export class CoreInitService implements InitService {
 				kind: "project",
 				choices: defaultInitChoices(
 					workspace,
+					this.toolchainService.getLanguage(workspace.language),
 					name,
 					existingFiles,
 					givenName === undefined
@@ -178,7 +184,7 @@ export class CoreInitService implements InitService {
 		return planPlace({
 			choices: answers.choices,
 			base: base.value,
-			language: workspace.language,
+			language: this.toolchainService.getLanguage(workspace.language),
 			darklua: workspace.darklua,
 			workspace,
 			directory,
@@ -206,8 +212,10 @@ export class CoreInitService implements InitService {
 			}
 		}
 
+		const language = this.toolchainService.getLanguage(choices.language);
 		const project = planProject({
 			choices,
+			language,
 			projectName,
 			directory,
 			existingFiles,
@@ -215,11 +223,11 @@ export class CoreInitService implements InitService {
 		});
 		if (project.isErr() || choices.places.length === 0) return project;
 
-		const { name, language, darklua, rootDirs, syncDir } = choices;
+		const { name, darklua, rootDirs, syncDir } = choices;
 		const base: BaseConfig = {
 			rootDirs,
 			...(syncDir && { syncDir }),
-			...(hasSourceConfig(languageOf(language), darklua) && {
+			...(hasSourceConfig(language, darklua) && {
 				parent: configFileName(sourceStemOf(name)),
 			}),
 		};

@@ -3,12 +3,17 @@ import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
-import "../../toolchain/luau.js";
-import "../../toolchain/roblox-ts.js";
+import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
-import { InitChoices, defaultInitChoices } from "../init-choices.js";
+import {
+	InitChoices,
+	defaultInitChoices as defaultChoicesFor,
+} from "../init-choices.js";
 import { parseInitName } from "../init-files.js";
-import { planProject } from "../project-plan.js";
+import {
+	ProjectPlanOptions,
+	planProject as planProjectWith,
+} from "../project-plan.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -45,6 +50,28 @@ const mounts = {
 		ServerPackages: { $path: { optional: "ServerPackages" } },
 	},
 };
+
+const toolchain = createToolchainService();
+
+const planProject = (options: Omit<ProjectPlanOptions, "language">) =>
+	planProjectWith({
+		...options,
+		language: toolchain.getLanguage(options.choices.language),
+	});
+
+const defaultInitChoices = (
+	workspace: DetectedWorkspace,
+	name: string,
+	existingFiles: ReadonlySet<string>,
+	withPlaces: boolean
+) =>
+	defaultChoicesFor(
+		workspace,
+		toolchain.getLanguage(workspace.language),
+		name,
+		existingFiles,
+		withPlaces
+	);
 
 const planResult = (
 	workspace: DetectedWorkspace,

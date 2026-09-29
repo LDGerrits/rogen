@@ -182,12 +182,3 @@ export const Extensions = {
 };
 
 Registry.add(Extensions.Languages, new CoreLanguageRegistry());
-
-/** The registered language `id`; asking for one that isn't registered is a programmer error. */
-export function languageOf(id: string): Language {
-	const language = Registry.as<LanguageRegistry>(
-		Extensions.Languages
-	).getLanguage(id);
-	if (!language) throw new Error(`Language "${id}" is not registered.`);
-	return language;
-}

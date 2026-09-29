@@ -5,7 +5,7 @@ import { configFileName } from "../config/config-discovery.js";
 import { RogenConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { Darklua } from "../toolchain/darklua.js";
-import { Language, PlannedFile, languageOf } from "../toolchain/toolchain.js";
+import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { InitChoices } from "./init-choices.js";
 import {
 	SCHEMA_URL,
@@ -31,6 +31,8 @@ import {
 
 export interface ProjectPlanOptions {
 	readonly choices: InitChoices;
+	/** The language `choices.language` names. */
+	readonly language: Language;
 	readonly projectName: string;
 	/** The absolute directory init writes into. */
 	readonly directory: string;
@@ -208,9 +210,8 @@ function copyTemplate(
 }
 
 function buildPlan(options: ProjectPlanOptions): InitPlan {
-	const { choices, directory } = options;
+	const { choices, language, directory } = options;
 	const { name, darklua, rootDirs, syncDir, routes, fallback } = choices;
-	const language = languageOf(choices.language);
 	const template = planTemplate(options, language);
 	const steps = nextSteps(choices, language, directory);
 	const { compiler } = language;

@@ -10,8 +10,8 @@ import { projectFileName } from "../rojo/rojo-project.js";
 import { Darklua } from "../toolchain/darklua.js";
 import {
 	DetectedWorkspace,
+	Language,
 	PlannedFile,
-	languageOf,
 } from "../toolchain/toolchain.js";
 import {
 	DEFAULT_CONFIG_FILE,
@@ -39,8 +39,8 @@ export interface BaseConfig {
 export interface PlacePlanOptions {
 	readonly choices: PlaceChoices;
 	readonly base: BaseConfig;
-	/** The language of the project the place joins, as a registered id. */
-	readonly language: string;
+	/** The language of the project the place joins. */
+	readonly language: Language;
 	/** Whether Darklua processes the project the place joins. */
 	readonly darklua: boolean;
 	readonly workspace: DetectedWorkspace;
@@ -106,11 +106,11 @@ export function planPlace(
 	const {
 		choices: { name, folder },
 		base,
+		language,
 		darklua,
 		workspace,
 		directory,
 	} = options;
-	const language = languageOf(options.language);
 	const { compiler } = language;
 	const rootDirs = [...base.rootDirs, folder];
 	const projectFile = projectFileName(name);

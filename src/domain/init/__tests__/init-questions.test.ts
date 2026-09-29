@@ -7,13 +7,43 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import "../../toolchain/luau.js";
-import "../../toolchain/roblox-ts.js";
+import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
-import { defaultInitChoices } from "../init-choices.js";
-import { askInit, askInitChoices } from "../init-questions.js";
+import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
+import {
+	InitContext,
+	askInit as askInitWith,
+	askInitChoices as askInitChoicesWith,
+} from "../init-questions.js";
 
 const directory = path.resolve("/mock/my-game");
+const toolchain = createToolchainService();
+
+const askInit = (
+	prompts: MockPromptService,
+	context: InitContext,
+	name?: string
+) => askInitWith(prompts, toolchain, context, name);
+
+const askInitChoices = (
+	prompts: MockPromptService,
+	context: InitContext,
+	name?: string
+) => askInitChoicesWith(prompts, toolchain, context, name);
+
+const defaultInitChoices = (
+	workspace: DetectedWorkspace,
+	name: string,
+	existingFiles: ReadonlySet<string>,
+	withPlaces: boolean
+) =>
+	defaultChoicesFor(
+		workspace,
+		toolchain.getLanguage(workspace.language),
+		name,
+		existingFiles,
+		withPlaces
+	);
 
 const luau: DetectedWorkspace = {
 	language: "luau",

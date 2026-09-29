@@ -5,8 +5,7 @@ import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
-import "../../../domain/toolchain/luau.js";
-import "../../../domain/toolchain/roblox-ts.js";
+import { createToolchainService } from "../../../domain/toolchain/__tests__/create-toolchain-service.js";
 import { CoreInitService } from "../../../domain/init/core-init-service.js";
 import { InitService } from "../../../domain/init/init-service.js";
 import { SCHEMA_URL } from "../../../domain/init/init-files.js";
@@ -63,7 +62,12 @@ describe("init command", () => {
 		services.set(EnvironmentService, environment);
 		services.set(
 			InitService,
-			new CoreInitService(memFs, promptService, environment)
+			new CoreInitService(
+				memFs,
+				promptService,
+				environment,
+				createToolchainService(memFs)
+			)
 		);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);

@@ -1,12 +1,11 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import "../luau.js";
-import "../roblox-ts.js";
-import { detectWorkspace } from "../detect-workspace.js";
+import { createToolchainService } from "./create-toolchain-service.js";
 
-describe("detectWorkspace", () => {
+describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
 	let fs: MemoryFileSystemService;
+	const toolchain = () => createToolchainService(fs);
 
 	const write = async (file: string, content = "") => {
 		await fs.writeFile(path.join(cwd, file), content);
@@ -19,7 +18,7 @@ describe("detectWorkspace", () => {
 
 	describe("language and darklua", () => {
 		it("should be luau without darklua when nothing is found", async () => {
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace).toEqual({
 				language: "luau",
@@ -36,7 +35,7 @@ describe("detectWorkspace", () => {
 		it("should detect roblox-ts from tsconfig.json", async () => {
 			await write("tsconfig.json", "{}");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language).toBe("roblox-ts");
 			expect(workspace.darklua).toBe(false);
@@ -47,7 +46,7 @@ describe("detectWorkspace", () => {
 			async (file) => {
 				await write(file);
 
-				const workspace = await detectWorkspace(fs, cwd);
+				const workspace = await toolchain().detect(cwd);
 
 				expect(workspace.language).toBe("luau");
 				expect(workspace.darklua).toBe(true);
@@ -59,7 +58,7 @@ describe("detectWorkspace", () => {
 			await write("tsconfig.json", "{}");
 			await write(".darklua.json");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language).toBe("roblox-ts");
 			expect(workspace.darklua).toBe(true);
@@ -73,7 +72,7 @@ describe("detectWorkspace", () => {
 				JSON.stringify({ compilerOptions: { outDir: "build" } })
 			);
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.outDir).toBe("build");
 		});
@@ -87,7 +86,7 @@ describe("detectWorkspace", () => {
 				}`
 			);
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.outDir).toBe("lib");
 		});
@@ -101,7 +100,7 @@ describe("detectWorkspace", () => {
 		])("should fall back to out when tsconfig.json %s", async (_, text) => {
 			await write("tsconfig.json", text);
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.outDir).toBe("out");
 		});
@@ -114,13 +113,13 @@ describe("detectWorkspace", () => {
 				JSON.stringify({ compilerOptions: { rootDir: "game" } })
 			);
 
-			expect((await detectWorkspace(fs, cwd)).rootDir).toBe("game");
+			expect((await toolchain().detect(cwd)).rootDir).toBe("game");
 		});
 
 		it("should not report a rootDir when tsconfig.json has none", async () => {
 			await write("tsconfig.json", "{}");
 
-			expect((await detectWorkspace(fs, cwd)).rootDir).toBeUndefined();
+			expect((await toolchain().detect(cwd)).rootDir).toBeUndefined();
 		});
 	});
 
@@ -128,7 +127,7 @@ describe("detectWorkspace", () => {
 		it("should report whether tsconfig.json sets include", async () => {
 			await write("tsconfig.json", '{"include":["src"]}');
 
-			expect((await detectWorkspace(fs, cwd)).tsconfigHasInclude).toBe(
+			expect((await toolchain().detect(cwd)).tsconfigHasInclude).toBe(
 				true
 			);
 		});
@@ -136,7 +135,7 @@ describe("detectWorkspace", () => {
 		it("should report a tsconfig.json without include", async () => {
 			await write("tsconfig.json", "{}");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.tsconfigHasInclude).toBe(false);
 			expect(workspace.tsBuildInfoFile).toBeUndefined();
@@ -148,13 +147,13 @@ describe("detectWorkspace", () => {
 				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
 			);
 
-			expect((await detectWorkspace(fs, cwd)).tsBuildInfoFile).toBe(
+			expect((await toolchain().detect(cwd)).tsBuildInfoFile).toBe(
 				"out/tsconfig.tsbuildinfo"
 			);
 		});
 
 		it("should not report them for luau", async () => {
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.tsconfigHasInclude).toBeUndefined();
 		});
@@ -167,7 +166,7 @@ describe("detectWorkspace", () => {
 			await write("shared/Util.ts");
 			await write("web/App.tsx");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.codeFolders).toEqual([
 				"lib",
@@ -181,7 +180,7 @@ describe("detectWorkspace", () => {
 			await write("src/Util.luau");
 			await write("places/lobby/Game.server.lua");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.codeFolders).toEqual(["src"]);
 		});
@@ -193,7 +192,7 @@ describe("detectWorkspace", () => {
 			await write("src/nested/node_modules/x/y.lua");
 			await write("src/Real.luau");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.codeFolders).toEqual(["src"]);
 		});
@@ -208,7 +207,7 @@ describe("detectWorkspace", () => {
 			await write("lib/main.luau");
 			await write("src/main.ts");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.codeFolders).toEqual(["src"]);
 		});
@@ -216,7 +215,7 @@ describe("detectWorkspace", () => {
 		it("should report whether src exists, even without code", async () => {
 			await fs.createDirectory(path.join(cwd, "src"));
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.hasSrc).toBe(true);
 			expect(workspace.codeFolders).toEqual([]);
@@ -234,7 +233,7 @@ describe("detectWorkspace", () => {
 			async (file, manager) => {
 				await write(file);
 
-				const workspace = await detectWorkspace(fs, cwd);
+				const workspace = await toolchain().detect(cwd);
 
 				expect(workspace.packageManager).toBe(manager);
 			}
@@ -244,7 +243,7 @@ describe("detectWorkspace", () => {
 			await write("wally.toml");
 			await write("pesde.toml");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.packageManager).toBe("pesde");
 		});
@@ -253,7 +252,7 @@ describe("detectWorkspace", () => {
 			await mkdir("Packages");
 			await mkdir("roblox_server_packages");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.packageManager).toBeUndefined();
 			expect(workspace.packageDirs).toEqual(
@@ -266,7 +265,7 @@ describe("detectWorkspace", () => {
 			await write("node_modules/@flamework/core/package.json");
 			await write("node_modules/@other/thing/package.json");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.rbxtsScopes).toEqual(["@rbxts", "@flamework"]);
 		});
@@ -274,7 +273,7 @@ describe("detectWorkspace", () => {
 		it("should report whether include exists", async () => {
 			await mkdir("include");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.hasInclude).toBe(true);
 		});
@@ -287,13 +286,13 @@ describe("detectWorkspace", () => {
 			await write("places/.hidden/x.luau");
 			await write("places/notes.md");
 
-			const workspace = await detectWorkspace(fs, cwd);
+			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.places).toEqual(["lobby", "match"]);
 		});
 
 		it("should find none without a places folder", async () => {
-			expect((await detectWorkspace(fs, cwd)).places).toEqual([]);
+			expect((await toolchain().detect(cwd)).places).toEqual([]);
 		});
 	});
 });

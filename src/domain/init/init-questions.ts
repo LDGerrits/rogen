@@ -5,20 +5,13 @@ import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
-import { Registry } from "../../platform/registry/registry.js";
 import {
 	configFileName,
 	DEFAULT_CONFIG_STEM,
 } from "../config/config-discovery.js";
 import { Darklua } from "../toolchain/darklua.js";
-import {
-	DetectedWorkspace,
-	Extensions,
-	Language,
-	LanguageRegistry,
-	Mount,
-	languageOf,
-} from "../toolchain/toolchain.js";
+import { DetectedWorkspace, Language, Mount } from "../toolchain/toolchain.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { InitChoices, defaultSyncDir } from "./init-choices.js";
 import {
 	DEFAULT_CONFIG_FILE,
@@ -82,12 +75,15 @@ const splitList = (value: string): string[] =>
  */
 export async function askInit(
 	promptService: PromptService,
+	toolchainService: ToolchainService,
 	context: InitContext,
 	name?: string
 ): Promise<Result<InitAnswers | undefined, Diagnostic[]>> {
 	const { workspace, directory, existingFiles } = context;
 	if (!existingFiles.has(DEFAULT_CONFIG_FILE)) {
-		return asProject(await askInitChoices(promptService, context, name));
+		return asProject(
+			await askInitChoices(promptService, toolchainService, context, name)
+		);
 	}
 
 	const addition = await promptService.select<Addition>({
@@ -113,14 +109,16 @@ export async function askInit(
 	});
 	if (addition === undefined) return ok(undefined);
 	if (addition === "separate") {
-		return asProject(await askInitChoices(promptService, context, name));
+		return asProject(
+			await askInitChoices(promptService, toolchainService, context, name)
+		);
 	}
 
 	const filesFor = (candidate: string) =>
 		addition === "place"
 			? placeFileNames(
 					candidate,
-					languageOf(workspace.language),
+					toolchainService.getLanguage(workspace.language),
 					workspace.darklua
 				)
 			: variantFileNames(candidate);
@@ -170,6 +168,7 @@ const asProject = (
  */
 export async function askInitChoices(
 	promptService: PromptService,
+	toolchainService: ToolchainService,
 	context: InitContext,
 	name?: string
 ): Promise<Result<InitChoices | undefined, Diagnostic[]>> {
@@ -204,7 +203,7 @@ export async function askInitChoices(
 
 	const languageId = await promptService.select({
 		message: "Language",
-		choices: Registry.as<LanguageRegistry>(Extensions.Languages)
+		choices: toolchainService
 			.getLanguages()
 			.map(({ id, label, detectedHint }) => ({
 				value: id,
@@ -214,7 +213,7 @@ export async function askInitChoices(
 		initialValue: workspace.language,
 	});
 	if (languageId === undefined) return ok(undefined);
-	const language = languageOf(languageId);
+	const language = toolchainService.getLanguage(languageId);
 
 	const darklua = await promptService.confirm({
 		message: "Does Darklua process your code before Rojo syncs it?",

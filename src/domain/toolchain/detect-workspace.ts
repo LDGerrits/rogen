@@ -4,27 +4,20 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { Registry } from "../../platform/registry/registry.js";
 import { SCRIPT_EXTENSIONS } from "../rojo/rojo-files.js";
 import { Darklua } from "./darklua.js";
 import { detectPackages } from "./packages.js";
-import {
-	DetectedWorkspace,
-	Extensions,
-	LanguageRegistry,
-} from "./toolchain.js";
+import { DetectedWorkspace, Language } from "./toolchain.js";
 
 /** Where a repo that builds several places keeps each place's own code. */
 export const PLACES_DIR = "places";
 
-/** Only `init` may call this: builds do what the config says. Throws when no language is registered. */
+/** Throws when `languages` is empty. */
 export async function detectWorkspace(
 	fileSystem: FileSystemService,
+	languages: readonly Language[],
 	cwd: string
 ): Promise<DetectedWorkspace> {
-	const languages = Registry.as<LanguageRegistry>(
-		Extensions.Languages
-	).getLanguages();
 	if (languages.length === 0) {
 		throw new Error("No language is registered to detect.");
 	}

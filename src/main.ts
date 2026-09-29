@@ -36,6 +36,12 @@ import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
+import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
+import {
+	Extensions as ToolchainExtensions,
+	LanguageRegistry,
+} from "./domain/toolchain/toolchain.js";
+import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreOutputService } from "./domain/output/core-output-service.js";
 import { OutputService } from "./domain/output/output-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
@@ -151,9 +157,19 @@ async function main(): Promise<void> {
 			BuildService,
 			new CoreBuildService(fileSystemService, indexService)
 		);
+		const toolchainService = new CoreToolchainService(
+			fileSystemService,
+			Registry.as<LanguageRegistry>(ToolchainExtensions.Languages)
+		);
+		services.set(ToolchainService, toolchainService);
 		services.set(
 			InitService,
-			new CoreInitService(fileSystemService, promptService, environment)
+			new CoreInitService(
+				fileSystemService,
+				promptService,
+				environment,
+				toolchainService
+			)
 		);
 		services.set(OutputService, new CoreOutputService(fileSystemService));
 		services.set(

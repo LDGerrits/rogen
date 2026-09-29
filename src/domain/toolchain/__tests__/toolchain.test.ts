@@ -1,12 +1,6 @@
-import "../luau.js";
-import "../roblox-ts.js";
 import { Registry } from "../../../platform/registry/registry.js";
-import {
-	Extensions,
-	Language,
-	LanguageRegistry,
-	languageOf,
-} from "../toolchain.js";
+import { Extensions, Language, LanguageRegistry } from "../toolchain.js";
+import { createToolchainService } from "./create-toolchain-service.js";
 
 const registry = () => Registry.as<LanguageRegistry>(Extensions.Languages);
 
@@ -50,23 +44,41 @@ describe("LanguageRegistry", () => {
 	});
 });
 
-describe("languageOf", () => {
+describe("CoreToolchainService", () => {
+	const toolchain = createToolchainService();
+
 	it("should find a registered language", () => {
-		expect(languageOf("roblox-ts").compiler?.name).toBe("roblox-ts");
+		expect(toolchain.getLanguage("roblox-ts").compiler?.name).toBe(
+			"roblox-ts"
+		);
 	});
 
 	it("should throw for a language that isn't registered", () => {
-		expect(() => languageOf("python")).toThrow();
+		expect(() => toolchain.getLanguage("python")).toThrow(
+			'Language "python" is not registered.'
+		);
 	});
-});
 
-describe("route keys", () => {
-	it("should capitalize Luau keys and keep roblox-ts keys as written", () => {
-		expect(languageOf("luau").routeKey("serverStorage")).toBe(
+	it("should list the languages in their order, Luau first", () => {
+		expect(toolchain.getLanguages().map(({ id }) => id)).toEqual([
+			"luau",
+			"roblox-ts",
+		]);
+	});
+
+	it("should list a language contributed after it was created", () => {
+		const registration = registry().registerLanguage(fake("late", 5));
+
+		expect(toolchain.getLanguage("late").id).toBe("late");
+		registration[Symbol.dispose]();
+	});
+
+	it("should capitalize Luau route keys and keep roblox-ts keys as written", () => {
+		expect(toolchain.getLanguage("luau").routeKey("serverStorage")).toBe(
 			"ServerStorage"
 		);
-		expect(languageOf("roblox-ts").routeKey("serverStorage")).toBe(
-			"serverStorage"
-		);
+		expect(
+			toolchain.getLanguage("roblox-ts").routeKey("serverStorage")
+		).toBe("serverStorage");
 	});
 });

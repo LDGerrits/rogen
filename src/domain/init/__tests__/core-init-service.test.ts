@@ -1,7 +1,6 @@
 import { jest } from "@jest/globals";
 import "../../config/config.js";
-import "../../toolchain/luau.js";
-import "../../toolchain/roblox-ts.js";
+import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
@@ -32,7 +31,8 @@ describe("CoreInitService", () => {
 		new CoreInitService(
 			fileSystem,
 			promptService,
-			new NativeEnvironmentService({ _: ["init"] }, cwd)
+			new NativeEnvironmentService({ _: ["init"] }, cwd),
+			createToolchainService(fileSystem)
 		);
 
 	const write = (file: string, content = "") =>
