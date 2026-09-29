@@ -418,6 +418,49 @@ describe("routeFiles", () => {
 		});
 	});
 
+	describe("capital route suffixes", () => {
+		const capitalWarnings = async () =>
+			(await route())
+				.unwrap()
+				.warnings.filter(({ code }) => code === "route.capitalSuffix");
+
+		it("should warn at a file that a capital suffix routes, naming where it lands and the separator form", async () => {
+			await write("src/Net/HttpClient.luau");
+
+			const [warning] = await capitalWarnings();
+
+			expect(warning).toMatchObject({
+				severity: DiagnosticSeverity.Warning,
+				resource: abs("src/Net/HttpClient.luau"),
+			});
+			expect(warning.message).toContain('"client"');
+			expect(warning.message).toContain(
+				"StarterPlayer/StarterPlayerScripts/Net/Http"
+			);
+			expect(warning.message).toContain("Http-client.luau");
+		});
+
+		it("should keep a model's .model in the separator form", async () => {
+			await write("src/Props/CrateServer.model.json");
+
+			const [warning] = await capitalWarnings();
+
+			expect(warning.message).toContain("Crate-server.model.json");
+		});
+
+		it("should not warn about a separator suffix", async () => {
+			await write("src/Net/Http-client.luau", "src/Hud.client.luau");
+
+			expect(await capitalWarnings()).toEqual([]);
+		});
+
+		it("should not warn about a capital suffix that an outer route governs", async () => {
+			await write("src/server/Net/HttpClient.luau");
+
+			expect(await capitalWarnings()).toEqual([]);
+		});
+	});
+
 	describe("targets", () => {
 		it("should create every folder of a nested target", async () => {
 			await write("src/Hud.client.luau");

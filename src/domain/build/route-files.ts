@@ -69,6 +69,14 @@ interface RouteContext {
 	readonly targets: ReadonlyMap<string, Target>;
 	/** Called with the path of a name that only differs from a declared key in letter case. */
 	readonly noteNearMiss: (path: string, key: string) => void;
+	readonly noteCapitalRoute: (capitalRoute: CapitalRoute) => void;
+}
+
+interface CapitalRoute {
+	readonly path: string;
+	readonly key: string;
+	readonly instancePath: readonly string[];
+	readonly separatorName: string;
 }
 
 /** Files that no route governs are left out and reported in one warning. */
@@ -91,12 +99,15 @@ export function routeFiles(
 	);
 	const tagKeys = new Set(Object.keys(config.tags));
 	const nearMisses = new Map<string, string>();
+	const capitalRoutes = new Map<string, CapitalRoute>();
 	const context: RouteContext = {
 		routeKeys,
 		tagKeys,
 		declaredKeys: new Set([...routeKeys, ...tagKeys]),
 		targets,
 		noteNearMiss: (path, key) => nearMisses.set(path, key),
+		noteCapitalRoute: (capitalRoute) =>
+			capitalRoutes.set(capitalRoute.path, capitalRoute),
 	};
 
 	const routed: RoutedFile[] = [];
@@ -135,6 +146,20 @@ export function routeFiles(
 					);
 				},
 				(count) => RouteDiagnostics.moreCaseMismatches(location, count)
+			),
+			...diagnosePaths(
+				[...capitalRoutes.keys()],
+				(resource) => {
+					const { key, instancePath, separatorName } =
+						capitalRoutes.get(resource) as CapitalRoute;
+					return RouteDiagnostics.capitalSuffix(
+						{ resource },
+						key,
+						instancePath.join("/"),
+						separatorName
+					);
+				},
+				(count) => RouteDiagnostics.moreCapitalSuffixes(location, count)
 			),
 			...diagnosePaths(
 				unrouted,
@@ -207,6 +232,7 @@ function routeEntry(
 
 	let name = leaf;
 	let buriedScriptSuffix: RojoScriptSuffix | undefined;
+	let separatorName: string | undefined;
 	if (entry.kind === "init-folder") {
 		const match = matchSuffixKeys(
 			stemOf(entry.initFile),
@@ -233,6 +259,8 @@ function routeEntry(
 		if (routeSpan) {
 			governing = routeSpan.key;
 			stripped.push(routeSpan);
+			if (routeSpan.form === "capital")
+				separatorName = `${stem.slice(0, routeSpan.start)}-${routeSpan.key}${stem.slice(routeSpan.start + routeSpan.length)}${leaf.slice(stem.length)}`;
 		}
 		if (entry.kind === "script") {
 			if (tagSpans.length > 0 && !rojoScriptSuffix(stem))
@@ -253,9 +281,17 @@ function routeEntry(
 		parent = [...parent, folder.name];
 		folderNodes.push({ instancePath: parent, dir: folder.dir });
 	}
+	const instancePath = [...parent, name];
+	if (separatorName)
+		context.noteCapitalRoute({
+			path: toPosix(path.join(entry.rootDir, entry.relativePath)),
+			key: route,
+			instancePath,
+			separatorName,
+		});
 	return {
 		route,
-		instancePath: [...parent, name],
+		instancePath,
 		folderNodes,
 		tags,
 		buriedScriptSuffix,

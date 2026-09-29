@@ -47,4 +47,26 @@ export const RouteDiagnostics = {
 			location,
 			`${count} more ${count === 1 ? "file" : "files"} matched no route and ${count === 1 ? "was" : "were"} left out.`
 		),
+
+	capitalSuffix: (
+		location: DiagnosticLocation,
+		key: string,
+		instancePath: string,
+		separatorName: string
+	): Diagnostic =>
+		warningDiagnostic(
+			"route.capitalSuffix",
+			location,
+			`routed to "${key}" by its capital suffix, so it becomes ${instancePath}. If that's intended, name it ${separatorName}; if not, move it into a routing folder, where the suffix is ignored.`
+		),
+
+	moreCapitalSuffixes: (
+		location: DiagnosticLocation,
+		count: number
+	): Diagnostic =>
+		warningDiagnostic(
+			"route.capitalSuffix",
+			location,
+			`${count} more ${count === 1 ? "file was" : "files were"} routed by a capital suffix.`
+		),
 };
