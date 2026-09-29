@@ -3,27 +3,56 @@ title: Using Rogen with agents
 description: Tell a coding agent how Rogen lays out and builds a project.
 ---
 
-An agent that doesn't know Rogen tends to edit the generated `*.project.json`, or to put a new file where nothing routes it. A short set of rules prevents both. Install it as a skill, or paste it into your `AGENTS.md`.
+An agent that doesn't know Rogen reads the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or names a file `HttpClient.luau` without noticing that the `Client` suffix sends it to the client. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install it as a skill, or paste it into your `AGENTS.md`.
 
 ## Install the skill
 
-The skill lives at `skills/rogen/SKILL.md` in the [Rogen repository](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format. Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents read it. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to install it for:
+The skill lives at `skills/rogen` in the [Rogen repository](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format. Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents read it. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to install it for:
 
 ```bash
 npx skills add LDGerrits/rogen
 ```
 
+The skill keeps its tag, config and CLI reference in a second file that the agent reads only when it needs it.
+
 ## Or add it to `AGENTS.md`
 
-```md title="AGENTS.md"
+````md title="AGENTS.md"
 ## Rogen
 
-1. Rogen generates `*.project.json` from the folder layout. Never edit that file; edit the config or its `template`.
-2. Read `*.rogen.json` for `routes` and `tags`: the only keys that route or tag.
-3. Put a new file where the repo's existing layout would put it. Where there is none, use routing folders. `.server` and `.client` set the script class, not the route.
-4. `Foo.<tag>.luau` or a `<tag>/` folder is a variant that replaces `Foo` when the tag is active.
-5. After adding, moving or renaming files, run `rogen build` (safe while `watch` runs), and fix the diagnostics it prints.
-6. For anything else, run `rogen help`.
+Rogen reads the folder and file names under each config's `rootDirs` and writes the Rojo project file. Folders decide where code runs, so the disk path is not the instance path.
+
+### Placing files
+
+Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
+
+```
+src/Inventory/Server/InventoryService.luau  ->  ServerScriptService/Inventory/InventoryService
+src/Inventory/Client/InventoryController.luau  ->  StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
+src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
 ```
 
-The rules stay short on purpose: `rogen help` and these docs cover the rest, and the diagnostics `rogen build` prints tell the agent what to fix.
+- Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen build --show-config` resolves an `extends` chain.
+- A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
+- Inside a routing folder, a route key at the end of a name is ignored: `Shared/HttpClient.luau` stays `HttpClient`.
+
+### After a batch of changes
+
+- Run `rogen build` once and fix every warning that names your files; when it names configs it skipped, build those too (`rogen build default lobby`).
+- Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
+
+### Requires and imports
+
+- `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see `ServerScriptService`.
+- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`); string requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
+- roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+
+### Ownership
+
+- `rogen build` overwrites the `*.project.json` each config writes: put changes in the config, or in the `template` it merges into.
+- The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
+
+For tags and variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
+````
+
+The snippet covers the mistakes an agent makes on its own. The rest it can look up when a build prints a diagnostic, since every diagnostic names what to change.
