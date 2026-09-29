@@ -3,7 +3,7 @@ import { isObject } from "../../base/object.js";
 import { normalizeDir } from "../../base/path.js";
 import { CONFIG_SUFFIX } from "../config/config-discovery.js";
 import { ContainerFactory, RojoProject } from "../rojo/rojo-project.js";
-import { RojoNode, rojoPathTarget } from "../rojo/rojo-tree.js";
+import { RojoNode, childNodes, rojoPathTarget } from "../rojo/rojo-tree.js";
 import { Mount } from "../toolchain/toolchain.js";
 
 export const TEMPLATE_FILE = "template.project.json";
@@ -106,8 +106,8 @@ export function stripGeneratedNodes(
 
 /**
  * `project` with the `mounts` it doesn't mount yet, itself or through a parent
- * folder, each as `<path> at <node>`. A node already at a mount's place wins,
- * and the mount is listed in `skipped`.
+ * folder, each as `<path> at <node>`, in tree order. A node already where a
+ * mount would go wins, and every mount at or below it is listed in `skipped`.
  */
 export function addMissingMounts(
 	project: TemplateProject,
@@ -124,16 +124,52 @@ export function addMissingMounts(
 
 	const added: string[] = [];
 	const skipped: string[] = [];
-	for (const mount of missing) {
-		const landing = landingOf(mount);
-		const described = `${mount.path} at ${mount.landing}`;
-		if (!edited.canInsert(landing)) continue;
-		if (edited.getNode(landing)) {
-			skipped.push(described);
-		} else {
-			edited.insertNode(landing, mountNode(mount));
-			added.push(described);
+	const describe = (node: RojoNode, at: readonly string[]) =>
+		new RojoProject({ tree: node }, templateContainer)
+			.getPaths()
+			.map(
+				({ path, instancePath }) =>
+					`${normalizeDir(rojoPathTarget(path))} at ${[...at, ...instancePath].join("/")}`
+			);
+	const merge = (
+		node: RojoNode,
+		additions: RojoNode,
+		at: readonly string[]
+	): RojoNode => {
+		const merged: RojoNode = { ...node };
+		for (const [key, value] of childNodes(additions)) {
+			const existing = merged[key];
+			const path = [...at, key];
+			if (value.$path !== undefined) {
+				if (existing === undefined) {
+					merged[key] = value;
+					added.push(...describe(value, path));
+				} else {
+					skipped.push(...describe(value, path));
+				}
+			} else if (existing === undefined || isObject(existing)) {
+				const before = added.length;
+				const container = merge(
+					isObject(existing)
+						? existing
+						: value.$className
+							? { $className: value.$className }
+							: {},
+					value,
+					path
+				);
+				if (added.length > before) merged[key] = container;
+			}
 		}
-	}
-	return { project: edited.getTree(), added, skipped };
+		return merged;
+	};
+
+	return {
+		project: {
+			...project,
+			tree: merge(project.tree, templateTree(missing), []),
+		},
+		added,
+		skipped,
+	};
 }

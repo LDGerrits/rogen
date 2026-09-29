@@ -1,6 +1,6 @@
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { ErrorUtils } from "../../base/errors.js";
+import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import {
 	Diagnostic,
@@ -142,6 +142,12 @@ export class WatchSession extends AbstractDisposable {
 			await this.watcher.stop();
 		})();
 		return this.stopping;
+	}
+
+	/** Stops the session if `stop` wasn't awaited, then drops its subscriptions. */
+	override [Symbol.dispose](): void {
+		this.stop().catch(onUnexpectedError);
+		super[Symbol.dispose]();
 	}
 
 	private liveConfigs(): ResolvedConfig[] {

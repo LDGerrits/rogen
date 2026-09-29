@@ -72,7 +72,7 @@ function nextSteps(
 	return {
 		setup: [],
 		run: [
-			...(compiler ? [compiler.watchCommand] : []),
+			...(compiler ? [compiler.compileCommand] : []),
 			watchCommand(watched),
 			`rojo serve ${name}${PROJECT_SUFFIX}`,
 		],

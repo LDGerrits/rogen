@@ -76,7 +76,7 @@ const compiler: Compiler = {
 	name: "roblox-ts",
 	outDir: (workspace) => workspace.outDir ?? DEFAULT_OUT_DIR,
 	defaultOutDir: DEFAULT_OUT_DIR,
-	watchCommand: "rbxtsc -w",
+	compileCommand: "rbxtsc -w",
 	rootDirDescription:
 		"The folder roblox-ts compiles (rootDir in tsconfig.json).",
 	severalRootDirs:
@@ -115,7 +115,7 @@ const compiler: Compiler = {
 				: [
 						`Add "include": ${JSON.stringify(sharedRootDirs)} to ${TSCONFIG}, so its own build leaves out the place folders.`,
 					],
-			watchCommand: `rbxtsc -w -p ${tsconfig} --rojo ${projectFile}`,
+			compileCommand: `rbxtsc -w -p ${tsconfig} --rojo ${projectFile}`,
 		};
 	},
 };

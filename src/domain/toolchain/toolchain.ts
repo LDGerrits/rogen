@@ -6,7 +6,7 @@ export type PackageManager = "wally" | "pesde";
 
 /**
  * What `init` found in the workspace: facts only, never decisions. A
- * language fills the facts it reads itself; the planner never looks at them.
+ * language fills the facts it reads itself, and only that language reads them.
  */
 export interface DetectedWorkspace {
 	/** The detected language's id, or the first language's when none was found. */
@@ -73,7 +73,7 @@ export interface CompiledPlace {
 	/** One-time edits before anything runs. */
 	readonly setup: readonly string[];
 	/** Replaces the project-wide compile command for this place. */
-	readonly watchCommand: string;
+	readonly compileCommand: string;
 }
 
 export interface CompilerPlaceRequest {
@@ -98,7 +98,7 @@ export interface Compiler {
 	/** Where it writes when its own config doesn't say. */
 	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
-	readonly watchCommand: string;
+	readonly compileCommand: string;
 	/** A compiler reads one root dir; this explains it in the root dir question. */
 	readonly rootDirDescription: string;
 	/** The answer to the root dir question when several were given. */

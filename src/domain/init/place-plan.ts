@@ -164,7 +164,7 @@ export function planPlace(
 			nextSteps: {
 				setup: compiled ? compiled.setup : [],
 				run: [
-					...(compiled ? [compiled.watchCommand] : []),
+					...(compiled ? [compiled.compileCommand] : []),
 					watchCommand(sourced ? [name, sourceStem] : [name]),
 					`rojo serve ${projectFile}`,
 				],

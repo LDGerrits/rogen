@@ -24,8 +24,11 @@ import { Registry } from "../../platform/registry/registry.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { beginBuild } from "../build/begin-build.js";
-import { describeBuild } from "../build/describe-build.js";
-import { describeConfig } from "../build/describe-config.js";
+import {
+	logBuildDetails,
+	logWritten,
+	outFileLabel,
+} from "../build/log-build.js";
 import { ConfigOptions } from "../config-options.js";
 import {
 	clockTime,
@@ -69,9 +72,20 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	handler: async (accessor) => {
 		const logService = accessor.get(LogService);
 		const lifecycleService = accessor.get(LifecycleService);
+		const configService = accessor.get(ConfigService);
+		const fileSystemService = accessor.get(FileSystemService);
+		const indexService = accessor.get(IndexService);
+		const watcher = accessor.get(Watcher);
+		const reconciliationService = accessor.get(ReconciliationService);
 		const cwd = accessor.get(EnvironmentService).cwd;
 
-		const began = await beginBuild(accessor, "watch");
+		const began = await beginBuild({
+			configService,
+			fileSystemService,
+			logService,
+			cwd,
+			command: "watch",
+		});
 		if (began.isErr()) return began;
 
 		const printNotice = ({ file, errors, warnings }: ConfigNotice) => {
@@ -92,21 +106,23 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			diagnostics,
 			summary,
 		}: RebuildReport) => {
-			const outFile = path.relative(cwd, config.outFile) || ".";
-			if (outcome === "failed") {
+			if (outcome === "failed" || !summary) {
+				const outFile = outFileLabel(config, cwd);
 				logService.error(
 					diagnostics.length > 0
 						? `${outFile} · not written`
 						: `${outFile} · not written · same errors as before`
 				);
+				logBuildDetails(logService, cwd, entry);
 			} else {
-				logService.success(`${outFile} · ${outcome}`);
+				logWritten(
+					logService,
+					cwd,
+					{ entry, config },
+					outcome === "wrote",
+					summary
+				);
 			}
-			for (const line of [
-				...describeConfig(entry, cwd),
-				...(summary ? describeBuild(summary, cwd) : []),
-			])
-				logService.debug(line);
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
 		};
@@ -129,11 +145,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const shutdown = new DeferredPromise<void>();
 		const session = store.add(
 			new WatchSession(
-				accessor.get(Watcher),
-				accessor.get(ReconciliationService),
-				accessor.get(ConfigService),
-				accessor.get(IndexService),
-				accessor.get(FileSystemService)
+				watcher,
+				reconciliationService,
+				configService,
+				indexService,
+				fileSystemService
 			)
 		);
 		try {

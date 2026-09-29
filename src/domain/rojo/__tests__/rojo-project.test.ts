@@ -99,16 +99,6 @@ describe("RojoProject", () => {
 				$path: "map.rbxm",
 			});
 		});
-
-		it("should report whether a path can hold a node", () => {
-			const project = new RojoProject(
-				{ name: "x", tree: { Workspace: "not a node" } },
-				folders
-			);
-
-			expect(project.canInsert(["Workspace", "Map"])).toBe(false);
-			expect(project.canInsert(["Lighting", "Sky"])).toBe(true);
-		});
 	});
 
 	describe("getPaths", () => {

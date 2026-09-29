@@ -1,4 +1,3 @@
-import path from "path";
 import { err, ok } from "../../base/result.js";
 import {
 	BuiltProject,
@@ -22,8 +21,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigOptions } from "../config-options.js";
 import { BuildTarget, beginBuild } from "./begin-build.js";
-import { describeBuild } from "./describe-build.js";
-import { describeConfig } from "./describe-config.js";
+import { logWritten } from "./log-build.js";
 import { showConfig } from "./show-config.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
@@ -73,7 +71,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				: ok(undefined);
 		}
 
-		const began = await beginBuild(accessor, "build");
+		const cwd = environmentService.cwd;
+		const began = await beginBuild({
+			configService,
+			fileSystemService,
+			logService,
+			cwd,
+			command: "build",
+		});
 		if (began.isErr()) return began;
 		const targets = began.value;
 		await indexService.initialize(
@@ -98,7 +103,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			return err(new DiagnosticsError(errors));
 		}
 
-		const cwd = environmentService.cwd;
 		for (const { entry, config, project } of built) {
 			if (built.length > 1) logService.step(configLabel(config.file));
 			const written = await writeOutput(
@@ -109,15 +113,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			if (written.isErr())
 				return err(new DiagnosticsError(written.error));
 
-			const outFile = path.relative(cwd, config.outFile) || ".";
-			logService.success(
-				`${outFile} · ${written.value.written ? "wrote" : "unchanged"}`
+			logWritten(
+				logService,
+				cwd,
+				{ entry, config },
+				written.value.written,
+				project.summary
 			);
-			for (const line of [
-				...describeConfig(entry, cwd),
-				...describeBuild(project.summary, cwd),
-			])
-				logService.debug(line);
 			logDiagnostics([...project.warnings, ...project.syncWarnings]);
 		}
 

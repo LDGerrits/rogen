@@ -29,7 +29,7 @@ export function safeStringify(obj: unknown): string {
 	});
 }
 
-/** Tab-indented JSON with a trailing newline, as Rogen writes the files a user owns. */
+/** Tab-indented JSON with a trailing newline, for files people edit by hand. */
 export function formatJsonFile(value: unknown): string {
 	return `${JSON.stringify(value, null, "\t")}\n`;
 }

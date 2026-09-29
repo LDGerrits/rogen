@@ -11,9 +11,7 @@ import {
 } from "../../domain/config/config-service.js";
 import { requireValidConfigs } from "../../domain/config/valid-configs.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 
 /** A config a command builds, with the entry that describes how it was loaded. */
@@ -22,25 +20,32 @@ export interface BuildTarget {
 	readonly config: ResolvedConfig;
 }
 
+export interface BeginBuildOptions {
+	readonly configService: ConfigService;
+	readonly fileSystemService: FileSystemService;
+	readonly logService: LogService;
+	readonly cwd: string;
+	/** Names the command in the opening line. */
+	readonly command: string;
+}
+
 /**
  * What `build` and `watch` do before building anything: refuse broken or
  * unbuildable configs, then open the output and name the configs left out.
  */
-export async function beginBuild(
-	accessor: ServicesAccessor,
-	command: string
-): Promise<Result<BuildTarget[], Error>> {
-	const configService = accessor.get(ConfigService);
-	const fileSystemService = accessor.get(FileSystemService);
-	const environmentService = accessor.get(EnvironmentService);
-	const logService = accessor.get(LogService);
-
+export async function beginBuild({
+	configService,
+	fileSystemService,
+	logService,
+	cwd,
+	command,
+}: BeginBuildOptions): Promise<Result<BuildTarget[], Error>> {
 	const valid = requireValidConfigs(configService);
 	if (valid.isErr()) return valid;
 
 	const skipped = await findUnrequestedConfigs(
 		fileSystemService,
-		environmentService.cwd,
+		cwd,
 		configService.configs.map((entry) => entry.file)
 	);
 	const upfront = checkBuildable(valid.value);

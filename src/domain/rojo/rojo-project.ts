@@ -52,24 +52,11 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		return isObject(current) ? current : undefined;
 	}
 
-	/** Whether every existing ancestor of `instancePath` is a node, so `insertNode` can reach it. */
-	canInsert(instancePath: readonly string[]): boolean {
-		let current: RojoNode = this.project.tree;
-		for (const segment of instancePath.slice(0, -1)) {
-			const next = current[segment];
-			if (next === undefined) return true;
-			if (!isObject(next)) return false;
-			current = next;
-		}
-		return true;
-	}
-
 	/**
 	 * Merges `data` into the node at `instancePath`, creating each missing
 	 * ancestor with the container factory. A node that gets a `$path` drops
 	 * a `Folder` class, since Rojo takes the class from what the path holds.
-	 * Throws when an ancestor isn't a node; check `canInsert` first when the
-	 * tree came from a user.
+	 * Throws when an ancestor isn't a node.
 	 */
 	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
 		if (instancePath.length === 0) return;

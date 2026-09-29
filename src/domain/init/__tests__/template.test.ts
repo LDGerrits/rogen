@@ -1,4 +1,8 @@
-import { defaultTemplateChoice, handWrittenProjectFiles } from "../template.js";
+import {
+	addMissingMounts,
+	defaultTemplateChoice,
+	handWrittenProjectFiles,
+} from "../template.js";
 
 describe("handWrittenProjectFiles", () => {
 	it("should list project files that no config beside them writes", () => {
@@ -38,5 +42,54 @@ describe("defaultTemplateChoice", () => {
 				outputs
 			)
 		).toEqual({ kind: "new" });
+	});
+});
+
+describe("addMissingMounts", () => {
+	const mount = (path: string, landing: string) => ({
+		path,
+		optional: false,
+		landing,
+	});
+	const include = mount("include", "ReplicatedStorage/rbxts_include");
+	const rbxts = mount(
+		"node_modules/@rbxts",
+		"ReplicatedStorage/rbxts_include/node_modules/@rbxts"
+	);
+	const flamework = mount(
+		"node_modules/@flamework",
+		"ReplicatedStorage/rbxts_include/node_modules/@flamework"
+	);
+	const packages = mount("Packages", "ReplicatedStorage/Packages");
+
+	it("should list what it adds in tree order", () => {
+		const { added } = addMissingMounts({ tree: {} }, [
+			include,
+			rbxts,
+			packages,
+			flamework,
+		]);
+
+		expect(added).toEqual([
+			"include at ReplicatedStorage/rbxts_include",
+			"node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts",
+			"node_modules/@flamework at ReplicatedStorage/rbxts_include/node_modules/@flamework",
+			"Packages at ReplicatedStorage/Packages",
+		]);
+	});
+
+	it("should skip every mount below a node the template already has there", () => {
+		const tree = {
+			ReplicatedStorage: { rbxts_include: { $className: "Folder" } },
+		};
+
+		const result = addMissingMounts({ tree }, [include, rbxts]);
+
+		expect(result.added).toEqual([]);
+		expect(result.skipped).toEqual([
+			"include at ReplicatedStorage/rbxts_include",
+			"node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts",
+		]);
+		expect(result.project.tree).toEqual(tree);
 	});
 });
