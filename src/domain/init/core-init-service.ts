@@ -149,7 +149,7 @@ export class CoreInitService implements InitService {
 		return ok(undefined);
 	}
 
-	/** A place is planned from the resolved `default.rogen.json`, which is read here when the questions didn't. */
+	/** A place joins the resolved `default.rogen.json`, read here when the questions didn't. */
 	private async planAnswers(
 		context: InitContext,
 		answers: InitAnswers,

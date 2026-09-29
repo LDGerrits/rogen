@@ -19,24 +19,19 @@ export interface InitRequest {
 	readonly name: string;
 }
 
-/** Sets up a workspace in the working directory in three steps, so a caller can open its output between them. */
+/** Writes a starter config into the working directory in three steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
-	/** Checks the names given after `init` and reads the working directory: its entries and its toolchain. Nothing is asked or written. */
+	/** Checks the names given after `init` and reads the directory's entries and toolchain; asks and writes nothing. */
 	prepare(names: readonly string[]): Promise<Result<InitRequest, Error>>;
 
-	/**
-	 * Decides everything `init` writes and says. Asks when the terminal is
-	 * interactive, and otherwise takes every default. Resolves to
-	 * `ok(undefined)` when the user cancels, and fails with diagnostics when a
-	 * file it would write already exists or the config a place joins is broken.
-	 */
+	/** Decides everything `init` writes and says; `ok(undefined)` means the user cancelled. */
 	plan(
 		request: InitRequest
 	): Promise<Result<InitPlan | undefined, Diagnostic[]>>;
 
-	/** Writes the plan's files into the request's directory, calling `onWritten` after each and stopping at the first that fails. */
+	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
 	write(
 		request: InitRequest,
 		plan: InitPlan,

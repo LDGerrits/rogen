@@ -12,6 +12,7 @@ import {
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import { CoreInitService } from "../core-init-service.js";
+import { plannedFiles } from "../init-plan.js";
 import { InitPlan } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -146,11 +147,7 @@ describe("CoreInitService", () => {
 		it("should write the template, configs and compiler configs into the directory", async () => {
 			await write("tsconfig.json", "{}");
 			const plan = await planned();
-			const names = [
-				...(plan.template ? [plan.template] : []),
-				...plan.configs,
-				...plan.compilerConfigs,
-			].map(({ fileName }) => fileName);
+			const names = plannedFiles(plan).map(({ fileName }) => fileName);
 
 			const result = await serviceFor().write(
 				await prepared(),
