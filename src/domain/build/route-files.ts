@@ -21,6 +21,7 @@ import {
 	unwrapInvisibleFolder,
 } from "./declared-key.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
+import { diagnosePaths } from "./path-list.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
 export const FALLBACK_ROUTE = "*";
@@ -123,19 +124,23 @@ export function routeFiles(
 		routed,
 		unrouted,
 		warnings: [
-			...(nearMisses.size > 0
-				? [
-						RouteDiagnostics.caseMismatch(
-							location,
-							[...nearMisses].map(
-								([path, key]) => `${path} (${key})`
-							)
-						),
-					]
-				: []),
-			...(unrouted.length > 0
-				? [RouteDiagnostics.unrouted(location, unrouted)]
-				: []),
+			...diagnosePaths(
+				[...nearMisses.keys()],
+				(resource) => {
+					const key = nearMisses.get(resource) as string;
+					return RouteDiagnostics.caseMismatch(
+						{ resource },
+						tagKeys.has(key) ? "tag" : "route",
+						key
+					);
+				},
+				(count) => RouteDiagnostics.moreCaseMismatches(location, count)
+			),
+			...diagnosePaths(
+				unrouted,
+				(resource) => RouteDiagnostics.unrouted({ resource }),
+				(count) => RouteDiagnostics.moreUnrouted(location, count)
+			),
 		],
 	});
 }

@@ -73,8 +73,8 @@ async function main(): Promise<void> {
 	try {
 		const promptService = new ConsolePromptService();
 		const logService: LogService = promptService.isInteractive
-			? new TerminalLogService()
-			: new PlainLogService();
+			? new TerminalLogService(process.cwd())
+			: new PlainLogService(process.cwd());
 
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands

@@ -1,3 +1,4 @@
+import path from "path";
 import { Diagnostic, DiagnosticSeverity } from "./diagnostic.js";
 
 const SEVERITY_LABELS: Record<DiagnosticSeverity, string> = {
@@ -5,8 +6,13 @@ const SEVERITY_LABELS: Record<DiagnosticSeverity, string> = {
 	[DiagnosticSeverity.Warning]: "warning",
 };
 
-export function renderDiagnostic(diagnostic: Diagnostic): string {
-	const { resource, position, severity, message } = diagnostic;
+/** With `cwd`, the resource is written relative to it. */
+export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
+	const { position, severity, message } = diagnostic;
+	const resource =
+		cwd === undefined
+			? diagnostic.resource
+			: path.relative(cwd, diagnostic.resource) || ".";
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
@@ -14,5 +20,7 @@ export function renderDiagnostic(diagnostic: Diagnostic): string {
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
-	return diagnostics.map(renderDiagnostic).join("\n");
+	return diagnostics
+		.map((diagnostic) => renderDiagnostic(diagnostic))
+		.join("\n");
 }

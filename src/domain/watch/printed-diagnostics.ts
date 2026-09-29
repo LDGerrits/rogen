@@ -8,7 +8,9 @@ export class PrintedDiagnostics {
 	/** Returns the diagnostics not printed for `key` last time, and records `diagnostics` as printed. */
 	unseen(key: string, diagnostics: readonly Diagnostic[]): Diagnostic[] {
 		const previous = this.printed.get(key);
-		const rendered = diagnostics.map(renderDiagnostic);
+		const rendered = diagnostics.map((diagnostic) =>
+			renderDiagnostic(diagnostic)
+		);
 		this.printed.set(key, new Set(rendered));
 		return diagnostics.filter(
 			(_, index) => !previous?.has(rendered[index])

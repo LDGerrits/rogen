@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  <dir>/default.project.json - warning: 1 file pruned by the dormant tag "mock" matched on a capital suffix (<dir>/src/Net/HttpMock.luau). Use a separator (Foo.mock.luau) if these are not variants.
+  src/Net/HttpMock.luau - warning: pruned because its capital suffix matches the dormant tag "mock". If it's a variant, name it Http.mock.luau; if not, rename it so it doesn't end in "Mock".
 
 written:
   default.project.json

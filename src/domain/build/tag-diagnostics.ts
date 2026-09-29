@@ -5,7 +5,6 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { RojoScriptSuffix } from "../rojo/rojo-assigned-name.js";
-import { listPaths } from "./path-list.js";
 
 export const TagDiagnostics = {
 	activeClash: (
@@ -33,12 +32,23 @@ export const TagDiagnostics = {
 	dormantCapitalSuffix: (
 		location: DiagnosticLocation,
 		tag: string,
-		paths: readonly string[]
+		variantName: string
 	): Diagnostic =>
 		warningDiagnostic(
 			"tag.dormantCapitalSuffix",
 			location,
-			`${paths.length} ${paths.length === 1 ? "file" : "files"} pruned by the dormant tag "${tag}" matched on a capital suffix (${listPaths(paths)}). Use a separator (Foo.${tag}.luau) if these are not variants.`
+			`pruned because its capital suffix matches the dormant tag "${tag}". If it's a variant, name it ${variantName}; if not, rename it so it doesn't end in "${tag[0].toUpperCase()}${tag.slice(1)}".`
+		),
+
+	moreDormantCapitalSuffixes: (
+		location: DiagnosticLocation,
+		tag: string,
+		count: number
+	): Diagnostic =>
+		warningDiagnostic(
+			"tag.dormantCapitalSuffix",
+			location,
+			`${count} more ${count === 1 ? "file was" : "files were"} pruned by the dormant tag "${tag}" on a capital suffix.`
 		),
 
 	buriedScriptSuffix: (

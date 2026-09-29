@@ -19,7 +19,10 @@ stdout:
     [debug] left out: 4 unrouted, 1 replaced by a file with the same name
   Built 2 configs.
 stderr:
-  <dir>/match.project.json - warning: 4 files matched no route and were left out (<dir>/src/Util.luau, <dir>/src/Util.spec.luau, <dir>/src/client/Hud.client.luau, …). Add a "*" route to place them.
+  src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/Util.spec.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/client/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  lib/Signal.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
 
 written:
   lobby.project.json

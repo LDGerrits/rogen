@@ -835,7 +835,7 @@ describe("watch command", () => {
 			expect(block.lines).toEqual([
 				"default.project.json · wrote",
 				expect.stringMatching(
-					/^diagnosticWarning: .*default\.project\.json - warning: 1 file matched no route/
+					/^diagnosticWarning: .*src\/A\.luau - warning: matched no route/
 				),
 			]);
 		});

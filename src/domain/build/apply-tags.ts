@@ -4,6 +4,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RoutedFile } from "./route-files.js";
+import { diagnosePaths } from "./path-list.js";
 import { TagDiagnostics } from "./tag-diagnostics.js";
 
 export interface TagResult {
@@ -40,7 +41,21 @@ export function applyTags(
 	}
 	for (const [tag, paths] of prunedOnCapital)
 		warnings.push(
-			TagDiagnostics.dormantCapitalSuffix(location, tag, paths)
+			...diagnosePaths(
+				paths,
+				(resource) =>
+					TagDiagnostics.dormantCapitalSuffix(
+						{ resource },
+						tag,
+						variantName(resource, tag)
+					),
+				(count) =>
+					TagDiagnostics.moreDormantCapitalSuffixes(
+						location,
+						tag,
+						count
+					)
+			)
 		);
 
 	for (const file of kept)
@@ -83,6 +98,16 @@ export function applyTags(
 	const won = new Set(winners.values());
 	const superseded = kept.filter((file) => !won.has(file)).map(displayPath);
 	return ok({ files: [...won], superseded, pruned, warnings });
+}
+
+/** The file's name with its capital tag suffix written as a separator suffix. */
+function variantName(source: string, tag: string): string {
+	const name = path.posix.basename(source);
+	const extension = path.posix.extname(name);
+	const stem = name.slice(0, name.length - extension.length);
+	const word = tag[0].toUpperCase() + tag.slice(1);
+	const base = stem.endsWith(word) ? stem.slice(0, -word.length) : stem;
+	return `${base}.${tag}${extension}`;
 }
 
 function sourcePath(file: RoutedFile): string {

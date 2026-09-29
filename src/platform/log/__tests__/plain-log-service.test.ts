@@ -194,4 +194,14 @@ describe("PlainLogService", () => {
 
 		expect([...out, ...errors].join("")).not.toContain("\x1b");
 	});
+
+	it("should print diagnostics relative to the working directory it was given", () => {
+		const logService = new PlainLogService("/repo");
+
+		logService.diagnostic(
+			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w")
+		);
+
+		expect(errors).toEqual(["src/a.luau - warning: w"]);
+	});
 });

@@ -27,7 +27,9 @@ export function showConfig(entries: readonly ConfigEntry[]): string {
 		entry.resolved
 			? describeConfig(entry.resolved)
 			: {
-					diagnostics: entryErrors(entry).map(renderDiagnostic),
+					diagnostics: entryErrors(entry).map((diagnostic) =>
+						renderDiagnostic(diagnostic)
+					),
 				},
 	]);
 	const value =

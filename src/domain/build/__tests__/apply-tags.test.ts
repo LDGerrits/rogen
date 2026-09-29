@@ -153,7 +153,7 @@ describe("applyTags", () => {
 	});
 
 	describe("capital suffix on a dormant tag", () => {
-		it("should prune the files and warn once, naming every path", async () => {
+		it("should prune the files and warn about each capital match, at that file", async () => {
 			await write(
 				"src/HttpMock.luau",
 				"src/DataMock.luau",
@@ -164,23 +164,19 @@ describe("applyTags", () => {
 
 			expect(result.files).toEqual([]);
 			expect(result.pruned).toHaveLength(3);
-			expect(result.warnings).toHaveLength(1);
+			expect(result.warnings.map(({ resource }) => resource)).toEqual([
+				abs("src/DataMock.luau"),
+				abs("src/HttpMock.luau"),
+			]);
 			expect(result.warnings[0]).toMatchObject({
 				severity: DiagnosticSeverity.Warning,
 				code: "tag.dormantCapitalSuffix",
-				resource: abs("default.project.json"),
 			});
-			expect(result.warnings[0].message).toContain("2 files");
-			expect(result.warnings[0].message).toContain(
-				abs("src/HttpMock.luau")
-			);
-			expect(result.warnings[0].message).toContain(
-				abs("src/DataMock.luau")
-			);
-			expect(result.warnings[0].message).not.toContain("Analytics");
+			expect(result.warnings[0].message).toContain('"mock"');
+			expect(result.warnings[0].message).toContain("Data.mock.luau");
 		});
 
-		it("should warn once per tag", async () => {
+		it("should warn once for each tag a file matches on a capital", async () => {
 			await write("src/HttpMock.luau", "src/UnitTest.luau");
 
 			const { warnings } = (

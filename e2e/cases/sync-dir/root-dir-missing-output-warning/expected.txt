@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  <dir>/core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the compiler's output rooted differently?
+  core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the compiler's output rooted differently?
 
 written:
   default.project.json

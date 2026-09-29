@@ -4,7 +4,6 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { listPaths } from "./path-list.js";
 
 export const RouteDiagnostics = {
 	noRoutes: (location: DiagnosticLocation): Diagnostic =>
@@ -16,21 +15,36 @@ export const RouteDiagnostics = {
 
 	caseMismatch: (
 		location: DiagnosticLocation,
-		entries: readonly string[]
+		kind: "route" | "tag",
+		key: string
 	): Diagnostic =>
 		warningDiagnostic(
 			"route.caseMismatch",
 			location,
-			`${entries.length} ${entries.length === 1 ? "name" : "names"} differ from a declared route or tag only in letter case, so ${entries.length === 1 ? "it is" : "they are"} treated as ordinary (${listPaths(entries)}). Rename ${entries.length === 1 ? "it" : "them"} to match the key, or declare the key as written.`
+			`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Match the key's spelling, or declare the name as written.`
 		),
 
-	unrouted: (
+	moreCaseMismatches: (
 		location: DiagnosticLocation,
-		paths: readonly string[]
+		count: number
 	): Diagnostic =>
+		warningDiagnostic(
+			"route.caseMismatch",
+			location,
+			`${count} more ${count === 1 ? "name differs" : "names differ"} from a declared route or tag only in letter case.`
+		),
+
+	unrouted: (location: DiagnosticLocation): Diagnostic =>
 		warningDiagnostic(
 			"route.unrouted",
 			location,
-			`${paths.length} ${paths.length === 1 ? "file" : "files"} matched no route and ${paths.length === 1 ? "was" : "were"} left out (${listPaths(paths)}). Add a "*" route to place them.`
+			'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
+		),
+
+	moreUnrouted: (location: DiagnosticLocation, count: number): Diagnostic =>
+		warningDiagnostic(
+			"route.unrouted",
+			location,
+			`${count} more ${count === 1 ? "file" : "files"} matched no route and ${count === 1 ? "was" : "were"} left out.`
 		),
 };

@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  <dir>/later - warning: this root dir does not exist, so it contributes nothing.
+  later - warning: this root dir does not exist, so it contributes nothing.
 
 written:
   default.project.json

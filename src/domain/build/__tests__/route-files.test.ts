@@ -313,17 +313,16 @@ describe("routeFiles", () => {
 				.unwrap()
 				.warnings.filter(({ code }) => code === "route.caseMismatch");
 
-		it("should warn about a folder named like a route in different case", async () => {
+		it("should warn about a folder named like a route in different case, at that folder", async () => {
 			await write("src/SERVER/Save.luau");
 
 			const [warning] = await caseWarnings();
 
 			expect(warning).toMatchObject({
 				severity: DiagnosticSeverity.Warning,
-				resource: abs("default.project.json"),
+				resource: abs("src/SERVER"),
 			});
-			expect(warning.message).toContain("1 name ");
-			expect(warning.message).toContain("src/SERVER (server)");
+			expect(warning.message).toContain('"server"');
 		});
 
 		it("should warn about an invisible folder named like a tag in different case", async () => {
@@ -331,7 +330,8 @@ describe("routeFiles", () => {
 
 			const [warning] = await caseWarnings({ tags: { mock: true } });
 
-			expect(warning.message).toContain("src/Analytics/(MOCK) (mock)");
+			expect(warning.resource).toBe(abs("src/Analytics/(MOCK)"));
+			expect(warning.message).toContain('tag "mock"');
 		});
 
 		it("should warn about a marker file named like a route in different case", async () => {
@@ -339,7 +339,8 @@ describe("routeFiles", () => {
 
 			const [warning] = await caseWarnings();
 
-			expect(warning.message).toContain("src/Inventory/.SERVER (server)");
+			expect(warning.resource).toBe(abs("src/Inventory/.SERVER"));
+			expect(warning.message).toContain('route "server"');
 		});
 
 		it("should warn about a separator suffix in different case", async () => {
@@ -347,8 +348,8 @@ describe("routeFiles", () => {
 
 			const [warning] = await caseWarnings();
 
-			expect(warning.message).toContain(
-				"src/Inventory/Load.SERVER.luau (server)"
+			expect(warning.resource).toBe(
+				abs("src/Inventory/Load.SERVER.luau")
 			);
 		});
 
@@ -357,19 +358,16 @@ describe("routeFiles", () => {
 
 			const [warning] = await caseWarnings();
 
-			expect(warning.message).toContain("src/Inventory (server)");
+			expect(warning.resource).toBe(abs("src/Inventory"));
 		});
 
 		it("should warn once for a folder however many files it holds", async () => {
 			await write("src/SERVER/A.luau", "src/SERVER/B.luau");
 
-			const warnings = await caseWarnings();
-
-			expect(warnings).toHaveLength(1);
-			expect(warnings[0].message).toContain("1 name ");
+			expect(await caseWarnings()).toHaveLength(1);
 		});
 
-		it("should report every mismatch in one warning", async () => {
+		it("should warn once per mismatched name", async () => {
 			await write(
 				"src/SERVER/A.luau",
 				"src/Inventory/.CLIENT",
@@ -378,8 +376,11 @@ describe("routeFiles", () => {
 
 			const warnings = await caseWarnings();
 
-			expect(warnings).toHaveLength(1);
-			expect(warnings[0].message).toContain("3 names ");
+			expect(warnings.map(({ resource }) => resource).sort()).toEqual([
+				abs("src/Inventory/.CLIENT"),
+				abs("src/Inventory/B.SERVER.luau"),
+				abs("src/SERVER"),
+			]);
 		});
 
 		it("should not warn about a name that only differs in its first letter", async () => {
@@ -690,36 +691,34 @@ describe("routeFiles", () => {
 			expect(result.unrouted).toEqual([abs("src/B.luau")]);
 		});
 
-		it("should report every unrouted file in one warning", async () => {
-			await write("src/A.luau", "src/B.luau", "src/C.luau");
+		it("should warn about each file no route governs, at that file", async () => {
+			await write("src/A.luau", "src/Inventory/B.luau");
 
-			const { warnings } = (await route(noStar)).unwrap();
+			const warnings = (await route(noStar))
+				.unwrap()
+				.warnings.filter(({ code }) => code === "route.unrouted");
 
-			expect(warnings).toHaveLength(1);
-			expect(warnings[0]).toMatchObject({
-				severity: DiagnosticSeverity.Warning,
-				code: "route.unrouted",
-				resource: abs("default.project.json"),
-			});
-			expect(warnings[0].message).toContain("3 files");
+			expect(warnings.map(({ resource }) => resource)).toEqual([
+				abs("src/A.luau"),
+				abs("src/Inventory/B.luau"),
+			]);
 			expect(warnings[0].message).toContain('"*"');
 		});
 
-		it("should list only the first few paths", async () => {
+		it("should list at most ten unrouted files and count the rest in one warning", async () => {
 			await write(
-				"src/A.luau",
-				"src/B.luau",
-				"src/C.luau",
-				"src/D.luau",
-				"src/E.luau"
+				...Array.from({ length: 12 }, (_, n) => `src/F${n + 10}.luau`)
 			);
 
-			const { warnings } = (await route(noStar)).unwrap();
+			const warnings = (await route(noStar))
+				.unwrap()
+				.warnings.filter(({ code }) => code === "route.unrouted");
 
-			expect(warnings[0].message).toContain("5 files");
-			expect(warnings[0].message).toContain("A.luau");
-			expect(warnings[0].message).toContain("C.luau");
-			expect(warnings[0].message).not.toContain("D.luau");
+			expect(warnings).toHaveLength(11);
+			expect(warnings[10]).toMatchObject({
+				resource: abs("default.project.json"),
+			});
+			expect(warnings[10].message).toContain("2 more");
 		});
 
 		it("should not warn when every file is routed", async () => {
@@ -734,16 +733,7 @@ describe("routeFiles", () => {
 			const result = (await route({ routes: {} })).unwrap();
 
 			expect(result.routed).toEqual([]);
-			expect(result.warnings).toHaveLength(1);
-			expect(result.warnings[0].message).toContain("2 files");
-		});
-
-		it("should say file, not files, for one", async () => {
-			await write("src/A.luau");
-
-			const { warnings } = (await route(noStar)).unwrap();
-
-			expect(warnings[0].message).toContain("1 file ");
+			expect(result.warnings).toHaveLength(2);
 		});
 	});
 });

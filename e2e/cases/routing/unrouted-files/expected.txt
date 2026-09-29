@@ -5,7 +5,9 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  <dir>/default.project.json - warning: 3 files matched no route and were left out (<dir>/src/Inventory/Hud.client.luau, <dir>/src/Inventory/Types.luau, <dir>/src/Util.luau). Add a "*" route to place them.
+  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
 
 written:
   default.project.json

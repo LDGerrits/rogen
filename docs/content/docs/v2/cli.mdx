@@ -118,4 +118,4 @@ Text you asked for, like help, the version and `--show-config`, is printed even 
 
 Every command prints through one logger. In a terminal it draws a framed layout with symbols. Without a terminal (CI, pipes, a redirect) it prints plain lines with no gutter or color, so nothing that greps the output breaks.
 
-A build result line is `<file> · wrote`, `<file> · unchanged` or `<file> · not written`. Diagnostics keep their `file:line:col - severity: message` shape on their own lines under it, so editors and CI can parse them. A command that fails prints the error inside the frame and exits with 1.
+A build result line is `<file> · wrote`, `<file> · unchanged` or `<file> · not written`. Diagnostics keep their `file:line:col - severity: message` shape on their own lines under it, so editors and CI can parse them. The file is relative to the working directory, and a warning about a source file is located at that file, one line per file. A command that fails prints the error inside the frame and exits with 1.

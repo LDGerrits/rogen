@@ -29,5 +29,21 @@ describe("platform/diagnostics/render-diagnostic", () => {
 				"/repo/src - warning: it contributes nothing."
 			);
 		});
+
+		it("should render the resource relative to a working directory", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "test.example",
+				message: "it contributes nothing.",
+				resource: "/repo/src/Net/HttpClient.luau",
+			};
+
+			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+				"src/Net/HttpClient.luau - warning: it contributes nothing."
+			);
+			expect(
+				renderDiagnostic(diagnostic, "/repo/src/Net/HttpClient.luau")
+			).toBe(". - warning: it contributes nothing.");
+		});
 	});
 });

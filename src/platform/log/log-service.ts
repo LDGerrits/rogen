@@ -58,6 +58,9 @@ export abstract class AbstractLogService implements LogService {
 	protected level: LogLevel = LogLevel.Info;
 	private frameOpen = false;
 
+	/** Diagnostics are written relative to `cwd` when one is given. */
+	constructor(private readonly cwd?: string) {}
+
 	setLevel(level: LogLevel): void {
 		this.level = level;
 	}
@@ -171,7 +174,7 @@ export abstract class AbstractLogService implements LogService {
 		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
 			this.write(
 				isError ? "diagnosticError" : "diagnosticWarning",
-				renderDiagnostic(diagnostic)
+				renderDiagnostic(diagnostic, this.cwd)
 			);
 	}
 }
