@@ -1,4 +1,8 @@
+import { parse } from "../../base/jsonc.js";
+import { isObject } from "../../base/object.js";
 import { CONFIG_SUFFIX } from "../config/config-discovery.js";
+import { RojoNode, RojoPath, isRojoPath } from "../rojo/rojo-tree.js";
+import { normalizeRootDir } from "./init-root-dirs.js";
 
 export const TEMPLATE_FILE = "template.project.json";
 export const PROJECT_SUFFIX = ".project.json";
@@ -39,4 +43,51 @@ export function defaultTemplateChoice(
 	const handWritten = handWrittenProjectFiles(existingFiles);
 	const replaced = outputs.find((output) => handWritten.includes(output));
 	return replaced ? { kind: "copy", from: replaced } : { kind: "new" };
+}
+
+const pathOf = (rojoPath: RojoPath): string =>
+	normalizeRootDir(
+		typeof rojoPath === "string" ? rojoPath : rojoPath.optional
+	);
+
+/**
+ * `content` without the nodes whose `$path` points into `dirs`, which Rogen
+ * generates now. `undefined` when it can't tell: `content` isn't a project, or
+ * a dir is the whole folder.
+ */
+export function stripGeneratedNodes(
+	content: string,
+	dirs: readonly string[]
+): { project: Record<string, unknown>; removed: string[] } | undefined {
+	const claimed = dirs.map(normalizeRootDir);
+	if (claimed.includes(".")) return undefined;
+	const parsed = parse(content);
+	if (parsed.isErr() || !isObject(parsed.value)) return undefined;
+	const { tree } = parsed.value;
+	if (!isObject(tree)) return undefined;
+
+	const isClaimed = (value: unknown) => {
+		if (!isRojoPath(value)) return false;
+		const target = pathOf(value);
+		return claimed.some(
+			(dir) => target === dir || target.startsWith(`${dir}/`)
+		);
+	};
+
+	const removed: string[] = [];
+	const strip = (node: RojoNode, at: readonly string[]): RojoNode => {
+		const kept: RojoNode = {};
+		for (const [key, value] of Object.entries(node)) {
+			if (key.startsWith("$") || !isObject(value)) {
+				kept[key] = value;
+			} else if (isClaimed(value.$path)) {
+				removed.push([...at, key].join("/"));
+			} else {
+				kept[key] = strip(value, [...at, key]);
+			}
+		}
+		return kept;
+	};
+
+	return { project: { ...parsed.value, tree: strip(tree, []) }, removed };
 }

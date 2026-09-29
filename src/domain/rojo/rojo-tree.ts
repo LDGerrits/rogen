@@ -1,8 +1,17 @@
+import { isObject } from "../../base/object.js";
+
 export interface OptionalRojoPath {
 	readonly optional: string;
 }
 
 export type RojoPath = string | OptionalRojoPath;
+
+export function isRojoPath(value: unknown): value is RojoPath {
+	return (
+		typeof value === "string" ||
+		(isObject(value) && typeof value.optional === "string")
+	);
+}
 
 export interface RojoNode {
 	$className?: string;
