@@ -147,6 +147,43 @@ describe("domain/config/core-config-service", () => {
 		});
 	});
 
+	describe("readConfig", () => {
+		it("should resolve a config file without adding it to the configs", async () => {
+			await write("/repo/other.rogen.json", { rootDirs: ["lib"] });
+
+			const entry = await service.readConfig("/repo/other.rogen.json");
+
+			expect(entry.resolved?.rootDirs).toEqual(["/repo/lib"]);
+			expect(entry.diagnostics).toEqual([]);
+			expect(service.configs).toEqual([]);
+			expect(service.files.size).toBe(0);
+		});
+
+		it("should follow the extends chain", async () => {
+			await write("/repo/base.rogen.json", { syncDir: "out" });
+			await write("/repo/other.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+
+			const entry = await service.readConfig("/repo/other.rogen.json");
+
+			expect(entry.chain).toEqual([
+				"/repo/other.rogen.json",
+				"/repo/base.rogen.json",
+			]);
+			expect(entry.resolved?.syncDir).toBe("/repo/out");
+		});
+
+		it("should put the problems of a broken config on the entry", async () => {
+			await write("/repo/other.rogen.json", "{ nope");
+
+			const entry = await service.readConfig("/repo/other.rogen.json");
+
+			expect(entry.resolved).toBeUndefined();
+			expect(entry.diagnostics.length).toBeGreaterThan(0);
+		});
+	});
+
 	describe("extends", () => {
 		it("should merge maps key by key with the child winning", async () => {
 			await write("/repo/base.rogen.json", {

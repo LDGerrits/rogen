@@ -2,7 +2,9 @@ import "../../config/config.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { SCHEMA_URL as SCHEMA } from "../init-files.js";
@@ -10,8 +12,8 @@ import {
 	BaseConfig,
 	PlaceChoices,
 	planPlace,
+	baseConfigOf,
 	planVariant,
-	readBaseConfig,
 } from "../place-plan.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -349,11 +351,23 @@ describe("planPlace", () => {
 	});
 });
 
-describe("readBaseConfig", () => {
+describe("baseConfigOf", () => {
 	let fs: MemoryFileSystemService;
 
 	const write = (file: string, content: unknown) =>
 		fs.writeFile(path.join(directory, file), JSON.stringify(content));
+
+	const readBase = async () => {
+		const configService = new CoreConfigService(
+			fs,
+			new MockEnvironmentService({ _: [] }, directory)
+		);
+		const entry = await configService.readConfig(
+			path.join(directory, "default.rogen.json")
+		);
+		configService[Symbol.dispose]();
+		return baseConfigOf(entry, directory);
+	};
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
@@ -363,7 +377,7 @@ describe("readBaseConfig", () => {
 	it("should read the root dirs of default.rogen.json relative to the directory", async () => {
 		await write("default.rogen.json", { rootDirs: ["src", "shared"] });
 
-		const base = (await readBaseConfig(fs, directory)).unwrap();
+		const base = (await readBase()).unwrap();
 
 		expect(base).toEqual({ rootDirs: ["src", "shared"] });
 	});
@@ -375,7 +389,7 @@ describe("readBaseConfig", () => {
 		});
 		await write("source.rogen.json", { rootDirs: ["core"] });
 
-		const base = (await readBaseConfig(fs, directory)).unwrap();
+		const base = (await readBase()).unwrap();
 
 		expect(base).toEqual({
 			rootDirs: ["core"],
@@ -390,7 +404,7 @@ describe("readBaseConfig", () => {
 			"{ nope"
 		);
 
-		const result = await readBaseConfig(fs, directory);
+		const result = await readBase();
 
 		expect(result.isErr()).toBe(true);
 		expect(

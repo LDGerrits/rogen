@@ -59,3 +59,25 @@ export function relativeTo(from: string, filePath: string): string {
 export function stemOf(fileName: string): string {
 	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }
+
+/** The deepest directory containing every one of `dirs`. All paths must be absolute. Throws when `dirs` is empty. */
+export function commonAncestor(dirs: readonly string[]): string {
+	if (dirs.length === 0) {
+		throw new Error("commonAncestor needs at least one directory.");
+	}
+
+	const { root } = path.parse(dirs[0]);
+	const split = (dir: string) =>
+		path.relative(root, dir).split(path.sep).filter(Boolean);
+
+	let shared = split(dirs[0]);
+	for (const dir of dirs.slice(1)) {
+		const segments = split(dir);
+		const length = shared.findIndex(
+			(segment, index) => segments[index] !== segment
+		);
+		shared = shared.slice(0, length === -1 ? shared.length : length);
+	}
+
+	return path.join(root, ...shared);
+}

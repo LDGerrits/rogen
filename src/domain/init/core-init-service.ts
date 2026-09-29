@@ -5,7 +5,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { configFileName } from "../config/config-discovery.js";
+import { configFileName } from "../config/config.js";
+import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { InitChoices, defaultInitChoices } from "./init-choices.js";
 import {
@@ -22,9 +23,9 @@ import { InitAnswers, InitContext, askInit } from "./init-questions.js";
 import { InitRequest, InitService } from "./init-service.js";
 import {
 	BaseConfig,
+	baseConfigOf,
 	planPlace,
 	planVariant,
-	readBaseConfig,
 } from "./place-plan.js";
 import { planProject } from "./project-plan.js";
 
@@ -37,7 +38,8 @@ export class CoreInitService implements InitService {
 		private readonly fileSystemService: FileSystemService,
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
-		private readonly toolchainService: ToolchainService
+		private readonly toolchainService: ToolchainService,
+		private readonly configService: ConfigService
 	) {}
 
 	async prepare(
@@ -93,10 +95,7 @@ export class CoreInitService implements InitService {
 			existingFiles,
 			...(interactive &&
 				existingFiles.has(DEFAULT_CONFIG_FILE) && {
-					base: await readBaseConfig(
-						this.fileSystemService,
-						directory
-					),
+					base: await this.readBaseConfig(directory),
 				}),
 		};
 
@@ -177,9 +176,7 @@ export class CoreInitService implements InitService {
 			});
 		}
 
-		const base =
-			context.base ??
-			(await readBaseConfig(this.fileSystemService, directory));
+		const base = context.base ?? (await this.readBaseConfig(directory));
 		if (base.isErr()) return base;
 		return planPlace({
 			choices: answers.choices,
@@ -190,6 +187,15 @@ export class CoreInitService implements InitService {
 			directory,
 			existingFiles,
 		});
+	}
+
+	private async readBaseConfig(
+		directory: string
+	): Promise<Result<BaseConfig, Diagnostic[]>> {
+		const entry = await this.configService.readConfig(
+			path.join(directory, DEFAULT_CONFIG_FILE)
+		);
+		return baseConfigOf(entry, directory);
 	}
 
 	private async planProjectWithPlaces(

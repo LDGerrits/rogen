@@ -175,7 +175,8 @@ async function main(): Promise<void> {
 				fileSystemService,
 				promptService,
 				environment,
-				toolchainService
+				toolchainService,
+				configService
 			)
 		);
 		services.set(OutputService, new CoreOutputService(fileSystemService));

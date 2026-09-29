@@ -1,6 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
-import { commonRoot } from "../config/common-root.js";
+import { commonAncestor, toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { OptionalRojoPath } from "../rojo/rojo-tree.js";
 import { SyncTool } from "../toolchain/toolchain.js";
@@ -25,7 +24,7 @@ export function syncLayoutOf(
 	tools: readonly SyncTool[]
 ): SyncLayout {
 	return {
-		commonRoot: commonRoot(config.rootDirs),
+		commonRoot: commonAncestor(config.rootDirs),
 		syncDir: config.syncDir,
 		projectDir: path.dirname(config.outFile),
 		tools,

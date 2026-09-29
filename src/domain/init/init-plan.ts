@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG_STEM } from "../config/config-discovery.js";
+import { DEFAULT_CONFIG_STEM } from "../config/config.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 
 export type { PlannedFile };

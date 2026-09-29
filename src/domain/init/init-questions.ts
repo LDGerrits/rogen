@@ -5,10 +5,7 @@ import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
-import {
-	configFileName,
-	DEFAULT_CONFIG_STEM,
-} from "../config/config-discovery.js";
+import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { Darklua } from "../toolchain/darklua.js";
 import { DetectedWorkspace, Language, Mount } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";

@@ -1,7 +1,9 @@
 import { relativeTo } from "../../base/path.js";
 import { err, ok } from "../../base/result.js";
-import { ConfigService } from "../../domain/config/config-service.js";
-import { entryErrors } from "../../domain/config/valid-configs.js";
+import {
+	ConfigService,
+	entryErrors,
+} from "../../domain/config/config-service.js";
 import {
 	CommandRegistry,
 	Extensions,

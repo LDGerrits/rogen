@@ -1,16 +1,13 @@
 import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ResolvedConfig } from "../../domain/config/config.js";
-import { configLabel } from "../../domain/config/config-discovery.js";
+import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import {
 	ConfigEntry,
 	ConfigService,
-} from "../../domain/config/config-service.js";
-import {
 	requireValidConfigs,
 	resolvedEntries,
-} from "../../domain/config/valid-configs.js";
+} from "../../domain/config/config-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
 
@@ -38,7 +35,7 @@ export async function beginBuild({
 	logService,
 	command,
 }: BeginBuildOptions): Promise<Result<BuildTarget[], Error>> {
-	const valid = requireValidConfigs(configService);
+	const valid = requireValidConfigs(configService.configs);
 	if (valid.isErr()) return valid;
 
 	const requested = new Set(configService.configs.map(({ file }) => file));
@@ -54,5 +51,5 @@ export async function beginBuild({
 	if (skipped.length > 0) {
 		logService.info(`Not building: ${skipped.join(", ")}.`);
 	}
-	return ok(resolvedEntries(configService));
+	return ok(resolvedEntries(configService.configs));
 }

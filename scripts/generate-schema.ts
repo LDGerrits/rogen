@@ -5,8 +5,7 @@ import {
 	Extensions,
 	ConfigRegistry,
 } from "../src/platform/config/config-registry.js";
-import "../src/domain/config/config.js";
-import { schemaChannels } from "../src/domain/config/schema-url.js";
+import { schemaChannels } from "../src/domain/config/config.js";
 
 const { version } = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
 	version: string;

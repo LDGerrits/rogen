@@ -10,10 +10,10 @@ import {
 	requireValidConfigs,
 	resolvedConfigs,
 	resolvedEntries,
-} from "../valid-configs.js";
-import { MockConfigService, mockEntry } from "./mock-config-service.js";
+} from "../config-service.js";
+import { mockEntry } from "./mock-config-service.js";
 
-describe("domain/config/valid-configs", () => {
+describe("domain/config/config-service", () => {
 	describe("resolvedEntries and resolvedConfigs", () => {
 		const unresolved = {
 			...mockEntry({}, "/repo/broken.rogen.json"),
@@ -25,13 +25,11 @@ describe("domain/config/valid-configs", () => {
 				{ rootDirs: ["/repo/a"] },
 				"/repo/a.rogen.json"
 			);
-			const service = new MockConfigService([unresolved, good]);
+			const pairs = resolvedEntries([unresolved, good]);
 
-			const entries = resolvedEntries(service);
-
-			expect(entries).toHaveLength(1);
-			expect(entries[0].entry).toBe(good);
-			expect(entries[0].config).toBe(good.resolved);
+			expect(pairs).toHaveLength(1);
+			expect(pairs[0].entry).toBe(good);
+			expect(pairs[0].config).toBe(good.resolved);
 		});
 
 		it("should list only the configs that resolved", () => {
@@ -39,9 +37,9 @@ describe("domain/config/valid-configs", () => {
 				{ rootDirs: ["/repo/a"] },
 				"/repo/a.rogen.json"
 			);
-			const service = new MockConfigService([good, unresolved]);
+			const entries = [good, unresolved];
 
-			expect(resolvedConfigs(service)).toEqual([good.resolved]);
+			expect(resolvedConfigs(entries)).toEqual([good.resolved]);
 		});
 	});
 
@@ -56,12 +54,12 @@ describe("domain/config/valid-configs", () => {
 		);
 
 		it("should return every resolved config when all are valid", () => {
-			const service = new MockConfigService([
+			const entries = [
 				mockEntry({ rootDirs: ["/repo/a"] }, "/repo/a.rogen.json"),
 				mockEntry({ rootDirs: ["/repo/b"] }, "/repo/b.rogen.json"),
-			]);
+			];
 
-			const result = requireValidConfigs(service);
+			const result = requireValidConfigs(entries);
 
 			expect(result.unwrap().map((c) => c.rootDirs)).toEqual([
 				["/repo/a"],
@@ -70,15 +68,15 @@ describe("domain/config/valid-configs", () => {
 		});
 
 		it("should fail with the errors of every invalid entry", () => {
-			const service = new MockConfigService([
+			const entries = [
 				mockEntry({}, "/repo/a.rogen.json"),
 				{
 					...mockEntry({}, "/repo/prod.rogen.json"),
 					diagnostics: [problem],
 				},
-			]);
+			];
 
-			const result = requireValidConfigs(service);
+			const result = requireValidConfigs(entries);
 
 			const error = (result as ResultError<DiagnosticsError>).error;
 			expect(error.diagnostics).toEqual([problem]);
@@ -88,11 +86,9 @@ describe("domain/config/valid-configs", () => {
 		});
 
 		it("should fail for an entry that has a last valid config but a broken file", () => {
-			const service = new MockConfigService([
-				{ ...mockEntry(), diagnostics: [problem] },
-			]);
+			const entries = [{ ...mockEntry(), diagnostics: [problem] }];
 
-			expect(requireValidConfigs(service).isErr()).toBe(true);
+			expect(requireValidConfigs(entries).isErr()).toBe(true);
 		});
 
 		it("should not fail on warnings", () => {
@@ -101,12 +97,10 @@ describe("domain/config/valid-configs", () => {
 				{ resource: "/repo/a.rogen.json" },
 				"careful."
 			);
-			const service = new MockConfigService([
-				{ ...mockEntry(), diagnostics: [warning] },
-			]);
+			const entries = [{ ...mockEntry(), diagnostics: [warning] }];
 
 			expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-			expect(requireValidConfigs(service).isOk()).toBe(true);
+			expect(requireValidConfigs(entries).isOk()).toBe(true);
 		});
 	});
 });

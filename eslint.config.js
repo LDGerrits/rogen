@@ -15,16 +15,7 @@ const layersAbove = {
 // The files other modules may import; everything else in a domain module is internal.
 const domainModules = {
 	build: ["build-service"],
-	config: [
-		"common-root",
-		"config-discovery",
-		"config-service",
-		"config-validation",
-		"config",
-		"load-config",
-		"schema-url",
-		"valid-configs",
-	],
+	config: ["config", "config-service"],
 	init: ["init-plan", "init-service"],
 	output: ["find-output-clashes", "output-service", "staging-file"],
 	roblox: ["container-class-name", "target"],

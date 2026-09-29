@@ -1,6 +1,7 @@
 import path from "path";
 import {
 	ancestors,
+	commonAncestor,
 	contains,
 	isInside,
 	joinPosix,
@@ -149,6 +150,38 @@ describe("normalizeDir", () => {
 
 		it("should keep a name that has no extension", () => {
 			expect(stemOf("Save")).toBe("Save");
+		});
+	});
+
+	describe("commonAncestor", () => {
+		const abs = (...segments: string[]) =>
+			path.resolve("/repo", ...segments);
+
+		it("should be the directory itself when there is one", () => {
+			expect(commonAncestor([abs("src")])).toBe(abs("src"));
+		});
+
+		it("should be the shared parent of sibling directories", () => {
+			expect(commonAncestor([abs("core"), abs("lobby")])).toBe(abs("."));
+		});
+
+		it("should be the deepest directory containing every one", () => {
+			expect(
+				commonAncestor([
+					abs("places/main/src"),
+					abs("places/common/src"),
+				])
+			).toBe(abs("places"));
+		});
+
+		it("should not match on a shared name prefix that is not a whole segment", () => {
+			expect(commonAncestor([abs("src"), abs("src-extra")])).toBe(
+				abs(".")
+			);
+		});
+
+		it("should throw when there are no directories", () => {
+			expect(() => commonAncestor([])).toThrow();
 		});
 	});
 });

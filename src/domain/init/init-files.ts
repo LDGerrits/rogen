@@ -7,11 +7,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	configFileName,
 	DEFAULT_CONFIG_STEM,
-} from "../config/config-discovery.js";
-import { RogenConfig } from "../config/config.js";
-import { schemaUrlFor } from "../config/schema-url.js";
+	RogenConfig,
+	configFileName,
+	schemaUrlFor,
+} from "../config/config.js";
 import { Language, PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { TEMPLATE_FILE } from "./template.js";

@@ -52,6 +52,13 @@ export class MockConfigService implements ConfigService {
 		return [...this.configFiles];
 	}
 
+	async readConfig(file: string): Promise<ConfigEntry> {
+		return (
+			this.configs.find((entry) => entry.file === file) ??
+			mockEntry({}, file)
+		);
+	}
+
 	async reload(_files: readonly string[]): Promise<void> {}
 
 	fireChangeEvent(keys: string[], resource = "/repo/default.rogen.json") {

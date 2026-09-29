@@ -1,7 +1,11 @@
 import { Event } from "../../base/event.js";
-import { Result } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+} from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
@@ -45,9 +49,41 @@ export interface ConfigService {
 	initialize(refs: ConfigRefs): Promise<Result<void, Error>>;
 	/** Every `*.rogen.json` directly in the working dir, loaded or not, as sorted absolute paths; none when it can't be read. */
 	listConfigFiles(): Promise<string[]>;
+	/** Loads one config file the way `initialize` would, without adding it to the configs. A broken config lands on the entry. */
+	readConfig(file: string): Promise<ConfigEntry>;
 	/** Reloads every config that reads one of `files`. A failed reload keeps the last valid value. */
 	reload(files: readonly string[]): Promise<void>;
 }
 
 export const ConfigService =
 	createServiceIdentifier<ConfigService>("configService");
+
+export function entryErrors(entry: ConfigEntry): Diagnostic[] {
+	return entry.diagnostics.filter(
+		(diagnostic) => diagnostic.severity === DiagnosticSeverity.Error
+	);
+}
+
+/** The configs that resolved, each with the entry it came from. */
+export function resolvedEntries(
+	entries: readonly ConfigEntry[]
+): { entry: ConfigEntry; config: ResolvedConfig }[] {
+	return entries.flatMap((entry) =>
+		entry.resolved ? [{ entry, config: entry.resolved }] : []
+	);
+}
+
+export function resolvedConfigs(
+	entries: readonly ConfigEntry[]
+): ResolvedConfig[] {
+	return resolvedEntries(entries).map(({ config }) => config);
+}
+
+export function requireValidConfigs(
+	entries: readonly ConfigEntry[]
+): Result<ResolvedConfig[], DiagnosticsError> {
+	const errors = entries.flatMap(entryErrors);
+	if (errors.length > 0) return err(new DiagnosticsError(errors));
+
+	return ok(resolvedConfigs(entries));
+}

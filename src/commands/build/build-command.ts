@@ -3,9 +3,11 @@ import {
 	BuildService,
 	BuiltProject,
 } from "../../domain/build/build-service.js";
-import { configLabel } from "../../domain/config/config-discovery.js";
-import { ConfigService } from "../../domain/config/config-service.js";
-import { entryErrors } from "../../domain/config/valid-configs.js";
+import { configLabel } from "../../domain/config/config.js";
+import {
+	ConfigService,
+	entryErrors,
+} from "../../domain/config/config-service.js";
 import { OutputService } from "../../domain/output/output-service.js";
 import {
 	CommandRegistry,

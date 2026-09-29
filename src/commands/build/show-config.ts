@@ -1,8 +1,10 @@
 import path from "path";
-import { commonRoot } from "../../domain/config/common-root.js";
+import { commonAncestor } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { ConfigEntry } from "../../domain/config/config-service.js";
-import { entryErrors } from "../../domain/config/valid-configs.js";
+import {
+	ConfigEntry,
+	entryErrors,
+} from "../../domain/config/config-service.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 
 function describeConfig(config: ResolvedConfig): Record<string, unknown> {
@@ -10,7 +12,7 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 		name: config.name,
 		rootDirs: config.rootDirs,
 		commonRoot:
-			config.rootDirs.length > 0 ? commonRoot(config.rootDirs) : null,
+			config.rootDirs.length > 0 ? commonAncestor(config.rootDirs) : null,
 		routes: config.routes,
 		tags: config.tags,
 		exclude: config.exclude,

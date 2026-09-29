@@ -2,10 +2,8 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { configFileName } from "../config/config-discovery.js";
-import { RogenConfig } from "../config/config.js";
-import { loadConfig } from "../config/load-config.js";
+import { RogenConfig, configFileName } from "../config/config.js";
+import { ConfigEntry } from "../config/config-service.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { Darklua } from "../toolchain/darklua.js";
 import {
@@ -51,23 +49,17 @@ export interface PlacePlanOptions {
 	readonly existingFiles: ReadonlySet<string>;
 }
 
-/** Resolves `default.rogen.json` in `directory` the way a build would, so a place joins a config that builds. */
-export async function readBaseConfig(
-	fileSystem: FileSystemService,
+/** What a place inherits from `entry`, `default.rogen.json` in `directory` resolved the way a build would, so a place joins a config that builds. */
+export function baseConfigOf(
+	entry: ConfigEntry,
 	directory: string
-): Promise<Result<BaseConfig, Diagnostic[]>> {
-	const loaded = await loadConfig(
-		fileSystem,
-		path.join(directory, DEFAULT_CONFIG_FILE),
-		{ tags: {} },
-		directory
-	);
-	if (loaded.resolved.isErr()) return err(loaded.resolved.error);
+): Result<BaseConfig, Diagnostic[]> {
+	if (!entry.resolved) return err([...entry.diagnostics]);
 
 	const relative = (absolute: string) =>
 		toPosix(path.relative(directory, absolute));
-	const { rootDirs, syncDir } = loaded.resolved.value;
-	const parent = loaded.chain[1];
+	const { rootDirs, syncDir } = entry.resolved;
+	const parent = entry.chain[1];
 	return ok({
 		rootDirs: rootDirs.map(relative),
 		...(syncDir && { syncDir: relative(syncDir) }),

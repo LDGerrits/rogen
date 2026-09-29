@@ -1,9 +1,11 @@
 import path from "path";
 import { err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { configLabel } from "../../domain/config/config-discovery.js";
-import { ConfigService } from "../../domain/config/config-service.js";
-import { requireValidConfigs } from "../../domain/config/valid-configs.js";
+import { configLabel } from "../../domain/config/config.js";
+import {
+	ConfigService,
+	requireValidConfigs,
+} from "../../domain/config/config-service.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -38,7 +40,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const buildService = accessor.get(BuildService);
 		const cwd = accessor.get(EnvironmentService).cwd;
 
-		const configs = requireValidConfigs(configService);
+		const configs = requireValidConfigs(configService.configs);
 		if (configs.isErr()) return configs;
 
 		const paths = args._.slice(1).map((file) => path.resolve(cwd, file));

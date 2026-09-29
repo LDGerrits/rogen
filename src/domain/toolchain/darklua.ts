@@ -1,8 +1,7 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { commonAncestor, toPosix } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { commonRoot } from "../config/common-root.js";
 import { Extensions, SyncTool, SyncToolRegistry } from "./toolchain.js";
 
 const CONFIG_FILES = [".darklua.json", ".darklua.json5"];
@@ -35,7 +34,7 @@ export const Darklua = {
 		syncDir: string
 	): string[] {
 		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
-		const common = commonRoot(absolute);
+		const common = commonAncestor(absolute);
 		return sourceDirs.map((dir, index) => {
 			const relative = toPosix(path.relative(common, absolute[index]));
 			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;

@@ -3,7 +3,7 @@ import {
 	syncLayoutOf,
 	syncPath,
 } from "../sync-layout.js";
-import { commonRoot } from "../../config/common-root.js";
+import { commonAncestor } from "../../../base/path.js";
 import { abs, syncTools } from "./fixtures.js";
 
 describe("syncLayoutOf", () => {
@@ -43,7 +43,7 @@ describe("syncPath", () => {
 
 	it("should replace a single root dir with the sync dir", () => {
 		const layout = {
-			commonRoot: commonRoot([abs("src")]),
+			commonRoot: commonAncestor([abs("src")]),
 			syncDir: abs("out"),
 			projectDir,
 			tools: syncTools,
@@ -56,7 +56,7 @@ describe("syncPath", () => {
 
 	it("should keep the distinguishing part of each root dir when there are several", () => {
 		const layout = {
-			commonRoot: commonRoot([abs("core"), abs("lobby")]),
+			commonRoot: commonAncestor([abs("core"), abs("lobby")]),
 			syncDir: abs("out"),
 			projectDir,
 			tools: syncTools,
@@ -72,7 +72,7 @@ describe("syncPath", () => {
 
 	it("should emit what rbxtsc writes for a multi-place repo", () => {
 		const layout = {
-			commonRoot: commonRoot([
+			commonRoot: commonAncestor([
 				abs("places/main/src"),
 				abs("places/main/tests"),
 				abs("places/common/src"),

@@ -1,7 +1,7 @@
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { normalizeDir } from "../../base/path.js";
-import { configFileName } from "../config/config-discovery.js";
+import { configFileName } from "../config/config.js";
 import {
 	ContainerFactory,
 	PROJECT_SUFFIX,

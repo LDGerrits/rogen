@@ -1,6 +1,6 @@
 import path from "path";
 import { normalizeDir } from "../../base/path.js";
-import { outerRootDir } from "../config/config-validation.js";
+import { outerRootDir } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
 const DEFAULT_ROOT_DIR = "src";

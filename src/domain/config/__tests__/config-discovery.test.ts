@@ -1,4 +1,5 @@
-import { discoverConfigPaths } from "../config-discovery.js";
+import { ConfigDiscovery } from "../config-discovery.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Result, ResultError } from "../../../base/result.js";
 
@@ -6,13 +7,18 @@ function errorMessage(result: Result<unknown, Error>): string {
 	return (result as ResultError<Error>).error.message;
 }
 
-describe("discoverConfigPaths", () => {
+describe("ConfigDiscovery", () => {
 	let fs: MemoryFileSystemService;
+	let discovery: ConfigDiscovery;
 	const cwd = "/repo";
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory(cwd);
+		discovery = new ConfigDiscovery(
+			fs,
+			new MockEnvironmentService({ _: [] }, cwd)
+		);
 	});
 
 	describe("with no names and no explicit paths", () => {
@@ -20,7 +26,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.writeFile("/repo/other.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, []);
+			const result = await discovery.discover([]);
 
 			expect(result.isOk()).toBe(true);
 			expect(result.unwrap()).toEqual(["/repo/default.rogen.json"]);
@@ -29,7 +35,7 @@ describe("discoverConfigPaths", () => {
 		it("resolves to the single *.rogen.json present", async () => {
 			await fs.writeFile("/repo/staging.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, []);
+			const result = await discovery.discover([]);
 
 			expect(result.unwrap()).toEqual(["/repo/staging.rogen.json"]);
 		});
@@ -38,7 +44,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/match.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, []);
+			const result = await discovery.discover([]);
 
 			expect(result.isErr()).toBe(true);
 			expect(result.unwrapOr(undefined)).toBeUndefined();
@@ -47,7 +53,7 @@ describe("discoverConfigPaths", () => {
 		});
 
 		it("errors clearly when nothing is found", async () => {
-			const result = await discoverConfigPaths(fs, cwd, []);
+			const result = await discovery.discover([]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("No config file found");
@@ -56,7 +62,7 @@ describe("discoverConfigPaths", () => {
 		it("ignores a directory that happens to end in .rogen.json", async () => {
 			await fs.createDirectory("/repo/weird.rogen.json");
 
-			const result = await discoverConfigPaths(fs, cwd, []);
+			const result = await discovery.discover([]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("No config file found");
@@ -68,10 +74,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/match.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, [
-				"lobby",
-				"match",
-			]);
+			const result = await discovery.discover(["lobby", "match"]);
 
 			expect(result.unwrap()).toEqual([
 				"/repo/lobby.rogen.json",
@@ -82,13 +85,13 @@ describe("discoverConfigPaths", () => {
 		it("does not fall back to a default when names are given", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, ["lobby"]);
+			const result = await discovery.discover(["lobby"]);
 
 			expect(result.isErr()).toBe(true);
 		});
 
 		it("errors naming the path it looked for when a named config is missing", async () => {
-			const result = await discoverConfigPaths(fs, cwd, ["ghost"]);
+			const result = await discovery.discover(["ghost"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("ghost");
@@ -101,9 +104,7 @@ describe("discoverConfigPaths", () => {
 			await fs.createDirectory("/repo/places/lobby");
 			await fs.writeFile("/repo/places/lobby/default.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(
-				fs,
-				cwd,
+			const result = await discovery.discover(
 				[],
 				["places/lobby/default.rogen.json"]
 			);
@@ -117,9 +118,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/a.rogen.json", "{}");
 			await fs.writeFile("/repo/b.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(
-				fs,
-				cwd,
+			const result = await discovery.discover(
 				[],
 				["a.rogen.json", "b.rogen.json"]
 			);
@@ -134,9 +133,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/extra.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(
-				fs,
-				cwd,
+			const result = await discovery.discover(
 				["lobby"],
 				["extra.rogen.json"]
 			);
@@ -148,9 +145,7 @@ describe("discoverConfigPaths", () => {
 		});
 
 		it("errors naming the path when a -c path is missing", async () => {
-			const result = await discoverConfigPaths(
-				fs,
-				cwd,
+			const result = await discovery.discover(
 				[],
 				["missing.rogen.json"]
 			);
@@ -166,7 +161,7 @@ describe("discoverConfigPaths", () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, [], [], true);
+			const result = await discovery.discover([], [], true);
 
 			expect(result.unwrap()).toEqual([
 				"/repo/default.rogen.json",
@@ -176,7 +171,7 @@ describe("discoverConfigPaths", () => {
 		});
 
 		it("errors clearly when nothing is found", async () => {
-			const result = await discoverConfigPaths(fs, cwd, [], [], true);
+			const result = await discovery.discover([], [], true);
 
 			expect(errorMessage(result)).toContain("No config file found");
 		});
@@ -186,9 +181,7 @@ describe("discoverConfigPaths", () => {
 		it("errors when a name and a -c path resolve to the same file", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(
-				fs,
-				cwd,
+			const result = await discovery.discover(
 				["lobby"],
 				["lobby.rogen.json"]
 			);
@@ -200,10 +193,7 @@ describe("discoverConfigPaths", () => {
 		it("errors when the same name is given twice", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discoverConfigPaths(fs, cwd, [
-				"lobby",
-				"lobby",
-			]);
+			const result = await discovery.discover(["lobby", "lobby"]);
 
 			expect(result.isErr()).toBe(true);
 		});

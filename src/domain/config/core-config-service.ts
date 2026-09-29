@@ -7,8 +7,8 @@ import { Config } from "../../platform/config/config-models.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { discoverConfigPaths, findConfigFiles } from "./config-discovery.js";
-import { loadConfig } from "./load-config.js";
+import { ConfigDiscovery } from "./config-discovery.js";
+import { ConfigLoader } from "./config-loader.js";
 import {
 	ConfigEntry,
 	ConfigOverrides,
@@ -38,6 +38,8 @@ export class CoreConfigService
 	readonly onDidChangeConfig: Event<ConfigChangeEvent> =
 		this._onDidChangeConfig.event;
 
+	private readonly discovery: ConfigDiscovery;
+	private readonly loader: ConfigLoader;
 	private readonly reloads = new Sequencer();
 	private slots: readonly ConfigSlot[] = [];
 	private overrides: ConfigOverrides = { tags: {} };
@@ -51,16 +53,19 @@ export class CoreConfigService
 	}
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService
+		fileSystemService: FileSystemService,
+		environmentService: EnvironmentService
 	) {
 		super();
+		this.discovery = new ConfigDiscovery(
+			fileSystemService,
+			environmentService
+		);
+		this.loader = new ConfigLoader(fileSystemService, environmentService);
 	}
 
 	async initialize(refs: ConfigRefs): Promise<Result<void, Error>> {
-		const discovered = await discoverConfigPaths(
-			this.fileSystemService,
-			this.environmentService.cwd,
+		const discovered = await this.discovery.discover(
 			refs.names,
 			refs.paths,
 			refs.all
@@ -75,11 +80,12 @@ export class CoreConfigService
 	}
 
 	async listConfigFiles(): Promise<string[]> {
-		const found = await findConfigFiles(
-			this.fileSystemService,
-			this.environmentService.cwd
-		);
+		const found = await this.discovery.find();
 		return found.isOk() ? found.value : [];
+	}
+
+	async readConfig(file: string): Promise<ConfigEntry> {
+		return (await this.load(file, undefined)).entry;
 	}
 
 	reload(files: readonly string[]): Promise<void> {
@@ -139,12 +145,7 @@ export class CoreConfigService
 		file: string,
 		previous: ConfigSlot | undefined
 	): Promise<ConfigSlot> {
-		const loaded = await loadConfig(
-			this.fileSystemService,
-			file,
-			this.overrides,
-			this.environmentService.cwd
-		);
+		const loaded = await this.loader.load(file, this.overrides);
 		if (loaded.resolved.isOk()) {
 			return {
 				config: loaded.config,

@@ -10,6 +10,7 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { plannedFiles } from "../init-plan.js";
 import { InitPlan } from "../init-service.js";
@@ -27,13 +28,19 @@ describe("CoreInitService", () => {
 	const serviceFor = (
 		promptService: PromptService = new MockPromptService([], false),
 		cwd = directory
-	) =>
-		new CoreInitService(
+	) => {
+		const environmentService = new NativeEnvironmentService(
+			{ _: ["init"] },
+			cwd
+		);
+		return new CoreInitService(
 			fileSystem,
 			promptService,
-			new NativeEnvironmentService({ _: ["init"] }, cwd),
-			createToolchainService(fileSystem)
+			environmentService,
+			createToolchainService(fileSystem),
+			new CoreConfigService(fileSystem, environmentService)
 		);
+	};
 
 	const write = (file: string, content = "") =>
 		fileSystem.writeFile(path.join(directory, file), content);

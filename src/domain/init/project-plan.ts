@@ -1,8 +1,7 @@
 import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName } from "../config/config-discovery.js";
-import { RogenConfig } from "../config/config.js";
+import { RogenConfig, configFileName } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
 import { Darklua } from "../toolchain/darklua.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";

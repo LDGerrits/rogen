@@ -6,6 +6,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { createToolchainService } from "../../../domain/toolchain/__tests__/create-toolchain-service.js";
+import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../../domain/init/core-init-service.js";
 import { InitService } from "../../../domain/init/init-service.js";
 import { SCHEMA_URL } from "../../../domain/init/init-files.js";
@@ -66,7 +67,8 @@ describe("init command", () => {
 				memFs,
 				promptService,
 				environment,
-				createToolchainService(memFs)
+				createToolchainService(memFs),
+				new CoreConfigService(memFs, environment)
 			)
 		);
 		services.set(LogService, logService);
