@@ -153,10 +153,7 @@ describe("applyTags", () => {
 			expect(result.superseded).toEqual([abs("src/Analytics.luau")]);
 			expect(result.supersededBy).toEqual(
 				new Map([
-					[
-						abs("src/Analytics.luau"),
-						abs("src/Analytics.mock.luau"),
-					],
+					[abs("src/Analytics.luau"), abs("src/Analytics.mock.luau")],
 				])
 			);
 		});
@@ -210,6 +207,14 @@ describe("applyTags", () => {
 			});
 			expect(result.warnings[0].message).toContain('"mock"');
 			expect(result.warnings[0].message).toContain("Data.mock.luau");
+		});
+
+		it("should write a tag Rojo reads as a script class with a dash", async () => {
+			await write("src/HelperPlugin.luau");
+
+			const { warnings } = (await apply({ plugin: false })).unwrap();
+
+			expect(warnings[0].message).toContain("Helper-plugin.luau");
 		});
 
 		it("should warn once for each tag a file matches on a capital", async () => {

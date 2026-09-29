@@ -32,3 +32,15 @@ export function rojoFileName(kind: RojoFileKind, fileName: string): string {
 	if (kind === "script") return rojoAssignedName(stem);
 	return kind === "data" ? rojoModelName(stem) : stem;
 }
+
+/** Whether Rojo reads `.key` at the end of a stem of this kind as part of the file's type rather than its name. */
+function readsAsSuffix(kind: RojoFileKind, key: string): boolean {
+	const probe = `x.${key.toLowerCase()}`;
+	if (kind === "script") return rojoScriptSuffix(probe) !== undefined;
+	return kind === "data" && stripRojoDataSuffix(probe) !== probe;
+}
+
+/** The separator that writes `key` as a suffix Rojo leaves in the name: a dot, unless Rojo reads `.key` for this kind of file, then a dash. */
+export function suffixSeparator(kind: RojoFileKind, key: string): "." | "-" {
+	return readsAsSuffix(kind, key) ? "-" : ".";
+}

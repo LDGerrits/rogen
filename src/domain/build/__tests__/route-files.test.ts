@@ -477,7 +477,27 @@ describe("routeFiles", () => {
 
 			const [warning] = await capitalWarnings();
 
-			expect(warning.message).toContain("Crate-server.model.json");
+			expect(warning.message).toContain("Crate.server.model.json");
+		});
+
+		it("should write a route Rojo doesn't read as a suffix with a dot", async () => {
+			await write("src/Net/UtilShared.luau");
+
+			const [warning] = await capitalWarnings({
+				routes: { ...ROUTES, shared: "ReplicatedStorage/shared" },
+			});
+
+			expect(warning.message).toContain("Util.shared.luau");
+		});
+
+		it("should write a route Rojo reads as a script class with a dash", async () => {
+			await write("src/Net/HttpPlugin.luau");
+
+			const [warning] = await capitalWarnings({
+				routes: { ...ROUTES, plugin: "ServerStorage" },
+			});
+
+			expect(warning.message).toContain("Http-plugin.luau");
 		});
 
 		it("should not warn about a separator suffix", async () => {

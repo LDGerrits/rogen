@@ -7,7 +7,7 @@ Rogen 2. The full docs are at https://rogen-playfully.vercel.app/docs/v2.
 `routes` maps a route key to a target, `Service` or `Service/Folder/…`. Only declared keys route, and nothing is built in. Besides a routing folder, a key matches in two ways, which some repos use for a whole feature:
 
 - **Marker file**: an empty `.server` routes its directory and everything below, and that directory keeps its name.
-- **Suffix**: `Combat-server`, `Combat.server`, `Combat_server`, `Combat@server` or `CombatServer` routes one file, and the suffix is stripped from the name. Outside a routing folder this fires by accident: `Net/HttpClient.luau` becomes the client module `Http`, and `rogen build` warns. A separator (`Http-client.luau`) routes on purpose without a warning.
+- **Suffix**: `Combat-server`, `Combat.server`, `Combat_server`, `Combat@server` or `CombatServer` routes one file, and the suffix is stripped from the name. Outside a routing folder this fires by accident: `Net/HttpClient.luau` becomes the client module `Http`, and `rogen build` warns. A separator (`Http-client.luau`) routes on purpose without a warning; the warning suggests a dot, or a dash where Rojo reads the suffix itself (`.server`, `.client`, `.plugin`).
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns about it.
 

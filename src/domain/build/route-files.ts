@@ -11,7 +11,9 @@ import {
 	rojoAssignedName,
 	rojoScriptSuffix,
 	stripRojoDataSuffix,
+	suffixSeparator,
 } from "../rojo/rojo-assigned-name.js";
+import { RojoFileKind } from "../rojo/rojo-files.js";
 import {
 	SuffixForm,
 	SuffixMatch,
@@ -53,7 +55,7 @@ export interface RoutedFile {
 	/** The governing route key, or `*`. */
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The file name with a capital route suffix written as a separator suffix; a dot would make Rojo read `.server` as a script class. */
+	/** The file name with a capital route suffix written as a separator suffix that Rojo leaves in the name. */
 	readonly separatorName?: string;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
@@ -235,11 +237,15 @@ function routeEntry(
 		);
 		if (routeSpan && governing === undefined) {
 			govern(routeSpan.key, routeSpan.form);
-			separatorName = separatorNameOf(entry.initFile, routeSpan);
+			separatorName = separatorNameOf(
+				entry.initFile,
+				"script",
+				routeSpan
+			);
 		}
 		tags.push(
 			...tagSpansOf(match.spans, context).map((span) =>
-				asTagMatch(span, entry.initFile)
+				asTagMatch(span, entry.initFile, "script")
 			)
 		);
 	} else {
@@ -249,7 +255,9 @@ function routeEntry(
 		const match = matchSuffixKeys(stem, context.declaredKeys);
 		noteSuffixNearMiss(entry, match, context);
 		const tagSpans = tagSpansOf(match.spans, context);
-		tags.push(...tagSpans.map((span) => asTagMatch(span, leaf)));
+		tags.push(
+			...tagSpans.map((span) => asTagMatch(span, leaf, entry.kind))
+		);
 
 		const stripped = [...tagSpans];
 		const routeSpan = governing
@@ -258,7 +266,7 @@ function routeEntry(
 		if (routeSpan) {
 			govern(routeSpan.key, routeSpan.form);
 			stripped.push(routeSpan);
-			separatorName = separatorNameOf(leaf, routeSpan);
+			separatorName = separatorNameOf(leaf, entry.kind, routeSpan);
 		}
 		if (entry.kind === "script") {
 			if (tagSpans.length > 0 && !rojoScriptSuffix(stem))
@@ -306,19 +314,23 @@ function tagSpansOf(
 	return spans.filter((span) => context.tagKeys.has(span.key));
 }
 
-function asTagMatch(span: SuffixSpan, fileName: string): TagMatch {
+function asTagMatch(
+	span: SuffixSpan,
+	fileName: string,
+	kind: RojoFileKind
+): TagMatch {
 	const match = { tag: span.key, form: span.form };
-	return span.form === "capital"
-		? { ...match, separatorName: withSeparatorSuffix(fileName, span, ".") }
-		: match;
+	const separatorName = separatorNameOf(fileName, kind, span);
+	return separatorName ? { ...match, separatorName } : match;
 }
 
 function separatorNameOf(
 	fileName: string,
+	kind: RojoFileKind,
 	span: SuffixSpan
 ): string | undefined {
 	return span.form === "capital"
-		? withSeparatorSuffix(fileName, span, "-")
+		? withSeparatorSuffix(fileName, span, suffixSeparator(kind, span.key))
 		: undefined;
 }
 

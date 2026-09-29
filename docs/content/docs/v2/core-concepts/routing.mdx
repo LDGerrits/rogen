@@ -129,7 +129,7 @@ src/Inventory/Hud.client.luau            ->  StarterPlayer/StarterPlayerScripts/
 
 ### Escaping an Accidental Route
 
-Suffix matching is flexible, so a name can route by accident: with a `client` route, `HttpClient.luau` goes to `client` and loses its `Client` suffix, becoming `Http`. `rogen build` warns about every file a capital suffix routes, naming where it lands. When the routing is intended, write the suffix with a separator (`Http-client.luau`) and the warning goes away. When it isn't, put the file under an outer route, and that route governs instead:
+Suffix matching is flexible, so a name can route by accident: with a `client` route, `HttpClient.luau` goes to `client` and loses its `Client` suffix, becoming `Http`. `rogen build` warns about every file a capital suffix routes, naming where it lands. When the routing is intended, write the suffix with a separator and the warning goes away. The warning suggests a dot (`Util.shared.luau`), or a dash when Rojo reads that suffix itself: `.server`, `.client` and `.plugin` on a script, `.model` and `.project` on a data file (`Http-client.luau`). When it isn't, put the file under an outer route, and that route governs instead:
 
 ```
 src/Net/HttpClient.luau         ->  StarterPlayer/StarterPlayerScripts/Net/Http

@@ -3,7 +3,41 @@ import {
 	rojoFileName,
 	rojoModelName,
 	stripRojoDataSuffix,
+	suffixSeparator,
 } from "../rojo-assigned-name.js";
+
+describe("suffixSeparator", () => {
+	it.each(["server", "client", "plugin"])(
+		"should use a dash for %s on a script, which Rojo reads as the class",
+		(key) => {
+			expect(suffixSeparator("script", key)).toBe("-");
+		}
+	);
+
+	it("should compare a script key without regard to case", () => {
+		expect(suffixSeparator("script", "Server")).toBe("-");
+	});
+
+	it.each(["shared", "mock", "dev"])(
+		"should use a dot for %s on a script",
+		(key) => {
+			expect(suffixSeparator("script", key)).toBe(".");
+		}
+	);
+
+	it.each(["model", "project"])(
+		"should use a dash for %s on a data file, which Rojo reads as a model or a project",
+		(key) => {
+			expect(suffixSeparator("data", key)).toBe("-");
+		}
+	);
+
+	it("should use a dot for a script class name on a data file or a model", () => {
+		expect(suffixSeparator("data", "server")).toBe(".");
+		expect(suffixSeparator("model", "server")).toBe(".");
+		expect(suffixSeparator("model", "model")).toBe(".");
+	});
+});
 
 describe("rojoAssignedName", () => {
 	it("strips a trailing .client", () => {
