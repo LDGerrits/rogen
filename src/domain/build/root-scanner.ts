@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings } from "../../base/collection.js";
 import { isMatch } from "../../base/glob.js";
 import { joinPosix, toPosix } from "../../base/path.js";
 import {
@@ -107,9 +108,7 @@ export function scanRootDirs(
 				...new Map(
 					unresolvedLinks.map((link) => [link.resource, link])
 				).values(),
-			].sort((a, b) =>
-				a.resource < b.resource ? -1 : a.resource > b.resource ? 1 : 0
-			),
+			].sort((a, b) => compareStrings(a.resource, b.resource)),
 		],
 	};
 }

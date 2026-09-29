@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings, groupBy } from "../../base/collection.js";
 import { joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -156,23 +157,20 @@ function reachedNodes(files: readonly RoutedFile[]): Map<string, ReachedNode> {
 
 /** Each group of metas from one root dir that reach the same node. */
 function sameRootClashes(metas: readonly FolderMeta[]): FolderMeta[][] {
-	const byRoot = new Map<string, FolderMeta[]>();
-	for (const meta of metas)
-		byRoot.set(meta.rootDir, [...(byRoot.get(meta.rootDir) ?? []), meta]);
-	return [...byRoot.values()]
+	return [...groupBy(metas, ({ rootDir }) => rootDir).values()]
 		.filter((group) => group.length > 1)
-		.map((group) => group.sort((a, b) => (a.file < b.file ? -1 : 1)));
+		.map((group) => group.sort((a, b) => compareStrings(a.file, b.file)));
 }
 
 function copiesById(copies: readonly Copy[]): Map<FolderMeta, string[]> {
-	const byMeta = new Map<FolderMeta, string[]>();
-	for (const { instancePath, meta, templateNode } of copies)
-		if (meta.id !== undefined && templateNode.$id === undefined)
-			byMeta.set(meta, [
-				...(byMeta.get(meta) ?? []),
-				instancePath.join(INSTANCE_SEPARATOR),
-			]);
-	return byMeta;
+	return groupBy(
+		copies.filter(
+			({ meta, templateNode }) =>
+				meta.id !== undefined && templateNode.$id === undefined
+		),
+		({ meta }) => meta,
+		({ instancePath }) => instancePath.join(INSTANCE_SEPARATOR)
+	);
 }
 
 /** Mirrors Rojo's precedence of a project's fields over a folder's meta. */

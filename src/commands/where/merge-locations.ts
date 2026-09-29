@@ -1,3 +1,5 @@
+import { groupBy } from "../../base/collection.js";
+
 export interface ConfigLines {
 	readonly label: string;
 	/** Each line with the source path it is about. */
@@ -9,13 +11,12 @@ export function mergeLines(
 	configs: readonly ConfigLines[],
 	sorted = false
 ): string[] {
-	const bySource = new Map<string, { label: string; line: string }[]>();
-	for (const { label, lines } of configs)
-		for (const [source, line] of lines)
-			bySource.set(source, [
-				...(bySource.get(source) ?? []),
-				{ label, line },
-			]);
+	const bySource = groupBy(
+		configs.flatMap(({ label, lines }) =>
+			lines.map(([source, line]) => ({ source, label, line }))
+		),
+		({ source }) => source
+	);
 
 	const sources = [...bySource.keys()];
 	if (sorted) sources.sort();

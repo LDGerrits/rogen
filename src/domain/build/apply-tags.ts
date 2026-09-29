@@ -1,3 +1,4 @@
+import { groupBy } from "../../base/collection.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -111,14 +112,4 @@ export function applyTags(
 		prunedBy,
 		warnings,
 	});
-}
-
-function append<T>(groups: Map<string, T[]>, key: string, item: T): void {
-	groups.set(key, [...(groups.get(key) ?? []), item]);
-}
-
-function groupBy<T>(items: readonly T[], keyOf: (item: T) => string) {
-	const groups = new Map<string, T[]>();
-	for (const item of items) append(groups, keyOf(item), item);
-	return groups;
 }

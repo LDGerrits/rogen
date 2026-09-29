@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings } from "../../base/collection.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { FileChangeType } from "../../platform/fs/file-events.js";
 import {
@@ -76,7 +77,8 @@ export function addPlannedFiles(
 	for (const target of paths) {
 		const rootDir = rootDirs.find((dir) => isInside(target, dir));
 		if (!rootDir || !classifyFile(path.basename(target))) continue;
-		if (index.hasEntry(path.dirname(target), path.basename(target))) continue;
+		if (index.hasEntry(path.dirname(target), path.basename(target)))
+			continue;
 
 		const missing: string[] = [];
 		for (
@@ -168,7 +170,7 @@ function membersOfInitFolder(
 	const members: { source: string; instancePath: readonly string[] }[] = [];
 	const visit = (dir: string, below: readonly string[]) => {
 		const listing = [...(index.getEntries(dir) ?? [])].sort(([a], [b]) =>
-			a < b ? -1 : a > b ? 1 : 0
+			compareStrings(a, b)
 		);
 		for (const [name, type] of listing) {
 			if (isDirectoryType(type)) {
@@ -228,5 +230,5 @@ function locatePath(
 }
 
 function bySource(a: FileLocation, b: FileLocation): number {
-	return a.source < b.source ? -1 : a.source > b.source ? 1 : 0;
+	return compareStrings(a.source, b.source);
 }

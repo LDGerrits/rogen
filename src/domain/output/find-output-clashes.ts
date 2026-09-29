@@ -1,4 +1,5 @@
 import path from "path";
+import { groupBy } from "../../base/collection.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { OutputDiagnostics } from "./output-diagnostics.js";
 
@@ -11,11 +12,11 @@ export interface OutputTarget {
 export function findOutputClashes(
 	configs: readonly OutputTarget[]
 ): Diagnostic[] {
-	const byOutFile = new Map<string, string[]>();
-	for (const { file, outFile } of configs) {
-		const key = path.resolve(outFile);
-		byOutFile.set(key, [...(byOutFile.get(key) ?? []), file]);
-	}
+	const byOutFile = groupBy(
+		configs,
+		({ outFile }) => path.resolve(outFile),
+		({ file }) => file
+	);
 
 	return [...byOutFile]
 		.filter(([, files]) => files.length > 1)

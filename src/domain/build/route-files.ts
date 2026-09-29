@@ -1,4 +1,5 @@
 import path from "path";
+import { groupBy } from "../../base/collection.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -164,16 +165,14 @@ export function routeFiles(
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
 function markersByDir(root: ScannedRoot): ReadonlyMap<string, string[]> {
-	const byDir = new Map<string, string[]>();
-	for (const marker of root.markers) {
-		const dir = path.posix.dirname(marker);
-		const key = dir === "." ? "" : dir;
-		byDir.set(key, [
-			...(byDir.get(key) ?? []),
-			path.posix.basename(marker),
-		]);
-	}
-	return byDir;
+	return groupBy(
+		root.markers,
+		(marker) => {
+			const dir = path.posix.dirname(marker);
+			return dir === "." ? "" : dir;
+		},
+		(marker) => path.posix.basename(marker)
+	);
 }
 
 function routeEntry(
