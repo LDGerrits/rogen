@@ -6,8 +6,9 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { BuildService } from "../../../domain/build/build-service.js";
+import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
+import { WatchService } from "../../../domain/watch/watch-service.js";
 import { CoreOutputService } from "../../../domain/output/core-output-service.js";
-import { OutputService } from "../../../domain/output/output-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -22,7 +23,6 @@ import {
 	FileSystemService,
 	FileType,
 } from "../../../platform/fs/file-system-service.js";
-import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
@@ -34,8 +34,6 @@ import {
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { ReconciliationService } from "../../../platform/watcher/reconciliation-service.js";
-import { Watcher } from "../../../platform/watcher/watcher.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 const isDefaultStaging = (file: string): boolean =>
@@ -71,15 +69,23 @@ describe("watch command", () => {
 		await configService.initialize({ names, paths: [] });
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
-		services.set(Watcher, watcher);
-		services.set(ReconciliationService, reconciliation);
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, memFs);
 		services.set(LifecycleService, lifecycle);
 		const indexService = store.add(new CoreIndexService(memFs));
-		services.set(IndexService, indexService);
-		services.set(BuildService, buildServiceOf(memFs, indexService));
-		services.set(OutputService, new CoreOutputService(memFs));
+		const buildService = buildServiceOf(memFs, indexService);
+		services.set(BuildService, buildService);
+		services.set(
+			WatchService,
+			new CoreWatchService(
+				watcher,
+				reconciliation,
+				configService,
+				indexService,
+				buildService,
+				new CoreOutputService(memFs)
+			)
+		);
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")

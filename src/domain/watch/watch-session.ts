@@ -1,3 +1,4 @@
+import path from "path";
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
@@ -6,7 +7,7 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileChange } from "../../platform/fs/file-events.js";
+import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
@@ -18,7 +19,7 @@ import {
 	resolvedConfigs,
 } from "../config/config-service.js";
 import { OutputService } from "../output/output-service.js";
-import { dropSourceUpdates } from "./drop-source-updates.js";
+import { INIT_META_FILE } from "../rojo/rojo-files.js";
 import { PrintedDiagnostics } from "./printed-diagnostics.js";
 import { WatchPlan, createWatchPlan } from "./watch-plan.js";
 
@@ -64,6 +65,19 @@ export interface WatchUpdate {
 }
 
 type Stream = "config" | "build" | "sync";
+
+/** The tree is a function of the directory listing and folder meta, so only `contentFiles` (configs, templates) and `init.meta.json` matter when they are updated. */
+function dropSourceUpdates(
+	changes: readonly FileChange[],
+	contentFiles: ReadonlySet<string>
+): FileChange[] {
+	return changes.filter(
+		(change) =>
+			change.type !== FileChangeType.UPDATED ||
+			contentFiles.has(change.path) ||
+			path.basename(change.path) === INIT_META_FILE
+	);
+}
 
 /**
  * A running watch: it watches every config's root dirs and files, reloads a

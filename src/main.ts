@@ -40,6 +40,8 @@ import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreOutputService } from "./domain/output/core-output-service.js";
 import { OutputService } from "./domain/output/output-service.js";
+import { CoreWatchService } from "./domain/watch/core-watch-service.js";
+import { WatchService } from "./domain/watch/watch-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config.js";
@@ -149,14 +151,12 @@ async function main(): Promise<void> {
 		services.set(IndexService, indexService);
 		const toolchainService = new CoreToolchainService(fileSystemService);
 		services.set(ToolchainService, toolchainService);
-		services.set(
-			BuildService,
-			new CoreBuildService(
-				fileSystemService,
-				indexService,
-				toolchainService
-			)
+		const buildService = new CoreBuildService(
+			fileSystemService,
+			indexService,
+			toolchainService
 		);
+		services.set(BuildService, buildService);
 		services.set(
 			InitService,
 			new CoreInitService(
@@ -167,7 +167,8 @@ async function main(): Promise<void> {
 				configService
 			)
 		);
-		services.set(OutputService, new CoreOutputService(fileSystemService));
+		const outputService = new CoreOutputService(fileSystemService);
+		services.set(OutputService, outputService);
 		services.set(
 			ProductService,
 			new CoreProductService(fileSystemService, import.meta.dirname)
@@ -176,8 +177,20 @@ async function main(): Promise<void> {
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())
 		);
-		services.set(Watcher, new DiskWatcher(logService));
+		const watcher = new DiskWatcher(logService);
+		services.set(Watcher, watcher);
 		services.set(ReconciliationService, reconciliationService);
+		services.set(
+			WatchService,
+			new CoreWatchService(
+				watcher,
+				reconciliationService,
+				configService,
+				indexService,
+				buildService,
+				outputService
+			)
+		);
 
 		const commandService = disposables.add(
 			new CoreCommandService(services, logService)

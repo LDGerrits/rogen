@@ -152,6 +152,34 @@ describe("WatchSession", () => {
 		expect(updates[1].reports[0].diagnostics).toEqual([]);
 	});
 
+	it("should not rebuild for an update to a source file, only for a new one", async () => {
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+
+		await fs.writeFile("/repo/src/A.luau", "return 1");
+		await settle();
+		expect(updates).toHaveLength(1);
+
+		await fs.writeFile("/repo/src/B.luau", "");
+		await settle();
+		expect(updates).toHaveLength(2);
+	});
+
+	it("should rebuild for an update to a folder's init.meta.json, which the build reads", async () => {
+		await fs.createDirectory("/repo/src/Combat");
+		await fs.writeFile("/repo/src/Combat/Hit.luau", "");
+		await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
+		await start();
+
+		await fs.writeFile(
+			"/repo/src/Combat/init.meta.json",
+			'{"className":"Actor"}'
+		);
+		await settle();
+
+		expect(updates).toHaveLength(2);
+	});
+
 	it("should run nothing new once it stops, and stop the watcher", async () => {
 		const session = await start();
 		const stop = jest.spyOn(watcher, "stop");
