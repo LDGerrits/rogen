@@ -16,10 +16,10 @@ import { SiRoblox } from "react-icons/si";
 
 type ViewState = "folders" | "suffixes" | "markers";
 
-type Row = {
-	name: string;
-	level: number;
-	kind:
+interface Row {
+	readonly name: string;
+	readonly level: number;
+	readonly kind:
 		| "root"
 		| "feature"
 		| "routing"
@@ -30,8 +30,8 @@ type Row = {
 		| "player"
 		| "folder"
 		| "instance";
-	mt?: boolean;
-};
+	readonly mt?: boolean;
+}
 
 const rowStyles: Record<
 	Row["kind"],
@@ -57,7 +57,7 @@ const rowStyles: Record<
 	instance: { icon: FaFileAlt, iconClass: "text-gray-400" },
 };
 
-function sides(
+function studioTree(
 	feature: string,
 	shared: string[],
 	server: string[],
@@ -116,7 +116,7 @@ const views: Record<
 			{ name: "Shared", level: 2, kind: "routing" },
 			{ name: "InventoryTypes.luau", level: 3, kind: "script" },
 		],
-		studio: sides(
+		studio: studioTree(
 			"Inventory",
 			["InventoryTypes"],
 			["InventoryService"],
@@ -132,7 +132,7 @@ const views: Record<
 			{ name: "CombatServiceServer.luau", level: 2, kind: "script" },
 			{ name: "CombatTypes.luau", level: 2, kind: "script" },
 		],
-		studio: sides(
+		studio: studioTree(
 			"Combat",
 			["CombatTypes"],
 			["CombatService"],
@@ -148,7 +148,7 @@ const views: Record<
 			{ name: "AntiCheatService.luau", level: 2, kind: "script" },
 			{ name: "Monitor.luau", level: 2, kind: "script" },
 		],
-		studio: sides("AntiCheat", [], ["AntiCheatService", "Monitor"], []),
+		studio: studioTree("AntiCheat", [], ["AntiCheatService", "Monitor"], []),
 	},
 };
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function Routing() {
 	return (
-		<section className="py-24 px-6 relative">
+		<section id="routing" className="py-24 px-6 relative">
 			<div className="max-w-6xl mx-auto relative z-10">
 				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
