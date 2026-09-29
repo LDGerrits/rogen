@@ -5,14 +5,12 @@ import { configFileName } from "../config/config.js";
 import {
 	ContainerFactory,
 	PROJECT_SUFFIX,
-	RojoProject,
-} from "../rojo/rojo-project.js";
-import {
 	RojoNode,
+	RojoProject,
 	childNodes,
 	instanceKey,
 	rojoPathTarget,
-} from "../rojo/rojo-tree.js";
+} from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 
 export const TEMPLATE_FILE = "template.project.json";

@@ -1,10 +1,8 @@
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { Target } from "../roblox/target.js";
-import { RojoScriptSuffix } from "../rojo/rojo-assigned-name.js";
-import { RojoFileKind } from "../rojo/rojo-files.js";
-import { RojoProject } from "../rojo/rojo-project.js";
-import { RojoNode, RojoTree } from "../rojo/rojo-tree.js";
+import { RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-files.js";
+import { RojoNode, RojoProject, RojoTree } from "../rojo/rojo-project.js";
 import {
 	DeclaredKeys,
 	FolderReading,

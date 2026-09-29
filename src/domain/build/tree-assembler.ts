@@ -9,10 +9,13 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { rojoFileName } from "../rojo/rojo-assigned-name.js";
-import { INIT_META_FILE } from "../rojo/rojo-files.js";
-import { RojoProject } from "../rojo/rojo-project.js";
-import { RojoNode, RojoTree, instanceKey } from "../rojo/rojo-tree.js";
+import { INIT_META_FILE, rojoFileName } from "../rojo/rojo-files.js";
+import {
+	RojoNode,
+	RojoProject,
+	RojoTree,
+	instanceKey,
+} from "../rojo/rojo-project.js";
 import {
 	AssembledBuild,
 	FolderMeta,

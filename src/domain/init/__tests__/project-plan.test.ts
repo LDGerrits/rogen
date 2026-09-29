@@ -3,7 +3,7 @@ import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
-import { RojoTree } from "../../rojo/rojo-tree.js";
+import { RojoTree } from "../../rojo/rojo-project.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {

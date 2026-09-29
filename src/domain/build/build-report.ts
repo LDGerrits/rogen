@@ -7,8 +7,11 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { rojoFileName } from "../rojo/rojo-assigned-name.js";
-import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
+import {
+	classifyFile,
+	isInitScript,
+	rojoFileName,
+} from "../rojo/rojo-files.js";
 import { BuildSummary, FileLocation } from "./build-service.js";
 import {
 	LeftOut,

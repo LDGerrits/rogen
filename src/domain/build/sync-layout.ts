@@ -1,7 +1,7 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
-import { OptionalRojoPath } from "../rojo/rojo-tree.js";
+import { OptionalRojoPath } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 
 export interface SyncLayout {

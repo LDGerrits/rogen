@@ -2,7 +2,7 @@ import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig, configFileName } from "../config/config.js";
-import { RojoTree } from "../rojo/rojo-tree.js";
+import { RojoTree, projectFileName } from "../rojo/rojo-project.js";
 import { Darklua, Language, PlannedFile } from "../toolchain/toolchain.js";
 import { InitChoices } from "./init-choices.js";
 import {
@@ -16,7 +16,6 @@ import {
 	sourceStemOf,
 } from "./init-files.js";
 import { InitPlan, NextSteps, tagsStep, watchCommand } from "./init-plan.js";
-import { projectFileName } from "../rojo/rojo-project.js";
 import { startingRoutes } from "./starting-routes.js";
 import {
 	TEMPLATE_FILE,

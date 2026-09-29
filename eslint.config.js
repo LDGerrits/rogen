@@ -19,7 +19,7 @@ const domainModules = {
 	init: ["init-plan", "init-service"],
 	output: ["output", "output-service"],
 	roblox: ["container-class-name", "target"],
-	rojo: ["rojo-assigned-name", "rojo-files", "rojo-project", "rojo-tree"],
+	rojo: ["rojo-files", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],
 	watch: ["watch-session"],
 };

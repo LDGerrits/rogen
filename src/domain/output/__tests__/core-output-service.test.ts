@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { RojoTree } from "../../rojo/rojo-tree.js";
+import { RojoTree } from "../../rojo/rojo-project.js";
 import { CoreOutputService } from "../core-output-service.js";
 import { stagingPattern } from "../output.js";
 

@@ -6,7 +6,7 @@ import {
 	Extensions,
 	ConfigRegistry,
 } from "../../platform/config/config-registry.js";
-import { RojoTree } from "../rojo/rojo-tree.js";
+import { RojoTree } from "../rojo/rojo-project.js";
 
 export interface RogenConfig {
 	readonly $schema?: string;

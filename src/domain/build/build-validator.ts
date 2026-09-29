@@ -14,16 +14,14 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import {
-	rojoDataName,
-	rojoMetaFile,
-	rojoMetaName,
-} from "../rojo/rojo-assigned-name.js";
-import {
 	INIT_META_FILE,
 	META_FILE_SUFFIX,
 	classifyFile,
+	rojoDataName,
+	rojoMetaFile,
+	rojoMetaName,
 } from "../rojo/rojo-files.js";
-import { instanceKey } from "../rojo/rojo-tree.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { MetaReplacement } from "../toolchain/toolchain.js";
 import {
 	AssembledBuild,

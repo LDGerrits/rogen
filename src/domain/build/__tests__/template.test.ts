@@ -1,4 +1,4 @@
-import { RojoTree } from "../../rojo/rojo-tree.js";
+import { RojoTree } from "../../rojo/rojo-project.js";
 import { templateProject } from "../template.js";
 import { abs, configOf } from "./fixtures.js";
 

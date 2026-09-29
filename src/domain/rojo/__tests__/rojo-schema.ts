@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 import Ajv from "ajv";
-import { RojoTree } from "../rojo-tree.js";
+import { RojoTree } from "../rojo-project.js";
 
 const schema = JSON.parse(
 	readFileSync(

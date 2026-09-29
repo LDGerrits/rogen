@@ -1,8 +1,7 @@
 import path from "path";
 import { ResolvedConfig } from "../config/config.js";
 import { containerClassName } from "../roblox/container-class-name.js";
-import { RojoProject } from "../rojo/rojo-project.js";
-import { RojoNode } from "../rojo/rojo-tree.js";
+import { RojoNode, RojoProject } from "../rojo/rojo-project.js";
 import { relativeToProject } from "./sync-layout.js";
 
 /** The template with its `$path`s rebased to `projectDir`, or a bare DataModel without one. */

@@ -16,21 +16,18 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { Target, parseTarget } from "../roblox/target.js";
 import {
+	INIT_META_FILE,
+	RojoFileKind,
 	RojoScriptSuffix,
+	classifyFile,
+	isInitScript,
+	isMetaFile,
 	rojoAssignedName,
 	rojoScriptSuffix,
 	stripRojoDataSuffix,
 	suffixSeparator,
-} from "../rojo/rojo-assigned-name.js";
-import {
-	INIT_META_FILE,
-	RojoFileKind,
-	classifyFile,
-	isInitScript,
-	isMetaFile,
 } from "../rojo/rojo-files.js";
-import { RojoProject } from "../rojo/rojo-project.js";
-import { instanceKey } from "../rojo/rojo-tree.js";
+import { RojoProject, instanceKey } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	EntryRead,

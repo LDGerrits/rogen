@@ -3,7 +3,7 @@ import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
+import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { placeFiles } from "../placement.js";
 import { TreeAssembler } from "../tree-assembler.js";

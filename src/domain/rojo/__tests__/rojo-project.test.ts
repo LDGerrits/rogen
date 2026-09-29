@@ -1,5 +1,9 @@
-import { RojoNode, RojoTree } from "../rojo-tree.js";
-import { ContainerFactory, RojoProject } from "../rojo-project.js";
+import {
+	ContainerFactory,
+	RojoNode,
+	RojoProject,
+	RojoTree,
+} from "../rojo-project.js";
 
 const folders: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
