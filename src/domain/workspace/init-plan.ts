@@ -444,7 +444,7 @@ function buildPlan(options: InitPlanOptions): InitPlan {
 				configFile(sourceStem, starter()),
 				configFile(name, {
 					$schema: SCHEMA_URL,
-					extends: `${sourceStem}${CONFIG_SUFFIX}`,
+					extends: `./${sourceStem}${CONFIG_SUFFIX}`,
 					...(syncDir && { syncDir }),
 				}),
 			],

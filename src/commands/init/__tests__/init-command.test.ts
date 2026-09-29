@@ -192,7 +192,7 @@ describe("init command", () => {
 			const config = await readJson("default.rogen.json");
 			expect(source.syncDir).toBeUndefined();
 			expect(source.routes).toEqual(LUAU_ROUTES);
-			expect(config.extends).toBe("source.rogen.json");
+			expect(config.extends).toBe("./source.rogen.json");
 			expect(config.syncDir).toBe("dist");
 			expect(config.routes).toBeUndefined();
 		});
@@ -203,7 +203,7 @@ describe("init command", () => {
 			await runInit(["lobby"]);
 
 			expect((await readJson("lobby.rogen.json")).extends).toBe(
-				"lobby-source.rogen.json"
+				"./lobby-source.rogen.json"
 			);
 			expect(await exists("lobby-source.rogen.json")).toBe(true);
 			expect(await exists("default.rogen.json")).toBe(false);
