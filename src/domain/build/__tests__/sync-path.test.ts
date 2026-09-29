@@ -216,20 +216,4 @@ describe("rebaseTemplatePath", () => {
 			rebaseTemplatePath("../Packages", abs("places/main"), abs("."))
 		).toBe("places/Packages");
 	});
-
-	it("should keep the optional form of an optional template path", () => {
-		expect(
-			rebaseTemplatePath(
-				{ optional: "include" },
-				abs("."),
-				abs("places/main")
-			)
-		).toEqual({ optional: "../../include" });
-	});
-
-	it("should leave a plain template path plain", () => {
-		expect(typeof rebaseTemplatePath("include", abs("."), abs("."))).toBe(
-			"string"
-		);
-	});
 });
