@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: The complete guide to the .rogen.json configuration file.
+description: The complete guide to the *.rogen.json configuration file.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -135,5 +135,5 @@ lobby.rogen.json:7:3 - error: unknown field "outDir".
 Errors stop the build. Warnings don't: the build runs and the exit code stays 0. Rogen warns about unrouted files, unrelated names that look like a route or tag, a sync directory with nothing in it, a root directory that doesn't exist and instances that clash with the template.
 
 <Callout type="info" title="Editors">
-	`rogen init` writes `$schema` into every config. The schema allows comments and trailing commas, so a `.rogen.json` file opens without errors in editors that read it.
+	`rogen init` writes `$schema` into every config. The schema allows comments and trailing commas, so a `*.rogen.json` file opens without errors in editors that read it.
 </Callout>
