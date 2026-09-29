@@ -1,6 +1,6 @@
 import path from "path";
 import { groupBy } from "../../../base/collection.js";
-import { stemOf } from "../../../base/path.js";
+import { joinPosix } from "../../../base/path.js";
 import { err, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { Target, parseTarget } from "../../roblox/target.js";
@@ -8,13 +8,15 @@ import {
 	RojoScriptSuffix,
 	rojoAssignedName,
 	rojoScriptSuffix,
-	stripRojoDataSuffix,
 	suffixSeparator,
 } from "../../rojo/rojo-assigned-name.js";
 import { RojoFileKind } from "../../rojo/rojo-files.js";
 import {
+	EntryRead,
 	FolderNode,
+	FolderRead,
 	LeftOut,
+	MarkerRead,
 	MatchForm,
 	PlacementStage,
 	RoutedFile,
@@ -26,9 +28,6 @@ import {
 	FALLBACK_ROUTE,
 	SuffixSpan,
 	declaredKeysOf,
-	matchMarkerKey,
-	matchSuffixKeys,
-	readFolderName,
 	withSeparatorSuffix,
 } from "../declared-key.js";
 import { RouteDiagnostics } from "../route-diagnostics.js";
@@ -38,7 +37,7 @@ type RouteOutcome = Omit<RoutedFile, "entry">;
 interface RouteContext {
 	readonly routeKeys: ReadonlySet<string>;
 	readonly tagKeys: ReadonlySet<string>;
-	readonly declaredKeys: ReadonlySet<string>;
+	readonly markers: ReadonlyMap<string, MarkerRead>;
 	readonly targets: ReadonlyMap<string, Target>;
 }
 
@@ -58,11 +57,11 @@ export const routeFiles: PlacementStage = (build) => {
 	}
 	if (errors.length > 0) return err(errors);
 
-	const { routeKeys, tagKeys, all } = declaredKeysOf(config);
+	const { routeKeys, tagKeys } = declaredKeysOf(config);
 	const context: RouteContext = {
 		routeKeys,
 		tagKeys,
-		declaredKeys: all,
+		markers: build.readings.markers,
 		targets,
 	};
 
@@ -71,7 +70,8 @@ export const routeFiles: PlacementStage = (build) => {
 	for (const root of build.roots) {
 		const markers = markersByDir(root);
 		for (const entry of root.entries) {
-			const outcome = routeEntry(entry, markers, context);
+			const read = build.readings.entries.get(entry.source) as EntryRead;
+			const outcome = routeEntry(entry, read, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
 			else unrouted.push([entry.source, { status: "unrouted" }]);
 		}
@@ -102,11 +102,6 @@ interface Claims {
 	readonly tags: TagMatch[];
 }
 
-interface FolderStep {
-	readonly name: string;
-	readonly dir: string;
-}
-
 interface LeafReading {
 	readonly name: string;
 	readonly separatorName: string | undefined;
@@ -115,15 +110,16 @@ interface LeafReading {
 
 function routeEntry(
 	entry: ScannedEntry,
+	read: EntryRead,
 	markers: ReadonlyMap<string, string[]>,
 	context: RouteContext
 ): RouteOutcome | undefined {
-	const folderNames = entry.relativePath.split("/");
-	const leaf = folderNames.pop() as string;
+	const leaf = path.posix.basename(entry.relativePath);
 
-	const { claims, folders } = walkFolders(folderNames, markers, context);
+	const { claims, folders } = walkFolders(entry, read, markers, context);
 	const { name, separatorName, buriedScriptSuffix } = readLeaf(
 		entry,
+		read,
 		leaf,
 		claims,
 		context
@@ -136,7 +132,7 @@ function routeEntry(
 	const folderNodes: FolderNode[] = [];
 	let parent: readonly string[] = [target.service, ...target.folders];
 	for (const folder of folders) {
-		parent = [...parent, folder.name];
+		parent = [...parent, folder.segment];
 		folderNodes.push({ instancePath: parent, dir: folder.dir });
 	}
 	return {
@@ -152,14 +148,17 @@ function routeEntry(
 
 /** Routing, tag and invisible folders and markers claim the file; every other folder becomes a node. */
 function walkFolders(
-	folderNames: readonly string[],
+	entry: ScannedEntry,
+	read: EntryRead,
 	markers: ReadonlyMap<string, string[]>,
 	context: RouteContext
-): { claims: Claims; folders: FolderStep[] } {
+): { claims: Claims; folders: FolderRead[] } {
 	const claims: Claims = { route: undefined, tags: [] };
 	const applyMarkers = (dir: string) => {
 		for (const fileName of markers.get(dir) ?? []) {
-			const key = matchMarkerKey(fileName, context.declaredKeys);
+			const key = context.markers.get(
+				joinPosix(entry.rootDir, dir, fileName)
+			)?.key;
 			if (key === undefined) continue;
 			if (context.tagKeys.has(key))
 				claims.tags.push({ tag: key, form: "marker" });
@@ -168,21 +167,14 @@ function walkFolders(
 	};
 
 	applyMarkers("");
-	const folders: FolderStep[] = [];
-	let dir = "";
-	for (const segment of folderNames) {
-		dir = dir ? `${dir}/${segment}` : segment;
-		const folder = readFolderName(
-			segment,
-			context.routeKeys,
-			context.tagKeys
-		);
+	const folders: FolderRead[] = [];
+	for (const folder of read.folders) {
 		if (folder.kind === "route")
 			claims.route ??= { key: folder.key, match: "folder" };
 		else if (folder.kind === "tag")
 			claims.tags.push({ tag: folder.key, form: "folder" });
-		else if (!folder.invisible) folders.push({ name: segment, dir });
-		applyMarkers(dir);
+		else if (!folder.invisible) folders.push(folder);
+		applyMarkers(folder.dir);
 	}
 	return { claims, folders };
 }
@@ -190,14 +182,12 @@ function walkFolders(
 /** Reads the suffixes of a file, or of an init folder's script, into `claims` and returns the instance name. */
 function readLeaf(
 	entry: ScannedEntry,
+	{ fileName, kind, stem, match }: EntryRead,
 	leaf: string,
 	claims: Claims,
 	context: RouteContext
 ): LeafReading {
 	const isInitFolder = entry.kind === "init-folder";
-	const { fileName, kind, stem } = suffixedNameOf(entry);
-
-	const match = matchSuffixKeys(stem, context.declaredKeys);
 	const tagSpans = tagSpansOf(match.spans, context);
 	claims.tags.push(
 		...tagSpans.map((span) => asTagMatch(span, fileName, kind))
@@ -224,25 +214,6 @@ function readLeaf(
 		name: kind === "script" ? rojoAssignedName(stripped) : stripped,
 		separatorName,
 		buriedScriptSuffix,
-	};
-}
-
-/** The file whose stem carries the entry's suffixes: an init folder's script, or the file itself. */
-export function suffixedNameOf(entry: ScannedEntry): {
-	readonly fileName: string;
-	readonly kind: RojoFileKind;
-	readonly stem: string;
-} {
-	const isInitFolder = entry.kind === "init-folder";
-	const fileName = isInitFolder
-		? entry.initFile
-		: path.posix.basename(entry.relativePath);
-	const kind: RojoFileKind = isInitFolder ? "script" : entry.kind;
-	const stem = stemOf(fileName);
-	return {
-		fileName,
-		kind,
-		stem: kind === "data" ? stripRojoDataSuffix(stem) : stem,
 	};
 }
 

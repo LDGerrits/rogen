@@ -32,12 +32,14 @@ import { applyFolderMeta } from "./stages/apply-folder-meta.js";
 import { applyTags } from "./stages/apply-tags.js";
 import { assembleTree } from "./stages/assemble-tree.js";
 import { readFolderMeta } from "./stages/read-folder-meta.js";
+import { readPaths } from "./stages/read-paths.js";
 import { routeFiles } from "./stages/route-files.js";
 import { scanRoots } from "./stages/scan-roots.js";
 import { yieldToTemplate } from "./stages/yield-to-template.js";
 
 const PLACEMENT: readonly PlacementStage[] = [
 	scanRoots,
+	readPaths,
 	routeFiles,
 	applyTags,
 	yieldToTemplate,
