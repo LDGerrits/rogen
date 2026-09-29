@@ -3,9 +3,9 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
-import { LeftOut, RouteMatch, TagMatch } from "./model/routed.js";
+import { LeftOut, RouteMatch, TagMatch } from "./build-record.js";
 
-export type { RouteMatch } from "./model/routed.js";
+export type { RouteMatch } from "./build-record.js";
 
 export interface RootSummary {
 	readonly rootDir: string;

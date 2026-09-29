@@ -1,15 +1,10 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import {
-	DiagnosticSeverity,
-	warningDiagnostic,
-} from "../../../platform/diagnostics/diagnostic.js";
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { MockRuleRegistry } from "../rules/__tests__/mock-rule-registry.js";
-import { BuildRule, RuleRegistry } from "../rules/rule-registry.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
@@ -502,86 +497,6 @@ describe("CoreBuildService", () => {
 			expect(unchecked.unwrap().syncWarnings).toEqual([]);
 			expect(checked.unwrap().syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },
-			]);
-		});
-	});
-
-	describe("rules", () => {
-		const report = (id: string): BuildRule => ({
-			id,
-			order: 0,
-			check: () => [warningDiagnostic(id, { resource: "x" }, "m")],
-		});
-
-		const buildWith = async (
-			registry: RuleRegistry,
-			options?: { checkSyncDir: boolean }
-		) => {
-			await fs.writeFile(abs("src/A.luau"), "");
-			const config = configOf();
-			const index = await indexOf(store, fs, config.rootDirs);
-			return buildServiceOf(fs, index, registry).build(config, options);
-		};
-
-		it("should report no warnings when no rule is registered", async () => {
-			const result = await buildWith(new MockRuleRegistry());
-
-			expect(result.unwrap().warnings).toEqual([]);
-		});
-
-		it("should report every registered rule's warnings", async () => {
-			const result = await buildWith(
-				new MockRuleRegistry([report("first"), report("second")])
-			);
-
-			expect(result.unwrap().warnings).toMatchObject([
-				{ code: "first" },
-				{ code: "second" },
-			]);
-		});
-
-		it("should hand each rule the finished build", async () => {
-			const result = await buildWith(
-				new MockRuleRegistry([
-					{
-						id: "count",
-						order: 0,
-						check: ({ files, tree }) => [
-							warningDiagnostic(
-								"count",
-								{ resource: "x" },
-								`${files.length} placed, tree ${tree.name}`
-							),
-						],
-					},
-				])
-			);
-
-			expect(result.unwrap().warnings).toMatchObject([
-				{ message: "1 placed, tree repo" },
-			]);
-		});
-
-		it("should run sync dir rules only when asked", async () => {
-			const registry = new MockRuleRegistry(
-				[],
-				[
-					{
-						id: "sync",
-						order: 0,
-						check: async () => [
-							warningDiagnostic("sync", { resource: "x" }, "m"),
-						],
-					},
-				]
-			);
-
-			const skipped = await buildWith(registry);
-			const asked = await buildWith(registry, { checkSyncDir: true });
-
-			expect(skipped.unwrap().syncWarnings).toEqual([]);
-			expect(asked.unwrap().syncWarnings).toMatchObject([
-				{ code: "sync" },
 			]);
 		});
 	});

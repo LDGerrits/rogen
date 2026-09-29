@@ -3,7 +3,6 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { AssembledBuild } from "./model/build-phases.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -12,22 +11,29 @@ import {
 	BuiltProject,
 	FileLocation,
 } from "./build-service.js";
-import { summarizeBuild } from "./reports/summarize-build.js";
-import { locateFiles } from "./reports/locate-files.js";
-import { assemble, place } from "./pipeline/pipeline.js";
-import { findConfigsWithoutRoutes } from "./pipeline/prepare-build.js";
-import { RuleRegistry } from "./rules/rule-registry.js";
-import { withPlannedFiles } from "./reports/planned-files.js";
+import {
+	locateFiles,
+	summarizeBuild,
+	withPlannedFiles,
+} from "./build-report.js";
+import { BuildValidator } from "./build-validator.js";
+import { findConfigsWithoutRoutes, placeFiles } from "./placement.js";
+import { TreeAssembler } from "./tree-assembler.js";
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
 
+	private readonly assembler: TreeAssembler;
+	private readonly validator: BuildValidator;
+
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly toolchainService: ToolchainService,
-		private readonly ruleRegistry: RuleRegistry
-	) {}
+		private readonly toolchainService: ToolchainService
+	) {
+		this.assembler = new TreeAssembler(fileSystemService);
+		this.validator = new BuildValidator(fileSystemService);
+	}
 
 	checkBuildable(configs: readonly ResolvedConfig[]): Diagnostic[] {
 		return [
@@ -43,16 +49,14 @@ export class CoreBuildService implements BuildService {
 		await this.indexService.ensureIndexed(config.rootDirs);
 		const placed = this.place(this.indexService, config);
 		if (placed.isErr()) return placed;
-		const built = await assemble(placed.value, this.fileSystemService);
+		const built = await this.assembler.assemble(placed.value);
 		if (built.isErr()) return built;
 		return ok({
 			tree: built.value.tree,
 			summary: summarizeBuild(built.value),
-			warnings: this.ruleRegistry
-				.getRules()
-				.flatMap((rule) => rule.check(built.value)),
+			warnings: this.validator.check(built.value),
 			syncWarnings: options.checkSyncDir
-				? await this.checkSyncDir(built.value)
+				? await this.validator.checkSyncDir(built.value)
 				: [],
 		});
 	}
@@ -70,14 +74,7 @@ export class CoreBuildService implements BuildService {
 		);
 	}
 
-	private async checkSyncDir(build: AssembledBuild): Promise<Diagnostic[]> {
-		const warnings: Diagnostic[] = [];
-		for (const rule of this.ruleRegistry.getSyncDirRules())
-			warnings.push(...(await rule.check(build, this.fileSystemService)));
-		return warnings;
-	}
-
 	private place(index: IndexReader, config: ResolvedConfig) {
-		return place(index, config, this.toolchainService.getSyncTools());
+		return placeFiles(index, config, this.toolchainService.getSyncTools());
 	}
 }

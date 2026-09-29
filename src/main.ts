@@ -33,10 +33,6 @@ import { ReconciliationService } from "./platform/watcher/reconciliation-service
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
 import { CoreBuildService } from "./domain/build/core-build-service.js";
-import {
-	Extensions as BuildExtensions,
-	RuleRegistry,
-} from "./domain/build/rules/rule-registry.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
@@ -51,7 +47,6 @@ import { CoreOutputService } from "./domain/output/core-output-service.js";
 import { OutputService } from "./domain/output/output-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
-import "./domain/build/rules/rules.js";
 import "./domain/config/config.js";
 import "./domain/toolchain/darklua.js";
 import "./domain/toolchain/luau.js";
@@ -171,8 +166,7 @@ async function main(): Promise<void> {
 			new CoreBuildService(
 				fileSystemService,
 				indexService,
-				toolchainService,
-				Registry.as<RuleRegistry>(BuildExtensions.Rules)
+				toolchainService
 			)
 		);
 		services.set(
