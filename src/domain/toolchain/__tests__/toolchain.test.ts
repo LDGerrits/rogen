@@ -59,19 +59,21 @@ describe("CoreToolchainService", () => {
 		);
 	});
 
-	it("should list the languages in their order, Luau first", () => {
-		expect(toolchain.getLanguages().map(({ id }) => id)).toEqual([
-			"luau",
-			"roblox-ts",
-		]);
-	});
-
-	it("should list a language contributed after it was created", () => {
+	it("should see a language contributed after it was created", () => {
 		const registration = registry().registerLanguage(fake("late", 5));
 
 		expect(toolchain.getLanguage("late").id).toBe("late");
+		expect(toolchain.getLanguages().map(({ id }) => id)).toEqual([
+			"luau",
+			"roblox-ts",
+			"late",
+		]);
 		registration[Symbol.dispose]();
 	});
+});
+
+describe("route keys", () => {
+	const toolchain = createToolchainService();
 
 	it("should capitalize Luau route keys and keep roblox-ts keys as written", () => {
 		expect(toolchain.getLanguage("luau").routeKey("serverStorage")).toBe(
