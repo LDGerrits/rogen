@@ -678,6 +678,22 @@ describe("init command", () => {
 			expect(prompts.asked).toHaveLength(1);
 		});
 
+		it("should fail before the place folder when a given name would replace a project file", async () => {
+			await setUpLuau();
+			await write("lobby.project.json", "{}");
+			const prompts = offerAnd();
+
+			const result = await runInit(["lobby"], prompts);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(cwd, "lobby.project.json"),
+				},
+			]);
+			expect(prompts.asked).toHaveLength(1);
+		});
+
 		it("should allow a place name whose -source file exists when no source config is written", async () => {
 			await setUpLuau();
 			await write("lobby-source.rogen.json", "{}");
@@ -897,12 +913,14 @@ describe("init command", () => {
 	});
 
 	describe("variants", () => {
-		it("should write a config that extends default", async () => {
+		beforeEach(async () => {
 			await write(
 				"default.rogen.json",
 				JSON.stringify({ rootDirs: ["src"] })
 			);
+		});
 
+		it("should write a config that extends default", async () => {
 			const result = await runInit(
 				[],
 				new MockPromptService(["variant", "prod"])
@@ -916,10 +934,6 @@ describe("init command", () => {
 		});
 
 		it("should not ask for a variant name that was given", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
-			);
 			const prompts = new MockPromptService(["variant"]);
 
 			const result = await runInit(["prod"], prompts);
@@ -932,10 +946,6 @@ describe("init command", () => {
 		});
 
 		it("should say how to run the variant and where its tags go", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
-			);
 			const logService = new MockLogService();
 
 			await runInit(
@@ -957,17 +967,11 @@ describe("init command", () => {
 			]);
 		});
 
-		it("should fail at once when a given variant name would replace a project file", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
-			);
+		it("should fail before asking more when a given variant name would replace a project file", async () => {
 			await write("prod.project.json", "{}");
+			const prompts = new MockPromptService(["variant"]);
 
-			const result = await runInit(
-				["prod"],
-				new MockPromptService(["variant"])
-			);
+			const result = await runInit(["prod"], prompts);
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
@@ -975,6 +979,7 @@ describe("init command", () => {
 					resource: path.join(cwd, "prod.project.json"),
 				},
 			]);
+			expect(prompts.asked).toHaveLength(1);
 		});
 	});
 
