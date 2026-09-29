@@ -1,23 +1,15 @@
-import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { checkSyncDir } from "../check-sync-dir.js";
 import { syncLayoutOf } from "../sync-path.js";
+import { abs, configOf as baseConfigOf } from "./fixtures.js";
 
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
-
-type Checked = Pick<ResolvedConfig, "rootDirs" | "syncDir" | "outFile">;
-
-const configOf = (overrides: Partial<Checked> = {}): Checked => ({
-	rootDirs: [abs("src")],
-	syncDir: abs("out"),
-	outFile: abs("default.project.json"),
-	...overrides,
-});
+const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+	baseConfigOf({ syncDir: abs("out"), ...overrides });
 
 const check = (
 	fs: MemoryFileSystemService,
-	config: Checked
+	config: ResolvedConfig
 ): ReturnType<typeof checkSyncDir> =>
 	checkSyncDir(fs, config.rootDirs, syncLayoutOf(config));
 

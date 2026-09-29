@@ -1,14 +1,11 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-tree.js";
 import { buildProject } from "../build.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+import { abs, indexOf, writeFiles } from "./fixtures.js";
 
 const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
 
@@ -18,9 +15,7 @@ describe("assembleTree", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 	const assembleResult = async (overrides: Partial<ResolvedConfig> = {}) => {
 		const config: ResolvedConfig = {
@@ -33,8 +28,7 @@ describe("assembleTree", () => {
 			outFile: abs("default.project.json"),
 			...overrides,
 		};
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...config.rootDirs]);
+		const index = await indexOf(store, fs, config.rootDirs);
 		return buildProject(fs, index, config);
 	};
 

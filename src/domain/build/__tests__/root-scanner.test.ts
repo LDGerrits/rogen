@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
@@ -8,8 +7,8 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ScannedRoot, ScanOptions, scanRootDirs } from "../root-scanner.js";
+import { abs, writeFiles } from "./fixtures.js";
 
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 const glob = (pattern: string) => toPosix(abs(pattern));
 
 describe("scanRootDirs", () => {
@@ -32,9 +31,7 @@ describe("scanRootDirs", () => {
 	const files = (root: ScannedRoot) =>
 		root.entries.map((entry) => `${entry.kind}:${entry.relativePath}`);
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();

@@ -1,49 +1,41 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { locateFiles, withPlannedFiles } from "../build.js";
+import {
+	abs,
+	configOf as baseConfigOf,
+	indexOf,
+	writeFiles,
+} from "./fixtures.js";
 
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
-
-const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
-	file: abs("default.rogen.json"),
-	name: "repo",
-	rootDirs: [abs("src")],
-	routes: {
-		Server: "ServerScriptService",
-		Client: "StarterPlayer/StarterPlayerScripts",
-		"*": "ReplicatedStorage/Shared",
-	},
-	tags: {},
-	exclude: [],
-	outFile: abs("default.project.json"),
-	...overrides,
-});
+const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+	baseConfigOf({
+		routes: {
+			Server: "ServerScriptService",
+			Client: "StarterPlayer/StarterPlayerScripts",
+			"*": "ReplicatedStorage/Shared",
+		},
+		...overrides,
+	});
 
 describe("locateFiles", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const indexOf = async (config: ResolvedConfig) => {
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize(config.rootDirs);
-		return index;
-	};
+	const indexOfConfig = (config: ResolvedConfig) =>
+		indexOf(store, fs, config.rootDirs);
 
 	const locate = async (
 		paths?: readonly string[],
 		overrides: Partial<ResolvedConfig> = {}
 	) => {
 		const config = configOf(overrides);
-		const index = await indexOf(config);
+		const index = await indexOfConfig(config);
 		const absolute = paths?.map((p) => abs(p));
 		const planned = absolute
 			? withPlannedFiles(index, config.rootDirs, absolute)
@@ -282,7 +274,7 @@ describe("locateFiles", () => {
 		it("should never be written to the index it is layered over", async () => {
 			await write("src/Other.luau");
 			const config = configOf();
-			const index = await indexOf(config);
+			const index = await indexOfConfig(config);
 			const updates: unknown[] = [];
 			index.onDidUpdate((changes) => updates.push(changes));
 
@@ -306,7 +298,7 @@ describe("locateFiles", () => {
 		it("should not be added by locating alone", async () => {
 			await write("src/Other.luau");
 			const config = configOf();
-			const index = await indexOf(config);
+			const index = await indexOfConfig(config);
 
 			const located = locateFiles(index, config, [
 				abs("src/Combat/Server/Hit.luau"),
@@ -350,7 +342,7 @@ describe("locateFiles", () => {
 		const unknownEntry = async (name: string) => {
 			await write("src/Other.luau");
 			const config = configOf();
-			const index = await indexOf(config);
+			const index = await indexOfConfig(config);
 			index.applyChanges([
 				{
 					type: FileChangeType.ADDED,
@@ -458,7 +450,7 @@ describe("locateFiles", () => {
 	it("should fail with the build's errors", async () => {
 		await write("src/A.luau");
 		const config = configOf({ routes: {} });
-		const index = await indexOf(config);
+		const index = await indexOfConfig(config);
 
 		const result = locateFiles(index, config);
 

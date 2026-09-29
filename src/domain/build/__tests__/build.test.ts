@@ -2,37 +2,18 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { buildProject, checkBuildable, rootsToIndex } from "../build.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
-
-const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
-	file: abs("default.rogen.json"),
-	name: "repo",
-	rootDirs: [abs("src")],
-	routes: { "*": "ReplicatedStorage" },
-	tags: {},
-	exclude: [],
-	outFile: abs("default.project.json"),
-	...overrides,
-});
+import { abs, configOf, indexOf } from "./fixtures.js";
 
 describe("domain/build/build", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const indexOf = async (rootDirs: readonly string[]) => {
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...rootDirs]);
-		return index;
-	};
-
 	const buildOf = async (config: ResolvedConfig) => {
-		const index = await indexOf(config.rootDirs);
+		const index = await indexOf(store, fs, config.rootDirs);
 		return buildProject(fs, index, config);
 	};
 
@@ -477,7 +458,7 @@ describe("domain/build/build", () => {
 		it("should refuse a config that declares no routes before scanning", async () => {
 			const result = await buildProject(
 				fs,
-				await indexOf([]),
+				await indexOf(store, fs, []),
 				configOf({ routes: {} })
 			);
 
@@ -492,7 +473,7 @@ describe("domain/build/build", () => {
 
 			const result = await buildProject(
 				fs,
-				await indexOf([abs("src")]),
+				await indexOf(store, fs, [abs("src")]),
 				configOf()
 			);
 
@@ -504,7 +485,7 @@ describe("domain/build/build", () => {
 		it("should check the sync dir only when asked", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
-			const index = await indexOf(config.rootDirs);
+			const index = await indexOf(store, fs, config.rootDirs);
 
 			const unchecked = await buildProject(fs, index, config);
 			const checked = await buildProject(fs, index, config, {

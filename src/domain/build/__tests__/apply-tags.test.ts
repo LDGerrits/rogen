@@ -1,14 +1,11 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { TagResult, applyTags } from "../apply-tags.js";
 import { scanRootDirs } from "../root-scanner.js";
 import { routeFiles } from "../route-files.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+import { abs, indexOf, writeFiles } from "./fixtures.js";
 
 const ROUTES = {
 	server: "ServerScriptService",
@@ -20,9 +17,7 @@ describe("applyTags", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 	const apply = async (
 		tags: Record<string, boolean>,
@@ -33,8 +28,7 @@ describe("applyTags", () => {
 			tags,
 			outFile: abs("default.project.json"),
 		};
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...rootDirs]);
+		const index = await indexOf(store, fs, rootDirs);
 		const { roots } = scanRootDirs(index, { rootDirs, exclude: [] });
 		return applyTags(routeFiles(roots, config).unwrap().routed, config);
 	};

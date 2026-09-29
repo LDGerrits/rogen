@@ -1,40 +1,29 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { checkSyncMeta } from "../check-sync-meta.js";
 import { scanRootDirs } from "../root-scanner.js";
 import { syncLayoutOf } from "../sync-path.js";
 import { findUnclaimedMeta } from "../unclaimed-meta.js";
+import {
+	abs,
+	configOf as baseConfigOf,
+	indexOf,
+	writeFiles,
+} from "./fixtures.js";
 
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
-
-type Checked = Pick<
-	ResolvedConfig,
-	"rootDirs" | "exclude" | "syncDir" | "outFile"
->;
-
-const configOf = (overrides: Partial<Checked> = {}): Checked => ({
-	rootDirs: [abs("src")],
-	exclude: [],
-	syncDir: abs("dist"),
-	outFile: abs("default.project.json"),
-	...overrides,
-});
+const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+	baseConfigOf({ syncDir: abs("dist"), ...overrides });
 
 describe("domain/build/check-sync-meta", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const check = async (overrides: Partial<Checked> = {}) => {
+	const check = async (overrides: Partial<ResolvedConfig> = {}) => {
 		const config = configOf(overrides);
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...config.rootDirs]);
+		const index = await indexOf(store, fs, config.rootDirs);
 		const { roots } = scanRootDirs(index, config);
 		const unclaimed = findUnclaimedMeta(index, roots).map(
 			({ path }) => path

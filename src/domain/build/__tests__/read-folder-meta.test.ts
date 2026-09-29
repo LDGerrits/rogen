@@ -1,12 +1,9 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { readFolderMeta } from "../read-folder-meta.js";
 import { scanRootDirs } from "../root-scanner.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+import { abs, indexOf } from "./fixtures.js";
 
 type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
 
@@ -20,8 +17,7 @@ describe("readFolderMeta", () => {
 			exclude: [],
 			...overrides,
 		};
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...config.rootDirs]);
+		const index = await indexOf(store, fs, config.rootDirs);
 		return readFolderMeta(fs, scanRootDirs(index, config).roots);
 	};
 

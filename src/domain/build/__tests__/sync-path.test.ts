@@ -1,4 +1,3 @@
-import path from "path";
 import {
 	rebaseTemplatePath,
 	relativeToProject,
@@ -6,8 +5,7 @@ import {
 	syncPath,
 } from "../sync-path.js";
 import { commonRoot } from "../../config/common-root.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+import { abs } from "./fixtures.js";
 
 describe("syncLayoutOf", () => {
 	it("should take the project dir from the out file and the common root from the root dirs", () => {

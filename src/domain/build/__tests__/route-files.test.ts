@@ -1,13 +1,10 @@
-import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { routeFiles } from "../route-files.js";
 import { scanRootDirs } from "../root-scanner.js";
-
-const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+import { abs, indexOf, writeFiles } from "./fixtures.js";
 
 const ROUTES = {
 	ReplicatedFirst: "ReplicatedFirst",
@@ -20,9 +17,7 @@ describe("routeFiles", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const write = async (...paths: string[]) => {
-		for (const p of paths) await fs.writeFile(abs(p), "");
-	};
+	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 	const route = async (
 		overrides: Partial<ResolvedConfig> = {},
@@ -34,8 +29,7 @@ describe("routeFiles", () => {
 			outFile: abs("default.project.json"),
 			...overrides,
 		};
-		const index = store.add(new CoreIndexService(fs));
-		await index.initialize([...rootDirs]);
+		const index = await indexOf(store, fs, rootDirs);
 		const { roots } = scanRootDirs(index, { rootDirs, exclude: [] });
 		return routeFiles(roots, config);
 	};
