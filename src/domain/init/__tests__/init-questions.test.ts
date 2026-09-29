@@ -10,11 +10,7 @@ import {
 import { createToolchainService } from "../../toolchain/__tests__/create-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
-import {
-	InitContext,
-	askInit as askInitWith,
-	askInitChoices as askInitChoicesWith,
-} from "../init-questions.js";
+import { InitContext, InitQuestions } from "../init-questions.js";
 
 const directory = path.resolve("/mock/my-game");
 const toolchain = createToolchainService();
@@ -23,13 +19,15 @@ const askInit = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) => askInitWith(prompts, toolchain, context, name);
+) =>
+	new InitQuestions(prompts, toolchain).ask(context, name);
 
 const askInitChoices = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) => askInitChoicesWith(prompts, toolchain, context, name);
+) =>
+	new InitQuestions(prompts, toolchain).askProject(context, name);
 
 const defaultInitChoices = (
 	workspace: DetectedWorkspace,
@@ -93,7 +91,7 @@ const conflictsOf = (result: Awaited<ReturnType<typeof ask>>) =>
 
 const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
-describe("askInitChoices", () => {
+describe("InitQuestions askProject", () => {
 	it("should give the non-interactive choices when every default is accepted", async () => {
 		const darklua = { ...luau, darklua: true };
 		for (const workspace of [
@@ -770,7 +768,7 @@ describe("askInitChoices", () => {
 	);
 });
 
-describe("askInitChoices layout", () => {
+describe("InitQuestions askProject layout", () => {
 	const withPlaces: DetectedWorkspace = {
 		...luau,
 		hasSrc: true,
@@ -857,7 +855,7 @@ describe("askInitChoices layout", () => {
 	});
 });
 
-describe("askInitChoices template", () => {
+describe("InitQuestions askProject template", () => {
 	const templatePrompt = async (existing: readonly string[]) => {
 		const prompts = new MockPromptService(acceptAll(9));
 		let choices: { value: string; label: string }[] = [];
@@ -964,7 +962,7 @@ describe("askInitChoices template", () => {
 	});
 });
 
-describe("askInit", () => {
+describe("InitQuestions ask", () => {
 	const context = (existing: readonly string[] = ["default.rogen.json"]) => ({
 		...contextOf(luau, existing),
 		base: ok({ rootDirs: ["src"] }),

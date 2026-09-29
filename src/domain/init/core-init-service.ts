@@ -19,7 +19,7 @@ import {
 	sourceStemOf,
 } from "./init-files.js";
 import { InitPlan, plannedFiles } from "./init-plan.js";
-import { InitAnswers, InitContext, askInit } from "./init-questions.js";
+import { InitAnswers, InitContext, InitQuestions } from "./init-questions.js";
 import { InitRequest, InitService } from "./init-service.js";
 import {
 	BaseConfig,
@@ -34,13 +34,17 @@ const DEFAULT_PROJECT_NAME = "roblox-game";
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
 
+	private readonly questions: InitQuestions;
+
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService
-	) {}
+	) {
+		this.questions = new InitQuestions(promptService, toolchainService);
+	}
 
 	async prepare(
 		names: readonly string[]
@@ -101,12 +105,7 @@ export class CoreInitService implements InitService {
 
 		let answers: InitAnswers | undefined;
 		if (interactive) {
-			const asked = await askInit(
-				this.promptService,
-				this.toolchainService,
-				context,
-				givenName
-			);
+			const asked = await this.questions.ask(context, givenName);
 			if (asked.isErr()) return asked;
 			answers = asked.value;
 		} else {
