@@ -26,6 +26,13 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 }
 
+/** Every file the plan writes, in the order it writes them. */
+export const plannedFiles = (plan: InitPlan): readonly PlannedFile[] => [
+	...(plan.template ? [plan.template] : []),
+	...plan.configs,
+	...plan.compilerConfigs,
+];
+
 export const watchCommand = (names: readonly string[]): string =>
 	names.length === 1 && names[0] === DEFAULT_CONFIG_STEM
 		? "rogen watch"

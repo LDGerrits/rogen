@@ -7,6 +7,8 @@ import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import "../../../domain/toolchain/luau.js";
 import "../../../domain/toolchain/roblox-ts.js";
+import { CoreInitService } from "../../../domain/init/core-init-service.js";
+import { InitService } from "../../../domain/init/init-service.js";
 import { SCHEMA_URL } from "../../../domain/init/init-files.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { readConfigFile } from "../../../platform/config/config-file.js";
@@ -15,7 +17,6 @@ import {
 	EnvironmentService,
 	NativeEnvironmentService,
 } from "../../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import {
@@ -60,7 +61,10 @@ describe("init command", () => {
 		);
 		const services = new ServiceCollection();
 		services.set(EnvironmentService, environment);
-		services.set(FileSystemService, memFs);
+		services.set(
+			InitService,
+			new CoreInitService(memFs, promptService, environment)
+		);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
 

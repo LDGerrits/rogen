@@ -1,4 +1,4 @@
-import { NextSteps } from "../../domain/init/plan-init.js";
+import { NextSteps } from "../../domain/init/init-service.js";
 
 const indent = (line: string) => `  ${line}`;
 
