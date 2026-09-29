@@ -176,7 +176,7 @@ v1 routed any folder named after a service (`ReplicatedFirst/`, `StarterGui/`). 
 | `aliases` and built-in service keywords | `routes`. Only declared keys route |
 | `casing`, `unwrap` | route targets as paths |
 | `verbatim` | removed. Use an outer route |
-| `project` | `template`, a path to a `.project.json` only |
+| `project`, or the legacy `template` | `template`, a path to a `.project.json` only |
 
 ## Behaviour
 
@@ -204,4 +204,4 @@ v1 routed any folder named after a service (`ReplicatedFirst/`, `StarterGui/`). 
 	In v1, `-s` set the source directory. In v2 it sets the sync directory. Check scripts that call Rogen.
 </Callout>
 
-v2 also adds `extends`, `rogen list`, `init [name]`, `--show-config`, JSONC configs and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.
+v2 also adds `extends`, `rogen list`, `init [name]`, `--show-config`, JSONC configs, several configs in one command (`rogen build default lobby`) and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.

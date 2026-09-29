@@ -61,7 +61,7 @@ A small game with three features:
 
 ### A Component: `Door`
 
-The [component pattern](https://gameprogrammingpatterns.com/component.html) lets "a single entity span multiple domains without coupling the domains to each other". On Roblox, a component is usually bound to every instance with a [tag](https://create.roblox.com/docs/studio/properties#instance-tags), and tags replicate from the server to the client, so both sides find the same doors.
+The [component pattern](https://gameprogrammingpatterns.com/component.html) exists to "allow a single entity to span multiple domains without coupling the domains to each other". On Roblox, a component is usually bound to every instance with a [tag](https://create.roblox.com/docs/studio/properties#instance-tags), and tags replicate from the server to the client, so both sides find the same doors.
 
 - `DoorServer` owns the state: it checks who may open a door, and opens it.
 - `DoorClient` animates the door and plays its sound.

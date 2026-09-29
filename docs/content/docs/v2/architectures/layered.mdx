@@ -181,9 +181,9 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 [Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as popularised in frontend development, with one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
 
 - "A module (file) in a slice can only import other slices when they are located on layers strictly below."
-- "Slices cannot use other slices on the same layer." Two features can't require each other.
+- "Slices cannot use other slices on the same layer."
 
-That second rule is what makes it stricter: nothing is ever required sideways. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
+That second rule is what makes it stricter. The layout above lets a module require others in its own layer (`core` requires `core`); FSD never allows a sideways require, except in `app` and `shared`, which have no slices. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
 
 <SystemWindow>
 	<TreeFolder name="src" open />
