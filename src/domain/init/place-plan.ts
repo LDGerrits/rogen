@@ -43,6 +43,7 @@ export interface PlacePlanOptions {
 	readonly language: Language;
 	/** Whether Darklua processes the project the place joins. */
 	readonly darklua: boolean;
+	/** The detected facts; its own language and Darklua flag give way to the two above. */
 	readonly workspace: DetectedWorkspace;
 	/** The absolute directory init writes into. */
 	readonly directory: string;
@@ -108,9 +109,13 @@ export function planPlace(
 		base,
 		language,
 		darklua,
-		workspace,
 		directory,
 	} = options;
+	const workspace: DetectedWorkspace = {
+		...options.workspace,
+		language: language.id,
+		darklua,
+	};
 	const { compiler } = language;
 	const rootDirs = [...base.rootDirs, folder];
 	const projectFile = projectFileName(name);

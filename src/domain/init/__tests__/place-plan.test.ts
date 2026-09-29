@@ -269,6 +269,33 @@ describe("planPlace", () => {
 			]);
 		});
 
+		it("should hand the compiler the project's language and Darklua choice over what was detected", () => {
+			const roblox = toolchain.getLanguage("roblox-ts");
+			const seen: DetectedWorkspace[] = [];
+			const compiler = {
+				...roblox.compiler!,
+				outDir: (workspace: DetectedWorkspace) => {
+					seen.push(workspace);
+					return "out";
+				},
+			};
+
+			planPlace({
+				choices,
+				base: { rootDirs: ["src"] },
+				language: { ...roblox, compiler },
+				darklua: true,
+				workspace: luau,
+				directory,
+				existingFiles: new Set(),
+			});
+
+			expect(seen[0]).toMatchObject({
+				language: "roblox-ts",
+				darklua: true,
+			});
+		});
+
 		it("should say what Darklua must process on top", () => {
 			const { nextSteps } = written(
 				plan(
