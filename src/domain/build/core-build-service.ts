@@ -1,8 +1,15 @@
-import { Result, ok } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import {
+	ConfigEntry,
+	ResolvedEntry,
+	requireValidConfigs,
+	resolvedEntries,
+} from "../config/config-service.js";
 import { findOutputClashes } from "../output/output.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -35,11 +42,18 @@ export class CoreBuildService implements BuildService {
 		this.validator = new BuildValidator(fileSystemService);
 	}
 
-	checkBuildable(configs: readonly ResolvedConfig[]): Diagnostic[] {
-		return [
-			...findConfigsWithoutRoutes(configs),
-			...findOutputClashes(configs),
+	checkBuildable(
+		entries: readonly ConfigEntry[]
+	): Result<ResolvedEntry[], DiagnosticsError> {
+		const valid = requireValidConfigs(entries);
+		if (valid.isErr()) return valid;
+		const upfront = [
+			...findConfigsWithoutRoutes(valid.value),
+			...findOutputClashes(valid.value),
 		];
+		return upfront.length > 0
+			? err(new DiagnosticsError(upfront))
+			: ok(resolvedEntries(entries));
 	}
 
 	async build(

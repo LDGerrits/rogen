@@ -1,8 +1,31 @@
 import path from "path";
 import { BuildSummary } from "../../../domain/build/build-service.js";
-import { describeBuild } from "../describe-build.js";
+import { ConfigEntry } from "../../../domain/config/config-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
+import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
+
+const debugLines = (
+	dir: string,
+	entry: ConfigEntry,
+	summary?: BuildSummary
+): string[] => {
+	const logService = new MockLogService();
+	logService.setLevel(LogLevel.Debug);
+	new BuildLog(logService, dir).details(entry, summary);
+	return logService.entries.map(({ text }) => text);
+};
+
+const entryOf = (overrides: Partial<ConfigEntry> = {}): ConfigEntry => ({
+	file: path.join(cwd, "match.rogen.json"),
+	chain: [path.join(cwd, "match.rogen.json")],
+	resolved: undefined,
+	diagnostics: [],
+	skippedTags: [],
+	...overrides,
+});
 
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
@@ -14,7 +37,43 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	...overrides,
 });
 
-describe("describeBuild", () => {
+const describeConfig = (entry: ConfigEntry, dir: string) =>
+	debugLines(dir, entry);
+
+const describeBuild = (summary: BuildSummary, dir: string) =>
+	debugLines(dir, entryOf(), summary);
+
+describe("BuildLog.details config lines", () => {
+	it("should say nothing about a config with no parent and no skipped tags", () => {
+		expect(describeConfig(entryOf(), cwd)).toEqual([]);
+	});
+
+	it("should name the extends chain relative to the working directory", () => {
+		expect(
+			describeConfig(
+				entryOf({
+					chain: [
+						path.join(cwd, "match.rogen.json"),
+						path.join(cwd, "default.rogen.json"),
+						path.join(cwd, "shared/base.rogen.json"),
+					],
+				}),
+				cwd
+			)
+		).toEqual(["extends: default.rogen.json -> shared/base.rogen.json"]);
+	});
+
+	it("should name each tag flag the config does not declare", () => {
+		expect(
+			describeConfig(entryOf({ skippedTags: ["mock", "debug"] }), cwd)
+		).toEqual([
+			"tag mock skipped: not declared in this config",
+			"tag debug skipped: not declared in this config",
+		]);
+	});
+});
+
+describe("BuildLog.details build lines", () => {
 	it("should name each root dir relative to the working directory", () => {
 		expect(
 			describeBuild(

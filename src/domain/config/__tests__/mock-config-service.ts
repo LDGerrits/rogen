@@ -52,6 +52,11 @@ export class MockConfigService implements ConfigService {
 		return [...this.configFiles];
 	}
 
+	async listUnselectedConfigFiles(): Promise<string[]> {
+		const selected = new Set(this.configs.map(({ file }) => file));
+		return this.configFiles.filter((file) => !selected.has(file));
+	}
+
 	async readConfig(file: string): Promise<ConfigEntry> {
 		return (
 			this.configs.find((entry) => entry.file === file) ??

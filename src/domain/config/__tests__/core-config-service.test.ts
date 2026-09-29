@@ -147,6 +147,20 @@ describe("domain/config/core-config-service", () => {
 		});
 	});
 
+	describe("listUnselectedConfigFiles", () => {
+		it("should list the config files this run didn't select", async () => {
+			await write("/repo/default.rogen.json", {});
+			await write("/repo/lobby.rogen.json", {});
+			await write("/repo/match.rogen.json", {});
+			await service.initialize({ names: ["lobby"], paths: [] });
+
+			expect(await service.listUnselectedConfigFiles()).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/match.rogen.json",
+			]);
+		});
+	});
+
 	describe("readConfig", () => {
 		it("should resolve a config file without adding it to the configs", async () => {
 			await write("/repo/other.rogen.json", { rootDirs: ["lib"] });

@@ -748,7 +748,9 @@ describe("init command", () => {
 				JSON.stringify({ rootDirs: ["src"] })
 			);
 
-			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+			const logService = new MockLogService();
+
+			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
 
 			expect(await readJson("lobby-source.rogen.json")).toMatchObject({
 				extends: "./source.rogen.json",
@@ -758,6 +760,11 @@ describe("init command", () => {
 				extends: "./lobby-source.rogen.json",
 				syncDir: "dist/lobby",
 			});
+			expect(logService.lines).toEqual(
+				expect.arrayContaining([
+					"info: Have Darklua process your code into the sync dir:",
+				])
+			);
 		});
 
 		it("should write a config and a tsconfig for a roblox-ts place", async () => {

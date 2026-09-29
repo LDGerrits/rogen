@@ -1,7 +1,9 @@
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/config.js";
+import { ConfigEntry, ResolvedEntry } from "../config/config-service.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 import { LeftOut, RouteMatch, TagMatch } from "./build-record.js";
 
@@ -86,8 +88,14 @@ export type FileLocation =
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** What must hold across the configs before any is built: each declares routes, and no two write one file. */
-	checkBuildable(configs: readonly ResolvedConfig[]): Diagnostic[];
+	/**
+	 * What must hold across the configs before any is built: each loaded
+	 * without errors and declares routes, and no two write one file. Returns
+	 * the configs to build, each with the entry it came from.
+	 */
+	checkBuildable(
+		entries: readonly ConfigEntry[]
+	): Result<ResolvedEntry[], DiagnosticsError>;
 
 	/** Builds `config` in memory from an index of its root dirs, reading only folder meta from disk. */
 	build(

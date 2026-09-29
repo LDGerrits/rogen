@@ -49,6 +49,8 @@ export interface ConfigService {
 	initialize(refs: ConfigRefs): Promise<Result<void, Error>>;
 	/** Every `*.rogen.json` directly in the working dir, loaded or not, as sorted absolute paths; none when it can't be read. */
 	listConfigFiles(): Promise<string[]>;
+	/** The config files `listConfigFiles` finds that this run didn't select, as sorted absolute paths. */
+	listUnselectedConfigFiles(): Promise<string[]>;
 	/** Loads one config file the way `initialize` would, without adding it to the configs. A broken config lands on the entry. */
 	readConfig(file: string): Promise<ConfigEntry>;
 	/** Reloads every config that reads one of `files`. A failed reload keeps the last valid value. */
@@ -64,10 +66,16 @@ export function entryErrors(entry: ConfigEntry): Diagnostic[] {
 	);
 }
 
+/** A config that resolved, with the entry it came from. */
+export interface ResolvedEntry {
+	readonly entry: ConfigEntry;
+	readonly config: ResolvedConfig;
+}
+
 /** The configs that resolved, each with the entry it came from. */
 export function resolvedEntries(
 	entries: readonly ConfigEntry[]
-): { entry: ConfigEntry; config: ResolvedConfig }[] {
+): ResolvedEntry[] {
 	return entries.flatMap((entry) =>
 		entry.resolved ? [{ entry, config: entry.resolved }] : []
 	);

@@ -1,0 +1,115 @@
+import path from "path";
+import { relativeTo } from "../../base/path.js";
+import { BuildSummary } from "../../domain/build/build-service.js";
+import { configLabel } from "../../domain/config/config.js";
+import {
+	ConfigEntry,
+	ResolvedEntry,
+} from "../../domain/config/config-service.js";
+import { LogService } from "../../platform/log/log-service.js";
+
+function count(n: number, noun: string): string {
+	return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/** The `extends` chain and skipped tag flags of a config. */
+function describeConfig(entry: ConfigEntry, cwd: string): string[] {
+	const parents = entry.chain.slice(1).map((file) => relativeTo(cwd, file));
+	return [
+		...(parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : []),
+		...entry.skippedTags.map(
+			(tag) => `tag ${tag} skipped: not declared in this config`
+		),
+	];
+}
+
+/** One line per root dir, route and tag. */
+function describeBuild(summary: BuildSummary, cwd: string): string[] {
+	const roots = summary.roots.map(
+		({ rootDir, files, excluded, skippedLinks }) =>
+			[
+				`${relativeTo(cwd, rootDir)}: ${count(files, "file")}`,
+				...(excluded > 0 ? [`${excluded} excluded`] : []),
+				...(skippedLinks > 0
+					? [count(skippedLinks, "skipped link")]
+					: []),
+			].join(", ")
+	);
+	const routes = summary.routes.map(
+		({ key, target, files }) =>
+			`route ${key} -> ${target}: ${count(files, "file")}`
+	);
+	const tags = summary.tags.map(({ tag, on, files }) =>
+		on
+			? `tag ${tag} on: ${count(files, "file")}`
+			: `tag ${tag} off: ${count(files, "file")} left out`
+	);
+	const leftOut = [
+		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
+		...(summary.superseded > 0
+			? [`${summary.superseded} replaced by a file with the same name`]
+			: []),
+		...(summary.displaced > 0
+			? [`${summary.displaced} displaced by the template`]
+			: []),
+	];
+	return [
+		...roots,
+		...routes,
+		...tags,
+		...(leftOut.length > 0 ? [`left out: ${leftOut.join(", ")}`] : []),
+	];
+}
+
+/** How `build` and `watch` tell the user what they built, relative to where they run. */
+export class BuildLog {
+	constructor(
+		private readonly logService: LogService,
+		private readonly cwd: string
+	) {}
+
+	/** Opens the output: the command, the configs it builds and the ones it leaves out. */
+	begin(
+		command: string,
+		targets: readonly ResolvedEntry[],
+		unselected: readonly string[]
+	): void {
+		this.logService.intro(
+			`rogen ${command} · ${targets.map(({ config }) => configLabel(config.file)).join(", ")}`
+		);
+		if (unselected.length > 0) {
+			this.logService.info(
+				`Not building: ${unselected.map((file) => path.basename(file)).join(", ")}.`
+			);
+		}
+	}
+
+	/** One config written, or left alone because its bytes wouldn't change. */
+	written(
+		{ entry, config }: ResolvedEntry,
+		written: boolean,
+		summary: BuildSummary
+	): void {
+		this.logService.success(
+			`${relativeTo(this.cwd, config.outFile)} · ${written ? "wrote" : "unchanged"}`
+		);
+		this.details(entry, summary);
+	}
+
+	/** One config that wasn't written; `repeated` when its errors were already reported. */
+	notWritten({ entry, config }: ResolvedEntry, repeated: boolean): void {
+		this.logService.error(
+			`${relativeTo(this.cwd, config.outFile)} · not written${repeated ? " · same errors as before" : ""}`
+		);
+		this.details(entry);
+	}
+
+	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */
+	details(entry: ConfigEntry, summary?: BuildSummary): void {
+		for (const line of [
+			...describeConfig(entry, this.cwd),
+			...(summary ? describeBuild(summary, this.cwd) : []),
+		])
+			this.logService.debug(line);
+	}
+}

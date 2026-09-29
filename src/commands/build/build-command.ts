@@ -6,6 +6,7 @@ import {
 import { configLabel } from "../../domain/config/config.js";
 import {
 	ConfigService,
+	ResolvedEntry,
 	entryErrors,
 } from "../../domain/config/config-service.js";
 import { OutputService } from "../../domain/output/output-service.js";
@@ -19,8 +20,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigOptions } from "../config-options.js";
-import { BuildTarget, beginBuild } from "./begin-build.js";
-import { logWritten } from "./log-build.js";
+import { BuildLog } from "./build-log.js";
 import { showConfig } from "./show-config.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
@@ -71,18 +71,18 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				: ok(undefined);
 		}
 
-		const cwd = environmentService.cwd;
-		const began = await beginBuild({
-			configService,
-			buildService,
-			logService,
-			command: "build",
-		});
-		if (began.isErr()) return began;
-		const targets = began.value;
+		const buildable = buildService.checkBuildable(configService.configs);
+		if (buildable.isErr()) return buildable;
+		const targets = buildable.value;
+		const buildLog = new BuildLog(logService, environmentService.cwd);
+		buildLog.begin(
+			"build",
+			targets,
+			await configService.listUnselectedConfigFiles()
+		);
 
 		// Every config builds before any is written, so a failure writes nothing.
-		const built: (BuildTarget & { project: BuiltProject })[] = [];
+		const built: (ResolvedEntry & { project: BuiltProject })[] = [];
 		const errors: Diagnostic[] = [];
 		for (const target of targets) {
 			const project = await buildService.build(target.config, {
@@ -102,9 +102,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			if (written.isErr())
 				return err(new DiagnosticsError(written.error));
 
-			logWritten(
-				logService,
-				cwd,
+			buildLog.written(
 				{ entry, config },
 				written.value.written,
 				project.summary

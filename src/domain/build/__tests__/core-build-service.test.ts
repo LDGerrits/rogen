@@ -1,9 +1,13 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	DiagnosticSeverity,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { ConfigEntry } from "../../config/config-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
@@ -502,28 +506,42 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("checkBuildable", () => {
+		const entryOf = (config: ResolvedConfig): ConfigEntry => ({
+			file: config.file,
+			chain: [config.file],
+			resolved: config,
+			diagnostics: [],
+			skippedTags: [],
+		});
+		const check = (...configs: ResolvedConfig[]) =>
+			buildServiceOfFs().checkBuildable(configs.map(entryOf));
+		const diagnosticsOf = (result: ReturnType<typeof check>) => {
+			if (result.isOk()) throw new Error("Expected the check to fail.");
+			return result.error.diagnostics;
+		};
+
 		it("should name each config file that declares no routes", () => {
-			const diagnostics = buildServiceOfFs().checkBuildable([
+			const result = check(
 				configOf({ routes: { "*": "Workspace" } }),
 				configOf({
 					file: abs("bare.rogen.json"),
 					outFile: abs("bare.project.json"),
 					routes: {},
-				}),
-			]);
+				})
+			);
 
-			expect(diagnostics).toMatchObject([
+			expect(diagnosticsOf(result)).toMatchObject([
 				{ code: "route.noRoutes", resource: abs("bare.rogen.json") },
 			]);
 		});
 
 		it("should refuse two configs that write one file", () => {
-			const diagnostics = buildServiceOfFs().checkBuildable([
+			const result = check(
 				configOf(),
-				configOf({ file: abs("other.rogen.json") }),
-			]);
+				configOf({ file: abs("other.rogen.json") })
+			);
 
-			expect(diagnostics).toMatchObject([
+			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "output.sameOutFile",
 					resource: abs("default.project.json"),
@@ -531,8 +549,39 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should report nothing when every config can be built", () => {
-			expect(buildServiceOfFs().checkBuildable([configOf()])).toEqual([]);
+		it("should refuse a config that failed to load", () => {
+			const broken: ConfigEntry = {
+				file: abs("broken.rogen.json"),
+				chain: [abs("broken.rogen.json")],
+				resolved: undefined,
+				diagnostics: [
+					errorDiagnostic(
+						"config.invalidSyntax",
+						{ resource: abs("broken.rogen.json") },
+						"bad"
+					),
+				],
+				skippedTags: [],
+			};
+
+			const result = buildServiceOfFs().checkBuildable([
+				entryOf(configOf()),
+				broken,
+			]);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "config.invalidSyntax" },
+			]);
+		});
+
+		it("should return each config with its entry when all can be built", () => {
+			const config = configOf();
+
+			const result = check(config);
+
+			expect(result.unwrap()).toEqual([
+				{ entry: entryOf(config), config },
+			]);
 		});
 	});
 });

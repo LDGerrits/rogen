@@ -84,6 +84,13 @@ export class CoreConfigService
 		return found.isOk() ? found.value : [];
 	}
 
+	async listUnselectedConfigFiles(): Promise<string[]> {
+		const selected = new Set(this.configs.map(({ file }) => file));
+		return (await this.listConfigFiles()).filter(
+			(file) => !selected.has(file)
+		);
+	}
+
 	async readConfig(file: string): Promise<ConfigEntry> {
 		return (await this.load(file, undefined)).entry;
 	}

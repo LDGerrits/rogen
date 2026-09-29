@@ -15,8 +15,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigSelectionOptions } from "../config-options.js";
-import { describeLocation } from "./describe-location.js";
-import { ConfigLines, mergeLines } from "./merge-locations.js";
+import { LocationReport } from "./location-report.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "where",
@@ -45,7 +44,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		const paths = args._.slice(1).map((file) => path.resolve(cwd, file));
 
-		const answers: ConfigLines[] = [];
+		const report = new LocationReport(cwd);
 		for (const config of configs.value) {
 			const located = await buildService.locate(
 				config,
@@ -53,16 +52,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			);
 			if (located.isErr())
 				return err(new DiagnosticsError(located.error));
-			answers.push({
-				label: configLabel(config.file),
-				lines: located.value.map((location) => [
-					location.source,
-					describeLocation(location, cwd),
-				]),
-			});
+			report.add(configLabel(config.file), located.value);
 		}
 
-		const lines = mergeLines(answers, paths.length === 0);
+		const lines = report.lines(paths.length === 0);
 		if (lines.length > 0) logService.print(lines.join("\n"));
 		return ok(undefined);
 	},
