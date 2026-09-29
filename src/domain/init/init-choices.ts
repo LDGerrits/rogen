@@ -9,8 +9,7 @@ import { TemplateChoice, defaultTemplateChoice } from "./template.js";
 /** Every answer the new-project questions give, whether asked or defaulted. */
 export interface InitChoices {
 	readonly name: string;
-	/** A registered language's id. */
-	readonly language: string;
+	readonly language: Language;
 	readonly darklua: boolean;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
@@ -52,7 +51,7 @@ export function defaultInitChoices(
 	);
 	return {
 		name,
-		language: language.id,
+		language,
 		darklua,
 		rootDirs: [defaultRootDir(workspace, language)],
 		...(syncDir && { syncDir }),

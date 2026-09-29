@@ -284,7 +284,7 @@ export async function askInitChoices(
 	const outDir = language.compiler?.outDir(workspace);
 	return ok({
 		name: chosenName,
-		language: language.id,
+		language,
 		darklua,
 		rootDirs,
 		...(syncDir && { syncDir }),

@@ -202,10 +202,10 @@ describe("askInitChoices", () => {
 
 	describe("language", () => {
 		it("should preselect the detected language", async () => {
-			expect((await asked(rbxts, acceptAll(9))).language).toBe(
+			expect((await asked(rbxts, acceptAll(9))).language.id).toBe(
 				"roblox-ts"
 			);
-			expect((await asked(luau, acceptAll(9))).language).toBe("luau");
+			expect((await asked(luau, acceptAll(9))).language.id).toBe("luau");
 		});
 
 		it("should take the language that was chosen", async () => {
@@ -215,7 +215,7 @@ describe("askInitChoices", () => {
 				...acceptAll(6),
 			]);
 
-			expect(choices.language).toBe("roblox-ts");
+			expect(choices.language.id).toBe("roblox-ts");
 			expect(choices.syncDir).toBe("out");
 		});
 	});

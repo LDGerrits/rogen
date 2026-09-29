@@ -212,10 +212,8 @@ export class CoreInitService implements InitService {
 			}
 		}
 
-		const language = this.toolchainService.getLanguage(choices.language);
 		const project = planProject({
 			choices,
-			language,
 			projectName,
 			directory,
 			existingFiles,
@@ -223,7 +221,7 @@ export class CoreInitService implements InitService {
 		});
 		if (project.isErr() || choices.places.length === 0) return project;
 
-		const { name, darklua, rootDirs, syncDir } = choices;
+		const { name, language, darklua, rootDirs, syncDir } = choices;
 		const base: BaseConfig = {
 			rootDirs,
 			...(syncDir && { syncDir }),

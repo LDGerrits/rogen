@@ -31,8 +31,6 @@ import {
 
 export interface ProjectPlanOptions {
 	readonly choices: InitChoices;
-	/** The language `choices.language` names. */
-	readonly language: Language;
 	readonly projectName: string;
 	/** The absolute directory init writes into. */
 	readonly directory: string;
@@ -210,8 +208,9 @@ function copyTemplate(
 }
 
 function buildPlan(options: ProjectPlanOptions): InitPlan {
-	const { choices, language, directory } = options;
-	const { name, darklua, rootDirs, syncDir, routes, fallback } = choices;
+	const { choices, directory } = options;
+	const { name, language, darklua, rootDirs, syncDir, routes, fallback } =
+		choices;
 	const template = planTemplate(options, language);
 	const steps = nextSteps(choices, language, directory);
 	const { compiler } = language;

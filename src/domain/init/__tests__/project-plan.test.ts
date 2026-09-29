@@ -10,10 +10,7 @@ import {
 	defaultInitChoices as defaultChoicesFor,
 } from "../init-choices.js";
 import { parseInitName } from "../init-files.js";
-import {
-	ProjectPlanOptions,
-	planProject as planProjectWith,
-} from "../project-plan.js";
+import { planProject } from "../project-plan.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -52,12 +49,6 @@ const mounts = {
 };
 
 const toolchain = createToolchainService();
-
-const planProject = (options: Omit<ProjectPlanOptions, "language">) =>
-	planProjectWith({
-		...options,
-		language: toolchain.getLanguage(options.choices.language),
-	});
 
 const defaultInitChoices = (
 	workspace: DetectedWorkspace,
@@ -1074,7 +1065,7 @@ describe("planProject", () => {
 
 		it("should write the chosen sync dir", () => {
 			const files = planChoices({
-				language: "roblox-ts",
+				language: toolchain.getLanguage("roblox-ts"),
 				syncDir: "lib",
 			});
 
