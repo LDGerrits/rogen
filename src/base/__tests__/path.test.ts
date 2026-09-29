@@ -5,6 +5,7 @@ import {
 	isInside,
 	joinPosix,
 	normalizeDir,
+	outermostDirs,
 	relativeTo,
 	stemOf,
 	toPosix,
@@ -106,6 +107,22 @@ describe("normalizeDir", () => {
 		it("should reject a sibling and a parent", () => {
 			expect(contains(abs("src"), abs("src-extra"))).toBe(false);
 			expect(contains(abs("src/shared"), abs("src"))).toBe(false);
+		});
+	});
+
+	describe("outermostDirs", () => {
+		const abs = (...segments: string[]) =>
+			path.resolve("/repo", ...segments);
+
+		it("should drop repeats and dirs inside another, whichever comes first", () => {
+			expect(
+				outermostDirs([
+					abs("src/shared"),
+					abs("src"),
+					abs("src"),
+					abs("src-extra"),
+				])
+			).toEqual([abs("src"), abs("src-extra")]);
 		});
 	});
 

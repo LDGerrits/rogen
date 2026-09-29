@@ -21,10 +21,11 @@ export interface IndexService extends IndexReader {
 	/** Fires after `applyChanges` has updated the listing. */
 	readonly onDidUpdate: Event<FileChange[]>;
 
-	/** Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
+	/** Runs after any earlier `initialize` or `ensureIndexed` finishes. Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
 	initialize(sourcePaths: readonly string[]): Promise<void>;
-	/** Indexes the dirs no earlier call covered, a dir inside a covered one included; the rest is left as it is. */
+	/** Indexes the dirs that no earlier call covers, where a dir inside a covered one counts as covered; the rest of the listing is kept. */
 	ensureIndexed(dirs: readonly string[]): Promise<void>;
+	/** Applies at once, never queued behind `initialize` or `ensureIndexed`; a scan in progress may overwrite a change to a dir it lists. */
 	applyChanges(changes: FileChange[]): void;
 }
 

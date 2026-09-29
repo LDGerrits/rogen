@@ -42,6 +42,14 @@ export function contains(parent: string, child: string): boolean {
 	return child === parent || isInside(child, parent);
 }
 
+/** `dirs` without repeats and without any dir that lies inside another, in their first order. */
+export function outermostDirs(dirs: readonly string[]): string[] {
+	const unique = [...new Set(dirs)];
+	return unique.filter(
+		(dir) => !unique.some((other) => isInside(dir, other))
+	);
+}
+
 /** `filePath` from `from`, with `.` for `from` itself. */
 export function relativeTo(from: string, filePath: string): string {
 	return path.relative(from, filePath) || ".";

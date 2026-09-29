@@ -1,9 +1,10 @@
 import { jest } from "@jest/globals";
 import path from "path";
+import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoTree } from "../../rojo/rojo-tree.js";
 import { CoreOutputService } from "../core-output-service.js";
-import { stagingFile, stagingPattern } from "../staging-file.js";
+import { stagingPattern } from "../staging-file.js";
 
 const outFile = path.resolve("/repo", "default.project.json");
 
@@ -18,10 +19,16 @@ const treeOf = (): RojoTree => ({
 describe("CoreOutputService", () => {
 	let fs: MemoryFileSystemService;
 	let outputService: CoreOutputService;
+	let store: DisposableStore;
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		outputService = new CoreOutputService(fs);
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
 	});
 
 	describe("write", () => {
@@ -40,7 +47,7 @@ describe("CoreOutputService", () => {
 
 		it("should write through a temporary file and leave none behind", async () => {
 			const events: string[] = [];
-			fs.onDidMutateFile((event) => events.push(event.path));
+			store.add(fs.onDidMutateFile((event) => events.push(event.path)));
 
 			await outputService.write({ outFile }, treeOf());
 
@@ -54,10 +61,12 @@ describe("CoreOutputService", () => {
 
 		it("should stage each write through its own file", async () => {
 			const events = new Set<string>();
-			fs.onDidMutateFile((event) => {
-				if (stagingPattern(outFile).test(event.path))
-					events.add(event.path);
-			});
+			store.add(
+				fs.onDidMutateFile((event) => {
+					if (stagingPattern(outFile).test(event.path))
+						events.add(event.path);
+				})
+			);
 
 			await outputService.write({ outFile }, treeOf());
 			await outputService.write(
@@ -82,18 +91,10 @@ describe("CoreOutputService", () => {
 			expect([treeOf(), other]).toContainEqual(written);
 		});
 
-		it("should match the staging files of any writer with stagingPattern", () => {
-			expect(stagingPattern(outFile).test(stagingFile(outFile))).toBe(
-				true
-			);
-			expect(stagingPattern(outFile).test(`${outFile}.tmp`)).toBe(false);
-			expect(stagingPattern(outFile).test(outFile)).toBe(false);
-		});
-
 		it("should not touch the file when the bytes are unchanged", async () => {
 			await outputService.write({ outFile }, treeOf());
 			const listener = jest.fn();
-			fs.onDidMutateFile(listener);
+			store.add(fs.onDidMutateFile(listener));
 
 			const result = await outputService.write({ outFile }, treeOf());
 

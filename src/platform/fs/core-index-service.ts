@@ -7,7 +7,12 @@ import {
 import { Sequencer } from "../../base/async.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
+import {
+	ancestors,
+	contains,
+	outermostDirs,
+	toPosix,
+} from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "./file-events.js";
 import { IndexService } from "./index-service.js";
@@ -35,13 +40,13 @@ export class CoreIndexService
 	initialize(sourcePaths: readonly string[]): Promise<void> {
 		return this.indexing.queue(async () => {
 			this.tree = await this.scan(sourcePaths);
-			this.covered = outermost(sourcePaths);
+			this.covered = outermostDirs(sourcePaths);
 		});
 	}
 
 	ensureIndexed(dirs: readonly string[]): Promise<void> {
 		return this.indexing.queue(async () => {
-			const missing = outermost(
+			const missing = outermostDirs(
 				dirs.filter(
 					(dir) => !this.covered.some((root) => contains(root, dir))
 				)
@@ -49,7 +54,7 @@ export class CoreIndexService
 			if (missing.length === 0) return;
 			for (const [dir, entries] of await this.scan(missing))
 				this.tree.set(dir, entries);
-			this.covered = outermost([...this.covered, ...missing]);
+			this.covered = outermostDirs([...this.covered, ...missing]);
 		});
 	}
 
@@ -182,11 +187,4 @@ export class CoreIndexService
 
 		this.tree.delete(dirPath);
 	}
-}
-
-function outermost(dirs: readonly string[]): string[] {
-	const unique = [...new Set(dirs)];
-	return unique.filter(
-		(dir) => !unique.some((other) => isInside(dir, other))
-	);
 }
