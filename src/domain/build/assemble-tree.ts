@@ -8,7 +8,7 @@ import { containerClassName } from "../roblox/container-class-name.js";
 import { RojoNode, RojoTree, instanceKey } from "../rojo/rojo-tree.js";
 import { applyFolderMeta } from "./apply-folder-meta.js";
 import { FolderMeta } from "./read-folder-meta.js";
-import { ScannedEntry, sourceOf } from "./root-scanner.js";
+import { ScannedEntry } from "./root-scanner.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { RoutedFile } from "./route-files.js";
 import {
@@ -166,7 +166,7 @@ function placeEntry(file: RoutedFile): PlacedEntry {
 	const { entry } = file;
 	return {
 		file,
-		source: sourceOf(entry),
+		source: entry.source,
 		rojoName: rojoNameOf(entry),
 	};
 }

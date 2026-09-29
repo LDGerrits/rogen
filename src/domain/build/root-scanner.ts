@@ -22,21 +22,20 @@ export interface ScannedFile {
 	readonly kind: RojoFileKind;
 	readonly rootDir: string;
 	readonly relativePath: string;
+	/** The absolute POSIX source path. */
+	readonly source: string;
 }
 
 export interface ScannedInitFolder {
 	readonly kind: "init-folder";
 	readonly rootDir: string;
 	readonly relativePath: string;
+	/** The absolute POSIX path of the folder. */
+	readonly source: string;
 	readonly initFile: string;
 }
 
 export type ScannedEntry = ScannedFile | ScannedInitFolder;
-
-/** The entry's absolute POSIX source path; an init folder's is the folder. */
-export function sourceOf({ rootDir, relativePath }: ScannedEntry): string {
-	return joinPosix(rootDir, relativePath);
-}
 
 export interface ScannedRoot {
 	readonly rootDir: string;
@@ -147,6 +146,7 @@ function scanRoot(
 				kind: "init-folder",
 				rootDir,
 				relativePath: relativeDir,
+				source: joinPosix(rootDir, relativeDir),
 				initFile,
 			});
 			return true;
@@ -171,6 +171,7 @@ function scanRoot(
 						kind,
 						rootDir,
 						relativePath: relativeTo(name),
+						source: joinPosix(rootDir, relativeTo(name)),
 					});
 				} else if (name.startsWith(".")) {
 					markers.push(relativeTo(name));

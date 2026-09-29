@@ -747,6 +747,7 @@ describe("routeFiles", () => {
 				kind: "script",
 				rootDir: abs("src"),
 				relativePath: "server/A.luau",
+				source: abs("src/server/A.luau"),
 			});
 		});
 	});

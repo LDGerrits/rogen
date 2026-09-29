@@ -168,6 +168,7 @@ describe("scanRootDirs", () => {
 					kind: "script",
 					rootDir: abs("src"),
 					relativePath: "inventory/items/Sword.luau",
+					source: abs("src/inventory/items/Sword.luau"),
 				},
 			]);
 		});
@@ -196,6 +197,7 @@ describe("scanRootDirs", () => {
 					kind: "init-folder",
 					rootDir: abs("src"),
 					relativePath: "Inventory",
+					source: abs("src/Inventory"),
 					initFile: "init.luau",
 				},
 			]);
@@ -404,6 +406,7 @@ describe("scanRootDirs", () => {
 					kind: "script",
 					rootDir: abs("core"),
 					relativePath: "Shared.luau",
+					source: abs("core/Shared.luau"),
 				},
 			]);
 			expect(roots[1].entries).toEqual([
@@ -411,11 +414,13 @@ describe("scanRootDirs", () => {
 					kind: "script",
 					rootDir: abs("lobby"),
 					relativePath: "Only.luau",
+					source: abs("lobby/Only.luau"),
 				},
 				{
 					kind: "script",
 					rootDir: abs("lobby"),
 					relativePath: "Shared.luau",
+					source: abs("lobby/Shared.luau"),
 				},
 			]);
 		});
@@ -470,6 +475,7 @@ describe("scanRootDirs", () => {
 					kind: "init-folder",
 					rootDir: abs("src"),
 					relativePath: "Pkg",
+					source: abs("src/Pkg"),
 					initFile: "init.luau",
 				},
 			]);

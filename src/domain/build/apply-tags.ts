@@ -3,7 +3,6 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { instanceKey } from "../rojo/rojo-tree.js";
-import { sourceOf } from "./root-scanner.js";
 import { RoutedFile, TagMatch } from "./route-files.js";
 import { diagnosePaths } from "./path-list.js";
 import { TagDiagnostics } from "./tag-diagnostics.js";
@@ -40,13 +39,13 @@ export function applyTags(
 			kept.push(file);
 			continue;
 		}
-		prunedBy.set(sourceOf(file.entry), dormant[0]);
+		prunedBy.set(file.entry.source, dormant[0]);
 		for (const { tag, separatorName } of dormant)
 			if (separatorName)
 				prunedOnCapital.set(
 					tag,
 					(prunedOnCapital.get(tag) ?? new Map()).set(
-						sourceOf(file.entry),
+						file.entry.source,
 						separatorName
 					)
 				);
@@ -66,7 +65,7 @@ export function applyTags(
 		if (file.buriedScriptSuffix)
 			warnings.push(
 				TagDiagnostics.buriedScriptSuffix(
-					{ resource: sourceOf(file.entry) },
+					{ resource: file.entry.source },
 					file.buriedScriptSuffix
 				)
 			);
@@ -83,7 +82,7 @@ export function applyTags(
 					TagDiagnostics.activeClash(
 						location,
 						instance,
-						tagged.map(({ entry }) => sourceOf(entry))
+						tagged.map(({ entry }) => entry.source)
 					)
 				);
 			else if (tagged.length === 0 && untagged.length > 1)
@@ -91,7 +90,7 @@ export function applyTags(
 					TagDiagnostics.untaggedClash(
 						location,
 						instance,
-						untagged.map(({ entry }) => sourceOf(entry))
+						untagged.map(({ entry }) => entry.source)
 					)
 				);
 			winners.set(instance, tagged[0] ?? untagged[untagged.length - 1]);
@@ -103,7 +102,7 @@ export function applyTags(
 	for (const file of kept) {
 		const winner = winners.get(instanceKey(file.instancePath));
 		if (winner && winner !== file)
-			supersededBy.set(sourceOf(file.entry), sourceOf(winner.entry));
+			supersededBy.set(file.entry.source, winner.entry.source);
 	}
 	return ok({
 		files: [...new Set(winners.values())],

@@ -17,7 +17,7 @@ import { IndexService } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
 import { TagResult } from "./apply-tags.js";
-import { ScannedRoot, sourceOf } from "./root-scanner.js";
+import { ScannedRoot } from "./root-scanner.js";
 import { RouteMatch, RouteResult, TagMatch } from "./route-files.js";
 
 interface Located {
@@ -146,7 +146,7 @@ function locateScanned(
 		add({ status: "replaced", source, by });
 
 	for (const file of tagging.files) {
-		const folder = sourceOf(file.entry);
+		const folder = file.entry.source;
 		const members =
 			file.entry.kind === "init-folder"
 				? membersOfInitFolder(index, folder, file.instancePath)

@@ -203,7 +203,7 @@ function sharedWithScript(
 		return MetaDiagnostics.sharedWithInitFolder(
 			{ resource: meta.file },
 			instance,
-			joinPosix(entry.rootDir, entry.relativePath, INIT_META_FILE)
+			joinPosix(entry.source, INIT_META_FILE)
 		);
 	const fileName = path.posix.basename(entry.relativePath);
 	return MetaDiagnostics.sharedWithScript(

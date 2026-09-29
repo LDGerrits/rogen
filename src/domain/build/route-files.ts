@@ -23,7 +23,7 @@ import {
 	unwrapInvisibleFolder,
 	withSeparatorSuffix,
 } from "./declared-key.js";
-import { ScannedEntry, ScannedRoot, sourceOf } from "./root-scanner.js";
+import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 import { diagnosePaths } from "./path-list.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 
@@ -125,14 +125,14 @@ export function routeFiles(
 		for (const entry of root.entries) {
 			const outcome = routeEntry(entry, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
-			else unrouted.push(sourceOf(entry));
+			else unrouted.push(entry.source);
 		}
 	}
 
 	const capitalRouted = new Map(
 		routed
 			.filter(({ separatorName }) => separatorName)
-			.map((file) => [sourceOf(file.entry), file])
+			.map((file) => [file.entry.source, file])
 	);
 	const shared = [...routeKeys].find((key) => key.toLowerCase() === "shared");
 	return ok({
@@ -296,7 +296,7 @@ function noteSuffixNearMiss(
 	context: RouteContext
 ): void {
 	if (match.nearMissKey)
-		context.noteNearMiss(sourceOf(entry), match.nearMissKey);
+		context.noteNearMiss(entry.source, match.nearMissKey);
 }
 
 function tagSpansOf(
