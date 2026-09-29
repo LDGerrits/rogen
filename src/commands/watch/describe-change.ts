@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 
 export interface WatchChange {
@@ -46,7 +46,7 @@ export function describeFileChanges(
 		.slice(0, LISTED_CHANGES)
 		.map(
 			(change) =>
-				`${CHANGE_VERBS[change.type]} ${path.relative(cwd, change.path) || "."}`
+				`${CHANGE_VERBS[change.type]} ${relativeTo(cwd, change.path)}`
 		);
 	return hidden > 0 ? [...lines, `and ${hidden} more`] : lines;
 }

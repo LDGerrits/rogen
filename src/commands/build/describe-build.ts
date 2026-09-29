@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { BuildSummary } from "../../domain/build/build.js";
 
 function count(n: number, noun: string): string {
@@ -10,7 +10,7 @@ export function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ rootDir, files, excluded, skippedLinks }) =>
 			[
-				`${path.relative(cwd, rootDir) || "."}: ${count(files, "file")}`,
+				`${relativeTo(cwd, rootDir)}: ${count(files, "file")}`,
 				...(excluded > 0 ? [`${excluded} excluded`] : []),
 				...(skippedLinks > 0
 					? [count(skippedLinks, "skipped link")]

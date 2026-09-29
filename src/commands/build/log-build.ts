@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { BuildSummary } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
@@ -8,7 +8,7 @@ import { describeConfig } from "./describe-config.js";
 
 /** The output file as `build` and `watch` name it, relative to where they run. */
 export const outFileLabel = (config: ResolvedConfig, cwd: string): string =>
-	path.relative(cwd, config.outFile) || ".";
+	relativeTo(cwd, config.outFile);
 
 /** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */
 export function logBuildDetails(

@@ -1,6 +1,12 @@
 import path from "path";
 import { compareStrings } from "../../base/collection.js";
-import { isInside, joinPosix, toPosix } from "../../base/path.js";
+import {
+	ancestors,
+	contains,
+	isInside,
+	joinPosix,
+	toPosix,
+} from "../../base/path.js";
 import { FileChangeType } from "../../platform/fs/file-events.js";
 import {
 	FileType,
@@ -81,13 +87,14 @@ export function addPlannedFiles(
 			continue;
 
 		const missing: string[] = [];
-		for (
-			let dir = path.dirname(target);
-			dir !== rootDir &&
-			!index.getEntryType(path.dirname(dir), path.basename(dir));
-			dir = path.dirname(dir)
-		)
+		for (const dir of ancestors(target)) {
+			if (
+				dir === rootDir ||
+				index.hasEntry(path.dirname(dir), path.basename(dir))
+			)
+				break;
 			missing.unshift(dir);
+		}
 		index.applyChanges([
 			...missing.map((dir) => ({
 				type: FileChangeType.ADDED,
@@ -206,19 +213,12 @@ function locatePath(
 	if (exact) return [exact, ...below];
 	if (below.length > 0) return below;
 
-	const inRoot = (rootDir: string) =>
-		target === rootDir || isInside(target, rootDir);
-	if (!roots.some((root) => inRoot(toPosix(root.rootDir))))
+	if (!roots.some((root) => contains(toPosix(root.rootDir), target)))
 		return [{ status: "outside", source: target }];
 
-	for (
-		let dir = path.posix.dirname(target);
-		;
-		dir = path.posix.dirname(dir)
-	) {
+	for (const dir of ancestors(target)) {
 		const enclosing = all.get(dir);
 		if (enclosing) return [{ ...enclosing, source: target }];
-		if (path.posix.dirname(dir) === dir) break;
 	}
 
 	if (index.getEntries(target)) return [{ status: "empty", source: target }];

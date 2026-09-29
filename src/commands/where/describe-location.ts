@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { FileLocation } from "../../domain/build/build.js";
 
 const FORM_LABELS = {
@@ -10,7 +10,7 @@ const FORM_LABELS = {
 
 /** One line: the path, where it lands, and why. */
 export function describeLocation(location: FileLocation, cwd: string): string {
-	const relative = (file: string) => path.relative(cwd, file) || ".";
+	const relative = (file: string) => relativeTo(cwd, file);
 	return `${relative(location.source)} -> ${outcomeOf(location, relative)}`;
 }
 

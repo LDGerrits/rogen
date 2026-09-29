@@ -6,7 +6,7 @@ import {
 } from "./file-system-service.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { toPosix } from "../../base/path.js";
+import { ancestors, toPosix } from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "./file-events.js";
 import { IndexService } from "./index-service.js";
@@ -78,11 +78,7 @@ export class CoreIndexService
 			throw error;
 		}
 
-		for (
-			let ancestor = path.dirname(linkPath);
-			;
-			ancestor = path.dirname(ancestor)
-		) {
+		for (const ancestor of ancestors(linkPath)) {
 			try {
 				if (
 					(await this.fileSystemService.realPath(ancestor)) === target
@@ -92,8 +88,8 @@ export class CoreIndexService
 				if (!ErrorUtils.hasCode(error, ...UNRESOLVED_CODES))
 					throw error;
 			}
-			if (path.dirname(ancestor) === ancestor) return false;
 		}
+		return false;
 	}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {

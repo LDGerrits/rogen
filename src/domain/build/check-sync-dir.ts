@@ -1,4 +1,5 @@
 import path from "path";
+import { ancestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileSystemService,
@@ -117,11 +118,7 @@ async function nearestExisting(
 	fileSystem: FileSystemService,
 	target: string
 ): Promise<string> {
-	let current = target;
-	while (
-		!(await fileSystem.exists(current)) &&
-		path.dirname(current) !== current
-	)
-		current = path.dirname(current);
-	return current;
+	const chain = [target, ...ancestors(target)];
+	for (const dir of chain) if (await fileSystem.exists(dir)) return dir;
+	return chain[chain.length - 1];
 }

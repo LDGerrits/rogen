@@ -1,5 +1,5 @@
 import path from "path";
-import { isInside } from "../../base/path.js";
+import { contains } from "../../base/path.js";
 import { rootsToIndex } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
@@ -19,10 +19,6 @@ export interface WatchPlan {
 	/** Every config with a root dir that contains `changePath`, each once. */
 	configsFor(changePath: string): readonly string[];
 	watches(changePath: string): boolean;
-}
-
-function contains(parent: string, child: string): boolean {
-	return child === parent || isInside(child, parent);
 }
 
 export function createWatchPlan(

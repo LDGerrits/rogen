@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { ancestors, isInside, toPosix } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -214,11 +214,8 @@ function collapsibleDirs(
 		const rootDir = toPosix(scanned.rootDir);
 		for (const { dir } of folderNodes)
 			namedDirs.add(path.posix.join(rootDir, dir));
-		for (
-			let dir = path.posix.dirname(entry.source);
-			isBelow(dir, rootDir);
-			dir = path.posix.dirname(dir)
-		) {
+		for (const dir of ancestors(entry.source)) {
+			if (!isInside(dir, rootDir)) break;
 			const inDir = entriesByDir.get(dir);
 			if (inDir) inDir.push(entry);
 			else entriesByDir.set(dir, [entry]);
@@ -227,13 +224,9 @@ function collapsibleDirs(
 
 	const blocked = new Set<string>();
 	for (const source of leftOut)
-		for (
-			let dir = path.posix.dirname(source);
-			!blocked.has(dir);
-			dir = path.posix.dirname(dir)
-		) {
+		for (const dir of ancestors(source)) {
+			if (blocked.has(dir)) break;
 			blocked.add(dir);
-			if (path.posix.dirname(dir) === dir) break;
 		}
 
 	const collapsed = new Map<string, readonly string[]>();
@@ -297,17 +290,8 @@ function isCollapsed(
 	source: string,
 	collapsed: ReadonlyMap<string, readonly string[]>
 ): boolean {
-	for (
-		let dir = path.posix.dirname(source);
-		path.posix.dirname(dir) !== dir;
-		dir = path.posix.dirname(dir)
-	)
-		if (collapsed.has(dir)) return true;
+	for (const dir of ancestors(source)) if (collapsed.has(dir)) return true;
 	return false;
-}
-
-function isBelow(dir: string, rootDir: string): boolean {
-	return dir.startsWith(`${rootDir}/`);
 }
 
 function depthOf(dir: string): number {

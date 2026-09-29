@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { err, ok } from "../../base/result.js";
 import { findConfigFiles } from "../../domain/config/config-discovery.js";
 import { ConfigService } from "../../domain/config/config-service.js";
@@ -33,7 +33,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		});
 		if (initialized.isErr()) return initialized;
 
-		const relative = (file: string) => path.relative(cwd, file) || ".";
+		const relative = (file: string) => relativeTo(cwd, file);
 		const list = (values: readonly string[]) =>
 			values.length > 0 ? values.join(", ") : "(none)";
 

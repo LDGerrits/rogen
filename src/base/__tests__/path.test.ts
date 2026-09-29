@@ -1,5 +1,13 @@
 import path from "path";
-import { isInside, joinPosix, toPosix, normalizeDir } from "../path.js";
+import {
+	ancestors,
+	contains,
+	isInside,
+	joinPosix,
+	normalizeDir,
+	relativeTo,
+	toPosix,
+} from "../path.js";
 
 describe("Path", () => {
 	describe("toPosix", () => {
@@ -62,5 +70,56 @@ describe("normalizeDir", () => {
 		[".", "."],
 	])("should write %j as %j", (entry, expected) => {
 		expect(normalizeDir(entry)).toBe(expected);
+	});
+
+	describe("ancestors", () => {
+		it("should yield each parent folder up to the root, nearest first", () => {
+			const root = path.parse(path.resolve("/")).root;
+
+			expect([...ancestors(path.resolve("/repo/src/Save.luau"))]).toEqual(
+				[path.resolve("/repo/src"), path.resolve("/repo"), root]
+			);
+		});
+
+		it("should yield nothing for the root", () => {
+			expect([...ancestors(path.resolve("/"))]).toEqual([]);
+		});
+
+		it("should walk a POSIX path written with forward slashes", () => {
+			expect([...ancestors("/repo/src/Save.luau")].slice(0, 2)).toEqual([
+				"/repo/src",
+				"/repo",
+			]);
+		});
+	});
+
+	describe("contains", () => {
+		const abs = (...segments: string[]) =>
+			path.resolve("/repo", ...segments);
+
+		it("should accept the same folder and one inside it", () => {
+			expect(contains(abs("src"), abs("src"))).toBe(true);
+			expect(contains(abs("src"), abs("src/shared"))).toBe(true);
+		});
+
+		it("should reject a sibling and a parent", () => {
+			expect(contains(abs("src"), abs("src-extra"))).toBe(false);
+			expect(contains(abs("src/shared"), abs("src"))).toBe(false);
+		});
+	});
+
+	describe("relativeTo", () => {
+		const abs = (...segments: string[]) =>
+			path.resolve("/repo", ...segments);
+
+		it("should give the path from the folder", () => {
+			expect(relativeTo(abs(), abs("src/Save.luau"))).toBe(
+				path.join("src", "Save.luau")
+			);
+		});
+
+		it("should name the folder itself with a dot", () => {
+			expect(relativeTo(abs("src"), abs("src"))).toBe(".");
+		});
 	});
 });

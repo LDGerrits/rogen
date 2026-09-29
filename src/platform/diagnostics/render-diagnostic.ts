@@ -1,4 +1,4 @@
-import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { Diagnostic, DiagnosticSeverity } from "./diagnostic.js";
 
 const SEVERITY_LABELS: Record<DiagnosticSeverity, string> = {
@@ -12,7 +12,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const resource =
 		cwd === undefined
 			? diagnostic.resource
-			: path.relative(cwd, diagnostic.resource) || ".";
+			: relativeTo(cwd, diagnostic.resource);
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
