@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { configRefsFromArgs } from "../../../domain/config/config-refs.js";
+import { configRefsFromArgs } from "../../config-options.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import "../../../domain/config/config.js";

@@ -1,5 +1,5 @@
 import path from "path";
-import { ConfigEntry } from "../config-service.js";
+import { ConfigEntry } from "../../../domain/config/config-service.js";
 import { describeConfig } from "../describe-config.js";
 
 const cwd = path.resolve("/repo");

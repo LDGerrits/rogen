@@ -1,5 +1,5 @@
-import { ParsedArgs } from "../../../platform/environment/args.js";
-import { configRefsFromArgs } from "../config-refs.js";
+import { ParsedArgs } from "../../platform/environment/args.js";
+import { configRefsFromArgs } from "../config-options.js";
 
 const refs = (args: Partial<ParsedArgs>) =>
 	configRefsFromArgs({ _: ["build"], ...args });

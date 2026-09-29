@@ -1,5 +1,5 @@
 import path from "path";
-import { BuildSummary } from "../build.js";
+import { BuildSummary } from "../../../domain/build/build.js";
 import { describeBuild } from "../describe-build.js";
 
 const cwd = path.resolve("/repo");

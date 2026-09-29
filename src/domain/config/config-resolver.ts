@@ -20,6 +20,7 @@ export function resolveConfig(
 	const templateName = template?.project.name;
 
 	const resolved: ResolvedConfig = {
+		file: leaf.file,
 		name:
 			(typeof templateName === "string" && templateName) ||
 			path.basename(dir) ||

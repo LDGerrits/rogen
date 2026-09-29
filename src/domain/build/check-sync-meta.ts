@@ -2,20 +2,23 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { META_FILE_SUFFIX, scanRootDirs } from "../build/root-scanner.js";
-import { emittedPath, relativeToProject } from "../build/sync-path.js";
 import { commonRoot } from "../config/common-root.js";
-import { findUnclaimedMeta } from "../build/unclaimed-meta.js";
 import { hasSyncedOutput } from "./check-sync-dir.js";
-import { OutputDiagnostics } from "./output-diagnostics.js";
+import { META_FILE_SUFFIX, ScannedRoot } from "./root-scanner.js";
+import { SyncDiagnostics } from "./sync-diagnostics.js";
+import { emittedPath, relativeToProject } from "./sync-path.js";
 
-/** Warns once for claimed meta with no copy under `syncDir`, skipping root dirs `checkSyncDir` reports. */
+/**
+ * Warns once for claimed meta with no copy under `syncDir`, skipping root
+ * dirs `checkSyncDir` reports. `roots` is the build's scan, and `unclaimed`
+ * the absolute POSIX paths of the meta no file claims, which Rojo ignores anyway.
+ */
 export async function checkSyncMeta(
 	fileSystem: FileSystemService,
-	index: IndexService,
-	config: Pick<ResolvedConfig, "rootDirs" | "exclude" | "syncDir" | "outFile">
+	config: Pick<ResolvedConfig, "rootDirs" | "syncDir" | "outFile">,
+	roots: readonly ScannedRoot[],
+	unclaimed: ReadonlySet<string>
 ): Promise<Diagnostic[]> {
 	const { syncDir } = config;
 	if (!syncDir) return [];
@@ -25,10 +28,6 @@ export async function checkSyncMeta(
 	const missing: string[] = [];
 	let converted = 0;
 
-	const { roots } = scanRootDirs(index, config);
-	const unclaimed = new Set(
-		findUnclaimedMeta(index, roots).map(({ path }) => path)
-	);
 	for (const root of roots) {
 		if (!(await hasSyncedOutput(fileSystem, root.rootDir, common, syncDir)))
 			continue;
@@ -49,7 +48,7 @@ export async function checkSyncMeta(
 
 	return missing.length > 0
 		? [
-				OutputDiagnostics.metaNotSynced(
+				SyncDiagnostics.metaNotSynced(
 					{ resource: config.outFile },
 					relativeToProject(syncDir, projectDir) || ".",
 					missing,

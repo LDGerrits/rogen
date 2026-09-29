@@ -278,6 +278,7 @@ describe("domain/config/core-config-service", () => {
 				"/repo/core.rogen.json",
 			]);
 			expect(service.configs[0].resolved).toEqual({
+				file: "/repo/lobby.rogen.json",
 				name: "repo",
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
 				routes: {

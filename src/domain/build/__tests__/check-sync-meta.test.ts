@@ -4,6 +4,8 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { checkSyncMeta } from "../check-sync-meta.js";
+import { scanRootDirs } from "../root-scanner.js";
+import { findUnclaimedMeta } from "../unclaimed-meta.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -20,7 +22,7 @@ const configOf = (overrides: Partial<Checked> = {}): Checked => ({
 	...overrides,
 });
 
-describe("domain/output/check-sync-meta", () => {
+describe("domain/build/check-sync-meta", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
@@ -32,7 +34,11 @@ describe("domain/output/check-sync-meta", () => {
 		const config = configOf(overrides);
 		const index = store.add(new CoreIndexService(fs));
 		await index.initialize([...config.rootDirs]);
-		return checkSyncMeta(fs, index, config);
+		const { roots } = scanRootDirs(index, config);
+		const unclaimed = findUnclaimedMeta(index, roots).map(
+			({ path }) => path
+		);
+		return checkSyncMeta(fs, config, roots, new Set(unclaimed));
 	};
 
 	beforeEach(() => {

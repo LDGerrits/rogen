@@ -25,7 +25,7 @@ describe("domain/output/write-output", () => {
 		it("should write the tree as JSON with sorted keys", async () => {
 			const result = await writeOutput(fs, { outFile }, treeOf());
 
-			expect(result.unwrap().value.written).toBe(true);
+			expect(result.unwrap().written).toBe(true);
 			const content = await fs.readFile(outFile);
 			expect(JSON.parse(content)).toEqual(treeOf());
 			expect(Object.keys(JSON.parse(content))).toEqual(["name", "tree"]);
@@ -91,7 +91,7 @@ describe("domain/output/write-output", () => {
 
 			const result = await writeOutput(fs, { outFile }, treeOf());
 
-			expect(result.unwrap().value.written).toBe(false);
+			expect(result.unwrap().written).toBe(false);
 			expect(listener).not.toHaveBeenCalled();
 		});
 
@@ -107,7 +107,7 @@ describe("domain/output/write-output", () => {
 				}
 			);
 
-			expect(result.unwrap().value.written).toBe(true);
+			expect(result.unwrap().written).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile)).name).toBe("other");
 		});
 
@@ -116,7 +116,7 @@ describe("domain/output/write-output", () => {
 
 			const result = await writeOutput(fs, { outFile }, treeOf());
 
-			expect(result.unwrap().value.written).toBe(true);
+			expect(result.unwrap().written).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile))).toEqual(treeOf());
 		});
 

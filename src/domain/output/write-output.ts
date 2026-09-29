@@ -10,8 +10,8 @@ import { RojoTree } from "../rojo/rojo-tree.js";
 import { OutputDiagnostics } from "./output-diagnostics.js";
 
 export interface WriteOutputResult {
-	readonly value: { readonly written: boolean };
-	readonly warnings: readonly Diagnostic[];
+	/** Whether the file changed; unchanged bytes are left alone. */
+	readonly written: boolean;
 }
 
 /** A fresh file for `writeOutput` to stage a write through, so concurrent writers never share one. */
@@ -40,11 +40,11 @@ export async function writeOutput(
 			(await fileSystem.isFile(outFile)) &&
 			(await fileSystem.readFile(outFile)) === content
 		) {
-			return ok({ value: { written: false }, warnings: [] });
+			return ok({ written: false });
 		}
 		await fileSystem.writeFile(temporary, content);
 		await fileSystem.rename(temporary, outFile, true);
-		return ok({ value: { written: true }, warnings: [] });
+		return ok({ written: true });
 	} catch (error) {
 		await fileSystem.delete(temporary).catch(() => undefined);
 		return err([

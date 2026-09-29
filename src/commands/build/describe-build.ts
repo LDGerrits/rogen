@@ -1,5 +1,5 @@
 import path from "path";
-import { BuildSummary } from "./build.js";
+import { BuildSummary } from "../../domain/build/build.js";
 
 function count(n: number, noun: string): string {
 	return `${n} ${noun}${n === 1 ? "" : "s"}`;

@@ -5,9 +5,9 @@ import {
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { emittedPath, relativeToProject } from "../build/sync-path.js";
+import { emittedPath, relativeToProject } from "./sync-path.js";
 import { commonRoot } from "../config/common-root.js";
-import { OutputDiagnostics } from "./output-diagnostics.js";
+import { SyncDiagnostics } from "./sync-diagnostics.js";
 
 /** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
 export async function checkSyncDir(
@@ -36,7 +36,7 @@ export async function checkSyncDir(
 		const expected = path.join(syncDir, path.relative(common, rootDir));
 		const found = await findShifted(fileSystem, syncDir, emitted[0]);
 		warnings.push(
-			OutputDiagnostics.nothingEmitted(
+			SyncDiagnostics.nothingEmitted(
 				{ resource: rootDir },
 				shown(rootDir),
 				shown(expected),

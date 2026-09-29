@@ -1,5 +1,5 @@
 import path from "path";
-import { ConfigEntry } from "./config-service.js";
+import { ConfigEntry } from "../../domain/config/config-service.js";
 
 /** The `extends` chain and skipped tag flags, for `--verbose`. */
 export function describeConfig(entry: ConfigEntry, cwd: string): string[] {
