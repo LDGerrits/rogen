@@ -264,9 +264,9 @@ export async function askInitChoices(
 	}
 
 	const mounts =
-		template.kind === "new"
-			? await askMounts(promptService, context, language)
-			: [];
+		template.kind === "use"
+			? []
+			: await askMounts(promptService, context, language);
 	if (mounts === undefined) return ok(undefined);
 
 	const routes = await askRoutes(promptService, language);

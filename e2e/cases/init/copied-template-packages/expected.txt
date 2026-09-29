@@ -1,0 +1,60 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
+  Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to template.project.json.
+  Created template.project.json.
+  Created default.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 2 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+  default.rogen.json
+  template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"template": "template.project.json"
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: Script  <- src/Combat/Damage.server.luau
+
+$ rojo sourcemap template.project.json
+my-game: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+  ServerScriptService: ServerScriptService

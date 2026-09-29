@@ -2,6 +2,7 @@ import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/object.js";
 import { CONFIG_SUFFIX } from "../config/config-discovery.js";
 import { RojoNode, RojoPath, isRojoPath } from "../rojo/rojo-tree.js";
+import { TemplateMount, templateTree } from "./init-mounts.js";
 import { normalizeRootDir } from "./init-root-dirs.js";
 
 export const TEMPLATE_FILE = "template.project.json";
@@ -45,26 +46,36 @@ export function defaultTemplateChoice(
 	return replaced ? { kind: "copy", from: replaced } : { kind: "new" };
 }
 
+export interface TemplateProject {
+	readonly tree: RojoNode;
+	readonly [key: string]: unknown;
+}
+
 const pathOf = (rojoPath: RojoPath): string =>
 	normalizeRootDir(
 		typeof rojoPath === "string" ? rojoPath : rojoPath.optional
 	);
 
-/**
- * `content` without the nodes whose `$path` points into `dirs`, which Rogen
- * generates now. `undefined` when it can't tell: `content` isn't a project, or
- * a dir is the whole folder.
- */
-export function stripGeneratedNodes(
-	content: string,
-	dirs: readonly string[]
-): { project: Record<string, unknown>; removed: string[] } | undefined {
-	const claimed = dirs.map(normalizeRootDir);
-	if (claimed.includes(".")) return undefined;
+/** `undefined` when `content` isn't a project object with a tree. */
+export function parseTemplateProject(
+	content: string
+): TemplateProject | undefined {
 	const parsed = parse(content);
 	if (parsed.isErr() || !isObject(parsed.value)) return undefined;
 	const { tree } = parsed.value;
-	if (!isObject(tree)) return undefined;
+	return isObject(tree) ? { ...parsed.value, tree } : undefined;
+}
+
+/**
+ * `project` without the nodes whose `$path` points into `dirs`, which Rogen
+ * generates now. `undefined` when a dir is the whole folder, so it can't tell.
+ */
+export function stripGeneratedNodes(
+	project: TemplateProject,
+	dirs: readonly string[]
+): { project: TemplateProject; removed: string[] } | undefined {
+	const claimed = dirs.map(normalizeRootDir);
+	if (claimed.includes(".")) return undefined;
 
 	const isClaimed = (value: unknown) => {
 		if (!isRojoPath(value)) return false;
@@ -89,5 +100,75 @@ export function stripGeneratedNodes(
 		return kept;
 	};
 
-	return { project: { ...parsed.value, tree: strip(tree, []) }, removed };
+	return { project: { ...project, tree: strip(project.tree, []) }, removed };
+}
+
+interface FoundMount {
+	readonly path: string;
+	readonly node: string;
+}
+
+/** Every `$path` in `node` and below. */
+function mountsIn(node: RojoNode, at: readonly string[]): FoundMount[] {
+	return [
+		...(isRojoPath(node.$path)
+			? [{ path: pathOf(node.$path), node: at.join("/") }]
+			: []),
+		...Object.entries(node).flatMap(([key, value]) =>
+			!key.startsWith("$") && isObject(value)
+				? mountsIn(value, [...at, key])
+				: []
+		),
+	];
+}
+
+/**
+ * `project` with the `mounts` it doesn't mount anywhere yet, each as
+ * `<path> at <node>`. A node already at a mount's place wins over the mount.
+ */
+export function addMissingMounts(
+	project: TemplateProject,
+	mounts: readonly TemplateMount[]
+): { project: TemplateProject; added: string[] } {
+	const mounted = new Set(mountsIn(project.tree, []).map(({ path }) => path));
+	const missing = mounts.filter(
+		(mount) => !mounted.has(normalizeRootDir(mount.path))
+	);
+	const added: FoundMount[] = [];
+	const merge = (
+		node: RojoNode,
+		additions: RojoNode,
+		at: readonly string[]
+	): RojoNode => {
+		const merged: RojoNode = { ...node };
+		for (const [key, value] of Object.entries(additions)) {
+			if (key.startsWith("$") || !isObject(value)) continue;
+			const existing = merged[key];
+			if (isRojoPath(value.$path)) {
+				if (existing === undefined) {
+					merged[key] = value;
+					added.push(...mountsIn(value, [...at, key]));
+				}
+			} else if (existing === undefined || isObject(existing)) {
+				const before = added.length;
+				const container = merge(
+					isObject(existing)
+						? existing
+						: value.$className
+							? { $className: value.$className }
+							: {},
+					value,
+					[...at, key]
+				);
+				if (added.length > before) merged[key] = container;
+			}
+		}
+		return merged;
+	};
+
+	const tree = merge(project.tree, templateTree(missing), []);
+	return {
+		project: { ...project, tree },
+		added: added.map(({ path, node }) => `${path} at ${node}`),
+	};
 }

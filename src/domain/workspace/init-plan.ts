@@ -32,6 +32,8 @@ import {
 	TemplateChoice,
 	defaultTemplateChoice,
 	handWrittenProjectFiles,
+	addMissingMounts,
+	parseTemplateProject,
 	stripGeneratedNodes,
 } from "./init-template.js";
 import { DEFAULT_ROUTES, RouteId, startingRoutes } from "./starting-routes.js";
@@ -195,7 +197,7 @@ export function defaultInitChoices(
 		...(language === "roblox-ts" && { outDir: compiledDirOf(workspace) }),
 		template,
 		mounts:
-			template.kind === "new" ? defaultMounts(workspace, language) : [],
+			template.kind === "use" ? [] : defaultMounts(workspace, language),
 		routes: DEFAULT_ROUTES,
 		fallback: true,
 		places: withPlaces ? workspace.places : [],
@@ -338,24 +340,20 @@ function templateOf({
 			...places.map(placeFolder),
 		];
 		const copying = `Copying ${template.from} to ${TEMPLATE_FILE}, since Rogen replaces ${template.from} on every build.`;
-		const stripped = stripGeneratedNodes(content, dirs);
-		if (!stripped) {
-			return {
-				file: { fileName: TEMPLATE_FILE, content },
-				reference: TEMPLATE_FILE,
-				notes: [copying],
-				edits: [
-					`Remove the nodes in ${TEMPLATE_FILE} that point into ${joinList(dirs, "or")}; Rogen generates those now.`,
-				],
-			};
-		}
-		const { removed } = stripped;
+		const project = parseTemplateProject(content);
+		const stripped = project && stripGeneratedNodes(project, dirs);
+		const mounted =
+			project && addMissingMounts(stripped?.project ?? project, mounts);
+		const removed = stripped?.removed ?? [];
+		const added = mounted?.added ?? [];
 		return {
 			file: {
 				fileName: TEMPLATE_FILE,
 				// Rewriting would drop comments and formatting, so only do it when something changed.
 				content:
-					removed.length > 0 ? serialize(stripped.project) : content,
+					mounted && removed.length + added.length > 0
+						? serialize(mounted.project)
+						: content,
 			},
 			reference: TEMPLATE_FILE,
 			notes: [
@@ -365,6 +363,24 @@ function templateOf({
 							`Left out ${joinList(removed, "and")}, since ${removed.length === 1 ? "it points" : "they point"} into ${joinList(dirs, "or")} and Rogen generates that code now.`,
 						]
 					: []),
+				...(added.length > 0
+					? [`Added ${joinList(added, "and")} to ${TEMPLATE_FILE}.`]
+					: []),
+			],
+			edits: [
+				...(stripped
+					? []
+					: [
+							`Remove the nodes in ${TEMPLATE_FILE} that point into ${joinList(dirs, "or")}; Rogen generates those now.`,
+						]),
+				...(project || mounts.length === 0
+					? []
+					: [
+							`Mount ${joinList(
+								mounts.map(({ path }) => path),
+								"and"
+							)} in ${TEMPLATE_FILE}; Rogen couldn't read it to add the ${mounts.length === 1 ? "mount" : "mounts"}.`,
+						]),
 			],
 		};
 	}

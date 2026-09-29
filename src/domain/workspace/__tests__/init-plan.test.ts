@@ -578,6 +578,7 @@ describe("planInit", () => {
 						false
 					),
 					template: { kind: "copy", from: "default.project.json" },
+					mounts: [],
 				},
 				projectName: "my-game",
 				directory,
@@ -675,6 +676,96 @@ describe("planInit", () => {
 			expect(files.template?.content).toBe(content);
 			expect(files.nextSteps.edits[0]).toBe(
 				"Remove the nodes in template.project.json that point into src; Rogen generates those now."
+			);
+		});
+
+		const copyWithMounts = (
+			copiedTemplate: string,
+			mountList: InitChoices["mounts"]
+		) =>
+			planInit({
+				choices: {
+					...defaultInitChoices(luau, "default", new Set(), false),
+					template: { kind: "copy", from: "default.project.json" },
+					mounts: mountList,
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate,
+			}).unwrap();
+
+		it("should add the chosen package mounts a copied template lacks", () => {
+			const files = copyWithMounts(
+				JSON.stringify({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Assets: { $path: "assets" } },
+					},
+				}),
+				[
+					{ path: "Packages", optional: false },
+					{ path: "ServerPackages", optional: true },
+				]
+			);
+
+			expect(JSON.parse(files.template?.content ?? "").tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Assets: { $path: "assets" },
+					Packages: { $path: "Packages" },
+				},
+				ServerScriptService: {
+					ServerPackages: { $path: { optional: "ServerPackages" } },
+				},
+			});
+			expect(files.notes[1]).toBe(
+				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to template.project.json."
+			);
+		});
+
+		it("should name every mount it adds under one node", () => {
+			const files = copyWithMounts(
+				JSON.stringify({ name: "my-game", tree: {} }),
+				[
+					{ path: "include", optional: false },
+					{ path: "node_modules/@rbxts", optional: false },
+				]
+			);
+
+			expect(files.notes[1]).toBe(
+				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to template.project.json."
+			);
+		});
+
+		it("should keep a copied template as it is when it already mounts the packages", () => {
+			const content = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Deps: { $path: "./Packages" } },
+					ServerScriptService: {
+						ServerPackages: { $path: "vendor/server" },
+					},
+				},
+			});
+			const files = copyWithMounts(content, [
+				{ path: "Packages", optional: false },
+				{ path: "ServerPackages", optional: false },
+			]);
+
+			expect(files.template?.content).toBe(content);
+			expect(files.notes).toHaveLength(1);
+		});
+
+		it("should say which packages to mount when it can't parse a copied template", () => {
+			const files = copyWithMounts('{ "tree": ', [
+				{ path: "Packages", optional: false },
+			]);
+
+			expect(files.nextSteps.edits).toContain(
+				"Mount Packages in template.project.json; Rogen couldn't read it to add the mount."
 			);
 		});
 
