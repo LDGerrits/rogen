@@ -20,7 +20,6 @@ export const configOf = (
 	...overrides,
 });
 
-/** Writes an empty file at each path, relative to `/repo`. */
 export async function writeFiles(
 	fs: MemoryFileSystemService,
 	...paths: string[]
@@ -28,7 +27,6 @@ export async function writeFiles(
 	for (const file of paths) await fs.writeFile(abs(file), "");
 }
 
-/** An index of `rootDirs` over `fs`, disposed with `store`. */
 export async function indexOf(
 	store: DisposableStore,
 	fs: MemoryFileSystemService,

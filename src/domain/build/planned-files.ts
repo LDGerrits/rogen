@@ -4,7 +4,7 @@ import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { classifyFile } from "../rojo/rojo-files.js";
 
-/** `index` as it would be with every path that names a source file and doesn't exist yet, and the folders it needs; `index` itself is left as it is. */
+/** `index` with the source files that don't exist yet, and their folders, added on top; `index` itself is untouched. */
 export function withPlannedFiles(
 	index: IndexReader,
 	rootDirs: readonly string[],

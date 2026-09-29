@@ -40,7 +40,7 @@ function readsAsSuffix(kind: RojoFileKind, key: string): boolean {
 	return kind === "data" && stripRojoDataSuffix(probe) !== probe;
 }
 
-/** The separator that writes `key` as a suffix Rojo leaves in the name: a dot, unless Rojo reads `.key` for this kind of file, then a dash. */
+/** A dot, or a dash when Rojo reads `.key` for this kind of file, so the suffix stays in the name. */
 export function suffixSeparator(kind: RojoFileKind, key: string): "." | "-" {
 	return readsAsSuffix(kind, key) ? "-" : ".";
 }

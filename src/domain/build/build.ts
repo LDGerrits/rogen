@@ -16,7 +16,7 @@ import { FileLocation, locate } from "./locate-files.js";
 import { MetaDiagnostics } from "./meta-diagnostics.js";
 import { readFolderMeta } from "./read-folder-meta.js";
 import { Placement, placeFiles } from "./place-files.js";
-import { scanRootDirs } from "./root-scanner.js";
+import { ScanResult, scanRootDirs } from "./root-scanner.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
 import { TagMatch } from "./route-files.js";
 export { withPlannedFiles } from "./planned-files.js";
@@ -94,16 +94,11 @@ export async function buildProject(
 	config: ResolvedConfig,
 	options: BuildOptions = {}
 ): Promise<Result<BuiltProject, Diagnostic[]>> {
-	if (Object.keys(config.routes).length === 0) {
-		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
-	}
-
-	const scan = scanRootDirs(index, config);
+	const scanned = scanAndPlace(index, config);
+	if (scanned.isErr()) return scanned;
+	const { scan, placement } = scanned.value;
 	const folderMeta = await readFolderMeta(fileSystem, scan.roots);
 	if (folderMeta.isErr()) return folderMeta;
-	const placed = placeFiles(scan.roots, config);
-	if (placed.isErr()) return placed;
-	const placement = placed.value;
 
 	const layout = syncLayoutOf(config);
 	const assembly = assembleTree(config, layout, {
@@ -153,13 +148,23 @@ export function locateFiles(
 	config: ResolvedConfig,
 	paths?: readonly string[]
 ): Result<FileLocation[], Diagnostic[]> {
+	const scanned = scanAndPlace(index, config);
+	if (scanned.isErr()) return scanned;
+	return ok(locate(index, scanned.value.placement, paths));
+}
+
+/** The front of every build, and of every question about one. */
+function scanAndPlace(
+	index: IndexReader,
+	config: ResolvedConfig
+): Result<{ scan: ScanResult; placement: Placement }, Diagnostic[]> {
 	if (Object.keys(config.routes).length === 0) {
 		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
 	}
 	const scan = scanRootDirs(index, config);
 	const placed = placeFiles(scan.roots, config);
 	if (placed.isErr()) return placed;
-	return ok(locate(index, placed.value, paths));
+	return ok({ scan, placement: placed.value });
 }
 
 function summarizeBuild(

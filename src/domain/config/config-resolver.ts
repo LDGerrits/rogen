@@ -2,7 +2,7 @@ import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { projectFileName } from "../rojo/rojo-project.js";
-import { CONFIG_SUFFIX } from "./config-discovery.js";
+import { configLabel } from "./config-discovery.js";
 import { LayeredConfig } from "./config-layers.js";
 import { validateConfig } from "./config-validation.js";
 import { ResolvedConfig, ResolvedTemplate } from "./config.js";
@@ -16,7 +16,7 @@ export function resolveConfig(
 	const { config, files } = layered;
 	const leaf = files[files.length - 1];
 	const dir = path.dirname(leaf.file);
-	const stem = path.basename(leaf.file, CONFIG_SUFFIX);
+	const stem = configLabel(leaf.file);
 	const templateName = template?.project.name;
 
 	const resolved: ResolvedConfig = {

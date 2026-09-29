@@ -23,17 +23,17 @@ export interface ProjectFile {
 	readonly tree: RojoNode;
 }
 
-/**
- * A Rojo project file being edited. The owner decides what an ancestor
- * created on its behalf looks like, so the same model serves Rogen's
- * generated tree and the templates `init` writes.
- */
 /** The suffix of a Rojo project file, such as `default.project.json`. */
 export const PROJECT_SUFFIX = ".project.json";
 
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
+/**
+ * A Rojo project file being edited. The owner decides what an ancestor
+ * created on its behalf looks like, so the same model serves Rogen's
+ * generated tree and the templates `init` writes.
+ */
 export class RojoProject<T extends ProjectFile = RojoTree> {
 	private readonly project: T;
 

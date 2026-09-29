@@ -201,9 +201,5 @@ function scanRoot(
 }
 
 function byRelativePath(a: ScannedEntry, b: ScannedEntry): number {
-	return a.relativePath < b.relativePath
-		? -1
-		: a.relativePath > b.relativePath
-			? 1
-			: 0;
+	return compareStrings(a.relativePath, b.relativePath);
 }
