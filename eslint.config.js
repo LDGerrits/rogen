@@ -62,6 +62,23 @@ const internalsPatterns = (layer, module, depth) =>
 			message: `Import ${name} through its public files.`,
 		}));
 
+// Platform contract files are ports; the files named for how they fulfil one are the outermost ring (ADR-0009).
+const IMPLEMENTATION_PREFIXES = [
+	"core",
+	"console",
+	"disk",
+	"memory",
+	"native",
+	"plain",
+	"terminal",
+];
+
+const platformImplementationPattern = {
+	regex: `(^|/)platform/[^/]+/(${IMPLEMENTATION_PREFIXES.join("|")})-[^/]*\\.js$`,
+	message:
+		"Domain and commands depend on platform contract files, never on an implementation. Only main.ts and tests name one.",
+};
+
 const folders = (depth) => "*/".repeat(depth);
 
 const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
@@ -79,6 +96,7 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 			rules: rule([
 				...patterns,
 				...internalsPatterns(layer, module, depth),
+				platformImplementationPattern,
 			]),
 		});
 		return [
