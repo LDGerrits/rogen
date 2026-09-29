@@ -15,6 +15,32 @@ export function unwrapInvisibleFolder(folderName: string): {
 		: { name: inner, invisible: true };
 }
 
+export type FolderReading =
+	| {
+			readonly kind: "route" | "tag";
+			readonly key: string;
+			readonly invisible: boolean;
+	  }
+	| {
+			readonly kind: "plain";
+			readonly name: string;
+			readonly invisible: boolean;
+	  };
+
+/** Whether a folder routes, carries a tag or is ordinary; parentheses come off first. */
+export function readFolderName(
+	folderName: string,
+	routeKeys: ReadonlySet<string>,
+	tagKeys: ReadonlySet<string>
+): FolderReading {
+	const { name, invisible } = unwrapInvisibleFolder(folderName);
+	const route = matchFolderKey(name, routeKeys);
+	if (route) return { kind: "route", key: route, invisible };
+	const tag = matchFolderKey(name, tagKeys);
+	if (tag) return { kind: "tag", key: tag, invisible };
+	return { kind: "plain", name, invisible };
+}
+
 /** The same name with the first letter in the other case. */
 export function withFirstLetterFlipped(name: string): string {
 	const first = name[0];

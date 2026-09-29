@@ -1,12 +1,16 @@
 import path from "path";
-import { ancestors } from "../../base/path.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { ancestors } from "../../../base/path.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	FileSystemService,
 	isDirectoryType,
-} from "../../platform/fs/file-system-service.js";
-import { SyncLayout, emittedPath, relativeToProject } from "./sync-path.js";
-import { SyncDiagnostics } from "./sync-diagnostics.js";
+} from "../../../platform/fs/file-system-service.js";
+import { SyncRule } from "../build-record.js";
+import { SyncDiagnostics } from "../sync-diagnostics.js";
+import { SyncLayout, emittedPath, relativeToProject } from "../sync-path.js";
+
+export const nothingEmitted: SyncRule = ({ config, layout }, fileSystem) =>
+	checkSyncDir(fileSystem, config.rootDirs, layout);
 
 /** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
 export async function checkSyncDir(

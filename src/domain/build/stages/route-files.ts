@@ -1,78 +1,37 @@
 import path from "path";
-import { groupBy } from "../../base/collection.js";
-import { joinPosix, stemOf } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ResolvedConfig } from "../config/config.js";
-import { instanceKey } from "../rojo/rojo-tree.js";
-import { Target, parseTarget } from "../roblox/target.js";
+import { groupBy } from "../../../base/collection.js";
+import { stemOf } from "../../../base/path.js";
+import { err, ok } from "../../../base/result.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { Target, parseTarget } from "../../roblox/target.js";
 import {
 	RojoScriptSuffix,
 	rojoAssignedName,
 	rojoScriptSuffix,
 	stripRojoDataSuffix,
 	suffixSeparator,
-} from "../rojo/rojo-assigned-name.js";
-import { RojoFileKind } from "../rojo/rojo-files.js";
+} from "../../rojo/rojo-assigned-name.js";
+import { RojoFileKind } from "../../rojo/rojo-files.js";
 import {
-	SuffixForm,
-	SuffixMatch,
+	FALLBACK_ROUTE,
+	FolderNode,
+	LeftOut,
+	MatchForm,
+	PlacementStage,
+	RoutedFile,
+	ScannedEntry,
+	declaredKeysOf,
+	ScannedRoot,
+	TagMatch,
+} from "../build-record.js";
+import {
 	SuffixSpan,
-	matchFolderKey,
-	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
-	unwrapInvisibleFolder,
+	readFolderName,
 	withSeparatorSuffix,
-} from "./declared-key.js";
-import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
-import { diagnosePaths } from "./path-list.js";
-import { RouteDiagnostics } from "./route-diagnostics.js";
-
-export const FALLBACK_ROUTE = "*";
-
-/** How a route or tag key matched a file. */
-export type MatchForm = "folder" | "marker" | SuffixForm;
-
-/** How the governing route matched the file; `fallback` is the `*` route. */
-export type RouteMatch = MatchForm | "fallback";
-
-export interface TagMatch {
-	readonly tag: string;
-	readonly form: MatchForm;
-	/** The file name with a capital suffix written as a separator suffix. */
-	readonly separatorName?: string;
-}
-
-/** A node one of the file's own folders becomes, with that folder relative to the root dir. */
-export interface FolderNode {
-	readonly instancePath: readonly string[];
-	readonly dir: string;
-}
-
-export interface RoutedFile {
-	readonly entry: ScannedEntry;
-	/** The governing route key, or `*`. */
-	readonly route: string;
-	readonly routeMatch: RouteMatch;
-	/** The file name with a capital route suffix written as a separator suffix that Rojo leaves in the name. */
-	readonly separatorName?: string;
-	/** The service, the target's folders, the file's own folders, then the instance name. */
-	readonly instancePath: readonly string[];
-	/** Routing, tag and invisible folders name no node, so they have none. */
-	readonly folderNodes: readonly FolderNode[];
-	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
-	readonly tags: readonly TagMatch[];
-	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
-	readonly buriedScriptSuffix?: RojoScriptSuffix;
-}
-
-export interface RouteResult {
-	readonly routed: readonly RoutedFile[];
-	/** Absolute POSIX source paths of the files no route governs. */
-	readonly unrouted: readonly string[];
-	readonly warnings: readonly Diagnostic[];
-}
+} from "../declared-key.js";
+import { RouteDiagnostics } from "../route-diagnostics.js";
 
 type RouteOutcome = Omit<RoutedFile, "entry">;
 
@@ -81,16 +40,15 @@ interface RouteContext {
 	readonly tagKeys: ReadonlySet<string>;
 	readonly declaredKeys: ReadonlySet<string>;
 	readonly targets: ReadonlyMap<string, Target>;
-	/** Called with the path of a name that only differs from a declared key in letter case. */
-	readonly noteNearMiss: (path: string, key: string) => void;
 }
 
-/** Files that no route governs are left out and reported in one warning. */
-export function routeFiles(
-	roots: readonly ScannedRoot[],
-	config: Pick<ResolvedConfig, "routes" | "tags" | "outFile">
-): Result<RouteResult, Diagnostic[]> {
+/** Finds each scanned file's governing route and instance path; files no route governs are left out. */
+export const routeFiles: PlacementStage = (build) => {
+	const { config } = build;
 	const location = { resource: config.outFile };
+	if (Object.keys(config.routes).length === 0)
+		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
+
 	const targets = new Map<string, Target>();
 	const errors: Diagnostic[] = [];
 	for (const [key, value] of Object.entries(config.routes)) {
@@ -100,71 +58,31 @@ export function routeFiles(
 	}
 	if (errors.length > 0) return err(errors);
 
-	const routeKeys = new Set(
-		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
-	);
-	const tagKeys = new Set(Object.keys(config.tags));
-	const nearMisses = new Map<string, string>();
+	const { routeKeys, tagKeys, all } = declaredKeysOf(config);
 	const context: RouteContext = {
 		routeKeys,
 		tagKeys,
-		declaredKeys: new Set([...routeKeys, ...tagKeys]),
+		declaredKeys: all,
 		targets,
-		noteNearMiss: (path, key) => nearMisses.set(path, key),
 	};
 
 	const routed: RoutedFile[] = [];
-	const unrouted: string[] = [];
-	for (const root of roots) {
+	const unrouted: [string, LeftOut][] = [];
+	for (const root of build.roots) {
 		const markers = markersByDir(root);
-		for (const marker of root.markers) {
-			const key = matchKeyIgnoringCase(
-				path.posix.basename(marker).slice(1),
-				context.declaredKeys
-			);
-			if (key) context.noteNearMiss(joinPosix(root.rootDir, marker), key);
-		}
 		for (const entry of root.entries) {
 			const outcome = routeEntry(entry, markers, context);
 			if (outcome) routed.push({ entry, ...outcome });
-			else unrouted.push(entry.source);
+			else unrouted.push([entry.source, { status: "unrouted" }]);
 		}
 	}
-
-	const capitalRouted = new Map(
-		routed
-			.filter(({ separatorName }) => separatorName)
-			.map((file) => [file.entry.source, file])
-	);
-	const shared = [...routeKeys].find((key) => key.toLowerCase() === "shared");
 	return ok({
+		...build,
 		routed,
-		unrouted,
-		warnings: [
-			...diagnosePaths([...nearMisses.keys()], (resource) => {
-				const key = nearMisses.get(resource) as string;
-				return RouteDiagnostics.caseMismatch(
-					{ resource },
-					tagKeys.has(key) ? "tag" : "route",
-					key
-				);
-			}),
-			...diagnosePaths([...capitalRouted.keys()], (resource) => {
-				const file = capitalRouted.get(resource) as RoutedFile;
-				return RouteDiagnostics.capitalSuffix(
-					{ resource },
-					file.route,
-					instanceKey(file.instancePath),
-					file.separatorName as string,
-					shared
-				);
-			}),
-			...diagnosePaths(unrouted, (resource) =>
-				RouteDiagnostics.unrouted({ resource })
-			),
-		],
+		files: routed,
+		leftOut: new Map([...build.leftOut, ...unrouted]),
 	});
-}
+};
 
 /** Marker file names per directory, both relative to the root dir; the root itself is "". */
 function markersByDir(root: ScannedRoot): ReadonlyMap<string, string[]> {
@@ -203,12 +121,7 @@ function routeEntry(
 	const folderNames = entry.relativePath.split("/");
 	const leaf = folderNames.pop() as string;
 
-	const { claims, folders } = walkFolders(
-		entry,
-		folderNames,
-		markers,
-		context
-	);
+	const { claims, folders } = walkFolders(folderNames, markers, context);
 	const { name, separatorName, buriedScriptSuffix } = readLeaf(
 		entry,
 		leaf,
@@ -239,7 +152,6 @@ function routeEntry(
 
 /** Routing, tag and invisible folders and markers claim the file; every other folder becomes a node. */
 function walkFolders(
-	entry: ScannedEntry,
 	folderNames: readonly string[],
 	markers: ReadonlyMap<string, string[]>,
 	context: RouteContext
@@ -260,17 +172,16 @@ function walkFolders(
 	let dir = "";
 	for (const segment of folderNames) {
 		dir = dir ? `${dir}/${segment}` : segment;
-		const { name, invisible } = unwrapInvisibleFolder(segment);
-		const routeKey = matchFolderKey(name, context.routeKeys);
-		const tagKey = matchFolderKey(name, context.tagKeys);
-		if (routeKey) claims.route ??= { key: routeKey, match: "folder" };
-		else if (tagKey) claims.tags.push({ tag: tagKey, form: "folder" });
-		else {
-			if (!invisible) folders.push({ name: segment, dir });
-			const nearMiss = matchKeyIgnoringCase(name, context.declaredKeys);
-			if (nearMiss)
-				context.noteNearMiss(joinPosix(entry.rootDir, dir), nearMiss);
-		}
+		const folder = readFolderName(
+			segment,
+			context.routeKeys,
+			context.tagKeys
+		);
+		if (folder.kind === "route")
+			claims.route ??= { key: folder.key, match: "folder" };
+		else if (folder.kind === "tag")
+			claims.tags.push({ tag: folder.key, form: "folder" });
+		else if (!folder.invisible) folders.push({ name: segment, dir });
 		applyMarkers(dir);
 	}
 	return { claims, folders };
@@ -284,13 +195,9 @@ function readLeaf(
 	context: RouteContext
 ): LeafReading {
 	const isInitFolder = entry.kind === "init-folder";
-	const fileName = isInitFolder ? entry.initFile : leaf;
-	const kind: RojoFileKind = isInitFolder ? "script" : entry.kind;
-	const rawStem = stemOf(fileName);
-	const stem = kind === "data" ? stripRojoDataSuffix(rawStem) : rawStem;
+	const { fileName, kind, stem } = suffixedNameOf(entry);
 
 	const match = matchSuffixKeys(stem, context.declaredKeys);
-	noteSuffixNearMiss(entry, match, context);
 	const tagSpans = tagSpansOf(match.spans, context);
 	claims.tags.push(
 		...tagSpans.map((span) => asTagMatch(span, fileName, kind))
@@ -320,13 +227,23 @@ function readLeaf(
 	};
 }
 
-function noteSuffixNearMiss(
-	entry: ScannedEntry,
-	match: SuffixMatch,
-	context: RouteContext
-): void {
-	if (match.nearMissKey)
-		context.noteNearMiss(entry.source, match.nearMissKey);
+/** The file whose stem carries the entry's suffixes: an init folder's script, or the file itself. */
+export function suffixedNameOf(entry: ScannedEntry): {
+	readonly fileName: string;
+	readonly kind: RojoFileKind;
+	readonly stem: string;
+} {
+	const isInitFolder = entry.kind === "init-folder";
+	const fileName = isInitFolder
+		? entry.initFile
+		: path.posix.basename(entry.relativePath);
+	const kind: RojoFileKind = isInitFolder ? "script" : entry.kind;
+	const stem = stemOf(fileName);
+	return {
+		fileName,
+		kind,
+		stem: kind === "data" ? stripRojoDataSuffix(stem) : stem,
+	};
 }
 
 function tagSpansOf(

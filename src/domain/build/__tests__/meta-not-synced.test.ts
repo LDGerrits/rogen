@@ -1,10 +1,8 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { checkSyncMeta } from "../check-sync-meta.js";
-import { scanRootDirs } from "../root-scanner.js";
-import { syncLayoutOf } from "../sync-path.js";
-import { findUnclaimedMeta } from "../unclaimed-meta.js";
+import { place } from "../pipeline.js";
+import { metaNotSynced } from "../rules/meta-not-synced.js";
 import {
 	abs,
 	configOf as baseConfigOf,
@@ -15,7 +13,7 @@ import {
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
 	baseConfigOf({ syncDir: abs("dist"), ...overrides });
 
-describe("domain/build/check-sync-meta", () => {
+describe("metaNotSynced", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
@@ -24,17 +22,7 @@ describe("domain/build/check-sync-meta", () => {
 	const check = async (overrides: Partial<ResolvedConfig> = {}) => {
 		const config = configOf(overrides);
 		const index = await indexOf(store, fs, config.rootDirs);
-		const { roots } = scanRootDirs(index, config);
-		const unclaimed = findUnclaimedMeta(index, roots).map(
-			({ path }) => path
-		);
-		return checkSyncMeta(
-			fs,
-			config,
-			syncLayoutOf(config),
-			roots,
-			new Set(unclaimed)
-		);
+		return metaNotSynced(place(index, config).unwrap(), fs);
 	};
 
 	beforeEach(() => {

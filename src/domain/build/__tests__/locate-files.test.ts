@@ -169,6 +169,46 @@ describe("locateFiles", () => {
 		]);
 	});
 
+	it("should say the template displaced a file whose node it defines, or a folder under its $path", async () => {
+		await write("src/Save.luau", "src/Packages/A.luau", "src/Kept.luau");
+		const template = {
+			file: abs("default.project.json"),
+			project: {
+				name: "repo",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Shared: {
+							Save: { $path: "hand/Save.luau" },
+							Packages: { $path: "Packages" },
+						},
+					},
+				},
+			},
+		};
+
+		expect(await locate(undefined, { template })).toEqual([
+			{
+				status: "placed",
+				source: abs("src/Kept.luau"),
+				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
+				route: "*",
+				routeMatch: "fallback",
+				tags: [],
+			},
+			{
+				status: "displaced",
+				source: abs("src/Packages/A.luau"),
+				node: ["ReplicatedStorage", "Shared", "Packages"],
+			},
+			{
+				status: "displaced",
+				source: abs("src/Save.luau"),
+				node: ["ReplicatedStorage", "Shared", "Save"],
+			},
+		]);
+	});
+
 	it("should report an unrouted file, and an excluded file or folder with the glob that excluded it", async () => {
 		await write(
 			"src/Util.luau",

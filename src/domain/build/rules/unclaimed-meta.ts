@@ -1,27 +1,29 @@
 import path from "path";
-import { joinPosix, stemOf } from "../../base/path.js";
+import { joinPosix, stemOf } from "../../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
 	isFileType,
-} from "../../platform/fs/file-system-service.js";
-import { IndexReader } from "../../platform/fs/index-service.js";
+} from "../../../platform/fs/file-system-service.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
 import {
 	rojoAssignedName,
 	stripRojoDataSuffix,
-} from "../rojo/rojo-assigned-name.js";
+} from "../../rojo/rojo-assigned-name.js";
 import {
 	INIT_META_FILE,
 	META_FILE_SUFFIX,
 	classifyFile,
-} from "../rojo/rojo-files.js";
-import { ScannedRoot } from "./root-scanner.js";
+} from "../../rojo/rojo-files.js";
+import { BuildRule, ScannedRoot } from "../build-record.js";
+import { MetaDiagnostics, UnclaimedMeta } from "../meta-diagnostics.js";
 
-export interface UnclaimedMeta {
-	/** Absolute, POSIX-style. */
-	readonly path: string;
-	readonly hint?: string;
-}
+export const unclaimedMeta: BuildRule = ({ config, index, roots }) => {
+	const unclaimed = findUnclaimedMeta(index, roots);
+	return unclaimed.length > 0
+		? [MetaDiagnostics.unclaimed({ resource: config.outFile }, unclaimed)]
+		: [];
+};
 
 /** Meta no sibling on disk claims under Rojo's naming rule; pruned and excluded siblings still claim theirs. */
 export function findUnclaimedMeta(

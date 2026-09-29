@@ -77,6 +77,14 @@ describe("describeLocation", () => {
 			"src/T.lua -> replaced by src/T.luau",
 		],
 		[
+			{
+				status: "displaced",
+				source: "/repo/src/Save.luau",
+				node: ["ServerScriptService", "Save"],
+			},
+			"src/Save.luau -> displaced · the template defines ServerScriptService/Save",
+		],
+		[
 			{ status: "unrouted", source: "/repo/src/U.luau" },
 			"src/U.luau -> unrouted · no route matches it",
 		],

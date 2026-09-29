@@ -143,6 +143,28 @@ describe("assembleTree", () => {
 			expect(storage.Packages).toEqual({ $path: "./Packages" });
 		});
 
+		it("should merge files under a template $path that a route targets", async () => {
+			await write("src/A.luau", "src/B.luau");
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Vendor: { $path: "vendor" } },
+				},
+			});
+
+			const { tree: value, warnings } = await assemble({
+				routes: { "*": "ReplicatedStorage/Vendor" },
+				template,
+			});
+
+			expect((value.tree.ReplicatedStorage as RojoNode).Vendor).toEqual({
+				$path: "vendor",
+				A: { $path: optional("src/A.luau") },
+				B: { $path: optional("src/B.luau") },
+			});
+			expect(warnings).toEqual([]);
+		});
+
 		it("should keep the template's node and warn when a generated instance clashes", async () => {
 			await write("src/Packages/A.luau", "src/Packages/B.luau");
 			const template = templateOf({
@@ -776,6 +798,23 @@ describe("assembleTree", () => {
 			expect(value.globIgnorePaths).toEqual(["dist/Hud.luau"]);
 		});
 
+		it("should not list a file the template displaced, which its $path may mount", async () => {
+			await write("src/Packages/A.luau", "src/Other/B.luau");
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "src/Packages" } },
+				},
+			});
+
+			const { tree: value } = await assemble({ template });
+
+			expect(value.globIgnorePaths).toBeUndefined();
+			expect((value.tree.ReplicatedStorage as RojoNode).Other).toEqual({
+				$path: optional("src/Other"),
+			});
+		});
+
 		it("should union the template's rebased globs without duplicates", async () => {
 			await write("src/Foo.luau", "src/Foo.spec.luau");
 			const template = templateOf(
@@ -1155,7 +1194,7 @@ describe("assembleTree", () => {
 			expect(warnings).toMatchObject([{ code: "meta.templateClass" }]);
 		});
 
-		it("should copy nothing onto a template node with its own $path", async () => {
+		it("should leave a folder under a template $path out, meta and all", async () => {
 			await write("src/Packages/server/A.luau");
 			await writeMeta("src/Packages/init.meta.json", {
 				className: "Actor",
@@ -1173,14 +1212,38 @@ describe("assembleTree", () => {
 			});
 
 			expect(
-				nodeAt(value.tree, "ServerScriptService", "Packages").$className
-			).toBeUndefined();
+				nodeAt(value.tree, "ServerScriptService", "Packages")
+			).toEqual({ $path: "Packages" });
 			expect(warnings).toMatchObject([
+				{ code: "tree.templateClash" },
 				{
 					code: "meta.templatePath",
 					resource: abs("src/Packages/init.meta.json"),
 				},
 			]);
+			expect(warnings[0].message).toContain(abs("src/Packages"));
+		});
+
+		it("should still copy meta onto a template node when the template displaced a file in the folder", async () => {
+			await write("src/Combat/Save.luau");
+			await writeMeta("src/Combat/init.meta.json", {
+				className: "Actor",
+			});
+			const template = templateOf({
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Combat: { Save: { $path: "hand/Save.luau" } },
+					},
+				},
+			});
+
+			const { tree: value } = await assemble({ template });
+
+			expect(nodeAt(value.tree, "ReplicatedStorage", "Combat")).toEqual({
+				$className: "Actor",
+				Save: { $path: "hand/Save.luau" },
+			});
 		});
 
 		it("should warn once about meta in a routing, tag or invisible folder or a root dir", async () => {

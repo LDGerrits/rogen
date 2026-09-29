@@ -6,12 +6,21 @@ import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ScannedRoot, ScanOptions, scanRootDirs } from "../root-scanner.js";
-import { abs, writeFiles } from "./fixtures.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { ResolvedConfig } from "../../config/config.js";
+import { ScannedRoot } from "../build-record.js";
+import { buildProject } from "../build.js";
+import { place } from "../pipeline.js";
+import { abs, configOf, writeFiles } from "./fixtures.js";
+
+type ScanOptions = Pick<ResolvedConfig, "rootDirs" | "exclude">;
+
+const scanRootDirs = (index: IndexReader, options: ScanOptions) =>
+	place(index, configOf(options)).unwrap();
 
 const glob = (pattern: string) => toPosix(abs(pattern));
 
-describe("scanRootDirs", () => {
+describe("scanRoots", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
@@ -25,7 +34,12 @@ describe("scanRootDirs", () => {
 		};
 		const index = newIndex();
 		await index.initialize([...scanOptions.rootDirs]);
-		return scanRootDirs(index, scanOptions);
+		const config = configOf(scanOptions);
+		const built = await buildProject(fs, index, config);
+		return {
+			roots: place(index, config).unwrap().roots,
+			warnings: built.isOk() ? built.value.warnings : built.error,
+		};
 	};
 
 	const files = (root: ScannedRoot) =>
@@ -598,6 +612,7 @@ describe("scanRootDirs", () => {
 
 			expect(roots[1]).toEqual({
 				rootDir: abs("lobby"),
+				exists: false,
 				entries: [],
 				markers: [],
 				metaFiles: [],

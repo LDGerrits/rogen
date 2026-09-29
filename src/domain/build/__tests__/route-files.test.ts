@@ -2,9 +2,9 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { routeFiles } from "../route-files.js";
-import { scanRootDirs } from "../root-scanner.js";
-import { abs, indexOf, writeFiles } from "./fixtures.js";
+import { buildProject } from "../build.js";
+import { place } from "../pipeline.js";
+import { abs, configOf, indexOf, writeFiles } from "./fixtures.js";
 
 const ROUTES = {
 	ReplicatedFirst: "ReplicatedFirst",
@@ -23,15 +23,20 @@ describe("routeFiles", () => {
 		overrides: Partial<ResolvedConfig> = {},
 		rootDirs: readonly string[] = [abs("src")]
 	) => {
-		const config = {
+		const config = configOf({
 			routes: ROUTES,
-			tags: {},
-			outFile: abs("default.project.json"),
+			rootDirs: [...rootDirs],
 			...overrides,
-		};
+		});
 		const index = await indexOf(store, fs, rootDirs);
-		const { roots } = scanRootDirs(index, { rootDirs, exclude: [] });
-		return routeFiles(roots, config);
+		const built = await buildProject(fs, index, config);
+		return place(index, config).map((build) => ({
+			routed: build.routed,
+			unrouted: [...build.leftOut]
+				.filter(([, why]) => why.status === "unrouted")
+				.map(([source]) => source),
+			warnings: built.isOk() ? built.value.warnings : [],
+		}));
 	};
 
 	const paths = async (
@@ -824,13 +829,14 @@ describe("routeFiles", () => {
 			expect((await route(noStar)).unwrap().warnings).toEqual([]);
 		});
 
-		it("should leave every file unrouted when routes is empty", async () => {
+		it("should fail when routes is empty", async () => {
 			await write("src/server/A.luau", "src/B.luau");
 
-			const result = (await route({ routes: {} })).unwrap();
+			const result = await route({ routes: {} });
 
-			expect(result.routed).toEqual([]);
-			expect(result.warnings).toHaveLength(2);
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "route.noRoutes" },
+			]);
 		});
 	});
 });

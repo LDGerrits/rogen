@@ -35,6 +35,8 @@ function outcomeOf(
 			return `pruned · tag ${location.tags[0].tag} is off (${MATCH_LABELS[location.tags[0].form]})`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
+		case "displaced":
+			return `displaced · the template defines ${instanceKey(location.node)}`;
 		case "unrouted":
 			return "unrouted · no route matches it";
 		case "excluded":

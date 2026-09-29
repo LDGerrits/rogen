@@ -1,17 +1,30 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ResolvedConfig } from "../config/config.js";
-import { hasSyncedOutput } from "./check-sync-dir.js";
-import { META_FILE_SUFFIX } from "../rojo/rojo-files.js";
-import { ScannedRoot } from "./root-scanner.js";
-import { SyncDiagnostics } from "./sync-diagnostics.js";
-import { SyncLayout, emittedPath, relativeToProject } from "./sync-path.js";
+import { toPosix } from "../../../base/path.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { ResolvedConfig } from "../../config/config.js";
+import { hasSyncedOutput } from "./nothing-emitted.js";
+import { META_FILE_SUFFIX } from "../../rojo/rojo-files.js";
+import { ScannedRoot, SyncRule } from "../build-record.js";
+import { SyncDiagnostics } from "../sync-diagnostics.js";
+import { SyncLayout, emittedPath, relativeToProject } from "../sync-path.js";
+import { findUnclaimedMeta } from "./unclaimed-meta.js";
+
+export const metaNotSynced: SyncRule = (
+	{ config, index, layout, roots },
+	fileSystem
+) =>
+	checkSyncMeta(
+		fileSystem,
+		config,
+		layout,
+		roots,
+		new Set(findUnclaimedMeta(index, roots).map(({ path }) => path))
+	);
 
 /**
  * Warns once for claimed meta with no copy under `syncDir`, skipping root
- * dirs `checkSyncDir` reports. `roots` is the build's scan, and `unclaimed`
+ * dirs `nothingEmitted` reports. `roots` is the build's scan, and `unclaimed`
  * the absolute POSIX paths of the meta no file claims, which Rojo ignores anyway.
  */
 export async function checkSyncMeta(

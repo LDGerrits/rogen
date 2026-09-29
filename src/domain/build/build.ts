@@ -1,28 +1,19 @@
 import path from "path";
 import { isInside } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { findOutputClashes } from "../output/find-output-clashes.js";
 import { RojoTree } from "../rojo/rojo-tree.js";
-import { assembleTree } from "./assemble-tree.js";
-import { checkSyncDir } from "./check-sync-dir.js";
-import { checkSyncMeta } from "./check-sync-meta.js";
-import { syncLayoutOf } from "./sync-path.js";
-import { LeftOut } from "./left-out.js";
+import { BuildRecord, LeftOut, TagMatch } from "./build-record.js";
 import { FileLocation, locate } from "./locate-files.js";
-import { MetaDiagnostics } from "./meta-diagnostics.js";
-import { readFolderMeta } from "./read-folder-meta.js";
-import { Placement, placeFiles } from "./place-files.js";
-import { ScanResult, scanRootDirs } from "./root-scanner.js";
+import { assemble, check, checkSync, place } from "./pipeline.js";
 import { RouteDiagnostics } from "./route-diagnostics.js";
-import { TagMatch } from "./route-files.js";
 export { withPlannedFiles } from "./planned-files.js";
 export type { FileLocation } from "./locate-files.js";
-export type { RouteMatch } from "./route-files.js";
-import { findUnclaimedMeta } from "./unclaimed-meta.js";
+export type { RouteMatch } from "./build-record.js";
 
 export interface RootSummary {
 	readonly rootDir: string;
@@ -51,6 +42,8 @@ export interface BuildSummary {
 	readonly tags: readonly TagSummary[];
 	readonly unrouted: number;
 	readonly superseded: number;
+	/** Left out because the template defines their node. */
+	readonly displaced: number;
 }
 
 export interface BuildOptions {
@@ -83,62 +76,24 @@ export function checkBuildable(
 	];
 }
 
-/**
- * Builds `config` from the in-memory `index`, which the caller initialized
- * with `rootsToIndex`, reading only the folder meta from `fileSystem`. The
- * root dirs are scanned once, and every stage reads that scan.
- */
+/** Builds `config` from the index the caller initialized with `rootsToIndex`, reading only folder meta from `fileSystem`. */
 export async function buildProject(
 	fileSystem: FileSystemService,
 	index: IndexReader,
 	config: ResolvedConfig,
 	options: BuildOptions = {}
 ): Promise<Result<BuiltProject, Diagnostic[]>> {
-	const scanned = scanAndPlace(index, config);
-	if (scanned.isErr()) return scanned;
-	const { scan, placement } = scanned.value;
-	const folderMeta = await readFolderMeta(fileSystem, scan.roots);
-	if (folderMeta.isErr()) return folderMeta;
-
-	const layout = syncLayoutOf(config);
-	const assembly = assembleTree(config, layout, {
-		files: placement.files,
-		leftOut: placement.leftOut,
-		folderMeta: folderMeta.value,
-	});
-	if (assembly.isErr()) return assembly;
-
-	const unclaimedMeta = findUnclaimedMeta(index, scan.roots);
-	const syncWarnings = options.checkSyncDir
-		? [
-				...(await checkSyncDir(fileSystem, config.rootDirs, layout)),
-				...(await checkSyncMeta(
-					fileSystem,
-					config,
-					layout,
-					scan.roots,
-					new Set(unclaimedMeta.map(({ path }) => path))
-				)),
-			]
-		: [];
-
+	const placed = place(index, config);
+	if (placed.isErr()) return placed;
+	const built = await assemble(placed.value, fileSystem);
+	if (built.isErr()) return built;
 	return ok({
-		tree: assembly.value.value,
-		summary: summarizeBuild(config, placement),
-		warnings: [
-			...scan.warnings,
-			...(unclaimedMeta.length > 0
-				? [
-						MetaDiagnostics.unclaimed(
-							{ resource: config.outFile },
-							unclaimedMeta
-						),
-					]
-				: []),
-			...placement.warnings,
-			...assembly.value.warnings,
-		],
-		syncWarnings,
+		tree: built.value.tree,
+		summary: summarizeBuild(built.value),
+		warnings: check(built.value),
+		syncWarnings: options.checkSyncDir
+			? await checkSync(built.value, fileSystem)
+			: [],
 	});
 }
 
@@ -148,29 +103,15 @@ export function locateFiles(
 	config: ResolvedConfig,
 	paths?: readonly string[]
 ): Result<FileLocation[], Diagnostic[]> {
-	const scanned = scanAndPlace(index, config);
-	if (scanned.isErr()) return scanned;
-	return ok(locate(index, scanned.value.placement, paths));
+	return place(index, config).map((build) => locate(build, paths));
 }
 
-/** The front of every build, and of every question about one. */
-function scanAndPlace(
-	index: IndexReader,
-	config: ResolvedConfig
-): Result<{ scan: ScanResult; placement: Placement }, Diagnostic[]> {
-	if (Object.keys(config.routes).length === 0) {
-		return err([RouteDiagnostics.noRoutes({ resource: config.file })]);
-	}
-	const scan = scanRootDirs(index, config);
-	const placed = placeFiles(scan.roots, config);
-	if (placed.isErr()) return placed;
-	return ok({ scan, placement: placed.value });
-}
-
-function summarizeBuild(
-	config: Pick<ResolvedConfig, "routes" | "tags">,
-	{ roots, files, leftOut }: Placement
-): BuildSummary {
+function summarizeBuild({
+	config,
+	roots,
+	files,
+	leftOut,
+}: BuildRecord): BuildSummary {
 	const countOf = (
 		status: LeftOut["status"],
 		paths: Iterable<LeftOut> = leftOut.values()
@@ -202,6 +143,7 @@ function summarizeBuild(
 		})),
 		unrouted: countOf("unrouted"),
 		superseded: countOf("replaced"),
+		displaced: countOf("displaced"),
 	};
 }
 

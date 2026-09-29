@@ -5,7 +5,12 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { listPaths } from "./path-list.js";
-import { UnclaimedMeta } from "./unclaimed-meta.js";
+
+export interface UnclaimedMeta {
+	/** Absolute, POSIX-style. */
+	readonly path: string;
+	readonly hint?: string;
+}
 
 export type InstancelessFolder =
 	"root dir" | "routing folder" | "tag folder" | "invisible folder";

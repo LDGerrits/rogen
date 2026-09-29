@@ -1,26 +1,36 @@
+import { DisposableStore } from "../../../base/disposable.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { checkSyncDir } from "../check-sync-dir.js";
-import { syncLayoutOf } from "../sync-path.js";
-import { abs, configOf as baseConfigOf } from "./fixtures.js";
+import { place } from "../pipeline.js";
+import { nothingEmitted } from "../rules/nothing-emitted.js";
+import { abs, configOf as baseConfigOf, indexOf } from "./fixtures.js";
 
 const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
 	baseConfigOf({ syncDir: abs("out"), ...overrides });
 
-const check = (
-	fs: MemoryFileSystemService,
-	config: ResolvedConfig
-): ReturnType<typeof checkSyncDir> =>
-	checkSyncDir(fs, config.rootDirs, syncLayoutOf(config));
-
-describe("domain/output/check-sync-dir", () => {
+describe("nothingEmitted", () => {
 	let fs: MemoryFileSystemService;
+	let store: DisposableStore;
+
+	const check = async (
+		fs: MemoryFileSystemService,
+		config: ResolvedConfig
+	): Promise<Diagnostic[]> => {
+		const index = await indexOf(store, fs, config.rootDirs);
+		return nothingEmitted(place(index, config).unwrap(), fs);
+	};
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
+		store = new DisposableStore();
 	});
 
-	describe("checkSyncDir", () => {
+	afterEach(() => {
+		store[Symbol.dispose]();
+	});
+
+	describe("rule", () => {
 		it("should report nothing without a syncDir", async () => {
 			await fs.writeFile(abs("src/Inventory/A.luau"), "");
 

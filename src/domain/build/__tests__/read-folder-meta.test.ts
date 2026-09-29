@@ -1,9 +1,8 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { readFolderMeta } from "../read-folder-meta.js";
-import { scanRootDirs } from "../root-scanner.js";
-import { abs, indexOf } from "./fixtures.js";
+import { assemble, place } from "../pipeline.js";
+import { abs, configOf, indexOf } from "./fixtures.js";
 
 type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
 
@@ -18,7 +17,11 @@ describe("readFolderMeta", () => {
 			...overrides,
 		};
 		const index = await indexOf(store, fs, config.rootDirs);
-		return readFolderMeta(fs, scanRootDirs(index, config).roots);
+		const built = await assemble(
+			place(index, configOf(config)).unwrap(),
+			fs
+		);
+		return built.map(({ folderMeta }) => folderMeta);
 	};
 
 	beforeEach(() => {

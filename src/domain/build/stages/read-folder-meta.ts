@@ -1,28 +1,17 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
-import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
-import { toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { MetaDiagnostics } from "./meta-diagnostics.js";
-import { INIT_META_FILE } from "../rojo/rojo-files.js";
-import { ScannedRoot } from "./root-scanner.js";
-
-export interface FolderMetaFields {
-	readonly className?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
-	readonly attributes?: Readonly<Record<string, unknown>>;
-	readonly ignoreUnknownInstances?: boolean;
-	readonly id?: string;
-}
-
-export interface FolderMeta extends FolderMetaFields {
-	readonly file: string;
-	readonly rootDir: string;
-	/** The folder, relative to the root dir; the root dir itself is "". */
-	readonly dir: string;
-}
+import { ErrorUtils } from "../../../base/errors.js";
+import { JsoncNode, parseJsonc } from "../../../base/jsonc.js";
+import { toPosix } from "../../../base/path.js";
+import { Result, err, ok } from "../../../base/result.js";
+import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { INIT_META_FILE } from "../../rojo/rojo-files.js";
+import {
+	AssemblyStage,
+	FolderMeta,
+	FolderMetaFields,
+} from "../build-record.js";
+import { MetaDiagnostics } from "../meta-diagnostics.js";
 
 const FIELD_KINDS: Record<keyof FolderMetaFields, JsoncNode["kind"]> = {
 	className: "string",
@@ -42,14 +31,11 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 };
 
 /** Reads every `init.meta.json` the scan found, which leaves out excluded folders; any invalid one fails the whole read. */
-export async function readFolderMeta(
-	fileSystem: FileSystemService,
-	roots: readonly ScannedRoot[]
-): Promise<Result<FolderMeta[], Diagnostic[]>> {
+export const readFolderMeta: AssemblyStage = async (build, fileSystem) => {
 	const metas: FolderMeta[] = [];
 	const errors: Diagnostic[] = [];
 
-	for (const root of roots) {
+	for (const root of build.roots) {
 		for (const metaFile of root.metaFiles) {
 			if (path.posix.basename(metaFile) !== INIT_META_FILE) continue;
 			const file = path.join(root.rootDir, metaFile);
@@ -68,8 +54,10 @@ export async function readFolderMeta(
 		}
 	}
 
-	return errors.length > 0 ? err(errors) : ok(metas);
-}
+	return errors.length > 0
+		? err(errors)
+		: ok({ ...build, folderMeta: metas });
+};
 
 async function readMetaFile(
 	fileSystem: FileSystemService,

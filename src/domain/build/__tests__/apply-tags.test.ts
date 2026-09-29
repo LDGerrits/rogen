@@ -1,11 +1,18 @@
 import { DisposableStore } from "../../../base/disposable.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { TagResult, applyTags } from "../apply-tags.js";
-import { scanRootDirs } from "../root-scanner.js";
-import { routeFiles } from "../route-files.js";
-import { abs, indexOf, writeFiles } from "./fixtures.js";
+import { BuildRecord } from "../build-record.js";
+import { buildProject } from "../build.js";
+import { place } from "../pipeline.js";
+import { abs, configOf, indexOf, writeFiles } from "./fixtures.js";
+
+type TagResult = Pick<BuildRecord, "files" | "leftOut"> & {
+	readonly warnings: readonly Diagnostic[];
+};
 
 const ROUTES = {
 	server: "ServerScriptService",
@@ -23,14 +30,18 @@ describe("applyTags", () => {
 		tags: Record<string, boolean>,
 		rootDirs: readonly string[] = [abs("src")]
 	) => {
-		const config: Pick<ResolvedConfig, "routes" | "tags" | "outFile"> = {
+		const config: ResolvedConfig = configOf({
 			routes: ROUTES,
 			tags,
-			outFile: abs("default.project.json"),
-		};
+			rootDirs: [...rootDirs],
+		});
 		const index = await indexOf(store, fs, rootDirs);
-		const { roots } = scanRootDirs(index, { rootDirs, exclude: [] });
-		return applyTags(routeFiles(roots, config).unwrap().routed, config);
+		const built = await buildProject(fs, index, config);
+		return place(index, config).map(({ files, leftOut }): TagResult => ({
+			files,
+			leftOut,
+			warnings: built.isOk() ? built.value.warnings : [],
+		}));
 	};
 
 	const prunedPaths = (result: TagResult) =>

@@ -10,6 +10,7 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	tags: [],
 	unrouted: 0,
 	superseded: 0,
+	displaced: 0,
 	...overrides,
 });
 
@@ -76,9 +77,12 @@ describe("describeBuild", () => {
 	it("should count what was left out only when something was", () => {
 		expect(describeBuild(summaryOf(), cwd)).toEqual([]);
 		expect(
-			describeBuild(summaryOf({ unrouted: 2, superseded: 1 }), cwd)
+			describeBuild(
+				summaryOf({ unrouted: 2, superseded: 1, displaced: 3 }),
+				cwd
+			)
 		).toEqual([
-			"left out: 2 unrouted, 1 replaced by a file with the same name",
+			"left out: 2 unrouted, 1 replaced by a file with the same name, 3 displaced by the template",
 		]);
 	});
 });

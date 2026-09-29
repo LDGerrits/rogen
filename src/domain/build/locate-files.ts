@@ -8,10 +8,13 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { rojoFileName } from "../rojo/rojo-assigned-name.js";
 import { classifyFile, isInitScript } from "../rojo/rojo-files.js";
-import { ScannedRoot } from "./root-scanner.js";
-import { LeftOut } from "./left-out.js";
-import { Placement } from "./place-files.js";
-import { RouteMatch, TagMatch } from "./route-files.js";
+import {
+	BuildRecord,
+	LeftOut,
+	RouteMatch,
+	ScannedRoot,
+	TagMatch,
+} from "./build-record.js";
 
 interface Located {
 	/** An absolute POSIX path. */
@@ -38,24 +41,25 @@ export type FileLocation =
 
 /** Every scanned path's location, or only those `paths` name, where a directory stands for what's in it. */
 export function locate(
-	index: IndexReader,
-	placement: Placement,
+	build: BuildRecord,
 	paths?: readonly string[]
 ): FileLocation[] {
-	const all = locateScanned(index, placement);
+	const { index, roots } = build;
+	const all = locateScanned(build);
 	if (!paths) return [...all.values()].sort(bySource);
 
 	const found = new Map<string, FileLocation>();
 	for (const target of paths.map(toPosix))
-		for (const location of locatePath(index, placement.roots, all, target))
+		for (const location of locatePath(index, roots, all, target))
 			found.set(location.source, location);
 	return [...found.values()];
 }
 
-function locateScanned(
-	index: IndexReader,
-	{ files, leftOut }: Placement
-): Map<string, FileLocation> {
+function locateScanned({
+	index,
+	files,
+	leftOut,
+}: BuildRecord): Map<string, FileLocation> {
 	const all = new Map<string, FileLocation>();
 	const add = (location: FileLocation) => all.set(location.source, location);
 

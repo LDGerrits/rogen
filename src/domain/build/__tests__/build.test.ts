@@ -406,6 +406,32 @@ describe("domain/build/build", () => {
 				expect(result.unwrap().summary.superseded).toBe(1);
 			});
 
+			it("should count a file the template displaced, and not under its route", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/B.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						template: {
+							file: abs("default.project.json"),
+							project: {
+								name: "repo",
+								tree: {
+									$className: "DataModel",
+									ReplicatedStorage: {
+										A: { $path: "A.luau" },
+									},
+								},
+							},
+						},
+					})
+				);
+
+				const { summary } = result.unwrap();
+				expect(summary.displaced).toBe(1);
+				expect(summary.routes).toMatchObject([{ key: "*", files: 1 }]);
+			});
+
 			it("should count a file the last root dir replaced", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("lib/A.luau"), "");
