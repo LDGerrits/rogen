@@ -966,6 +966,15 @@ describe("askInit", () => {
 		]);
 	});
 
+	it("should reject a variant whose project file exists", async () => {
+		await expect(
+			askInit(
+				new MockPromptService(["variant", "prod"]),
+				context(["default.rogen.json", "prod.project.json"])
+			)
+		).rejects.toThrow("prod.project.json already exists.");
+	});
+
 	it("should ask every question again for a separate config", async () => {
 		const prompts = new MockPromptService([
 			"separate",

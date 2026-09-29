@@ -158,7 +158,7 @@ describe("planInit", () => {
 			const child = configOf(files, "default.rogen.json");
 			expect(source.syncDir).toBeUndefined();
 			expect(source.routes).toEqual(LUAU_ROUTES);
-			expect(child.extends).toBe("source.rogen.json");
+			expect(child.extends).toBe("./source.rogen.json");
 			expect(child.syncDir).toBe("dist");
 		});
 
@@ -180,7 +180,7 @@ describe("planInit", () => {
 				"lobby.rogen.json",
 			]);
 			expect(configOf(files, "lobby.rogen.json").extends).toBe(
-				"lobby-source.rogen.json"
+				"./lobby-source.rogen.json"
 			);
 		});
 
@@ -241,7 +241,7 @@ describe("planInit", () => {
 				configOf(files, "source.rogen.json").syncDir
 			).toBeUndefined();
 			expect(configOf(files, "default.rogen.json")).toMatchObject({
-				extends: "source.rogen.json",
+				extends: "./source.rogen.json",
 				syncDir: "dist",
 			});
 		});

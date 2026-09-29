@@ -35,6 +35,6 @@ lobby-source.rogen.json:
 lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "lobby-source.rogen.json",
+	"extends": "./lobby-source.rogen.json",
 	"syncDir": "dist"
 }

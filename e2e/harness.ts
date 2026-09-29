@@ -16,6 +16,7 @@ export interface CaseSpec {
 	readonly steps?: readonly (readonly string[])[];
 	readonly links?: Readonly<Record<string, string>>;
 	readonly rojo?: boolean;
+	readonly show?: readonly string[];
 }
 
 interface RunResult {
@@ -97,7 +98,9 @@ export async function runCase(cli: string, name: string): Promise<string> {
 				`written:\n${written.map((f) => `  ${f}`).join("\n")}`
 			);
 		}
-		for (const file of written.filter((f) => f.endsWith(".rogen.json"))) {
+		for (const file of written.filter(
+			(f) => f.endsWith(".rogen.json") || spec.show?.includes(f)
+		)) {
 			sections.push(
 				`${file}:\n${fs.readFileSync(path.join(dir, file), "utf8").trimEnd()}`
 			);

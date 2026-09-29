@@ -1,11 +1,3 @@
 {
-	"steps": [
-		[
-			"build",
-			"default",
-			"source",
-			"lobby",
-			"lobby-source"
-		]
-	]
+	"steps": [["init"], ["build", "default", "source", "lobby", "lobby-source"]]
 }

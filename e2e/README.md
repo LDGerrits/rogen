@@ -8,13 +8,15 @@ exit codes, output, written files and the tree Rojo sees) is compared with
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "--tag", "mock"]], "links": {}, "rojo": false }
+  case.json      optional: { "steps": [["build", "--tag", "mock"]], "links": {}, "rojo": false, "show": [] }
   expected.txt   the transcript
 ```
 
 - `steps` defaults to `[["build"]]`. Each step is the argument list of one `rogen` run.
 - `links` maps a path inside `project/` to a symlink target, created at run time so
   the fixtures work on any checkout.
+- `show` lists other written files to print, for what a sourcemap can't show
+  (like `$properties`).
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - Files that a run created or changed are listed under `written:`. `*.rogen.json`
   files are printed, and every `*.project.json` is passed to Rojo.

@@ -1,3 +1,22 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Created source.rogen.json.
+  Created default.rogen.json.
+  Created lobby-source.rogen.json.
+  Created lobby.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch lobby lobby-source
+      rojo serve lobby.project.json
+    Have Darklua process your code into the sync dir:
+      darklua process src dist/lobby/src
+      darklua process places/lobby dist/lobby/places/lobby
+    Add your own routes under "routes" in source.rogen.json.
+    Add tags under "tags" in source.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 4 files.
+
 $ rogen build default source lobby lobby-source
 exit 0
 stdout:
@@ -14,9 +33,51 @@ stdout:
 
 written:
   default.project.json
+  default.rogen.json
   lobby-source.project.json
+  lobby-source.rogen.json
   lobby.project.json
+  lobby.rogen.json
   source.project.json
+  source.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./source.rogen.json",
+	"syncDir": "dist"
+}
+
+lobby-source.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./source.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./lobby-source.rogen.json",
+	"syncDir": "dist/lobby"
+}
+
+source.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
 
 $ rojo sourcemap default.project.json
 project: DataModel
