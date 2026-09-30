@@ -37,7 +37,7 @@ export class CoreCommandService
 		super();
 	}
 
-	executeCommand(
+	async executeCommand(
 		commandId: string,
 		args: ParsedArgs
 	): Promise<Result<void, Error>> {
@@ -48,17 +48,15 @@ export class CoreCommandService
 		).getCommand(commandId);
 
 		if (!command) {
-			return Promise.resolve(
-				err(
-					new Error(
-						`Unknown command "${commandId}". To build a config, run 'rogen build ${commandId}'; run 'rogen help' to see the commands.`
-					)
+			return err(
+				new Error(
+					`Unknown command "${commandId}". To build a config, run 'rogen build ${commandId}'; run 'rogen help' to see the commands.`
 				)
 			);
 		}
 
 		this._onWillExecuteCommand.fire({ commandId, args });
-		const result = command.handler(this.accessor, args);
+		const result = await command.handler(this.accessor, args);
 		this._onDidExecuteCommand.fire({ commandId, args });
 
 		return result;
