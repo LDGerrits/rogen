@@ -31,7 +31,16 @@ export class CoreInitService implements InitService {
 		this.questions = new InitQuestions(promptService);
 	}
 
-	async prepare(
+	async plan(
+		names: readonly string[]
+	): Promise<Result<InitPlan | undefined, Error>> {
+		const directory = await this.prepare(names);
+		if (directory.isErr()) return directory;
+		return this.planIn(directory.value);
+	}
+
+	/** Checks the names given after `init` and reads the directory's entries and toolchain; asks and writes nothing. */
+	private async prepare(
 		names: readonly string[]
 	): Promise<Result<InitDirectory, Error>> {
 		const name = ConfigSet.parseName(names);
@@ -67,9 +76,9 @@ export class CoreInitService implements InitService {
 		);
 	}
 
-	async plan(
+	private async planIn(
 		directory: InitDirectory
-	): Promise<Result<InitPlan | undefined, DiagnosticsError>> {
+	): Promise<Result<InitPlan | undefined, Error>> {
 		// A run that can't ask never gets to pick another name, so the one it has must be free.
 		const knownName =
 			directory.givenName ??

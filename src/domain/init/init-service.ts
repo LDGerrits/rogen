@@ -1,8 +1,6 @@
 import { Result } from "../../base/result.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
-import { InitDirectory } from "./init-directory.js";
 
 export type { PlannedFile };
 
@@ -29,17 +27,14 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 }
 
-/** Writes a starter config into the working directory in three steps, so a caller can print between them. */
+/** Writes a starter config into the working directory in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
-	/** Checks the names given after `init` and reads the directory's entries and toolchain; asks and writes nothing. */
-	prepare(names: readonly string[]): Promise<Result<InitDirectory, Error>>;
-
-	/** Decides everything `init` writes and says; `ok(undefined)` means the user cancelled. */
+	/** Checks the names given after `init`, reads the working directory and asks what to write; `ok(undefined)` means the user cancelled. Writes nothing. */
 	plan(
-		directory: InitDirectory
-	): Promise<Result<InitPlan | undefined, DiagnosticsError>>;
+		names: readonly string[]
+	): Promise<Result<InitPlan | undefined, Error>>;
 
 	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
 	write(

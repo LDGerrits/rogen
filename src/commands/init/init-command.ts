@@ -44,11 +44,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const logService = accessor.get(LogService);
 		const promptService = accessor.get(PromptService);
 
-		const directory = await initService.prepare(args._.slice(1));
-		if (directory.isErr()) return directory;
-
 		logService.intro("rogen init");
-		const planned = await initService.plan(directory.value);
+		const planned = await initService.plan(args._.slice(1));
 		if (planned.isErr()) return planned;
 		const plan = planned.value;
 		if (!plan) return err(new CancelledError("init cancelled."));
