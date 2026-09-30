@@ -10,7 +10,7 @@ import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { BuildLog } from "../build-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;

@@ -17,7 +17,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { ConfigOptions, configRefsFromArgs } from "../config-options.js";
-import { BuildLog } from "./build-log.js";
+import { BuildLog } from "../build-log.js";
 import { showConfig } from "./show-config.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({

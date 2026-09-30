@@ -1,11 +1,8 @@
 import path from "path";
-import { relativeTo } from "../../base/path.js";
-import { BuildSummary } from "../../domain/build/build-service.js";
-import {
-	ConfigEntry,
-	ResolvedEntry,
-} from "../../domain/config/config-service.js";
-import { LogService } from "../../platform/log/log-service.js";
+import { relativeTo } from "../base/path.js";
+import { BuildSummary } from "../domain/build/build-service.js";
+import { ConfigEntry, ResolvedEntry } from "../domain/config/config-service.js";
+import { LogService } from "../platform/log/log-service.js";
 
 function count(n: number, noun: string): string {
 	return `${n} ${noun}${n === 1 ? "" : "s"}`;
@@ -104,7 +101,7 @@ export class BuildLog {
 	}
 
 	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */
-	details(entry: ConfigEntry, summary?: BuildSummary): void {
+	private details(entry: ConfigEntry, summary?: BuildSummary): void {
 		for (const line of [
 			...describeConfig(entry, this.cwd),
 			...(summary ? describeBuild(summary, this.cwd) : []),

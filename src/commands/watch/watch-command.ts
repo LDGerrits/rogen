@@ -13,7 +13,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { BuildLog } from "../build/build-log.js";
+import { BuildLog } from "../build-log.js";
 import { ConfigOptions, configRefsFromArgs } from "../config-options.js";
 import { WatchLog } from "./watch-log.js";
 

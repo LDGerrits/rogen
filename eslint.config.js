@@ -78,6 +78,13 @@ const platformImplementationPattern = {
 		"Domain and commands depend on platform contract files, never on an implementation. Only main.ts and tests name one.",
 };
 
+// A command folder holds one command; what several share sits at the layer root.
+const siblingCommandPattern = {
+	regex: "^\\.\\./(?!\\.\\.)[^/]+/",
+	message:
+		"A command doesn't import another command's folder. Shared concepts live in src/commands/.",
+};
+
 const folders = (depth) => "*/".repeat(depth);
 
 const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
@@ -96,6 +103,9 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 				...patterns,
 				...internalsPatterns(layer, module, depth),
 				platformImplementationPattern,
+				...(layer === "commands" && depth > 0
+					? [siblingCommandPattern]
+					: []),
 			]),
 		});
 		// A contract must not depend on what it hides.
