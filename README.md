@@ -14,14 +14,32 @@
     A CLI tool that enables feature-based architecture for Roblox
 </div>
 
+Rogen lets you organise Roblox code **by feature** instead of by environment. One feature folder holds its server, client and shared code, and Rogen writes the Rojo project file that places each script in the service where it runs. Rojo or Argon syncs it into Studio.
+
+```
+src/Inventory/Server/InventoryService.luau    ->  ServerScriptService/Inventory/InventoryService
+src/Inventory/Client/InventoryController.luau ->  StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
+src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
+```
+
 ## Features
 
-- **Feature Folders:** Keep related client, server, and shared code inside a single folder.
-- **Auto-Routing:** Map files to Roblox services automatically using Rojo or Argon.
-- **Multi-Place Support:** Merge multiple source directories to share core systems across different places.
-- **Environment Tags:** Filter test files and inject mock dependencies at build time using tags.
-- **Granular Control:** Shape the project tree using invisible folders, hoisting, and marker files.
-- **Modern Tooling:** Support Luau, roblox-ts, and Darklua pipelines out of the box.
+- **Feature Folders:** Keep a feature's client, server and shared code in one folder.
+- **Routes:** Declare where each kind of code goes, and route files with a folder, a marker file or a name suffix.
+- **Tags:** Swap in variants like `Analytics.mock.luau` at build time, without touching a `require`.
+- **Several Places:** Merge root directories so places share core code and override parts of it.
+- **Watch Mode:** Rebuild as files change, and reload when the config does.
+- **Toolchains:** Luau, roblox-ts and Darklua, set up by `rogen init`.
+
+## Getting Started
+
+```bash
+rogen init
+rogen watch
+rojo serve
+```
+
+`rogen init` writes a starting config and prints the commands your setup needs. `rogen where <file>` prints where a file lands and why. Read the [documentation](https://rogen-playfully.vercel.app) for routing, tags and every setup.
 
 ## Contributing
 
