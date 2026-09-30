@@ -7,8 +7,11 @@ import {
 	WatchCause,
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
-import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
+import {
+	Diagnostic,
+	isError,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ResolvedEntry } from "../../domain/config/config-service.js";

@@ -23,10 +23,8 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 

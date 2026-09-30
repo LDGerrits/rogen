@@ -1,4 +1,4 @@
-import { AbstractLogService, LogKind } from "./log-service.js";
+import { AbstractLogService, LogKind } from "./abstract-log-service.js";
 
 const indented = (text: string) =>
 	text

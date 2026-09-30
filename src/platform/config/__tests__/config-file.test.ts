@@ -31,6 +31,19 @@ describe("platform/config/config-file", () => {
 						type: "object",
 						additionalProperties: { type: "string" },
 					},
+					build: {
+						type: "object",
+						additionalProperties: false,
+						properties: { out: { type: "string" } },
+					},
+					entries: {
+						type: "array",
+						items: {
+							type: "object",
+							additionalProperties: false,
+							properties: { name: { type: "string" } },
+						},
+					},
 				},
 			});
 		});
@@ -186,6 +199,30 @@ describe("platform/config/config-file", () => {
 			expect(
 				diagnosticsOf(result).map((d) => d.position?.column)
 			).toEqual([3, 11]);
+		});
+
+		it("should report an unknown field in a nested object", async () => {
+			const result = await read('{ "build": { "oot": "x" } }');
+
+			expect(
+				diagnosticsOf(result).map((d) => [
+					d.message,
+					d.position?.column,
+				])
+			).toEqual([['unknown field "build.oot".', 14]]);
+		});
+
+		it("should report an unknown field inside an array item", async () => {
+			const result = await read(
+				'{ "entries": [{ "name": "a" }, { "nam": "b" }] }'
+			);
+
+			expect(
+				diagnosticsOf(result).map((d) => [
+					d.message,
+					d.position?.column,
+				])
+			).toEqual([['unknown field "entries[1].nam".', 34]]);
 		});
 
 		it("should reject a value of the wrong type", async () => {

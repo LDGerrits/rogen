@@ -3,10 +3,8 @@ import "../version-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import { ProductService } from "../../../platform/product/product-service.js";
 

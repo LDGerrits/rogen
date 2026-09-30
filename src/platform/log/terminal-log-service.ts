@@ -1,6 +1,6 @@
 import * as clack from "@clack/prompts";
 import { styleText } from "util";
-import { AbstractLogService, LogKind } from "./log-service.js";
+import { AbstractLogService, LogKind } from "./abstract-log-service.js";
 
 const SYMBOLS = {
 	success: styleText("green", "✔"),

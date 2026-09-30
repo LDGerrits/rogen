@@ -3,7 +3,7 @@ import "../../config/config-schema.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
-import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	ACCEPT_DEFAULT,

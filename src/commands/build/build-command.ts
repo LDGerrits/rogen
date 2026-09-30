@@ -15,9 +15,11 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";

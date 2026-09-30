@@ -7,10 +7,8 @@ import {
 } from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import { parseArgs } from "./platform/environment/args.js";
-import {
-	EnvironmentService,
-	NativeEnvironmentService,
-} from "./platform/environment/environment-service.js";
+import { EnvironmentService } from "./platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "./platform/fs/file-system-service.js";
 import { CoreIndexService } from "./platform/fs/core-index-service.js";

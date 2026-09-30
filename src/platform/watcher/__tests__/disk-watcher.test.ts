@@ -4,7 +4,7 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileChange, FileChangeType } from "../../fs/file-events.js";
-import { NullLogService } from "../../log/log-service.js";
+import { NullLogService } from "../../log/null-log-service.js";
 import { DiskWatcher } from "../disk-watcher.js";
 
 function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
