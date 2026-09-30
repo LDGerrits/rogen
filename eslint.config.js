@@ -20,7 +20,7 @@ const domainModules = {
 	roblox: ["roblox", "services"],
 	rojo: ["rojo-file", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],
-	watch: ["watch-service", "watch-session"],
+	watch: ["watch-service"],
 };
 
 for (const entry of readdirSync("src/domain", { withFileTypes: true })) {

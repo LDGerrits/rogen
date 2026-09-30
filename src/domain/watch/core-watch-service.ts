@@ -3,8 +3,8 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigService } from "../config/config-service.js";
-import { WatchSession } from "./watch-session.js";
-import { WatchService } from "./watch-service.js";
+import { CoreWatchSession } from "./watch-session.js";
+import { WatchService, WatchSession } from "./watch-service.js";
 
 export class CoreWatchService implements WatchService {
 	declare readonly _serviceBrand: undefined;
@@ -18,7 +18,7 @@ export class CoreWatchService implements WatchService {
 	) {}
 
 	watch(): WatchSession {
-		return new WatchSession(
+		return new CoreWatchSession(
 			this.watcher,
 			this.reconciliationService,
 			this.configService,

@@ -3,7 +3,7 @@ import { mockEntry } from "../../../domain/config/__tests__/mock-config-service.
 import {
 	RebuildReport,
 	WatchUpdate,
-} from "../../../domain/watch/watch-session.js";
+} from "../../../domain/watch/watch-service.js";
 import {
 	errorDiagnostic,
 	warningDiagnostic,

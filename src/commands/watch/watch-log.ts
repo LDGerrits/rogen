@@ -5,7 +5,7 @@ import {
 	RebuildReport,
 	WatchCause,
 	WatchUpdate,
-} from "../../domain/watch/watch-session.js";
+} from "../../domain/watch/watch-service.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
