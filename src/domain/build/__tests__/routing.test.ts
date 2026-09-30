@@ -1,10 +1,5 @@
 import { DeclaredKeys } from "../../config/config.js";
-import {
-	matchMarkerKey,
-	matchSuffixKeys,
-	readFolderName,
-	unwrapInvisibleFolder,
-} from "../declared-keys.js";
+import { NameReader } from "../routing.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTES_AND_TAGS = new Set([
@@ -17,7 +12,16 @@ const ROUTES_AND_TAGS = new Set([
 const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
 const ALL_KEYS = new DeclaredKeys(ROUTES, ["mock", "debug"]);
 
-describe("matchMarkerKey", () => {
+const readerOf = (keys: DeclaredKeys) => new NameReader(keys);
+const matchMarkerKey = (fileName: string, keys: DeclaredKeys) =>
+	readerOf(keys).marker(fileName).key;
+const matchSuffixKeys = (stem: string, keys: ReadonlySet<string>) =>
+	readerOf(new DeclaredKeys(keys, [])).suffixes(stem);
+const unwrapInvisibleFolder = NameReader.unwrapInvisibleFolder;
+const readFolderName = (folderName: string, keys: DeclaredKeys) =>
+	readerOf(keys).folder(folderName);
+
+describe("NameReader marker", () => {
 	it("matches a marker file named after a declared key", () => {
 		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
 	});
@@ -43,7 +47,7 @@ describe("matchMarkerKey", () => {
 	});
 });
 
-describe("matchSuffixKeys", () => {
+describe("NameReader suffixes", () => {
 	it("strips a separator suffix for each of + - _ . @", () => {
 		for (const sep of ["+", "-", "_", ".", "@"]) {
 			const result = matchSuffixKeys(`Combat${sep}server`, ROUTES);
@@ -171,7 +175,7 @@ describe("matchSuffixKeys", () => {
 	});
 });
 
-describe("unwrapInvisibleFolder", () => {
+describe("NameReader.unwrapInvisibleFolder", () => {
 	it("removes the parentheses and marks the folder invisible", () => {
 		expect(unwrapInvisibleFolder("(mock)")).toEqual({
 			name: "mock",
@@ -195,7 +199,7 @@ describe("unwrapInvisibleFolder", () => {
 	});
 });
 
-describe("readFolderName", () => {
+describe("NameReader folder", () => {
 	it("should read a folder named after a route as that route", () => {
 		expect(readFolderName("Server", ALL_KEYS)).toEqual({
 			kind: "route",

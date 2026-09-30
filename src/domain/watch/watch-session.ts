@@ -1,4 +1,3 @@
-import path from "path";
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
@@ -11,10 +10,7 @@ import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
 import { BuildService, BuildSummary } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
-import { OutputService } from "../output/output-service.js";
-import { RojoFile } from "../rojo/rojo-file.js";
-import { PrintedDiagnostics } from "./printed-diagnostics.js";
-import { WatchPlan, createWatchPlan } from "./watch-plan.js";
+import { WatchPlan } from "./watch-plan.js";
 
 /** Why the configs were rebuilt. */
 export type WatchCause =
@@ -29,7 +25,7 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** New problems in a config's latest load; with errors, the last valid version is still what builds. */
+/** The problems in a config's latest load; with errors, the last valid version is still what builds. */
 export interface ConfigNotice {
 	readonly file: string;
 	readonly errors: readonly Diagnostic[];
@@ -41,8 +37,10 @@ export interface RebuildReport {
 	/** The version of the config that was built. */
 	readonly config: ResolvedConfig;
 	readonly outcome: "wrote" | "unchanged" | "failed";
-	/** Only what wasn't reported for this config the last time. */
+	/** The build's warnings, or why it failed. */
 	readonly diagnostics: readonly Diagnostic[];
+	/** What the sync dir check found; `undefined` when this round didn't check it. */
+	readonly syncDiagnostics?: readonly Diagnostic[];
 	/** Set when the build succeeded. */
 	readonly summary?: BuildSummary;
 }
@@ -55,21 +53,6 @@ export interface WatchUpdate {
 	readonly changes: readonly FileChange[];
 	readonly notices: readonly ConfigNotice[];
 	readonly reports: readonly RebuildReport[];
-}
-
-type Stream = "config" | "build" | "sync";
-
-/** The tree is a function of the directory listing and folder meta, so only `contentFiles` (configs, templates) and `init.meta.json` matter when they are updated. */
-function dropSourceUpdates(
-	changes: readonly FileChange[],
-	contentFiles: ReadonlySet<string>
-): FileChange[] {
-	return changes.filter(
-		(change) =>
-			change.type !== FileChangeType.UPDATED ||
-			contentFiles.has(change.path) ||
-			path.basename(change.path) === RojoFile.INIT_META
-	);
 }
 
 /**
@@ -90,8 +73,11 @@ export class WatchSession extends AbstractDisposable {
 	private readonly updates = new Sequencer();
 	private readonly rebuilds = new Map<string, Sequencer>();
 	private readonly pending = new Set<Promise<void>>();
-	private readonly printed = new PrintedDiagnostics();
 	private readonly changedConfigs = new Set<string>();
+	/** The files each config's latest build read, beyond the config files themselves. */
+	private readonly readFiles = new Map<string, ReadonlySet<string>>();
+	private rebuilding = 0;
+	private settled = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
 	private activeWatch = "";
@@ -102,11 +88,10 @@ export class WatchSession extends AbstractDisposable {
 		private readonly reconciliationService: ReconciliationService,
 		private readonly configService: ConfigService,
 		private readonly indexService: IndexService,
-		private readonly buildService: BuildService,
-		private readonly outputService: OutputService
+		private readonly buildService: BuildService
 	) {
 		super();
-		this.plan = createWatchPlan(this.currentConfigs);
+		this.plan = new WatchPlan(this.currentConfigs);
 	}
 
 	private get currentConfigs(): ResolvedConfig[] {
@@ -124,10 +109,7 @@ export class WatchSession extends AbstractDisposable {
 		);
 		this._register(
 			this.watcher.onDidChangeFile((changes) => {
-				const relevant = dropSourceUpdates(
-					changes,
-					this.configService.files
-				);
+				const relevant = this.dropSourceUpdates(changes);
 				if (relevant.length > 0) {
 					this.reconciliationService.queueEvents(relevant);
 				}
@@ -150,6 +132,7 @@ export class WatchSession extends AbstractDisposable {
 			{ kind: "initial" },
 			this.currentConfigs.map(({ file }) => this.queueRebuild(file, true))
 		);
+		this.settled = true;
 	}
 
 	/** Lets the work already started finish, drops anything queued after, and stops the watcher. Safe to call twice. */
@@ -167,18 +150,29 @@ export class WatchSession extends AbstractDisposable {
 		super[Symbol.dispose]();
 	}
 
-	private unseen(
-		file: string,
-		stream: Stream,
-		diagnostics: readonly Diagnostic[]
-	): Diagnostic[] {
-		return this.printed.unseen(`${file}#${stream}`, diagnostics);
+	/**
+	 * The tree is a function of the directory listing and the files a build
+	 * read, so an update to any other file changes nothing. Until a build has
+	 * settled what it reads, every update counts.
+	 */
+	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
+		if (!this.settled || this.rebuilding > 0) return [...changes];
+		const contentFiles = this.configService.files;
+		return changes.filter(
+			(change) =>
+				change.type !== FileChangeType.UPDATED ||
+				contentFiles.has(change.path) ||
+				[...this.readFiles.values()].some((files) =>
+					files.has(change.path)
+				)
+		);
 	}
 
 	private noteConfig(entry: ConfigEntry): void {
-		const fresh = this.unseen(entry.file, "config", entry.diagnostics);
-		const errors = fresh.filter(isError);
-		const warnings = fresh.filter((diagnostic) => !isError(diagnostic));
+		const errors = entry.diagnostics.filter(isError);
+		const warnings = entry.diagnostics.filter(
+			(diagnostic) => !isError(diagnostic)
+		);
 		if (errors.length + warnings.length > 0) {
 			this.notices.push({ file: entry.file, errors, warnings });
 		}
@@ -196,29 +190,23 @@ export class WatchSession extends AbstractDisposable {
 			entry,
 			config,
 			outcome: "failed",
-			diagnostics: this.unseen(file, "build", diagnostics),
+			diagnostics,
 		});
 
 		const built = await this.buildService.build(config, {
 			checkSyncDir: load,
 		});
 		if (built.isErr()) return failed(built.error);
-		const written = await this.outputService.write(
-			config,
-			built.value.tree
-		);
+		const written = await this.buildService.write(built.value);
 		if (written.isErr()) return failed(written.error);
+		this.readFiles.set(file, new Set(built.value.readFiles));
 
 		return {
 			entry,
 			config,
 			outcome: written.value.written ? "wrote" : "unchanged",
-			diagnostics: [
-				...this.unseen(file, "build", built.value.warnings),
-				...(load
-					? this.unseen(file, "sync", built.value.syncWarnings)
-					: []),
-			],
+			diagnostics: built.value.warnings,
+			...(load && { syncDiagnostics: built.value.syncWarnings }),
 			summary: built.value.summary,
 		};
 	}
@@ -254,8 +242,13 @@ export class WatchSession extends AbstractDisposable {
 			sequencer = new Sequencer();
 			this.rebuilds.set(file, sequencer);
 		}
+		this.rebuilding++;
 		const queued = sequencer.queue(
 			this.guarded(() => this.rebuild(file, load))
+		);
+		void queued.then(
+			() => this.rebuilding--,
+			() => this.rebuilding--
 		);
 		this.track(queued);
 		return queued;
@@ -323,7 +316,7 @@ export class WatchSession extends AbstractDisposable {
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
-		this.plan = createWatchPlan(this.currentConfigs);
+		this.plan = new WatchPlan(this.currentConfigs);
 		if (this.watchKey() === this.activeWatch) return false;
 		await this.watchPlan();
 		return true;

@@ -7,7 +7,6 @@ import {
 	ResolvedConfigSpec,
 	mockConfig,
 } from "../../config/__tests__/mock-config-service.js";
-import { CoreOutputService } from "../../output/core-output-service.js";
 import {
 	SourcemapNode,
 	describeWithRojo,
@@ -115,12 +114,9 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
 		});
-		const built = (
-			await buildServiceOf(fileSystem, index).build(config)
-		).unwrap();
-		(
-			await new CoreOutputService(fileSystem).write(config, built.tree)
-		).unwrap();
+		const buildService = buildServiceOf(fileSystem, index);
+		const built = (await buildService.build(config)).unwrap();
+		(await buildService.write(built)).unwrap();
 	};
 
 	it("should place every Rojo-native file as Rojo would", async () => {

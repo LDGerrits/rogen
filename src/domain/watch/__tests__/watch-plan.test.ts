@@ -1,6 +1,6 @@
 import path from "path";
 import { isIgnored } from "../../../platform/watcher/ignored-paths.js";
-import { createWatchPlan, WatchPlanConfig } from "../watch-plan.js";
+import { WatchPlan, WatchPlanConfig } from "../watch-plan.js";
 
 const config = (
 	file: string,
@@ -16,7 +16,7 @@ const config = (
 describe("domain/watch/watch-plan", () => {
 	describe("roots", () => {
 		it("should list a root shared by two configs once", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 				config("/repo/source.rogen.json", ["/repo/src"]),
 			]);
@@ -25,7 +25,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should drop a root inside another", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 				config("/repo/lobby.rogen.json", ["/repo/src/shared"]),
 			]);
@@ -34,7 +34,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should not widen roots to their common parent", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", [
 					"/repo/places/lobby",
 					"/repo/places/shared",
@@ -48,7 +48,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should keep roots that only share a name prefix", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", [
 					"/repo/src",
 					"/repo/src-extra",
@@ -59,7 +59,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should drop a nested root even when it comes first", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", [
 					"/repo/src/shared",
 					"/repo/src",
@@ -70,7 +70,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should resolve relative roots to absolute ones", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["src"]),
 			]);
 
@@ -80,7 +80,7 @@ describe("domain/watch/watch-plan", () => {
 
 	describe("configsFor", () => {
 		it("should return every config whose roots contain the path", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 				config("/repo/lobby.rogen.json", ["/repo/src/shared"]),
 			]);
@@ -92,7 +92,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should return a config once when several of its roots contain the path", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", [
 					"/repo/src",
 					"/repo/src/shared",
@@ -105,7 +105,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should skip a config whose roots do not contain the path", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 				config("/repo/lobby.rogen.json", ["/repo/places/lobby"]),
 			]);
@@ -116,7 +116,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should claim a root directory itself", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 			]);
 
@@ -126,7 +126,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should not claim a sibling that shares a name prefix", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 			]);
 
@@ -134,7 +134,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should claim a path outside the config's own directory", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/places/lobby.rogen.json", ["/repo/shared"]),
 			]);
 
@@ -146,7 +146,7 @@ describe("domain/watch/watch-plan", () => {
 
 	describe("watches", () => {
 		it("should be true only under a root", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 			]);
 
@@ -157,7 +157,7 @@ describe("domain/watch/watch-plan", () => {
 
 	describe("ignored", () => {
 		it("should list each output file, its sync directory and a pattern for its staging files", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
 					syncDir: "/repo/out",
 				}),
@@ -171,7 +171,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should ignore the staging file of any process writing an output", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 			]);
 
@@ -187,7 +187,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should not ignore the staging file of an unrelated output", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"]),
 			]);
 
@@ -198,7 +198,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should escape regex characters in the output path", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo (x)/default.rogen.json", ["/repo (x)/src"]),
 			]);
 
@@ -211,7 +211,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should keep a sync directory that lies inside a root", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
 					syncDir: "/repo/src/out",
 				}),
@@ -221,7 +221,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should drop a sync directory that contains a root", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/dist/src"], {
 					syncDir: "/repo/dist",
 				}),
@@ -231,7 +231,7 @@ describe("domain/watch/watch-plan", () => {
 		});
 
 		it("should list a path shared by two configs once", () => {
-			const plan = createWatchPlan([
+			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
 					syncDir: "/repo/out",
 				}),

@@ -1,5 +1,13 @@
 import path from "path";
-import { WatchUpdate } from "../../../domain/watch/watch-session.js";
+import { mockEntry } from "../../../domain/config/__tests__/mock-config-service.js";
+import {
+	RebuildReport,
+	WatchUpdate,
+} from "../../../domain/watch/watch-session.js";
+import {
+	errorDiagnostic,
+	warningDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import {
 	FileChange,
 	FileChangeType,
@@ -17,17 +25,19 @@ const change = (type: FileChangeType, file: string): FileChange => ({
 	fileType: FileType.File,
 });
 
+const updateOf = (update: Partial<WatchUpdate>): WatchUpdate => ({
+	at: new Date(2026, 0, 2, 3, 4, 5),
+	cause: { kind: "initial" },
+	changes: [],
+	notices: [],
+	reports: [],
+	...update,
+});
+
 const logged = (update: Partial<WatchUpdate>) => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new WatchLog(logService, cwd).update({
-		at: new Date(2026, 0, 2, 3, 4, 5),
-		cause: { kind: "initial" },
-		changes: [],
-		notices: [],
-		reports: [],
-		...update,
-	});
+	new WatchLog(logService, cwd).update(updateOf(update));
 	return logService.entries;
 };
 
@@ -114,6 +124,102 @@ describe("WatchLog.update", () => {
 			expect(listed).toHaveLength(21);
 			expect(listed[19]).toBe("changed src/F19.luau");
 			expect(listed[20]).toBe("and 5 more");
+		});
+	});
+
+	describe("diagnostics it already printed", () => {
+		const warning = (message: string) =>
+			warningDiagnostic("x.warn", { resource: "/repo/src" }, message);
+		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
+
+		const reportOf = (
+			diagnostics: RebuildReport["diagnostics"],
+			syncDiagnostics?: RebuildReport["syncDiagnostics"]
+		): RebuildReport => ({
+			entry,
+			config: entry.resolved!,
+			outcome: "unchanged",
+			diagnostics,
+			syncDiagnostics,
+			summary: {
+				roots: [],
+				routes: [],
+				tags: [],
+				unrouted: 0,
+				superseded: 0,
+				displaced: 0,
+			},
+		});
+
+		const session = () => {
+			const logService = new MockLogService();
+			const log = new WatchLog(logService, cwd);
+			const texts = () =>
+				logService.entries
+					.filter(
+						({ kind }) =>
+							kind === "diagnosticWarning" ||
+							kind === "diagnosticError"
+					)
+					.map((logged) => logged.text);
+			return { log, logService, texts };
+		};
+
+		it("should print a build warning once while it persists", () => {
+			const { log, texts } = session();
+
+			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
+			log.update(
+				updateOf({ reports: [reportOf([warning("a"), warning("b")])] })
+			);
+
+			expect(texts().filter((text) => text.includes(": a"))).toHaveLength(
+				1
+			);
+			expect(texts().filter((text) => text.includes(": b"))).toHaveLength(
+				1
+			);
+		});
+
+		it("should print it again after it went away", () => {
+			const { log, texts } = session();
+
+			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
+			log.update(updateOf({ reports: [reportOf([])] }));
+			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
+
+			expect(texts().filter((text) => text.includes(": a"))).toHaveLength(
+				2
+			);
+		});
+
+		it("should track the sync dir check apart from the build, and keep it when a round doesn't check", () => {
+			const { log, texts } = session();
+
+			log.update(updateOf({ reports: [reportOf([], [warning("s")])] }));
+			log.update(updateOf({ reports: [reportOf([])] }));
+			log.update(updateOf({ reports: [reportOf([], [warning("s")])] }));
+
+			expect(texts().filter((text) => text.includes(": s"))).toHaveLength(
+				1
+			);
+		});
+
+		it("should say nothing for a round whose only news is a config problem it already printed", () => {
+			const { log, logService } = session();
+			const notice = {
+				file: entry.file,
+				errors: [
+					errorDiagnostic("x.err", { resource: entry.file }, "bad."),
+				],
+				warnings: [],
+			};
+
+			log.update(updateOf({ notices: [notice] }));
+			const before = logService.entries.length;
+			log.update(updateOf({ notices: [notice] }));
+
+			expect(logService.entries).toHaveLength(before);
 		});
 	});
 });

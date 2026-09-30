@@ -30,6 +30,37 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("build", () => {
+		it("should fail when the config declares no routes, without reading the index", async () => {
+			const config = configOf({ routes: {} });
+
+			const result = await buildServiceOfFs().build(config);
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
+			]);
+		});
+
+		it("should name the file it would write", async () => {
+			const result = await buildOf(
+				configOf({ outFile: abs("out/game.project.json") })
+			);
+
+			expect(result.unwrap().outFile).toBe(abs("out/game.project.json"));
+		});
+
+		it("should report the folder meta it read, and only that", async () => {
+			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
+			await fs.writeFile(abs("src/Hud.luau"), "");
+			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
+
+			const result = await buildOf(configOf());
+
+			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Combat/init.meta.json"),
+			]);
+		});
+
 		it("should return a tree with no warnings when every root dir exists", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
@@ -487,6 +518,18 @@ describe("CoreBuildService", () => {
 			expect(unchecked.unwrap().syncWarnings).toEqual([]);
 			expect(checked.unwrap().syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },
+			]);
+		});
+	});
+
+	describe("locate", () => {
+		it("should fail when the config declares no routes", async () => {
+			const result = await buildServiceOfFs().locate(
+				configOf({ routes: {} })
+			);
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "route.noRoutes" },
 			]);
 		});
 	});

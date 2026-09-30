@@ -7,7 +7,6 @@ import {
 	ConfigService,
 	ResolvedEntry,
 } from "../../domain/config/config-service.js";
-import { OutputService } from "../../domain/output/output-service.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -49,7 +48,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const environmentService = accessor.get(EnvironmentService);
 		const buildService = accessor.get(BuildService);
-		const outputService = accessor.get(OutputService);
 		const logDiagnostics = (diagnostics: readonly Diagnostic[]) => {
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
@@ -92,7 +90,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		for (const { entry, config, project } of built) {
 			if (built.length > 1) logService.step(config.label);
-			const written = await outputService.write(config, project.tree);
+			const written = await buildService.write(project);
 			if (written.isErr())
 				return err(new DiagnosticsError(written.error));
 

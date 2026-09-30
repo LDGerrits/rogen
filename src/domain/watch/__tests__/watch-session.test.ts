@@ -8,7 +8,6 @@ import { NullLogService } from "../../../platform/log/log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreOutputService } from "../../output/core-output-service.js";
 import { WatchSession, WatchUpdate } from "../watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 
@@ -49,8 +48,7 @@ describe("WatchSession", () => {
 				),
 				configService,
 				indexService,
-				buildServiceOf(fs, indexService),
-				new CoreOutputService(fs)
+				buildServiceOf(fs, indexService)
 			)
 		);
 		store.add(session.onDidUpdate((update) => updates.push(update)));
@@ -139,17 +137,39 @@ describe("WatchSession", () => {
 		expect(configService.configs[0].resolved).toBeDefined();
 	});
 
-	it("should report a rebuild's diagnostics only while they are new", async () => {
+	it("should report every diagnostic of a rebuild, new or not", async () => {
 		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
 		await start();
 
 		await fs.writeFile("/repo/src/A.luau", "");
 		await settle();
 
-		expect(updates[0].reports[0].diagnostics).toMatchObject([
-			{ code: "meta.unclaimed" },
-		]);
-		expect(updates[1].reports[0].diagnostics).toEqual([]);
+		for (const update of updates.slice(0, 2)) {
+			expect(update.reports[0].diagnostics).toMatchObject([
+				{ code: "meta.unclaimed" },
+			]);
+		}
+	});
+
+	it("should report the sync dir check only for a round that made it", async () => {
+		await start();
+
+		await fs.writeFile("/repo/src/A.luau", "");
+		await settle();
+
+		expect(updates[0].reports[0].syncDiagnostics).toEqual([]);
+		expect(updates[1].reports[0].syncDiagnostics).toBeUndefined();
+	});
+
+	it("should not rebuild for an update to a meta file the build never read", async () => {
+		await fs.writeFile("/repo/src/Hud.luau", "");
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await start();
+
+		await fs.writeFile("/repo/src/Hud.meta.json", '{"className":"Actor"}');
+		await settle();
+
+		expect(updates).toHaveLength(1);
 	});
 
 	it("should not rebuild for an update to a source file, only for a new one", async () => {

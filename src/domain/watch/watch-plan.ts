@@ -1,8 +1,8 @@
 import path from "path";
 import { contains, outermostDirs } from "../../base/path.js";
-import { ResolvedConfig } from "../config/config.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
-import { stagingPattern } from "../output/output.js";
+import { OutputFile } from "../build/build-service.js";
+import { ResolvedConfig } from "../config/config.js";
 
 /** `file` names the config in `configsFor`. */
 export type WatchPlanConfig = Pick<
@@ -10,56 +10,55 @@ export type WatchPlanConfig = Pick<
 	"file" | "rootDirs" | "outFile" | "syncDir"
 >;
 
-export interface WatchPlan {
+/** What a watch watches and what it skips, for a set of configs. */
+export class WatchPlan {
 	/** The dirs to watch and index: every config's root dirs, minus any inside another. */
 	readonly roots: readonly string[];
 	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
 	readonly ignored: readonly IgnoredPath[];
-	/** Every config with a root dir that contains `changePath`, each once. */
-	configsFor(changePath: string): readonly string[];
-	watches(changePath: string): boolean;
-}
+	private readonly claims: readonly {
+		readonly file: string;
+		readonly roots: readonly string[];
+	}[];
 
-export function createWatchPlan(
-	configs: readonly WatchPlanConfig[]
-): WatchPlan {
-	const claims = configs.map((config) => ({
-		file: config.file,
-		roots: config.rootDirs.map((dir) => path.resolve(dir)),
-	}));
-	const roots = outermostDirs(
-		configs.flatMap((config) =>
-			config.rootDirs.map((dir) => path.resolve(dir))
-		)
-	);
+	constructor(configs: readonly WatchPlanConfig[]) {
+		this.claims = configs.map((config) => ({
+			file: config.file,
+			roots: config.rootDirs.map((dir) => path.resolve(dir)),
+		}));
+		this.roots = outermostDirs(this.claims.flatMap(({ roots }) => roots));
 
-	const outFiles = [
-		...new Set(configs.map((config) => path.resolve(config.outFile))),
-	];
-	const ignoredPaths = [
-		...new Set([
-			...outFiles,
-			...configs.flatMap((config) =>
-				config.syncDir ? [path.resolve(config.syncDir)] : []
+		const outFiles = [
+			...new Set(configs.map((config) => path.resolve(config.outFile))),
+		];
+		const ignoredPaths = [
+			...new Set([
+				...outFiles,
+				...configs.flatMap((config) =>
+					config.syncDir ? [path.resolve(config.syncDir)] : []
+				),
+			]),
+		].filter(
+			(target) => !this.roots.some((root) => contains(target, root))
+		);
+		this.ignored = [
+			...ignoredPaths,
+			...outFiles.map(
+				(outFile) => new OutputFile(outFile).stagingPattern
 			),
-		]),
-	].filter((target) => !roots.some((root) => contains(target, root)));
-	const ignored = [...ignoredPaths, ...outFiles.map(stagingPattern)];
+		];
+	}
 
-	return {
-		roots,
-		ignored,
-		configsFor: (changePath) => {
-			const target = path.resolve(changePath);
-			return claims
-				.filter(({ roots: own }) =>
-					own.some((root) => contains(root, target))
-				)
-				.map(({ file }) => file);
-		},
-		watches: (changePath) => {
-			const target = path.resolve(changePath);
-			return roots.some((root) => contains(root, target));
-		},
-	};
+	/** Every config with a root dir that contains `changePath`, each once. */
+	configsFor(changePath: string): readonly string[] {
+		const target = path.resolve(changePath);
+		return this.claims
+			.filter(({ roots }) => roots.some((root) => contains(root, target)))
+			.map(({ file }) => file);
+	}
+
+	watches(changePath: string): boolean {
+		const target = path.resolve(changePath);
+		return this.roots.some((root) => contains(root, target));
+	}
 }

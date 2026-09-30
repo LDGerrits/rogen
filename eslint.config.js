@@ -17,7 +17,6 @@ const domainModules = {
 	build: ["build-service"],
 	config: ["config", "config-service"],
 	init: ["init-plan", "init-service"],
-	output: ["output", "output-service"],
 	roblox: ["roblox"],
 	rojo: ["rojo-file", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],

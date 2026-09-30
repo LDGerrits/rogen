@@ -6,13 +6,13 @@ import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
-import { placeFiles } from "../placement.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,
 	buildServiceOf,
 	configOf,
 	indexOf,
+	placeFiles,
 	syncTools,
 	writeFiles,
 } from "./fixtures.js";

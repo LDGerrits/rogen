@@ -12,34 +12,23 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { PlacedBuild, ScannedRoot } from "../build-record.js";
-import { placeFiles } from "../placement.js";
+import { Placement } from "../placement.js";
+import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,
 	buildServiceOf,
 	configOf,
 	indexOf,
+	placeFiles,
 	syncTools,
 	writeFiles,
 } from "./fixtures.js";
 
-describe("placeFiles", () => {
+describe("Placer", () => {
 	const emptyIndex: IndexReader = {
 		getEntries: () => undefined,
 		hasEntry: () => false,
 		getEntryType: () => undefined,
-	};
-
-	const untouchedIndex: IndexReader = {
-		getEntries: () => {
-			throw new Error("the index was read");
-		},
-		hasEntry: () => {
-			throw new Error("the index was read");
-		},
-		getEntryType: () => {
-			throw new Error("the index was read");
-		},
 	};
 
 	describe("preparing", () => {
@@ -47,44 +36,6 @@ describe("placeFiles", () => {
 			overrides: Parameters<typeof configOf>[0] = {},
 			index: IndexReader = emptyIndex
 		) => placeFiles(index, configOf(overrides), syncTools);
-
-		it("should fail when the config declares no routes", () => {
-			const result = prepare({ routes: {} }, untouchedIndex);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
-			]);
-		});
-
-		it("should parse each route's target", () => {
-			const { targets } = prepare({
-				routes: {
-					server: "ServerScriptService",
-					"*": "ReplicatedStorage/shared/Deep",
-				},
-			}).unwrap();
-
-			expect([...targets]).toEqual([
-				["server", { service: "ServerScriptService", folders: [] }],
-				[
-					"*",
-					{
-						service: "ReplicatedStorage",
-						folders: ["shared", "Deep"],
-					},
-				],
-			]);
-		});
-
-		it("should derive the declared keys from the routes and tags", () => {
-			const { keys } = prepare({
-				routes: { server: "ServerScriptService", "*": "Workspace" },
-				tags: { mock: true },
-			}).unwrap();
-
-			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.tagKeys]).toEqual(["mock"]);
-		});
 
 		it("should root the layout at the output's directory", () => {
 			const { layout } = prepare({
@@ -97,7 +48,7 @@ describe("placeFiles", () => {
 		it("should hold the template rebased to the output's directory", () => {
 			const { template } = prepare({ name: "game" }).unwrap();
 
-			expect(template.getTree()).toEqual({
+			expect(template.edit().getTree()).toEqual({
 				name: "game",
 				tree: { $className: "DataModel" },
 			});
@@ -718,7 +669,7 @@ describe("placeFiles", () => {
 					rootDirs: [abs("core"), abs("lobby")],
 				});
 
-				expect(roots[1]).toEqual({
+				expect(roots[1]).toMatchObject({
 					rootDir: abs("lobby"),
 					exists: false,
 					entries: [],
@@ -1851,20 +1802,10 @@ describe("placeFiles", () => {
 
 				expect((await route(noStar)).unwrap().warnings).toEqual([]);
 			});
-
-			it("should fail when routes is empty", async () => {
-				await write("src/server/A.luau", "src/B.luau");
-
-				const result = await route({ routes: {} });
-
-				expect(result.isErr() ? result.error : []).toMatchObject([
-					{ code: "route.noRoutes" },
-				]);
-			});
 		});
 	});
 
-	type TagResult = Pick<PlacedBuild, "files" | "leftOut"> & {
+	type TagResult = Pick<Placement, "files" | "leftOut"> & {
 		readonly warnings: readonly Diagnostic[];
 	};
 
@@ -2007,7 +1948,7 @@ describe("placeFiles", () => {
 					await apply({ mock: false, dev: false })
 				).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("src/Analytics.mock.luau"),
@@ -2050,7 +1991,7 @@ describe("placeFiles", () => {
 
 				const result = (await apply({ mock: true })).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("src/Analytics.luau"),
@@ -2070,7 +2011,7 @@ describe("placeFiles", () => {
 					await apply({}, [abs("core"), abs("lobby")])
 				).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("core/Types.luau"),

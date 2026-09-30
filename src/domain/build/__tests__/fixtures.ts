@@ -3,7 +3,10 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
-import { IndexService } from "../../../platform/fs/index-service.js";
+import {
+	IndexReader,
+	IndexService,
+} from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import {
 	ResolvedConfigSpec,
@@ -13,6 +16,7 @@ import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js"
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { ToolchainService } from "../../toolchain/toolchain-service.js";
 import { CoreBuildService } from "../core-build-service.js";
+import { Placer } from "../placement.js";
 
 const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
@@ -24,6 +28,12 @@ const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
 	detect: (directory) => toolchain.detect(directory),
 	getSyncTools: () => [...syncTools, ...extraTools],
 });
+
+export const placeFiles = (
+	index: IndexReader,
+	config: ResolvedConfig,
+	tools: readonly SyncTool[]
+) => new Placer(index, config, tools).place();
 
 export const buildServiceOf = (
 	fs: FileSystemService,
