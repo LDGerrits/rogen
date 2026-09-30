@@ -95,8 +95,10 @@ async function main(): Promise<void> {
 			Extensions.Commands
 		);
 		const rawArgs = process.argv.slice(2);
-		const argsResult = parseArgs(rawArgs, (command) =>
-			commandRegistry.getOptions(command)
+		const argsResult = parseArgs(
+			rawArgs,
+			(command) => commandRegistry.getOptions(command),
+			(command) => commandRegistry.getCommand(command) !== undefined
 		);
 
 		// Read from the raw line, so a parse error is reported the way the flags ask.

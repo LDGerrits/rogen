@@ -1,4 +1,5 @@
-import { relativeTo } from "../../base/path.js";
+import path from "path";
+import { relativeTo, toPosix } from "../../base/path.js";
 
 export enum DiagnosticSeverity {
 	Error,
@@ -58,9 +59,38 @@ const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> = {
 	[DiagnosticSeverity.Warning]: "warning",
 };
 
-/** With `cwd`, the resource is written relative to it. */
+/** Drops `prefix` wherever it starts a path, not where it is the tail of a longer one. */
+function stripPrefix(text: string, prefix: string): string {
+	let result = "";
+	let from = 0;
+	for (
+		let at = text.indexOf(prefix);
+		at !== -1;
+		at = text.indexOf(prefix, from)
+	) {
+		const inLongerPath = at > 0 && /[\w./\\-]/.test(text[at - 1]);
+		result += text.slice(from, inLongerPath ? at + prefix.length : at);
+		from = at + prefix.length;
+	}
+	return result + text.slice(from);
+}
+
+function stripDirectory(text: string, dir: string): string {
+	const bare = dir.replace(/[\\/]+$/, "");
+	if (bare === "") return text;
+	return [`${bare}${path.sep}`, `${toPosix(bare)}/`].reduce(
+		stripPrefix,
+		text
+	);
+}
+
+/** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
-	const { position, severity, message } = diagnostic;
+	const { position, severity } = diagnostic;
+	const message =
+		cwd === undefined
+			? diagnostic.message
+			: stripDirectory(diagnostic.message, cwd);
 	const resource =
 		cwd === undefined
 			? diagnostic.resource

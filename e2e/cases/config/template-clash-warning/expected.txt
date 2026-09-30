@@ -11,7 +11,7 @@ stdout:
   [debug] left out: 1 displaced by the template
   Built 1 config.
 stderr:
-  default.project.json - warning: "ServerScriptService/Save" is defined by both the template and <dir>/src/Save.server.luau, so the template's is kept and <dir>/src/Save.server.luau is left out. Rename one of them to keep both.
+  default.project.json - warning: "ServerScriptService/Save" is defined by both the template and src/Save.server.luau, so the template's is kept and src/Save.server.luau is left out. Rename one of them to keep both.
 
 $ rogen where
 exit 0

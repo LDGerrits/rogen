@@ -49,6 +49,42 @@ describe("platform/diagnostics/diagnostic", () => {
 				renderDiagnostic(diagnostic, "/repo/src/Net/HttpClient.luau")
 			).toBe(". - warning: it contributes nothing.");
 		});
+
+		it("should write the paths inside the message relative to the working directory too", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "test.example",
+				message:
+					'"a" is defined by /repo/src/A.luau and /repo/src/B.luau, not /repo2/src/C.luau.',
+				resource: "/repo/default.project.json",
+			};
+
+			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+				'default.project.json - warning: "a" is defined by src/A.luau and src/B.luau, not /repo2/src/C.luau.'
+			);
+			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
+		});
+
+		it.each([
+			["/", "see /etc/foo", "see /etc/foo"],
+			["/repo/", "see /repo/src/A.luau", "see src/A.luau"],
+			["/repo", "see /mnt/repo/src/A.luau", "see /mnt/repo/src/A.luau"],
+			["/repo", "(/repo/a, /repo/b)", "(a, b)"],
+		])(
+			"should strip the working directory %j from %j only at the start of a path",
+			(cwd, message, expected) => {
+				const diagnostic: Diagnostic = {
+					severity: DiagnosticSeverity.Warning,
+					code: "test.example",
+					message,
+					resource: "/elsewhere",
+				};
+
+				expect(renderDiagnostic(diagnostic, cwd)).toContain(
+					` warning: ${expected}`
+				);
+			}
+		);
 	});
 
 	describe("diagnosticToJson", () => {

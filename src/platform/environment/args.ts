@@ -138,38 +138,84 @@ function toOptionTable(options: readonly OptionDescriptor[]) {
 	);
 }
 
-function parseStrict(args: string[], options: readonly OptionDescriptor[]) {
-	const { values, positionals } = nodeParseArgs({
+type Token = ReturnType<typeof nodeParseArgs>["tokens"];
+
+function tokenize(args: string[], options: readonly OptionDescriptor[]) {
+	return nodeParseArgs({
 		args,
 		options: toOptionTable(options),
 		allowPositionals: true,
-		strict: true,
+		strict: false,
+		tokens: true,
 	});
+}
 
-	let command = "build";
-	if (values.version) command = "version";
-	else if (values.help) command = "help";
-	else if (positionals.length > 0) command = positionals[0].toLowerCase();
-	else positionals.push(command);
+function commandOf(
+	values: { version?: unknown; help?: unknown },
+	positionals: string[]
+): string {
+	if (values.version) return "version";
+	if (values.help) return "help";
+	return positionals.length > 0 ? positionals[0].toLowerCase() : "build";
+}
 
-	return { command, options: { ...values, _: positionals } as ParsedArgs };
+/** Node's own wording varies by version and talks about positionals, so the options are checked here. */
+function findOptionProblem(
+	tokens: NonNullable<Token>,
+	options: readonly OptionDescriptor[],
+	command: string
+): string | undefined {
+	for (const token of tokens) {
+		if (token.kind !== "option") continue;
+		const option = options.find(({ name }) => name === token.name);
+		if (!option) {
+			return `Unknown option '${token.rawName}'. Run 'rogen help ${command}' to see what ${command} accepts.`;
+		}
+		if (option.type === "boolean" && token.value !== undefined) {
+			return `Option '${token.rawName}' is a flag and takes no value.`;
+		}
+		const missing =
+			token.value === undefined ||
+			(!token.inlineValue && token.value.startsWith("-"));
+		if (option.type === "string" && missing) {
+			return `Option '${token.rawName}' needs a value.`;
+		}
+	}
+	return undefined;
 }
 
 /**
  * Finds the command with every known option (`optionsFor(undefined)`), then
- * parses again with only the options that command accepts.
+ * checks the line against the options that command accepts. A line for a
+ * command that doesn't exist is returned unchecked, for the command service to
+ * report.
  */
 export function parseArgs(
 	args: string[],
-	optionsFor: (command?: string) => readonly OptionDescriptor[]
+	optionsFor: (command?: string) => readonly OptionDescriptor[],
+	isCommand: (command: string) => boolean
 ): Result<ParsedCli, Error> {
 	try {
-		const { command } = parseStrict(args, optionsFor());
-		const parsed = parseStrict(args, optionsFor(command));
-		if (parsed.options.verbose && parsed.options.quiet) {
+		const { values, positionals, tokens } = tokenize(args, optionsFor());
+		const command = commandOf(values, positionals);
+		if (command === "build" && positionals.length === 0)
+			positionals.push(command);
+
+		if (isCommand(command)) {
+			const problem = findOptionProblem(
+				tokens ?? [],
+				optionsFor(command),
+				command
+			);
+			if (problem) return err(new Error(problem));
+		}
+		if (values.verbose && values.quiet) {
 			return err(new Error("--verbose can't be combined with --quiet."));
 		}
-		return ok(parsed);
+		return ok({
+			command,
+			options: { ...values, _: positionals } as ParsedArgs,
+		});
 	} catch (error) {
 		return err(ErrorUtils.fromUnknown(error));
 	}
