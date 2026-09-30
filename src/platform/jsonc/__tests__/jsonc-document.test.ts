@@ -82,6 +82,16 @@ describe("platform/jsonc/jsonc-document", () => {
 				});
 			});
 
+			it("should not mistake an inherited property name for a listed field", () => {
+				expect(read('{ "constructor": 1 }').isOk()).toBe(false);
+				expect(
+					read('{ "constructor": 1 }', {
+						type: "object",
+						properties: { name: { type: "string" } },
+					}).isOk()
+				).toBe(true);
+			});
+
 			it("should let fields through when the schema doesn't forbid others", () => {
 				const open: JSONSchema = {
 					type: "object",

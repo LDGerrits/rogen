@@ -346,7 +346,7 @@ export class BuildValidator {
 			warningDiagnostic(
 				"meta.appliesToNothing",
 				{ resource: this.config.outFile },
-				`${metas.length} init.meta.json ${one ? "file applies" : "files apply"} to nothing, because ${one ? "its folder never becomes" : "their folders never become"} an instance (${listLimited(metas, LISTED_PATHS)}). Move the meta into the folder that should get it.`
+				`${metas.length} ${RojoFile.INIT_META} ${one ? "file applies" : "files apply"} to nothing, because ${one ? "its folder never becomes" : "their folders never become"} an instance (${listLimited(metas, LISTED_PATHS)}). Move the meta into the folder that should get it.`
 			),
 		];
 	}

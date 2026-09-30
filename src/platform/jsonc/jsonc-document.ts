@@ -114,7 +114,9 @@ export class JsoncDocumentReader {
 			const propertyPath = path
 				? `${path}.${property.name}`
 				: property.name;
-			const known = schema.properties?.[property.name];
+			const known = Object.hasOwn(schema.properties ?? {}, property.name)
+				? schema.properties?.[property.name]
+				: undefined;
 			if (known) {
 				return this.validate(property.value, known, file, propertyPath);
 			}
