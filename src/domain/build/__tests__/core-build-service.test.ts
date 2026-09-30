@@ -506,13 +506,14 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("checkBuildable", () => {
-		const entryOf = (config: ResolvedConfig): ConfigEntry => ({
-			file: config.file,
-			chain: [config.file],
-			resolved: config,
-			diagnostics: [],
-			skippedTags: [],
-		});
+		const entryOf = (config: ResolvedConfig): ConfigEntry =>
+			new ConfigEntry({
+				file: config.file,
+				chain: [config.file],
+				resolved: config,
+				diagnostics: [],
+				skippedTags: [],
+			});
 		const check = (...configs: ResolvedConfig[]) =>
 			buildServiceOfFs().checkBuildable(configs.map(entryOf));
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
@@ -550,7 +551,7 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should refuse a config that failed to load", () => {
-			const broken: ConfigEntry = {
+			const broken = new ConfigEntry({
 				file: abs("broken.rogen.json"),
 				chain: [abs("broken.rogen.json")],
 				resolved: undefined,
@@ -562,7 +563,7 @@ describe("CoreBuildService", () => {
 					),
 				],
 				skippedTags: [],
-			};
+			});
 
 			const result = buildServiceOfFs().checkBuildable([
 				entryOf(configOf()),

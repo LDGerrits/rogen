@@ -18,14 +18,15 @@ const debugLines = (
 	return logService.entries.map(({ text }) => text);
 };
 
-const entryOf = (overrides: Partial<ConfigEntry> = {}): ConfigEntry => ({
-	file: path.join(cwd, "match.rogen.json"),
-	chain: [path.join(cwd, "match.rogen.json")],
-	resolved: undefined,
-	diagnostics: [],
-	skippedTags: [],
-	...overrides,
-});
+const entryOf = (overrides: Partial<ConfigEntry> = {}): ConfigEntry =>
+	new ConfigEntry({
+		file: path.join(cwd, "match.rogen.json"),
+		chain: [path.join(cwd, "match.rogen.json")],
+		resolved: undefined,
+		diagnostics: [],
+		skippedTags: [],
+		...overrides,
+	});
 
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],

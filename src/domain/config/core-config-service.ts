@@ -158,13 +158,13 @@ export class CoreConfigService
 				config: loaded.config,
 				files: loaded.files,
 				undeclaredTags: loaded.undeclaredTags,
-				entry: {
+				entry: new ConfigEntry({
 					file,
 					chain: loaded.chain,
 					resolved: loaded.resolved.value,
 					diagnostics: [],
 					skippedTags: loaded.undeclaredTags ?? [],
-				},
+				}),
 			};
 		}
 		// A failed load keeps the last valid config, which is what still gets built.
@@ -172,7 +172,7 @@ export class CoreConfigService
 			config: previous?.config,
 			files: loaded.files,
 			undeclaredTags: loaded.undeclaredTags,
-			entry: {
+			entry: new ConfigEntry({
 				file,
 				chain: loaded.chain,
 				resolved: previous?.entry.resolved,
@@ -180,7 +180,7 @@ export class CoreConfigService
 				skippedTags: previous?.entry.resolved
 					? previous.entry.skippedTags
 					: (loaded.undeclaredTags ?? []),
-			},
+			}),
 		};
 	}
 }

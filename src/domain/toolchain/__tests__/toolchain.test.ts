@@ -6,9 +6,9 @@ const directory = path.resolve("/mock/my-game");
 describe("Darklua", () => {
 	describe("processCommands", () => {
 		it("should process one root dir into the sync dir itself", () => {
-			expect(
-				Darklua.processCommands(directory, ["src"], "dist")
-			).toEqual(["darklua process src dist"]);
+			expect(Darklua.processCommands(directory, ["src"], "dist")).toEqual(
+				["darklua process src dist"]
+			);
 		});
 
 		it("should process each of several root dirs to its path under the common root", () => {

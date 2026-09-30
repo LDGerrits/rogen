@@ -3,10 +3,7 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import {
-	Diagnostic,
-	DiagnosticSeverity,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
@@ -113,7 +110,11 @@ export class WatchSession extends AbstractDisposable {
 		private readonly outputService: OutputService
 	) {
 		super();
-		this.plan = createWatchPlan(resolvedConfigs(this.configService.configs));
+		this.plan = createWatchPlan(this.resolvedConfigs);
+	}
+
+	private get resolvedConfigs(): ResolvedConfig[] {
+		return resolvedConfigs(this.configService.configs);
 	}
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
@@ -149,7 +150,7 @@ export class WatchSession extends AbstractDisposable {
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
-			resolvedConfigs(this.configService.configs).map(({ file }) =>
+			this.resolvedConfigs.map(({ file }) =>
 				this.queueRebuild(file, true)
 			)
 		);
@@ -180,8 +181,6 @@ export class WatchSession extends AbstractDisposable {
 
 	private noteConfig(entry: ConfigEntry): void {
 		const fresh = this.unseen(entry.file, "config", entry.diagnostics);
-		const isError = (diagnostic: Diagnostic) =>
-			diagnostic.severity === DiagnosticSeverity.Error;
 		const errors = fresh.filter(isError);
 		const warnings = fresh.filter((diagnostic) => !isError(diagnostic));
 		if (errors.length + warnings.length > 0) {
@@ -330,7 +329,7 @@ export class WatchSession extends AbstractDisposable {
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
-		this.plan = createWatchPlan(resolvedConfigs(this.configService.configs));
+		this.plan = createWatchPlan(this.resolvedConfigs);
 		if (this.watchKey() === this.activeWatch) return false;
 		await this.watchPlan();
 		return true;
@@ -384,9 +383,7 @@ export class WatchSession extends AbstractDisposable {
 
 		const affected = new Set([
 			...reloaded,
-			...(reindexed
-				? resolvedConfigs(this.configService.configs).map(({ file }) => file)
-				: []),
+			...(reindexed ? this.resolvedConfigs.map(({ file }) => file) : []),
 			...sourceChanges.flatMap((change) =>
 				this.plan.configsFor(change.path)
 			),
@@ -412,7 +409,7 @@ export class WatchSession extends AbstractDisposable {
 		if (!reindexed) await this.indexService.initialize(this.plan.roots);
 		this.announce(
 			{ kind: "burst" },
-			resolvedConfigs(this.configService.configs).map(({ file }) =>
+			this.resolvedConfigs.map(({ file }) =>
 				this.queueRebuild(file, reloaded.includes(file))
 			)
 		);

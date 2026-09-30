@@ -13,12 +13,7 @@ import {
 	rojoFileName,
 } from "../rojo/rojo-files.js";
 import { BuildSummary, FileLocation } from "./build-service.js";
-import {
-	LeftOut,
-	PlacedBuild,
-	ScannedRoot,
-	TagMatch,
-} from "./build-record.js";
+import { LeftOut, PlacedBuild, ScannedRoot, TagMatch } from "./build-record.js";
 
 /** What a build did, counted for the summary. */
 export function summarizeBuild({

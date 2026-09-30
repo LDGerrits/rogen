@@ -306,8 +306,7 @@ describe("build command", () => {
 
 	it("should refuse to build when a config is invalid", async () => {
 		const logService = new NullLogService();
-		const entry = {
-			...mockEntry(),
+		const entry = mockEntry({}, undefined, {
 			diagnostics: [
 				errorDiagnostic(
 					"config.unknownField",
@@ -315,7 +314,7 @@ describe("build command", () => {
 					"boom."
 				),
 			],
-		};
+		});
 
 		const result = await run(new MockConfigService([entry]), logService);
 
@@ -438,8 +437,7 @@ describe("build command", () => {
 		});
 
 		it("should print a broken config's diagnostics in its own entry and fail", async () => {
-			const broken = {
-				...mockEntry({}, "/repo/broken.rogen.json"),
+			const broken = mockEntry({}, "/repo/broken.rogen.json", {
 				resolved: undefined,
 				diagnostics: [
 					errorDiagnostic(
@@ -448,7 +446,7 @@ describe("build command", () => {
 						"boom."
 					),
 				],
-			};
+			});
 			const { info, result } = show([
 				mockEntry({}, "/repo/ok.rogen.json"),
 				broken,

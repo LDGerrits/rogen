@@ -1,12 +1,7 @@
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Luau } from "./luau.js";
 import { RobloxTs, robloxTsSyncTool } from "./roblox-ts.js";
-import {
-	Darklua,
-	DetectedWorkspace,
-	Language,
-	SyncTool,
-} from "./toolchain.js";
+import { Darklua, DetectedWorkspace, Language, SyncTool } from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
 import { WorkspaceDetector } from "./workspace-detector.js";
 

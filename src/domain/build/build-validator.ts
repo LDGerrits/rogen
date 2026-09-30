@@ -212,9 +212,10 @@ export class BuildValidator {
 			);
 
 		if (await this.fileSystemService.isDirectory(syncDir)) {
-			for (const [name, type] of await this.fileSystemService.readDirectory(
-				syncDir
-			))
+			for (const [
+				name,
+				type,
+			] of await this.fileSystemService.readDirectory(syncDir))
 				if (isDirectoryType(type))
 					candidates.push(path.join(syncDir, name, ...segments));
 		}

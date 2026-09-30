@@ -5,7 +5,10 @@ import { abs, configOf } from "./fixtures.js";
 const mountedPackages: Partial<RojoTree> = {
 	tree: {
 		$className: "DataModel",
-		ReplicatedStorage: { $className: "ReplicatedStorage", $path: "Packages" },
+		ReplicatedStorage: {
+			$className: "ReplicatedStorage",
+			$path: "Packages",
+		},
 	},
 };
 
@@ -26,9 +29,9 @@ describe("templateProject", () => {
 	});
 
 	it("should keep a path as written when the template sits in the project's directory", () => {
-		expect(
-			templated(abs("default.project.json"), abs("."))
-		).toMatchObject({ $path: "Packages" });
+		expect(templated(abs("default.project.json"), abs("."))).toMatchObject({
+			$path: "Packages",
+		});
 	});
 
 	it("should rebase a path when the template lives in another directory", () => {

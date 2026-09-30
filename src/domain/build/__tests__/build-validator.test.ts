@@ -65,7 +65,9 @@ describe("BuildValidator", () => {
 	});
 
 	describe("checkSyncDir", () => {
-		const emittedConfigOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+		const emittedConfigOf = (
+			overrides: Partial<ResolvedConfig> = {}
+		): ResolvedConfig =>
 			baseConfigOf({ syncDir: abs("out"), ...overrides });
 
 		describe("nothing emitted", () => {
@@ -80,7 +82,9 @@ describe("BuildValidator", () => {
 				const warnings = await new BuildValidator(fs).checkSyncDir(
 					placeFiles(index, config, syncTools).unwrap()
 				);
-				return warnings.filter(({ code }) => code === "output.nothingEmitted");
+				return warnings.filter(
+					({ code }) => code === "output.nothingEmitted"
+				);
 			};
 
 			beforeEach(async () => {
@@ -96,9 +100,9 @@ describe("BuildValidator", () => {
 				it("should report nothing without a syncDir", async () => {
 					await fs.writeFile(abs("src/Inventory/A.luau"), "");
 
-					expect(await check(fs, emittedConfigOf({ syncDir: undefined }))).toEqual(
-						[]
-					);
+					expect(
+						await check(fs, emittedConfigOf({ syncDir: undefined }))
+					).toEqual([]);
 				});
 
 				it("should report nothing when the emitted paths exist", async () => {
@@ -147,18 +151,25 @@ describe("BuildValidator", () => {
 					await fs.writeFile(abs("src/Inventory/A.ts"), "");
 					await fs.writeFile(abs("tests/Inventory.spec.ts"), "");
 					await fs.writeFile(abs("out/Inventory/A.luau"), "");
-					await fs.writeFile(abs("out/tests/Inventory.spec.luau"), "");
+					await fs.writeFile(
+						abs("out/tests/Inventory.spec.luau"),
+						""
+					);
 
 					const warnings = await check(
 						fs,
-						emittedConfigOf({ rootDirs: [abs("src"), abs("tests")] })
+						emittedConfigOf({
+							rootDirs: [abs("src"), abs("tests")],
+						})
 					);
 
 					expect(warnings).toHaveLength(1);
 					expect(warnings[0].resource).toBe(abs("src"));
 					expect(warnings[0].message).toContain('root dir "src"');
 					expect(warnings[0].message).toContain('under "out/src"');
-					expect(warnings[0].message).toContain('Found "out/Inventory"');
+					expect(warnings[0].message).toContain(
+						'Found "out/Inventory"'
+					);
 				});
 
 				it("should find output rooted one level deeper than expected", async () => {
@@ -169,7 +180,9 @@ describe("BuildValidator", () => {
 
 					expect(warnings).toHaveLength(1);
 					expect(warnings[0].message).toContain('under "out"');
-					expect(warnings[0].message).toContain('Found "out/src/Inventory"');
+					expect(warnings[0].message).toContain(
+						'Found "out/src/Inventory"'
+					);
 				});
 
 				it("should ignore dotfiles such as marker files", async () => {
@@ -182,7 +195,9 @@ describe("BuildValidator", () => {
 			});
 		});
 
-		const distConfigOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+		const distConfigOf = (
+			overrides: Partial<ResolvedConfig> = {}
+		): ResolvedConfig =>
 			baseConfigOf({ syncDir: abs("dist"), ...overrides });
 
 		describe("meta not synced", () => {
@@ -200,7 +215,9 @@ describe("BuildValidator", () => {
 				const warnings = await new BuildValidator(fs).checkSyncDir(
 					placeFiles(index, config, tools).unwrap()
 				);
-				return warnings.filter(({ code }) => code === "output.metaNotSynced");
+				return warnings.filter(
+					({ code }) => code === "output.metaNotSynced"
+				);
 			};
 
 			beforeEach(() => {
@@ -324,11 +341,17 @@ describe("BuildValidator", () => {
 					const warnings = await check({}, [
 						{
 							id: "yaml",
-							metaReplacement: { suffix: ".meta.yaml", note: "Yaml." },
+							metaReplacement: {
+								suffix: ".meta.yaml",
+								note: "Yaml.",
+							},
 						},
 						{
 							id: "toml",
-							metaReplacement: { suffix: ".meta.toml", note: "Toml." },
+							metaReplacement: {
+								suffix: ".meta.toml",
+								note: "Toml.",
+							},
 						},
 					]);
 
@@ -347,7 +370,9 @@ describe("BuildValidator", () => {
 
 					const warnings = await check({}, []);
 
-					expect(warnings[0].message).not.toContain("The processor turned");
+					expect(warnings[0].message).not.toContain(
+						"The processor turned"
+					);
 				});
 
 				it("should leave out meta that no file claims", async () => {
@@ -377,7 +402,9 @@ describe("BuildValidator", () => {
 					);
 
 					expect(
-						await check({ exclude: [abs("src/Inventory/Save.meta.json")] })
+						await check({
+							exclude: [abs("src/Inventory/Save.meta.json")],
+						})
 					).toEqual([]);
 				});
 			});

@@ -1,8 +1,4 @@
-import {
-	relativeToProject,
-	syncLayoutOf,
-	syncPath,
-} from "../sync-layout.js";
+import { relativeToProject, syncLayoutOf, syncPath } from "../sync-layout.js";
 import { commonAncestor } from "../../../base/path.js";
 import { abs, syncTools } from "./fixtures.js";
 

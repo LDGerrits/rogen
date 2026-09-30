@@ -22,6 +22,9 @@ export interface Diagnostic extends DiagnosticLocation {
 	readonly message: string;
 }
 
+export const isError = (diagnostic: Diagnostic): boolean =>
+	diagnostic.severity === DiagnosticSeverity.Error;
+
 export function errorDiagnostic(
 	code: string,
 	location: DiagnosticLocation,

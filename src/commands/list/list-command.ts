@@ -2,7 +2,7 @@ import { relativeTo } from "../../base/path.js";
 import { err, ok } from "../../base/result.js";
 import {
 	ConfigService,
-	entryErrors,
+	brokenConfigsError,
 } from "../../domain/config/config-service.js";
 import {
 	CommandRegistry,
@@ -36,7 +36,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		logService.intro("rogen list");
 
-		let broken = 0;
 		for (const entry of configService.configs) {
 			logService.step(relative(entry.file));
 			if (entry.chain.length > 1) {
@@ -45,12 +44,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				);
 			}
 
-			const errors = entryErrors(entry);
-			if (errors.length > 0 || !entry.resolved) {
-				broken++;
-				for (const error of errors) logService.diagnostic(error);
+			const config = entry.resolved;
+			if (entry.errors.length > 0 || !config) {
+				for (const error of entry.errors) logService.diagnostic(error);
 			} else {
-				const config = entry.resolved;
 				logService.info(
 					[
 						`root dirs: ${list(config.rootDirs.map(relative))}`,
@@ -62,11 +59,10 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			}
 		}
 
-		const count = configService.configs.length;
-		if (broken > 0) {
-			return err(new Error(`${broken} of ${count} configs have errors.`));
-		}
+		const broken = brokenConfigsError(configService.configs);
+		if (broken) return err(broken);
 
+		const count = configService.configs.length;
 		logService.outro(`${count} ${count === 1 ? "config" : "configs"}.`);
 		return ok(undefined);
 	},

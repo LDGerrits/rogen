@@ -4,11 +4,15 @@ import { ResolvedConfig } from "../config.js";
 import { ConfigEntry, ConfigService } from "../config-service.js";
 import { Result, ok } from "../../../base/result.js";
 
+/** `entry` overrides the entry's own fields, e.g. its diagnostics, or `resolved: undefined` for a config that never resolved. */
 export function mockEntry(
 	resolved: Partial<ResolvedConfig> = {},
-	file = "/repo/default.rogen.json"
+	file = "/repo/default.rogen.json",
+	entry: Partial<
+		Pick<ConfigEntry, "chain" | "resolved" | "diagnostics" | "skippedTags">
+	> = {}
 ): ConfigEntry {
-	return {
+	return new ConfigEntry({
 		file,
 		chain: [file],
 		diagnostics: [],
@@ -23,7 +27,8 @@ export function mockEntry(
 			outFile: "/repo/default.project.json",
 			...resolved,
 		},
-	};
+		...entry,
+	});
 }
 
 export class MockConfigService implements ConfigService {

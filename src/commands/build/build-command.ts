@@ -7,7 +7,7 @@ import { configLabel } from "../../domain/config/config.js";
 import {
 	ConfigService,
 	ResolvedEntry,
-	entryErrors,
+	brokenConfigsError,
 } from "../../domain/config/config-service.js";
 import { OutputService } from "../../domain/output/output-service.js";
 import {
@@ -59,16 +59,8 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		if (args["show-config"]) {
 			logService.print(showConfig(configService.configs));
-			const broken = configService.configs.filter(
-				(entry) => entryErrors(entry).length > 0
-			);
-			return broken.length > 0
-				? err(
-						new Error(
-							`${broken.length} of ${configService.configs.length} configs have errors.`
-						)
-					)
-				: ok(undefined);
+			const broken = brokenConfigsError(configService.configs);
+			return broken ? err(broken) : ok(undefined);
 		}
 
 		const buildable = buildService.checkBuildable(configService.configs);

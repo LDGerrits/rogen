@@ -1,10 +1,7 @@
 import { Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
-import {
-	Diagnostic,
-	DiagnosticSeverity,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
@@ -27,7 +24,7 @@ export interface ConfigRefs {
 }
 
 /** A snapshot of one config; a later reload replaces it rather than mutating it. */
-export interface ConfigEntry {
+export class ConfigEntry {
 	readonly file: string;
 	readonly chain: readonly string[];
 	/** The last valid version, or `undefined` if the config has never been valid. */
@@ -35,6 +32,23 @@ export interface ConfigEntry {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Tags turned on or off from the command line that this config doesn't declare. */
 	readonly skippedTags: readonly string[];
+
+	constructor(
+		fields: Pick<
+			ConfigEntry,
+			"file" | "chain" | "resolved" | "diagnostics" | "skippedTags"
+		>
+	) {
+		this.file = fields.file;
+		this.chain = fields.chain;
+		this.resolved = fields.resolved;
+		this.diagnostics = fields.diagnostics;
+		this.skippedTags = fields.skippedTags;
+	}
+
+	get errors(): Diagnostic[] {
+		return this.diagnostics.filter(isError);
+	}
 }
 
 export interface ConfigService {
@@ -60,12 +74,6 @@ export interface ConfigService {
 export const ConfigService =
 	createServiceIdentifier<ConfigService>("configService");
 
-export function entryErrors(entry: ConfigEntry): Diagnostic[] {
-	return entry.diagnostics.filter(
-		(diagnostic) => diagnostic.severity === DiagnosticSeverity.Error
-	);
-}
-
 /** A config that resolved, with the entry it came from. */
 export interface ResolvedEntry {
 	readonly entry: ConfigEntry;
@@ -90,8 +98,20 @@ export function resolvedConfigs(
 export function requireValidConfigs(
 	entries: readonly ConfigEntry[]
 ): Result<ResolvedConfig[], DiagnosticsError> {
-	const errors = entries.flatMap(entryErrors);
+	const errors = entries.flatMap((entry) => entry.errors);
 	if (errors.length > 0) return err(new DiagnosticsError(errors));
 
 	return ok(resolvedConfigs(entries));
+}
+
+/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
+export function brokenConfigsError(
+	entries: readonly ConfigEntry[]
+): Error | undefined {
+	const broken = entries.filter((entry) => entry.errors.length > 0);
+	return broken.length > 0
+		? new Error(
+				`${broken.length} of ${entries.length} configs have errors.`
+			)
+		: undefined;
 }

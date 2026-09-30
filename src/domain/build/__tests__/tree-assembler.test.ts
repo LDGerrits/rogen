@@ -93,7 +93,10 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({ name: "game", template });
+				const { tree: value } = await assemble({
+					name: "game",
+					template,
+				});
 
 				expect(value).toEqual({
 					name: "game",
@@ -142,7 +145,9 @@ describe("TreeAssembler", () => {
 					syncDir: abs("dist"),
 				});
 
-				expect(storage.Packages).toEqual({ $path: "templates/Packages" });
+				expect(storage.Packages).toEqual({
+					$path: "templates/Packages",
+				});
 				expect(storage.Vendor).toEqual({
 					$path: optional("templates/vendor"),
 				});
@@ -152,7 +157,9 @@ describe("TreeAssembler", () => {
 				const template = templateOf({
 					tree: {
 						$className: "DataModel",
-						ReplicatedStorage: { Packages: { $path: "./Packages" } },
+						ReplicatedStorage: {
+							Packages: { $path: "./Packages" },
+						},
 					},
 				});
 
@@ -175,7 +182,9 @@ describe("TreeAssembler", () => {
 					template,
 				});
 
-				expect((value.tree.ReplicatedStorage as RojoNode).Vendor).toEqual({
+				expect(
+					(value.tree.ReplicatedStorage as RojoNode).Vendor
+				).toEqual({
 					$path: "vendor",
 					A: { $path: optional("src/A.luau") },
 					B: { $path: optional("src/B.luau") },
@@ -194,11 +203,15 @@ describe("TreeAssembler", () => {
 
 				const { tree: value, warnings } = await assemble({ template });
 
-				expect((value.tree.ReplicatedStorage as RojoNode).Packages).toEqual(
-					{ $path: "Packages" }
+				expect(
+					(value.tree.ReplicatedStorage as RojoNode).Packages
+				).toEqual({ $path: "Packages" });
+				expect(warnings).toMatchObject([
+					{ code: "tree.templateClash" },
+				]);
+				expect(warnings[0].message).toContain(
+					"ReplicatedStorage/Packages"
 				);
-				expect(warnings).toMatchObject([{ code: "tree.templateClash" }]);
-				expect(warnings[0].message).toContain("ReplicatedStorage/Packages");
 			});
 		});
 
@@ -267,7 +280,9 @@ describe("TreeAssembler", () => {
 				await write("src/Hud.client.luau");
 				const template = templateOf({
 					tree: { $className: "DataModel" },
-					...(emitLegacyScripts !== undefined && { emitLegacyScripts }),
+					...(emitLegacyScripts !== undefined && {
+						emitLegacyScripts,
+					}),
 				});
 				const { warnings } = await assemble({ routes, template });
 				return warnings.filter(
@@ -326,7 +341,10 @@ describe("TreeAssembler", () => {
 
 			it("should not warn when no route targets those containers", async () => {
 				const warnings = await runContextWarnings(
-					{ client: "ReplicatedStorage/client", server: "StarterGui" },
+					{
+						client: "ReplicatedStorage/client",
+						server: "StarterGui",
+					},
 					false
 				);
 
@@ -399,7 +417,10 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should collapse a directory holding data files, which Rojo names by stem", async () => {
-				await write("src/Inventory/Save.luau", "src/Inventory/Items.json");
+				await write(
+					"src/Inventory/Save.luau",
+					"src/Inventory/Items.json"
+				);
 
 				const { tree: value, warnings } = await assemble();
 
@@ -416,7 +437,9 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
-					Save: { $path: optional("src/Inventory/(group)/Save.luau") },
+					Save: {
+						$path: optional("src/Inventory/(group)/Save.luau"),
+					},
 				});
 			});
 
@@ -467,14 +490,19 @@ describe("TreeAssembler", () => {
 			it("should not collapse a directory holding a skipped link, and ignore the link", async () => {
 				await write("src/Real/Thing.luau");
 				await fs.createSymbolicLink(abs("src"), abs("src/Real/Back"));
-				await fs.createSymbolicLink(abs("missing"), abs("src/Real/Gone"));
+				await fs.createSymbolicLink(
+					abs("missing"),
+					abs("src/Real/Gone")
+				);
 
 				const { tree: value } = await assemble();
 
-				expect((value.tree.ReplicatedStorage as RojoNode).Real).toEqual({
-					...FOLDER,
-					Thing: { $path: optional("src/Real/Thing.luau") },
-				});
+				expect((value.tree.ReplicatedStorage as RojoNode).Real).toEqual(
+					{
+						...FOLDER,
+						Thing: { $path: optional("src/Real/Thing.luau") },
+					}
+				);
 				expect(value.globIgnorePaths).toEqual([
 					"src/Real/Back",
 					"src/Real/Gone",
@@ -491,7 +519,9 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
-					Analytics: { $path: optional("src/Inventory/Analytics.luau") },
+					Analytics: {
+						$path: optional("src/Inventory/Analytics.luau"),
+					},
 				});
 			});
 
@@ -528,7 +558,9 @@ describe("TreeAssembler", () => {
 						Inventory: {
 							...FOLDER,
 							Hud: {
-								$path: optional("src/Inventory/Hud.client.luau"),
+								$path: optional(
+									"src/Inventory/Hud.client.luau"
+								),
 							},
 						},
 					},
@@ -536,7 +568,10 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should not collapse a directory holding a file that lost its instance to another root", async () => {
-				await write("core/Inventory/Save.luau", "core/Inventory/Load.luau");
+				await write(
+					"core/Inventory/Save.luau",
+					"core/Inventory/Load.luau"
+				);
 				await write("mods/Inventory/Save.luau");
 
 				const storage = await storageOf({
@@ -561,7 +596,9 @@ describe("TreeAssembler", () => {
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
 					Save: { $path: optional("src/Inventory/Save.luau") },
-					Load: { $path: optional("src/(group)/Inventory/Load.luau") },
+					Load: {
+						$path: optional("src/(group)/Inventory/Load.luau"),
+					},
 				});
 			});
 
@@ -577,7 +614,9 @@ describe("TreeAssembler", () => {
 					$className: "ServerScriptService",
 					Save: {
 						...FOLDER,
-						Save: { $path: optional("src/Save/Save+mock.server.luau") },
+						Save: {
+							$path: optional("src/Save/Save+mock.server.luau"),
+						},
 					},
 				});
 			});
@@ -625,7 +664,10 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should emit an init folder as one node pointing at the directory", async () => {
-				await write("src/Inventory/init.luau", "src/Inventory/Save.luau");
+				await write(
+					"src/Inventory/init.luau",
+					"src/Inventory/Save.luau"
+				);
 				await write("src/Other.luau");
 
 				const storage = await storageOf();
@@ -706,7 +748,9 @@ describe("TreeAssembler", () => {
 
 				const storage = await storageOf({ template });
 
-				expect(storage.Packages).toEqual({ $path: optional("Packages") });
+				expect(storage.Packages).toEqual({
+					$path: optional("Packages"),
+				});
 			});
 		});
 
@@ -770,7 +814,9 @@ describe("TreeAssembler", () => {
 					$className: "Folder",
 					$ignoreUnknownInstances: false,
 					Save: { $path: optional("src/Inventory/Save.luau") },
-					Outer: { $path: optional("src/Inventory/Outer.project.json") },
+					Outer: {
+						$path: optional("src/Inventory/Outer.project.json"),
+					},
 				});
 			});
 
@@ -837,14 +883,18 @@ describe("TreeAssembler", () => {
 				const template = templateOf({
 					tree: {
 						$className: "DataModel",
-						ReplicatedStorage: { Packages: { $path: "src/Packages" } },
+						ReplicatedStorage: {
+							Packages: { $path: "src/Packages" },
+						},
 					},
 				});
 
 				const { tree: value } = await assemble({ template });
 
 				expect(value.globIgnorePaths).toBeUndefined();
-				expect((value.tree.ReplicatedStorage as RojoNode).Other).toEqual({
+				expect(
+					(value.tree.ReplicatedStorage as RojoNode).Other
+				).toEqual({
 					$path: optional("src/Other"),
 				});
 			});
@@ -854,7 +904,10 @@ describe("TreeAssembler", () => {
 				const template = templateOf(
 					{
 						tree: { $className: "DataModel" },
-						globIgnorePaths: ["**/*.spec.luau", "../src/Foo.spec.luau"],
+						globIgnorePaths: [
+							"**/*.spec.luau",
+							"../src/Foo.spec.luau",
+						],
 					},
 					abs("templates/base.project.json")
 				);
@@ -882,7 +935,10 @@ describe("TreeAssembler", () => {
 				fs.writeFile(abs(file), JSON.stringify(meta));
 
 			const nodeAt = (tree: RojoNode, ...segments: string[]) =>
-				segments.reduce((node, segment) => node[segment] as RojoNode, tree);
+				segments.reduce(
+					(node, segment) => node[segment] as RojoNode,
+					tree
+				);
 
 			it("should copy a split folder's meta onto the node in each service", async () => {
 				await write(
@@ -893,16 +949,18 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { tree: value, warnings } = await assemble({ routes: SPLIT });
+				const { tree: value, warnings } = await assemble({
+					routes: SPLIT,
+				});
 
 				expect(warnings).toEqual([]);
-				expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
-					{
-						$className: "Actor",
-						$ignoreUnknownInstances: false,
-						Hit: { $path: optional("src/Combat/server/Hit.luau") },
-					}
-				);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Combat")
+				).toEqual({
+					$className: "Actor",
+					$ignoreUnknownInstances: false,
+					Hit: { $path: optional("src/Combat/server/Hit.luau") },
+				});
 				expect(
 					nodeAt(
 						value.tree,
@@ -919,7 +977,9 @@ describe("TreeAssembler", () => {
 
 			it("should copy nothing onto a collapsed folder or a folder inside it, which Rojo reads itself", async () => {
 				await write("src/Bots/Body.luau", "src/Bots/Brain/Think.luau");
-				await writeMeta("src/Bots/init.meta.json", { className: "Actor" });
+				await writeMeta("src/Bots/init.meta.json", {
+					className: "Actor",
+				});
 				await writeMeta("src/Bots/Brain/init.meta.json", {
 					className: "Configuration",
 				});
@@ -931,7 +991,9 @@ describe("TreeAssembler", () => {
 
 			it("should copy the meta onto a folder a pruned file keeps from collapsing", async () => {
 				await write("src/Bots/Body.luau", "src/Bots/Http.mock.luau");
-				await writeMeta("src/Bots/init.meta.json", { className: "Actor" });
+				await writeMeta("src/Bots/init.meta.json", {
+					className: "Actor",
+				});
 
 				const storage = await storageOf({ tags: { mock: false } });
 
@@ -944,7 +1006,9 @@ describe("TreeAssembler", () => {
 
 			it("should copy nothing onto an init folder", async () => {
 				await write("src/Bots/init.luau", "src/Other.server.luau");
-				await writeMeta("src/Bots/init.meta.json", { className: "Actor" });
+				await writeMeta("src/Bots/init.meta.json", {
+					className: "Actor",
+				});
 
 				const storage = await storageOf({ routes: SPLIT });
 
@@ -952,19 +1016,24 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should copy nothing onto a node whose $path is a script, and warn with the fix", async () => {
-				await write("src/Combat.server.luau", "src/Combat/Hit.server.luau");
+				await write(
+					"src/Combat.server.luau",
+					"src/Combat/Hit.server.luau"
+				);
 				await writeMeta("src/Combat/init.meta.json", {
 					className: "Actor",
 				});
 
-				const { tree: value, warnings } = await assemble({ routes: SPLIT });
+				const { tree: value, warnings } = await assemble({
+					routes: SPLIT,
+				});
 
-				expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
-					{
-						$path: optional("src/Combat.server.luau"),
-						Hit: { $path: optional("src/Combat/Hit.server.luau") },
-					}
-				);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Combat")
+				).toEqual({
+					$path: optional("src/Combat.server.luau"),
+					Hit: { $path: optional("src/Combat/Hit.server.luau") },
+				});
 				expect(warnings).toMatchObject([
 					{
 						code: "meta.sharedWithScript",
@@ -985,7 +1054,9 @@ describe("TreeAssembler", () => {
 
 				const { warnings } = await assemble({ routes: SPLIT });
 
-				expect(warnings).toMatchObject([{ code: "meta.sharedWithScript" }]);
+				expect(warnings).toMatchObject([
+					{ code: "meta.sharedWithScript" },
+				]);
 				expect(warnings[0].message).toContain(
 					`${toPosix(abs("src/server/Combat"))}/init.meta.json`
 				);
@@ -1008,7 +1079,10 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({ routes: SPLIT, template });
+				const { tree: value } = await assemble({
+					routes: SPLIT,
+					template,
+				});
 
 				expect(
 					nodeAt(value.tree, "ServerScriptService", "Combat").$id
@@ -1025,7 +1099,9 @@ describe("TreeAssembler", () => {
 
 			it("should copy nothing from a folder whose files were all pruned", async () => {
 				await write("src/Mocks/Http.mock.luau", "src/A.luau");
-				await writeMeta("src/Mocks/init.meta.json", { className: "Actor" });
+				await writeMeta("src/Mocks/init.meta.json", {
+					className: "Actor",
+				});
 
 				const storage = await storageOf({ tags: { mock: false } });
 
@@ -1046,12 +1122,12 @@ describe("TreeAssembler", () => {
 					routes: SPLIT,
 				});
 
-				expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
-					{
-						...FOLDER,
-						A: { $path: optional("lobby/Combat/server/A.luau") },
-					}
-				);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Combat")
+				).toEqual({
+					...FOLDER,
+					A: { $path: optional("lobby/Combat/server/A.luau") },
+				});
 			});
 
 			it("should copy an id that reaches one node as $id", async () => {
@@ -1096,15 +1172,15 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({ routes: SPLIT });
 
-				expect(nodeAt(value.tree, "ServerScriptService", "Combat")).toEqual(
-					{
-						$className: "Actor",
-						$properties: { Archivable: false },
-						$attributes: { Priority: 1 },
-						$ignoreUnknownInstances: true,
-						Hit: { $path: optional("src/Combat/server/Hit.luau") },
-					}
-				);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Combat")
+				).toEqual({
+					$className: "Actor",
+					$properties: { Archivable: false },
+					$attributes: { Priority: 1 },
+					$ignoreUnknownInstances: true,
+					Hit: { $path: optional("src/Combat/server/Hit.luau") },
+				});
 			});
 
 			it("should let the last root dir with a meta win each node", async () => {
@@ -1163,7 +1239,10 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should fail when two metas in one root dir reach one node, naming both", async () => {
-				await write("src/server/Combat/A.luau", "src/Combat/B.server.luau");
+				await write(
+					"src/server/Combat/A.luau",
+					"src/Combat/B.server.luau"
+				);
 				await writeMeta("src/server/Combat/init.meta.json", {
 					className: "Actor",
 				});
@@ -1225,7 +1304,9 @@ describe("TreeAssembler", () => {
 					$attributes: { FromTemplate: true },
 					Hud: { $path: optional("src/Gui/client/Hud.luau") },
 				});
-				expect(warnings).toMatchObject([{ code: "meta.templateClass" }]);
+				expect(warnings).toMatchObject([
+					{ code: "meta.templateClass" },
+				]);
 			});
 
 			it("should leave a folder under a template $path out, meta and all", async () => {
@@ -1236,7 +1317,9 @@ describe("TreeAssembler", () => {
 				const template = templateOf({
 					tree: {
 						$className: "DataModel",
-						ServerScriptService: { Packages: { $path: "Packages" } },
+						ServerScriptService: {
+							Packages: { $path: "Packages" },
+						},
 					},
 				});
 
@@ -1274,7 +1357,9 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({ template });
 
-				expect(nodeAt(value.tree, "ReplicatedStorage", "Combat")).toEqual({
+				expect(
+					nodeAt(value.tree, "ReplicatedStorage", "Combat")
+				).toEqual({
 					$className: "Actor",
 					Save: { $path: "hand/Save.luau" },
 				});
@@ -1301,7 +1386,9 @@ describe("TreeAssembler", () => {
 					tags: { dev: true },
 				});
 
-				expect(warnings).toMatchObject([{ code: "meta.appliesToNothing" }]);
+				expect(warnings).toMatchObject([
+					{ code: "meta.appliesToNothing" },
+				]);
 				expect(warnings[0].message).toMatch(
 					/^4 init\.meta\.json files apply to nothing/
 				);
@@ -1309,7 +1396,9 @@ describe("TreeAssembler", () => {
 
 			it("should not warn about meta in a folder whose files were all pruned", async () => {
 				await write("src/Mocks/Http.mock.luau");
-				await writeMeta("src/Mocks/init.meta.json", { className: "Actor" });
+				await writeMeta("src/Mocks/init.meta.json", {
+					className: "Actor",
+				});
 
 				const { warnings } = await assemble({ tags: { mock: false } });
 
@@ -1372,7 +1461,11 @@ describe("TreeAssembler", () => {
 					ignoreUnknownInstances: true,
 					id: "combat",
 				},
-				{ file: abs("src/init.meta.json"), rootDir: abs("src"), dir: "" },
+				{
+					file: abs("src/init.meta.json"),
+					rootDir: abs("src"),
+					dir: "",
+				},
 			]);
 		});
 
@@ -1464,7 +1557,10 @@ describe("TreeAssembler", () => {
 						: []
 				)
 			).toEqual(
-				new Set([abs("src/A/init.meta.json"), abs("src/B/init.meta.json")])
+				new Set([
+					abs("src/A/init.meta.json"),
+					abs("src/B/init.meta.json"),
+				])
 			);
 		});
 	});

@@ -1,10 +1,7 @@
 import path from "path";
 import { commonAncestor } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import {
-	ConfigEntry,
-	entryErrors,
-} from "../../domain/config/config-service.js";
+import { ConfigEntry } from "../../domain/config/config-service.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 
 function describeConfig(config: ResolvedConfig): Record<string, unknown> {
@@ -29,7 +26,7 @@ export function showConfig(entries: readonly ConfigEntry[]): string {
 		entry.resolved
 			? describeConfig(entry.resolved)
 			: {
-					diagnostics: entryErrors(entry).map((diagnostic) =>
+					diagnostics: entry.errors.map((diagnostic) =>
 						renderDiagnostic(diagnostic)
 					),
 				},

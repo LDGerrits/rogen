@@ -272,7 +272,10 @@ describe("placeFiles", () => {
 
 				const { roots } = await scan();
 
-				expect(files(roots[0])).toEqual(["script:A.LUAU", "model:B.Rbxm"]);
+				expect(files(roots[0])).toEqual([
+					"script:A.LUAU",
+					"model:B.Rbxm",
+				]);
 			});
 
 			it("should never keep .d.ts files, in any case", async () => {
@@ -313,7 +316,10 @@ describe("placeFiles", () => {
 
 		describe("init folders", () => {
 			it("should return a directory holding an init script as one unit", async () => {
-				await write("src/Inventory/init.luau", "src/Inventory/Helper.luau");
+				await write(
+					"src/Inventory/init.luau",
+					"src/Inventory/Helper.luau"
+				);
 
 				const { roots } = await scan();
 
@@ -444,7 +450,9 @@ describe("placeFiles", () => {
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 
-				const { roots } = await scan({ exclude: [glob("**/*.spec.luau")] });
+				const { roots } = await scan({
+					exclude: [glob("**/*.spec.luau")],
+				});
 
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 			});
@@ -475,7 +483,9 @@ describe("placeFiles", () => {
 			it("should remove an excluded init script before deciding whether the directory is a unit", async () => {
 				await write("src/Foo/init.luau", "src/Foo/Bar.luau");
 
-				const { roots } = await scan({ exclude: [glob("**/init.luau")] });
+				const { roots } = await scan({
+					exclude: [glob("**/init.luau")],
+				});
 
 				expect(files(roots[0])).toEqual(["script:Foo/Bar.luau"]);
 			});
@@ -508,7 +518,10 @@ describe("placeFiles", () => {
 					new Map([
 						[
 							abs("src/X.spec.luau"),
-							{ status: "excluded", pattern: glob("**/*.spec.luau") },
+							{
+								status: "excluded",
+								pattern: glob("**/*.spec.luau"),
+							},
 						],
 						[
 							abs("src/tests"),
@@ -562,7 +575,9 @@ describe("placeFiles", () => {
 			it("should keep the order the config lists them in, not alphabetical order", async () => {
 				await write("b/X.luau", "a/X.luau");
 
-				const { roots } = await scan({ rootDirs: [abs("b"), abs("a")] });
+				const { roots } = await scan({
+					rootDirs: [abs("b"), abs("a")],
+				});
 
 				expect(roots.map((root) => root.rootDir)).toEqual([
 					abs("b"),
@@ -651,7 +666,9 @@ describe("placeFiles", () => {
 				});
 
 				expect(roots[0].entries).toEqual([]);
-				expect([...roots[0].leftOut.keys()]).toEqual([abs("src/Shared")]);
+				expect([...roots[0].leftOut.keys()]).toEqual([
+					abs("src/Shared"),
+				]);
 				expect(warnings).toEqual([]);
 			});
 
@@ -830,7 +847,10 @@ describe("placeFiles", () => {
 
 		const read = async (overrides: Partial<ResolvedConfig> = {}) => {
 			const config = configOf({
-				routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+				routes: {
+					server: "ServerScriptService",
+					"*": "ReplicatedStorage",
+				},
 				tags: { mock: true },
 				...overrides,
 			});
@@ -896,9 +916,9 @@ describe("placeFiles", () => {
 
 				const { entries } = await read();
 
-				expect(entries.get(at("src/Inventory/A.luau"))?.folders[0]).toBe(
-					entries.get(at("src/Inventory/B.luau"))?.folders[0]
-				);
+				expect(
+					entries.get(at("src/Inventory/A.luau"))?.folders[0]
+				).toBe(entries.get(at("src/Inventory/B.luau"))?.folders[0]);
 			});
 
 			it("should read a folder that only holds meta", async () => {
@@ -917,7 +937,9 @@ describe("placeFiles", () => {
 
 				const { folders } = await read();
 
-				expect(folders.get(at("src/SERVER"))?.nearMissKey).toBe("server");
+				expect(folders.get(at("src/SERVER"))?.nearMissKey).toBe(
+					"server"
+				);
 				expect(
 					folders.get(at("src/Inventory"))?.nearMissKey
 				).toBeUndefined();
@@ -1068,7 +1090,11 @@ describe("placeFiles", () => {
 						dir: "Combat",
 					},
 					{
-						instancePath: ["ServerScriptService", "Combat", "Moves"],
+						instancePath: [
+							"ServerScriptService",
+							"Combat",
+							"Moves",
+						],
 						dir: "Combat/(group)/server/dev/Moves",
 					},
 				]);
@@ -1081,7 +1107,11 @@ describe("placeFiles", () => {
 
 				expect(file.folderNodes).toEqual([
 					{
-						instancePath: ["ReplicatedStorage", "shared", "Inventory"],
+						instancePath: [
+							"ReplicatedStorage",
+							"shared",
+							"Inventory",
+						],
 						dir: "Inventory",
 					},
 				]);
@@ -1154,7 +1184,10 @@ describe("placeFiles", () => {
 
 				expect(
 					await paths({
-						routes: { Server: "ServerScriptService", "*": "Workspace" },
+						routes: {
+							Server: "ServerScriptService",
+							"*": "Workspace",
+						},
 					})
 				).toEqual([
 					"ServerScriptService/Inventory/B",
@@ -1187,7 +1220,9 @@ describe("placeFiles", () => {
 			it("should ignore a suffix Rojo doesn't understand but leave it in the name", async () => {
 				await write("src/server/Hud-client.luau");
 
-				expect(await paths()).toEqual(["ServerScriptService/Hud-client"]);
+				expect(await paths()).toEqual([
+					"ServerScriptService/Hud-client",
+				]);
 			});
 
 			it("should match routing folders and markers with the first letter in either case", async () => {
@@ -1262,7 +1297,9 @@ describe("placeFiles", () => {
 			it("should ignore dot-files that aren't declared routes", async () => {
 				await write("src/.gitkeep", "src/.mock", "src/Save.luau");
 
-				expect(await paths()).toEqual(["ReplicatedStorage/shared/Save"]);
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Save",
+				]);
 			});
 		});
 
@@ -1300,10 +1337,14 @@ describe("placeFiles", () => {
 		});
 
 		describe("letter case mismatches", () => {
-			const caseWarnings = async (overrides: Partial<ResolvedConfig> = {}) =>
+			const caseWarnings = async (
+				overrides: Partial<ResolvedConfig> = {}
+			) =>
 				(await route(overrides))
 					.unwrap()
-					.warnings.filter(({ code }) => code === "route.caseMismatch");
+					.warnings.filter(
+						({ code }) => code === "route.caseMismatch"
+					);
 
 			it("should warn about a folder named like a route in different case, at that folder", async () => {
 				await write("src/SERVER/Save.luau");
@@ -1315,7 +1356,9 @@ describe("placeFiles", () => {
 					resource: abs("src/SERVER"),
 				});
 				expect(warning.message).toContain('"server"');
-				expect(warning.message).toContain('Spell it "server" or "Server"');
+				expect(warning.message).toContain(
+					'Spell it "server" or "Server"'
+				);
 			});
 
 			it("should warn about an invisible folder named like a tag in different case", async () => {
@@ -1369,11 +1412,13 @@ describe("placeFiles", () => {
 
 				const warnings = await caseWarnings();
 
-				expect(warnings.map(({ resource }) => resource).sort()).toEqual([
-					abs("src/Inventory/.CLIENT"),
-					abs("src/Inventory/B.SERVER.luau"),
-					abs("src/SERVER"),
-				]);
+				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
+					[
+						abs("src/Inventory/.CLIENT"),
+						abs("src/Inventory/B.SERVER.luau"),
+						abs("src/SERVER"),
+					]
+				);
 			});
 
 			it("should not warn about a name that only differs in its first letter", async () => {
@@ -1417,7 +1462,9 @@ describe("placeFiles", () => {
 			) =>
 				(await route(overrides))
 					.unwrap()
-					.warnings.filter(({ code }) => code === "route.capitalSuffix");
+					.warnings.filter(
+						({ code }) => code === "route.capitalSuffix"
+					);
 
 			it("should warn at a file that a capital suffix routes, naming where it lands and the separator form", async () => {
 				await write("src/Net/HttpClient.luau");
@@ -1452,7 +1499,9 @@ describe("placeFiles", () => {
 
 				const [warning] = await capitalWarnings();
 
-				expect(warning.message).toContain("under another routing folder");
+				expect(warning.message).toContain(
+					"under another routing folder"
+				);
 			});
 
 			it("should warn at the folder of an init script that a capital suffix routes", async () => {
@@ -1531,7 +1580,9 @@ describe("placeFiles", () => {
 			it("should fail with a diagnostic when a target's service is unsupported", async () => {
 				await write("src/Types.luau");
 
-				const result = await route({ routes: { "*": "Nowhere/shared" } });
+				const result = await route({
+					routes: { "*": "Nowhere/shared" },
+				});
 
 				expect(result.isErr() ? result.error : []).toMatchObject([
 					{
@@ -1595,13 +1646,17 @@ describe("placeFiles", () => {
 			it("should name a nested project file after the part before .project", async () => {
 				await write("src/Outer.project.json");
 
-				expect(await paths()).toEqual(["ReplicatedStorage/shared/Outer"]);
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Outer",
+				]);
 			});
 
 			it("should leave an ignored suffix on a model in its Rojo name", async () => {
 				await write("src/server/Gun.client.rbxm");
 
-				expect(await paths()).toEqual(["ServerScriptService/Gun.client"]);
+				expect(await paths()).toEqual([
+					"ServerScriptService/Gun.client",
+				]);
 			});
 
 			it("should not route on a tag alone", async () => {
@@ -1624,7 +1679,10 @@ describe("placeFiles", () => {
 		describe("tags", () => {
 			const tagsOf = async (
 				overrides: Partial<ResolvedConfig> = { tags: { mock: true } }
-			) => (await route(overrides)).unwrap().routed.map((file) => file.tags);
+			) =>
+				(await route(overrides))
+					.unwrap()
+					.routed.map((file) => file.tags);
 
 			it("should remove a tag folder from the path", async () => {
 				await write("src/Analytics/mock/Service.luau");
@@ -1642,7 +1700,10 @@ describe("placeFiles", () => {
 			});
 
 			it("should keep a folder that a tag marker applies to", async () => {
-				await write("src/Experimental/.mock", "src/Experimental/Save.luau");
+				await write(
+					"src/Experimental/.mock",
+					"src/Experimental/Save.luau"
+				);
 
 				const [file] = (await route({ tags: { mock: true } })).unwrap()
 					.routed;
@@ -1659,7 +1720,9 @@ describe("placeFiles", () => {
 			it("should apply a marker in the root dir to every file", async () => {
 				await write("src/.mock", "src/A/B.luau");
 
-				expect(await tagsOf()).toEqual([[{ tag: "mock", form: "marker" }]]);
+				expect(await tagsOf()).toEqual([
+					[{ tag: "mock", form: "marker" }],
+				]);
 			});
 
 			it("should record how a suffix matched", async () => {
@@ -1688,7 +1751,9 @@ describe("placeFiles", () => {
 			it("should record every tag a file carries", async () => {
 				await write("src/dev/Save.mock.luau");
 
-				expect(await tagsOf({ tags: { mock: true, dev: true } })).toEqual([
+				expect(
+					await tagsOf({ tags: { mock: true, dev: true } })
+				).toEqual([
 					[
 						{ tag: "dev", form: "folder" },
 						{ tag: "mock", form: "separator" },
@@ -1703,7 +1768,10 @@ describe("placeFiles", () => {
 			});
 
 			it("should report a .server that a tag suffix follows", async () => {
-				await write("src/Foo.server.mock.luau", "src/Bar.mock.server.luau");
+				await write(
+					"src/Foo.server.mock.luau",
+					"src/Bar.mock.server.luau"
+				);
 
 				const files = (await route({ tags: { mock: true } })).unwrap()
 					.routed;
@@ -1801,7 +1869,10 @@ describe("placeFiles", () => {
 
 			it("should list at most ten unrouted files, the last noting how many more weren't", async () => {
 				await write(
-					...Array.from({ length: 12 }, (_, n) => `src/F${n + 10}.luau`)
+					...Array.from(
+						{ length: 12 },
+						(_, n) => `src/F${n + 10}.luau`
+					)
 				);
 
 				const warnings = (await route(noStar))
@@ -1919,7 +1990,10 @@ describe("placeFiles", () => {
 
 		describe("marker file", () => {
 			it("should apply an active marker below and keep the folder's name", async () => {
-				await write("src/Experimental/.mock", "src/Experimental/Save.luau");
+				await write(
+					"src/Experimental/.mock",
+					"src/Experimental/Save.luau"
+				);
 
 				expect(await instances({ mock: true })).toEqual([
 					"ReplicatedStorage/Experimental/Save",
@@ -1970,7 +2044,9 @@ describe("placeFiles", () => {
 			it("should name the dormant tag that pruned each file, and how it matched", async () => {
 				await write("src/Analytics.mock.luau", "src/dev/Save.luau");
 
-				const result = (await apply({ mock: false, dev: false })).unwrap();
+				const result = (
+					await apply({ mock: false, dev: false })
+				).unwrap();
 
 				expect(result.leftOut).toEqual(
 					new Map([
@@ -1995,7 +2071,9 @@ describe("placeFiles", () => {
 			it("should list every dormant tag a pruned file carries, the first first", async () => {
 				await write("src/dev/Analytics.mock.luau");
 
-				const result = (await apply({ mock: false, dev: false })).unwrap();
+				const result = (
+					await apply({ mock: false, dev: false })
+				).unwrap();
 
 				expect(
 					result.leftOut.get(abs("src/dev/Analytics.mock.luau"))
@@ -2070,10 +2148,9 @@ describe("placeFiles", () => {
 
 				expect(result.files).toEqual([]);
 				expect(prunedPaths(result)).toHaveLength(3);
-				expect(result.warnings.map(({ resource }) => resource)).toEqual([
-					abs("src/DataMock.luau"),
-					abs("src/HttpMock.luau"),
-				]);
+				expect(result.warnings.map(({ resource }) => resource)).toEqual(
+					[abs("src/DataMock.luau"), abs("src/HttpMock.luau")]
+				);
 				expect(result.warnings[0]).toMatchObject({
 					severity: DiagnosticSeverity.Warning,
 					code: "tag.dormantCapitalSuffix",
@@ -2120,11 +2197,13 @@ describe("placeFiles", () => {
 				await write("src/Analytics/dev/Service.luau");
 				await write("src/Analytics/prod/Service.luau");
 
-				const result = (await apply({ dev: true, prod: false })).unwrap();
+				const result = (
+					await apply({ dev: true, prod: false })
+				).unwrap();
 
-				expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-					["Analytics/dev/Service.luau"]
-				);
+				expect(
+					result.files.map((file) => file.entry.relativePath)
+				).toEqual(["Analytics/dev/Service.luau"]);
 				expect(
 					result.files.map((file) => file.instancePath.join("/"))
 				).toEqual(["ReplicatedStorage/Analytics/Service"]);
@@ -2138,9 +2217,9 @@ describe("placeFiles", () => {
 
 				const result = (await apply({ mock: true })).unwrap();
 
-				expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-					["Analytics.mock.luau"]
-				);
+				expect(
+					result.files.map((file) => file.entry.relativePath)
+				).toEqual(["Analytics.mock.luau"]);
 				expect(result.warnings).toEqual([]);
 			});
 
@@ -2149,14 +2228,17 @@ describe("placeFiles", () => {
 
 				const result = (await apply({ mock: false })).unwrap();
 
-				expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-					["Analytics.luau"]
-				);
+				expect(
+					result.files.map((file) => file.entry.relativePath)
+				).toEqual(["Analytics.luau"]);
 				expect(result.warnings).toEqual([]);
 			});
 
 			it("should fail naming both files when two active tags claim one name", async () => {
-				await write("src/Analytics.mock.luau", "src/Analytics.dev.luau");
+				await write(
+					"src/Analytics.mock.luau",
+					"src/Analytics.dev.luau"
+				);
 
 				const result = await apply({ mock: true, dev: true });
 
@@ -2187,17 +2269,21 @@ describe("placeFiles", () => {
 
 				const result = (await apply({})).unwrap();
 
-				expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-					["Types.luau"]
-				);
+				expect(
+					result.files.map((file) => file.entry.relativePath)
+				).toEqual(["Types.luau"]);
 				expect(result.warnings).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Warning,
 						code: "tag.untaggedClash",
 					},
 				]);
-				expect(result.warnings[0].message).toContain(abs("src/Types.lua"));
-				expect(result.warnings[0].message).toContain(abs("src/Types.luau"));
+				expect(result.warnings[0].message).toContain(
+					abs("src/Types.lua")
+				);
+				expect(result.warnings[0].message).toContain(
+					abs("src/Types.luau")
+				);
 			});
 
 			it("should not warn about untagged files that lose to a tagged one", async () => {
@@ -2207,7 +2293,9 @@ describe("placeFiles", () => {
 					"src/Types.mock.luau"
 				);
 
-				expect((await apply({ mock: true })).unwrap().warnings).toEqual([]);
+				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
+					[]
+				);
 			});
 		});
 
@@ -2266,17 +2354,22 @@ describe("placeFiles", () => {
 			});
 
 			it("should not warn when the script suffix comes last", async () => {
-				await write("src/Foo.mock.server.luau", "src/Bar.mock.client.luau");
+				await write(
+					"src/Foo.mock.server.luau",
+					"src/Bar.mock.client.luau"
+				);
 
-				expect((await apply({ mock: true })).unwrap().warnings).toEqual([]);
+				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
+					[]
+				);
 			});
 
 			it("should not warn about a dormant file that is pruned anyway", async () => {
 				await write("src/Foo.server.mock.luau");
 
-				expect((await apply({ mock: false })).unwrap().warnings).toEqual(
-					[]
-				);
+				expect(
+					(await apply({ mock: false })).unwrap().warnings
+				).toEqual([]);
 			});
 
 			it("should keep a suffix that isn't a declared tag in the name, without a warning", async () => {

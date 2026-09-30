@@ -7,6 +7,7 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import {
+	brokenConfigsError,
 	requireValidConfigs,
 	resolvedConfigs,
 	resolvedEntries,
@@ -14,11 +15,46 @@ import {
 import { mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
+	describe("ConfigEntry", () => {
+		it("should list its errors and leave out its warnings", () => {
+			const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
+			const warning = warningDiagnostic(
+				"x.warn",
+				{ resource: "/a" },
+				"careful."
+			);
+			const entry = mockEntry({}, undefined, {
+				diagnostics: [warning, error],
+			});
+
+			expect(entry.errors).toEqual([error]);
+		});
+	});
+
+	describe("brokenConfigsError", () => {
+		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
+
+		it("should count the configs with errors out of all of them", () => {
+			const entries = [
+				mockEntry({}, "/repo/a.rogen.json"),
+				mockEntry({}, "/repo/b.rogen.json", { diagnostics: [error] }),
+				mockEntry({}, "/repo/c.rogen.json", { diagnostics: [error] }),
+			];
+
+			expect(brokenConfigsError(entries)?.message).toBe(
+				"2 of 3 configs have errors."
+			);
+		});
+
+		it("should be undefined when none is broken", () => {
+			expect(brokenConfigsError([mockEntry()])).toBeUndefined();
+		});
+	});
+
 	describe("resolvedEntries and resolvedConfigs", () => {
-		const unresolved = {
-			...mockEntry({}, "/repo/broken.rogen.json"),
+		const unresolved = mockEntry({}, "/repo/broken.rogen.json", {
 			resolved: undefined,
-		};
+		});
 
 		it("should pair each config that resolved with its entry and skip the rest", () => {
 			const good = mockEntry(
@@ -70,10 +106,9 @@ describe("domain/config/config-service", () => {
 		it("should fail with the errors of every invalid entry", () => {
 			const entries = [
 				mockEntry({}, "/repo/a.rogen.json"),
-				{
-					...mockEntry({}, "/repo/prod.rogen.json"),
+				mockEntry({}, "/repo/prod.rogen.json", {
 					diagnostics: [problem],
-				},
+				}),
 			];
 
 			const result = requireValidConfigs(entries);
@@ -86,7 +121,9 @@ describe("domain/config/config-service", () => {
 		});
 
 		it("should fail for an entry that has a last valid config but a broken file", () => {
-			const entries = [{ ...mockEntry(), diagnostics: [problem] }];
+			const entries = [
+				mockEntry({}, undefined, { diagnostics: [problem] }),
+			];
 
 			expect(requireValidConfigs(entries).isErr()).toBe(true);
 		});
@@ -97,7 +134,9 @@ describe("domain/config/config-service", () => {
 				{ resource: "/repo/a.rogen.json" },
 				"careful."
 			);
-			const entries = [{ ...mockEntry(), diagnostics: [warning] }];
+			const entries = [
+				mockEntry({}, undefined, { diagnostics: [warning] }),
+			];
 
 			expect(warning.severity).toBe(DiagnosticSeverity.Warning);
 			expect(requireValidConfigs(entries).isOk()).toBe(true);
