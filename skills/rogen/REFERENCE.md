@@ -52,4 +52,4 @@ A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `ext
 - `rogen build --show-config` prints the resolved config, with every default and absolute path.
 - `-o`, `-s` and `--template` override `outFile`, `syncDir` and `template` for one build.
 - Diagnostics print as `file:line:col - severity: message`. Errors exit 1; warnings exit 0 and still name something to fix.
-- `rogen init [name]` writes a starting config. Without a terminal it takes every default without asking.
+- `rogen init [name]` writes a starting config. Without a terminal, or with `--no-input`, it takes every default without asking. Pass `--no-input` when your shell is a pseudo-terminal.

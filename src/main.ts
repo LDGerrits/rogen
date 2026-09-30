@@ -77,11 +77,6 @@ async function main(): Promise<void> {
 	const disposables = new DisposableStore();
 
 	try {
-		const promptService = new ConsolePromptService();
-		const logService: LogService = promptService.isInteractive
-			? new TerminalLogService(process.cwd())
-			: new PlainLogService(process.cwd());
-
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands
 		);
@@ -89,6 +84,14 @@ async function main(): Promise<void> {
 		const argsResult = parseArgs(rawArgs, (command) =>
 			commandRegistry.getOptions(command)
 		);
+
+		const given = argsResult.isOk() ? argsResult.value.options : undefined;
+		const promptService = new ConsolePromptService({
+			noInput: Boolean(given?.["no-input"]),
+		});
+		const logService: LogService = promptService.isInteractive
+			? new TerminalLogService(process.cwd())
+			: new PlainLogService(process.cwd());
 
 		if (argsResult.isErr()) {
 			logService.error(argsResult.error.message);

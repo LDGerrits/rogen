@@ -20,10 +20,11 @@ stdout:
         --show-config       Prints the resolved config and exits.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help watch
 exit 0
@@ -46,10 +47,11 @@ stdout:
     -T, --no-tag <value>    Turns a tag off. (repeatable)
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help init
 exit 0
@@ -63,10 +65,11 @@ stdout:
     name  The config to write. Defaults to default.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help list
 exit 0
@@ -77,10 +80,11 @@ stdout:
     rogen list [options]
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen build --help
 exit 0
@@ -104,7 +108,8 @@ stdout:
         --show-config       Prints the resolved config and exits.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.

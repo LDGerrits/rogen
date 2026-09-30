@@ -1,4 +1,4 @@
-import { OptionDescriptor, parseArgs } from "../args.js";
+import { GlobalOptions, OptionDescriptor, parseArgs } from "../args.js";
 
 const globals: OptionDescriptor[] = [
 	{ name: "verbose", type: "boolean", description: "" },
@@ -81,5 +81,11 @@ describe("parseArgs", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(result.isErr() && result.error.message).toContain("--tag");
+	});
+
+	it("should take --no-input on every command", () => {
+		const parsed = parseArgs(["watch", "--no-input"], () => GlobalOptions);
+
+		expect(parsed.unwrap().options["no-input"]).toBe(true);
 	});
 });

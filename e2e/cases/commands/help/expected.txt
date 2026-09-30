@@ -16,10 +16,11 @@ stdout:
     where [path...]  Prints where each file lands in the game, and why.
   
   Options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
   
   Run 'rogen help <command>' for details on a command.
 
@@ -41,9 +42,10 @@ stdout:
     where [path...]  Prints where each file lands in the game, and why.
   
   Options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
   
   Run 'rogen help <command>' for details on a command.

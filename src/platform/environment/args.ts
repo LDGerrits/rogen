@@ -16,6 +16,7 @@ export interface ParsedArgs {
 	version?: boolean;
 	verbose?: boolean;
 	quiet?: boolean;
+	"no-input"?: boolean;
 	all?: boolean;
 	config?: string[];
 	"out-file"?: string;
@@ -45,6 +46,11 @@ export const GlobalOptions: readonly OptionDescriptor[] = [
 		short: "q",
 		type: "boolean",
 		description: "Only print errors.",
+	},
+	{
+		name: "no-input",
+		type: "boolean",
+		description: "Never ask, and print plain lines.",
 	},
 ];
 
