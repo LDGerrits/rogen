@@ -176,3 +176,29 @@ export const Extensions = {
 };
 
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
+
+/** What a command is, as `rogen help` and the argument parser read it. */
+export interface CommandDescriptor {
+	readonly id: string;
+	readonly metadata: CommandMetadata;
+}
+
+/** A command as an object: a subclass describes itself to the constructor and does its work in `run`. */
+export abstract class AbstractCommand {
+	constructor(readonly desc: CommandDescriptor) {}
+
+	abstract run(
+		accessor: ServicesAccessor,
+		args: ParsedArgs
+	): Promise<Result<void, Error>>;
+}
+
+/** Contributes one instance of `ctor` to the command registry. */
+export function registerCommand(ctor: new () => AbstractCommand): Disposable {
+	const command = new ctor();
+	return Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+		id: command.desc.id,
+		metadata: command.desc.metadata,
+		handler: (accessor, args) => command.run(accessor, args),
+	});
+}

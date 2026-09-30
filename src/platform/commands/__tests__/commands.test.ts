@@ -3,12 +3,16 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { ok } from "../../../base/result.js";
 import { Registry } from "../../registry/registry.js";
 import {
+	AbstractCommand,
 	Command,
 	CommandRegistry,
 	Extensions,
 	GlobalOptions,
+	registerCommand,
 } from "../commands.js";
-import { OptionDescriptor } from "../../environment/args.js";
+import { OptionDescriptor, ParsedArgs } from "../../environment/args.js";
+import { ServicesAccessor } from "../../instantiation/instantiation.js";
+import { ServiceCollection } from "../../instantiation/service-collection.js";
 
 function command(id: string): Command {
 	return {
@@ -214,5 +218,62 @@ describe("CommandRegistry", () => {
 				registry.registerCommand(withOptions("a", [clash]))
 			).toThrow(/conflicts/);
 		});
+	});
+});
+
+describe("registerCommand", () => {
+	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+	let store: DisposableStore;
+
+	beforeEach(() => {
+		store = new DisposableStore();
+	});
+
+	afterEach(() => {
+		store[Symbol.dispose]();
+	});
+
+	class EchoCommand extends AbstractCommand {
+		constructor() {
+			super({ id: "echo", metadata: { description: "Echoes." } });
+		}
+
+		async run(accessor: ServicesAccessor, args: ParsedArgs) {
+			ran.push({ accessor, args });
+			return ok(undefined);
+		}
+	}
+
+	let ran: { accessor: ServicesAccessor; args: ParsedArgs }[];
+
+	beforeEach(() => {
+		ran = [];
+	});
+
+	it("should register the command under its descriptor's id and metadata", () => {
+		store.add(registerCommand(EchoCommand));
+
+		expect(registry.getCommand("echo")?.metadata).toEqual({
+			description: "Echoes.",
+		});
+	});
+
+	it("should run the command with the accessor and args its handler gets", async () => {
+		store.add(registerCommand(EchoCommand));
+		const accessor: ServicesAccessor = new ServiceCollection();
+		const args: ParsedArgs = { _: ["echo"] };
+
+		const result = await registry
+			.getCommand("echo")
+			?.handler(accessor, args);
+
+		expect(result?.isOk()).toBe(true);
+		expect(ran).toEqual([{ accessor, args }]);
+	});
+
+	it("should remove the command when the registration is disposed", () => {
+		registerCommand(EchoCommand)[Symbol.dispose]();
+
+		expect(registry.getCommand("echo")).toBeUndefined();
 	});
 });

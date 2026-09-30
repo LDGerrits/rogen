@@ -1,4 +1,4 @@
-import { capitalized, listLimited } from "../string.js";
+import { capitalized, listLimited, plural } from "../string.js";
 
 describe("capitalized", () => {
 	it("should uppercase the first letter and keep the rest", () => {
@@ -19,5 +19,15 @@ describe("listLimited", () => {
 
 	it("should be empty for no items", () => {
 		expect(listLimited([], 3)).toBe("");
+	});
+});
+
+describe("plural", () => {
+	it("should keep the noun singular for one", () => {
+		expect(plural(1, "config")).toBe("1 config");
+	});
+
+	it.each([0, 2, 20])("should add an s for %i", (count) => {
+		expect(plural(count, "file")).toBe(`${count} files`);
 	});
 });

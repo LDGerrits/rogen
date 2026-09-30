@@ -1,12 +1,13 @@
 import path from "path";
-import { relativeTo } from "../base/path.js";
-import { BuildSummary } from "../domain/build/build-service.js";
-import { ConfigEntry, ResolvedEntry } from "../domain/config/config-service.js";
-import { LogService } from "../platform/log/log-service.js";
-
-function count(n: number, noun: string): string {
-	return `${n} ${noun}${n === 1 ? "" : "s"}`;
-}
+import { relativeTo } from "../../base/path.js";
+import { plural } from "../../base/string.js";
+import { BuildSummary } from "../../domain/build/build-service.js";
+import {
+	ConfigEntry,
+	ResolvedEntry,
+} from "../../domain/config/config-service.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { LogService } from "../../platform/log/log-service.js";
 
 /** The `extends` chain and skipped tag flags of a config. */
 function describeConfig(entry: ConfigEntry, cwd: string): string[] {
@@ -24,21 +25,21 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ rootDir, files, excluded, skippedLinks }) =>
 			[
-				`${relativeTo(cwd, rootDir)}: ${count(files, "file")}`,
+				`${relativeTo(cwd, rootDir)}: ${plural(files, "file")}`,
 				...(excluded > 0 ? [`${excluded} excluded`] : []),
 				...(skippedLinks > 0
-					? [count(skippedLinks, "skipped link")]
+					? [plural(skippedLinks, "skipped link")]
 					: []),
 			].join(", ")
 	);
 	const routes = summary.routes.map(
 		({ key, target, files }) =>
-			`route ${key} -> ${target}: ${count(files, "file")}`
+			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
 	const tags = summary.tags.map(({ tag, on, files }) =>
 		on
-			? `tag ${tag} on: ${count(files, "file")}`
-			: `tag ${tag} off: ${count(files, "file")} left out`
+			? `tag ${tag} on: ${plural(files, "file")}`
+			: `tag ${tag} off: ${plural(files, "file")} left out`
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
@@ -80,24 +81,46 @@ export class BuildLog {
 		}
 	}
 
-	/** One config written, or left alone because its bytes wouldn't change. */
+	/** Heads the lines about one config, when a run builds several. */
+	heading({ config }: ResolvedEntry): void {
+		this.logService.step(config.label);
+	}
+
+	/** One config written, or left alone because its bytes wouldn't change, then what its build warned about. */
 	written(
 		{ entry, config }: ResolvedEntry,
 		written: boolean,
-		summary: BuildSummary
+		summary: BuildSummary,
+		diagnostics: readonly Diagnostic[]
 	): void {
 		this.logService.success(
 			`${relativeTo(this.cwd, config.outFile)} · ${written ? "wrote" : "unchanged"}`
 		);
 		this.details(entry, summary);
+		this.diagnostics(diagnostics);
 	}
 
-	/** One config that wasn't written; `repeated` when its errors were already reported. */
-	notWritten({ entry, config }: ResolvedEntry, repeated: boolean): void {
+	/** One config that wasn't written, then why; no diagnostics means they were all reported before. */
+	notWritten(
+		{ entry, config }: ResolvedEntry,
+		diagnostics: readonly Diagnostic[]
+	): void {
+		const repeated = diagnostics.length === 0;
 		this.logService.error(
 			`${relativeTo(this.cwd, config.outFile)} · not written${repeated ? " · same errors as before" : ""}`
 		);
 		this.details(entry);
+		this.diagnostics(diagnostics);
+	}
+
+	diagnostics(diagnostics: readonly Diagnostic[]): void {
+		for (const diagnostic of diagnostics)
+			this.logService.diagnostic(diagnostic);
+	}
+
+	/** Closes the output of a build that wrote every config. */
+	end(configs: number): void {
+		this.logService.outro(`Built ${plural(configs, "config")}.`);
 	}
 
 	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */

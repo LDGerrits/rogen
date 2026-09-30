@@ -1,6 +1,14 @@
-import { Result, err, ok } from "../base/result.js";
-import { OptionDescriptor, ParsedArgs } from "../platform/environment/args.js";
-import { ConfigRefs } from "../domain/config/config-service.js";
+import { Result, err, ok } from "../../base/result.js";
+import {
+	ConfigRefs,
+	ConfigService,
+} from "../../domain/config/config-service.js";
+import { AbstractCommand } from "../../platform/commands/commands.js";
+import {
+	OptionDescriptor,
+	ParsedArgs,
+} from "../../platform/environment/args.js";
+import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 
 const AllOption: OptionDescriptor = {
 	name: "all",
@@ -84,10 +92,10 @@ function flagOf(name: string): string {
 	return short ? `-${short}` : `--${name}`;
 }
 
-/** The configs a command names, and the overrides above every layer of each; `names` defaults to the positionals after the command. */
-export function configRefsFromArgs(
+/** The configs `names` and the flags pick, and the overrides above every layer of each. */
+function configRefsOf(
 	args: ParsedArgs,
-	names: readonly string[] = args._.slice(1)
+	names: readonly string[]
 ): Result<ConfigRefs, ConfigRefsError> {
 	const paths = args.config ?? [];
 	const all = args.all === true;
@@ -133,4 +141,28 @@ export function configRefsFromArgs(
 			},
 		},
 	});
+}
+
+/** A command that works on the configs its arguments pick: it loads them, then runs with them loaded. */
+export abstract class AbstractConfigCommand extends AbstractCommand {
+	async run(
+		accessor: ServicesAccessor,
+		args: ParsedArgs
+	): Promise<Result<void, Error>> {
+		const refs = configRefsOf(args, this.configNames(args));
+		if (refs.isErr()) return refs;
+		const loaded = await accessor.get(ConfigService).initialize(refs.value);
+		if (loaded.isErr()) return loaded;
+		return this.runWithConfigs(accessor, args);
+	}
+
+	/** The configs named on the command line: the positionals after the command, unless they name something else. */
+	protected configNames(args: ParsedArgs): readonly string[] {
+		return args._.slice(1);
+	}
+
+	protected abstract runWithConfigs(
+		accessor: ServicesAccessor,
+		args: ParsedArgs
+	): Promise<Result<void, Error>>;
 }

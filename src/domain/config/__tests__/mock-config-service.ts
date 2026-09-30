@@ -5,7 +5,7 @@ import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
 import { AbstractConfigService } from "../abstract-config-service.js";
 import { ResolvedConfig, ResolvedTemplate } from "../config.js";
-import { ConfigEntry, ConfigService } from "../config-service.js";
+import { ConfigEntry, ConfigRefs, ConfigService } from "../config-service.js";
 
 export interface ResolvedConfigSpec {
 	readonly file?: string;
@@ -91,7 +91,11 @@ export class MockConfigService
 		return new Set(this.configs.flatMap((entry) => entry.chain));
 	}
 
-	async initialize(): Promise<Result<void, Error>> {
+	/** The refs each `initialize` was given, in order. */
+	readonly initialized: ConfigRefs[] = [];
+
+	async initialize(refs: ConfigRefs): Promise<Result<void, Error>> {
+		this.initialized.push(refs);
 		return ok(undefined);
 	}
 

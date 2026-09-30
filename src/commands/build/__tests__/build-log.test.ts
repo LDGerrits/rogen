@@ -1,9 +1,9 @@
 import path from "path";
-import { BuildSummary } from "../../domain/build/build-service.js";
-import { ConfigEntry } from "../../domain/config/config-service.js";
-import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
-import { LogLevel } from "../../platform/log/log-service.js";
-import { mockConfig } from "../../domain/config/__tests__/mock-config-service.js";
+import { BuildSummary } from "../../../domain/build/build-service.js";
+import { ConfigEntry } from "../../../domain/config/config-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
+import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
@@ -17,8 +17,8 @@ const debugLines = (
 	logService.setLevel(LogLevel.Debug);
 	const resolved = { entry, config: mockConfig() };
 	const log = new BuildLog(logService, dir);
-	if (summary) log.written(resolved, true, summary);
-	else log.notWritten(resolved, false);
+	if (summary) log.written(resolved, true, summary, []);
+	else log.notWritten(resolved, []);
 	return logService.entries
 		.filter(({ kind }) => kind === "debug")
 		.map(({ text }) => text);
