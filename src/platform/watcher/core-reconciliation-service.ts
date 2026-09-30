@@ -1,6 +1,6 @@
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
-import { DisposableStore, Disposable } from "../../base/disposable.js";
+import { AbstractDisposable, Disposable } from "../../base/disposable.js";
 import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
 import { ReconciliationService } from "./reconciliation-service.js";
 
@@ -15,7 +15,8 @@ export const defaultReconciliationOptions: ReconciliationOptions = {
 };
 
 export class CoreReconciliationService
-	implements ReconciliationService, Disposable
+	extends AbstractDisposable
+	implements ReconciliationService
 {
 	declare readonly _serviceBrand: undefined;
 
@@ -23,15 +24,13 @@ export class CoreReconciliationService
 	private flushTimer: ReturnType<typeof setTimeout> | null = null;
 	private isLocked = false;
 
-	private readonly disposables = new DisposableStore();
-
-	private readonly _onDidEmitChanges = this.disposables.add(
+	private readonly _onDidEmitChanges = this._register(
 		new Emitter<FileChange[]>()
 	);
 	readonly onDidEmitChanges: Event<FileChange[]> =
 		this._onDidEmitChanges.event;
 
-	private readonly _onDidRequestReconciliation = this.disposables.add(
+	private readonly _onDidRequestReconciliation = this._register(
 		new Emitter<void>()
 	);
 	readonly onDidRequestReconciliation: Event<void> =
@@ -40,7 +39,9 @@ export class CoreReconciliationService
 	constructor(
 		private readonly logService: LogService,
 		private readonly options: ReconciliationOptions = defaultReconciliationOptions
-	) {}
+	) {
+		super();
+	}
 
 	queueEvents(changes: FileChange[]): void {
 		for (const change of changes) {
@@ -134,8 +135,8 @@ export class CoreReconciliationService
 		this.eventBuffer = [];
 	}
 
-	[Symbol.dispose](): void {
+	override [Symbol.dispose](): void {
 		this.clearBuffer();
-		this.disposables[Symbol.dispose]();
+		super[Symbol.dispose]();
 	}
 }
