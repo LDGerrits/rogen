@@ -59,10 +59,12 @@ export function rootDirOverlap(
 	index: number
 ): RootDirOverlap | undefined {
 	const rootDir = rootDirs[index];
-	if (rootDirs.indexOf(rootDir) !== index) return { kind: "duplicate" };
-	const outer = rootDirs.find(
-		(other) => other !== rootDir && isInside(rootDir, other)
+	// Compared as paths, since a case-insensitive file system makes `src` and `Src` one folder.
+	const first = rootDirs.findIndex(
+		(other) => path.relative(other, rootDir) === ""
 	);
+	if (first !== index) return { kind: "duplicate" };
+	const outer = rootDirs.find((other) => isInside(rootDir, other));
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 

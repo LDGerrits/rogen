@@ -45,7 +45,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			}
 
 			const config = entry.resolved;
-			if (entry.errors.length > 0 || !config) {
+			if (entry.isBroken || !config) {
 				for (const error of entry.errors) logService.diagnostic(error);
 			} else {
 				logService.info(

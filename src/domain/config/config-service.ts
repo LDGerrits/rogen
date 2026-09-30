@@ -32,6 +32,7 @@ export class ConfigEntry {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Tags turned on or off from the command line that this config doesn't declare. */
 	readonly skippedTags: readonly string[];
+	readonly errors: readonly Diagnostic[];
 
 	constructor(
 		fields: Pick<
@@ -44,10 +45,12 @@ export class ConfigEntry {
 		this.resolved = fields.resolved;
 		this.diagnostics = fields.diagnostics;
 		this.skippedTags = fields.skippedTags;
+		this.errors = fields.diagnostics.filter(isError);
 	}
 
-	get errors(): Diagnostic[] {
-		return this.diagnostics.filter(isError);
+	/** Whether the file is broken now, or there is no valid version of it to build. */
+	get isBroken(): boolean {
+		return this.errors.length > 0 || this.resolved === undefined;
 	}
 }
 
@@ -108,7 +111,7 @@ export function requireValidConfigs(
 export function brokenConfigsError(
 	entries: readonly ConfigEntry[]
 ): Error | undefined {
-	const broken = entries.filter((entry) => entry.errors.length > 0);
+	const broken = entries.filter((entry) => entry.isBroken);
 	return broken.length > 0
 		? new Error(
 				`${broken.length} of ${entries.length} configs have errors.`

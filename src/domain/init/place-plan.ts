@@ -133,26 +133,27 @@ export function planPlace(
 			workspace,
 		});
 
-	const { sourceStem } = configSet;
-	const sourced = configSet.sourced && base.parent;
-	const configs = sourced
-		? [
-				placeConfig(sourceStem, {
-					extends: extendsRef(sourced),
-					rootDirs,
-				}),
-				placeConfig(name, {
-					extends: extendsRef(configFileName(sourceStem)),
-					syncDir,
-				}),
-			]
-		: [
-				placeConfig(name, {
-					extends: extendsRef(DEFAULT_CONFIG_FILE),
-					rootDirs,
-					...(syncDir && { syncDir }),
-				}),
-			];
+	const { sourceFile } = configSet;
+	const parent = sourceFile ? base.parent : undefined;
+	const configs =
+		sourceFile && parent
+			? [
+					placeConfig(configSet.sourceStem, {
+						extends: extendsRef(parent),
+						rootDirs,
+					}),
+					placeConfig(name, {
+						extends: extendsRef(sourceFile),
+						syncDir,
+					}),
+				]
+			: [
+					placeConfig(name, {
+						extends: extendsRef(DEFAULT_CONFIG_FILE),
+						rootDirs,
+						...(syncDir && { syncDir }),
+					}),
+				];
 
 	return checked(
 		{
@@ -163,7 +164,7 @@ export function planPlace(
 				setup: compiled ? compiled.setup : [],
 				run: [
 					...(compiled ? [compiled.compileCommand] : []),
-					watchCommand(sourced ? [name, sourceStem] : [name]),
+					watchCommand(parent ? configSet.stems : [name]),
 					`rojo serve ${projectFile}`,
 				],
 				darklua:
@@ -177,7 +178,7 @@ export function planPlace(
 				edits: [
 					tagsStep(
 						language,
-						configFileName(sourced ? sourceStem : name)
+						parent ? configSet.editedFile : configFileName(name)
 					),
 				],
 			},

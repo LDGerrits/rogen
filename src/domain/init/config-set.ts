@@ -39,7 +39,7 @@ export class ConfigSet {
 
 	/** Every config file, in the order they're written. */
 	get configFiles(): string[] {
-		return [...this.stems].reverse().map(configFileName);
+		return this.stems.reverse().map(configFileName);
 	}
 
 	/** The project files the configs write, the synced one first. */
@@ -56,7 +56,7 @@ export class ConfigSet {
 	get placeFiles(): string[] {
 		return [
 			configFileName(this.name),
-			...(this.sourced ? [configFileName(this.sourceStem)] : []),
+			...(this.sourceFile ? [this.sourceFile] : []),
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
 			projectFileName(this.name),
 		];

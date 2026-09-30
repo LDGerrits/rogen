@@ -46,6 +46,16 @@ describe("domain/config/config-service", () => {
 			);
 		});
 
+		it("should count a config that never resolved, even without errors", () => {
+			const entries = [
+				mockEntry({}, "/repo/a.rogen.json", { resolved: undefined }),
+			];
+
+			expect(brokenConfigsError(entries)?.message).toBe(
+				"1 of 1 configs have errors."
+			);
+		});
+
 		it("should be undefined when none is broken", () => {
 			expect(brokenConfigsError([mockEntry()])).toBeUndefined();
 		});

@@ -43,7 +43,7 @@ export interface RobloxTsFacts {
 
 const ID = "roblox-ts";
 
-/** The facts `detect` wrote for the workspace, or none when the language was picked without being found. */
+/** The facts `detect` wrote for the workspace; none for a workspace built without them. */
 const factsOf = (workspace: DetectedWorkspace): RobloxTsFacts =>
 	(workspace.languageFacts[ID] ?? {}) as RobloxTsFacts;
 

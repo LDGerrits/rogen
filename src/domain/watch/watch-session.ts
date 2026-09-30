@@ -110,10 +110,10 @@ export class WatchSession extends AbstractDisposable {
 		private readonly outputService: OutputService
 	) {
 		super();
-		this.plan = createWatchPlan(this.resolvedConfigs);
+		this.plan = createWatchPlan(this.currentConfigs);
 	}
 
-	private get resolvedConfigs(): ResolvedConfig[] {
+	private get currentConfigs(): ResolvedConfig[] {
 		return resolvedConfigs(this.configService.configs);
 	}
 
@@ -150,9 +150,7 @@ export class WatchSession extends AbstractDisposable {
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
-			this.resolvedConfigs.map(({ file }) =>
-				this.queueRebuild(file, true)
-			)
+			this.currentConfigs.map(({ file }) => this.queueRebuild(file, true))
 		);
 	}
 
@@ -329,7 +327,7 @@ export class WatchSession extends AbstractDisposable {
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
-		this.plan = createWatchPlan(this.resolvedConfigs);
+		this.plan = createWatchPlan(this.currentConfigs);
 		if (this.watchKey() === this.activeWatch) return false;
 		await this.watchPlan();
 		return true;
@@ -383,7 +381,7 @@ export class WatchSession extends AbstractDisposable {
 
 		const affected = new Set([
 			...reloaded,
-			...(reindexed ? this.resolvedConfigs.map(({ file }) => file) : []),
+			...(reindexed ? this.currentConfigs.map(({ file }) => file) : []),
 			...sourceChanges.flatMap((change) =>
 				this.plan.configsFor(change.path)
 			),
@@ -409,7 +407,7 @@ export class WatchSession extends AbstractDisposable {
 		if (!reindexed) await this.indexService.initialize(this.plan.roots);
 		this.announce(
 			{ kind: "burst" },
-			this.resolvedConfigs.map(({ file }) =>
+			this.currentConfigs.map(({ file }) =>
 				this.queueRebuild(file, reloaded.includes(file))
 			)
 		);
