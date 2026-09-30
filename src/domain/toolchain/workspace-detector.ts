@@ -5,8 +5,8 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
-import { DarkluaDetector } from "./darklua.js";
-import { PackageManagerDetector } from "./package-managers.js";
+import { DarkluaDetector } from "./darklua-detector.js";
+import { PackageManagerDetector } from "./package-manager-detector.js";
 import {
 	Darklua,
 	DetectedWorkspace,
