@@ -34,6 +34,12 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
+import { parseArgs } from "../../../platform/environment/args.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 
 const isDefaultStaging = (file: string): boolean =>
 	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
@@ -1025,6 +1031,23 @@ describe("watch command", () => {
 			await settle();
 
 			expect(rename).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("flags", () => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const parse = (...argv: string[]) =>
+			parseArgs(argv, (command) => registry.getOptions(command));
+
+		it("should accept the override flags, but not --show-config", () => {
+			expect(
+				parse("watch", "-t", "mock", "-c", "a.rogen.json").isOk()
+			).toBe(true);
+			expect(parse("watch", "--show-config").isErr()).toBe(true);
+		});
+
+		it("should accept --all", () => {
+			expect(parse("watch", "--all").unwrap().options.all).toBe(true);
 		});
 	});
 });

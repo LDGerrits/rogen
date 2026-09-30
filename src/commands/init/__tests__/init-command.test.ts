@@ -27,6 +27,12 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { parseArgs } from "../../../platform/environment/args.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -1102,5 +1108,15 @@ describe("init command", () => {
 			"Failed to write default.rogen.json"
 		);
 		expect(errorMessage(result)).toContain("Permission denied");
+	});
+
+	describe("flags", () => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const parse = (...argv: string[]) =>
+			parseArgs(argv, (command) => registry.getOptions(command));
+
+		it("should not accept the override flags", () => {
+			expect(parse("init", "-t", "mock").isErr()).toBe(true);
+		});
 	});
 });

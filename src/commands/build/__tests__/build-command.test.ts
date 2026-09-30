@@ -16,7 +16,7 @@ import {
 	ConfigService,
 } from "../../../domain/config/config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { ParsedArgs } from "../../../platform/environment/args.js";
+import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
@@ -27,6 +27,11 @@ import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -456,6 +461,80 @@ describe("build command", () => {
 					diagnostics: ["/repo/broken.rogen.json - error: boom."],
 				},
 			});
+		});
+	});
+
+	describe("flags", () => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const parse = (...argv: string[]) =>
+			parseArgs(argv, (command) => registry.getOptions(command));
+
+		it("should parse every override flag, with the repeatable ones as arrays", () => {
+			const { command, options } = parse(
+				"build",
+				"lobby",
+				"-c",
+				"a.rogen.json",
+				"--config",
+				"b.rogen.json",
+				"-o",
+				"out.project.json",
+				"-s",
+				"dist",
+				"--template",
+				"base.project.json",
+				"-t",
+				"mock",
+				"--tag",
+				"dev",
+				"--no-tag",
+				"prod",
+				"--show-config"
+			).unwrap();
+
+			expect(command).toBe("build");
+			expect(options).toEqual({
+				_: ["build", "lobby"],
+				config: ["a.rogen.json", "b.rogen.json"],
+				"out-file": "out.project.json",
+				"sync-dir": "dist",
+				template: "base.project.json",
+				tag: ["mock", "dev"],
+				"no-tag": ["prod"],
+				"show-config": true,
+			});
+		});
+
+		it("should parse -T as --no-tag, alongside -t", () => {
+			const { options } = parse(
+				"build",
+				"-t",
+				"mock",
+				"-T",
+				"dev",
+				"--no-tag",
+				"prod"
+			).unwrap();
+
+			expect(options).toMatchObject({
+				tag: ["mock"],
+				"no-tag": ["dev", "prod"],
+			});
+		});
+
+		it("should accept --all", () => {
+			expect(parse("build", "--all").unwrap().options.all).toBe(true);
+		});
+
+		it.each([
+			"--profile",
+			"--env",
+			"--mode",
+			"--build",
+			"--init",
+			"--trace",
+		])("should reject the old flag %s", (flag) => {
+			expect(parse("build", flag).isErr()).toBe(true);
 		});
 	});
 });

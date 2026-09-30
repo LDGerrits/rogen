@@ -12,6 +12,12 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { parseArgs } from "../../../platform/environment/args.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 
 describe("list command", () => {
 	let store: DisposableStore;
@@ -155,5 +161,16 @@ describe("list command", () => {
 		expect((result as ResultError<Error>).error.message).toContain(
 			"No config file found"
 		);
+	});
+
+	describe("flags", () => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const parse = (...argv: string[]) =>
+			parseArgs(argv, (command) => registry.getOptions(command));
+
+		it("should not accept the config-picking flags", () => {
+			expect(parse("list", "-c", "a.rogen.json").isErr()).toBe(true);
+			expect(parse("list", "--all").isErr()).toBe(true);
+		});
 	});
 });
