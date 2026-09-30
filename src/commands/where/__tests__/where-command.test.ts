@@ -7,7 +7,7 @@ import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { ParsedArgs } from "../../../platform/environment/args.js";
+import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
@@ -17,6 +17,11 @@ import { ServiceCollection } from "../../../platform/instantiation/service-colle
 import { LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
+import { Registry } from "../../../platform/registry/registry.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -193,5 +198,29 @@ describe("where command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(printed()).toEqual([]);
+	});
+
+	describe("flags", () => {
+		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+		const parse = (...argv: string[]) =>
+			parseArgs(argv, (command) => registry.getOptions(command));
+
+		it("should accept the config-picking flags, but not the output overrides", () => {
+			expect(
+				parse(
+					"where",
+					"src",
+					"--all",
+					"-c",
+					"a.rogen.json",
+					"-t",
+					"mock",
+					"-T",
+					"dev"
+				).isOk()
+			).toBe(true);
+			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
+			expect(parse("where", "-s", "dist").isErr()).toBe(true);
+		});
 	});
 });

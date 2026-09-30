@@ -77,6 +77,16 @@ describe("CoreCommandService", () => {
 			);
 		});
 
+		it("should suggest building a config named like the unknown command", async () => {
+			const result = await commandService.executeCommand("prod", {
+				_: ["prod"],
+			});
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"rogen build prod"
+			);
+		});
+
 		it("should fire onWillExecuteCommand before and onDidExecuteCommand after the handler runs", async () => {
 			const order: string[] = [];
 			store.add(
