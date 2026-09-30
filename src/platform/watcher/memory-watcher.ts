@@ -1,5 +1,5 @@
 import { DisposableStore } from "../../base/disposable.js";
-import { toPosix } from "../../base/path.js";
+import { containsPosix, toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
@@ -39,15 +39,11 @@ export class MemoryWatcher extends AbstractWatcher {
 				const normalizedChangePath = toPosix(change.path);
 				if (isIgnored(normalizedChangePath, this.ignored)) return;
 
-				const isWatched = this.activeRequests.some((req) => {
-					if (req.recursive) {
-						return (
-							normalizedChangePath === req.path ||
-							normalizedChangePath.startsWith(req.path + "/")
-						);
-					}
-					return normalizedChangePath === req.path;
-				});
+				const isWatched = this.activeRequests.some((req) =>
+					req.recursive
+						? containsPosix(req.path, normalizedChangePath)
+						: normalizedChangePath === req.path
+				);
 
 				if (isWatched) {
 					this.fireChange({

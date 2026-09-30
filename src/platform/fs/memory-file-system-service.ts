@@ -1,7 +1,7 @@
 import { FileType, FileSystemService } from "./file-system-service.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
-import { toPosix } from "../../base/path.js";
+import { containsPosix, toPosix } from "../../base/path.js";
 import { FileChange, FileChangeType } from "./file-events.js";
 
 class FileNode {
@@ -50,10 +50,6 @@ function walkError(
 		failure,
 		`${failure}: ${FAILURE_MESSAGES[failure]}, ${syscall} '${filePath}'`
 	);
-}
-
-function isUnder(key: string, parent: string): boolean {
-	return key === parent || key.startsWith(`${parent}/`);
 }
 
 function splitPath(filePath: string): string[] {
@@ -398,8 +394,8 @@ export class MemoryFileSystemService
 			for (const link of links) {
 				if (
 					via.has(link.key) ||
-					isUnder(key, link.key) ||
-					!isUnder(key, link.targetKey)
+					containsPosix(link.key, key) ||
+					!containsPosix(link.targetKey, key)
 				) {
 					continue;
 				}
