@@ -1,4 +1,4 @@
-import { ok, err, tryWith } from "../result.js";
+import { ok, err, tryWith, tryWithAsync } from "../result.js";
 
 describe("Result", () => {
 	it("should handle successful values", () => {
@@ -43,5 +43,18 @@ describe("Result", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(result.unwrapOr("default")).toBe("default");
+	});
+
+	it("should return the value of an async function with tryWithAsync", async () => {
+		const result = await tryWithAsync(async () => "done");
+
+		expect(result.unwrap()).toBe("done");
+	});
+
+	it("should turn a rejection into an error with tryWithAsync", async () => {
+		const result = await tryWithAsync(() => Promise.reject("nope"));
+
+		expect(result.isErr()).toBe(true);
+		expect(result.isErr() && result.error.message).toBe("nope");
 	});
 });

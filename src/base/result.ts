@@ -18,6 +18,16 @@ export function tryWith<T>(f: () => T): Result<T, Error> {
 	}
 }
 
+export async function tryWithAsync<T>(
+	f: () => Promise<T>
+): Promise<Result<T, Error>> {
+	try {
+		return ok(await f());
+	} catch (error) {
+		return err(ErrorUtils.fromUnknown(error));
+	}
+}
+
 export class ResultOk<T> {
 	constructor(readonly value: T) {}
 

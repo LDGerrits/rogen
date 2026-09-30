@@ -1,7 +1,6 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	ConfigFile,
 	ConfigFileReader,
@@ -171,20 +170,20 @@ export class ConfigLoader {
 		file: string,
 		location: DiagnosticLocation
 	): Promise<Result<ResolvedTemplate, Diagnostic[]>> {
-		let text: string;
-		try {
-			text = await this.fileSystemService.readFile(file);
-		} catch (error) {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		if (text.isErr()) {
 			return err([
 				errorDiagnostic(
 					"config.templateUnreadable",
 					location,
-					`the template could not be read: ${ErrorUtils.fromUnknown(error).message}.`
+					`the template could not be read: ${text.error.message}.`
 				),
 			]);
 		}
 
-		const project = RojoProject.parse(text);
+		const project = RojoProject.parse(text.value);
 		if (project.isErr()) {
 			return err([
 				errorDiagnostic(

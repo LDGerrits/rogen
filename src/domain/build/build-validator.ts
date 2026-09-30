@@ -293,7 +293,9 @@ export class BuildValidator {
 				`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, RojoFile.INIT_META)} instead.`
 			);
 		const fileName = path.posix.basename(entry.relativePath);
-		const fix = new RojoFile(fileName).metaFile ?? `${fileName}.meta.json`;
+		const fix =
+			new RojoFile(fileName).metaFile ??
+			`${fileName}${RojoFile.META_SUFFIX}`;
 		return warningDiagnostic(
 			"meta.sharedWithScript",
 			location,

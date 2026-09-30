@@ -1,6 +1,5 @@
-import { ErrorUtils } from "../../base/errors.js";
 import { JsoncNode } from "../../base/jsonc.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -37,21 +36,21 @@ export class ConfigFileReader {
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
-		let text: string;
-		try {
-			text = await this.fileSystemService.readFile(file);
-		} catch (error) {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		if (text.isErr()) {
 			return err({
 				kind: "unreadable",
 				diagnostics: [
 					unreadable(
 						{ resource: file, position: { line: 1, column: 1 } },
-						ErrorUtils.fromUnknown(error).message
+						text.error.message
 					),
 				],
 			});
 		}
-		return this.parse(text, file);
+		return this.parse(text.value, file);
 	}
 
 	private parse(

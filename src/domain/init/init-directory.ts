@@ -1,7 +1,6 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { contains, normalizeDir, toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -91,17 +90,18 @@ export class InitDirectory {
 
 	async readFile(fileName: string): Promise<Result<string, Diagnostic[]>> {
 		const file = path.join(this.path, fileName);
-		try {
-			return ok(await this.fileSystemService.readFile(file));
-		} catch (error) {
-			return err([
-				errorDiagnostic(
-					"init.templateUnreadable",
-					{ resource: file },
-					`couldn't read this file to copy it: ${ErrorUtils.fromUnknown(error).message}`
-				),
-			]);
-		}
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isOk()
+			? text
+			: err([
+					errorDiagnostic(
+						"init.templateUnreadable",
+						{ resource: file },
+						`couldn't read this file to copy it: ${text.error.message}`
+					),
+				]);
 	}
 
 	/** What a place inherits from `default.rogen.json`, resolved the way a build would, so a place joins a config that builds. Read once. */
