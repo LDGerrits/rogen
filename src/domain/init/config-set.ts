@@ -7,7 +7,7 @@ import {
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "./init-directory.js";
 
-/** The names `init` writes for one config name; a Darklua repo without a compiler gets a source config and a synced one. */
+/** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
 	/** The config a project starts with. */
 	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);
@@ -18,9 +18,9 @@ export class ConfigSet {
 		readonly darklua: boolean
 	) {}
 
-	/** The stem of the source-rooted config beside `name`'s synced one. */
-	static sourceStemOf(name: string): string {
-		return name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
+	/** The stem of the synced config beside `name`'s source-rooted one. */
+	static syncStemOf(name: string): string {
+		return name === DEFAULT_CONFIG_STEM ? "sync" : `${name}-sync`;
 	}
 
 	/** `extends` as init writes it: relative, and explicitly so. */
@@ -88,44 +88,43 @@ export class ConfigSet {
 			: this.language.compiler?.outDir;
 	}
 
+	/** Whether a synced config is written beside the named one. */
 	get sourced(): boolean {
 		return this.darklua && this.language.compiler === undefined;
 	}
 
-	get sourceStem(): string {
-		return ConfigSet.sourceStemOf(this.name);
+	get syncStem(): string {
+		return ConfigSet.syncStemOf(this.name);
 	}
 
-	/** The source config's file, when there is one. */
-	get sourceFile(): string | undefined {
-		return this.sourced ? configFileName(this.sourceStem) : undefined;
+	/** The synced config's file, when there is one. */
+	get syncFile(): string | undefined {
+		return this.sourced ? configFileName(this.syncStem) : undefined;
 	}
 
-	/** The stems of its configs, the synced one first. */
+	/** The stems of its configs, in the order they're written. */
 	get stems(): string[] {
-		return this.sourced ? [this.name, this.sourceStem] : [this.name];
+		return this.sourced ? [this.name, this.syncStem] : [this.name];
 	}
 
-	/** Every config file, in the order they're written. */
 	get configFiles(): string[] {
-		return this.stems.reverse().map(configFileName);
+		return this.stems.map(configFileName);
 	}
 
-	/** The project files the configs write, the synced one first. */
 	get outputFiles(): string[] {
 		return this.stems.map(defaultOutFileName);
 	}
 
-	/** The config where routes and tags are edited: the one holding the root dirs. */
-	get editedFile(): string {
-		return configFileName(this.stems[this.stems.length - 1]);
+	/** The config whose project file Rojo serves: the synced one, when there is one. */
+	get servedStem(): string {
+		return this.sourced ? this.syncStem : this.name;
 	}
 
 	/** The files a place named like this writes, plus its project file, which mustn't exist either. */
 	get placeFiles(): string[] {
 		return [
 			configFileName(this.name),
-			...(this.sourceFile ? [this.sourceFile] : []),
+			...(this.syncFile ? [this.syncFile] : []),
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
 			defaultOutFileName(this.name),
 		];

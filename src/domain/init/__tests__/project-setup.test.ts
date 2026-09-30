@@ -195,51 +195,51 @@ describe("ProjectSetup plan", () => {
 	describe("darklua", () => {
 		const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
 
-		it("should write a source config and a default config extending it", async () => {
+		it("should write a source-rooted default and a sync config extending it", async () => {
 			const files = await plan(darklua);
 
 			expect(files.configs.map((config) => config.fileName)).toEqual([
-				"source.rogen.json",
 				"default.rogen.json",
+				"sync.rogen.json",
 			]);
-			const source = configOf(files, "source.rogen.json");
-			const child = configOf(files, "default.rogen.json");
+			const source = configOf(files, "default.rogen.json");
+			const synced = configOf(files, "sync.rogen.json");
 			expect(source.syncDir).toBeUndefined();
 			expect(source.routes).toEqual(LUAU_ROUTES);
-			expect(child.extends).toBe("./source.rogen.json");
-			expect(child.syncDir).toBe("dist");
+			expect(synced.extends).toBe("./default.rogen.json");
+			expect(synced.syncDir).toBe("dist");
 		});
 
 		it("should add only syncDir to the extending config", async () => {
-			const child = configOf(await plan(darklua), "default.rogen.json");
+			const synced = configOf(await plan(darklua), "sync.rogen.json");
 
-			expect(Object.keys(child)).toEqual([
+			expect(Object.keys(synced)).toEqual([
 				"$schema",
 				"extends",
 				"syncDir",
 			]);
 		});
 
-		it("should name the pair <name> and <name>-source for a named config", async () => {
+		it("should name the pair <name> and <name>-sync for a named config", async () => {
 			const files = await plan(darklua, "lobby");
 
 			expect(files.configs.map((config) => config.fileName)).toEqual([
-				"lobby-source.rogen.json",
 				"lobby.rogen.json",
+				"lobby-sync.rogen.json",
 			]);
-			expect(configOf(files, "lobby.rogen.json").extends).toBe(
-				"./lobby-source.rogen.json"
+			expect(configOf(files, "lobby-sync.rogen.json").extends).toBe(
+				"./lobby.rogen.json"
 			);
 		});
 
-		it("should put the template in the source config only", async () => {
+		it("should put the template in the source-rooted config only", async () => {
 			const files = await plan({ ...darklua, ...withPackages });
 
-			expect(configOf(files, "source.rogen.json").template).toBe(
+			expect(configOf(files, "default.rogen.json").template).toBe(
 				"template.project.json"
 			);
 			expect(
-				configOf(files, "default.rogen.json").template
+				configOf(files, "sync.rogen.json").template
 			).toBeUndefined();
 		});
 	});
@@ -276,18 +276,18 @@ describe("ProjectSetup plan", () => {
 			).toBeUndefined();
 		});
 
-		it("should write a source config and a dist config for luau with darklua", async () => {
+		it("should write a source-rooted default and a sync config for luau with darklua", async () => {
 			const files = await planFor("luau", true);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
-				"source.rogen.json",
 				"default.rogen.json",
+				"sync.rogen.json",
 			]);
 			expect(
-				configOf(files, "source.rogen.json").syncDir
+				configOf(files, "default.rogen.json").syncDir
 			).toBeUndefined();
-			expect(configOf(files, "default.rogen.json")).toMatchObject({
-				extends: "./source.rogen.json",
+			expect(configOf(files, "sync.rogen.json")).toMatchObject({
+				extends: "./default.rogen.json",
 				syncDir: "dist",
 			});
 		});
@@ -347,15 +347,24 @@ describe("ProjectSetup plan", () => {
 			).toEqual(["darklua process src dist"]);
 		});
 
-		it("should watch the source config Darklua reads", async () => {
-			expect(await (await planFor("luau", true)).nextSteps.run).toContain(
-				"rogen watch default source"
+		it("should watch both configs and serve the synced one", async () => {
+			expect((await planFor("luau", true)).nextSteps.run).toEqual([
+				"rogen watch default sync",
+				"rojo serve sync.project.json",
+			]);
+			expect((await planFor("luau", true, "lobby")).nextSteps.run).toEqual(
+				[
+					"rogen watch lobby lobby-sync",
+					"rojo serve lobby-sync.project.json",
+					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
+				]
 			);
-			expect(
-				await (
-					await planFor("luau", true, "lobby")
-				).nextSteps.run
-			).toContain("rogen watch lobby lobby-source");
+		});
+
+		it("should leave the sourcemap to luau-lsp for default, and say how without it", async () => {
+			expect((await planFor("luau", true)).nextSteps.edits.at(-1)).toBe(
+				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch"
+			);
 		});
 
 		it("should give each root dir its own path under the sync dir", async () => {
@@ -380,14 +389,14 @@ describe("ProjectSetup plan", () => {
 			]);
 		});
 
-		it("should point the routes hint at the source config for luau with darklua", async () => {
+		it("should point the routes hint at the named config for luau with darklua", async () => {
 			expect(
 				await (
 					await planFor("luau", true, "lobby")
 				).nextSteps.edits
 			).toEqual([
-				'Add your own routes under "routes" in lobby-source.rogen.json.',
-				'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
+				'Add your own routes under "routes" in lobby.rogen.json.',
+				'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
 
@@ -1264,12 +1273,12 @@ describe("ProjectSetup plan", () => {
 			const result = await planResult(
 				{ ...luau, usesDarklua: true },
 				"default",
-				["source.rogen.json", "default.rogen.json"]
+				["default.rogen.json", "sync.rogen.json"]
 			);
 
 			expect(errorsOf(result).map((error) => error.resource)).toEqual([
-				path.join(directory, "source.rogen.json"),
 				path.join(directory, "default.rogen.json"),
+				path.join(directory, "sync.rogen.json"),
 			]);
 		});
 

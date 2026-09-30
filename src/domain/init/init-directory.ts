@@ -25,8 +25,6 @@ const DEFAULT_PROJECT_NAME = "roblox-game";
 export interface BaseConfig {
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
-	/** The config `default` extends, which holds the shared source setup of a Darklua repo. */
-	readonly parent?: string;
 }
 
 /** The directory `init` writes into: what is in it, what the toolchain found there, and which paths could be written. */
@@ -174,6 +172,19 @@ export class InitDirectory {
 			: `${normalized} overlaps ${overlapping}, one of default's root dirs. Pick a folder outside it.`;
 	}
 
+	/** The sync dir the config in `fileName` resolves to, relative to the directory, if it has one and builds. */
+	async syncDirOf(fileName: string): Promise<string | undefined> {
+		const entry = await this.configService.readConfig(
+			path.join(this.path, fileName)
+		);
+		const syncDir = entry.resolved?.syncDir;
+		return syncDir && this.relative(syncDir);
+	}
+
+	private relative(absolute: string): string {
+		return toPosix(path.relative(this.path, absolute));
+	}
+
 	private async readDefaultConfig(): Promise<
 		Result<BaseConfig, Diagnostic[]>
 	> {
@@ -182,14 +193,10 @@ export class InitDirectory {
 		);
 		if (!entry.resolved) return err([...entry.diagnostics]);
 
-		const relative = (absolute: string) =>
-			toPosix(path.relative(this.path, absolute));
 		const { rootDirs, syncDir } = entry.resolved;
-		const [parent] = entry.parents;
 		return ok({
-			rootDirs: rootDirs.map(relative),
-			...(syncDir && { syncDir: relative(syncDir) }),
-			...(parent && { parent: relative(parent) }),
+			rootDirs: rootDirs.map((dir) => this.relative(dir)),
+			...(syncDir && { syncDir: this.relative(syncDir) }),
 		});
 	}
 }

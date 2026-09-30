@@ -111,66 +111,40 @@ describe("PlaceSetup", () => {
 	});
 
 	describe("luau with darklua", () => {
-		const base: BaseConfig = {
-			rootDirs: ["src"],
-			syncDir: "dist",
-			parent: "source.rogen.json",
-		};
+		const base: BaseConfig = { rootDirs: ["src"], syncDir: "dist" };
 
-		it("should write <name>-source and a <name> synced from dist/<name>", () => {
+		it("should write <name> from the source and a <name>-sync synced from dist/<name>", () => {
 			const { configs } = written(plan(darklua, base));
 
 			expect(configs).toEqual({
-				"lobby-source.rogen.json": {
-					$schema: SCHEMA,
-					extends: "./source.rogen.json",
-					rootDirs: ["src", "places/lobby"],
-				},
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
-					extends: "./lobby-source.rogen.json",
+					extends: "./default.rogen.json",
+					rootDirs: ["src", "places/lobby"],
+				},
+				"lobby-sync.rogen.json": {
+					$schema: SCHEMA,
+					extends: "./lobby.rogen.json",
 					syncDir: "dist/lobby",
 				},
 			});
 		});
 
-		it("should extend the shared source config wherever default gets it", () => {
-			const { configs } = written(
-				plan(darklua, { ...base, parent: "configs/core.rogen.json" })
-			);
-
-			expect(configs["lobby-source.rogen.json"].extends).toBe(
-				"./configs/core.rogen.json"
-			);
-		});
-
-		it("should process each root dir to its path under the place's sync dir", () => {
+		it("should serve the synced project, keep the sourcemap current and process each root dir under the place's sync dir", () => {
 			expect(written(plan(darklua, base)).nextSteps).toEqual({
 				setup: [],
 				run: [
-					"rogen watch lobby lobby-source",
-					"rojo serve lobby.project.json",
+					"rogen watch lobby lobby-sync",
+					"rojo serve lobby-sync.project.json",
+					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
 				],
 				darklua: [
 					"darklua process src dist/lobby/src",
 					"darklua process places/lobby dist/lobby/places/lobby",
 				],
 				edits: [
-					'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
+					'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.',
 				],
-			});
-		});
-
-		it("should write one synced config when default has no source config to extend", () => {
-			const { configs } = written(
-				plan(darklua, { rootDirs: ["src"], syncDir: "dist" })
-			);
-
-			expect(Object.keys(configs)).toEqual(["lobby.rogen.json"]);
-			expect(configs["lobby.rogen.json"]).toMatchObject({
-				extends: "./default.rogen.json",
-				rootDirs: ["src", "places/lobby"],
-				syncDir: "dist/lobby",
 			});
 		});
 	});
@@ -294,13 +268,13 @@ describe("PlaceSetup", () => {
 		it("should report every file a Darklua place would write that exists", () => {
 			const result = plan(
 				darklua,
-				{ rootDirs: ["src"], parent: "source.rogen.json" },
-				["lobby-source.rogen.json", "lobby.rogen.json"]
+				{ rootDirs: ["src"], syncDir: "dist" },
+				["lobby.rogen.json", "lobby-sync.rogen.json"]
 			);
 
 			expect(conflictsOf(result)).toEqual([
-				path.join(directory, "lobby-source.rogen.json"),
 				path.join(directory, "lobby.rogen.json"),
+				path.join(directory, "lobby-sync.rogen.json"),
 			]);
 		});
 

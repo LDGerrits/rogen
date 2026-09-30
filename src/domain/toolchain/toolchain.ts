@@ -249,6 +249,11 @@ export class Darklua implements SyncTool {
 		note: "Darklua converts every .meta.json this way.",
 	};
 
+	/** Keeps the sourcemap that `convert_require` reads current, from the source-rooted project. */
+	sourcemapCommand(projectFile: string): string {
+		return `rojo sourcemap ${projectFile} --output sourcemap.json --watch`;
+	}
+
 	/** One `darklua process` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,

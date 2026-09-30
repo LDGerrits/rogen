@@ -1,8 +1,14 @@
 import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig, SCHEMA_URL, configFileName } from "../config/config.js";
-import { PlannedFile } from "../toolchain/toolchain.js";
+import {
+	DEFAULT_CONFIG_STEM,
+	RogenConfig,
+	SCHEMA_URL,
+	configFileName,
+	defaultOutFileName,
+} from "../config/config.js";
+import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
@@ -60,6 +66,18 @@ export class InitPlanBuilder {
 
 	addDarkluaCommands(...commands: readonly string[]): void {
 		this.darklua.push(...commands);
+	}
+
+	/** luau-lsp keeps the sourcemap Darklua reads current from the default project; any other needs its own watch. */
+	addSourcemapSteps(projectFile: string, darklua: Darklua): void {
+		const command = darklua.sourcemapCommand(projectFile);
+		if (projectFile === defaultOutFileName(DEFAULT_CONFIG_STEM)) {
+			this.edits.push(
+				`Darklua reads sourcemap.json, which luau-lsp keeps current from ${projectFile}. Without luau-lsp, run: ${command}`
+			);
+		} else {
+			this.run.push(command);
+		}
 	}
 
 	addEdit(...lines: readonly string[]): void {

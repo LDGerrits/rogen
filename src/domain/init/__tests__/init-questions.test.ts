@@ -185,13 +185,13 @@ describe("InitQuestions askProject", () => {
 			expect(result.unwrap()?.name).toBe("test");
 		});
 
-		it("should reject a name whose source config exists", async () => {
+		it("should reject a name whose synced config exists", async () => {
 			await expect(
 				ask(luau, ["lobby"], undefined, [
 					"default.rogen.json",
-					"lobby-source.rogen.json",
+					"lobby-sync.rogen.json",
 				])
-			).rejects.toThrow("lobby-source.rogen.json already exists.");
+			).rejects.toThrow("lobby-sync.rogen.json already exists.");
 		});
 	});
 
@@ -249,13 +249,13 @@ describe("InitQuestions askProject", () => {
 
 			const result = await askInitChoices(
 				prompts,
-				contextOf(luau, ["source.rogen.json"])
+				contextOf(luau, ["sync.rogen.json"])
 			);
 
 			expect(conflictsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
-					resource: path.join(directory, "source.rogen.json"),
+					resource: path.join(directory, "sync.rogen.json"),
 				},
 			]);
 			expect(prompts.asked).toHaveLength(3);

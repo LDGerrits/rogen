@@ -1,4 +1,7 @@
 {
-	"extends": "./match-source.rogen.json",
-	"syncDir": "dist/match"
+	"extends": "./core.rogen.json",
+	"rootDirs": [
+		"core",
+		"places/match"
+	]
 }

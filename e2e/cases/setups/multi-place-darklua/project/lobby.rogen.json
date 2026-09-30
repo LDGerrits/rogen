@@ -1,4 +1,7 @@
 {
-	"extends": "./lobby-source.rogen.json",
-	"syncDir": "dist/lobby"
+	"extends": "./core.rogen.json",
+	"rootDirs": [
+		"core",
+		"places/lobby"
+	]
 }

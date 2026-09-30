@@ -1,4 +1,11 @@
 {
-	"extends": "./source.rogen.json",
-	"syncDir": "dist"
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
 }

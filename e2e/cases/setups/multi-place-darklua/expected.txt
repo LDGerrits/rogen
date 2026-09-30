@@ -1,36 +1,25 @@
-$ rogen build lobby lobby-source match match-source
+$ rogen build lobby lobby-sync match match-sync
 exit 0
 stdout:
-  rogen build · lobby, lobby-source, match, match-source
+  rogen build · lobby, lobby-sync, match, match-sync
   Not building: core.rogen.json.
   lobby
     lobby.project.json · wrote
-  lobby-source
-    lobby-source.project.json · wrote
+  lobby-sync
+    lobby-sync.project.json · wrote
   match
     match.project.json · wrote
-  match-source
-    match-source.project.json · wrote
+  match-sync
+    match-sync.project.json · wrote
   Built 4 configs.
 
 written:
-  lobby-source.project.json
+  lobby-sync.project.json
   lobby.project.json
-  match-source.project.json
+  match-sync.project.json
   match.project.json
 
-$ rojo sourcemap lobby-source.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      Settings: ModuleScript  <- places/lobby/Settings.luau
-  ServerScriptService: ServerScriptService
-    Inventory: Folder
-      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
-    Lobby: Folder
-      LobbyService: Script  <- places/lobby/Lobby/LobbyService.server.luau
-
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap lobby-sync.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
@@ -41,18 +30,18 @@ project: DataModel
     Lobby: Folder
       LobbyService: Script  <- dist/lobby/places/lobby/Lobby/LobbyService.server.luau
 
-$ rojo sourcemap match-source.project.json
+$ rojo sourcemap lobby.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Settings: ModuleScript  <- core/Settings.luau
+      Settings: ModuleScript  <- places/lobby/Settings.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       InventoryService: Script  <- core/Inventory/InventoryService.server.luau
-    Match: Folder
-      MatchService: Script  <- places/match/Match/MatchService.server.luau
+    Lobby: Folder
+      LobbyService: Script  <- places/lobby/Lobby/LobbyService.server.luau
 
-$ rojo sourcemap match.project.json
+$ rojo sourcemap match-sync.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
@@ -62,3 +51,14 @@ project: DataModel
       InventoryService: Script  <- dist/match/core/Inventory/InventoryService.server.luau
     Match: Folder
       MatchService: Script  <- dist/match/places/match/Match/MatchService.server.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Settings: ModuleScript  <- core/Settings.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      InventoryService: Script  <- core/Inventory/InventoryService.server.luau
+    Match: Folder
+      MatchService: Script  <- places/match/Match/MatchService.server.luau

@@ -155,7 +155,7 @@ export class InitQuestions {
 			description: "Writes <name>.rogen.json.",
 			filesFor: (name) => [
 				configFileName(name),
-				configFileName(ConfigSet.sourceStemOf(name)),
+				configFileName(ConfigSet.syncStemOf(name)),
 			],
 		});
 	}

@@ -16,8 +16,8 @@ The output is the Rojo project file a config writes, named by `outFile`. It defa
 
 One config writes one output. A second project file is a second config.
 
-<Callout type="info" title="The default output is the one to serve">
-	`rojo serve` with no argument picks up `default.project.json`, so the config named `default` is the one that should be safe to sync. See the [Darklua guide](/docs/v2/setups/darklua) for what that means when a processor is involved.
+<Callout type="info" title="The default output is the one tools find">
+	`rojo serve` with no argument picks up `default.project.json`, and so does luau-lsp when it generates its sourcemap. With Darklua the two need different files, so `default` stays rooted at your source and you serve `sync.project.json`. See the [Darklua guide](/docs/v2/setups/darklua).
 </Callout>
 
 ## Template
