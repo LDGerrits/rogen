@@ -11,7 +11,7 @@ import {
 import {
 	FileChange,
 	FileChangeType,
-} from "../../../platform/fs/file-events.js";
+} from "../../../platform/fs/file-changes.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";

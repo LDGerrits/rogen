@@ -1,6 +1,6 @@
 import path from "path";
 import { relativeTo } from "../../base/path.js";
-import { plural } from "../../base/string.js";
+import { plural } from "../../base/strings.js";
 import { BuildSummary } from "../../domain/build/build-service.js";
 import {
 	ConfigEntry,

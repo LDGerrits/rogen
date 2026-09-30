@@ -1,4 +1,4 @@
-import { capitalized } from "../../base/string.js";
+import { capitalized } from "../../base/strings.js";
 import {
 	Language,
 	LanguageDetector,

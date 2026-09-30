@@ -1,4 +1,4 @@
-import { groupBy } from "../../base/collection.js";
+import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
@@ -10,7 +10,7 @@ import { BuildSummary, LeftOut } from "./build-service.js";
 import { NameReader, NameReadings, RoutedFile, Router } from "./routing.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { SyncLayout } from "./sync-layout.js";
-import { BuildTemplate } from "./template.js";
+import { BuildTemplate } from "./build-template.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {

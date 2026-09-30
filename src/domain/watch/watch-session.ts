@@ -5,7 +5,7 @@ import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { contains, outermostDirs } from "../../base/path.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
-import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
+import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
 import {

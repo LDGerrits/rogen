@@ -1,4 +1,4 @@
-import { capitalized, listLimited, plural } from "../string.js";
+import { capitalized, listLimited, plural } from "../strings.js";
 
 describe("capitalized", () => {
 	it("should uppercase the first letter and keep the rest", () => {

@@ -4,7 +4,7 @@ import { RogenConfig } from "../config/config.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan.js";
+import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
 import { PlaceSetup } from "./place-setup.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";

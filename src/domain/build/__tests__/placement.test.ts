@@ -5,7 +5,7 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { FileChangeType } from "../../../platform/fs/file-events.js";
+import { FileChangeType } from "../../../platform/fs/file-changes.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";

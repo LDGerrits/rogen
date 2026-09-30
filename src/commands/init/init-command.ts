@@ -1,6 +1,6 @@
 import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { plural } from "../../base/string.js";
+import { plural } from "../../base/strings.js";
 import { InitService, NextSteps } from "../../domain/init/init-service.js";
 import {
 	AbstractCommand,

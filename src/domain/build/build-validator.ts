@@ -1,7 +1,7 @@
 import path from "path";
-import { compareStrings } from "../../base/collection.js";
+import { compareStrings } from "../../base/collections.js";
 import { joinPosix, toPosix } from "../../base/path.js";
-import { capitalized, listLimited } from "../../base/string.js";
+import { capitalized, listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,

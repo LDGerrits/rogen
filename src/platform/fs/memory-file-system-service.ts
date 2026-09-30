@@ -2,7 +2,7 @@ import { FileType, FileSystemService } from "./file-system-service.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { FileChange, FileChangeType } from "./file-events.js";
+import { FileChange, FileChangeType } from "./file-changes.js";
 
 class FileNode {
 	readonly type = FileType.File;

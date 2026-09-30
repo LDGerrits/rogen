@@ -1,5 +1,5 @@
 import path from "path";
-import { groupBy } from "../../base/collection.js";
+import { groupBy } from "../../base/collections.js";
 import { stableStringify } from "../../base/json.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {

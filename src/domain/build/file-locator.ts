@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collection.js";
+import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import {
 	FileType,

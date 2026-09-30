@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { FileType } from "../file-system-service.js";
-import { FileChange, FileChangeType } from "../file-events.js";
+import { FileChange, FileChangeType } from "../file-changes.js";
 
 describe("MemoryFileSystemService: core operations", () => {
 	let memFs: MemoryFileSystemService;

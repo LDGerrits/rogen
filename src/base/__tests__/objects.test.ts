@@ -1,4 +1,4 @@
-import { mergeDeep, isObject } from "../object.js";
+import { mergeDeep, isObject } from "../objects.js";
 
 describe("isObject", () => {
 	it("identifies plain objects", () => {

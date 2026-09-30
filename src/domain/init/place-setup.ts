@@ -4,7 +4,7 @@ import { configFileName, defaultOutFileName } from "../config/config.js";
 import { CompiledPlace, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan.js";
+import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 
 export interface PlaceChoices {

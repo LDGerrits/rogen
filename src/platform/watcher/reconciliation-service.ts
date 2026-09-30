@@ -1,6 +1,6 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
-import { FileChange } from "../fs/file-events.js";
+import { FileChange } from "../fs/file-changes.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export interface ReconciliationService {

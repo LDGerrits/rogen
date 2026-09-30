@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings, groupBy } from "../../base/collection.js";
+import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
 import { joinPosix, stemOf, toPosix } from "../../base/path.js";
 import {

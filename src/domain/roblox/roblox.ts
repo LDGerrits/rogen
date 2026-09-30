@@ -4,7 +4,7 @@ import {
 	DiagnosticLocation,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { SupportedService, isSupportedService } from "./services.js";
+import { SupportedService, isSupportedService } from "./supported-services.js";
 
 const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterPlayerScripts",

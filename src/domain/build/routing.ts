@@ -1,6 +1,6 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
-import { capitalized } from "../../base/string.js";
+import { capitalized } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-file.js";

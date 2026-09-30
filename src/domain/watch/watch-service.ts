@@ -1,7 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileChange } from "../../platform/fs/file-events.js";
+import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { BuildSummary } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";

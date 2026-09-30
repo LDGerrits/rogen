@@ -1,6 +1,6 @@
 import { Event } from "../../base/event.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
-import { FileChange } from "./file-events.js";
+import { FileChange } from "./file-changes.js";
 import { FileType } from "./file-system-service.js";
 
 /** What the build stages read from a listing of directories. */

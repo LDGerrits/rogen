@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import { FileType } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { CoreIndexService } from "../core-index-service.js";
-import { FileChangeType } from "../file-events.js";
+import { FileChangeType } from "../file-changes.js";
 
 describe("CoreIndexService", () => {
 	let memoryFs: MemoryFileSystemService;

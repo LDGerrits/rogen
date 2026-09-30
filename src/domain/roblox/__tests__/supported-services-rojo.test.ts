@@ -6,7 +6,7 @@ import {
 	makeRojoDir,
 	sourcemap,
 } from "../../rojo/__tests__/rojo-cli.js";
-import { SUPPORTED_SERVICES } from "../services.js";
+import { SUPPORTED_SERVICES } from "../supported-services.js";
 
 describeWithRojo("supported services against Rojo", () => {
 	let dir: string;

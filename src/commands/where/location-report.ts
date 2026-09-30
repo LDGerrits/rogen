@@ -1,4 +1,4 @@
-import { groupBy } from "../../base/collection.js";
+import { groupBy } from "../../base/collections.js";
 import { relativeTo } from "../../base/path.js";
 import { FileLocation, RouteMatch } from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
