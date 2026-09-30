@@ -1,5 +1,5 @@
 import { DeclaredKeys } from "../../config/config.js";
-import { NameReader } from "../routing.js";
+import { NameReader } from "../name-reading.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTES_AND_TAGS = new Set([
