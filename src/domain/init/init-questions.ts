@@ -5,8 +5,8 @@ import {
 } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
-import { ConfigSet } from "./config-set.js";
-import { BaseConfig, InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
+import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TemplateChoice } from "./starter-template.js";
 
@@ -230,7 +230,7 @@ export class InitQuestions {
 		directory: InitDirectory,
 		outputs: readonly string[]
 	): Promise<TemplateChoice | undefined> {
-		const candidates = directory.handWrittenProjectFiles;
+		const candidates = ConfigSet.handWrittenProjectFiles(directory);
 		if (directory.has(TEMPLATE_FILE) || candidates.length === 0) {
 			return { kind: "new" };
 		}

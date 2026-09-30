@@ -28,12 +28,12 @@ export class WatchPlan {
 		}));
 		this.roots = outermostDirs(this.claims.flatMap(({ roots }) => roots));
 
-		const outFiles = [
+		const outputs = [
 			...new Set(configs.map((config) => path.resolve(config.outFile))),
-		];
+		].map((outFile) => new OutputFile(outFile));
 		const ignoredPaths = [
 			...new Set([
-				...outFiles,
+				...outputs.map(({ path }) => path),
 				...configs.flatMap((config) =>
 					config.syncDir ? [path.resolve(config.syncDir)] : []
 				),
@@ -43,9 +43,7 @@ export class WatchPlan {
 		);
 		this.ignored = [
 			...ignoredPaths,
-			...outFiles.map(
-				(outFile) => new OutputFile(outFile).stagingPattern
-			),
+			...outputs.map(({ stagingPattern }) => stagingPattern),
 		];
 	}
 

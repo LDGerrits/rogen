@@ -15,9 +15,6 @@ import {
 import { ConfigService } from "../config/config-service.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
-/** The template project file `init` starts, which the configs it writes name. */
-export const TEMPLATE_FILE = "template.project.json";
-
 const DEFAULT_ROOT_DIR = "src";
 const DEFAULT_PROJECT_NAME = "roblox-game";
 
@@ -59,16 +56,12 @@ export class InitDirectory {
 		return this.has(configFileName(DEFAULT_CONFIG_STEM));
 	}
 
-	/** Project files here that no config beside them writes, other than `template.project.json`. */
-	get handWrittenProjectFiles(): string[] {
+	/** Project files here that no config beside them writes. */
+	get projectFilesWithoutConfig(): string[] {
 		return [...this.entries]
 			.filter((file) => {
 				const label = labelOfDefaultOutFile(file);
-				return (
-					label !== undefined &&
-					file !== TEMPLATE_FILE &&
-					!this.has(configFileName(label))
-				);
+				return label !== undefined && !this.has(configFileName(label));
 			})
 			.sort();
 	}

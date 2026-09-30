@@ -2,6 +2,7 @@ import {
 	ContainerFactory,
 	RojoNode,
 	RojoProject,
+	InstanceMap,
 	RojoTree,
 } from "../rojo-project.js";
 
@@ -400,5 +401,26 @@ describe("RojoProject", () => {
 
 			expect(project.getNode(["Lighting"])).toBeUndefined();
 		});
+	});
+});
+
+describe("InstanceMap", () => {
+	it("should find a value by the path it was set under", () => {
+		const map = new InstanceMap<number>();
+		map.set(["ReplicatedStorage", "Shared"], 1);
+
+		expect(map.get(["ReplicatedStorage", "Shared"])).toBe(1);
+		expect(map.get(["ReplicatedStorage"])).toBeUndefined();
+	});
+
+	it("should replace the value of a path that is set again, keeping its place", () => {
+		const map = new InstanceMap<number>();
+		map.set(["A"], 1).set(["B"], 2).set(["A"], 3);
+
+		expect([...map]).toEqual([
+			[["A"], 3],
+			[["B"], 2],
+		]);
+		expect([...map.values()]).toEqual([3, 2]);
 	});
 });

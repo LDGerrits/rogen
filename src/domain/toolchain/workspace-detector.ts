@@ -5,22 +5,17 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
+import { DarkluaDetector } from "./darklua-detector.js";
+import { PackageManagerDetector } from "./package-manager-detector.js";
 import {
 	Darklua,
 	DetectedWorkspace,
 	LanguageDetector,
 	PLACES_DIR,
-	PackageManager,
 } from "./toolchain.js";
 
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
-
-interface DetectedPackages {
-	readonly packageManager?: PackageManager;
-	/** Installed package directories of any manager, in manager order. */
-	readonly packageDirs: readonly string[];
-}
 
 /** Reads what a workspace uses of the languages and tools it was given. */
 export class WorkspaceDetector {
@@ -28,6 +23,8 @@ export class WorkspaceDetector {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly darklua: Darklua,
+		private readonly darkluaDetector: DarkluaDetector,
+		private readonly packageDetector: PackageManagerDetector,
 		private readonly languages: readonly [
 			LanguageDetector,
 			...LanguageDetector[],
@@ -40,8 +37,8 @@ export class WorkspaceDetector {
 				Promise.all(
 					this.languages.map((detector) => detector.detect(cwd))
 				),
-				this.detectDarklua(cwd),
-				this.detectPackages(cwd),
+				this.darkluaDetector.detect(cwd),
+				this.packageDetector.detect(cwd),
 				this.fileSystemService.exists(path.join(cwd, "src")),
 				this.findPlaces(path.join(cwd, PLACES_DIR)),
 			]);
@@ -61,34 +58,6 @@ export class WorkspaceDetector {
 			packageDirs: new Set(packages.packageDirs),
 			places,
 		});
-	}
-
-	private async detectDarklua(cwd: string): Promise<boolean> {
-		const found = await Promise.all(
-			this.darklua.configFiles.map((file) =>
-				this.fileSystemService.exists(path.join(cwd, file))
-			)
-		);
-		return found.some(Boolean);
-	}
-
-	/** A Pesde manifest wins over a Wally one. */
-	private async detectPackages(cwd: string): Promise<DetectedPackages> {
-		const has = (name: string) =>
-			this.fileSystemService.exists(path.join(cwd, name));
-		const managers = PackageManager.PRIORITY;
-		const [manifests, installed] = await Promise.all([
-			Promise.all(managers.map(({ manifest }) => has(manifest))),
-			Promise.all(
-				managers
-					.flatMap(({ shared, server }) => [shared, server])
-					.map(async (dir) => ((await has(dir)) ? dir : undefined))
-			),
-		]);
-		return {
-			packageManager: managers.find((_, index) => manifests[index]),
-			packageDirs: installed.filter((dir) => dir !== undefined),
-		};
 	}
 
 	private async holdsCode(dir: string): Promise<boolean> {

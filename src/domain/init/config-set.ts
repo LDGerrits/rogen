@@ -5,7 +5,10 @@ import {
 	defaultOutFileName,
 } from "../config/config.js";
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
-import { TEMPLATE_FILE } from "./init-directory.js";
+import { InitDirectory } from "./init-directory.js";
+
+/** The template project file `init` starts, which the configs it writes name. */
+export const TEMPLATE_FILE = "template.project.json";
 
 /** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
@@ -21,6 +24,13 @@ export class ConfigSet {
 	/** The stem of the synced config beside `name`'s source-rooted one. */
 	static syncStemOf(name: string): string {
 		return name === DEFAULT_CONFIG_STEM ? "sync" : `${name}-sync`;
+	}
+
+	/** Project files in `directory` that no config beside them writes, other than the template. */
+	static handWrittenProjectFiles(directory: InitDirectory): string[] {
+		return directory.projectFilesWithoutConfig.filter(
+			(file) => file !== TEMPLATE_FILE
+		);
 	}
 
 	/** `extends` as init writes it: relative, and explicitly so. */
