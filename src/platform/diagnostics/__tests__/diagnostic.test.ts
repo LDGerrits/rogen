@@ -49,6 +49,21 @@ describe("platform/diagnostics/diagnostic", () => {
 				renderDiagnostic(diagnostic, "/repo/src/Net/HttpClient.luau")
 			).toBe(". - warning: it contributes nothing.");
 		});
+
+		it("should write the paths inside the message relative to the working directory too", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "test.example",
+				message:
+					'"a" is defined by /repo/src/A.luau and /repo/src/B.luau, not /repo2/src/C.luau.',
+				resource: "/repo/default.project.json",
+			};
+
+			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+				'default.project.json - warning: "a" is defined by src/A.luau and src/B.luau, not /repo2/src/C.luau.'
+			);
+			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
+		});
 	});
 
 	describe("diagnosticToJson", () => {

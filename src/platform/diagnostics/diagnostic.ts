@@ -1,4 +1,5 @@
-import { relativeTo } from "../../base/path.js";
+import path from "path";
+import { relativeTo, toPosix } from "../../base/path.js";
 
 export enum DiagnosticSeverity {
 	Error,
@@ -58,9 +59,21 @@ const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> = {
 	[DiagnosticSeverity.Warning]: "warning",
 };
 
-/** With `cwd`, the resource is written relative to it. */
+function stripDirectory(text: string, dir: string): string {
+	const prefixes = new Set([`${dir}${path.sep}`, `${toPosix(dir)}/`]);
+	return [...prefixes].reduce(
+		(result, prefix) => result.replaceAll(prefix, ""),
+		text
+	);
+}
+
+/** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
-	const { position, severity, message } = diagnostic;
+	const { position, severity } = diagnostic;
+	const message =
+		cwd === undefined
+			? diagnostic.message
+			: stripDirectory(diagnostic.message, cwd);
 	const resource =
 		cwd === undefined
 			? diagnostic.resource

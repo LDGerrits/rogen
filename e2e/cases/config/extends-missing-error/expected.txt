@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  default.rogen.json:2:13 - error: "extends" target "<dir>/nowhere.rogen.json": the config could not be read: ENOENT: no such file or directory, open '<dir>/nowhere.rogen.json'.
+  default.rogen.json:2:13 - error: "extends" target "nowhere.rogen.json": the config could not be read: ENOENT: no such file or directory, open 'nowhere.rogen.json'.
