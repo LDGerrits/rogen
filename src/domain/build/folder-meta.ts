@@ -1,12 +1,10 @@
 import { compareStrings, groupBy } from "../../base/collection.js";
-import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
+import { JSONSchema } from "../../base/json-schema.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
+import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document.js";
 import { RojoNode, RojoProject, instanceKey } from "../rojo/rojo-project.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./routing.js";
@@ -75,81 +73,41 @@ export class FolderMeta implements FolderMetaFields {
 	}
 }
 
+const META_SCHEMA: JSONSchema = {
+	type: "object",
+	// Rojo ignores fields it doesn't know, such as `$schema`.
+	properties: {
+		className: { type: "string" },
+		properties: { type: "object" },
+		attributes: { type: "object" },
+		ignoreUnknownInstances: { type: "boolean" },
+		id: { type: "string" },
+	},
+};
+
 /** Reads the fields of one meta file. */
 export class FolderMetaParser {
-	private static readonly FIELD_KINDS: Record<
-		keyof FolderMetaFields,
-		JsoncNode["kind"]
-	> = {
-		className: "string",
-		properties: "object",
-		attributes: "object",
-		ignoreUnknownInstances: "boolean",
-		id: "string",
-	};
-
-	private static readonly KIND_NAMES: Record<JsoncNode["kind"], string> = {
-		object: "an object",
-		array: "an array",
-		string: "a string",
-		number: "a number",
-		boolean: "a boolean",
-		null: "null",
-	};
+	private static readonly documents = new JsoncDocumentReader({
+		codePrefix: "meta",
+		noun: "a meta file",
+	});
 
 	constructor(private readonly file: string) {}
 
 	parse(text: string): Result<FolderMetaFields, Diagnostic[]> {
-		const problems = new DiagnosticCollector();
-		const { root, value, errors } = parseJsonc(text);
-		for (const { message, line, column } of errors) {
-			problems.error(
-				"meta.invalidSyntax",
-				{ resource: this.file, position: { line, column } },
-				`invalid JSONC: ${message}.`
-			);
-		}
-		if (problems.hasErrors) return err([...problems.diagnostics]);
+		const document = FolderMetaParser.documents.read(
+			text,
+			this.file,
+			META_SCHEMA
+		);
+		if (document.isErr()) return err(document.error);
 
-		if (root?.kind !== "object") {
-			return err([
-				errorDiagnostic(
-					"meta.notAnObject",
-					{ resource: this.file, position: { line: 1, column: 1 } },
-					"a meta file must be a JSON object."
-				),
-			]);
-		}
-
-		// Rojo ignores fields it doesn't know, such as `$schema`.
-		for (const property of root.properties) {
-			if (!Object.hasOwn(FolderMetaParser.FIELD_KINDS, property.name))
-				continue;
-			const expected =
-				FolderMetaParser.FIELD_KINDS[
-					property.name as keyof FolderMetaFields
-				];
-			if (property.value.kind === expected) continue;
-			problems.error(
-				"meta.wrongType",
-				{
-					resource: this.file,
-					position: {
-						line: property.value.line,
-						column: property.value.column,
-					},
-				},
-				`"${property.name}": expected ${FolderMetaParser.KIND_NAMES[expected]}, found ${FolderMetaParser.KIND_NAMES[property.value.kind]}.`
-			);
-		}
-		if (problems.hasErrors) return err([...problems.diagnostics]);
-
-		const fields = value as Record<string, unknown>;
+		const { value } = document.value;
 		return ok(
 			Object.fromEntries(
-				Object.keys(FolderMetaParser.FIELD_KINDS)
-					.filter((key) => fields[key] !== undefined)
-					.map((key) => [key, fields[key]])
+				Object.keys(META_SCHEMA.properties ?? {})
+					.filter((key) => value[key] !== undefined)
+					.map((key) => [key, value[key]])
 			) as FolderMetaFields
 		);
 	}
