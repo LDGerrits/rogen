@@ -25,10 +25,9 @@ export class CoreProductService implements ProductService {
 				const packageJsonPath = path.join(currentDir, "package.json");
 
 				if (await this.fileSystemService.exists(packageJsonPath)) {
-					const pkg =
-						await this.fileSystemService.readJson<PackageJson>(
-							packageJsonPath
-						);
+					const pkg = JSON.parse(
+						await this.fileSystemService.readFile(packageJsonPath)
+					) as PackageJson;
 					return pkg.version || UNKNOWN_VERSION;
 				}
 

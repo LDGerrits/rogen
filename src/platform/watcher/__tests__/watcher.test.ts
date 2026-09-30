@@ -21,6 +21,17 @@ describe("MemoryWatcher", () => {
 		await watcher.stop();
 	});
 
+	it("should stop reporting once disposed", async () => {
+		const listener = jest.fn();
+		watcher.onDidChangeFile(listener);
+		await watcher.watch([{ path: "src", recursive: true }]);
+
+		watcher[Symbol.dispose]();
+		await memoryFs.writeFile("src/init.lua", "");
+
+		expect(listener).not.toHaveBeenCalled();
+	});
+
 	it("should emit ADDED and UPDATED events immediately without batching", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
