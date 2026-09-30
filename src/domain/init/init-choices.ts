@@ -4,7 +4,7 @@ import {
 	Language,
 	Mount,
 } from "../toolchain/toolchain.js";
-import { outputFileNames } from "./init-files.js";
+import { ConfigSet } from "./config-set.js";
 import { defaultMounts } from "./mounts.js";
 import { defaultRootDir } from "./root-dirs.js";
 import { DEFAULT_ROUTES, RouteId } from "./starting-routes.js";
@@ -51,7 +51,7 @@ export function defaultInitChoices(
 	const outDir = language.compiler?.outDir(workspace);
 	const template = defaultTemplateChoice(
 		existingFiles,
-		outputFileNames(name, language, darklua)
+		new ConfigSet(name, language, darklua).outputFiles
 	);
 	return {
 		name,

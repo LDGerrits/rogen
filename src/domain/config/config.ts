@@ -48,14 +48,22 @@ export const configFileName = (stem: string): string =>
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
 
-/** The root dir among `rootDirs` that `rootDir` sits inside, if any; a file under both would belong to both. All paths absolute. */
-export function outerRootDir(
-	rootDir: string,
-	rootDirs: readonly string[]
-): string | undefined {
-	return rootDirs.find(
+/** How a root dir overlaps another of `rootDirs`; a file under both would belong to both. */
+export type RootDirOverlap =
+	| { readonly kind: "duplicate" }
+	| { readonly kind: "nested"; readonly outer: string };
+
+/** How the root dir at `index` overlaps an earlier or enclosing one, if it does. All paths absolute. */
+export function rootDirOverlap(
+	rootDirs: readonly string[],
+	index: number
+): RootDirOverlap | undefined {
+	const rootDir = rootDirs[index];
+	if (rootDirs.indexOf(rootDir) !== index) return { kind: "duplicate" };
+	const outer = rootDirs.find(
 		(other) => other !== rootDir && isInside(rootDir, other)
 	);
+	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";

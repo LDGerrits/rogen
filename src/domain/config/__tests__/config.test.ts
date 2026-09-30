@@ -12,7 +12,7 @@ import {
 	ResolvedConfig,
 	configFileName,
 	configLabel,
-	outerRootDir,
+	rootDirOverlap,
 	schemaChannels,
 	schemaUrlFor,
 } from "../config.js";
@@ -129,19 +129,30 @@ describe("domain/config/config", () => {
 		});
 	});
 
-	describe("outerRootDir", () => {
+	describe("rootDirOverlap", () => {
 		const abs = (...segments: string[]) =>
 			path.resolve("/repo", ...segments);
 
 		it("should find the root dir another one sits inside", () => {
-			expect(
-				outerRootDir(abs("src/lobby"), [abs("src"), abs("src/lobby")])
-			).toBe(abs("src"));
+			expect(rootDirOverlap([abs("src"), abs("src/lobby")], 1)).toEqual({
+				kind: "nested",
+				outer: abs("src"),
+			});
+		});
+
+		it("should find a root dir listed again", () => {
+			expect(rootDirOverlap([abs("src"), abs("src")], 1)).toEqual({
+				kind: "duplicate",
+			});
+		});
+
+		it("should leave the first of two equal root dirs alone", () => {
+			expect(rootDirOverlap([abs("src"), abs("src")], 0)).toBeUndefined();
 		});
 
 		it("should be undefined for siblings", () => {
 			expect(
-				outerRootDir(abs("core"), [abs("core"), abs("lobby")])
+				rootDirOverlap([abs("core"), abs("lobby")], 0)
 			).toBeUndefined();
 		});
 	});

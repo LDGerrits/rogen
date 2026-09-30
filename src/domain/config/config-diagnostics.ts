@@ -64,6 +64,12 @@ export const ConfigDiagnostics = {
 			location,
 			`the output file ${file} is also the template, and a build would overwrite it. Set "outFile" to another path.`
 		),
+	duplicateRootDir: (location: DiagnosticLocation, dir: string) =>
+		error(
+			"config.duplicateRootDir",
+			location,
+			`root dir "${dir}" is listed twice; a file under it would belong to both. Remove one.`
+		),
 	nestedRootDir: (
 		location: DiagnosticLocation,
 		inner: string,

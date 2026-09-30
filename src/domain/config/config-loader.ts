@@ -33,7 +33,7 @@ import {
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
-	outerRootDir,
+	rootDirOverlap,
 } from "./config.js";
 
 /** One read of one config, with everything a reload needs to compare against. */
@@ -398,17 +398,19 @@ function validateConfig(
 		);
 	}
 
-	resolved.rootDirs.forEach((inner, index) => {
-		const outer = outerRootDir(inner, resolved.rootDirs);
-		if (outer !== undefined) {
-			problems.push(
-				ConfigDiagnostics.nestedRootDir(
-					locate("rootDirs", String(index)),
-					inner,
-					outer
-				)
-			);
-		}
+	resolved.rootDirs.forEach((rootDir, index) => {
+		const overlap = rootDirOverlap(resolved.rootDirs, index);
+		if (!overlap) return;
+		const location = locate("rootDirs", String(index));
+		problems.push(
+			overlap.kind === "duplicate"
+				? ConfigDiagnostics.duplicateRootDir(location, rootDir)
+				: ConfigDiagnostics.nestedRootDir(
+						location,
+						rootDir,
+						overlap.outer
+					)
+		);
 	});
 
 	return problems;

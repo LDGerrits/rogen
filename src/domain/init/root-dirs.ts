@@ -1,11 +1,9 @@
 import path from "path";
-import { normalizeDir } from "../../base/path.js";
-import { outerRootDir } from "../config/config.js";
+import { contains, normalizeDir } from "../../base/path.js";
+import { rootDirOverlap } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
 const DEFAULT_ROOT_DIR = "src";
-// Relative answers are compared as if they sat under one directory.
-const ANCHOR = path.resolve("/");
 
 /** The first that applies: the language's own config, `src`, the only code folder, else `src`. */
 export function defaultRootDir(
@@ -42,16 +40,14 @@ export const parseRootDirs = (value: string): string[] =>
 		.filter((entry) => entry !== "")
 		.map(normalizeDir);
 
-const isInside = (inner: string, outer: string): boolean =>
-	outerRootDir(path.resolve(ANCHOR, inner), [path.resolve(ANCHOR, outer)]) !==
-	undefined;
-
 /**
  * The first reason `entries` can't be a config's root dirs, or `undefined`.
- * Checks what the config validator would reject, so init never writes a config
- * that can't build.
+ * The config's own overlap rule decides what would be rejected, so init never
+ * writes a config that can't build. `directory` is where the entries are
+ * relative to.
  */
 export function rootDirsProblem(
+	directory: string,
 	entries: readonly string[]
 ): string | undefined {
 	if (entries.length === 0) return "Enter at least one root dir.";
@@ -65,14 +61,12 @@ export function rootDirsProblem(
 		}
 	}
 	const normalized = entries.map(normalizeDir);
+	const absolute = normalized.map((entry) => path.resolve(directory, entry));
 	for (const [index, entry] of normalized.entries()) {
-		if (normalized.indexOf(entry) !== index) {
-			return `${entry} is listed twice.`;
-		}
-		const outer = normalized.find(
-			(other) => other !== entry && isInside(entry, other)
-		);
-		if (outer !== undefined) {
+		const overlap = rootDirOverlap(absolute, index);
+		if (overlap?.kind === "duplicate") return `${entry} is listed twice.`;
+		if (overlap?.kind === "nested") {
+			const outer = normalized[absolute.indexOf(overlap.outer)];
 			return `${entry} is inside ${outer}. List only one of them.`;
 		}
 	}
@@ -81,17 +75,17 @@ export function rootDirsProblem(
 
 /** The first reason `folder` can't join `rootDirs` as a place's own code, or `undefined`. */
 export function placeFolderProblem(
+	directory: string,
 	rootDirs: readonly string[],
 	folder: string
 ): string | undefined {
 	const normalized = normalizeDir(folder);
-	const overlapping = rootDirs.find(
-		(dir) =>
-			dir === normalized ||
-			isInside(normalized, dir) ||
-			isInside(dir, normalized)
-	);
+	const resolved = path.resolve(directory, normalized);
+	const overlapping = rootDirs.find((dir) => {
+		const other = path.resolve(directory, dir);
+		return contains(other, resolved) || contains(resolved, other);
+	});
 	return overlapping === undefined
-		? rootDirsProblem([...rootDirs, folder])
+		? rootDirsProblem(directory, [...rootDirs, folder])
 		: `${normalized} overlaps ${overlapping}, one of default's root dirs. Pick a folder outside it.`;
 }

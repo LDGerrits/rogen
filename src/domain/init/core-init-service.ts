@@ -8,15 +8,14 @@ import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { ConfigSet } from "./config-set.js";
 import { InitChoices, defaultInitChoices } from "./init-choices.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	InitDiagnostics,
 	existingFileDiagnostics,
-	hasSourceConfig,
 	parseInitName,
 	placeFolder,
-	sourceStemOf,
 } from "./init-files.js";
 import { InitPlan, plannedFiles } from "./init-plan.js";
 import { InitAnswers, InitContext, InitQuestions } from "./init-questions.js";
@@ -227,12 +226,11 @@ export class CoreInitService implements InitService {
 		if (project.isErr() || choices.places.length === 0) return project;
 
 		const { name, language, darklua, rootDirs, syncDir } = choices;
+		const { sourceFile } = new ConfigSet(name, language, darklua);
 		const base: BaseConfig = {
 			rootDirs,
 			...(syncDir && { syncDir }),
-			...(hasSourceConfig(language, darklua) && {
-				parent: configFileName(sourceStemOf(name)),
-			}),
+			...(sourceFile && { parent: sourceFile }),
 		};
 		const places: InitPlan[] = [];
 		for (const place of choices.places) {

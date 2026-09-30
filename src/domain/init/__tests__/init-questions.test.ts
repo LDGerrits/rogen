@@ -20,15 +20,13 @@ const askInit = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) =>
-	new InitQuestions(prompts, toolchain).ask(context, name);
+) => new InitQuestions(prompts, toolchain).ask(context, name);
 
 const askInitChoices = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) =>
-	new InitQuestions(prompts, toolchain).askProject(context, name);
+) => new InitQuestions(prompts, toolchain).askProject(context, name);
 
 const defaultInitChoices = (
 	workspace: DetectedWorkspace,

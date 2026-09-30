@@ -1,19 +1,17 @@
 import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig, configFileName } from "../config/config.js";
+import { RogenConfig } from "../config/config.js";
 import { RojoTree, projectFileName } from "../rojo/rojo-project.js";
-import { Darklua, Language, PlannedFile } from "../toolchain/toolchain.js";
+import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
+import { ConfigSet } from "./config-set.js";
 import { InitChoices } from "./init-choices.js";
 import {
 	SCHEMA_URL,
 	configFile,
 	existingFileDiagnostics,
 	extendsRef,
-	hasSourceConfig,
-	outputFileNames,
 	placeFolder,
-	sourceStemOf,
 } from "./init-files.js";
 import { InitPlan, NextSteps, tagsStep, watchCommand } from "./init-plan.js";
 import { startingRoutes } from "./starting-routes.js";
@@ -56,21 +54,20 @@ const joinList = (items: readonly string[], conjunction: string): string =>
 		: `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
 function nextSteps(
-	{ name, darklua, rootDirs, syncDir, outDir }: InitChoices,
-	language: Language,
+	{ rootDirs, syncDir, outDir }: InitChoices,
+	configSet: ConfigSet,
 	directory: string
 ): NextSteps {
+	const { name, language, darklua } = configSet;
 	const { compiler } = language;
-	const sourced = hasSourceConfig(language, darklua);
-	// Darklua reads the source-rooted project, so both are kept current.
-	const watched = sourced ? [name, sourceStemOf(name)] : [name];
-	const configName = configFileName(sourced ? sourceStemOf(name) : name);
+	const configName = configSet.editedFile;
 	const processed = compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs;
 	return {
 		setup: [],
 		run: [
 			...(compiler ? [compiler.compileCommand] : []),
-			watchCommand(watched),
+			// Darklua reads the source-rooted project, so both are kept current.
+			watchCommand(configSet.stems),
 			`rojo serve ${projectFileName(name)}`,
 		],
 		darklua:
@@ -94,14 +91,13 @@ interface PlannedTemplate {
 
 function planTemplate(
 	{ choices, projectName, existingFiles, copiedTemplate }: ProjectPlanOptions,
-	language: Language
+	configSet: ConfigSet
 ): PlannedTemplate {
-	const { template, mounts, name, darklua, rootDirs, syncDir, places } =
-		choices;
+	const { template, mounts, rootDirs, syncDir, places } = choices;
 	if (existingFiles.has(TEMPLATE_FILE)) {
 		const handWritten = handWrittenProjectFiles(existingFiles);
-		const replaced = outputFileNames(name, language, darklua).filter(
-			(file) => handWritten.includes(file)
+		const replaced = configSet.outputFiles.filter((file) =>
+			handWritten.includes(file)
 		);
 		return {
 			reference: TEMPLATE_FILE,
@@ -208,8 +204,9 @@ function buildPlan(options: ProjectPlanOptions): InitPlan {
 	const { choices, directory } = options;
 	const { name, language, darklua, rootDirs, syncDir, routes, fallback } =
 		choices;
-	const template = planTemplate(options, language);
-	const steps = nextSteps(choices, language, directory);
+	const configSet = new ConfigSet(name, language, darklua);
+	const template = planTemplate(options, configSet);
+	const steps = nextSteps(choices, configSet, directory);
 	const { compiler } = language;
 
 	const starter = (starterSyncDir?: string): RogenConfig => ({
@@ -220,15 +217,14 @@ function buildPlan(options: ProjectPlanOptions): InitPlan {
 		...(starterSyncDir && { syncDir: starterSyncDir }),
 	});
 
-	const sourceStem = sourceStemOf(name);
 	return {
 		template: template.file,
-		configs: hasSourceConfig(language, darklua)
+		configs: configSet.sourceFile
 			? [
-					configFile(sourceStem, starter()),
+					configFile(configSet.sourceStem, starter()),
 					configFile(name, {
 						$schema: SCHEMA_URL,
-						extends: extendsRef(configFileName(sourceStem)),
+						extends: extendsRef(configSet.sourceFile),
 						...(syncDir && { syncDir }),
 					}),
 				]

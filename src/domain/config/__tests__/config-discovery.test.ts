@@ -145,10 +145,7 @@ describe("ConfigDiscovery", () => {
 		});
 
 		it("errors naming the path when a -c path is missing", async () => {
-			const result = await discovery.discover(
-				[],
-				["missing.rogen.json"]
-			);
+			const result = await discovery.discover([], ["missing.rogen.json"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("/repo/missing.rogen.json");

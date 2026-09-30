@@ -13,16 +13,13 @@ import {
 	Mount,
 } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { ConfigSet, sourceStemOf } from "./config-set.js";
 import { InitChoices, defaultSyncDir } from "./init-choices.js";
 import {
 	DEFAULT_CONFIG_FILE,
-	configFileNames,
 	existingFileDiagnostics,
-	outputFileNames,
 	parseInitName,
-	placeFileNames,
 	placeFolder,
-	sourceStemOf,
 	variantFileNames,
 } from "./init-files.js";
 import { defaultMounts, offeredMounts, selectMounts } from "./mounts.js";
@@ -140,11 +137,11 @@ export class InitQuestions {
 
 		const filesFor = (candidate: string) =>
 			addition === "place"
-				? placeFileNames(
+				? new ConfigSet(
 						candidate,
 						this.toolchainService.getLanguage(workspace.language),
 						workspace.darklua
-					)
+					).placeFiles
 				: variantFileNames(candidate);
 		if (name) {
 			const conflicts = existingFileDiagnostics(
@@ -234,17 +231,18 @@ export class InitQuestions {
 		});
 		if (darklua === undefined) return ok(undefined);
 
+		const configSet = new ConfigSet(chosenName, language, darklua);
 		const conflicts = existingFileDiagnostics(
-			configFileNames(chosenName, language, darklua),
+			configSet.configFiles,
 			directory,
 			existingFiles
 		);
 		if (conflicts.length > 0) return err(conflicts);
 
-		const rootDirs = await this.askRootDirs(workspace, language, layout);
+		const rootDirs = await this.askRootDirs(context, language, layout);
 		if (rootDirs === undefined) return ok(undefined);
 
-		const outputs = outputFileNames(chosenName, language, darklua);
+		const outputs = configSet.outputFiles;
 		const template = await this.askTemplate(existingFiles, outputs);
 		if (template === undefined) return ok(undefined);
 
@@ -273,13 +271,14 @@ export class InitQuestions {
 		let places: readonly string[] = [];
 		if (layout === "several") {
 			const reserved = new Set([
-				...configFileNames(chosenName, language, darklua),
+				...configSet.configFiles,
 				...outputs,
 				TEMPLATE_FILE,
 			]);
 			const answer = await this.askPlaces(context, {
 				rootDirs,
-				filesFor: (place) => placeFileNames(place, language, darklua),
+				filesFor: (place) =>
+					new ConfigSet(place, language, darklua).placeFiles,
 				reserved,
 			});
 			if (answer === undefined) return ok(undefined);
@@ -303,7 +302,7 @@ export class InitQuestions {
 	}
 
 	private async askRootDirs(
-		workspace: DetectedWorkspace,
+		{ workspace, directory }: InitContext,
 		language: Language,
 		layout: Layout
 	): Promise<string[] | undefined> {
@@ -320,7 +319,7 @@ export class InitQuestions {
 			placeholder,
 			validate: (value) => {
 				const entries = splitList(value);
-				const problem = rootDirsProblem(entries);
+				const problem = rootDirsProblem(directory, entries);
 				if (problem) return problem;
 				return compiler && entries.length > 1
 					? compiler.severalRootDirs
@@ -365,7 +364,8 @@ export class InitQuestions {
 					? `${replaced[0]} exists, and Rogen replaces it on every build.`
 					: "The Rojo project file Rogen builds on top of.",
 			choices,
-			initialValue: initial.kind === "copy" ? `copy:${initial.from}` : "new",
+			initialValue:
+				initial.kind === "copy" ? `copy:${initial.from}` : "new",
 		});
 		if (answer === undefined) return undefined;
 		if (answer.startsWith("copy:")) {
@@ -427,7 +427,8 @@ export class InitQuestions {
 
 		const fallback = await this.promptService.select<"shared" | "leave">({
 			message: "Files that match no route",
-			description: "Most loose modules in a feature folder are shared code.",
+			description:
+				"Most loose modules in a feature folder are shared code.",
 			choices: [
 				{
 					value: "shared",
@@ -444,7 +445,7 @@ export class InitQuestions {
 	}
 
 	private async askPlaces(
-		{ workspace, existingFiles }: InitContext,
+		{ workspace, directory, existingFiles }: InitContext,
 		{ rootDirs, filesFor, reserved }: PlacesQuestion
 	): Promise<string[] | undefined> {
 		const answer = await this.promptService.text({
@@ -452,7 +453,9 @@ export class InitQuestions {
 			description:
 				"Each place gets <name>.rogen.json, and its own code goes in places/<name>. Separate several with commas.",
 			placeholder:
-				workspace.places.length > 0 ? workspace.places.join(", ") : "lobby",
+				workspace.places.length > 0
+					? workspace.places.join(", ")
+					: "lobby",
 			validate: (value) => {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
@@ -471,6 +474,7 @@ export class InitQuestions {
 							: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
 					}
 					const problem = placeFolderProblem(
+						directory,
 						rootDirs,
 						placeFolder(place)
 					);
@@ -518,7 +522,7 @@ export class InitQuestions {
 	}
 
 	private async askPlaceChoices(
-		{ existingFiles, base }: InitContext,
+		{ directory, existingFiles, base }: InitContext,
 		filesFor: (name: string) => readonly string[],
 		name?: string
 	): Promise<PlaceChoices | undefined> {
@@ -539,7 +543,7 @@ export class InitQuestions {
 			validate: (value) =>
 				required("a folder")(value) ??
 				(base?.isOk()
-					? placeFolderProblem(base.value.rootDirs, value)
+					? placeFolderProblem(directory, base.value.rootDirs, value)
 					: undefined),
 		});
 		return folder === undefined

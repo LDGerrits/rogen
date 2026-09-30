@@ -1010,6 +1010,21 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
+			it("should reject a root dir listed twice, at the repeat", async () => {
+				const problems = await diagnosticsFor(`{
+	"rootDirs": ["src", "./src"]
+}`);
+
+				expect(problems).toEqual([
+					[
+						'root dir "/repo/src" is listed twice; a file under it would belong to both. Remove one.',
+						"/repo/default.rogen.json",
+						2,
+						22,
+					],
+				]);
+			});
+
 			it("should catch the nesting whichever order the root dirs come in", async () => {
 				const problems = await diagnosticsFor({
 					rootDirs: ["src/shared", "src"],

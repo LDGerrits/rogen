@@ -12,7 +12,7 @@ import {
 	configFileName,
 	schemaUrlFor,
 } from "../config/config.js";
-import { Language, PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
+import { PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { TEMPLATE_FILE } from "./template.js";
 
@@ -43,52 +43,6 @@ export const configFile = (stem: string, config: RogenConfig): PlannedFile => ({
 
 /** `extends` as init writes it: relative, and explicitly so. */
 export const extendsRef = (file: string): string => `./${file}`;
-
-/**
- * Whether the configs for a name come as a pair: a source config rooted at
- * the root dirs, and the synced one extending it. A processor that reads the
- * root dirs themselves, rather than a compiler's output, resolves requires
- * from the source-rooted project.
- */
-export const hasSourceConfig = (
-	language: Language,
-	darklua: boolean
-): boolean => darklua && language.compiler === undefined;
-
-export const sourceStemOf = (name: string): string =>
-	name === DEFAULT_CONFIG_STEM ? "source" : `${name}-source`;
-
-const configStems = (name: string, language: Language, darklua: boolean) =>
-	hasSourceConfig(language, darklua) ? [sourceStemOf(name), name] : [name];
-
-/** Every config file `init` writes for `name`. */
-export const configFileNames = (
-	name: string,
-	language: Language,
-	darklua: boolean
-): string[] => configStems(name, language, darklua).map(configFileName);
-
-/** The project files the configs for `name` write, the synced one first. */
-export const outputFileNames = (
-	name: string,
-	language: Language,
-	darklua: boolean
-): string[] =>
-	configStems(name, language, darklua).reverse().map(projectFileName);
-
-/** The files a place named `name` writes, plus its project file, which mustn't exist either. */
-export const placeFileNames = (
-	name: string,
-	language: Language,
-	darklua: boolean
-): string[] => [
-	configFileName(name),
-	...(hasSourceConfig(language, darklua)
-		? [configFileName(`${name}-source`)]
-		: []),
-	...(language.compiler?.placeFileNames(name) ?? []),
-	projectFileName(name),
-];
 
 /** The files a variant named `name` writes, plus its project file. */
 export const variantFileNames = (name: string): string[] => [

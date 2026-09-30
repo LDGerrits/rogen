@@ -17,8 +17,8 @@ import {
 	configFile,
 	existingFileDiagnostics,
 	extendsRef,
-	hasSourceConfig,
 } from "./init-files.js";
+import { ConfigSet } from "./config-set.js";
 import { InitPlan, tagsStep, watchCommand } from "./init-plan.js";
 
 export interface PlaceChoices {
@@ -109,6 +109,7 @@ export function planPlace(
 		darklua,
 	};
 	const { compiler } = language;
+	const configSet = new ConfigSet(name, language, darklua);
 	const rootDirs = [...base.rootDirs, folder];
 	const projectFile = projectFileName(name);
 
@@ -132,8 +133,8 @@ export function planPlace(
 			workspace,
 		});
 
-	const sourceStem = `${name}-source`;
-	const sourced = hasSourceConfig(language, darklua) && base.parent;
+	const { sourceStem } = configSet;
+	const sourced = configSet.sourced && base.parent;
 	const configs = sourced
 		? [
 				placeConfig(sourceStem, {
