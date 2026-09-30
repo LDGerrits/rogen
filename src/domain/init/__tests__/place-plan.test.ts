@@ -7,6 +7,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../init-files.js";
 import {
 	BaseConfig,
@@ -25,17 +26,14 @@ const luau: DetectedWorkspace = {
 	codeFolders: [],
 	hasSrc: true,
 	packageDirs: new Set(),
-	rbxtsScopes: [],
-	hasInclude: false,
 	places: [],
+	languageFacts: {},
 };
 const darklua: DetectedWorkspace = { ...luau, darklua: true };
-const rbxts: DetectedWorkspace = {
-	...luau,
-	language: "roblox-ts",
-	outDir: "out",
-	tsconfigHasInclude: true,
-};
+const rbxts: DetectedWorkspace = withRobloxTs(
+	{ ...luau, language: "roblox-ts" },
+	{ outDir: "out", tsconfigHasInclude: true }
+);
 
 const choices: PlaceChoices = { name: "lobby", folder: "places/lobby" };
 
@@ -221,7 +219,9 @@ describe("planPlace", () => {
 		it("should give the place its own tsBuildInfoFile when tsconfig.json sets one", () => {
 			const { tsconfig } = written(
 				plan(
-					{ ...rbxts, tsBuildInfoFile: "out/tsconfig.tsbuildinfo" },
+					withRobloxTs(rbxts, {
+						tsBuildInfoFile: "out/tsconfig.tsbuildinfo",
+					}),
 					base
 				)
 			);
@@ -234,7 +234,10 @@ describe("planPlace", () => {
 		it("should use the tsconfig outDir for the compiler and the sync dir for Rojo", () => {
 			const { configs, tsconfig } = written(
 				plan(
-					{ ...rbxts, darklua: true, outDir: "build" },
+					withRobloxTs(
+						{ ...rbxts, darklua: true },
+						{ outDir: "build" }
+					),
 					{ rootDirs: ["src"], syncDir: "dist" }
 				)
 			);
@@ -260,10 +263,10 @@ describe("planPlace", () => {
 
 		it("should tell the user to add an include to tsconfig.json when it has none", () => {
 			const { nextSteps } = written(
-				plan(
-					{ ...rbxts, tsconfigHasInclude: false },
-					{ rootDirs: ["src", "shared"], syncDir: "out" }
-				)
+				plan(withRobloxTs(rbxts, { tsconfigHasInclude: false }), {
+					rootDirs: ["src", "shared"],
+					syncDir: "out",
+				})
 			);
 
 			expect(nextSteps.setup).toEqual([

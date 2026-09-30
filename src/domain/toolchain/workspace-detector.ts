@@ -52,7 +52,6 @@ export class WorkspaceDetector {
 		]);
 
 		return {
-			...Object.assign({}, ...detections.map(({ facts }) => facts)),
 			language: language.id,
 			darklua,
 			codeFolders,
@@ -62,6 +61,12 @@ export class WorkspaceDetector {
 			}),
 			packageDirs: new Set(packages.packageDirs),
 			places,
+			languageFacts: Object.fromEntries(
+				this.languages.flatMap(({ id }, index) => {
+					const { facts } = detections[index];
+					return facts === undefined ? [] : [[id, facts]];
+				})
+			),
 		};
 	}
 

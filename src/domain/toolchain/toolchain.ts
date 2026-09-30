@@ -7,8 +7,9 @@ export type PackageManager = "wally" | "pesde";
 export const PLACES_DIR = "places";
 
 /**
- * What `init` found in the workspace: facts only, never decisions. A
- * language fills the facts it reads itself, and only that language reads them.
+ * What `init` found in the workspace: facts only, never decisions. The facts
+ * here are the ones every language uses; a language keeps the rest in its own
+ * entry of `languageFacts`, which only it reads.
  */
 export interface DetectedWorkspace {
 	/** The detected language's id, or the first language's when none was found. */
@@ -22,18 +23,8 @@ export interface DetectedWorkspace {
 	readonly hasSrc: boolean;
 	/** The folders directly inside `places/`, sorted. */
 	readonly places: readonly string[];
-	/** roblox-ts: `compilerOptions.outDir`, when tsconfig.json exists. */
-	readonly outDir?: string;
-	/** roblox-ts: `compilerOptions.rootDir`. */
-	readonly rootDir?: string;
-	/** roblox-ts: whether tsconfig.json sets `include`. */
-	readonly tsconfigHasInclude?: boolean;
-	/** roblox-ts: `compilerOptions.tsBuildInfoFile`. */
-	readonly tsBuildInfoFile?: string;
-	/** roblox-ts: the installed package scopes under `node_modules`. */
-	readonly rbxtsScopes?: readonly string[];
-	/** roblox-ts: whether the runtime's `include` folder exists. */
-	readonly hasInclude?: boolean;
+	/** What each language read of the workspace, by language id. */
+	readonly languageFacts: Readonly<Record<string, unknown>>;
 }
 
 /** A file `init` writes, relative to the directory it runs in. */
@@ -63,8 +54,8 @@ export interface MountCandidate {
 export interface LanguageDetection {
 	/** Whether the workspace uses this language. */
 	readonly present: boolean;
-	/** The facts this language reads, whether or not it's present: the user may still pick it. */
-	readonly facts: Partial<DetectedWorkspace>;
+	/** What this language read, whether or not it's present: the user may still pick it. Only this language reads it back. */
+	readonly facts?: unknown;
 	/** Top-level folders holding the language's own files, never offered as code folders. */
 	readonly reservedFolders: readonly string[];
 }

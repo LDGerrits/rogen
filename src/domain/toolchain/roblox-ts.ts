@@ -25,6 +25,28 @@ const scopeLanding = (scope: string) =>
 	`${INCLUDE_LANDING}/${scopePath(scope)}`;
 const tsconfigOf = (name: string) => `tsconfig.${name}.json`;
 
+/** What `RobloxTs.detect` read from the workspace, which only roblox-ts asks for. */
+export interface RobloxTsFacts {
+	/** `compilerOptions.outDir`, when tsconfig.json exists. */
+	readonly outDir?: string;
+	/** `compilerOptions.rootDir`. */
+	readonly rootDir?: string;
+	/** Whether tsconfig.json sets `include`. */
+	readonly tsconfigHasInclude?: boolean;
+	/** `compilerOptions.tsBuildInfoFile`. */
+	readonly tsBuildInfoFile?: string;
+	/** The installed package scopes under `node_modules`. */
+	readonly rbxtsScopes?: readonly string[];
+	/** Whether the runtime's `include` folder exists. */
+	readonly hasInclude?: boolean;
+}
+
+const ID = "roblox-ts";
+
+/** The facts `detect` wrote for the workspace, or none when the language was picked without being found. */
+const factsOf = (workspace: DetectedWorkspace): RobloxTsFacts =>
+	(workspace.languageFacts[ID] ?? {}) as RobloxTsFacts;
+
 interface TsconfigFacts {
 	readonly outDir: string;
 	readonly rootDir?: string;
@@ -46,7 +68,7 @@ const firstSegment = (dir: string): string =>
 
 const compiler: Compiler = {
 	name: "roblox-ts",
-	outDir: (workspace) => workspace.outDir ?? DEFAULT_OUT_DIR,
+	outDir: (workspace) => factsOf(workspace).outDir ?? DEFAULT_OUT_DIR,
 	defaultOutDir: DEFAULT_OUT_DIR,
 	compileCommand: "rbxtsc -w",
 	rootDirDescription:
@@ -63,6 +85,7 @@ const compiler: Compiler = {
 		projectFile,
 		workspace,
 	}) {
+		const facts = factsOf(workspace);
 		const tsconfig = tsconfigOf(name);
 		return {
 			files: [
@@ -74,7 +97,7 @@ const compiler: Compiler = {
 							rootDir: null,
 							rootDirs,
 							outDir,
-							...(workspace.tsBuildInfoFile && {
+							...(facts.tsBuildInfoFile && {
 								tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
 							}),
 						},
@@ -82,7 +105,7 @@ const compiler: Compiler = {
 					}),
 				},
 			],
-			setup: workspace.tsconfigHasInclude
+			setup: facts.tsconfigHasInclude
 				? []
 				: [
 						`Add "include": ${JSON.stringify(sharedRootDirs)} to ${TSCONFIG}, so its own build leaves out the place folders.`,
@@ -94,7 +117,7 @@ const compiler: Compiler = {
 
 /** roblox-ts: TypeScript compiled to Luau before Rojo syncs it. */
 export class RobloxTs implements Language {
-	readonly id = "roblox-ts";
+	readonly id = ID;
 	readonly label = "roblox-ts";
 	readonly extension = "ts";
 	readonly detectedHint = `found ${TSCONFIG}`;
@@ -118,7 +141,7 @@ export class RobloxTs implements Language {
 		const tsconfig = isTs
 			? await this.readTsconfig(path.join(cwd, TSCONFIG))
 			: undefined;
-		const facts: Partial<DetectedWorkspace> = {
+		const facts: RobloxTsFacts = {
 			rbxtsScopes: installed.filter((scope) => scope !== undefined),
 			hasInclude,
 			...(tsconfig && {
@@ -145,22 +168,21 @@ export class RobloxTs implements Language {
 	}
 
 	configuredRootDir(workspace: DetectedWorkspace): string | undefined {
-		return workspace.rootDir === undefined
-			? undefined
-			: normalizeDir(workspace.rootDir);
+		const { rootDir } = factsOf(workspace);
+		return rootDir === undefined ? undefined : normalizeDir(rootDir);
 	}
 
 	alwaysMounted(workspace: DetectedWorkspace): MountCandidate[] {
+		const { hasInclude = false, rbxtsScopes = [] } = factsOf(workspace);
 		return [
 			{
 				path: INCLUDE_DIR,
-				installed: workspace.hasInclude ?? false,
+				installed: hasInclude,
 				landing: INCLUDE_LANDING,
-				ticked: workspace.hasInclude ?? false,
+				ticked: hasInclude,
 			},
 			...ALWAYS_MOUNTED_SCOPES.map((scope) => {
-				const installed =
-					workspace.rbxtsScopes?.includes(scope) ?? false;
+				const installed = rbxtsScopes.includes(scope);
 				return {
 					path: scopePath(scope),
 					installed,
@@ -172,10 +194,11 @@ export class RobloxTs implements Language {
 	}
 
 	offeredMounts(workspace: DetectedWorkspace): MountCandidate[] {
+		const { rbxtsScopes = [] } = factsOf(workspace);
 		return SCOPES.filter(
 			(scope) =>
 				!ALWAYS_MOUNTED_SCOPES.includes(scope) &&
-				(workspace.rbxtsScopes?.includes(scope) ?? false)
+				rbxtsScopes.includes(scope)
 		).map((scope) => ({
 			path: scopePath(scope),
 			installed: true,

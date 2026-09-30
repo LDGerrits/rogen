@@ -7,6 +7,10 @@ import { RojoTree } from "../../rojo/rojo-project.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
+	robloxTsFacts,
+	withRobloxTs,
+} from "../../toolchain/__tests__/workspaces.js";
+import {
 	InitChoices,
 	defaultInitChoices as defaultChoicesFor,
 } from "../init-choices.js";
@@ -34,9 +38,8 @@ const luau: DetectedWorkspace = {
 	codeFolders: [],
 	hasSrc: false,
 	packageDirs: new Set(),
-	rbxtsScopes: [],
-	hasInclude: false,
 	places: [],
+	languageFacts: {},
 };
 const withPackages: Partial<DetectedWorkspace> = {
 	packageManager: "wally",
@@ -122,7 +125,10 @@ describe("planProject", () => {
 
 	it("should write fields in pipeline order", () => {
 		const { configs } = plan(
-			{ ...luau, ...withPackages, language: "roblox-ts", outDir: "out" },
+			withRobloxTs(
+				{ ...luau, ...withPackages, language: "roblox-ts" },
+				{ outDir: "out" }
+			),
 			"default"
 		);
 
@@ -151,11 +157,12 @@ describe("planProject", () => {
 	});
 
 	it("should write the detected outDir as syncDir for roblox-ts", () => {
-		const { configs } = plan({
-			...luau,
-			language: "roblox-ts",
-			outDir: "build",
-		});
+		const { configs } = plan(
+			withRobloxTs(
+				{ ...luau, language: "roblox-ts" },
+				{ outDir: "build" }
+			)
+		);
 
 		expect(configs).toHaveLength(1);
 		expect(JSON.parse(configs[0].content).syncDir).toBe("build");
@@ -221,7 +228,10 @@ describe("planProject", () => {
 		) =>
 			planProject({
 				choices: defaultInitChoices(
-					{ ...luau, language, darklua, outDir: "build" },
+					withRobloxTs(
+						{ ...luau, language, darklua },
+						{ outDir: "build" }
+					),
 					name,
 					new Set(),
 					false
@@ -883,8 +893,10 @@ describe("planProject", () => {
 			expect(
 				treeOf({
 					...rbxts,
-					rbxtsScopes: ["@rbxts", "@flamework"],
-					hasInclude: true,
+					languageFacts: robloxTsFacts({
+						rbxtsScopes: ["@rbxts", "@flamework"],
+						hasInclude: true,
+					}),
 				})
 			).toEqual({
 				$className: "DataModel",
@@ -918,8 +930,10 @@ describe("planProject", () => {
 		it("should not mount a scope that is not installed by default", () => {
 			const scopes = treeOf({
 				...rbxts,
-				rbxtsScopes: ["@rbxts"],
-				hasInclude: true,
+				languageFacts: robloxTsFacts({
+					rbxtsScopes: ["@rbxts"],
+					hasInclude: true,
+				}),
 			}).ReplicatedStorage.rbxts_include.node_modules;
 
 			expect(Object.keys(scopes)).toEqual(["$className", "@rbxts"]);
@@ -927,7 +941,12 @@ describe("planProject", () => {
 
 		it("should never mount include or a scope for luau", () => {
 			expect(
-				treeOf({ hasInclude: true, rbxtsScopes: ["@rbxts"] })
+				treeOf({
+					languageFacts: robloxTsFacts({
+						hasInclude: true,
+						rbxtsScopes: ["@rbxts"],
+					}),
+				})
 			).toBeUndefined();
 		});
 
@@ -1017,8 +1036,10 @@ describe("planProject", () => {
 			expect(
 				treeOf({
 					language: "roblox-ts",
-					rbxtsScopes: ["@rbxts"],
-					hasInclude: true,
+					languageFacts: robloxTsFacts({
+						rbxtsScopes: ["@rbxts"],
+						hasInclude: true,
+					}),
 					packageDirs: new Set(["Packages"]),
 				}).ReplicatedStorage.Packages
 			).toBeUndefined();
@@ -1028,7 +1049,7 @@ describe("planProject", () => {
 			const tree = treeOf({
 				...withPackages,
 				language: "roblox-ts",
-				rbxtsScopes: ["@rbxts"],
+				languageFacts: robloxTsFacts({ rbxtsScopes: ["@rbxts"] }),
 			});
 
 			expect(Object.keys(tree)).toEqual([
@@ -1124,7 +1145,12 @@ describe("planProject", () => {
 	describe("notes", () => {
 		it("should say where roblox-ts syncs from", () => {
 			expect(
-				plan({ ...luau, language: "roblox-ts", outDir: "out" }).notes
+				plan(
+					withRobloxTs(
+						{ ...luau, language: "roblox-ts" },
+						{ outDir: "out" }
+					)
+				).notes
 			).toEqual(["Syncing from out, where roblox-ts compiles to."]);
 		});
 

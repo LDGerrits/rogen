@@ -14,7 +14,7 @@ export class Luau implements Language {
 	readonly defaultPackageManager: PackageManager = "wally";
 
 	async detect(): Promise<LanguageDetection> {
-		return { present: false, facts: {}, reservedFolders: [] };
+		return { present: false, reservedFolders: [] };
 	}
 
 	routeKey(id: string): string {

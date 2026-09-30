@@ -10,6 +10,10 @@ import {
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
+import {
+	robloxTsFacts,
+	withRobloxTs,
+} from "../../toolchain/__tests__/workspaces.js";
 import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
 import { InitContext, InitQuestions } from "../init-questions.js";
 
@@ -48,16 +52,17 @@ const luau: DetectedWorkspace = {
 	codeFolders: [],
 	hasSrc: false,
 	packageDirs: new Set(),
-	rbxtsScopes: [],
-	hasInclude: false,
 	places: [],
+	languageFacts: {},
 };
 const rbxts: DetectedWorkspace = {
 	...luau,
 	language: "roblox-ts",
-	outDir: "build",
-	rbxtsScopes: ["@rbxts"],
-	hasInclude: true,
+	languageFacts: robloxTsFacts({
+		outDir: "build",
+		rbxtsScopes: ["@rbxts"],
+		hasInclude: true,
+	}),
 	packageManager: "wally",
 	packageDirs: new Set(["Packages"]),
 };
@@ -318,8 +323,7 @@ describe("InitQuestions askProject", () => {
 
 		it("should take the placeholder from the tsconfig rootDir for roblox-ts", async () => {
 			const prompt = await rootDirsPrompt({
-				...rbxts,
-				rootDir: "./game",
+				...withRobloxTs(rbxts, { rootDir: "./game" }),
 				hasSrc: true,
 			});
 
@@ -328,8 +332,7 @@ describe("InitQuestions askProject", () => {
 
 		it("should ignore the tsconfig rootDir for luau", async () => {
 			const prompt = await rootDirsPrompt({
-				...luau,
-				rootDir: "game",
+				...withRobloxTs(luau, { rootDir: "game" }),
 				hasSrc: true,
 			});
 
@@ -369,8 +372,7 @@ describe("InitQuestions askProject", () => {
 
 		it("should not list the top folder of a nested root dir as another", async () => {
 			const prompt = await rootDirsPrompt({
-				...rbxts,
-				rootDir: "src/main",
+				...withRobloxTs(rbxts, { rootDir: "src/main" }),
 				codeFolders: ["places", "src"],
 			});
 
@@ -453,11 +455,12 @@ describe("InitQuestions askProject", () => {
 		};
 
 		it("should never offer include or an @ scope to luau", async () => {
-			const { offered } = await optionsFor({
-				...luau,
-				hasInclude: true,
-				rbxtsScopes: ["@rbxts", "@flamework"],
-			});
+			const { offered } = await optionsFor(
+				withRobloxTs(luau, {
+					hasInclude: true,
+					rbxtsScopes: ["@rbxts", "@flamework"],
+				})
+			);
 
 			expect(offered?.map(({ value }) => value)).toEqual([
 				"Packages",
@@ -504,10 +507,11 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should offer the extra scopes roblox-ts found, and say include and @rbxts are always mounted", async () => {
-			const { offered, prompts } = await optionsFor({
-				...rbxts,
-				rbxtsScopes: ["@rbxts", "@flamework", "@rbxts-js"],
-			});
+			const { offered, prompts } = await optionsFor(
+				withRobloxTs(rbxts, {
+					rbxtsScopes: ["@rbxts", "@flamework", "@rbxts-js"],
+				})
+			);
 
 			expect(offered?.map(({ value }) => value)).toEqual([
 				"Packages",

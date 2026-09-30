@@ -1,6 +1,11 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreToolchainService } from "../core-toolchain-service.js";
+import { RobloxTsFacts } from "../roblox-ts.js";
+import { DetectedWorkspace } from "../toolchain.js";
+
+const facts = (workspace: DetectedWorkspace) =>
+	workspace.languageFacts["roblox-ts"] as RobloxTsFacts;
 
 describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
@@ -26,9 +31,10 @@ describe("CoreToolchainService.detect", () => {
 				codeFolders: [],
 				hasSrc: false,
 				packageDirs: new Set(),
-				rbxtsScopes: [],
-				hasInclude: false,
 				places: [],
+				languageFacts: {
+					"roblox-ts": { rbxtsScopes: [], hasInclude: false },
+				},
 			});
 		});
 
@@ -50,7 +56,7 @@ describe("CoreToolchainService.detect", () => {
 
 				expect(workspace.language).toBe("luau");
 				expect(workspace.darklua).toBe(true);
-				expect(workspace.outDir).toBeUndefined();
+				expect(facts(workspace).outDir).toBeUndefined();
 			}
 		);
 
@@ -74,7 +80,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.outDir).toBe("build");
+			expect(facts(workspace).outDir).toBe("build");
 		});
 
 		it("should read a tsconfig.json that has comments and trailing commas", async () => {
@@ -88,7 +94,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.outDir).toBe("lib");
+			expect(facts(workspace).outDir).toBe("lib");
 		});
 
 		it.each([
@@ -102,7 +108,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.outDir).toBe("out");
+			expect(facts(workspace).outDir).toBe("out");
 		});
 	});
 
@@ -113,13 +119,15 @@ describe("CoreToolchainService.detect", () => {
 				JSON.stringify({ compilerOptions: { rootDir: "game" } })
 			);
 
-			expect((await toolchain().detect(cwd)).rootDir).toBe("game");
+			expect(facts(await toolchain().detect(cwd)).rootDir).toBe("game");
 		});
 
 		it("should not report a rootDir when tsconfig.json has none", async () => {
 			await write("tsconfig.json", "{}");
 
-			expect((await toolchain().detect(cwd)).rootDir).toBeUndefined();
+			expect(
+				facts(await toolchain().detect(cwd)).rootDir
+			).toBeUndefined();
 		});
 	});
 
@@ -127,9 +135,9 @@ describe("CoreToolchainService.detect", () => {
 		it("should report whether tsconfig.json sets include", async () => {
 			await write("tsconfig.json", '{"include":["src"]}');
 
-			expect((await toolchain().detect(cwd)).tsconfigHasInclude).toBe(
-				true
-			);
+			expect(
+				facts(await toolchain().detect(cwd)).tsconfigHasInclude
+			).toBe(true);
 		});
 
 		it("should report a tsconfig.json without include", async () => {
@@ -137,8 +145,8 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.tsconfigHasInclude).toBe(false);
-			expect(workspace.tsBuildInfoFile).toBeUndefined();
+			expect(facts(workspace).tsconfigHasInclude).toBe(false);
+			expect(facts(workspace).tsBuildInfoFile).toBeUndefined();
 		});
 
 		it("should read compilerOptions.tsBuildInfoFile", async () => {
@@ -147,7 +155,7 @@ describe("CoreToolchainService.detect", () => {
 				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
 			);
 
-			expect((await toolchain().detect(cwd)).tsBuildInfoFile).toBe(
+			expect(facts(await toolchain().detect(cwd)).tsBuildInfoFile).toBe(
 				"out/tsconfig.tsbuildinfo"
 			);
 		});
@@ -155,7 +163,7 @@ describe("CoreToolchainService.detect", () => {
 		it("should not report them for luau", async () => {
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.tsconfigHasInclude).toBeUndefined();
+			expect(facts(workspace).tsconfigHasInclude).toBeUndefined();
 		});
 	});
 
@@ -267,7 +275,10 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.rbxtsScopes).toEqual(["@rbxts", "@flamework"]);
+			expect(facts(workspace).rbxtsScopes).toEqual([
+				"@rbxts",
+				"@flamework",
+			]);
 		});
 
 		it("should report whether include exists", async () => {
@@ -275,7 +286,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.hasInclude).toBe(true);
+			expect(facts(workspace).hasInclude).toBe(true);
 		});
 	});
 
