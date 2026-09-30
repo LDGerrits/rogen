@@ -7,10 +7,8 @@ import {
 } from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import { parseArgs } from "./platform/environment/args.js";
-import {
-	EnvironmentService,
-	NativeEnvironmentService,
-} from "./platform/environment/environment-service.js";
+import { EnvironmentService } from "./platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "./platform/fs/file-system-service.js";
 import { CoreIndexService } from "./platform/fs/core-index-service.js";
@@ -40,7 +38,6 @@ import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
-import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config-schema.js";
 import "./commands/build/build-command.js";
@@ -121,19 +118,6 @@ async function main(): Promise<void> {
 			new CoreConfigService(fileSystemService, environment)
 		);
 		services.set(ConfigService, configService);
-
-		const metadata = commandRegistry.getCommand(command)?.metadata;
-		if (metadata?.requiresConfig) {
-			const refs = configRefsForCommand(metadata, cliArgs);
-			const initialized = refs.isOk()
-				? await configService.initialize(refs.value)
-				: refs;
-			if (initialized.isErr()) {
-				reportFailure(logService, initialized.error, command);
-				process.exitCode = 1;
-				return;
-			}
-		}
 
 		const reconciliationService = disposables.add(
 			new CoreReconciliationService(logService)

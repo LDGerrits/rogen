@@ -70,10 +70,6 @@ export class RobloxTsCompiler implements Compiler, SyncTool {
 	readonly name = "roblox-ts";
 	readonly defaultOutDir = DEFAULT_OUT_DIR;
 	readonly compileCommand = "rbxtsc -w";
-	readonly rootDirDescription =
-		"The folder roblox-ts compiles (rootDir in tsconfig.json).";
-	readonly severalRootDirs =
-		"roblox-ts compiles one folder. For code per place, set up several places.";
 
 	/** `facts` are what the workspace holds; a compiler with none is enough to tell what it emits. */
 	constructor(private readonly facts: RobloxTsFacts = {}) {}
@@ -133,10 +129,7 @@ export class RobloxTsCompiler implements Compiler, SyncTool {
 /** roblox-ts: TypeScript compiled to Luau before Rojo syncs it. */
 export class RobloxTs implements Language {
 	readonly id = "roblox-ts";
-	readonly label = "roblox-ts";
 	readonly extension = "ts";
-	readonly detectedHint = `found ${TSCONFIG}`;
-	readonly packagesNote = "include and @rbxts are always mounted.";
 	readonly compiler: RobloxTsCompiler;
 	readonly reservedFolders: readonly string[];
 

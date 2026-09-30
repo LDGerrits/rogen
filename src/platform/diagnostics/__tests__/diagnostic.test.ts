@@ -1,7 +1,10 @@
-import { Diagnostic, DiagnosticSeverity } from "../diagnostic.js";
-import { renderDiagnostic } from "../render-diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+	renderDiagnostic,
+} from "../diagnostic.js";
 
-describe("platform/diagnostics/render-diagnostic", () => {
+describe("platform/diagnostics/diagnostic", () => {
 	describe("renderDiagnostic", () => {
 		it("should render resource, position, severity and message", () => {
 			const diagnostic: Diagnostic = {

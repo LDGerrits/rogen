@@ -12,22 +12,46 @@ const layersAbove = {
 	commands: [],
 };
 
-// The files other modules may import; everything else in a domain module is internal.
-const domainModules = {
-	build: ["build-service"],
-	config: ["config", "config-service"],
-	init: ["init-directory", "init-service"],
-	roblox: ["roblox", "services"],
-	rojo: ["rojo-file", "rojo-project"],
-	toolchain: ["toolchain", "toolchain-service"],
-	watch: ["watch-service", "watch-session"],
+// The files other modules of a layer may import; everything else in a module is internal.
+const modules = {
+	domain: {
+		build: ["build-service"],
+		config: ["config", "config-service"],
+		init: ["init-service"],
+		roblox: ["roblox", "services"],
+		rojo: ["rojo-file", "rojo-project"],
+		toolchain: ["toolchain", "toolchain-service"],
+		watch: ["watch-service"],
+	},
+	// A command's own file is imported only by the composition root, for its side effect.
+	commands: {
+		build: ["build-log"],
+		help: [],
+		init: [],
+		list: [],
+		version: [],
+		watch: [],
+		where: [],
+	},
 };
 
-for (const entry of readdirSync("src/domain", { withFileTypes: true })) {
-	if (entry.isDirectory() && !(entry.name in domainModules)) {
-		throw new Error(
-			`Add the public files of src/domain/${entry.name} to domainModules.`
-		);
+// Every file of these layers sits in a module, and every module lists its public files.
+for (const [layer, layerModules] of Object.entries(modules)) {
+	for (const entry of readdirSync(`src/${layer}`, { withFileTypes: true })) {
+		if (entry.isFile()) {
+			throw new Error(
+				`Move src/${layer}/${entry.name} into a module: a file at the root of ${layer} belongs to no feature.`
+			);
+		}
+		if (
+			entry.isDirectory() &&
+			entry.name !== "__tests__" &&
+			!(entry.name in layerModules)
+		) {
+			throw new Error(
+				`Add the public files of src/${layer}/${entry.name} to modules.${layer} in eslint.config.js.`
+			);
+		}
 	}
 }
 
@@ -50,16 +74,21 @@ const layerPatterns = (layer, depth) => [
 	},
 ];
 
-const internalsPatterns = (layer, module, depth) =>
-	Object.entries(domainModules)
+// From a file `depth` folders below its layer: other modules of the layer, and domain modules from commands, only through their public files.
+const internalsPatterns = (layer, module, depth) => [
+	...Object.entries(modules[layer])
 		.filter(([name]) => name !== module)
 		.map(([name, files]) => ({
-			regex:
-				layer === "domain"
-					? `${up(depth)}${name}/${publicFiles(files)}`
-					: `${up(depth + 1)}domain/${name}/${publicFiles(files)}`,
+			regex: `${up(depth)}${name}/${publicFiles(files)}`,
 			message: `Import ${name} through its public files.`,
-		}));
+		})),
+	...(layer === "commands"
+		? Object.entries(modules.domain).map(([name, files]) => ({
+				regex: `${up(depth + 1)}domain/${name}/${publicFiles(files)}`,
+				message: `Import ${name} through its public files.`,
+			}))
+		: []),
+];
 
 // Platform contract files are ports; the files named for how they fulfil one are the outermost ring (ADR-0009).
 const IMPLEMENTATION_PREFIXES = [
@@ -81,16 +110,13 @@ const platformImplementationPattern = {
 const folders = (depth) => "*/".repeat(depth);
 
 const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
-	(layer === "base" || layer === "commands"
-		? [0, 1, 2, 3]
-		: [1, 2, 3]
-	).flatMap((depth) => {
+	(layer === "base" ? [0, 1, 2, 3] : [1, 2, 3]).flatMap((depth) => {
 		const patterns = layerPatterns(layer, depth);
 		const rule = (list) => ({
 			"no-restricted-imports": ["error", { patterns: list }],
 		});
-		const internals = (files, module) => ({
-			files,
+		const internals = (module) => ({
+			files: [`src/${layer}/${module}/${folders(depth - 1)}*.ts`],
 			ignores: ["**/__tests__/**"],
 			rules: rule([
 				...patterns,
@@ -100,15 +126,15 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 		});
 		// A contract must not depend on what it hides.
 		const publicOnly = (module) => ({
-			files: domainModules[module].map(
-				(file) => `src/domain/${module}/${file}.ts`
+			files: modules[layer][module].map(
+				(file) => `src/${layer}/${module}/${file}.ts`
 			),
 			rules: rule([
 				...patterns,
 				...internalsPatterns(layer, module, depth),
 				platformImplementationPattern,
 				{
-					regex: `^\\./(?!(${domainModules[module].join("|")})\\.js$)`,
+					regex: `^\\./(?!(${modules[layer][module].join("|")})\\.js$)`,
 					message: `A public file of ${module} imports only its other public files.`,
 				},
 			]),
@@ -118,17 +144,12 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 				files: [`src/${layer}/${folders(depth)}*.ts`],
 				rules: rule(patterns),
 			},
-			...(layer === "domain"
-				? Object.keys(domainModules).flatMap((module) => [
-						internals(
-							[`src/domain/${module}/${folders(depth - 1)}*.ts`],
-							module
-						),
-						...(depth === 1 ? [publicOnly(module)] : []),
-					])
-				: layer === "commands"
-					? [internals([`src/commands/${folders(depth)}*.ts`])]
+			...Object.keys(modules[layer] ?? {}).flatMap((module) => [
+				internals(module),
+				...(depth === 1 && modules[layer][module].length > 0
+					? [publicOnly(module)]
 					: []),
+			]),
 		];
 	})
 );

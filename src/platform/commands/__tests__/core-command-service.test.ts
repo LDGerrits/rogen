@@ -1,7 +1,8 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError, err, ok } from "../../../base/result.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
-import { LogService, NullLogService } from "../../log/log-service.js";
+import { LogService } from "../../log/log-service.js";
+import { NullLogService } from "../../log/null-log-service.js";
 import { Registry } from "../../registry/registry.js";
 import { CommandEvent, CommandRegistry, Extensions } from "../commands.js";
 import { CoreCommandService } from "../core-command-service.js";

@@ -1,15 +1,20 @@
 import path from "path";
 import { relativeTo } from "../../base/path.js";
+import { plural } from "../../base/string.js";
 import {
 	ConfigNotice,
 	RebuildReport,
 	WatchCause,
 	WatchUpdate,
-} from "../../domain/watch/watch-session.js";
-import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
-import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
+} from "../../domain/watch/watch-service.js";
+import {
+	Diagnostic,
+	isError,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { ResolvedEntry } from "../../domain/config/config-service.js";
 import { BuildLog } from "../build/build-log.js";
 
 interface WatchChange {
@@ -24,10 +29,7 @@ function describeChange({
 	reloaded,
 }: WatchChange): string {
 	const parts: string[] = [];
-	if (sourceFiles > 0)
-		parts.push(
-			`${sourceFiles} ${sourceFiles === 1 ? "file" : "files"} changed`
-		);
+	if (sourceFiles > 0) parts.push(`${plural(sourceFiles, "file")} changed`);
 	if (configFiles.length > 0) parts.push(`${configFiles.join(", ")} changed`);
 	if (reloaded) parts.push("reloaded");
 	return parts.join(" · ");
@@ -108,6 +110,18 @@ export class WatchLog {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
 
+	/** Opens the output: the configs it watches and the ones it leaves out. */
+	begin(
+		targets: readonly ResolvedEntry[],
+		unselected: readonly string[]
+	): void {
+		this.buildLog.begin("watch", targets, unselected);
+	}
+
+	end(): void {
+		this.logService.outro("Stopped watching.");
+	}
+
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
 		const fresh = notices
 			.map((notice) => this.unseenNotice(notice))
@@ -160,14 +174,13 @@ export class WatchLog {
 	}
 
 	private notice({ file, errors, warnings }: ConfigNotice): void {
-		for (const diagnostic of errors) this.logService.diagnostic(diagnostic);
+		this.buildLog.diagnostics(errors);
 		if (errors.length > 0) {
 			this.logService.error(
 				`Still building from the last valid ${path.basename(file)}.`
 			);
 		}
-		for (const diagnostic of warnings)
-			this.logService.diagnostic(diagnostic);
+		this.buildLog.diagnostics(warnings);
 	}
 
 	private report({
@@ -178,18 +191,14 @@ export class WatchLog {
 		summary,
 	}: RebuildReport): void {
 		if (outcome === "failed" || !summary) {
-			this.buildLog.notWritten(
-				{ entry, config },
-				diagnostics.length === 0
-			);
+			this.buildLog.notWritten({ entry, config }, diagnostics);
 		} else {
 			this.buildLog.written(
 				{ entry, config },
 				outcome === "wrote",
-				summary
+				summary,
+				diagnostics
 			);
 		}
-		for (const diagnostic of diagnostics)
-			this.logService.diagnostic(diagnostic);
 	}
 }

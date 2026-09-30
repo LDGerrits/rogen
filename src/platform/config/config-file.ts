@@ -1,13 +1,17 @@
 import { ErrorUtils } from "../../base/errors.js";
+import { JSONSchema } from "../../base/json-schema.js";
 import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic, DiagnosticPosition } from "../diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticLocation,
+	DiagnosticPosition,
+	errorDiagnostic as error,
+} from "../diagnostics/diagnostic.js";
 import { FileSystemService } from "../fs/file-system-service.js";
 import { Registry } from "../registry/registry.js";
-import { ConfigFileDiagnostics } from "./config-file-diagnostics.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 import { ConfigRegistry, Extensions } from "./config-registry.js";
-import { validateNode } from "./schema-validation.js";
 
 export interface ConfigFile {
 	readonly file: string;
@@ -106,4 +110,101 @@ function positionIn(
 	}
 
 	return node && { line: node.line, column: node.column };
+}
+
+const ConfigFileDiagnostics = {
+	invalidSyntax: (location: DiagnosticLocation, detail: string) =>
+		error("config.invalidSyntax", location, `invalid JSONC: ${detail}.`),
+	notAnObject: (location: DiagnosticLocation) =>
+		error(
+			"config.notAnObject",
+			location,
+			"a config must be a JSON object."
+		),
+	unknownField: (location: DiagnosticLocation, name: string) =>
+		error("config.unknownField", location, `unknown field "${name}".`),
+	wrongType: (
+		location: DiagnosticLocation,
+		path: string,
+		expected: string,
+		found: string
+	) =>
+		error(
+			"config.wrongType",
+			location,
+			`"${path}": expected ${expected}, found ${found}.`
+		),
+	unreadable: (location: DiagnosticLocation, detail: string) =>
+		error(
+			"config.unreadable",
+			location,
+			`the config could not be read: ${detail}.`
+		),
+};
+
+const KIND_NAMES: Record<JsoncNode["kind"], string> = {
+	object: "an object",
+	array: "an array",
+	string: "a string",
+	number: "a number",
+	boolean: "a boolean",
+	null: "null",
+};
+
+function validateNode(
+	node: JsoncNode,
+	schema: JSONSchema,
+	file: string,
+	path = ""
+): Diagnostic[] {
+	const location = (at: { line: number; column: number }) => ({
+		resource: file,
+		position: { line: at.line, column: at.column },
+	});
+
+	const expected = schema.type === undefined ? [] : [schema.type].flat();
+	if (expected.length > 0 && !expected.includes(node.kind)) {
+		return [
+			ConfigFileDiagnostics.wrongType(
+				location(node),
+				path,
+				expected.map((kind) => KIND_NAMES[kind]).join(" or "),
+				KIND_NAMES[node.kind]
+			),
+		];
+	}
+
+	if (node.kind === "array" && schema.items) {
+		const items = schema.items;
+		return node.items.flatMap((item, index) =>
+			validateNode(item, items, file, `${path}[${index}]`)
+		);
+	}
+
+	if (node.kind !== "object") return [];
+
+	return node.properties.flatMap((property) => {
+		const propertyPath = path ? `${path}.${property.name}` : property.name;
+		const known = schema.properties?.[property.name];
+		if (known) {
+			return validateNode(property.value, known, file, propertyPath);
+		}
+		if (schema.additionalProperties === false) {
+			return [
+				ConfigFileDiagnostics.unknownField(
+					location(property),
+					propertyPath
+				),
+			];
+		}
+		if (typeof schema.additionalProperties === "object") {
+			return validateNode(
+				property.value,
+				schema.additionalProperties,
+				file,
+				propertyPath
+			);
+		}
+		return [];
+	});
 }

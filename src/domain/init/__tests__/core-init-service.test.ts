@@ -3,13 +3,14 @@ import "../../config/config-schema.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
-import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
@@ -45,32 +46,27 @@ describe("CoreInitService", () => {
 	const write = (file: string, content = "") =>
 		fileSystem.writeFile(path.join(directory, file), content);
 
-	const prepared = async (names: readonly string[] = []) =>
-		(await serviceFor().prepare(names)).unwrap();
-
-	describe("prepare", () => {
-		it("should read the directory's entries and toolchain", async () => {
+	describe("plan, before it asks", () => {
+		it("should read the directory's toolchain", async () => {
 			await write("tsconfig.json", "{}");
 
-			const request = await prepared();
+			const plan = (await serviceFor().plan([])).unwrap();
 
-			expect(request.path).toBe(directory);
-			expect(request.has("tsconfig.json")).toBe(true);
-			expect(request.has("src")).toBe(false);
-			expect(request.workspace.language.id).toBe("roblox-ts");
-			expect(request.name).toBe("default");
-			expect(request.givenName).toBeUndefined();
+			expect(
+				JSON.parse(plan?.files.at(-1)?.content ?? "{}").routes
+			).toHaveProperty("server");
 		});
 
-		it("should keep a name given on the command line", async () => {
-			const request = await prepared(["lobby"]);
+		it("should write the config named on the command line", async () => {
+			const plan = (await serviceFor().plan(["lobby"])).unwrap();
 
-			expect(request.givenName).toBe("lobby");
-			expect(request.name).toBe("lobby");
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"lobby.rogen.json",
+			]);
 		});
 
 		it("should refuse more than one name", async () => {
-			const result = await serviceFor().prepare(["a", "b"]);
+			const result = await serviceFor().plan(["a", "b"]);
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -79,7 +75,7 @@ describe("CoreInitService", () => {
 			const result = await serviceFor(
 				undefined,
 				path.join(directory, "missing")
-			).prepare([]);
+			).plan([]);
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -87,7 +83,7 @@ describe("CoreInitService", () => {
 
 	describe("plan", () => {
 		it("should take every default when it can't ask", async () => {
-			const plan = (await serviceFor().plan(await prepared())).unwrap();
+			const plan = (await serviceFor().plan([])).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"default.rogen.json",
@@ -101,7 +97,7 @@ describe("CoreInitService", () => {
 		it("should resolve to nothing when the user cancels", async () => {
 			const result = await serviceFor(
 				new MockPromptService([CANCEL])
-			).plan(await prepared());
+			).plan([]);
 
 			expect(result.unwrap()).toBeUndefined();
 		});
@@ -109,7 +105,7 @@ describe("CoreInitService", () => {
 		it("should refuse to write over a config that exists", async () => {
 			await write("default.rogen.json", "{}");
 
-			const result = await serviceFor().plan(await prepared());
+			const result = await serviceFor().plan([]);
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -126,7 +122,7 @@ describe("CoreInitService", () => {
 			const plan = (
 				await serviceFor(
 					new MockPromptService(["place", "lobby", ""])
-				).plan(await prepared())
+				).plan([])
 			).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
@@ -151,9 +147,7 @@ describe("CoreInitService", () => {
 				await write("default.rogen.json", config);
 				for (const file of existing) await write(file);
 				const prompts = new MockPromptService(answers);
-				const result = await serviceFor(prompts).plan(
-					await prepared(names)
-				);
+				const result = await serviceFor(prompts).plan(names);
 				return { prompts, result };
 			};
 
@@ -248,7 +242,9 @@ describe("CoreInitService", () => {
 				);
 
 				expect(
-					result.isErr() && result.error.diagnostics
+					result.isErr() &&
+						result.error instanceof DiagnosticsError &&
+						result.error.diagnostics
 				).toMatchObject([{ code: "init.configExists" }]);
 			});
 
@@ -256,9 +252,9 @@ describe("CoreInitService", () => {
 				await write("default.rogen.json", config);
 
 				const plan = (
-					await serviceFor(new MockPromptService([], false)).plan(
-						await prepared(["lobby"])
-					)
+					await serviceFor(new MockPromptService([], false)).plan([
+						"lobby",
+					])
 				).unwrap();
 
 				expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
@@ -275,7 +271,7 @@ describe("CoreInitService", () => {
 
 			const result = await serviceFor(
 				new MockPromptService(["place", "lobby", ""])
-			).plan(await prepared());
+			).plan([]);
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -283,7 +279,7 @@ describe("CoreInitService", () => {
 
 	describe("write", () => {
 		const planned = async (): Promise<InitPlan> =>
-			(await serviceFor().plan(await prepared())).unwrap() as InitPlan;
+			(await serviceFor().plan([])).unwrap() as InitPlan;
 
 		it("should write the template, configs and compiler configs into the directory", async () => {
 			await write("tsconfig.json", "{}");

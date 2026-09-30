@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { configRefsFromArgs } from "../../config-options.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -14,17 +13,15 @@ import {
 	sourcemap,
 } from "../../../domain/rojo/__tests__/rojo-cli.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { NativeEnvironmentService } from "../../../platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 describeWithRojo("build command against Rojo", () => {
@@ -44,8 +41,6 @@ describeWithRojo("build command against Rojo", () => {
 		const configService = store.add(
 			new CoreConfigService(fileSystem, environment)
 		);
-		const refs = configRefsFromArgs(args).unwrap();
-		(await configService.initialize(refs)).unwrap();
 
 		const services = new ServiceCollection();
 		services.set(ConfigService, configService);

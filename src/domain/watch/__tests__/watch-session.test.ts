@@ -4,14 +4,15 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { NullLogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { WatchSession, WatchUpdate } from "../watch-session.js";
+import { WatchUpdate } from "../watch-service.js";
+import { CoreWatchSession } from "../watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 
-describe("WatchSession", () => {
+describe("CoreWatchSession", () => {
 	let fs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
@@ -38,7 +39,7 @@ describe("WatchSession", () => {
 		await configService.initialize({ names, paths: [] });
 		const indexService = store.add(new CoreIndexService(fs));
 		const session = store.add(
-			new WatchSession(
+			new CoreWatchSession(
 				watcher,
 				store.add(
 					new CoreReconciliationService(new NullLogService(), {

@@ -1,7 +1,11 @@
 import { Disposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
-import { OptionDescriptor, ParsedArgs } from "../environment/args.js";
+import {
+	GlobalOptions,
+	OptionDescriptor,
+	ParsedArgs,
+} from "../environment/args.js";
 import {
 	ServicesAccessor,
 	createServiceIdentifier,
@@ -39,39 +43,14 @@ export interface Command {
 
 export interface CommandMetadata {
 	readonly description: string;
-	/** Whether the composition root must load a config before running it. */
-	readonly requiresConfig?: boolean;
 	readonly args?: readonly {
 		readonly name: string;
 		readonly description: string;
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
-		/** Whether what is given here names the configs the command loads. */
-		readonly namesConfig?: boolean;
 	}[];
 	readonly options?: readonly OptionDescriptor[];
 }
-
-export const GlobalOptions: readonly OptionDescriptor[] = [
-	{ name: "help", short: "h", type: "boolean", description: "Print help." },
-	{
-		name: "version",
-		short: "v",
-		type: "boolean",
-		description: "Print the version.",
-	},
-	{
-		name: "verbose",
-		type: "boolean",
-		description: "Print debug output.",
-	},
-	{
-		name: "quiet",
-		short: "q",
-		type: "boolean",
-		description: "Only print errors.",
-	},
-];
 
 export interface CommandRegistry {
 	readonly onDidRegisterCommand: Event<string>;
@@ -180,3 +159,29 @@ export const Extensions = {
 };
 
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
+
+/** What a command is, as `rogen help` and the argument parser read it. */
+export interface CommandDescriptor {
+	readonly id: string;
+	readonly metadata: CommandMetadata;
+}
+
+/** A command as an object: a subclass describes itself to the constructor and does its work in `run`. */
+export abstract class AbstractCommand {
+	constructor(readonly desc: CommandDescriptor) {}
+
+	abstract run(
+		accessor: ServicesAccessor,
+		args: ParsedArgs
+	): Promise<Result<void, Error>>;
+}
+
+/** Contributes one instance of `ctor` to the command registry. */
+export function registerCommand(ctor: new () => AbstractCommand): Disposable {
+	const command = new ctor();
+	return Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
+		id: command.desc.id,
+		metadata: command.desc.metadata,
+		handler: (accessor, args) => command.run(accessor, args),
+	});
+}

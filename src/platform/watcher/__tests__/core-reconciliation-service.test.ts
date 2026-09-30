@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import { CoreReconciliationService } from "../core-reconciliation-service.js";
 import { FileType } from "../../fs/file-system-service.js";
-import { NullLogService } from "../../log/log-service.js";
+import { NullLogService } from "../../log/null-log-service.js";
 import { FileChangeType } from "../../fs/file-events.js";
 
 describe("CoreReconciliationService", () => {

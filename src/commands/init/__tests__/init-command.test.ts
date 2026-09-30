@@ -13,16 +13,12 @@ import { SCHEMA_URL } from "../../../domain/config/config.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import {
-	EnvironmentService,
-	NativeEnvironmentService,
-} from "../../../platform/environment/environment-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {

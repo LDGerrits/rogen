@@ -9,15 +9,15 @@ import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
 	Extensions,
-	GlobalOptions,
 } from "../../../platform/commands/commands.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { parseArgs } from "../../../platform/environment/args.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+	GlobalOptions,
+	parseArgs,
+} from "../../../platform/environment/args.js";
+import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
 describe("help command", () => {

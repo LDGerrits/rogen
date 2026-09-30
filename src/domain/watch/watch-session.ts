@@ -13,56 +13,16 @@ import {
 	Watcher,
 	WatchRequest,
 } from "../../platform/watcher/watcher.js";
-import {
-	BuildService,
-	BuildSummary,
-	OutputFile,
-} from "../build/build-service.js";
+import { BuildService, OutputFile } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
-
-/** Why the configs were rebuilt. */
-export type WatchCause =
-	| { readonly kind: "initial" }
-	/** Too many changes at once to follow, so everything was rebuilt. */
-	| { readonly kind: "burst" }
-	| {
-			readonly kind: "change";
-			readonly sourceFiles: number;
-			/** The config files that changed, as absolute paths. */
-			readonly configFiles: readonly string[];
-			readonly reloaded: boolean;
-	  };
-
-/** The problems in a config's latest load, none when it loaded cleanly; with errors, the last valid version is still what builds. */
-export interface ConfigNotice {
-	readonly file: string;
-	readonly errors: readonly Diagnostic[];
-	readonly warnings: readonly Diagnostic[];
-}
-
-export interface RebuildReport {
-	readonly entry: ConfigEntry;
-	/** The version of the config that was built. */
-	readonly config: ResolvedConfig;
-	readonly outcome: "wrote" | "unchanged" | "failed";
-	/** The build's warnings, or why it failed. */
-	readonly diagnostics: readonly Diagnostic[];
-	/** What the sync dir check found; `undefined` when this round didn't check it. */
-	readonly syncDiagnostics?: readonly Diagnostic[];
-	/** Set when the build succeeded. */
-	readonly summary?: BuildSummary;
-}
-
-/** One round of rebuilds, fired once every rebuild in it has finished. */
-export interface WatchUpdate {
-	readonly at: Date;
-	readonly cause: WatchCause;
-	/** The source changes behind it. */
-	readonly changes: readonly FileChange[];
-	readonly notices: readonly ConfigNotice[];
-	readonly reports: readonly RebuildReport[];
-}
+import {
+	ConfigNotice,
+	RebuildReport,
+	WatchCause,
+	WatchSession,
+	WatchUpdate,
+} from "./watch-service.js";
 
 /** `file` names the config in `configsFor`. */
 export type WatchPlanConfig = Pick<
@@ -124,7 +84,10 @@ export class WatchPlan {
 }
 
 /** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
-export class WatchSession extends AbstractDisposable {
+export class CoreWatchSession
+	extends AbstractDisposable
+	implements WatchSession
+{
 	private readonly _onDidUpdate = this._register(new Emitter<WatchUpdate>());
 	readonly onDidUpdate: Event<WatchUpdate> = this._onDidUpdate.event;
 

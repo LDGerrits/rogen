@@ -28,10 +28,8 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
-import {
-	LogService,
-	NullLogService,
-} from "../../../platform/log/log-service.js";
+import { LogService } from "../../../platform/log/log-service.js";
+import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
@@ -67,7 +65,6 @@ describe("watch command", () => {
 	});
 
 	const startWatch = async (names: string[] = []) => {
-		await configService.initialize({ names, paths: [] });
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		services.set(ConfigService, configService);
@@ -92,7 +89,7 @@ describe("watch command", () => {
 		);
 		return store
 			.add(new CoreCommandService(services, logService))
-			.executeCommand("watch", { _: ["watch"] });
+			.executeCommand("watch", { _: ["watch", ...names] });
 	};
 
 	const run = async (names: string[] = []) => {

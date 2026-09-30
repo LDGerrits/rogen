@@ -1,4 +1,4 @@
-import { NativeEnvironmentService } from "../environment-service.js";
+import { NativeEnvironmentService } from "../native-environment-service.js";
 import { ParsedArgs } from "../args.js";
 
 describe("NativeEnvironmentService", () => {
