@@ -5,10 +5,11 @@ import { isObject } from "../../base/object.js";
 import { normalizeDir } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
+	CompiledPlace,
 	Compiler,
-	DetectedWorkspace,
+	CompilerPlaceRequest,
 	Language,
-	LanguageDetection,
+	LanguageDetector,
 	MountCandidate,
 	SyncTool,
 } from "./toolchain.js";
@@ -25,7 +26,7 @@ const scopeLanding = (scope: string) =>
 	`${INCLUDE_LANDING}/${scopePath(scope)}`;
 const tsconfigOf = (name: string) => `tsconfig.${name}.json`;
 
-/** What `RobloxTs.detect` read from the workspace, which only roblox-ts asks for. */
+/** What `RobloxTsDetector` read from the workspace, which only roblox-ts asks for. */
 export interface RobloxTsFacts {
 	/** `compilerOptions.outDir`, when tsconfig.json exists. */
 	readonly outDir?: string;
@@ -40,12 +41,6 @@ export interface RobloxTsFacts {
 	/** Whether the runtime's `include` folder exists. */
 	readonly hasInclude?: boolean;
 }
-
-const ID = "roblox-ts";
-
-/** The facts `detect` wrote for the workspace; none for a workspace built without them. */
-const factsOf = (workspace: DetectedWorkspace): RobloxTsFacts =>
-	(workspace.languageFacts[ID] ?? {}) as RobloxTsFacts;
 
 interface TsconfigFacts {
 	readonly outDir: string;
@@ -66,16 +61,38 @@ const firstSegment = (dir: string): string =>
 	dir.split(/[\\/]/).find((segment) => segment !== "" && segment !== ".") ??
 	dir;
 
-const compiler: Compiler = {
-	name: "roblox-ts",
-	outDir: (workspace) => factsOf(workspace).outDir ?? DEFAULT_OUT_DIR,
-	defaultOutDir: DEFAULT_OUT_DIR,
-	compileCommand: "rbxtsc -w",
-	rootDirDescription:
-		"The folder roblox-ts compiles (rootDir in tsconfig.json).",
-	severalRootDirs:
-		"roblox-ts compiles one folder. For code per place, set up several places.",
-	placeFileNames: (name) => [tsconfigOf(name)],
+const COMPILED_EXTENSION = /\.tsx?$/i;
+const DECLARATION_FILE = /\.d\.ts$/i;
+
+/** The roblox-ts compiler, which is also a sync tool: it writes `.luau` for each `.ts` and only reads declaration files. */
+export class RobloxTsCompiler implements Compiler, SyncTool {
+	readonly id = "roblox-ts";
+	readonly name = "roblox-ts";
+	readonly defaultOutDir = DEFAULT_OUT_DIR;
+	readonly compileCommand = "rbxtsc -w";
+	readonly rootDirDescription =
+		"The folder roblox-ts compiles (rootDir in tsconfig.json).";
+	readonly severalRootDirs =
+		"roblox-ts compiles one folder. For code per place, set up several places.";
+
+	/** `facts` are what the workspace holds; a compiler with none is enough to tell what it emits. */
+	constructor(private readonly facts: RobloxTsFacts = {}) {}
+
+	get outDir(): string {
+		return this.facts.outDir ?? DEFAULT_OUT_DIR;
+	}
+
+	emittedPath(source: string): string {
+		return source.replace(COMPILED_EXTENSION, ".luau");
+	}
+
+	readsOnly(source: string): boolean {
+		return DECLARATION_FILE.test(source);
+	}
+
+	placeFileNames(name: string): readonly string[] {
+		return [tsconfigOf(name)];
+	}
 
 	planPlace({
 		name,
@@ -83,9 +100,7 @@ const compiler: Compiler = {
 		sharedRootDirs,
 		outDir,
 		projectFile,
-		workspace,
-	}) {
-		const facts = factsOf(workspace);
+	}: CompilerPlaceRequest): CompiledPlace {
 		const tsconfig = tsconfigOf(name);
 		return {
 			files: [
@@ -97,7 +112,7 @@ const compiler: Compiler = {
 							rootDir: null,
 							rootDirs,
 							outDir,
-							...(facts.tsBuildInfoFile && {
+							...(this.facts.tsBuildInfoFile && {
 								tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
 							}),
 						},
@@ -105,75 +120,48 @@ const compiler: Compiler = {
 					}),
 				},
 			],
-			setup: facts.tsconfigHasInclude
+			setup: this.facts.tsconfigHasInclude
 				? []
 				: [
 						`Add "include": ${JSON.stringify(sharedRootDirs)} to ${TSCONFIG}, so its own build leaves out the place folders.`,
 					],
 			compileCommand: `rbxtsc -w -p ${tsconfig} --rojo ${projectFile}`,
 		};
-	},
-};
+	}
+}
 
 /** roblox-ts: TypeScript compiled to Luau before Rojo syncs it. */
 export class RobloxTs implements Language {
-	readonly id = ID;
+	readonly id = "roblox-ts";
 	readonly label = "roblox-ts";
 	readonly extension = "ts";
 	readonly detectedHint = `found ${TSCONFIG}`;
 	readonly packagesNote = "include and @rbxts are always mounted.";
-	readonly compiler = compiler;
+	readonly compiler: RobloxTsCompiler;
+	readonly reservedFolders: readonly string[];
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
-
-	async detect(cwd: string): Promise<LanguageDetection> {
-		const has = (...segments: string[]) =>
-			this.fileSystemService.exists(path.join(cwd, ...segments));
-		const [isTs, installed, hasInclude] = await Promise.all([
-			has(TSCONFIG),
-			Promise.all(
-				SCOPES.map(async (scope) =>
-					(await has("node_modules", scope)) ? scope : undefined
-				)
-			),
-			has(INCLUDE_DIR),
-		]);
-		const tsconfig = isTs
-			? await this.readTsconfig(path.join(cwd, TSCONFIG))
-			: undefined;
-		const facts: RobloxTsFacts = {
-			rbxtsScopes: installed.filter((scope) => scope !== undefined),
-			hasInclude,
-			...(tsconfig && {
-				outDir: tsconfig.outDir,
-				...(tsconfig.rootDir && { rootDir: tsconfig.rootDir }),
-				tsconfigHasInclude: tsconfig.hasInclude,
-				...(tsconfig.tsBuildInfoFile && {
-					tsBuildInfoFile: tsconfig.tsBuildInfoFile,
-				}),
-			}),
-		};
-		return {
-			present: isTs,
-			facts,
-			reservedFolders: [
-				INCLUDE_DIR,
-				...(tsconfig ? [firstSegment(tsconfig.outDir)] : []),
-			],
-		};
+	constructor(
+		private readonly facts: RobloxTsFacts,
+		readonly present: boolean
+	) {
+		this.compiler = new RobloxTsCompiler(facts);
+		this.reservedFolders = [
+			INCLUDE_DIR,
+			...(facts.outDir ? [firstSegment(facts.outDir)] : []),
+		];
 	}
 
 	routeKey(id: string): string {
 		return id;
 	}
 
-	configuredRootDir(workspace: DetectedWorkspace): string | undefined {
-		const { rootDir } = factsOf(workspace);
+	configuredRootDir(): string | undefined {
+		const { rootDir } = this.facts;
 		return rootDir === undefined ? undefined : normalizeDir(rootDir);
 	}
 
-	alwaysMounted(workspace: DetectedWorkspace): MountCandidate[] {
-		const { hasInclude = false, rbxtsScopes = [] } = factsOf(workspace);
+	alwaysMounted(): MountCandidate[] {
+		const { hasInclude = false, rbxtsScopes = [] } = this.facts;
 		return [
 			{
 				path: INCLUDE_DIR,
@@ -193,8 +181,8 @@ export class RobloxTs implements Language {
 		];
 	}
 
-	offeredMounts(workspace: DetectedWorkspace): MountCandidate[] {
-		const { rbxtsScopes = [] } = factsOf(workspace);
+	offeredMounts(): MountCandidate[] {
+		const { rbxtsScopes = [] } = this.facts;
 		return SCOPES.filter(
 			(scope) =>
 				!ALWAYS_MOUNTED_SCOPES.includes(scope) &&
@@ -205,6 +193,43 @@ export class RobloxTs implements Language {
 			landing: scopeLanding(scope),
 			ticked: true,
 		}));
+	}
+}
+
+/** Reads what roblox-ts leaves in a workspace: tsconfig.json, `include` and the installed scopes. */
+export class RobloxTsDetector implements LanguageDetector {
+	constructor(private readonly fileSystemService: FileSystemService) {}
+
+	async detect(cwd: string): Promise<RobloxTs> {
+		const has = (...segments: string[]) =>
+			this.fileSystemService.exists(path.join(cwd, ...segments));
+		const [isTs, installed, hasInclude] = await Promise.all([
+			has(TSCONFIG),
+			Promise.all(
+				SCOPES.map(async (scope) =>
+					(await has("node_modules", scope)) ? scope : undefined
+				)
+			),
+			has(INCLUDE_DIR),
+		]);
+		const tsconfig = isTs
+			? await this.readTsconfig(path.join(cwd, TSCONFIG))
+			: undefined;
+		return new RobloxTs(
+			{
+				rbxtsScopes: installed.filter((scope) => scope !== undefined),
+				hasInclude,
+				...(tsconfig && {
+					outDir: tsconfig.outDir,
+					...(tsconfig.rootDir && { rootDir: tsconfig.rootDir }),
+					tsconfigHasInclude: tsconfig.hasInclude,
+					...(tsconfig.tsBuildInfoFile && {
+						tsBuildInfoFile: tsconfig.tsBuildInfoFile,
+					}),
+				}),
+			},
+			isTs
+		);
 	}
 
 	private async readTsconfig(file: string): Promise<TsconfigFacts> {
@@ -232,12 +257,3 @@ export class RobloxTs implements Language {
 		return { outDir: DEFAULT_OUT_DIR, hasInclude: false };
 	}
 }
-
-const COMPILED_EXTENSION = /\.tsx?$/i;
-const DECLARATION_FILE = /\.d\.ts$/i;
-
-export const robloxTsSyncTool: SyncTool = {
-	id: "roblox-ts",
-	emittedPath: (source) => source.replace(COMPILED_EXTENSION, ".luau"),
-	readsOnly: (source) => DECLARATION_FILE.test(source),
-};

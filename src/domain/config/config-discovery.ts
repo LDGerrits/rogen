@@ -12,6 +12,7 @@ import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
 } from "./config.js";
+import { ConfigRefs } from "./config-service.js";
 
 const DEFAULT_CONFIG_NAME = configFileName(DEFAULT_CONFIG_STEM);
 
@@ -22,12 +23,13 @@ export class ConfigDiscovery {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files named by `names` (in the working directory) and `explicitPaths`, or the default config when neither is given, or every config when `all`. */
-	async discover(
-		names: readonly string[],
-		explicitPaths: readonly string[] = [],
-		all = false
-	): Promise<Result<string[], Error>> {
+	/** The config files `refs` names, or the default config when it names none, or every config when it asks for all. */
+	async discover({
+		names,
+		paths: explicitPaths = [],
+		all,
+	}: Pick<ConfigRefs, "names" | "all"> &
+		Partial<Pick<ConfigRefs, "paths">>): Promise<Result<string[], Error>> {
 		if (all) return this.find();
 
 		const cwd = this.environmentService.cwd;

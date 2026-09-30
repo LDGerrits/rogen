@@ -1,10 +1,5 @@
-import {
-	matchFolderKey,
-	matchKeyIgnoringCase,
-	matchMarkerKey,
-	matchSuffixKeys,
-	unwrapInvisibleFolder,
-} from "../declared-keys.js";
+import { DeclaredKeys } from "../../config/config.js";
+import { NameReader } from "../routing.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTES_AND_TAGS = new Set([
@@ -14,54 +9,45 @@ const ROUTES_AND_TAGS = new Set([
 	"mock",
 	"debug",
 ]);
+const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
+const ALL_KEYS = new DeclaredKeys(ROUTES, ["mock", "debug"]);
 
-describe("matchFolderKey", () => {
-	it("matches a folder named exactly after a declared key", () => {
-		expect(matchFolderKey("server", ROUTES)).toBe("server");
-	});
+const readerOf = (keys: DeclaredKeys) => new NameReader(keys);
+const matchMarkerKey = (fileName: string, keys: DeclaredKeys) =>
+	readerOf(keys).marker(fileName).key;
+const matchSuffixKeys = (stem: string, keys: ReadonlySet<string>) =>
+	readerOf(new DeclaredKeys(keys, [])).suffixes(stem);
+const unwrapInvisibleFolder = NameReader.unwrapInvisibleFolder;
+const readFolderName = (folderName: string, keys: DeclaredKeys) =>
+	readerOf(keys).folder(folderName);
 
-	it("matches with the first letter in the other case and reports the declared key", () => {
-		expect(matchFolderKey("Server", ROUTES)).toBe("server");
-		expect(matchFolderKey("server", new Set(["Server"]))).toBe("Server");
-	});
-
-	it("does not match any other difference in case", () => {
-		expect(matchFolderKey("SERVER", ROUTES)).toBeUndefined();
-		expect(matchFolderKey("sERVER", ROUTES)).toBeUndefined();
-	});
-
-	it("does not match an undeclared name", () => {
-		expect(matchFolderKey("Inventory", ROUTES)).toBeUndefined();
-	});
-});
-
-describe("matchMarkerKey", () => {
+describe("NameReader marker", () => {
 	it("matches a marker file named after a declared key", () => {
-		expect(matchMarkerKey(".server", ROUTES)).toBe("server");
+		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("matches a tag marker", () => {
-		expect(matchMarkerKey(".mock", ROUTES_AND_TAGS)).toBe("mock");
+		expect(matchMarkerKey(".mock", ALL_KEYS)).toBe("mock");
 	});
 
 	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey(".Server", ROUTES)).toBe("server");
+		expect(matchMarkerKey(".Server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("does not match any other difference in case", () => {
-		expect(matchMarkerKey(".SERVER", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey(".SERVER", ROUTE_KEYS)).toBeUndefined();
 	});
 
 	it("ignores a name that doesn't start with a dot", () => {
-		expect(matchMarkerKey("server", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey("server", ROUTE_KEYS)).toBeUndefined();
 	});
 
 	it("ignores a bare dot", () => {
-		expect(matchMarkerKey(".", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey(".", ROUTE_KEYS)).toBeUndefined();
 	});
 });
 
-describe("matchSuffixKeys", () => {
+describe("NameReader suffixes", () => {
 	it("strips a separator suffix for each of + - _ . @", () => {
 		for (const sep of ["+", "-", "_", ".", "@"]) {
 			const result = matchSuffixKeys(`Combat${sep}server`, ROUTES);
@@ -189,23 +175,7 @@ describe("matchSuffixKeys", () => {
 	});
 });
 
-describe("matchKeyIgnoringCase", () => {
-	it("returns the declared key that a name only differs from beyond the first letter", () => {
-		expect(matchKeyIgnoringCase("SERVER", ROUTES)).toBe("server");
-		expect(matchKeyIgnoringCase("sERVER", ROUTES)).toBe("server");
-	});
-
-	it("ignores a name that matches, including with the first letter flipped", () => {
-		expect(matchKeyIgnoringCase("server", ROUTES)).toBeUndefined();
-		expect(matchKeyIgnoringCase("Server", ROUTES)).toBeUndefined();
-	});
-
-	it("ignores an unrelated name", () => {
-		expect(matchKeyIgnoringCase("Inventory", ROUTES)).toBeUndefined();
-	});
-});
-
-describe("unwrapInvisibleFolder", () => {
+describe("NameReader.unwrapInvisibleFolder", () => {
 	it("removes the parentheses and marks the folder invisible", () => {
 		expect(unwrapInvisibleFolder("(mock)")).toEqual({
 			name: "mock",
@@ -226,5 +196,39 @@ describe("unwrapInvisibleFolder", () => {
 				name,
 				invisible: false,
 			});
+	});
+});
+
+describe("NameReader folder", () => {
+	it("should read a folder named after a route as that route", () => {
+		expect(readFolderName("Server", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: false,
+		});
+	});
+
+	it("should read a folder named after a tag as that tag", () => {
+		expect(readFolderName("mock", ALL_KEYS)).toEqual({
+			kind: "tag",
+			key: "mock",
+			invisible: false,
+		});
+	});
+
+	it("should read parentheses off first and mark the folder invisible", () => {
+		expect(readFolderName("(server)", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: true,
+		});
+	});
+
+	it("should read any other folder as plain", () => {
+		expect(readFolderName("Inventory", ALL_KEYS)).toEqual({
+			kind: "plain",
+			name: "Inventory",
+			invisible: false,
+		});
 	});
 });

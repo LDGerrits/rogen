@@ -26,7 +26,7 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.writeFile("/repo/other.rogen.json", "{}");
 
-			const result = await discovery.discover([]);
+			const result = await discovery.discover({ names: [] });
 
 			expect(result.isOk()).toBe(true);
 			expect(result.unwrap()).toEqual(["/repo/default.rogen.json"]);
@@ -35,7 +35,7 @@ describe("ConfigDiscovery", () => {
 		it("resolves to the single *.rogen.json present", async () => {
 			await fs.writeFile("/repo/staging.rogen.json", "{}");
 
-			const result = await discovery.discover([]);
+			const result = await discovery.discover({ names: [] });
 
 			expect(result.unwrap()).toEqual(["/repo/staging.rogen.json"]);
 		});
@@ -44,7 +44,7 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/match.rogen.json", "{}");
 
-			const result = await discovery.discover([]);
+			const result = await discovery.discover({ names: [] });
 
 			expect(result.isErr()).toBe(true);
 			expect(result.unwrapOr(undefined)).toBeUndefined();
@@ -53,7 +53,7 @@ describe("ConfigDiscovery", () => {
 		});
 
 		it("errors clearly when nothing is found", async () => {
-			const result = await discovery.discover([]);
+			const result = await discovery.discover({ names: [] });
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("No config file found");
@@ -62,7 +62,7 @@ describe("ConfigDiscovery", () => {
 		it("ignores a directory that happens to end in .rogen.json", async () => {
 			await fs.createDirectory("/repo/weird.rogen.json");
 
-			const result = await discovery.discover([]);
+			const result = await discovery.discover({ names: [] });
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("No config file found");
@@ -74,7 +74,9 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/match.rogen.json", "{}");
 
-			const result = await discovery.discover(["lobby", "match"]);
+			const result = await discovery.discover({
+				names: ["lobby", "match"],
+			});
 
 			expect(result.unwrap()).toEqual([
 				"/repo/lobby.rogen.json",
@@ -85,13 +87,13 @@ describe("ConfigDiscovery", () => {
 		it("does not fall back to a default when names are given", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 
-			const result = await discovery.discover(["lobby"]);
+			const result = await discovery.discover({ names: ["lobby"] });
 
 			expect(result.isErr()).toBe(true);
 		});
 
 		it("errors naming the path it looked for when a named config is missing", async () => {
-			const result = await discovery.discover(["ghost"]);
+			const result = await discovery.discover({ names: ["ghost"] });
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("ghost");
@@ -104,10 +106,10 @@ describe("ConfigDiscovery", () => {
 			await fs.createDirectory("/repo/places/lobby");
 			await fs.writeFile("/repo/places/lobby/default.rogen.json", "{}");
 
-			const result = await discovery.discover(
-				[],
-				["places/lobby/default.rogen.json"]
-			);
+			const result = await discovery.discover({
+				names: [],
+				paths: ["places/lobby/default.rogen.json"],
+			});
 
 			expect(result.unwrap()).toEqual([
 				"/repo/places/lobby/default.rogen.json",
@@ -118,10 +120,10 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/a.rogen.json", "{}");
 			await fs.writeFile("/repo/b.rogen.json", "{}");
 
-			const result = await discovery.discover(
-				[],
-				["a.rogen.json", "b.rogen.json"]
-			);
+			const result = await discovery.discover({
+				names: [],
+				paths: ["a.rogen.json", "b.rogen.json"],
+			});
 
 			expect(result.unwrap()).toEqual([
 				"/repo/a.rogen.json",
@@ -133,10 +135,10 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/extra.rogen.json", "{}");
 
-			const result = await discovery.discover(
-				["lobby"],
-				["extra.rogen.json"]
-			);
+			const result = await discovery.discover({
+				names: ["lobby"],
+				paths: ["extra.rogen.json"],
+			});
 
 			expect(result.unwrap()).toEqual([
 				"/repo/lobby.rogen.json",
@@ -145,7 +147,10 @@ describe("ConfigDiscovery", () => {
 		});
 
 		it("errors naming the path when a -c path is missing", async () => {
-			const result = await discovery.discover([], ["missing.rogen.json"]);
+			const result = await discovery.discover({
+				names: [],
+				paths: ["missing.rogen.json"],
+			});
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("/repo/missing.rogen.json");
@@ -158,7 +163,7 @@ describe("ConfigDiscovery", () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discovery.discover([], [], true);
+			const result = await discovery.discover({ names: [], all: true });
 
 			expect(result.unwrap()).toEqual([
 				"/repo/default.rogen.json",
@@ -168,7 +173,7 @@ describe("ConfigDiscovery", () => {
 		});
 
 		it("errors clearly when nothing is found", async () => {
-			const result = await discovery.discover([], [], true);
+			const result = await discovery.discover({ names: [], all: true });
 
 			expect(errorMessage(result)).toContain("No config file found");
 		});
@@ -178,10 +183,10 @@ describe("ConfigDiscovery", () => {
 		it("errors when a name and a -c path resolve to the same file", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discovery.discover(
-				["lobby"],
-				["lobby.rogen.json"]
-			);
+			const result = await discovery.discover({
+				names: ["lobby"],
+				paths: ["lobby.rogen.json"],
+			});
 
 			expect(result.isErr()).toBe(true);
 			expect(errorMessage(result)).toContain("/repo/lobby.rogen.json");
@@ -190,7 +195,9 @@ describe("ConfigDiscovery", () => {
 		it("errors when the same name is given twice", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 
-			const result = await discovery.discover(["lobby", "lobby"]);
+			const result = await discovery.discover({
+				names: ["lobby", "lobby"],
+			});
 
 			expect(result.isErr()).toBe(true);
 		});

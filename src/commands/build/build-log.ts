@@ -1,7 +1,6 @@
 import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { BuildSummary } from "../../domain/build/build-service.js";
-import { configLabel } from "../../domain/config/config.js";
 import {
 	ConfigEntry,
 	ResolvedEntry,
@@ -75,7 +74,7 @@ export class BuildLog {
 		unselected: readonly string[]
 	): void {
 		this.logService.intro(
-			`rogen ${command} · ${targets.map(({ config }) => configLabel(config.file)).join(", ")}`
+			`rogen ${command} · ${targets.map(({ config }) => config.label).join(", ")}`
 		);
 		if (unselected.length > 0) {
 			this.logService.info(

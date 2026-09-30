@@ -1,17 +1,18 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
-import { placeFiles } from "../placement.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,
 	buildServiceOf,
 	configOf,
 	indexOf,
+	placeFiles,
 	syncTools,
 	writeFiles,
 } from "./fixtures.js";
@@ -28,25 +29,16 @@ describe("TreeAssembler", () => {
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 		const assembleResult = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			extraTools: readonly SyncTool[] = []
 		) => {
-			const config: ResolvedConfig = {
-				file: abs("default.rogen.json"),
-				name: "repo",
-				rootDirs: [abs("src")],
-				routes: { "*": "ReplicatedStorage" },
-				tags: {},
-				exclude: [],
-				outFile: abs("default.project.json"),
-				...overrides,
-			};
+			const config = configOf(overrides);
 			const index = await indexOf(store, fs, config.rootDirs);
 			return buildServiceOf(fs, index, extraTools).build(config);
 		};
 
 		const assemble = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			extraTools: readonly SyncTool[] = []
 		) => {
 			const output = (
@@ -56,7 +48,7 @@ describe("TreeAssembler", () => {
 			return output;
 		};
 
-		const storageOf = async (overrides: Partial<ResolvedConfig> = {}) =>
+		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
 			(await assemble(overrides)).tree.tree.ReplicatedStorage as RojoNode;
 
 		const templateOf = (
@@ -1152,7 +1144,9 @@ describe("TreeAssembler", () => {
 
 				const result = await assembleResult({ routes: SPLIT });
 
-				expect(result.isErr() ? result.error : []).toMatchObject([
+				expect(
+					result.isErr() ? result.error.diagnostics : []
+				).toMatchObject([
 					{
 						code: "meta.idOnSeveralNodes",
 						resource: abs("src/Combat/init.meta.json"),
@@ -1252,7 +1246,7 @@ describe("TreeAssembler", () => {
 
 				const result = await assembleResult({ routes: SPLIT });
 
-				const errors = result.isErr() ? result.error : [];
+				const errors = result.isErr() ? result.error.diagnostics : [];
 				expect(errors).toMatchObject([{ code: "meta.sameNode" }]);
 				expect(errors[0].message).toContain(
 					abs("src/Combat/init.meta.json")

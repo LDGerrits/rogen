@@ -3,6 +3,7 @@ import { FileChangeType } from "../../../platform/fs/file-events.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import {
 	abs,
@@ -12,7 +13,7 @@ import {
 	writeFiles,
 } from "./fixtures.js";
 
-const configOf = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig =>
+const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 	baseConfigOf({
 		routes: {
 			Server: "ServerScriptService",
@@ -33,7 +34,7 @@ describe("CoreBuildService.locate", () => {
 
 	const locate = async (
 		paths?: readonly string[],
-		overrides: Partial<ResolvedConfig> = {}
+		overrides: ResolvedConfigSpec = {}
 	) => {
 		const config = configOf(overrides);
 		const index = await indexOfConfig(config);
@@ -513,8 +514,8 @@ describe("CoreBuildService.locate", () => {
 
 		const result = await buildServiceOf(fs, index).locate(config);
 
-		expect(result.isErr() && result.error.map(({ code }) => code)).toEqual([
-			"route.noRoutes",
-		]);
+		expect(
+			result.isErr() && result.error.diagnostics.map(({ code }) => code)
+		).toEqual(["route.noRoutes"]);
 	});
 });

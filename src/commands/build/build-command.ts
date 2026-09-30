@@ -3,13 +3,10 @@ import {
 	BuildService,
 	BuiltProject,
 } from "../../domain/build/build-service.js";
-import { configLabel } from "../../domain/config/config.js";
 import {
 	ConfigService,
 	ResolvedEntry,
-	brokenConfigsError,
 } from "../../domain/config/config-service.js";
-import { OutputService } from "../../domain/output/output-service.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -51,7 +48,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const environmentService = accessor.get(EnvironmentService);
 		const buildService = accessor.get(BuildService);
-		const outputService = accessor.get(OutputService);
 		const logDiagnostics = (diagnostics: readonly Diagnostic[]) => {
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
@@ -59,13 +55,17 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		if (args["show-config"]) {
 			logService.print(showConfig(configService.configs));
-			const broken = brokenConfigsError(configService.configs);
+			const broken = configService.getBrokenError();
 			return broken ? err(broken) : ok(undefined);
 		}
 
-		const buildable = buildService.checkBuildable(configService.configs);
+		const valid = configService.requireValidEntries();
+		if (valid.isErr()) return valid;
+		const targets = valid.value;
+		const buildable = buildService.checkBuildable(
+			targets.map(({ config }) => config)
+		);
 		if (buildable.isErr()) return buildable;
-		const targets = buildable.value;
 		const buildLog = new BuildLog(logService, environmentService.cwd);
 		buildLog.begin(
 			"build",
@@ -80,7 +80,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			const project = await buildService.build(target.config, {
 				checkSyncDir: true,
 			});
-			if (project.isErr()) errors.push(...project.error);
+			if (project.isErr()) errors.push(...project.error.diagnostics);
 			else built.push({ ...target, project: project.value });
 		}
 		if (errors.length > 0) {
@@ -89,10 +89,9 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		}
 
 		for (const { entry, config, project } of built) {
-			if (built.length > 1) logService.step(configLabel(config.file));
-			const written = await outputService.write(config, project.tree);
-			if (written.isErr())
-				return err(new DiagnosticsError(written.error));
+			if (built.length > 1) logService.step(config.label);
+			const written = await buildService.write(project);
+			if (written.isErr()) return written;
 
 			buildLog.written(
 				{ entry, config },

@@ -1,21 +1,19 @@
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
-	robloxTsFacts,
+	WorkspaceSpec,
 	withRobloxTs,
+	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
-import {
-	InitChoices,
-	defaultInitChoices as defaultChoicesFor,
-} from "../init-choices.js";
-import { parseInitName } from "../init-files.js";
-import { planProject } from "../project-plan.js";
+import { ConfigSet } from "../config-set.js";
+import { InitQuestions } from "../init-questions.js";
+import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -30,18 +28,8 @@ const ROBLOX_TS_ROUTES = {
 	"*": "ReplicatedStorage/shared",
 };
 
-const directory = path.resolve("/mock/my-game");
-
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: false,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
-};
-const withPackages: Partial<DetectedWorkspace> = {
+const luau: WorkspaceSpec = {};
+const withPackages: WorkspaceSpec = {
 	packageManager: "wally",
 	packageDirs: new Set(["Packages"]),
 };
@@ -52,47 +40,83 @@ const mounts = {
 	},
 };
 
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
-const defaultInitChoices = (
-	workspace: DetectedWorkspace,
+const defaultProjectChoices = async (
+	spec: WorkspaceSpec,
 	name: string,
 	existingFiles: ReadonlySet<string>,
 	withPlaces: boolean
-) =>
-	defaultChoicesFor(
-		workspace,
-		toolchain.getLanguage(workspace.language),
-		name,
-		existingFiles,
-		withPlaces
+): Promise<ProjectChoices> => {
+	const fileSystem = new MemoryFileSystemService();
+	await fileSystem.createDirectory(directory);
+	for (const file of existingFiles)
+		await fileSystem.writeFile(path.join(directory, file), "{}");
+	const setup = new ProjectSetup(
+		directoryOf({
+			workspace: spec,
+			existing: [...existingFiles],
+			givenName: name === "default" ? undefined : name,
+			fileSystem,
+		}),
+		new InitQuestions(new MockPromptService([], false))
 	);
+	(await setup.ask()).unwrap();
+	const choices = setup.answers as ProjectChoices;
+	return withPlaces ? choices : { ...choices, places: [] };
+};
 
-const planResult = (
-	workspace: DetectedWorkspace,
+interface ProjectPlanOptions {
+	readonly choices: ProjectChoices;
+	readonly projectName: string;
+	readonly directory: string;
+	readonly existingFiles: ReadonlySet<string>;
+	readonly copiedTemplate?: string;
+}
+
+const planProject = ({
+	choices,
+	directory: dir,
+	existingFiles,
+	copiedTemplate,
+}: ProjectPlanOptions) => {
+	const target = directoryOf({ path: dir, existing: [...existingFiles] });
+	return planOf(
+		new ProjectSetup(
+			target,
+			new InitQuestions(new MockPromptService([], false)),
+			{
+				choices,
+				copiedTemplate,
+			}
+		),
+		target
+	).map(legacyPlan);
+};
+
+const planResult = async (
+	workspace: WorkspaceSpec,
 	name = "default",
 	existingFiles: readonly string[] = []
 ) =>
 	planProject({
-		choices: defaultInitChoices(workspace, name, new Set(), false),
+		choices: await defaultProjectChoices(workspace, name, new Set(), false),
 		projectName: "my-game",
 		directory,
 		existingFiles: new Set(existingFiles),
 	});
 
-const plan = (...args: Parameters<typeof planResult>) =>
-	planResult(...args).unwrap();
+const plan = async (...args: Parameters<typeof planResult>) =>
+	(await planResult(...args)).unwrap();
 
-const errorsOf = (result: ReturnType<typeof planResult>) =>
+const errorsOf = (result: Awaited<ReturnType<typeof planResult>>) =>
 	(result as ResultError<Diagnostic[]>).error;
 
-const treeOf = (workspace: Partial<DetectedWorkspace>) => {
-	const { template } = plan({ ...luau, ...workspace });
+const treeOf = async (workspace: WorkspaceSpec) => {
+	const { template } = await plan({ ...luau, ...workspace });
 	return template && JSON.parse(template.content).tree;
 };
 
 const configOf = (
-	files: ReturnType<typeof plan>,
+	files: Awaited<ReturnType<typeof plan>>,
 	fileName: string
 ): RogenConfig => {
 	const file = files.configs.find((config) => config.fileName === fileName);
@@ -100,31 +124,31 @@ const configOf = (
 	return JSON.parse(file.content);
 };
 
-describe("planProject", () => {
-	it("should write default.rogen.json for the default name", () => {
-		const { configs } = plan(luau);
+describe("ProjectSetup plan", () => {
+	it("should write default.rogen.json for the default name", async () => {
+		const { configs } = await plan(luau);
 
 		expect(configs.map((config) => config.fileName)).toEqual([
 			"default.rogen.json",
 		]);
 	});
 
-	it("should write <name>.rogen.json for a named config", () => {
-		const { configs } = plan(luau, "lobby");
+	it("should write <name>.rogen.json for a named config", async () => {
+		const { configs } = await plan(luau, "lobby");
 
 		expect(configs.map((config) => config.fileName)).toEqual([
 			"lobby.rogen.json",
 		]);
 	});
 
-	it("should write the starting routes explicitly", () => {
-		const config = configOf(plan(luau), "default.rogen.json");
+	it("should write the starting routes explicitly", async () => {
+		const config = configOf(await plan(luau), "default.rogen.json");
 
 		expect(config.routes).toEqual(LUAU_ROUTES);
 	});
 
-	it("should write fields in pipeline order", () => {
-		const { configs } = plan(
+	it("should write fields in pipeline order", async () => {
+		const { configs } = await plan(
 			withRobloxTs(
 				{ ...luau, ...withPackages, language: "roblox-ts" },
 				{ outDir: "out" }
@@ -141,23 +165,23 @@ describe("planProject", () => {
 		]);
 	});
 
-	it("should write strict JSON with a trailing newline", () => {
-		const { configs } = plan(luau);
+	it("should write strict JSON with a trailing newline", async () => {
+		const { configs } = await plan(luau);
 
 		expect(configs[0].content.endsWith("}\n")).toBe(true);
 		expect(() => JSON.parse(configs[0].content)).not.toThrow();
 	});
 
-	it("should write neither sync dir nor template for plain luau", () => {
-		const config = configOf(plan(luau), "default.rogen.json");
+	it("should write neither sync dir nor template for plain luau", async () => {
+		const config = configOf(await plan(luau), "default.rogen.json");
 
 		expect(config.syncDir).toBeUndefined();
 		expect(config.template).toBeUndefined();
 		expect(config.extends).toBeUndefined();
 	});
 
-	it("should write the detected outDir as syncDir for roblox-ts", () => {
-		const { configs } = plan(
+	it("should write the detected outDir as syncDir for roblox-ts", async () => {
+		const { configs } = await plan(
 			withRobloxTs(
 				{ ...luau, language: "roblox-ts" },
 				{ outDir: "build" }
@@ -169,10 +193,10 @@ describe("planProject", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: DetectedWorkspace = { ...luau, darklua: true };
+		const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
 
-		it("should write a source config and a default config extending it", () => {
-			const files = plan(darklua);
+		it("should write a source config and a default config extending it", async () => {
+			const files = await plan(darklua);
 
 			expect(files.configs.map((config) => config.fileName)).toEqual([
 				"source.rogen.json",
@@ -186,8 +210,8 @@ describe("planProject", () => {
 			expect(child.syncDir).toBe("dist");
 		});
 
-		it("should add only syncDir to the extending config", () => {
-			const child = configOf(plan(darklua), "default.rogen.json");
+		it("should add only syncDir to the extending config", async () => {
+			const child = configOf(await plan(darklua), "default.rogen.json");
 
 			expect(Object.keys(child)).toEqual([
 				"$schema",
@@ -196,8 +220,8 @@ describe("planProject", () => {
 			]);
 		});
 
-		it("should name the pair <name> and <name>-source for a named config", () => {
-			const files = plan(darklua, "lobby");
+		it("should name the pair <name> and <name>-source for a named config", async () => {
+			const files = await plan(darklua, "lobby");
 
 			expect(files.configs.map((config) => config.fileName)).toEqual([
 				"lobby-source.rogen.json",
@@ -208,8 +232,8 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should put the template in the source config only", () => {
-			const files = plan({ ...darklua, ...withPackages });
+		it("should put the template in the source config only", async () => {
+			const files = await plan({ ...darklua, ...withPackages });
 
 			expect(configOf(files, "source.rogen.json").template).toBe(
 				"template.project.json"
@@ -221,15 +245,15 @@ describe("planProject", () => {
 	});
 
 	describe("language and darklua", () => {
-		const planFor = (
-			language: DetectedWorkspace["language"],
+		const planFor = async (
+			language: WorkspaceSpec["language"],
 			darklua: boolean,
 			name = "default"
 		) =>
 			planProject({
-				choices: defaultInitChoices(
+				choices: await defaultProjectChoices(
 					withRobloxTs(
-						{ ...luau, language, darklua },
+						{ ...luau, language, usesDarklua: darklua },
 						{ outDir: "build" }
 					),
 					name,
@@ -241,8 +265,8 @@ describe("planProject", () => {
 				existingFiles: new Set(),
 			}).unwrap();
 
-		it("should write one config without a sync dir for luau", () => {
-			const files = planFor("luau", false);
+		it("should write one config without a sync dir for luau", async () => {
+			const files = await planFor("luau", false);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
 				"default.rogen.json",
@@ -252,8 +276,8 @@ describe("planProject", () => {
 			).toBeUndefined();
 		});
 
-		it("should write a source config and a dist config for luau with darklua", () => {
-			const files = planFor("luau", true);
+		it("should write a source config and a dist config for luau with darklua", async () => {
+			const files = await planFor("luau", true);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
 				"source.rogen.json",
@@ -268,8 +292,8 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should write one config with the outDir for roblox-ts", () => {
-			const files = planFor("roblox-ts", false);
+		it("should write one config with the outDir for roblox-ts", async () => {
+			const files = await planFor("roblox-ts", false);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
 				"default.rogen.json",
@@ -277,8 +301,8 @@ describe("planProject", () => {
 			expect(configOf(files, "default.rogen.json").syncDir).toBe("build");
 		});
 
-		it("should write one config synced from dist for roblox-ts with darklua", () => {
-			const files = planFor("roblox-ts", true);
+		it("should write one config synced from dist for roblox-ts with darklua", async () => {
+			const files = await planFor("roblox-ts", true);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
 				"default.rogen.json",
@@ -291,8 +315,8 @@ describe("planProject", () => {
 			).toBeUndefined();
 		});
 
-		it("should say how to run luau", () => {
-			expect(planFor("luau", false).nextSteps).toEqual({
+		it("should say how to run luau", async () => {
+			expect(await (await planFor("luau", false)).nextSteps).toEqual({
 				setup: [],
 				run: ["rogen watch", "rojo serve default.project.json"],
 				darklua: [],
@@ -303,38 +327,46 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should start rbxtsc first for roblox-ts", () => {
-			expect(planFor("roblox-ts", false).nextSteps.run).toEqual([
+		it("should start rbxtsc first for roblox-ts", async () => {
+			expect(
+				await (
+					await planFor("roblox-ts", false)
+				).nextSteps.run
+			).toEqual([
 				"rbxtsc -w",
 				"rogen watch",
 				"rojo serve default.project.json",
 			]);
 		});
 
-		it("should say what Darklua must process", () => {
-			expect(planFor("luau", true).nextSteps.darklua).toEqual([
-				"darklua process src dist",
-			]);
+		it("should say what Darklua must process", async () => {
+			expect(
+				await (
+					await planFor("luau", true)
+				).nextSteps.darklua
+			).toEqual(["darklua process src dist"]);
 		});
 
-		it("should watch the source config Darklua reads", () => {
-			expect(planFor("luau", true).nextSteps.run).toContain(
+		it("should watch the source config Darklua reads", async () => {
+			expect(await (await planFor("luau", true)).nextSteps.run).toContain(
 				"rogen watch default source"
 			);
-			expect(planFor("luau", true, "lobby").nextSteps.run).toContain(
-				"rogen watch lobby lobby-source"
-			);
+			expect(
+				await (
+					await planFor("luau", true, "lobby")
+				).nextSteps.run
+			).toContain("rogen watch lobby lobby-source");
 		});
 
-		it("should give each root dir its own path under the sync dir", () => {
+		it("should give each root dir its own path under the sync dir", async () => {
 			const files = planProject({
 				choices: {
-					...defaultInitChoices(
-						{ ...luau, darklua: true },
+					...(await defaultProjectChoices(
+						{ ...luau, usesDarklua: true },
 						"default",
 						new Set(),
 						false
-					),
+					)),
 					rootDirs: ["src", "lib/shared"],
 				},
 				projectName: "my-game",
@@ -348,27 +380,39 @@ describe("planProject", () => {
 			]);
 		});
 
-		it("should point the routes hint at the source config for luau with darklua", () => {
-			expect(planFor("luau", true, "lobby").nextSteps.edits).toEqual([
+		it("should point the routes hint at the source config for luau with darklua", async () => {
+			expect(
+				await (
+					await planFor("luau", true, "lobby")
+				).nextSteps.edits
+			).toEqual([
 				'Add your own routes under "routes" in lobby-source.rogen.json.',
 				'Add tags under "tags" in lobby-source.rogen.json to swap in variants like Analytics.mock.luau.',
 			]);
 		});
 
-		it("should mention tags with a .ts variant for roblox-ts", () => {
-			expect(planFor("roblox-ts", false).nextSteps.edits.at(-1)).toBe(
+		it("should mention tags with a .ts variant for roblox-ts", async () => {
+			expect(
+				(await planFor("roblox-ts", false)).nextSteps.edits.at(-1)
+			).toBe(
 				'Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.ts.'
 			);
 		});
 
-		it("should tell roblox-ts with darklua to process the compiled output", () => {
-			expect(planFor("roblox-ts", true).nextSteps.darklua).toEqual([
-				"darklua process build dist",
-			]);
+		it("should tell roblox-ts with darklua to process the compiled output", async () => {
+			expect(
+				await (
+					await planFor("roblox-ts", true)
+				).nextSteps.darklua
+			).toEqual(["darklua process build dist"]);
 		});
 
-		it("should carry the config name into the commands", () => {
-			expect(planFor("luau", false, "lobby").nextSteps).toEqual({
+		it("should carry the config name into the commands", async () => {
+			expect(
+				await (
+					await planFor("luau", false, "lobby")
+				).nextSteps
+			).toEqual({
 				setup: [],
 				run: ["rogen watch lobby", "rojo serve lobby.project.json"],
 				darklua: [],
@@ -381,19 +425,22 @@ describe("planProject", () => {
 	});
 
 	describe("routes", () => {
-		const routesOf = (choices: Partial<InitChoices>, language = "luau") => {
+		const routesOf = async (
+			choices: Partial<ProjectChoices>,
+			language = "luau"
+		) => {
 			const workspace = {
 				...luau,
 				language,
-			} as DetectedWorkspace;
+			} as WorkspaceSpec;
 			const files = planProject({
 				choices: {
-					...defaultInitChoices(
+					...(await defaultProjectChoices(
 						workspace,
 						"default",
 						new Set(),
 						false
-					),
+					)),
 					...choices,
 				},
 				projectName: "my-game",
@@ -403,17 +450,17 @@ describe("planProject", () => {
 			return configOf(files, "default.rogen.json").routes;
 		};
 
-		it("should write the standard routes with capitalised keys for luau", () => {
-			expect(routesOf({})).toEqual(LUAU_ROUTES);
+		it("should write the standard routes with capitalised keys for luau", async () => {
+			expect(await routesOf({})).toEqual(LUAU_ROUTES);
 		});
 
-		it("should write the standard routes with lowercase keys for roblox-ts", () => {
-			expect(routesOf({}, "roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
+		it("should write the standard routes with lowercase keys for roblox-ts", async () => {
+			expect(await routesOf({}, "roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
 		});
 
-		it("should write exactly the ticked routes in a fixed order", () => {
+		it("should write exactly the ticked routes in a fixed order", async () => {
 			expect(
-				routesOf({
+				await routesOf({
 					routes: ["starterGui", "server", "replicatedFirst"],
 				})
 			).toEqual({
@@ -424,9 +471,9 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should camel-case the optional routes for roblox-ts", () => {
+		it("should camel-case the optional routes for roblox-ts", async () => {
 			expect(
-				routesOf(
+				await routesOf(
 					{
 						routes: [
 							"replicatedFirst",
@@ -444,24 +491,24 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should omit * when files that match no route are left out", () => {
-			expect(routesOf({ fallback: false })).toEqual({
+		it("should omit * when files that match no route are left out", async () => {
+			expect(await routesOf({ fallback: false })).toEqual({
 				Server: "ServerScriptService",
 				Client: "StarterPlayer/StarterPlayerScripts",
 				Shared: "ReplicatedStorage/Shared",
 			});
 		});
 
-		it("should write * when no route is ticked, because a config with no routes can't build", () => {
-			expect(routesOf({ routes: [], fallback: false })).toEqual({
+		it("should write * when no route is ticked, because a config with no routes can't build", async () => {
+			expect(await routesOf({ routes: [], fallback: false })).toEqual({
 				"*": "ReplicatedStorage/Shared",
 			});
 		});
 	});
 
 	describe("template", () => {
-		it("should write template.project.json when mounts were detected", () => {
-			const files = plan({ ...luau, ...withPackages });
+		it("should write template.project.json when mounts were detected", async () => {
+			const files = await plan({ ...luau, ...withPackages });
 
 			expect(files.template?.fileName).toBe("template.project.json");
 			expect(JSON.parse(files.template!.content)).toEqual({
@@ -473,14 +520,14 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should not write a template when nothing was mounted", () => {
-			const files = plan(luau);
+		it("should not write a template when nothing was mounted", async () => {
+			const files = await plan(luau);
 
 			expect(files.template).toBeUndefined();
 		});
 
-		it("should reference an existing template without rewriting it", () => {
-			const files = plan({ ...luau, ...withPackages }, "lobby", [
+		it("should reference an existing template without rewriting it", async () => {
+			const files = await plan({ ...luau, ...withPackages }, "lobby", [
 				"template.project.json",
 			]);
 
@@ -491,8 +538,8 @@ describe("planProject", () => {
 			expect(files.notes).toEqual(["Using template.project.json."]);
 		});
 
-		it("should warn that a hand-written output is replaced when a template exists", () => {
-			const files = plan(luau, "default", [
+		it("should warn that a hand-written output is replaced when a template exists", async () => {
+			const files = await plan(luau, "default", [
 				"template.project.json",
 				"default.project.json",
 			]);
@@ -503,13 +550,18 @@ describe("planProject", () => {
 			]);
 		});
 
-		const withTemplate = (
-			template: InitChoices["template"],
+		const withTemplate = async (
+			template: ProjectChoices["template"],
 			copiedTemplate?: string
 		) =>
 			planProject({
 				choices: {
-					...defaultInitChoices(luau, "default", new Set(), false),
+					...(await defaultProjectChoices(
+						luau,
+						"default",
+						new Set(),
+						false
+					)),
 					template,
 				},
 				projectName: "my-game",
@@ -518,9 +570,9 @@ describe("planProject", () => {
 				copiedTemplate,
 			}).unwrap();
 
-		it("should copy a hand-written project file to the template byte for byte", () => {
+		it("should copy a hand-written project file to the template byte for byte", async () => {
 			const content = '{ "name": "mine", "tree": {} }\n';
-			const files = withTemplate(
+			const files = await withTemplate(
 				{ kind: "copy", from: "default.project.json" },
 				content
 			);
@@ -540,8 +592,8 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should leave out of a copied template the nodes that point into the root dirs", () => {
-			const files = withTemplate(
+		it("should leave out of a copied template the nodes that point into the root dirs", async () => {
+			const files = await withTemplate(
 				{ kind: "copy", from: "default.project.json" },
 				JSON.stringify({
 					name: "my-game",
@@ -591,15 +643,15 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should leave out of a copied template the nodes that point into the sync dir", () => {
+		it("should leave out of a copied template the nodes that point into the sync dir", async () => {
 			const files = planProject({
 				choices: {
-					...defaultInitChoices(
+					...(await defaultProjectChoices(
 						{ ...luau, language: "roblox-ts" },
 						"default",
 						new Set(),
 						false
-					),
+					)),
 					template: { kind: "copy", from: "default.project.json" },
 					mounts: [],
 				},
@@ -624,10 +676,15 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should leave out of a copied template the nodes that point into a place folder", () => {
+		it("should leave out of a copied template the nodes that point into a place folder", async () => {
 			const files = planProject({
 				choices: {
-					...defaultInitChoices(luau, "default", new Set(), false),
+					...(await defaultProjectChoices(
+						luau,
+						"default",
+						new Set(),
+						false
+					)),
 					template: { kind: "copy", from: "default.project.json" },
 					places: ["lobby"],
 				},
@@ -651,8 +708,8 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should keep a $path that isn't a path", () => {
-			const files = withTemplate(
+		it("should keep a $path that isn't a path", async () => {
+			const files = await withTemplate(
 				{ kind: "copy", from: "default.project.json" },
 				JSON.stringify({
 					name: "my-game",
@@ -666,14 +723,19 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should copy a template as it is when a root dir is the whole folder, and say what to remove", () => {
+		it("should copy a template as it is when a root dir is the whole folder, and say what to remove", async () => {
 			const content = JSON.stringify({
 				name: "my-game",
 				tree: { Shared: { $path: "shared" } },
 			});
 			const files = planProject({
 				choices: {
-					...defaultInitChoices(luau, "default", new Set(), false),
+					...(await defaultProjectChoices(
+						luau,
+						"default",
+						new Set(),
+						false
+					)),
 					template: { kind: "copy", from: "default.project.json" },
 					rootDirs: ["."],
 				},
@@ -689,9 +751,9 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should copy a template it can't parse as it is, and say what to remove", () => {
+		it("should copy a template it can't parse as it is, and say what to remove", async () => {
 			const content = '{ "name": "mine", "tree": ';
-			const files = withTemplate(
+			const files = await withTemplate(
 				{ kind: "copy", from: "default.project.json" },
 				content
 			);
@@ -702,13 +764,18 @@ describe("planProject", () => {
 			);
 		});
 
-		const copyWithMounts = (
+		const copyWithMounts = async (
 			copiedTemplate: string,
-			mountList: InitChoices["mounts"]
+			mountList: ProjectChoices["mounts"]
 		) =>
 			planProject({
 				choices: {
-					...defaultInitChoices(luau, "default", new Set(), false),
+					...(await defaultProjectChoices(
+						luau,
+						"default",
+						new Set(),
+						false
+					)),
 					template: { kind: "copy", from: "default.project.json" },
 					mounts: mountList,
 				},
@@ -718,8 +785,8 @@ describe("planProject", () => {
 				copiedTemplate,
 			}).unwrap();
 
-		it("should add the chosen package mounts a copied template lacks", () => {
-			const files = copyWithMounts(
+		it("should add the chosen package mounts a copied template lacks", async () => {
+			const files = await copyWithMounts(
 				JSON.stringify({
 					name: "my-game",
 					tree: {
@@ -756,8 +823,8 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should name every mount it adds under one node", () => {
-			const files = copyWithMounts(
+		it("should name every mount it adds under one node", async () => {
+			const files = await copyWithMounts(
 				JSON.stringify({ name: "my-game", tree: {} }),
 				[
 					{
@@ -779,7 +846,7 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should keep a copied template as it is when it already mounts the packages", () => {
+		it("should keep a copied template as it is when it already mounts the packages", async () => {
 			const content = JSON.stringify({
 				name: "my-game",
 				tree: {
@@ -790,7 +857,7 @@ describe("planProject", () => {
 					},
 				},
 			});
-			const files = copyWithMounts(content, [
+			const files = await copyWithMounts(content, [
 				{
 					path: "Packages",
 					optional: false,
@@ -807,7 +874,7 @@ describe("planProject", () => {
 			expect(files.notes).toHaveLength(1);
 		});
 
-		it("should not mount a folder inside one the template already mounts", () => {
+		it("should not mount a folder inside one the template already mounts", async () => {
 			const content = JSON.stringify({
 				name: "my-game",
 				tree: {
@@ -820,7 +887,7 @@ describe("planProject", () => {
 					},
 				},
 			});
-			const files = copyWithMounts(content, [
+			const files = await copyWithMounts(content, [
 				{
 					path: "include",
 					optional: false,
@@ -837,7 +904,7 @@ describe("planProject", () => {
 			expect(files.template?.content).toBe(content);
 		});
 
-		it("should say which mounts it left out because the template has a node in their place", () => {
+		it("should say which mounts it left out because the template has a node in their place", async () => {
 			const content = JSON.stringify({
 				name: "my-game",
 				tree: {
@@ -845,7 +912,7 @@ describe("planProject", () => {
 					ReplicatedStorage: { Packages: { $path: "vendor" } },
 				},
 			});
-			const files = copyWithMounts(content, [
+			const files = await copyWithMounts(content, [
 				{
 					path: "Packages",
 					optional: false,
@@ -859,8 +926,8 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should say which packages to mount when it can't parse a copied template", () => {
-			const files = copyWithMounts('{ "tree": ', [
+		it("should say which packages to mount when it can't parse a copied template", async () => {
+			const files = await copyWithMounts('{ "tree": ', [
 				{
 					path: "Packages",
 					optional: false,
@@ -873,8 +940,8 @@ describe("planProject", () => {
 			);
 		});
 
-		it("should reference a used project file as it is", () => {
-			const files = withTemplate({
+		it("should reference a used project file as it is", async () => {
+			const files = await withTemplate({
 				kind: "use",
 				file: "base.project.json",
 			});
@@ -887,16 +954,16 @@ describe("planProject", () => {
 	});
 
 	describe("package mounts", () => {
-		const rbxts: Partial<DetectedWorkspace> = { language: "roblox-ts" };
+		const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
-		it("should mount include and @rbxts for roblox-ts, and the scopes it found", () => {
+		it("should mount include and @rbxts for roblox-ts, and the scopes it found", async () => {
 			expect(
-				treeOf({
+				await treeOf({
 					...rbxts,
-					languageFacts: robloxTsFacts({
+					robloxTs: {
 						rbxtsScopes: ["@rbxts", "@flamework"],
 						hasInclude: true,
-					}),
+					},
 				})
 			).toEqual({
 				$className: "DataModel",
@@ -913,8 +980,8 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should mount include and @rbxts as optional for roblox-ts when missing", () => {
-			expect(treeOf(rbxts).ReplicatedStorage).toEqual({
+		it("should mount include and @rbxts as optional for roblox-ts when missing", async () => {
+			expect(await (await treeOf(rbxts)).ReplicatedStorage).toEqual({
 				rbxts_include: {
 					$path: { optional: "include" },
 					node_modules: {
@@ -927,32 +994,34 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should not mount a scope that is not installed by default", () => {
-			const scopes = treeOf({
-				...rbxts,
-				languageFacts: robloxTsFacts({
-					rbxtsScopes: ["@rbxts"],
-					hasInclude: true,
-				}),
-			}).ReplicatedStorage.rbxts_include.node_modules;
+		it("should not mount a scope that is not installed by default", async () => {
+			const scopes = await (
+				await treeOf({
+					...rbxts,
+					robloxTs: {
+						rbxtsScopes: ["@rbxts"],
+						hasInclude: true,
+					},
+				})
+			).ReplicatedStorage.rbxts_include.node_modules;
 
 			expect(Object.keys(scopes)).toEqual(["$className", "@rbxts"]);
 		});
 
-		it("should never mount include or a scope for luau", () => {
+		it("should never mount include or a scope for luau", async () => {
 			expect(
-				treeOf({
-					languageFacts: robloxTsFacts({
+				await treeOf({
+					robloxTs: {
 						hasInclude: true,
 						rbxtsScopes: ["@rbxts"],
-					}),
+					},
 				})
 			).toBeUndefined();
 		});
 
-		it("should mount wally packages that exist", () => {
+		it("should mount wally packages that exist", async () => {
 			expect(
-				treeOf({
+				await treeOf({
 					packageManager: "wally",
 					packageDirs: new Set(["Packages", "ServerPackages"]),
 				})
@@ -965,15 +1034,15 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should mount the wally directories that are missing as optional", () => {
-			expect(treeOf(withPackages)).toEqual({
+		it("should mount the wally directories that are missing as optional", async () => {
+			expect(await treeOf(withPackages)).toEqual({
 				$className: "DataModel",
 				...mounts,
 			});
 		});
 
-		it("should mount wally packages as optional when only wally.toml exists", () => {
-			expect(treeOf({ packageManager: "wally" })).toEqual({
+		it("should mount wally packages as optional when only wally.toml exists", async () => {
+			expect(await treeOf({ packageManager: "wally" })).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					Packages: { $path: { optional: "Packages" } },
@@ -984,9 +1053,9 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should mount pesde packages that exist", () => {
+		it("should mount pesde packages that exist", async () => {
 			expect(
-				treeOf({
+				await treeOf({
 					packageManager: "pesde",
 					packageDirs: new Set([
 						"roblox_packages",
@@ -1002,9 +1071,9 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should only mount the directories of the detected manager", () => {
+		it("should only mount the directories of the detected manager", async () => {
 			expect(
-				treeOf({
+				await treeOf({
 					packageManager: "pesde",
 					packageDirs: new Set(["Packages", "ServerPackages"]),
 				})
@@ -1021,9 +1090,9 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should assume wally for luau without a manager", () => {
+		it("should assume wally for luau without a manager", async () => {
 			expect(
-				treeOf({
+				await treeOf({
 					packageDirs: new Set(["Packages", "roblox_packages"]),
 				})
 			).toEqual({
@@ -1032,24 +1101,26 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should not mount package directories for roblox-ts without a manager", () => {
+		it("should not mount package directories for roblox-ts without a manager", async () => {
 			expect(
-				treeOf({
-					language: "roblox-ts",
-					languageFacts: robloxTsFacts({
-						rbxtsScopes: ["@rbxts"],
-						hasInclude: true,
-					}),
-					packageDirs: new Set(["Packages"]),
-				}).ReplicatedStorage.Packages
+				await (
+					await treeOf({
+						language: "roblox-ts",
+						robloxTs: {
+							rbxtsScopes: ["@rbxts"],
+							hasInclude: true,
+						},
+						packageDirs: new Set(["Packages"]),
+					})
+				).ReplicatedStorage.Packages
 			).toBeUndefined();
 		});
 
-		it("should combine mounts from several sources under one service", () => {
-			const tree = treeOf({
+		it("should combine mounts from several sources under one service", async () => {
+			const tree = await treeOf({
 				...withPackages,
 				language: "roblox-ts",
-				languageFacts: robloxTsFacts({ rbxtsScopes: ["@rbxts"] }),
+				robloxTs: { rbxtsScopes: ["@rbxts"] },
 			});
 
 			expect(Object.keys(tree)).toEqual([
@@ -1065,10 +1136,15 @@ describe("planProject", () => {
 	});
 
 	describe("choices", () => {
-		const planChoices = (choices: Partial<InitChoices>) =>
+		const planChoices = async (choices: Partial<ProjectChoices>) =>
 			planProject({
 				choices: {
-					...defaultInitChoices(luau, "default", new Set(), false),
+					...(await defaultProjectChoices(
+						luau,
+						"default",
+						new Set(),
+						false
+					)),
 					...choices,
 				},
 				projectName: "my-game",
@@ -1076,8 +1152,8 @@ describe("planProject", () => {
 				existingFiles: new Set(),
 			}).unwrap();
 
-		it("should write the chosen root dirs", () => {
-			const files = planChoices({ rootDirs: ["src", "shared"] });
+		it("should write the chosen root dirs", async () => {
+			const files = await planChoices({ rootDirs: ["src", "shared"] });
 
 			expect(configOf(files, "default.rogen.json").rootDirs).toEqual([
 				"src",
@@ -1085,17 +1161,17 @@ describe("planProject", () => {
 			]);
 		});
 
-		it("should write the chosen sync dir", () => {
-			const files = planChoices({
-				language: toolchain.getLanguage("roblox-ts"),
+		it("should write the chosen sync dir", async () => {
+			const files = await planChoices({
+				language: workspaceOf().languageFor("roblox-ts"),
 				syncDir: "lib",
 			});
 
 			expect(configOf(files, "default.rogen.json").syncDir).toBe("lib");
 		});
 
-		it("should write optional mounts as optional paths", () => {
-			const files = planChoices({
+		it("should write optional mounts as optional paths", async () => {
+			const files = await planChoices({
 				mounts: [
 					{
 						path: "Packages",
@@ -1121,8 +1197,8 @@ describe("planProject", () => {
 			});
 		});
 
-		it("should not write a template when no mount was chosen", () => {
-			const files = planChoices({ mounts: [] });
+		it("should not write a template when no mount was chosen", async () => {
+			const files = await planChoices({ mounts: [] });
 
 			expect(files.template).toBeUndefined();
 			expect(
@@ -1130,8 +1206,8 @@ describe("planProject", () => {
 			).toBeUndefined();
 		});
 
-		it("should extend the source config without a sync dir when none was chosen", () => {
-			const files = planChoices({
+		it("should extend the source config without a sync dir when none was chosen", async () => {
+			const files = await planChoices({
 				darklua: true,
 				syncDir: undefined,
 			});
@@ -1143,25 +1219,29 @@ describe("planProject", () => {
 	});
 
 	describe("notes", () => {
-		it("should say where roblox-ts syncs from", () => {
+		it("should say where roblox-ts syncs from", async () => {
 			expect(
-				plan(
-					withRobloxTs(
-						{ ...luau, language: "roblox-ts" },
-						{ outDir: "out" }
+				await (
+					await plan(
+						withRobloxTs(
+							{ ...luau, language: "roblox-ts" },
+							{ outDir: "out" }
+						)
 					)
 				).notes
 			).toEqual(["Syncing from out, where roblox-ts compiles to."]);
 		});
 
-		it("should say nothing for plain luau", () => {
-			expect(plan(luau).notes).toEqual([]);
+		it("should say nothing for plain luau", async () => {
+			expect(await (await plan(luau)).notes).toEqual([]);
 		});
 	});
 
 	describe("existing files", () => {
-		it("should fail when the config it would write exists", () => {
-			const result = planResult(luau, "default", ["default.rogen.json"]);
+		it("should fail when the config it would write exists", async () => {
+			const result = await planResult(luau, "default", [
+				"default.rogen.json",
+			]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorsOf(result)).toMatchObject([
@@ -1172,17 +1252,20 @@ describe("planProject", () => {
 			]);
 		});
 
-		it("should allow a named config beside an existing default config", () => {
-			const result = planResult(luau, "lobby", ["default.rogen.json"]);
+		it("should allow a named config beside an existing default config", async () => {
+			const result = await planResult(luau, "lobby", [
+				"default.rogen.json",
+			]);
 
 			expect(result.isOk()).toBe(true);
 		});
 
-		it("should report every darklua config that already exists", () => {
-			const result = planResult({ ...luau, darklua: true }, "default", [
-				"source.rogen.json",
-				"default.rogen.json",
-			]);
+		it("should report every darklua config that already exists", async () => {
+			const result = await planResult(
+				{ ...luau, usesDarklua: true },
+				"default",
+				["source.rogen.json", "default.rogen.json"]
+			);
 
 			expect(errorsOf(result).map((error) => error.resource)).toEqual([
 				path.join(directory, "source.rogen.json"),
@@ -1190,73 +1273,92 @@ describe("planProject", () => {
 			]);
 		});
 
-		it("should not fail over an existing template or project file", () => {
-			const result = planResult({ ...luau, ...withPackages }, "default", [
-				"template.project.json",
-				"default.project.json",
-			]);
+		it("should not fail over an existing template or project file", async () => {
+			const result = await planResult(
+				{ ...luau, ...withPackages },
+				"default",
+				["template.project.json", "default.project.json"]
+			);
 
 			expect(result.isOk()).toBe(true);
 		});
 	});
 });
 
-describe("defaultInitChoices", () => {
-	it("should copy a hand-written project file the config would replace", () => {
+describe("an unattended run", () => {
+	it("should copy a hand-written project file the config would replace", async () => {
 		expect(
-			defaultInitChoices(
-				luau,
-				"default",
-				new Set(["default.project.json"]),
-				false
+			await (
+				await defaultProjectChoices(
+					luau,
+					"default",
+					new Set(["default.project.json"]),
+					false
+				)
 			).template
 		).toEqual({ kind: "copy", from: "default.project.json" });
 	});
 
-	it("should leave a project file that a config writes alone", () => {
+	it("should leave a project file that a config writes alone", async () => {
 		expect(
-			defaultInitChoices(
-				luau,
-				"lobby",
-				new Set(["lobby.project.json", "lobby.rogen.json"]),
-				false
+			await (
+				await defaultProjectChoices(
+					luau,
+					"lobby",
+					new Set(["game.project.json", "game.rogen.json"]),
+					false
+				)
 			).template
 		).toEqual({ kind: "new" });
 	});
 
-	it("should take the detected places only when asked to", () => {
+	it("should take the detected places only when asked to", async () => {
 		const workspace = { ...luau, places: ["lobby"] };
 		expect(
-			defaultInitChoices(workspace, "default", new Set(), true).places
+			await (
+				await defaultProjectChoices(
+					workspace,
+					"default",
+					new Set(),
+					true
+				)
+			).places
 		).toEqual(["lobby"]);
 		expect(
-			defaultInitChoices(workspace, "default", new Set(), false).places
+			await (
+				await defaultProjectChoices(
+					workspace,
+					"default",
+					new Set(),
+					false
+				)
+			).places
 		).toEqual([]);
 	});
 });
 
-describe("parseInitName", () => {
+describe("ConfigSet.parseName", () => {
 	it("should reject template, which would write over the template", () => {
-		expect(parseInitName(["template"]).isErr()).toBe(true);
+		expect(ConfigSet.parseName(["template"]).isErr()).toBe(true);
 	});
 
 	it("should default to the default config name", () => {
-		expect(parseInitName([]).unwrap()).toBe("default");
+		expect(ConfigSet.parseName([]).unwrap()).toBe("default");
 	});
 
 	it("should accept a single name", () => {
-		expect(parseInitName(["lobby"]).unwrap()).toBe("lobby");
+		expect(ConfigSet.parseName(["lobby"]).unwrap()).toBe("lobby");
 	});
 
 	it.each(["a/b", "a\\b", "..", "."])("should reject %s", (name) => {
-		expect(parseInitName([name]).isErr()).toBe(true);
+		expect(ConfigSet.parseName([name]).isErr()).toBe(true);
 	});
 
 	it("should reject an empty name", () => {
-		expect(parseInitName([" "]).isErr()).toBe(true);
+		expect(ConfigSet.parseName([" "]).isErr()).toBe(true);
 	});
 
 	it("should reject more than one name", () => {
-		expect(parseInitName(["a", "b"]).isErr()).toBe(true);
+		expect(ConfigSet.parseName(["a", "b"]).isErr()).toBe(true);
 	});
 });

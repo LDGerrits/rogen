@@ -1,42 +1,89 @@
-import { DEFAULT_CONFIG_STEM } from "../config/config.js";
-import { Language, PlannedFile } from "../toolchain/toolchain.js";
+import { formatJsonFile } from "../../base/json.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { RogenConfig, SCHEMA_URL, configFileName } from "../config/config.js";
+import { PlannedFile } from "../toolchain/toolchain.js";
+import { InitDirectory } from "./init-directory.js";
+import { InitPlan } from "./init-service.js";
 
-export type { PlannedFile };
-
-/** What to do after `init`, grouped so a plan can be combined with its places'. */
-export interface NextSteps {
-	/** One-time edits before anything runs. */
-	readonly setup: readonly string[];
-	/** Long-running commands, one terminal each. */
-	readonly run: readonly string[];
-	/** Commands that have Darklua process the code into the sync dir. */
-	readonly darklua: readonly string[];
-	/** Pointers to what to change in the written files. */
-	readonly edits: readonly string[];
+/** One kind of thing `init` can add: it asks what it needs, then says what it writes. */
+export interface Setup {
+	/** Asks its questions; `ok(false)` when the user cancelled. Fails when a file it would write already exists. */
+	ask(): Promise<Result<boolean, Diagnostic[]>>;
+	/** Adds what it writes and says. Only once `ask` has resolved. */
+	plan(builder: InitPlanBuilder): void;
 }
 
-/** Everything `init` writes and says, decided before anything is written. */
-export interface InitPlan {
-	readonly template?: PlannedFile;
-	readonly configs: readonly PlannedFile[];
-	/** A compiler's own per-place config, written after the configs. */
-	readonly compilerConfigs: readonly PlannedFile[];
-	/** Lines printed before the files are written. */
-	readonly notes: readonly string[];
-	readonly nextSteps: NextSteps;
+/** Collects what the setups write and say, and checks it against the directory once. */
+export class InitPlanBuilder {
+	private template: PlannedFile | undefined;
+	private readonly configs: PlannedFile[] = [];
+	private readonly compilerConfigs: PlannedFile[] = [];
+	private readonly notes: string[] = [];
+	private readonly setup = new Set<string>();
+	private readonly run: string[] = [];
+	private readonly darklua: string[] = [];
+	private readonly edits: string[] = [];
+
+	constructor(private readonly directory: InitDirectory) {}
+
+	setTemplate(file: PlannedFile): void {
+		this.template = file;
+	}
+
+	/** A config named `<stem>.rogen.json`, written after the ones added before it. */
+	addConfig(stem: string, config: RogenConfig): void {
+		this.configs.push({
+			fileName: configFileName(stem),
+			content: formatJsonFile({ $schema: SCHEMA_URL, ...config }),
+		});
+	}
+
+	/** A compiler's own per-place config, written after every config. */
+	addCompilerFile(file: PlannedFile): void {
+		this.compilerConfigs.push(file);
+	}
+
+	addNote(note: string): void {
+		this.notes.push(note);
+	}
+
+	/** One-time edits; the same edit from two setups is said once. */
+	addSetup(...lines: readonly string[]): void {
+		for (const line of lines) this.setup.add(line);
+	}
+
+	/** Long-running commands, each for its own terminal. */
+	addRun(...commands: readonly string[]): void {
+		this.run.push(...commands);
+	}
+
+	addDarkluaCommands(...commands: readonly string[]): void {
+		this.darklua.push(...commands);
+	}
+
+	addEdit(...lines: readonly string[]): void {
+		this.edits.push(...lines);
+	}
+
+	/** Fails when a config or compiler file it would write already exists. */
+	build(): Result<InitPlan, Diagnostic[]> {
+		const written = [...this.configs, ...this.compilerConfigs];
+		const taken = this.directory.checkFree(
+			written.map(({ fileName }) => fileName)
+		);
+		if (taken.length > 0) return err(taken);
+
+		return ok({
+			directory: this.directory.path,
+			files: [...(this.template ? [this.template] : []), ...written],
+			notes: [...this.notes],
+			nextSteps: {
+				setup: [...this.setup],
+				run: [...this.run],
+				darklua: [...this.darklua],
+				edits: [...this.edits],
+			},
+		});
+	}
 }
-
-/** Every file the plan writes, in the order it writes them. */
-export const plannedFiles = (plan: InitPlan): readonly PlannedFile[] => [
-	...(plan.template ? [plan.template] : []),
-	...plan.configs,
-	...plan.compilerConfigs,
-];
-
-export const watchCommand = (names: readonly string[]): string =>
-	names.length === 1 && names[0] === DEFAULT_CONFIG_STEM
-		? "rogen watch"
-		: `rogen watch ${names.join(" ")}`;
-
-export const tagsStep = (language: Language, configName: string): string =>
-	`Add tags under "tags" in ${configName} to swap in variants like Analytics.mock.${language.extension}.`;

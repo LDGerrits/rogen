@@ -1,12 +1,11 @@
 import { Sequencer } from "../../base/async.js";
-import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
-import { safeStringify } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { AbstractConfigService } from "./abstract-config-service.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
@@ -16,18 +15,93 @@ import {
 	ConfigService,
 } from "./config-service.js";
 
-interface ConfigSlot {
-	readonly entry: ConfigEntry;
-	/** The merged config behind `entry.resolved`, kept to see what a reload changed. */
-	readonly config: Config | undefined;
-	/** Every file the entry reads: its chain and its template. */
-	readonly files: readonly string[];
+/** One config file that loads and reloads itself, and keeps its last valid version while the file is broken. */
+class ManagedConfig {
+	private _entry: ConfigEntry | undefined;
+	private config: Config | undefined;
+	private _files: readonly string[] = [];
+	private _skippedTags: readonly string[] | undefined;
+
+	constructor(
+		readonly file: string,
+		private readonly loader: ConfigLoader,
+		private readonly overrides: ConfigOverrides
+	) {}
+
+	/** The latest snapshot; `load` must have finished. */
+	get entry(): ConfigEntry {
+		if (!this._entry) throw new Error(`${this.file} has not been loaded.`);
+		return this._entry;
+	}
+
+	/** Every file the config reads: its chain and its template. */
+	get files(): readonly string[] {
+		return this._files;
+	}
+
 	/** The CLI tags this config does not declare; `undefined` when its chain could not be read. */
-	readonly undeclaredTags: readonly string[] | undefined;
+	get skippedTags(): readonly string[] | undefined {
+		return this._skippedTags;
+	}
+
+	reads(changed: ReadonlySet<string>): boolean {
+		return this._files.some((file) => changed.has(file));
+	}
+
+	async load(): Promise<void> {
+		const previous = this._entry;
+		const loaded = await this.loader.load(this.file, this.overrides);
+		this._files = loaded.files;
+		this._skippedTags = loaded.skippedTags;
+
+		if (loaded.resolved.isOk()) {
+			this.config = loaded.config;
+			this._entry = new ConfigEntry({
+				file: this.file,
+				chain: loaded.chain,
+				resolved: loaded.resolved.value,
+				diagnostics: [],
+				skippedTags: loaded.skippedTags ?? [],
+			});
+			return;
+		}
+		// A failed load keeps the last valid config, which is what still gets built.
+		this._entry = new ConfigEntry({
+			file: this.file,
+			chain: loaded.chain,
+			resolved: previous?.resolved,
+			diagnostics: loaded.resolved.error,
+			skippedTags: previous?.resolved
+				? previous.skippedTags
+				: (loaded.skippedTags ?? []),
+		});
+	}
+
+	/** What the reload changed in the resolved config, or `undefined` when nothing did. */
+	async reload(): Promise<ConfigChangeEvent | undefined> {
+		const before = { config: this.config, entry: this.entry };
+		await this.load();
+		if (!this.config) return undefined;
+
+		const keys = before.config
+			? before.config.compare(this.config)
+			: this.config.getAllKeys();
+		const template = before.entry.resolved?.template;
+		if (
+			template
+				? !template.equals(this.entry.resolved?.template)
+				: this.entry.resolved?.template
+		) {
+			keys.push("template");
+		}
+		return keys.length > 0
+			? new ConfigChangeEvent(keys, this.file)
+			: undefined;
+	}
 }
 
 export class CoreConfigService
-	extends AbstractDisposable
+	extends AbstractConfigService
 	implements ConfigService
 {
 	declare readonly _serviceBrand: undefined;
@@ -41,15 +115,15 @@ export class CoreConfigService
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
 	private readonly reloads = new Sequencer();
-	private slots: readonly ConfigSlot[] = [];
+	private managed: readonly ManagedConfig[] = [];
 	private overrides: ConfigOverrides = { tags: {} };
 
 	get configs(): readonly ConfigEntry[] {
-		return this.slots.map((slot) => slot.entry);
+		return this.managed.map((config) => config.entry);
 	}
 
 	get files(): ReadonlySet<string> {
-		return new Set(this.slots.flatMap((slot) => slot.files));
+		return new Set(this.managed.flatMap((config) => config.files));
 	}
 
 	constructor(
@@ -65,16 +139,12 @@ export class CoreConfigService
 	}
 
 	async initialize(refs: ConfigRefs): Promise<Result<void, Error>> {
-		const discovered = await this.discovery.discover(
-			refs.names,
-			refs.paths,
-			refs.all
-		);
+		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
 		this.overrides = refs.overrides ?? { tags: {} };
-		this.slots = await Promise.all(
-			discovered.value.map((file) => this.load(file, undefined))
+		this.managed = await Promise.all(
+			discovered.value.map((file) => this.load(file))
 		);
 		return this.checkTagOverrides();
 	}
@@ -92,52 +162,32 @@ export class CoreConfigService
 	}
 
 	async readConfig(file: string): Promise<ConfigEntry> {
-		return (await this.load(file, undefined)).entry;
+		return (await this.load(file)).entry;
 	}
 
 	reload(files: readonly string[]): Promise<void> {
 		return this.reloads.queue(async () => {
 			const changed = new Set(files);
-			const previous = this.slots;
-			const next = await Promise.all(
-				previous.map((slot) =>
-					slot.files.some((file) => changed.has(file))
-						? this.load(slot.entry.file, slot)
-						: slot
+			const events = await Promise.all(
+				this.managed.map((config) =>
+					config.reads(changed) ? config.reload() : undefined
 				)
 			);
-			this.slots = next;
-
-			previous.forEach((before, index) => {
-				const after = next[index];
-				if (after === before || !after.config) return;
-				const keys = before.config
-					? before.config.compare(after.config)
-					: after.config.getAllKeys();
-				if (
-					safeStringify(before.entry.resolved?.template) !==
-					safeStringify(after.entry.resolved?.template)
-				) {
-					keys.push("template");
-				}
-				if (keys.length > 0) {
-					this._onDidChangeConfig.fire(
-						new ConfigChangeEvent(keys, after.entry.file)
-					);
-				}
-			});
+			for (const event of events) {
+				if (event) this._onDidChangeConfig.fire(event);
+			}
 		});
 	}
 
 	private checkTagOverrides(): Result<void, Error> {
-		const allReadable = this.slots.every(
-			(slot) => slot.undeclaredTags !== undefined
+		const allReadable = this.managed.every(
+			(config) => config.skippedTags !== undefined
 		);
 		for (const tag of Object.keys(this.overrides.tags)) {
-			const skipped = this.slots.filter((slot) =>
-				slot.undeclaredTags?.includes(tag)
+			const skipped = this.managed.filter((config) =>
+				config.skippedTags?.includes(tag)
 			);
-			if (allReadable && skipped.length === this.slots.length) {
+			if (allReadable && skipped.length === this.managed.length) {
 				return err(
 					new Error(
 						`Tag "${tag}" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.`
@@ -148,39 +198,9 @@ export class CoreConfigService
 		return ok(undefined);
 	}
 
-	private async load(
-		file: string,
-		previous: ConfigSlot | undefined
-	): Promise<ConfigSlot> {
-		const loaded = await this.loader.load(file, this.overrides);
-		if (loaded.resolved.isOk()) {
-			return {
-				config: loaded.config,
-				files: loaded.files,
-				undeclaredTags: loaded.undeclaredTags,
-				entry: new ConfigEntry({
-					file,
-					chain: loaded.chain,
-					resolved: loaded.resolved.value,
-					diagnostics: [],
-					skippedTags: loaded.undeclaredTags ?? [],
-				}),
-			};
-		}
-		// A failed load keeps the last valid config, which is what still gets built.
-		return {
-			config: previous?.config,
-			files: loaded.files,
-			undeclaredTags: loaded.undeclaredTags,
-			entry: new ConfigEntry({
-				file,
-				chain: loaded.chain,
-				resolved: previous?.entry.resolved,
-				diagnostics: loaded.resolved.error,
-				skippedTags: previous?.entry.resolved
-					? previous.entry.skippedTags
-					: (loaded.undeclaredTags ?? []),
-			}),
-		};
+	private async load(file: string): Promise<ManagedConfig> {
+		const config = new ManagedConfig(file, this.loader, this.overrides);
+		await config.load();
+		return config;
 	}
 }

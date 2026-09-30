@@ -10,35 +10,25 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { PlacedBuild, ScannedRoot } from "../build-record.js";
-import { placeFiles } from "../placement.js";
+import { Placement } from "../placement.js";
+import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,
 	buildServiceOf,
 	configOf,
 	indexOf,
+	placeFiles,
 	syncTools,
 	writeFiles,
 } from "./fixtures.js";
 
-describe("placeFiles", () => {
+describe("Placer", () => {
 	const emptyIndex: IndexReader = {
 		getEntries: () => undefined,
 		hasEntry: () => false,
 		getEntryType: () => undefined,
-	};
-
-	const untouchedIndex: IndexReader = {
-		getEntries: () => {
-			throw new Error("the index was read");
-		},
-		hasEntry: () => {
-			throw new Error("the index was read");
-		},
-		getEntryType: () => {
-			throw new Error("the index was read");
-		},
 	};
 
 	describe("preparing", () => {
@@ -46,68 +36,6 @@ describe("placeFiles", () => {
 			overrides: Parameters<typeof configOf>[0] = {},
 			index: IndexReader = emptyIndex
 		) => placeFiles(index, configOf(overrides), syncTools);
-
-		it("should fail when the config declares no routes", () => {
-			const result = prepare({ routes: {} }, untouchedIndex);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
-			]);
-		});
-
-		it("should report every route whose target's service is unsupported", () => {
-			const result = prepare(
-				{
-					routes: {
-						server: "Nowhere",
-						client: "Elsewhere/x",
-						"*": "Workspace",
-					},
-				},
-				untouchedIndex
-			);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{
-					code: "roblox.unsupportedService",
-					resource: abs("default.project.json"),
-				},
-				{
-					code: "roblox.unsupportedService",
-					resource: abs("default.project.json"),
-				},
-			]);
-		});
-
-		it("should parse each route's target", () => {
-			const { targets } = prepare({
-				routes: {
-					server: "ServerScriptService",
-					"*": "ReplicatedStorage/shared/Deep",
-				},
-			}).unwrap();
-
-			expect([...targets]).toEqual([
-				["server", { service: "ServerScriptService", folders: [] }],
-				[
-					"*",
-					{
-						service: "ReplicatedStorage",
-						folders: ["shared", "Deep"],
-					},
-				],
-			]);
-		});
-
-		it("should derive the declared keys from the routes and tags", () => {
-			const { keys } = prepare({
-				routes: { server: "ServerScriptService", "*": "Workspace" },
-				tags: { mock: true },
-			}).unwrap();
-
-			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.tagKeys]).toEqual(["mock"]);
-		});
 
 		it("should root the layout at the output's directory", () => {
 			const { layout } = prepare({
@@ -120,7 +48,7 @@ describe("placeFiles", () => {
 		it("should hold the template rebased to the output's directory", () => {
 			const { template } = prepare({ name: "game" }).unwrap();
 
-			expect(template.getTree()).toEqual({
+			expect(template.edit().getTree()).toEqual({
 				name: "game",
 				tree: { $className: "DataModel" },
 			});
@@ -741,7 +669,7 @@ describe("placeFiles", () => {
 					rootDirs: [abs("core"), abs("lobby")],
 				});
 
-				expect(roots[1]).toEqual({
+				expect(roots[1]).toMatchObject({
 					rootDir: abs("lobby"),
 					exists: false,
 					entries: [],
@@ -845,7 +773,7 @@ describe("placeFiles", () => {
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-		const read = async (overrides: Partial<ResolvedConfig> = {}) => {
+		const read = async (overrides: ResolvedConfigSpec = {}) => {
 			const config = configOf({
 				routes: {
 					server: "ServerScriptService",
@@ -1035,7 +963,7 @@ describe("placeFiles", () => {
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 		const route = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			rootDirs: readonly string[] = [abs("src")]
 		) => {
 			const config = configOf({
@@ -1055,7 +983,7 @@ describe("placeFiles", () => {
 		};
 
 		const paths = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			rootDirs?: readonly string[]
 		) =>
 			(await route(overrides, rootDirs))
@@ -1337,9 +1265,7 @@ describe("placeFiles", () => {
 		});
 
 		describe("letter case mismatches", () => {
-			const caseWarnings = async (
-				overrides: Partial<ResolvedConfig> = {}
-			) =>
+			const caseWarnings = async (overrides: ResolvedConfigSpec = {}) =>
 				(await route(overrides))
 					.unwrap()
 					.warnings.filter(
@@ -1458,7 +1384,7 @@ describe("placeFiles", () => {
 
 		describe("capital route suffixes", () => {
 			const capitalWarnings = async (
-				overrides: Partial<ResolvedConfig> = {}
+				overrides: ResolvedConfigSpec = {}
 			) =>
 				(await route(overrides))
 					.unwrap()
@@ -1576,22 +1502,6 @@ describe("placeFiles", () => {
 					"ReplicatedStorage/shared/Inventory/Types",
 				]);
 			});
-
-			it("should fail with a diagnostic when a target's service is unsupported", async () => {
-				await write("src/Types.luau");
-
-				const result = await route({
-					routes: { "*": "Nowhere/shared" },
-				});
-
-				expect(result.isErr() ? result.error : []).toMatchObject([
-					{
-						severity: DiagnosticSeverity.Error,
-						code: "roblox.unsupportedService",
-						resource: abs("default.project.json"),
-					},
-				]);
-			});
 		});
 
 		describe("suffixes and stacked keys", () => {
@@ -1678,7 +1588,7 @@ describe("placeFiles", () => {
 
 		describe("tags", () => {
 			const tagsOf = async (
-				overrides: Partial<ResolvedConfig> = { tags: { mock: true } }
+				overrides: ResolvedConfigSpec = { tags: { mock: true } }
 			) =>
 				(await route(overrides))
 					.unwrap()
@@ -1892,20 +1802,10 @@ describe("placeFiles", () => {
 
 				expect((await route(noStar)).unwrap().warnings).toEqual([]);
 			});
-
-			it("should fail when routes is empty", async () => {
-				await write("src/server/A.luau", "src/B.luau");
-
-				const result = await route({ routes: {} });
-
-				expect(result.isErr() ? result.error : []).toMatchObject([
-					{ code: "route.noRoutes" },
-				]);
-			});
 		});
 	});
 
-	type TagResult = Pick<PlacedBuild, "files" | "leftOut"> & {
+	type TagResult = Pick<Placement, "files" | "leftOut"> & {
 		readonly warnings: readonly Diagnostic[];
 	};
 
@@ -2048,7 +1948,7 @@ describe("placeFiles", () => {
 					await apply({ mock: false, dev: false })
 				).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("src/Analytics.mock.luau"),
@@ -2091,7 +1991,7 @@ describe("placeFiles", () => {
 
 				const result = (await apply({ mock: true })).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("src/Analytics.luau"),
@@ -2111,7 +2011,7 @@ describe("placeFiles", () => {
 					await apply({}, [abs("core"), abs("lobby")])
 				).unwrap();
 
-				expect(result.leftOut).toEqual(
+				expect(new Map(result.leftOut)).toEqual(
 					new Map([
 						[
 							abs("core/Types.luau"),

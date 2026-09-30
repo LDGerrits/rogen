@@ -1,60 +1,32 @@
-import { Result, err, ok } from "../../base/result.js";
 import { normalizeDir } from "../../base/path.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
-import {
-	Darklua,
-	DetectedWorkspace,
-	Language,
-	Mount,
-} from "../toolchain/toolchain.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { ConfigSet, sourceStemOf } from "./config-set.js";
-import { InitChoices, defaultSyncDir } from "./init-choices.js";
-import {
-	DEFAULT_CONFIG_FILE,
-	existingFileDiagnostics,
-	parseInitName,
-	placeFolder,
-	variantFileNames,
-} from "./init-files.js";
-import { defaultMounts, offeredMounts, selectMounts } from "./mounts.js";
-import { BaseConfig, PlaceChoices } from "./place-plan.js";
-import {
-	defaultRootDir,
-	otherCodeFoldersHint,
-	parseRootDirs,
-	placeFolderProblem,
-	rootDirsProblem,
-} from "./root-dirs.js";
-import { RouteId, routeOptions, sharedTarget } from "./starting-routes.js";
-import {
-	TEMPLATE_FILE,
-	TemplateChoice,
-	defaultTemplateChoice,
-	handWrittenProjectFiles,
-} from "./template.js";
+import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
+import { ConfigSet } from "./config-set.js";
+import { BaseConfig, InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
+import { RouteId, StartingRoutes } from "./starting-routes.js";
+import { TemplateChoice } from "./starter-template.js";
 
-export interface InitContext {
-	readonly workspace: DetectedWorkspace;
-	readonly directory: string;
-	/** The names of the entries already in `directory`. */
-	readonly existingFiles: ReadonlySet<string>;
-	/** The resolved `default.rogen.json`, when it exists. */
-	readonly base?: Result<BaseConfig, Diagnostic[]>;
+export type Layout = "one" | "several";
+export type Addition = "place" | "variant" | "separate";
+
+export interface NameQuestion {
+	readonly message: string;
+	readonly description: string;
+	/** The files a config of this name would write. */
+	readonly filesFor: (name: string) => readonly string[];
 }
 
-export type InitAnswers =
-	| { readonly kind: "project"; readonly choices: InitChoices }
-	| { readonly kind: "place"; readonly choices: PlaceChoices }
-	| { readonly kind: "variant"; readonly name: string };
-
-type Layout = "one" | "several";
-type Addition = "place" | "variant" | "separate";
+export interface PlacesQuestion {
+	/** Default's root dirs, which every place folder joins. */
+	readonly rootDirs: readonly string[];
+	readonly filesFor: (name: string) => readonly string[];
+	/** Files the project itself writes, which no place may. */
+	readonly reserved: ReadonlySet<string>;
+}
 
 const required = (what: string) => (value: string) =>
 	value.trim() === "" ? `Enter ${what}.` : undefined;
@@ -65,52 +37,19 @@ const splitList = (value: string): string[] =>
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");
 
-const asProject = (
-	asked: Result<InitChoices | undefined, Diagnostic[]>
-): Result<InitAnswers | undefined, Diagnostic[]> =>
-	asked.isErr()
-		? asked
-		: ok(asked.value && { kind: "project", choices: asked.value });
-
-interface PlacesQuestion {
-	/** Default's root dirs, which every place folder joins. */
-	readonly rootDirs: readonly string[];
-	readonly filesFor: (name: string) => readonly string[];
-	/** Files the project itself writes, which no place may. */
-	readonly reserved: ReadonlySet<string>;
-}
-
-interface NameQuestion {
-	readonly message: string;
-	readonly description: string;
-	/** The files a config of this name would write. */
-	readonly filesFor: (name: string) => readonly string[];
-}
-
-/** Asks the questions `init` needs answered, from a prompt, in the language the toolchain detected. */
+/** The questions `init` asks; each owns its default, which a run that can't ask takes without prompting. */
 export class InitQuestions {
-	constructor(
-		private readonly promptService: PromptService,
-		private readonly toolchainService: ToolchainService
-	) {}
+	constructor(private readonly promptService: PromptService) {}
 
-	/**
-	 * Asks what to add when `default.rogen.json` exists, and otherwise for a new
-	 * project. Resolves to `ok(undefined)` when the user cancels, and to `err` as
-	 * soon as a file the answers would write already exists. `name` skips the name
-	 * question.
-	 */
-	async ask(
-		context: InitContext,
-		name?: string
-	): Promise<Result<InitAnswers | undefined, Diagnostic[]>> {
-		const { workspace, directory, existingFiles } = context;
-		if (!existingFiles.has(DEFAULT_CONFIG_FILE)) {
-			return asProject(await this.askProject(context, name));
-		}
+	private get interactive(): boolean {
+		return this.promptService.isInteractive;
+	}
 
-		const addition = await this.promptService.select<Addition>({
-			message: `${DEFAULT_CONFIG_FILE} exists. What do you want to add?`,
+	/** What to add beside `default.rogen.json`; a run that can't ask adds a separate config. */
+	async whatToAdd(): Promise<Addition | undefined> {
+		if (!this.interactive) return "separate";
+		return this.promptService.select<Addition>({
+			message: `${ConfigSet.DEFAULT_FILE} exists. What do you want to add?`,
 			choices: [
 				{
 					value: "place",
@@ -130,183 +69,102 @@ export class InitQuestions {
 			],
 			initialValue: "place",
 		});
-		if (addition === undefined) return ok(undefined);
-		if (addition === "separate") {
-			return asProject(await this.askProject(context, name));
-		}
-
-		const filesFor = (candidate: string) =>
-			addition === "place"
-				? new ConfigSet(
-						candidate,
-						this.toolchainService.getLanguage(workspace.language),
-						workspace.darklua
-					).placeFiles
-				: variantFileNames(candidate);
-		if (name) {
-			const conflicts = existingFileDiagnostics(
-				filesFor(name),
-				directory,
-				existingFiles
-			);
-			if (conflicts.length > 0) return err(conflicts);
-		}
-
-		if (addition === "variant") {
-			const variant =
-				name ??
-				(await this.askName(existingFiles, {
-					message: "Variant name",
-					description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
-					filesFor,
-				}));
-			return ok(
-				variant === undefined
-					? undefined
-					: { kind: "variant", name: variant }
-			);
-		}
-
-		const choices = await this.askPlaceChoices(context, filesFor, name);
-		return ok(choices && { kind: "place", choices });
 	}
 
-	/**
-	 * The new project questions. Resolves like `askInit`. Asks the layout on a
-	 * first run with no `name`, and a name when `default.rogen.json` exists.
-	 */
-	async askProject(
-		context: InitContext,
-		name?: string
-	): Promise<Result<InitChoices | undefined, Diagnostic[]>> {
-		const { workspace, directory, existingFiles } = context;
-		const firstRun = !existingFiles.has(DEFAULT_CONFIG_FILE);
+	/** Several places when the workspace already has a `places` folder. */
+	async layout({ workspace }: InitDirectory): Promise<Layout | undefined> {
+		const initial: Layout = workspace.places.length > 0 ? "several" : "one";
+		if (!this.interactive) return initial;
 
-		let layout: Layout = "one";
-		if (firstRun && name === undefined) {
-			const found = workspace.places.map(placeFolder).join(", ");
-			const answer = await this.promptService.select<Layout>({
-				message: "What are you setting up?",
-				choices: [
-					{ value: "one", label: "One place" },
-					{
-						value: "several",
-						label: "Several places that share code",
-						hint: found ? `found ${found}` : undefined,
-					},
-				],
-				initialValue: workspace.places.length > 0 ? "several" : "one",
-			});
-			if (answer === undefined) return ok(undefined);
-			layout = answer;
-		}
-
-		const chosenName =
-			name ??
-			(firstRun
-				? DEFAULT_CONFIG_STEM
-				: await this.askConfigName(existingFiles));
-		if (chosenName === undefined) return ok(undefined);
-
-		const languageId = await this.promptService.select({
-			message: "Language",
-			choices: this.toolchainService
-				.getLanguages()
-				.map(({ id, label, detectedHint }) => ({
-					value: id,
-					label,
-					hint: id === workspace.language ? detectedHint : undefined,
-				})),
-			initialValue: workspace.language,
+		const found = workspace.places.map(ConfigSet.placeFolderOf).join(", ");
+		return this.promptService.select<Layout>({
+			message: "What are you setting up?",
+			choices: [
+				{ value: "one", label: "One place" },
+				{
+					value: "several",
+					label: "Several places that share code",
+					hint: found ? `found ${found}` : undefined,
+				},
+			],
+			initialValue: initial,
 		});
-		if (languageId === undefined) return ok(undefined);
-		const language = this.toolchainService.getLanguage(languageId);
+	}
 
-		const darklua = await this.promptService.confirm({
+	/** A name has no default, so a run that can't ask stops here. */
+	async name(
+		directory: InitDirectory,
+		{ message, description, filesFor }: NameQuestion
+	): Promise<string | undefined> {
+		if (!this.interactive) return undefined;
+		const answer = await this.promptService.text({
+			message,
+			description,
+			validate: (value) => {
+				const trimmed = value.trim();
+				if (trimmed === "") return "Enter a name.";
+				const parsed = ConfigSet.parseName([trimmed]);
+				if (parsed.isErr()) return parsed.error.message;
+				const taken = filesFor(trimmed).find((file) =>
+					directory.has(file)
+				);
+				return taken && `${taken} already exists.`;
+			},
+		});
+		return answer?.trim();
+	}
+
+	/** The name of a config added beside `default`. */
+	configName(directory: InitDirectory): Promise<string | undefined> {
+		return this.name(directory, {
+			message: "Config name",
+			description: "Writes <name>.rogen.json.",
+			filesFor: (name) => [
+				configFileName(name),
+				configFileName(ConfigSet.sourceStemOf(name)),
+			],
+		});
+	}
+
+	/** The language the project is written in, the detected one unless told otherwise. */
+	async language({
+		workspace,
+	}: InitDirectory): Promise<Language | undefined> {
+		if (!this.interactive) return workspace.language;
+		const id = await this.promptService.select({
+			message: "Language",
+			choices: workspace.languages.map(({ id, label, detectedHint }) => ({
+				value: id,
+				label,
+				hint: id === workspace.language.id ? detectedHint : undefined,
+			})),
+			initialValue: workspace.language.id,
+		});
+		return id === undefined ? undefined : workspace.languageFor(id);
+	}
+
+	/** Whether Darklua processes the code, as it does when the workspace has a config for it. */
+	darklua({ workspace }: InitDirectory): Promise<boolean | undefined> {
+		if (!this.interactive) return Promise.resolve(workspace.usesDarklua);
+		return this.promptService.confirm({
 			message: "Does Darklua process your code before Rojo syncs it?",
 			description:
 				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: workspace.darklua ? Darklua.detectedHint : undefined,
-			initialValue: workspace.darklua,
-		});
-		if (darklua === undefined) return ok(undefined);
-
-		const configSet = new ConfigSet(chosenName, language, darklua);
-		const conflicts = existingFileDiagnostics(
-			configSet.configFiles,
-			directory,
-			existingFiles
-		);
-		if (conflicts.length > 0) return err(conflicts);
-
-		const rootDirs = await this.askRootDirs(context, language, layout);
-		if (rootDirs === undefined) return ok(undefined);
-
-		const outputs = configSet.outputFiles;
-		const template = await this.askTemplate(existingFiles, outputs);
-		if (template === undefined) return ok(undefined);
-
-		let syncDir = defaultSyncDir(language, darklua, workspace);
-		if (darklua) {
-			const answer = await this.promptService.text({
-				message: "Sync dir",
-				description:
-					"The folder Darklua writes into. Rojo syncs from here.",
-				placeholder: Darklua.defaultSyncDir,
-				validate: required("a sync dir"),
-			});
-			if (answer === undefined) return ok(undefined);
-			syncDir = normalizeDir(answer);
-		}
-
-		const mounts =
-			template.kind === "use"
-				? []
-				: await this.askMounts(context, language);
-		if (mounts === undefined) return ok(undefined);
-
-		const routes = await this.askRoutes(language);
-		if (routes === undefined) return ok(undefined);
-
-		let places: readonly string[] = [];
-		if (layout === "several") {
-			const reserved = new Set([
-				...configSet.configFiles,
-				...outputs,
-				TEMPLATE_FILE,
-			]);
-			const answer = await this.askPlaces(context, {
-				rootDirs,
-				filesFor: (place) =>
-					new ConfigSet(place, language, darklua).placeFiles,
-				reserved,
-			});
-			if (answer === undefined) return ok(undefined);
-			places = answer;
-		}
-
-		const outDir = language.compiler?.outDir(workspace);
-		return ok({
-			name: chosenName,
-			language,
-			darklua,
-			rootDirs,
-			...(syncDir && { syncDir }),
-			...(outDir && { outDir }),
-			template,
-			mounts,
-			routes: routes.routes,
-			fallback: routes.fallback,
-			places,
+			hint: workspace.usesDarklua
+				? workspace.darklua.detectedHint
+				: undefined,
+			initialValue: workspace.usesDarklua,
 		});
 	}
 
-	private async askRootDirs(
-		{ workspace, directory }: InitContext,
+	async rootDirs(
+		directory: InitDirectory,
 		language: Language,
 		layout: Layout
 	): Promise<string[] | undefined> {
-		const placeholder = defaultRootDir(workspace, language);
+		const placeholder = directory.defaultRootDir(language);
+		if (!this.interactive) return [placeholder];
+
 		const { compiler } = language;
 		const answer = await this.promptService.text({
 			message: compiler ? "Root dir" : "Root dirs",
@@ -315,32 +173,40 @@ export class InitQuestions {
 				: layout === "several"
 					? "Folders with the code every place shares, relative to here. Separate several with commas."
 					: "Folders with your scripts, relative to here. Separate several with commas.",
-			hint: otherCodeFoldersHint(workspace, placeholder),
+			hint: directory.otherCodeFoldersHint(placeholder),
 			placeholder,
 			validate: (value) => {
 				const entries = splitList(value);
-				const problem = rootDirsProblem(directory, entries);
+				const problem = directory.rootDirsProblem(entries);
 				if (problem) return problem;
 				return compiler && entries.length > 1
 					? compiler.severalRootDirs
 					: undefined;
 			},
 		});
-		return answer === undefined ? undefined : parseRootDirs(answer);
+		return answer === undefined
+			? undefined
+			: splitList(answer).map(normalizeDir);
 	}
 
-	private async askTemplate(
-		existingFiles: ReadonlySet<string>,
+	/** Copies the hand-written project file a new config would replace, else starts a new template. */
+	async template(
+		directory: InitDirectory,
 		outputs: readonly string[]
 	): Promise<TemplateChoice | undefined> {
-		const candidates = handWrittenProjectFiles(existingFiles);
-		if (existingFiles.has(TEMPLATE_FILE) || candidates.length === 0) {
+		const candidates = directory.handWrittenProjectFiles;
+		if (directory.has(TEMPLATE_FILE) || candidates.length === 0) {
 			return { kind: "new" };
 		}
 
 		const replaced = candidates.filter((file) => outputs.includes(file));
 		const others = candidates.filter((file) => !outputs.includes(file));
-		const initial = defaultTemplateChoice(existingFiles, outputs);
+		const initial: TemplateChoice =
+			replaced.length > 0
+				? { kind: "copy", from: replaced[0] }
+				: { kind: "new" };
+		if (!this.interactive) return initial;
+
 		const choices: PromptChoice<string>[] = [
 			...replaced.map((file) => ({
 				value: `copy:${file}`,
@@ -377,13 +243,68 @@ export class InitQuestions {
 		return { kind: "new" };
 	}
 
-	private async askMounts(
-		{ workspace, existingFiles }: InitContext,
+	/** The folder Darklua writes into, which Rojo syncs from. */
+	async syncDir({ workspace }: InitDirectory): Promise<string | undefined> {
+		const placeholder = workspace.darklua.defaultSyncDir;
+		if (!this.interactive) return placeholder;
+		const answer = await this.promptService.text({
+			message: "Sync dir",
+			description:
+				"The folder Darklua writes into. Rojo syncs from here.",
+			placeholder,
+			validate: required("a sync dir"),
+		});
+		return answer === undefined ? undefined : normalizeDir(answer);
+	}
+
+	/** What the packages question offers: the package manager's folders, then the language's own. */
+	private offeredMounts(
+		directory: InitDirectory,
+		language: Language
+	): MountCandidate[] {
+		return [
+			...directory.workspace.packageMounts(language),
+			...language.offeredMounts(),
+		];
+	}
+
+	private static toMount({
+		path,
+		installed,
+		landing,
+	}: MountCandidate): Mount {
+		return { path, optional: !installed, landing };
+	}
+
+	/** The language's always-mounted folders plus the offered ones in `ticked`. */
+	private selectMounts(
+		directory: InitDirectory,
+		language: Language,
+		ticked: readonly string[]
+	): Mount[] {
+		return [
+			...language.alwaysMounted().map(InitQuestions.toMount),
+			...this.offeredMounts(directory, language)
+				.filter(({ path }) => ticked.includes(path))
+				.map(InitQuestions.toMount),
+		];
+	}
+
+	/** The folders placed in the game as they are; the ones that start ticked unless a template is already there. */
+	async mounts(
+		directory: InitDirectory,
 		language: Language
 	): Promise<readonly Mount[] | undefined> {
-		const offered = offeredMounts(workspace, language);
-		if (offered.length === 0 || existingFiles.has(TEMPLATE_FILE)) {
-			return defaultMounts(workspace, language);
+		const offered = this.offeredMounts(directory, language);
+		const startsTicked = offered
+			.filter(({ ticked }) => ticked)
+			.map(({ path }) => path);
+		if (
+			offered.length === 0 ||
+			directory.has(TEMPLATE_FILE) ||
+			!this.interactive
+		) {
+			return this.selectMounts(directory, language, startsTicked);
 		}
 
 		const ticked = await this.promptService.multiSelect({
@@ -397,28 +318,30 @@ export class InitQuestions {
 				label: path,
 				hint: `→ ${landing}${installed ? "" : " · not installed yet"}`,
 			})),
-			initialValues: offered
-				.filter(({ ticked }) => ticked)
-				.map(({ path }) => path),
+			initialValues: startsTicked,
 		});
-		return ticked && selectMounts(workspace, language, ticked);
+		return ticked && this.selectMounts(directory, language, ticked);
 	}
 
-	private async askRoutes(
+	async routes(
 		language: Language
 	): Promise<{ routes: readonly RouteId[]; fallback: boolean } | undefined> {
-		const options = routeOptions(language);
+		if (!this.interactive) {
+			return { routes: StartingRoutes.DEFAULT, fallback: true };
+		}
+
+		const starting = new StartingRoutes(language);
 		const server = language.routeKey("server");
 		const { extension } = language;
 		const routes = await this.promptService.multiSelect<RouteId>({
 			message: "Routes",
 			description: `Where code goes. A ${server} folder, a .server marker file or a Foo.server.${extension} suffix all send code to ServerScriptService.`,
-			choices: options.map(({ id, key, target, hint }) => ({
+			choices: starting.options.map(({ id, key, target, hint }) => ({
 				value: id,
 				label: key,
 				hint: `→ ${target} · ${hint}`,
 			})),
-			initialValues: options
+			initialValues: starting.options
 				.filter(({ ticked }) => ticked)
 				.map(({ id }) => id),
 		});
@@ -432,7 +355,7 @@ export class InitQuestions {
 			choices: [
 				{
 					value: "shared",
-					label: `Put them in ${sharedTarget(language)}`,
+					label: `Put them in ${starting.sharedTarget}`,
 				},
 				{
 					value: "leave",
@@ -444,39 +367,39 @@ export class InitQuestions {
 		return fallback && { routes, fallback: fallback === "shared" };
 	}
 
-	private async askPlaces(
-		{ workspace, directory, existingFiles }: InitContext,
+	/** The places set up alongside, the ones the workspace already has unless told otherwise. */
+	async places(
+		directory: InitDirectory,
 		{ rootDirs, filesFor, reserved }: PlacesQuestion
 	): Promise<string[] | undefined> {
+		const found = directory.workspace.places;
+		if (!this.interactive) return [...found];
+
 		const answer = await this.promptService.text({
 			message: "Places",
 			description:
 				"Each place gets <name>.rogen.json, and its own code goes in places/<name>. Separate several with commas.",
-			placeholder:
-				workspace.places.length > 0
-					? workspace.places.join(", ")
-					: "lobby",
+			placeholder: found.length > 0 ? found.join(", ") : "lobby",
 			validate: (value) => {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
 				for (const [index, place] of names.entries()) {
-					const parsed = parseInitName([place]);
+					const parsed = ConfigSet.parseName([place]);
 					if (parsed.isErr()) return parsed.error.message;
 					if (names.indexOf(place) !== index) {
 						return `${place} is listed twice.`;
 					}
 					const clash = filesFor(place).find(
-						(file) => existingFiles.has(file) || reserved.has(file)
+						(file) => directory.has(file) || reserved.has(file)
 					);
 					if (clash) {
-						return existingFiles.has(clash)
+						return directory.has(clash)
 							? `${clash} already exists.`
 							: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
 					}
-					const problem = placeFolderProblem(
-						directory,
+					const problem = directory.placeFolderProblem(
 						rootDirs,
-						placeFolder(place)
+						ConfigSet.placeFolderOf(place)
 					);
 					if (problem) return problem;
 				}
@@ -486,68 +409,23 @@ export class InitQuestions {
 		return answer === undefined ? undefined : splitList(answer);
 	}
 
-	private askName(
-		existingFiles: ReadonlySet<string>,
-		{ message, description, filesFor }: NameQuestion
+	/** Where a place keeps its own code: `places/<name>` unless told otherwise. */
+	async placeFolder(
+		directory: InitDirectory,
+		base: BaseConfig,
+		placeName: string
 	): Promise<string | undefined> {
-		return this.promptService
-			.text({
-				message,
-				description,
-				validate: (value) => {
-					const trimmed = value.trim();
-					if (trimmed === "") return "Enter a name.";
-					const parsed = parseInitName([trimmed]);
-					if (parsed.isErr()) return parsed.error.message;
-					const taken = filesFor(trimmed).find((file) =>
-						existingFiles.has(file)
-					);
-					return taken && `${taken} already exists.`;
-				},
-			})
-			.then((answer) => answer?.trim());
-	}
-
-	private askConfigName(
-		existingFiles: ReadonlySet<string>
-	): Promise<string | undefined> {
-		return this.askName(existingFiles, {
-			message: "Config name",
-			description: "Writes <name>.rogen.json.",
-			filesFor: (name) => [
-				configFileName(name),
-				configFileName(sourceStemOf(name)),
-			],
-		});
-	}
-
-	private async askPlaceChoices(
-		{ directory, existingFiles, base }: InitContext,
-		filesFor: (name: string) => readonly string[],
-		name?: string
-	): Promise<PlaceChoices | undefined> {
-		const placeName =
-			name ??
-			(await this.askName(existingFiles, {
-				message: "Place name",
-				description: "Writes <name>.rogen.json.",
-				filesFor,
-			}));
-		if (placeName === undefined) return undefined;
-
+		const placeholder = ConfigSet.placeFolderOf(placeName);
+		if (!this.interactive) return placeholder;
 		const folder = await this.promptService.text({
 			message: "Place folder",
 			description:
 				"Holds this place's own code. It's added to default's root dirs.",
-			placeholder: placeFolder(placeName),
+			placeholder,
 			validate: (value) =>
 				required("a folder")(value) ??
-				(base?.isOk()
-					? placeFolderProblem(directory, base.value.rootDirs, value)
-					: undefined),
+				directory.placeFolderProblem(base.rootDirs, value),
 		});
-		return folder === undefined
-			? undefined
-			: { name: placeName, folder: normalizeDir(folder) };
+		return folder === undefined ? undefined : normalizeDir(folder);
 	}
 }

@@ -1,19 +1,20 @@
 import { jest } from "@jest/globals";
 import "../watch-command.js";
-import "../../../domain/config/config.js";
+import "../../../domain/config/config-schema.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { BuildService } from "../../../domain/build/build-service.js";
+import {
+	BuildService,
+	OutputFile,
+} from "../../../domain/build/build-service.js";
 import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
 import { WatchService } from "../../../domain/watch/watch-service.js";
-import { CoreOutputService } from "../../../domain/output/core-output-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { stagingPattern } from "../../../domain/output/output.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import {
 	FileChange,
@@ -37,7 +38,7 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 const isDefaultStaging = (file: string): boolean =>
-	stagingPattern("/repo/default.project.json").test(file);
+	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
 
 describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
@@ -82,8 +83,7 @@ describe("watch command", () => {
 				reconciliation,
 				configService,
 				indexService,
-				buildService,
-				new CoreOutputService(memFs)
+				buildService
 			)
 		);
 		services.set(
@@ -285,7 +285,7 @@ describe("watch command", () => {
 			expect(options?.ignored).toEqual([
 				"/repo/default.project.json",
 				"/repo/out",
-				stagingPattern("/repo/default.project.json"),
+				new OutputFile("/repo/default.project.json").stagingPattern,
 			]);
 		});
 

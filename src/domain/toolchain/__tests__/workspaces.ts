@@ -1,22 +1,40 @@
-import { RobloxTsFacts } from "../roblox-ts.js";
-import { DetectedWorkspace } from "../toolchain.js";
+import { Luau } from "../luau.js";
+import { RobloxTs, RobloxTsFacts } from "../roblox-ts.js";
+import { Darklua, DetectedWorkspace, PackageManager } from "../toolchain.js";
 
-/** The `languageFacts` of a workspace where roblox-ts read `facts`. */
-export const robloxTsFacts = (
-	facts: RobloxTsFacts
-): DetectedWorkspace["languageFacts"] => ({ "roblox-ts": facts });
+export interface WorkspaceSpec {
+	readonly language?: "luau" | "roblox-ts";
+	readonly usesDarklua?: boolean;
+	readonly packageManager?: "wally" | "pesde";
+	readonly packageDirs?: Iterable<string>;
+	readonly codeFolders?: readonly string[];
+	readonly hasSrc?: boolean;
+	readonly places?: readonly string[];
+	readonly robloxTs?: RobloxTsFacts;
+}
 
-/** `workspace` with more of the facts roblox-ts read from it. */
+export function workspaceOf(spec: WorkspaceSpec = {}): DetectedWorkspace {
+	return new DetectedWorkspace({
+		darklua: new Darklua(),
+		languages: [
+			new Luau(),
+			new RobloxTs(spec.robloxTs ?? {}, spec.language === "roblox-ts"),
+		],
+		usesDarklua: spec.usesDarklua ?? false,
+		packageManager:
+			spec.packageManager === undefined
+				? undefined
+				: PackageManager[
+						spec.packageManager === "wally" ? "WALLY" : "PESDE"
+					],
+		packageDirs: new Set(spec.packageDirs),
+		codeFolders: spec.codeFolders ?? [],
+		hasSrc: spec.hasSrc ?? false,
+		places: spec.places ?? [],
+	});
+}
+
 export const withRobloxTs = (
-	workspace: DetectedWorkspace,
+	spec: WorkspaceSpec,
 	facts: RobloxTsFacts
-): DetectedWorkspace => ({
-	...workspace,
-	languageFacts: {
-		...workspace.languageFacts,
-		"roblox-ts": {
-			...(workspace.languageFacts["roblox-ts"] as RobloxTsFacts),
-			...facts,
-		},
-	},
-});
+): WorkspaceSpec => ({ ...spec, robloxTs: { ...spec.robloxTs, ...facts } });

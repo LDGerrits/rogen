@@ -27,6 +27,14 @@ describe("RojoProject", () => {
 			expect(project.getTree()).toEqual(baseTree);
 			expect(project.getTree()).not.toBe(baseTree);
 		});
+
+		it("should hand out a copy that can't change the project", () => {
+			const project = new RojoProject(baseTree, folders);
+
+			delete project.getTree().tree.ServerScriptService;
+
+			expect(project.getNode(["ServerScriptService"])).toBeDefined();
+		});
 	});
 
 	describe("getNode", () => {
@@ -195,6 +203,202 @@ describe("RojoProject", () => {
 			expect((tree.Child as RojoNode).$properties).toEqual({
 				$path: "not a path",
 			});
+		});
+	});
+
+	describe("parse", () => {
+		it("should read a project file, keeping the fields it doesn't model", () => {
+			const project = RojoProject.parse(
+				'{ "name": "Game", "servePort": 34872, "tree": { "$className": "DataModel" } }'
+			).unwrap();
+
+			expect(project.getTree()).toEqual({
+				name: "Game",
+				servePort: 34872,
+				tree: { $className: "DataModel" },
+			});
+		});
+
+		it("should read comments and trailing commas", () => {
+			const project = RojoProject.parse(
+				'{ // note\n "tree": {},\n}'
+			).unwrap();
+
+			expect(project.getTree().tree).toEqual({});
+		});
+
+		it("should give a file without a tree a bare DataModel", () => {
+			const project = RojoProject.parse(
+				'{ "globIgnorePaths": [] }'
+			).unwrap();
+
+			expect(project.getTree().tree).toEqual({ $className: "DataModel" });
+		});
+
+		it("should fail on syntax errors", () => {
+			expect(RojoProject.parse("{ nope").isErr()).toBe(true);
+		});
+
+		it("should fail when the file isn't an object", () => {
+			const result = RojoProject.parse("[]");
+
+			expect(result.isErr() && result.error.message).toBe(
+				"it must be a JSON object."
+			);
+		});
+
+		it("should fail when the tree isn't an object", () => {
+			const result = RojoProject.parse('{ "tree": 5 }');
+
+			expect(result.isErr() && result.error.message).toBe(
+				"its tree must be an object."
+			);
+		});
+
+		it("should treat a null tree as a missing one", () => {
+			const project = RojoProject.parse('{ "tree": null }').unwrap();
+
+			expect(project.getTree().tree).toEqual({ $className: "DataModel" });
+		});
+
+		it("should fail when a node below the tree isn't an object, which no insert could go through", () => {
+			const result = RojoProject.parse(
+				'{ "tree": { "ReplicatedStorage": { "Packages": 5 } } }'
+			);
+
+			expect(result.isErr() && result.error.message).toBe(
+				'"ReplicatedStorage/Packages" must be an object.'
+			);
+		});
+
+		it("should leave the $ fields of a node to hold anything", () => {
+			const result = RojoProject.parse(
+				'{ "tree": { "$properties": { "A": 1 }, "$ignoreUnknownInstances": true } }'
+			);
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should create ancestors the plain way unless told otherwise", () => {
+			const project = RojoProject.parse('{ "tree": {} }').unwrap();
+
+			project.insertNode(["ReplicatedStorage", "shared", "Foo"], {
+				$path: "foo.luau",
+			});
+
+			expect(project.getTree().tree).toEqual({
+				ReplicatedStorage: {
+					shared: {
+						$className: "Folder",
+						Foo: { $path: "foo.luau" },
+					},
+				},
+			});
+		});
+	});
+
+	describe("name and globIgnorePaths", () => {
+		it("should read the project's own name, unless it is empty", () => {
+			expect(RojoProject.parse('{ "name": "Game" }').unwrap().name).toBe(
+				"Game"
+			);
+			expect(
+				RojoProject.parse('{ "name": "" }').unwrap().name
+			).toBeUndefined();
+			expect(RojoProject.parse("{}").unwrap().name).toBeUndefined();
+		});
+
+		it("should keep the globs that are strings", () => {
+			const project = RojoProject.parse(
+				'{ "globIgnorePaths": ["a", 3, "b"] }'
+			).unwrap();
+
+			expect(project.globIgnorePaths).toEqual(["a", "b"]);
+			expect(RojoProject.parse("{}").unwrap().globIgnorePaths).toEqual(
+				[]
+			);
+		});
+	});
+
+	describe("mergeMissing", () => {
+		const additions = (tree: RojoNode) =>
+			new RojoProject({ tree }, folders);
+
+		it("should add a mount that nothing is at yet, creating its containers", () => {
+			const project = new RojoProject(baseTree, folders);
+
+			const result = project.mergeMissing(
+				additions({
+					ReplicatedStorage: {
+						Packages: { $path: "Packages" },
+					},
+				})
+			);
+
+			expect(project.getNode(["ReplicatedStorage", "Packages"])).toEqual({
+				$path: "Packages",
+			});
+			expect(result).toEqual({
+				added: [
+					{
+						path: "Packages",
+						instancePath: ["ReplicatedStorage", "Packages"],
+					},
+				],
+				skipped: [],
+			});
+		});
+
+		it("should add into a container that is already there", () => {
+			const project = new RojoProject(baseTree, folders);
+
+			project.mergeMissing(
+				additions({
+					ServerScriptService: { Vendor: { $path: "vendor" } },
+				})
+			);
+
+			expect(project.getTree().tree.ServerScriptService).toEqual({
+				$className: "ServerScriptService",
+				Vendor: { $path: "vendor" },
+			});
+		});
+
+		it("should skip a mount where a node already is, and keep that node", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: { Packages: { $path: "mine" } },
+					},
+				},
+				folders
+			);
+
+			const result = project.mergeMissing(
+				additions({
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				})
+			);
+
+			expect(project.getNode(["ReplicatedStorage", "Packages"])).toEqual({
+				$path: "mine",
+			});
+			expect(result.skipped).toEqual([
+				{
+					path: "Packages",
+					instancePath: ["ReplicatedStorage", "Packages"],
+				},
+			]);
+			expect(result.added).toEqual([]);
+		});
+
+		it("should not create a container when nothing goes in it", () => {
+			const project = new RojoProject(baseTree, folders);
+
+			project.mergeMissing(additions({ Lighting: {} }));
+
+			expect(project.getNode(["Lighting"])).toBeUndefined();
 		});
 	});
 });

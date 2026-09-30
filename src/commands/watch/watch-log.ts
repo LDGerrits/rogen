@@ -6,6 +6,8 @@ import {
 	WatchCause,
 	WatchUpdate,
 } from "../../domain/watch/watch-session.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
@@ -77,9 +79,27 @@ function titleOf(cause: WatchCause): string {
 	}
 }
 
+/** Remembers what was last printed per key, so a rebuild reports only what is new. */
+class PrintedDiagnostics {
+	private readonly printed = new Map<string, ReadonlySet<string>>();
+
+	/** Returns the diagnostics not printed for `key` last time, and records `diagnostics` as printed. */
+	unseen(key: string, diagnostics: readonly Diagnostic[]): Diagnostic[] {
+		const previous = this.printed.get(key);
+		const rendered = diagnostics.map((diagnostic) =>
+			renderDiagnostic(diagnostic)
+		);
+		this.printed.set(key, new Set(rendered));
+		return diagnostics.filter(
+			(_, index) => !previous?.has(rendered[index])
+		);
+	}
+}
+
 /** How `watch` reports each round of rebuilds. */
 export class WatchLog {
 	private readonly buildLog: BuildLog;
+	private readonly printed = new PrintedDiagnostics();
 
 	constructor(
 		private readonly logService: LogService,
@@ -89,11 +109,54 @@ export class WatchLog {
 	}
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
+		const fresh = notices
+			.map((notice) => this.unseenNotice(notice))
+			.filter(
+				({ errors, warnings }) => errors.length + warnings.length > 0
+			);
+		const shown = reports.map((report) => this.unseenReport(report));
+		// A round whose only news is a config problem already printed has nothing to say.
+		if (notices.length > 0 && fresh.length === 0 && shown.length === 0)
+			return;
+
 		this.logService.step(`${clockTime(at)} · ${titleOf(cause)}`);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
-		notices.forEach((notice) => this.notice(notice));
-		reports.forEach((report) => this.report(report));
+		fresh.forEach((notice) => this.notice(notice));
+		shown.forEach((report) => this.report(report));
+	}
+
+	private unseenNotice({
+		file,
+		errors,
+		warnings,
+	}: ConfigNotice): ConfigNotice {
+		const fresh = this.printed.unseen(`${file}#config`, [
+			...errors,
+			...warnings,
+		]);
+		return {
+			file,
+			errors: fresh.filter(isError),
+			warnings: fresh.filter((diagnostic) => !isError(diagnostic)),
+		};
+	}
+
+	/** A report whose diagnostics are only those not printed for its config the last time. */
+	private unseenReport(report: RebuildReport): RebuildReport {
+		const { file } = report.config;
+		return {
+			...report,
+			diagnostics: [
+				...this.printed.unseen(`${file}#build`, report.diagnostics),
+				...(report.syncDiagnostics
+					? this.printed.unseen(
+							`${file}#sync`,
+							report.syncDiagnostics
+						)
+					: []),
+			],
+		};
 	}
 
 	private notice({ file, errors, warnings }: ConfigNotice): void {

@@ -1,13 +1,10 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import {
-	DiagnosticSeverity,
-	errorDiagnostic,
-} from "../../../platform/diagnostics/diagnostic.js";
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { ConfigEntry } from "../../config/config-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
@@ -33,6 +30,39 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("build", () => {
+		it("should fail when the config declares no routes, without reading the index", async () => {
+			const config = configOf({ routes: {} });
+
+			const result = await buildServiceOfFs().build(config);
+
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([
+				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
+			]);
+		});
+
+		it("should name the file it would write", async () => {
+			const result = await buildOf(
+				configOf({ outFile: abs("out/game.project.json") })
+			);
+
+			expect(result.unwrap().outFile).toBe(abs("out/game.project.json"));
+		});
+
+		it("should report the folder meta it read, and only that", async () => {
+			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
+			await fs.writeFile(abs("src/Hud.luau"), "");
+			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
+
+			const result = await buildOf(configOf());
+
+			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Combat/init.meta.json"),
+			]);
+		});
+
 		it("should return a tree with no warnings when every root dir exists", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
@@ -68,9 +98,9 @@ describe("CoreBuildService", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "tag.activeClash" },
-			]);
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([{ code: "tag.activeClash" }]);
 		});
 
 		it("should warn about a missing root dir and still succeed", async () => {
@@ -100,17 +130,6 @@ describe("CoreBuildService", () => {
 			expect(
 				result.unwrap().warnings.map((warning) => warning.code)
 			).toEqual(["scan.missingRootDir", "route.unrouted"]);
-		});
-
-		it("should fail when a route targets an unsupported service", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-			const config = configOf({ routes: { "*": "Nowhere" } });
-
-			const result = await buildOf(config);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "roblox.unsupportedService" },
-			]);
 		});
 
 		it("should emit a linked directory under its link path", async () => {
@@ -161,7 +180,7 @@ describe("CoreBuildService", () => {
 		describe("unclaimed meta", () => {
 			const warningsFor = async (
 				files: readonly string[],
-				overrides: Partial<ResolvedConfig> = {}
+				overrides: ResolvedConfigSpec = {}
 			) => {
 				for (const file of files)
 					await fs.writeFile(
@@ -456,7 +475,7 @@ describe("CoreBuildService", () => {
 				await indexOf(store, fs, [])
 			).build(configOf({ routes: {} }));
 
-			expect(result.isErr() && result.error).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
 			]);
 		});
@@ -470,7 +489,7 @@ describe("CoreBuildService", () => {
 				await indexOf(store, fs, [abs("src")])
 			).build(configOf());
 
-			expect(result.isErr() && result.error).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "meta.notAnObject" },
 			]);
 		});
@@ -505,17 +524,21 @@ describe("CoreBuildService", () => {
 		});
 	});
 
+	describe("locate", () => {
+		it("should fail when the config declares no routes", async () => {
+			const result = await buildServiceOfFs().locate(
+				configOf({ routes: {} })
+			);
+
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([{ code: "route.noRoutes" }]);
+		});
+	});
+
 	describe("checkBuildable", () => {
-		const entryOf = (config: ResolvedConfig): ConfigEntry =>
-			new ConfigEntry({
-				file: config.file,
-				chain: [config.file],
-				resolved: config,
-				diagnostics: [],
-				skippedTags: [],
-			});
 		const check = (...configs: ResolvedConfig[]) =>
-			buildServiceOfFs().checkBuildable(configs.map(entryOf));
+			buildServiceOfFs().checkBuildable(configs);
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
 			if (result.isOk()) throw new Error("Expected the check to fail.");
 			return result.error.diagnostics;
@@ -550,39 +573,8 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should refuse a config that failed to load", () => {
-			const broken = new ConfigEntry({
-				file: abs("broken.rogen.json"),
-				chain: [abs("broken.rogen.json")],
-				resolved: undefined,
-				diagnostics: [
-					errorDiagnostic(
-						"config.invalidSyntax",
-						{ resource: abs("broken.rogen.json") },
-						"bad"
-					),
-				],
-				skippedTags: [],
-			});
-
-			const result = buildServiceOfFs().checkBuildable([
-				entryOf(configOf()),
-				broken,
-			]);
-
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "config.invalidSyntax" },
-			]);
-		});
-
-		it("should return each config with its entry when all can be built", () => {
-			const config = configOf();
-
-			const result = check(config);
-
-			expect(result.unwrap()).toEqual([
-				{ entry: entryOf(config), config },
-			]);
+		it("should pass configs that can all be built", () => {
+			expect(check(configOf()).isOk()).toBe(true);
 		});
 	});
 });

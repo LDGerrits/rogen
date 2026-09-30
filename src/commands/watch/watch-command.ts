@@ -42,11 +42,15 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const watchService = accessor.get(WatchService);
 		const cwd = accessor.get(EnvironmentService).cwd;
 
-		const buildable = buildService.checkBuildable(configService.configs);
+		const valid = configService.requireValidEntries();
+		if (valid.isErr()) return valid;
+		const buildable = buildService.checkBuildable(
+			valid.value.map(({ config }) => config)
+		);
 		if (buildable.isErr()) return buildable;
 		new BuildLog(logService, cwd).begin(
 			"watch",
-			buildable.value,
+			valid.value,
 			await configService.listUnselectedConfigFiles()
 		);
 

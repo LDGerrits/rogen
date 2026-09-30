@@ -2,9 +2,13 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
-import { CoreOutputService } from "../core-output-service.js";
-import { stagingPattern } from "../output.js";
+import { BuiltProject, OutputFile } from "../build-service.js";
+import { CoreBuildService } from "../core-build-service.js";
+import { buildServiceOf } from "./fixtures.js";
+
+const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
 const outFile = path.resolve("/repo", "default.project.json");
 
@@ -16,15 +20,32 @@ const treeOf = (): RojoTree => ({
 	name: "repo",
 });
 
-describe("CoreOutputService", () => {
+describe("CoreBuildService.write", () => {
 	let fs: MemoryFileSystemService;
-	let outputService: CoreOutputService;
+	let service: CoreBuildService;
 	let store: DisposableStore;
+
+	const projectOf = (tree: RojoTree): BuiltProject => ({
+		outFile,
+		tree,
+		warnings: [],
+		syncWarnings: [],
+		readFiles: [],
+		summary: {
+			roots: [],
+			routes: [],
+			tags: [],
+			unrouted: 0,
+			superseded: 0,
+			displaced: 0,
+		},
+	});
+	const write = (tree: RojoTree) => service.write(projectOf(tree));
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		outputService = new CoreOutputService(fs);
 		store = new DisposableStore();
+		service = buildServiceOf(fs, store.add(new CoreIndexService(fs)));
 	});
 
 	afterEach(() => {
@@ -33,7 +54,7 @@ describe("CoreOutputService", () => {
 
 	describe("write", () => {
 		it("should write the tree as JSON with sorted keys", async () => {
-			const result = await outputService.write({ outFile }, treeOf());
+			const result = await write(treeOf());
 
 			expect(result.unwrap().written).toBe(true);
 			const content = await fs.readFile(outFile);
@@ -49,7 +70,7 @@ describe("CoreOutputService", () => {
 			const events: string[] = [];
 			store.add(fs.onDidMutateFile((event) => events.push(event.path)));
 
-			await outputService.write({ outFile }, treeOf());
+			await write(treeOf());
 
 			const staged = events.filter((event) =>
 				stagingPattern(outFile).test(event)
@@ -68,11 +89,8 @@ describe("CoreOutputService", () => {
 				})
 			);
 
-			await outputService.write({ outFile }, treeOf());
-			await outputService.write(
-				{ outFile },
-				{ ...treeOf(), name: "other" }
-			);
+			await write(treeOf());
+			await write({ ...treeOf(), name: "other" });
 
 			expect(events.size).toBe(2);
 		});
@@ -81,8 +99,8 @@ describe("CoreOutputService", () => {
 			const other = { ...treeOf(), name: "other" };
 
 			const [first, second] = await Promise.all([
-				outputService.write({ outFile }, treeOf()),
-				outputService.write({ outFile }, other),
+				write(treeOf()),
+				write(other),
 			]);
 
 			expect(first.isOk()).toBe(true);
@@ -92,26 +110,23 @@ describe("CoreOutputService", () => {
 		});
 
 		it("should not touch the file when the bytes are unchanged", async () => {
-			await outputService.write({ outFile }, treeOf());
+			await write(treeOf());
 			const listener = jest.fn();
 			store.add(fs.onDidMutateFile(listener));
 
-			const result = await outputService.write({ outFile }, treeOf());
+			const result = await write(treeOf());
 
 			expect(result.unwrap().written).toBe(false);
 			expect(listener).not.toHaveBeenCalled();
 		});
 
 		it("should rewrite the file when the tree changed", async () => {
-			await outputService.write({ outFile }, treeOf());
+			await write(treeOf());
 
-			const result = await outputService.write(
-				{ outFile },
-				{
-					...treeOf(),
-					name: "other",
-				}
-			);
+			const result = await write({
+				...treeOf(),
+				name: "other",
+			});
 
 			expect(result.unwrap().written).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile)).name).toBe("other");
@@ -120,7 +135,7 @@ describe("CoreOutputService", () => {
 		it("should replace a hand-written project file", async () => {
 			await fs.writeFile(outFile, '{ "name": "by hand", "tree": {} }');
 
-			const result = await outputService.write({ outFile }, treeOf());
+			const result = await write(treeOf());
 
 			expect(result.unwrap().written).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile))).toEqual(treeOf());
@@ -129,10 +144,12 @@ describe("CoreOutputService", () => {
 		it("should return a diagnostic when the file cannot be written", async () => {
 			await fs.createDirectory(outFile);
 
-			const result = await outputService.write({ outFile }, treeOf());
+			const result = await write(treeOf());
 
 			expect(result.isErr()).toBe(true);
-			expect(result.isErr() ? result.error[0] : undefined).toMatchObject({
+			expect(
+				result.isErr() ? result.error.diagnostics[0] : undefined
+			).toMatchObject({
 				code: "output.writeFailed",
 				resource: outFile,
 			});

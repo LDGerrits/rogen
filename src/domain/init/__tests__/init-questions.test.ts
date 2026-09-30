@@ -1,6 +1,5 @@
+import { Result, ResultError, ok } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import path from "path";
-import { ResultError, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	ACCEPT_DEFAULT,
@@ -8,72 +7,66 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
-	robloxTsFacts,
+	WorkspaceSpec,
 	withRobloxTs,
 } from "../../toolchain/__tests__/workspaces.js";
-import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
-import { InitContext, InitQuestions } from "../init-questions.js";
+import { InitQuestions } from "../init-questions.js";
+import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import path from "path";
+import { DirectorySpec, directory, directoryOf } from "./init-fixtures.js";
 
-const directory = path.resolve("/mock/my-game");
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
+type Context = Omit<DirectorySpec, "givenName">;
 
-const askInit = (
+const askInitChoices = async (
 	prompts: MockPromptService,
-	context: InitContext,
+	context: Context,
 	name?: string
-) => new InitQuestions(prompts, toolchain).ask(context, name);
-
-const askInitChoices = (
-	prompts: MockPromptService,
-	context: InitContext,
-	name?: string
-) => new InitQuestions(prompts, toolchain).askProject(context, name);
-
-const defaultInitChoices = (
-	workspace: DetectedWorkspace,
-	name: string,
-	existingFiles: ReadonlySet<string>,
-	withPlaces: boolean
-) =>
-	defaultChoicesFor(
-		workspace,
-		toolchain.getLanguage(workspace.language),
-		name,
-		existingFiles,
-		withPlaces
+): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> => {
+	const fileSystem = new MemoryFileSystemService();
+	await fileSystem.createDirectory(directory);
+	for (const file of context.existing ?? [])
+		await fileSystem.writeFile(path.join(directory, file), "{}");
+	const setup = new ProjectSetup(
+		directoryOf({ ...context, givenName: name, fileSystem }),
+		new InitQuestions(prompts)
 	);
-
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: false,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
+	const asked = await setup.ask();
+	return asked.isErr() ? asked : ok(asked.value ? setup.answers : undefined);
 };
-const rbxts: DetectedWorkspace = {
-	...luau,
+
+const defaultInitChoices = async (
+	workspace: WorkspaceSpec,
+	name = "default",
+	existing: readonly string[] = []
+) =>
+	(
+		await askInitChoices(
+			new MockPromptService([], false),
+			{ workspace, existing },
+			name === "default" ? undefined : name
+		)
+	).unwrap();
+
+const luau: WorkspaceSpec = {};
+const rbxts: WorkspaceSpec = {
 	language: "roblox-ts",
-	languageFacts: robloxTsFacts({
+	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
 		hasInclude: true,
-	}),
+	},
 	packageManager: "wally",
-	packageDirs: new Set(["Packages"]),
+	packageDirs: ["Packages"],
 };
 
 const contextOf = (
-	workspace: DetectedWorkspace,
+	workspace: WorkspaceSpec,
 	existing: readonly string[] = []
-) => ({ workspace, directory, existingFiles: new Set(existing) });
+): Context => ({ workspace, existing });
 
 const ask = (
-	workspace: DetectedWorkspace,
+	workspace: WorkspaceSpec,
 	answers: readonly ScriptedAnswer[],
 	name?: string,
 	existing: readonly string[] = []
@@ -96,8 +89,8 @@ const conflictsOf = (result: Awaited<ReturnType<typeof ask>>) =>
 const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
 describe("InitQuestions askProject", () => {
-	it("should give the non-interactive choices when every default is accepted", async () => {
-		const darklua = { ...luau, darklua: true };
+	it("should give an unattended run the choices a user accepting every default gets", async () => {
+		const darklua = { ...luau, usesDarklua: true };
 		for (const workspace of [
 			rbxts,
 			luau,
@@ -106,7 +99,7 @@ describe("InitQuestions askProject", () => {
 			{ ...luau, places: ["lobby", "match"] },
 		]) {
 			expect(await asked(workspace, acceptAll(10))).toEqual(
-				defaultInitChoices(workspace, "default", new Set(), true)
+				await defaultInitChoices(workspace)
 			);
 		}
 	});
@@ -225,7 +218,7 @@ describe("InitQuestions askProject", () => {
 	describe("darklua", () => {
 		it("should be preselected when found", async () => {
 			const choices = await asked(
-				{ ...luau, darklua: true },
+				{ ...luau, usesDarklua: true },
 				acceptAll(9)
 			);
 
@@ -241,7 +234,10 @@ describe("InitQuestions askProject", () => {
 				...acceptAll(6),
 			]);
 
-			expect(choices).toMatchObject({ darklua: true, syncDir: "dist" });
+			expect(choices).toMatchObject({
+				darklua: true,
+				syncDir: "dist",
+			});
 		});
 
 		it("should fail before the remaining questions when a file it would write exists", async () => {
@@ -292,7 +288,7 @@ describe("InitQuestions askProject", () => {
 
 			await askInitChoices(
 				prompts,
-				contextOf({ ...luau, darklua: true })
+				contextOf({ ...luau, usesDarklua: true })
 			);
 
 			expect(syncDirPrompt(prompts)?.placeholder).toBe("dist");
@@ -313,7 +309,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	describe("root dirs", () => {
-		const rootDirsPrompt = async (workspace: DetectedWorkspace) => {
+		const rootDirsPrompt = async (workspace: WorkspaceSpec) => {
 			const prompts = new MockPromptService(acceptAll(9));
 			await askInitChoices(prompts, contextOf(workspace));
 			return prompts.prompts.find(({ message }) =>
@@ -436,7 +432,7 @@ describe("InitQuestions askProject", () => {
 
 	describe("packages", () => {
 		const optionsFor = async (
-			workspace: DetectedWorkspace,
+			workspace: WorkspaceSpec,
 			existing: readonly string[] = []
 		) => {
 			const prompts = new MockPromptService(acceptAll(9));
@@ -611,7 +607,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	describe("routes", () => {
-		const routesPrompt = async (workspace: DetectedWorkspace) => {
+		const routesPrompt = async (workspace: WorkspaceSpec) => {
 			const prompts = new MockPromptService(acceptAll(9));
 			let choices: { value: string; label: string; hint?: string }[] = [];
 			let initial: readonly string[] | undefined;
@@ -734,7 +730,10 @@ describe("InitQuestions askProject", () => {
 	it("should show every text question as a placeholder with a description", async () => {
 		const prompts = new MockPromptService(acceptAll(10));
 
-		await askInitChoices(prompts, contextOf({ ...rbxts, darklua: true }));
+		await askInitChoices(
+			prompts,
+			contextOf({ ...rbxts, usesDarklua: true })
+		);
 
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
 		expect(text.map(({ message }) => message)).toEqual([
@@ -755,9 +754,7 @@ describe("InitQuestions askProject", () => {
 			...acceptAll(4),
 		]);
 
-		expect(choices).toEqual(
-			defaultInitChoices(luau, "default", new Set(), true)
-		);
+		expect(choices).toEqual(await defaultInitChoices(luau));
 	});
 
 	it.each([0, 1, 2, 3, 4, 5, 6])(
@@ -772,7 +769,7 @@ describe("InitQuestions askProject", () => {
 });
 
 describe("InitQuestions askProject layout", () => {
-	const withPlaces: DetectedWorkspace = {
+	const withPlaces: WorkspaceSpec = {
 		...luau,
 		hasSrc: true,
 		places: ["lobby", "match"],
@@ -962,120 +959,5 @@ describe("InitQuestions askProject template", () => {
 
 		expect(initial).toBe("new");
 		expect(prompts.asked).toContain("Packages");
-	});
-});
-
-describe("InitQuestions ask", () => {
-	const context = (existing: readonly string[] = ["default.rogen.json"]) => ({
-		...contextOf(luau, existing),
-		base: ok({ rootDirs: ["src"] }),
-	});
-
-	it("should ask what to add when default.rogen.json exists, preselecting a place", async () => {
-		const prompts = new MockPromptService([
-			ACCEPT_DEFAULT,
-			"arena",
-			ACCEPT_DEFAULT,
-		]);
-
-		const answers = (await askInit(prompts, context())).unwrap();
-
-		expect(prompts.asked[0]).toBe(
-			"default.rogen.json exists. What do you want to add?"
-		);
-		expect(answers).toMatchObject({ kind: "place" });
-	});
-
-	it("should add a place with its folder", async () => {
-		const prompts = new MockPromptService([
-			ACCEPT_DEFAULT,
-			"arena",
-			ACCEPT_DEFAULT,
-		]);
-
-		expect((await askInit(prompts, context())).unwrap()).toEqual({
-			kind: "place",
-			choices: { name: "arena", folder: "places/arena" },
-		});
-	});
-
-	it("should reject a place folder inside default's root dirs", async () => {
-		await expect(
-			askInit(
-				new MockPromptService([ACCEPT_DEFAULT, "arena", "src/arena"]),
-				context()
-			)
-		).rejects.toThrow(
-			"src/arena overlaps src, one of default's root dirs."
-		);
-	});
-
-	it("should reject a place whose project file exists", async () => {
-		await expect(
-			askInit(
-				new MockPromptService([ACCEPT_DEFAULT, "arena"]),
-				context(["default.rogen.json", "arena.project.json"])
-			)
-		).rejects.toThrow("arena.project.json already exists.");
-	});
-
-	it("should add a variant by name", async () => {
-		const prompts = new MockPromptService(["variant", "prod"]);
-
-		expect((await askInit(prompts, context())).unwrap()).toEqual({
-			kind: "variant",
-			name: "prod",
-		});
-		expect(prompts.asked).toEqual([
-			"default.rogen.json exists. What do you want to add?",
-			"Variant name",
-		]);
-	});
-
-	it("should reject a variant whose project file exists", async () => {
-		await expect(
-			askInit(
-				new MockPromptService(["variant", "prod"]),
-				context(["default.rogen.json", "prod.project.json"])
-			)
-		).rejects.toThrow("prod.project.json already exists.");
-	});
-
-	it("should ask every question again for a separate config", async () => {
-		const prompts = new MockPromptService([
-			"separate",
-			"test",
-			...acceptAll(6),
-		]);
-
-		const answers = (await askInit(prompts, context())).unwrap();
-
-		expect(answers).toMatchObject({
-			kind: "project",
-			choices: { name: "test" },
-		});
-		expect(prompts.asked.slice(0, 3)).toEqual([
-			"default.rogen.json exists. What do you want to add?",
-			"Config name",
-			"Language",
-		]);
-	});
-
-	it("should fail at once when a given place name is taken", async () => {
-		const result = await askInit(
-			new MockPromptService([ACCEPT_DEFAULT]),
-			context(["default.rogen.json", "arena.rogen.json"]),
-			"arena"
-		);
-
-		expect(conflictsOf(result as never)).toMatchObject([
-			{ code: "init.configExists" },
-		]);
-	});
-
-	it("should resolve undefined when cancelled", async () => {
-		expect(
-			(await askInit(new MockPromptService([CANCEL]), context())).unwrap()
-		).toBeUndefined();
 	});
 });

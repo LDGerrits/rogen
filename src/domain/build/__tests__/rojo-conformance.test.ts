@@ -3,8 +3,10 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
-import { ResolvedConfig } from "../../config/config.js";
-import { CoreOutputService } from "../../output/core-output-service.js";
+import {
+	ResolvedConfigSpec,
+	mockConfig,
+} from "../../config/__tests__/mock-config-service.js";
 import {
 	SourcemapNode,
 	describeWithRojo,
@@ -98,11 +100,11 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Partial<Pick<ResolvedConfig, "routes" | "tags">> = {}
+		overrides: Pick<ResolvedConfigSpec, "routes" | "tags"> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = store.add(new CoreIndexService(fileSystem));
-		const config = {
+		const config = mockConfig({
 			file: path.join(dir, "ours.rogen.json"),
 			name: "t",
 			rootDirs: [path.join(dir, "src")],
@@ -111,13 +113,10 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			exclude: [],
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
-		};
-		const built = (
-			await buildServiceOf(fileSystem, index).build(config)
-		).unwrap();
-		(
-			await new CoreOutputService(fileSystem).write(config, built.tree)
-		).unwrap();
+		});
+		const buildService = buildServiceOf(fileSystem, index);
+		const built = (await buildService.build(config)).unwrap();
+		(await buildService.write(built)).unwrap();
 	};
 
 	it("should place every Rojo-native file as Rojo would", async () => {

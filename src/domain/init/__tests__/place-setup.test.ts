@@ -1,36 +1,21 @@
-import "../../config/config.js";
+import "../../config/config-schema.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
-import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { SCHEMA_URL as SCHEMA } from "../init-files.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import {
-	BaseConfig,
-	PlaceChoices,
-	planPlace,
-	baseConfigOf,
-	planVariant,
-} from "../place-plan.js";
+	WorkspaceSpec,
+	withRobloxTs,
+} from "../../toolchain/__tests__/workspaces.js";
+import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
+import { BaseConfig } from "../init-directory.js";
+import { InitQuestions } from "../init-questions.js";
+import { PlaceChoices, PlaceSetup, VariantSetup } from "../place-setup.js";
+import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
-const directory = path.resolve("/mock/my-game");
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: true,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
-};
-const darklua: DetectedWorkspace = { ...luau, darklua: true };
-const rbxts: DetectedWorkspace = withRobloxTs(
+const luau: WorkspaceSpec = { hasSrc: true };
+const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+const rbxts: WorkspaceSpec = withRobloxTs(
 	{ ...luau, language: "roblox-ts" },
 	{ outDir: "out", tsconfigHasInclude: true }
 );
@@ -38,19 +23,25 @@ const rbxts: DetectedWorkspace = withRobloxTs(
 const choices: PlaceChoices = { name: "lobby", folder: "places/lobby" };
 
 const plan = (
-	workspace: DetectedWorkspace,
+	spec: WorkspaceSpec,
 	base: BaseConfig,
 	existingFiles: readonly string[] = []
-) =>
-	planPlace({
-		choices,
-		base,
-		language: toolchain.getLanguage(workspace.language),
-		darklua: workspace.darklua,
-		workspace,
-		directory,
-		existingFiles: new Set(existingFiles),
-	});
+) => {
+	const target = directoryOf({ workspace: spec, existing: existingFiles });
+	const { workspace } = target;
+	return planOf(
+		PlaceSetup.within(
+			target,
+			{
+				language: workspace.language,
+				darklua: workspace.usesDarklua,
+				base,
+			},
+			choices
+		),
+		target
+	).map(legacyPlan);
+};
 
 const written = (result: ReturnType<typeof plan>) => {
 	const value = result.unwrap();
@@ -68,7 +59,7 @@ const written = (result: ReturnType<typeof plan>) => {
 	};
 };
 
-describe("planPlace", () => {
+describe("PlaceSetup", () => {
 	describe("luau", () => {
 		it("should write one config extending default, with the place folder added", () => {
 			const { configs, tsconfig } = written(
@@ -235,7 +226,7 @@ describe("planPlace", () => {
 			const { configs, tsconfig } = written(
 				plan(
 					withRobloxTs(
-						{ ...rbxts, darklua: true },
+						{ ...rbxts, usesDarklua: true },
 						{ outDir: "build" }
 					),
 					{ rootDirs: ["src"], syncDir: "dist" }
@@ -274,37 +265,10 @@ describe("planPlace", () => {
 			]);
 		});
 
-		it("should hand the compiler the project's language and Darklua choice over what was detected", () => {
-			const roblox = toolchain.getLanguage("roblox-ts");
-			const seen: DetectedWorkspace[] = [];
-			const compiler = {
-				...roblox.compiler!,
-				outDir: (workspace: DetectedWorkspace) => {
-					seen.push(workspace);
-					return "out";
-				},
-			};
-
-			planPlace({
-				choices,
-				base: { rootDirs: ["src"] },
-				language: { ...roblox, compiler },
-				darklua: true,
-				workspace: luau,
-				directory,
-				existingFiles: new Set(),
-			});
-
-			expect(seen[0]).toMatchObject({
-				language: "roblox-ts",
-				darklua: true,
-			});
-		});
-
 		it("should say what Darklua must process on top", () => {
 			const { nextSteps } = written(
 				plan(
-					{ ...rbxts, darklua: true },
+					{ ...rbxts, usesDarklua: true },
 					{ rootDirs: ["src"], syncDir: "dist" }
 				)
 			);
@@ -354,75 +318,20 @@ describe("planPlace", () => {
 	});
 });
 
-describe("baseConfigOf", () => {
-	let fs: MemoryFileSystemService;
-
-	const write = (file: string, content: unknown) =>
-		fs.writeFile(path.join(directory, file), JSON.stringify(content));
-
-	const readBase = async () => {
-		const configService = new CoreConfigService(
-			fs,
-			new MockEnvironmentService({ _: [] }, directory)
+describe("VariantSetup", () => {
+	const variant = async (existing: readonly string[] = []) => {
+		const target = directoryOf({ givenName: "prod", existing });
+		const setup = new VariantSetup(
+			target,
+			new InitQuestions(new MockPromptService([], false))
 		);
-		const entry = await configService.readConfig(
-			path.join(directory, "default.rogen.json")
-		);
-		configService[Symbol.dispose]();
-		return baseConfigOf(entry, directory);
+		return { asked: await setup.ask(), setup, target };
 	};
 
-	beforeEach(async () => {
-		fs = new MemoryFileSystemService();
-		await fs.createDirectory(directory);
-	});
+	it("should write a config that only extends default", async () => {
+		const { setup, target } = await variant();
 
-	it("should read the root dirs of default.rogen.json relative to the directory", async () => {
-		await write("default.rogen.json", { rootDirs: ["src", "shared"] });
-
-		const base = (await readBase()).unwrap();
-
-		expect(base).toEqual({ rootDirs: ["src", "shared"] });
-	});
-
-	it("should read the resolved value through extends, with the parent", async () => {
-		await write("default.rogen.json", {
-			extends: "./source.rogen.json",
-			syncDir: "dist",
-		});
-		await write("source.rogen.json", { rootDirs: ["core"] });
-
-		const base = (await readBase()).unwrap();
-
-		expect(base).toEqual({
-			rootDirs: ["core"],
-			syncDir: "dist",
-			parent: "source.rogen.json",
-		});
-	});
-
-	it("should fail with diagnostics when default.rogen.json is broken", async () => {
-		await fs.writeFile(
-			path.join(directory, "default.rogen.json"),
-			"{ nope"
-		);
-
-		const result = await readBase();
-
-		expect(result.isErr()).toBe(true);
-		expect(
-			(result as ResultError<Diagnostic[]>).error.length
-		).toBeGreaterThan(0);
-	});
-});
-
-describe("planVariant", () => {
-	it("should write a config that only extends default", () => {
-		const plan = planVariant({
-			name: "prod",
-			directory,
-			existingFiles: new Set(),
-		}).unwrap();
+		const plan = legacyPlan(planOf(setup, target).unwrap());
 
 		expect(plan.configs.map(({ fileName }) => fileName)).toEqual([
 			"prod.rogen.json",
@@ -441,13 +350,15 @@ describe("planVariant", () => {
 		});
 	});
 
-	it("should fail when the variant's config exists", () => {
-		const result = planVariant({
-			name: "prod",
-			directory,
-			existingFiles: new Set(["prod.rogen.json"]),
-		});
+	it("should fail when the variant's config exists", async () => {
+		const { asked } = await variant(["prod.rogen.json"]);
 
-		expect(result.isErr()).toBe(true);
+		expect(asked.isErr()).toBe(true);
+	});
+
+	it("should fail when the variant's project file exists", async () => {
+		const { asked } = await variant(["prod.project.json"]);
+
+		expect(asked.isErr()).toBe(true);
 	});
 });

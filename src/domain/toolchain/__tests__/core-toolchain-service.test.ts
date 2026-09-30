@@ -1,11 +1,18 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreToolchainService } from "../core-toolchain-service.js";
-import { RobloxTsFacts } from "../roblox-ts.js";
 import { DetectedWorkspace } from "../toolchain.js";
 
-const facts = (workspace: DetectedWorkspace) =>
-	workspace.languageFacts["roblox-ts"] as RobloxTsFacts;
+const rbxts = (workspace: DetectedWorkspace) =>
+	workspace.languageFor("roblox-ts");
+
+const PLACE = {
+	name: "lobby",
+	rootDirs: ["src", "places/lobby"],
+	sharedRootDirs: ["src"],
+	outDir: "out/lobby",
+	projectFile: "lobby.project.json",
+};
 
 describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
@@ -25,17 +32,19 @@ describe("CoreToolchainService.detect", () => {
 		it("should be luau without darklua when nothing is found", async () => {
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace).toEqual({
-				language: "luau",
-				darklua: false,
+			expect(workspace.language.id).toBe("luau");
+			expect(workspace.languages.map(({ id }) => id)).toEqual([
+				"luau",
+				"roblox-ts",
+			]);
+			expect(workspace).toMatchObject({
+				usesDarklua: false,
 				codeFolders: [],
 				hasSrc: false,
 				packageDirs: new Set(),
 				places: [],
-				languageFacts: {
-					"roblox-ts": { rbxtsScopes: [], hasInclude: false },
-				},
 			});
+			expect(workspace.packageManager).toBeUndefined();
 		});
 
 		it("should detect roblox-ts from tsconfig.json", async () => {
@@ -43,8 +52,8 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.language).toBe("roblox-ts");
-			expect(workspace.darklua).toBe(false);
+			expect(workspace.language.id).toBe("roblox-ts");
+			expect(workspace.usesDarklua).toBe(false);
 		});
 
 		it.each([".darklua.json", ".darklua.json5"])(
@@ -54,9 +63,8 @@ describe("CoreToolchainService.detect", () => {
 
 				const workspace = await toolchain().detect(cwd);
 
-				expect(workspace.language).toBe("luau");
-				expect(workspace.darklua).toBe(true);
-				expect(facts(workspace).outDir).toBeUndefined();
+				expect(workspace.language.id).toBe("luau");
+				expect(workspace.usesDarklua).toBe(true);
 			}
 		);
 
@@ -66,8 +74,8 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.language).toBe("roblox-ts");
-			expect(workspace.darklua).toBe(true);
+			expect(workspace.language.id).toBe("roblox-ts");
+			expect(workspace.usesDarklua).toBe(true);
 		});
 	});
 
@@ -80,21 +88,20 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).outDir).toBe("build");
+			expect(rbxts(workspace).compiler?.outDir).toBe("build");
 		});
 
 		it("should read a tsconfig.json that has comments and trailing commas", async () => {
 			await write(
 				"tsconfig.json",
 				`{
-					// roblox-ts
 					"compilerOptions": { "outDir": "lib", },
 				}`
 			);
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).outDir).toBe("lib");
+			expect(rbxts(workspace).compiler?.outDir).toBe("lib");
 		});
 
 		it.each([
@@ -108,7 +115,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).outDir).toBe("out");
+			expect(rbxts(workspace).compiler?.outDir).toBe("out");
 		});
 	});
 
@@ -119,14 +126,16 @@ describe("CoreToolchainService.detect", () => {
 				JSON.stringify({ compilerOptions: { rootDir: "game" } })
 			);
 
-			expect(facts(await toolchain().detect(cwd)).rootDir).toBe("game");
+			expect(
+				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+			).toBe("game");
 		});
 
 		it("should not report a rootDir when tsconfig.json has none", async () => {
 			await write("tsconfig.json", "{}");
 
 			expect(
-				facts(await toolchain().detect(cwd)).rootDir
+				rbxts(await toolchain().detect(cwd)).configuredRootDir()
 			).toBeUndefined();
 		});
 	});
@@ -135,9 +144,11 @@ describe("CoreToolchainService.detect", () => {
 		it("should report whether tsconfig.json sets include", async () => {
 			await write("tsconfig.json", '{"include":["src"]}');
 
-			expect(
-				facts(await toolchain().detect(cwd)).tsconfigHasInclude
-			).toBe(true);
+			const place = rbxts(
+				await toolchain().detect(cwd)
+			).compiler?.planPlace(PLACE);
+
+			expect(place?.setup).toEqual([]);
 		});
 
 		it("should report a tsconfig.json without include", async () => {
@@ -145,8 +156,13 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).tsconfigHasInclude).toBe(false);
-			expect(facts(workspace).tsBuildInfoFile).toBeUndefined();
+			const place = rbxts(workspace).compiler?.planPlace(PLACE);
+			expect(place?.setup).toEqual([
+				expect.stringContaining(
+					'Add "include": ["src"] to tsconfig.json'
+				),
+			]);
+			expect(place?.files[0].content).not.toContain("tsBuildInfoFile");
 		});
 
 		it("should read compilerOptions.tsBuildInfoFile", async () => {
@@ -155,15 +171,13 @@ describe("CoreToolchainService.detect", () => {
 				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
 			);
 
-			expect(facts(await toolchain().detect(cwd)).tsBuildInfoFile).toBe(
-				"out/tsconfig.tsbuildinfo"
+			const place = rbxts(
+				await toolchain().detect(cwd)
+			).compiler?.planPlace(PLACE);
+
+			expect(place?.files[0].content).toContain(
+				'"tsBuildInfoFile": "out/lobby/tsconfig.tsbuildinfo"'
 			);
-		});
-
-		it("should not report them for luau", async () => {
-			const workspace = await toolchain().detect(cwd);
-
-			expect(facts(workspace).tsconfigHasInclude).toBeUndefined();
 		});
 	});
 
@@ -243,7 +257,7 @@ describe("CoreToolchainService.detect", () => {
 
 				const workspace = await toolchain().detect(cwd);
 
-				expect(workspace.packageManager).toBe(manager);
+				expect(workspace.packageManager?.id).toBe(manager);
 			}
 		);
 
@@ -253,7 +267,7 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(workspace.packageManager).toBe("pesde");
+			expect(workspace.packageManager?.id).toBe("pesde");
 		});
 
 		it("should report the package directories that exist", async () => {
@@ -275,10 +289,17 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).rbxtsScopes).toEqual([
-				"@rbxts",
-				"@flamework",
-			]);
+			expect(
+				rbxts(workspace)
+					.alwaysMounted()
+					.filter(({ installed }) => installed)
+					.map(({ path }) => path)
+			).toEqual(["node_modules/@rbxts"]);
+			expect(
+				rbxts(workspace)
+					.offeredMounts()
+					.map(({ path }) => path)
+			).toEqual(["node_modules/@flamework"]);
 		});
 
 		it("should report whether include exists", async () => {
@@ -286,7 +307,10 @@ describe("CoreToolchainService.detect", () => {
 
 			const workspace = await toolchain().detect(cwd);
 
-			expect(facts(workspace).hasInclude).toBe(true);
+			expect(rbxts(workspace).alwaysMounted()[0]).toMatchObject({
+				path: "include",
+				installed: true,
+			});
 		});
 	});
 
@@ -310,38 +334,6 @@ describe("CoreToolchainService.detect", () => {
 
 describe("CoreToolchainService", () => {
 	const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
-	describe("getLanguages", () => {
-		it("should list Luau first, which is the language assumed when none is detected", () => {
-			expect(toolchain.getLanguages().map(({ id }) => id)).toEqual([
-				"luau",
-				"roblox-ts",
-			]);
-		});
-	});
-
-	describe("getLanguage", () => {
-		it("should find a language by id", () => {
-			expect(toolchain.getLanguage("roblox-ts").compiler?.name).toBe(
-				"roblox-ts"
-			);
-		});
-
-		it("should throw for a language that isn't known", () => {
-			expect(() => toolchain.getLanguage("python")).toThrow(
-				'Language "python" is not registered.'
-			);
-		});
-
-		it("should capitalize Luau route keys and keep roblox-ts keys as written", () => {
-			expect(
-				toolchain.getLanguage("luau").routeKey("serverStorage")
-			).toBe("ServerStorage");
-			expect(
-				toolchain.getLanguage("roblox-ts").routeKey("serverStorage")
-			).toBe("serverStorage");
-		});
-	});
 
 	describe("getSyncTools", () => {
 		it("should list Darklua and roblox-ts", () => {

@@ -1,8 +1,14 @@
+import fs from "fs";
+import path from "path";
+import {
+	SERVICES_ROJO_VERSION,
+	SUPPORTED_SERVICES,
+} from "../../src/domain/roblox/services.js";
 import {
 	ReflectionDatabase,
 	renderServicesModule,
 	selectServices,
-} from "../reflection-database.js";
+} from "../services-module.js";
 
 const database: ReflectionDatabase = [
 	[0, 697],
@@ -17,7 +23,7 @@ const database: ReflectionDatabase = [
 	{},
 ];
 
-describe("domain/roblox/reflection-database", () => {
+describe("scripts/services-module", () => {
 	describe("selectServices", () => {
 		it("should keep classes tagged Service, sorted", () => {
 			expect(selectServices(database)).toEqual(["Teams", "Workspace"]);
@@ -39,7 +45,11 @@ describe("domain/roblox/reflection-database", () => {
 		});
 
 		it("should throw when a reserved service is no longer in the database", () => {
-			const { CorePackages: _, ...rest } = database[1];
+			const rest = Object.fromEntries(
+				Object.entries(database[1]).filter(
+					([name]) => name !== "CorePackages"
+				)
+			);
 			expect(() => selectServices([[0, 697], rest])).toThrow(
 				"CorePackages"
 			);
@@ -64,6 +74,24 @@ describe("domain/roblox/reflection-database", () => {
 			);
 			expect(source).toContain("export type SupportedService");
 			expect(source).toContain("export function isSupportedService");
+		});
+	});
+	describe("services.ts", () => {
+		it("should be the output of the generator, not edited by hand", () => {
+			const file = path.resolve("src/domain/roblox/services.ts");
+			expect(fs.readFileSync(file, "utf8")).toBe(
+				renderServicesModule(SUPPORTED_SERVICES, SERVICES_ROJO_VERSION)
+			);
+		});
+
+		it("should be generated for the pinned Rojo", () => {
+			const manifest = fs.readFileSync(
+				path.resolve("rokit.toml"),
+				"utf8"
+			);
+			expect(manifest).toContain(
+				`rojo-rbx/rojo@${SERVICES_ROJO_VERSION}"`
+			);
 		});
 	});
 });

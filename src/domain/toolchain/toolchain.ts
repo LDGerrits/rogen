@@ -1,31 +1,62 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
 
-export type PackageManager = "wally" | "pesde";
+/** A package manager: where it keeps its manifest and installed packages, and how they mount. */
+export class PackageManager {
+	static readonly WALLY = new PackageManager(
+		"wally",
+		"wally.toml",
+		"Packages",
+		"ServerPackages"
+	);
+	static readonly PESDE = new PackageManager(
+		"pesde",
+		"pesde.toml",
+		"roblox_packages",
+		"roblox_server_packages"
+	);
+	/** In the order they win when a workspace has several manifests. */
+	static readonly PRIORITY: readonly PackageManager[] = [
+		PackageManager.PESDE,
+		PackageManager.WALLY,
+	];
+
+	private static readonly SHARED_LANDING = "ReplicatedStorage/Packages";
+	private static readonly SERVER_LANDING =
+		"ServerScriptService/ServerPackages";
+
+	private constructor(
+		readonly id: string,
+		readonly manifest: string,
+		/** Installed packages every side requires. */
+		readonly shared: string,
+		/** Installed packages only the server requires. */
+		readonly server: string
+	) {}
+
+	/** The folders it offers to mount; a manifest means packages are coming, so they start ticked. */
+	mounts(
+		installedDirs: ReadonlySet<string>,
+		hasManifest: boolean
+	): MountCandidate[] {
+		const offer = (dir: string, landing: string): MountCandidate => {
+			const installed = installedDirs.has(dir);
+			return {
+				path: dir,
+				installed,
+				landing,
+				ticked: installed || hasManifest,
+			};
+		};
+		return [
+			offer(this.shared, PackageManager.SHARED_LANDING),
+			offer(this.server, PackageManager.SERVER_LANDING),
+		];
+	}
+}
 
 /** Where a repo that builds several places keeps each place's own code. */
 export const PLACES_DIR = "places";
-
-/**
- * What `init` found in the workspace: facts only, never decisions. The facts
- * here are the ones every language uses; a language keeps the rest in its own
- * entry of `languageFacts`, which only it reads.
- */
-export interface DetectedWorkspace {
-	/** The detected language's id, or the first language's when none was found. */
-	readonly language: string;
-	readonly darklua: boolean;
-	readonly packageManager?: PackageManager;
-	/** The installed package directories, of any manager. */
-	readonly packageDirs: ReadonlySet<string>;
-	/** Top-level folders holding Luau or TypeScript code, sorted. */
-	readonly codeFolders: readonly string[];
-	readonly hasSrc: boolean;
-	/** The folders directly inside `places/`, sorted. */
-	readonly places: readonly string[];
-	/** What each language read of the workspace, by language id. */
-	readonly languageFacts: Readonly<Record<string, unknown>>;
-}
 
 /** A file `init` writes, relative to the directory it runs in. */
 export interface PlannedFile {
@@ -51,15 +82,6 @@ export interface MountCandidate {
 	readonly ticked: boolean;
 }
 
-export interface LanguageDetection {
-	/** Whether the workspace uses this language. */
-	readonly present: boolean;
-	/** What this language read, whether or not it's present: the user may still pick it. Only this language reads it back. */
-	readonly facts?: unknown;
-	/** Top-level folders holding the language's own files, never offered as code folders. */
-	readonly reservedFolders: readonly string[];
-}
-
 /** What a compiler adds for a place, so it builds that place on its own. */
 export interface CompiledPlace {
 	readonly files: readonly PlannedFile[];
@@ -79,15 +101,14 @@ export interface CompilerPlaceRequest {
 	readonly outDir: string;
 	/** The project file Rojo serves for this place. */
 	readonly projectFile: string;
-	readonly workspace: DetectedWorkspace;
 }
 
-/** A compile step between the root dirs and what Rojo syncs, as roblox-ts has. */
+/** A compile step between the root dirs and what Rojo syncs, as roblox-ts has, as this workspace configures it. */
 export interface Compiler {
 	/** Names the compiler in notes, such as "Syncing from out, where roblox-ts compiles to." */
 	readonly name: string;
-	/** Where it writes, and so what Rojo or a processor reads instead of the root dirs. */
-	outDir(workspace: DetectedWorkspace): string;
+	/** Where it writes here, and so what Rojo or a processor reads instead of the root dirs. */
+	readonly outDir: string;
 	/** Where it writes when its own config doesn't say. */
 	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
@@ -101,10 +122,7 @@ export interface Compiler {
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
 }
 
-/**
- * A language `init` can set up. Everything that differs between Luau and
- * roblox-ts is answered here, so the planner never names a language.
- */
+/** A language `init` can set up, as this workspace uses it; what differs between languages is answered here. */
 export interface Language {
 	readonly id: string;
 	/** As the language question shows it. */
@@ -119,16 +137,94 @@ export interface Language {
 	readonly packagesNote?: string;
 	/** Set when code is compiled before Rojo syncs it. */
 	readonly compiler?: Compiler;
+	/** Whether the workspace uses this language. Whether or not it does, the user may still pick it. */
+	readonly present: boolean;
+	/** Top-level folders holding the language's own files, never offered as code folders. */
+	readonly reservedFolders: readonly string[];
 
-	detect(cwd: string): Promise<LanguageDetection>;
 	/** How a route key is spelled, such as Luau's `Server` or roblox-ts's `server`. */
 	routeKey(id: string): string;
 	/** The root dir the language's own config names, if any; `init` prefers it. */
-	configuredRootDir(workspace: DetectedWorkspace): string | undefined;
+	configuredRootDir(): string | undefined;
 	/** Folders mounted without asking. */
-	alwaysMounted(workspace: DetectedWorkspace): readonly MountCandidate[];
+	alwaysMounted(): readonly MountCandidate[];
 	/** Folders the packages question offers beside the package manager's. */
-	offeredMounts(workspace: DetectedWorkspace): readonly MountCandidate[];
+	offeredMounts(): readonly MountCandidate[];
+}
+
+/** Reads what a workspace holds of one language. */
+export interface LanguageDetector {
+	detect(cwd: string): Promise<Language>;
+}
+
+export interface DetectedWorkspaceFields {
+	readonly darklua: Darklua;
+	/** Every language, as the language question lists them. The first is the one assumed when none is present. */
+	readonly languages: readonly Language[];
+	/** Whether the workspace has a Darklua config. */
+	readonly usesDarklua: boolean;
+	readonly packageManager?: PackageManager;
+	/** The installed package directories, of any manager. */
+	readonly packageDirs: ReadonlySet<string>;
+	/** Top-level folders holding Luau or TypeScript code, sorted. */
+	readonly codeFolders: readonly string[];
+	readonly hasSrc: boolean;
+	/** The folders directly inside `places/`, sorted. */
+	readonly places: readonly string[];
+}
+
+/** What `init` found in the workspace: facts only, never decisions. */
+export class DetectedWorkspace {
+	/** Darklua as this workspace can be set up for it. */
+	readonly darklua: Darklua;
+	readonly languages: readonly Language[];
+	readonly usesDarklua: boolean;
+	readonly packageManager?: PackageManager;
+	readonly packageDirs: ReadonlySet<string>;
+	readonly codeFolders: readonly string[];
+	readonly hasSrc: boolean;
+	readonly places: readonly string[];
+
+	constructor(fields: DetectedWorkspaceFields) {
+		if (fields.languages.length === 0) {
+			throw new Error("A workspace needs at least one language.");
+		}
+		this.darklua = fields.darklua;
+		this.languages = fields.languages;
+		this.usesDarklua = fields.usesDarklua;
+		this.packageManager = fields.packageManager;
+		this.packageDirs = fields.packageDirs;
+		this.codeFolders = fields.codeFolders;
+		this.hasSrc = fields.hasSrc;
+		this.places = fields.places;
+	}
+
+	/** The language the workspace uses, or the first one when it uses none. */
+	get language(): Language {
+		return (
+			this.languages.find(({ present }) => present) ?? this.languages[0]
+		);
+	}
+
+	/** @throws Error if `id` isn't a language Rogen knows, which is a programmer error. */
+	languageFor(id: string): Language {
+		const language = this.languages.find(
+			(candidate) => candidate.id === id
+		);
+		if (!language) throw new Error(`Language "${id}" is not registered.`);
+		return language;
+	}
+
+	/** The package manager's folders, offered for `language`. */
+	packageMounts(language: Language): MountCandidate[] {
+		const manager = this.packageManager ?? language.defaultPackageManager;
+		return (
+			manager?.mounts(
+				this.packageDirs,
+				this.packageManager !== undefined
+			) ?? []
+		);
+	}
 }
 
 /** What a tool writes in place of a `.meta.json`. */
@@ -149,76 +245,22 @@ export interface SyncTool {
 	readonly metaReplacement?: MetaReplacement;
 }
 
-export interface PackageManagerLayout {
-	readonly manifest: string;
-	/** Installed packages every side requires. */
-	readonly shared: string;
-	/** Installed packages only the server requires. */
-	readonly server: string;
-}
-
-export const PACKAGE_MANAGERS: Readonly<
-	Record<PackageManager, PackageManagerLayout>
-> = {
-	wally: {
-		manifest: "wally.toml",
-		shared: "Packages",
-		server: "ServerPackages",
-	},
-	pesde: {
-		manifest: "pesde.toml",
-		shared: "roblox_packages",
-		server: "roblox_server_packages",
-	},
-};
-
-const SHARED_LANDING = "ReplicatedStorage/Packages";
-const SERVER_LANDING = "ServerScriptService/ServerPackages";
-
-/** The package manager's folders, offered for `language`; a manifest means packages are coming, so they start ticked. */
-export function packageMounts(
-	workspace: DetectedWorkspace,
-	language: Language
-): MountCandidate[] {
-	const manager = workspace.packageManager ?? language.defaultPackageManager;
-	if (!manager) return [];
-	const { shared, server } = PACKAGE_MANAGERS[manager];
-	const offer = (dir: string, landing: string): MountCandidate => {
-		const installed = workspace.packageDirs.has(dir);
-		return {
-			path: dir,
-			installed,
-			landing,
-			ticked: installed || workspace.packageManager !== undefined,
-		};
-	};
-	return [offer(shared, SHARED_LANDING), offer(server, SERVER_LANDING)];
-}
-
-/**
- * Darklua, the one processor `init` sets up: it rewrites code into a folder
- * of its own, which becomes the sync dir. A language without a compiler has
- * Darklua read the root dirs themselves, so it also needs a project file
- * rooted at the source to resolve requires from.
- */
-export const Darklua = {
+/** Darklua, the one processor `init` sets up: it writes processed code into the sync dir, which Rojo syncs instead. */
+export class Darklua implements SyncTool {
+	readonly id = "darklua";
 	/** Where Darklua writes unless told otherwise. */
-	defaultSyncDir: "dist",
-	detectedHint: "found .darklua.json",
-	configFiles: [".darklua.json", ".darklua.json5"],
+	readonly defaultSyncDir = "dist";
+	readonly detectedHint = "found .darklua.json";
+	readonly configFiles: readonly string[] = [
+		".darklua.json",
+		".darklua.json5",
+	];
+	readonly metaReplacement: MetaReplacement = {
+		suffix: ".meta.lua",
+		note: "Darklua converts every .meta.json this way.",
+	};
 
-	syncTool: {
-		id: "darklua",
-		metaReplacement: {
-			suffix: ".meta.lua",
-			note: "Darklua converts every .meta.json this way.",
-		},
-	} satisfies SyncTool,
-
-	/**
-	 * One `darklua process` per directory it reads. Each lands at its path
-	 * relative to their common root, which is where the synced project points.
-	 */
+	/** One `darklua process` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
@@ -230,5 +272,5 @@ export const Darklua = {
 			const relative = toPosix(path.relative(common, absolute[index]));
 			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
 		});
-	},
-};
+	}
+}

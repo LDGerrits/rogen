@@ -16,10 +16,9 @@ const layersAbove = {
 const domainModules = {
 	build: ["build-service"],
 	config: ["config", "config-service"],
-	init: ["init-plan", "init-service"],
-	output: ["output", "output-service"],
-	roblox: ["roblox"],
-	rojo: ["rojo-files", "rojo-project"],
+	init: ["init-directory", "init-service"],
+	roblox: ["roblox", "services"],
+	rojo: ["rojo-file", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],
 	watch: ["watch-service", "watch-session"],
 };
@@ -99,18 +98,34 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 				platformImplementationPattern,
 			]),
 		});
+		// A contract must not depend on what it hides.
+		const publicOnly = (module) => ({
+			files: domainModules[module].map(
+				(file) => `src/domain/${module}/${file}.ts`
+			),
+			rules: rule([
+				...patterns,
+				...internalsPatterns(layer, module, depth),
+				platformImplementationPattern,
+				{
+					regex: `^\\./(?!(${domainModules[module].join("|")})\\.js$)`,
+					message: `A public file of ${module} imports only its other public files.`,
+				},
+			]),
+		});
 		return [
 			{
 				files: [`src/${layer}/${folders(depth)}*.ts`],
 				rules: rule(patterns),
 			},
 			...(layer === "domain"
-				? Object.keys(domainModules).map((module) =>
+				? Object.keys(domainModules).flatMap((module) => [
 						internals(
 							[`src/domain/${module}/${folders(depth - 1)}*.ts`],
 							module
-						)
-					)
+						),
+						...(depth === 1 ? [publicOnly(module)] : []),
+					])
 				: layer === "commands"
 					? [internals([`src/commands/${folders(depth)}*.ts`])]
 					: []),

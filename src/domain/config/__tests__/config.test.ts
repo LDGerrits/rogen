@@ -1,124 +1,16 @@
 import fs from "fs";
 import path from "path";
-import "../config.js";
-import { Registry } from "../../../platform/registry/registry.js";
+import { mockConfig } from "./mock-config-service.js";
 import {
-	Extensions,
-	ConfigRegistry,
-} from "../../../platform/config/config-registry.js";
-import { SCHEMA_URL } from "../../init/init-files.js";
-import {
-	RogenConfig,
-	ResolvedConfig,
+	DeclaredKeys,
+	SCHEMA_URL,
 	configFileName,
 	configLabel,
 	rootDirOverlap,
-	schemaChannels,
 	schemaUrlFor,
 } from "../config.js";
 
 describe("domain/config/config", () => {
-	describe("contribution", () => {
-		const registry = Registry.as<ConfigRegistry>(Extensions.Config);
-		const schema = registry.getJsonSchema();
-
-		const ROOT_FIELDS = [
-			"$schema",
-			"extends",
-			"rootDirs",
-			"routes",
-			"tags",
-			"exclude",
-			"template",
-			"syncDir",
-			"outFile",
-		];
-
-		const UNSUPPORTED_FIELDS = [
-			"source",
-			"verbatim",
-			"unwrap",
-			"casing",
-			"aliases",
-			"globIgnorePaths",
-			"luau",
-			"ts",
-			"darklua",
-			"modes",
-			"profiles",
-			"outputs",
-			"sourceProject",
-		];
-
-		describe("schema shape", () => {
-			it("declares exactly the root config fields", () => {
-				expect(Object.keys(schema.properties!).sort()).toEqual(
-					[...ROOT_FIELDS].sort()
-				);
-			});
-
-			it("rejects unknown top-level keys", () => {
-				expect(schema.additionalProperties).toBe(false);
-			});
-
-			it.each(UNSUPPORTED_FIELDS)(
-				"does not declare the unsupported field %s",
-				(field) => {
-					expect(schema.properties![field]).toBeUndefined();
-				}
-			);
-		});
-
-		describe("defaults", () => {
-			it('defaults rootDirs to ["src"]', () => {
-				expect(schema.properties!.rootDirs.default).toEqual(["src"]);
-			});
-
-			it("defaults routes to {}", () => {
-				expect(schema.properties!.routes.default).toEqual({});
-			});
-
-			it("defaults tags to {}", () => {
-				expect(schema.properties!.tags.default).toEqual({});
-			});
-
-			it("defaults exclude to []", () => {
-				expect(schema.properties!.exclude.default).toEqual([]);
-			});
-
-			it("has no static default for template, syncDir or outFile", () => {
-				expect(schema.properties!.template.default).toBeUndefined();
-				expect(schema.properties!.syncDir.default).toBeUndefined();
-				expect(schema.properties!.outFile.default).toBeUndefined();
-			});
-		});
-
-		it("carries a description on every field", () => {
-			for (const field of ROOT_FIELDS) {
-				expect(schema.properties![field].description).toBeTruthy();
-			}
-		});
-
-		it("RogenConfig accepts an entirely absent config (compile-time check)", () => {
-			const raw: RogenConfig = {};
-			expect(raw).toEqual({});
-		});
-
-		it("ResolvedConfig requires no template/syncDir (compile-time check)", () => {
-			const resolved: ResolvedConfig = {
-				file: "/repo/default.rogen.json",
-				name: "repo",
-				rootDirs: ["/repo/src"],
-				routes: {},
-				tags: {},
-				exclude: [],
-				outFile: "/repo/default.project.json",
-			};
-			expect(resolved.template).toBeUndefined();
-			expect(resolved.syncDir).toBeUndefined();
-		});
-	});
-
 	describe("configFileName and configLabel", () => {
 		it("should add the suffix to a stem", () => {
 			expect(configFileName("lobby")).toBe("lobby.rogen.json");
@@ -157,57 +49,6 @@ describe("domain/config/config", () => {
 		});
 	});
 
-	describe("schemaChannels", () => {
-		it("should publish a stable release under its version, its major and latest", () => {
-			expect(schemaChannels("2.1.0")).toEqual(["2.1.0", "2", "latest"]);
-		});
-
-		it("should publish a pre-release only under its exact version", () => {
-			expect(schemaChannels("2.0.0-beta.1")).toEqual(["2.0.0-beta.1"]);
-		});
-
-		it("should publish every channel when nothing newer is published", () => {
-			expect(schemaChannels("2.1.0", ["2.0.0", "2.0.1"])).toEqual([
-				"2.1.0",
-				"2",
-				"latest",
-			]);
-		});
-
-		it("should not move the major or latest back for an older patch", () => {
-			expect(schemaChannels("2.0.5", ["2.0.0", "2.1.0"])).toEqual([
-				"2.0.5",
-			]);
-		});
-
-		it("should still move the major for a patch to an older major", () => {
-			expect(schemaChannels("2.0.5", ["2.0.0", "3.0.0"])).toEqual([
-				"2.0.5",
-				"2",
-			]);
-		});
-
-		it("should compare published versions numerically rather than as text", () => {
-			expect(schemaChannels("2.9.0", ["2.10.0"])).toEqual(["2.9.0"]);
-		});
-
-		it("should ignore published pre-releases", () => {
-			expect(schemaChannels("2.0.0", ["2.1.0-beta.1"])).toEqual([
-				"2.0.0",
-				"2",
-				"latest",
-			]);
-		});
-
-		it("should republish the same version's channels", () => {
-			expect(schemaChannels("2.1.0", ["2.1.0"])).toEqual([
-				"2.1.0",
-				"2",
-				"latest",
-			]);
-		});
-	});
-
 	describe("schemaUrlFor", () => {
 		it("should point a stable release at its major", () => {
 			expect(schemaUrlFor("2.1.0")).toBe(
@@ -226,6 +67,171 @@ describe("domain/config/config", () => {
 				version: string;
 			};
 			expect(SCHEMA_URL).toBe(schemaUrlFor(pkg.version));
+		});
+	});
+
+	describe("DeclaredKeys", () => {
+		const routes = new DeclaredKeys(["server", "client", "shared"], []);
+		const withTags = new DeclaredKeys(
+			["server", "client", "shared"],
+			["mock", "debug"]
+		);
+
+		it("should hold every key except the fallback route, which no name can spell", () => {
+			const keys = new DeclaredKeys(["*", "server"], ["mock"]);
+
+			expect([...keys.routeKeys]).toEqual(["server"]);
+			expect([...keys.tagKeys]).toEqual(["mock"]);
+			expect([...keys.all]).toEqual(["server", "mock"]);
+		});
+
+		describe("resolve", () => {
+			it("should match a name spelled exactly like a declared key", () => {
+				expect(routes.resolve("server")).toBe("server");
+			});
+
+			it("should match with the first letter in the other case and report the declared key", () => {
+				expect(routes.resolve("Server")).toBe("server");
+				expect(new DeclaredKeys(["Server"], []).resolve("server")).toBe(
+					"Server"
+				);
+			});
+
+			it("should not match any other difference in case", () => {
+				expect(routes.resolve("SERVER")).toBeUndefined();
+				expect(routes.resolve("sERVER")).toBeUndefined();
+			});
+
+			it("should not match an undeclared name or an empty one", () => {
+				expect(routes.resolve("Inventory")).toBeUndefined();
+				expect(routes.resolve("")).toBeUndefined();
+			});
+
+			it("should tell a route from a tag", () => {
+				expect(withTags.resolveRoute("mock")).toBeUndefined();
+				expect(withTags.resolveTag("mock")).toBe("mock");
+				expect(withTags.resolveRoute("Server")).toBe("server");
+				expect(withTags.resolveTag("server")).toBeUndefined();
+				expect(withTags.resolve("Mock")).toBe("mock");
+			});
+		});
+
+		describe("nearMiss", () => {
+			it("should name the key a name only differs from beyond the first letter", () => {
+				expect(routes.nearMiss("SERVER")).toBe("server");
+				expect(routes.nearMiss("sERVER")).toBe("server");
+			});
+
+			it("should ignore a name that matches, including with the first letter flipped", () => {
+				expect(routes.nearMiss("server")).toBeUndefined();
+				expect(routes.nearMiss("Server")).toBeUndefined();
+			});
+
+			it("should ignore an unrelated name", () => {
+				expect(routes.nearMiss("Inventory")).toBeUndefined();
+			});
+		});
+
+		it("should say which keys are tags", () => {
+			expect(withTags.isTag("mock")).toBe(true);
+			expect(withTags.isTag("server")).toBe(false);
+		});
+
+		it("should share an identity between keys that differ only in the first letter", () => {
+			expect(DeclaredKeys.identityOf("Server")).toBe(
+				DeclaredKeys.identityOf("server")
+			);
+			expect(DeclaredKeys.identityOf("Server")).not.toBe(
+				DeclaredKeys.identityOf("Servers")
+			);
+		});
+
+		it("should flip the first letter", () => {
+			expect(DeclaredKeys.flipFirstLetter("server")).toBe("Server");
+			expect(DeclaredKeys.flipFirstLetter("Server")).toBe("server");
+		});
+
+		it.each(["a", "Server", "level2"])(
+			"should accept %j as a name",
+			(text) => {
+				expect(DeclaredKeys.isName(text)).toBe(true);
+			}
+		);
+
+		it.each(["", "2fast", "a-b", "a b", "*"])(
+			"should reject %j as a name",
+			(text) => {
+				expect(DeclaredKeys.isName(text)).toBe(false);
+			}
+		);
+	});
+
+	describe("ResolvedConfig", () => {
+		it("should be asked for by the name of its file", () => {
+			expect(mockConfig({ file: "/repo/lobby.rogen.json" }).label).toBe(
+				"lobby"
+			);
+		});
+
+		it("should build in the directory of its project file", () => {
+			expect(
+				mockConfig({ outFile: "/repo/out/game.project.json" })
+					.projectDir
+			).toBe("/repo/out");
+		});
+
+		it("should share the deepest directory of its root dirs", () => {
+			expect(
+				mockConfig({ rootDirs: ["/repo/a/x", "/repo/a/y"] }).commonRoot
+			).toBe("/repo/a");
+			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
+		});
+
+		it("should list the tags that are on", () => {
+			expect(
+				mockConfig({ tags: { mock: true, debug: false } }).enabledTags
+			).toEqual(["mock"]);
+		});
+
+		it("should know its declared keys from its routes and tags", () => {
+			const { keys } = mockConfig({
+				routes: {
+					"*": "ReplicatedStorage",
+					server: "ServerScriptService",
+				},
+				tags: { mock: true },
+			});
+
+			expect([...keys.routeKeys]).toEqual(["server"]);
+			expect([...keys.tagKeys]).toEqual(["mock"]);
+		});
+	});
+
+	describe("ResolvedTemplate", () => {
+		const template = (
+			project: Record<string, unknown>,
+			file = "/repo/t.json"
+		) => mockConfig({ template: { file, project } }).template!;
+
+		it("should equal a template with the same file and project", () => {
+			expect(template({ tree: {} }).equals(template({ tree: {} }))).toBe(
+				true
+			);
+		});
+
+		it("should differ when the project or its file does", () => {
+			expect(
+				template({ tree: {} }).equals(template({ tree: { A: {} } }))
+			).toBe(false);
+			expect(
+				template({ tree: {} }).equals(
+					template({ tree: {} }, "/repo/u.json")
+				)
+			).toBe(false);
+		});
+
+		it("should differ from no template", () => {
+			expect(template({ tree: {} }).equals(undefined)).toBe(false);
 		});
 	});
 });

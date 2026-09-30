@@ -38,13 +38,11 @@ import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
-import { CoreOutputService } from "./domain/output/core-output-service.js";
-import { OutputService } from "./domain/output/output-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
-import "./domain/config/config.js";
+import "./domain/config/config-schema.js";
 import "./commands/build/build-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
@@ -167,8 +165,6 @@ async function main(): Promise<void> {
 				configService
 			)
 		);
-		const outputService = new CoreOutputService(fileSystemService);
-		services.set(OutputService, outputService);
 		services.set(
 			ProductService,
 			new CoreProductService(fileSystemService, import.meta.dirname)
@@ -187,8 +183,7 @@ async function main(): Promise<void> {
 				reconciliationService,
 				configService,
 				indexService,
-				buildService,
-				outputService
+				buildService
 			)
 		);
 
