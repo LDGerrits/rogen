@@ -16,7 +16,7 @@ const layersAbove = {
 const domainModules = {
 	build: ["build-service"],
 	config: ["config", "config-service"],
-	init: ["init-plan", "init-service"],
+	init: ["init-directory", "init-service"],
 	roblox: ["roblox"],
 	rojo: ["rojo-file", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],

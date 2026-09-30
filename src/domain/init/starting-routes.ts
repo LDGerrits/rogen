@@ -1,3 +1,4 @@
+import { DeclaredKeys } from "../config/config.js";
 import { Language } from "../toolchain/toolchain.js";
 
 export type RouteId =
@@ -58,35 +59,43 @@ const ROUTES: readonly RouteTemplate[] = [
 	},
 ];
 
-export const DEFAULT_ROUTES: readonly RouteId[] = ROUTES.filter(
-	({ ticked }) => ticked
-).map(({ id }) => id);
+/** The routes `init` offers to write, spelled the way `language` spells route keys. */
+export class StartingRoutes {
+	/** The routes that start ticked. */
+	static readonly DEFAULT: readonly RouteId[] = ROUTES.filter(
+		({ ticked }) => ticked
+	).map(({ id }) => id);
 
-export const sharedTarget = (language: Language): string =>
-	`ReplicatedStorage/${language.routeKey("shared")}`;
+	constructor(private readonly language: Language) {}
 
-export const routeOptions = (language: Language): RouteOption[] =>
-	ROUTES.map(({ id, target, hint, ticked }) => ({
-		id,
-		key: language.routeKey(id),
-		target: target ?? sharedTarget(language),
-		hint,
-		ticked,
-	}));
+	/** Where files that match no route go. */
+	get sharedTarget(): string {
+		return `ReplicatedStorage/${this.language.routeKey("shared")}`;
+	}
 
-/** With no route ticked the fallback is written anyway, because a config with no routes can't build. */
-export function startingRoutes(
-	language: Language,
-	ticked: readonly RouteId[],
-	fallback: boolean
-): Record<string, string> {
-	const routes = routeOptions(language).filter(({ id }) =>
-		ticked.includes(id)
-	);
-	return {
-		...Object.fromEntries(routes.map(({ key, target }) => [key, target])),
-		...((fallback || routes.length === 0) && {
-			"*": sharedTarget(language),
-		}),
-	};
+	get options(): RouteOption[] {
+		return ROUTES.map(({ id, target, hint, ticked }) => ({
+			id,
+			key: this.language.routeKey(id),
+			target: target ?? this.sharedTarget,
+			hint,
+			ticked,
+		}));
+	}
+
+	/** With no route ticked the fallback is written anyway, because a config with no routes can't build. */
+	starting(
+		ticked: readonly RouteId[],
+		fallback: boolean
+	): Record<string, string> {
+		const routes = this.options.filter(({ id }) => ticked.includes(id));
+		return {
+			...Object.fromEntries(
+				routes.map(({ key, target }) => [key, target])
+			),
+			...((fallback || routes.length === 0) && {
+				[DeclaredKeys.FALLBACK_ROUTE]: this.sharedTarget,
+			}),
+		};
+	}
 }

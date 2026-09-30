@@ -181,6 +181,8 @@ export interface DetectedWorkspaceFields {
 
 /** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
+	/** Darklua as this workspace can be set up for it. */
+	readonly darklua = new Darklua();
 	readonly languages: readonly Language[];
 	readonly usesDarklua: boolean;
 	readonly packageManager?: PackageManager;

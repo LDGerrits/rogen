@@ -1,6 +1,5 @@
 import { ok, err } from "../../base/result.js";
 import { CancelledError } from "../../base/errors.js";
-import { plannedFiles } from "../../domain/init/init-plan.js";
 import { InitService, NextSteps } from "../../domain/init/init-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -46,11 +45,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const logService = accessor.get(LogService);
 		const promptService = accessor.get(PromptService);
 
-		const request = await initService.prepare(args._.slice(1));
-		if (request.isErr()) return request;
+		const directory = await initService.prepare(args._.slice(1));
+		if (directory.isErr()) return directory;
 
 		logService.intro("rogen init");
-		const planned = await initService.plan(request.value);
+		const planned = await initService.plan(directory.value);
 		if (planned.isErr()) return err(new DiagnosticsError(planned.error));
 		const plan = planned.value;
 		if (!plan) return err(new CancelledError("init cancelled."));
@@ -58,16 +57,14 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		// A blank gutter line sets the results apart from the last answer.
 		if (promptService.isInteractive) logService.info("");
 		for (const note of plan.notes) logService.info(note);
-		const written = await initService.write(
-			request.value,
-			plan,
-			(fileName) => logService.success(`Created ${fileName}.`)
+		const written = await initService.write(plan, (fileName) =>
+			logService.success(`Created ${fileName}.`)
 		);
 		if (written.isErr()) return written;
 
 		logService.step("Next steps");
 		for (const line of renderSteps(plan.nextSteps)) logService.info(line);
-		const count = plannedFiles(plan).length;
+		const count = plan.files.length;
 		logService.outro(`Wrote ${count} ${count === 1 ? "file" : "files"}.`);
 		return ok(undefined);
 	},
