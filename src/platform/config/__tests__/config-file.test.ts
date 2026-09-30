@@ -1,4 +1,4 @@
-import { readConfigFile } from "../config-file.js";
+import { ConfigFileFailure, ConfigFileReader } from "../config-file.js";
 import { ConfigRegistry, Extensions } from "../config-registry.js";
 import { Result, ResultError } from "../../../base/result.js";
 import {
@@ -11,8 +11,9 @@ import { Registry } from "../../registry/registry.js";
 const FILE = "/repo/a.json";
 
 describe("platform/config/config-file", () => {
-	describe("readConfigFile", () => {
+	describe("ConfigFileReader", () => {
 		let fs: MemoryFileSystemService;
+		let reader: ConfigFileReader;
 
 		beforeAll(() => {
 			Registry.as<ConfigRegistry>(Extensions.Config).registerConfig({
@@ -36,17 +37,19 @@ describe("platform/config/config-file", () => {
 
 		beforeEach(async () => {
 			fs = new MemoryFileSystemService();
+			reader = new ConfigFileReader(fs);
 			await fs.createDirectory("/repo");
 		});
 
 		const read = async (text: string) => {
 			await fs.writeFile(FILE, text);
-			return readConfigFile(fs, FILE);
+			return reader.read(FILE);
 		};
 
 		const diagnosticsOf = (
-			result: Result<unknown, Diagnostic[]>
-		): Diagnostic[] => (result as ResultError<Diagnostic[]>).error;
+			result: Result<unknown, ConfigFileFailure>
+		): readonly Diagnostic[] =>
+			(result as ResultError<ConfigFileFailure>).error.diagnostics;
 
 		it("should parse comments and trailing commas", async () => {
 			const result = await read(`{
@@ -75,7 +78,7 @@ describe("platform/config/config-file", () => {
 		});
 
 		it("should report a missing file as a diagnostic instead of throwing", async () => {
-			const result = await readConfigFile(fs, "/repo/nope.json");
+			const result = await reader.read("/repo/nope.json");
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
@@ -85,6 +88,18 @@ describe("platform/config/config-file", () => {
 					position: { line: 1, column: 1 },
 				},
 			]);
+		});
+
+		it("should tell a file it couldn't read from one that is wrong", async () => {
+			const unreadable = await reader.read("/repo/nope.json");
+			const invalid = await read("garbage");
+
+			expect(
+				(unreadable as ResultError<ConfigFileFailure>).error.kind
+			).toBe("unreadable");
+			expect((invalid as ResultError<ConfigFileFailure>).error.kind).toBe(
+				"invalid"
+			);
 		});
 
 		it("should report a syntax error with its file, line and column", async () => {

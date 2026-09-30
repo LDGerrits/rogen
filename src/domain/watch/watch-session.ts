@@ -10,11 +10,7 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
 import { BuildService, BuildSummary } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigEntry,
-	ConfigService,
-	resolvedConfigs,
-} from "../config/config-service.js";
+import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { OutputService } from "../output/output-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { PrintedDiagnostics } from "./printed-diagnostics.js";
@@ -114,7 +110,9 @@ export class WatchSession extends AbstractDisposable {
 	}
 
 	private get currentConfigs(): ResolvedConfig[] {
-		return resolvedConfigs(this.configService.configs);
+		return this.configService
+			.getResolvedEntries()
+			.map(({ config }) => config);
 	}
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
@@ -191,9 +189,7 @@ export class WatchSession extends AbstractDisposable {
 		file: string,
 		load: boolean
 	): Promise<RebuildReport | undefined> {
-		const entry = this.configService.configs.find(
-			(candidate) => candidate.file === file
-		);
+		const entry = this.configService.getConfig(file);
 		const config = entry?.resolved;
 		if (!entry || !config) return undefined;
 		const failed = (diagnostics: readonly Diagnostic[]): RebuildReport => ({

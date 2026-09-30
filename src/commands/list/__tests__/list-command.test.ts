@@ -1,5 +1,5 @@
 import "../list-command.js";
-import "../../../domain/config/config.js";
+import "../../../domain/config/config-schema.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { Result, ResultError } from "../../../base/result.js";
 import { ConfigService } from "../../../domain/config/config-service.js";

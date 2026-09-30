@@ -10,7 +10,9 @@ export function templateProject(
 	projectDir: string
 ): RojoProject {
 	const { template } = config;
-	const tree = template?.project.tree ?? { $className: "DataModel" };
+	const tree = template?.project.getTree().tree ?? {
+		$className: "DataModel",
+	};
 	const rebased = new RojoProject(
 		{ name: config.name, tree },
 		generatedContainer

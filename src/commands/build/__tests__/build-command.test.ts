@@ -12,7 +12,7 @@ import {
 import { BuildService } from "../../../domain/build/build-service.js";
 import { CoreOutputService } from "../../../domain/output/core-output-service.js";
 import { OutputService } from "../../../domain/output/output-service.js";
-import { ResolvedConfig } from "../../../domain/config/config.js";
+import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config-service.js";
 import {
 	ConfigEntry,
 	ConfigService,
@@ -71,7 +71,7 @@ describe("build command", () => {
 	};
 
 	const buildable = (
-		overrides: Partial<ResolvedConfig> = {},
+		overrides: ResolvedConfigSpec = {},
 		file = "/repo/default.rogen.json"
 	) =>
 		mockEntry(

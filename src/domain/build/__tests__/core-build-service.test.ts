@@ -1,13 +1,10 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import {
-	DiagnosticSeverity,
-	errorDiagnostic,
-} from "../../../platform/diagnostics/diagnostic.js";
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { ConfigEntry } from "../../config/config-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
@@ -102,17 +99,6 @@ describe("CoreBuildService", () => {
 			).toEqual(["scan.missingRootDir", "route.unrouted"]);
 		});
 
-		it("should fail when a route targets an unsupported service", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-			const config = configOf({ routes: { "*": "Nowhere" } });
-
-			const result = await buildOf(config);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "roblox.unsupportedService" },
-			]);
-		});
-
 		it("should emit a linked directory under its link path", async () => {
 			await fs.writeFile(abs("shared/Util.luau"), "");
 			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
@@ -161,7 +147,7 @@ describe("CoreBuildService", () => {
 		describe("unclaimed meta", () => {
 			const warningsFor = async (
 				files: readonly string[],
-				overrides: Partial<ResolvedConfig> = {}
+				overrides: ResolvedConfigSpec = {}
 			) => {
 				for (const file of files)
 					await fs.writeFile(
@@ -506,16 +492,8 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("checkBuildable", () => {
-		const entryOf = (config: ResolvedConfig): ConfigEntry =>
-			new ConfigEntry({
-				file: config.file,
-				chain: [config.file],
-				resolved: config,
-				diagnostics: [],
-				skippedTags: [],
-			});
 		const check = (...configs: ResolvedConfig[]) =>
-			buildServiceOfFs().checkBuildable(configs.map(entryOf));
+			buildServiceOfFs().checkBuildable(configs);
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
 			if (result.isOk()) throw new Error("Expected the check to fail.");
 			return result.error.diagnostics;
@@ -550,39 +528,8 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should refuse a config that failed to load", () => {
-			const broken = new ConfigEntry({
-				file: abs("broken.rogen.json"),
-				chain: [abs("broken.rogen.json")],
-				resolved: undefined,
-				diagnostics: [
-					errorDiagnostic(
-						"config.invalidSyntax",
-						{ resource: abs("broken.rogen.json") },
-						"bad"
-					),
-				],
-				skippedTags: [],
-			});
-
-			const result = buildServiceOfFs().checkBuildable([
-				entryOf(configOf()),
-				broken,
-			]);
-
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "config.invalidSyntax" },
-			]);
-		});
-
-		it("should return each config with its entry when all can be built", () => {
-			const config = configOf();
-
-			const result = check(config);
-
-			expect(result.unwrap()).toEqual([
-				{ entry: entryOf(config), config },
-			]);
+		it("should pass configs that can all be built", () => {
+			expect(check(configOf()).isOk()).toBe(true);
 		});
 	});
 });

@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import "../../config/config.js";
+import "../../config/config-schema.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";

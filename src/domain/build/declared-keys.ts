@@ -1,26 +1,7 @@
 import { capitalized } from "../../base/string.js";
-import { ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys } from "../config/config.js";
 
 const SEPARATOR_CHARS = "+._@-";
-
-export const FALLBACK_ROUTE = "*";
-
-export interface DeclaredKeys {
-	/** Every route key but `*`, which no name can spell. */
-	readonly routeKeys: ReadonlySet<string>;
-	readonly tagKeys: ReadonlySet<string>;
-	readonly all: ReadonlySet<string>;
-}
-
-export function declaredKeysOf(
-	config: Pick<ResolvedConfig, "routes" | "tags">
-): DeclaredKeys {
-	const routeKeys = new Set(
-		Object.keys(config.routes).filter((key) => key !== FALLBACK_ROUTE)
-	);
-	const tagKeys = new Set(Object.keys(config.tags));
-	return { routeKeys, tagKeys, all: new Set([...routeKeys, ...tagKeys]) };
-}
 
 const INVISIBLE_FOLDER = /^\((.+)\)$/;
 
@@ -50,36 +31,14 @@ export type FolderReading =
 /** Whether a folder routes, carries a tag or is ordinary; parentheses come off first. */
 export function readFolderName(
 	folderName: string,
-	routeKeys: ReadonlySet<string>,
-	tagKeys: ReadonlySet<string>
+	keys: DeclaredKeys
 ): FolderReading {
 	const { name, invisible } = unwrapInvisibleFolder(folderName);
-	const route = matchFolderKey(name, routeKeys);
+	const route = keys.resolveRoute(name);
 	if (route) return { kind: "route", key: route, invisible };
-	const tag = matchFolderKey(name, tagKeys);
+	const tag = keys.resolveTag(name);
 	if (tag) return { kind: "tag", key: tag, invisible };
 	return { kind: "plain", name, invisible };
-}
-
-/** The same name with the first letter in the other case. */
-export function withFirstLetterFlipped(name: string): string {
-	const first = name[0];
-	const flipped =
-		first === first.toLowerCase()
-			? first.toUpperCase()
-			: first.toLowerCase();
-	return flipped + name.slice(1);
-}
-
-/** The declared key that `name` spells exactly or with the first letter in the other case. */
-function resolveKey(
-	name: string,
-	declaredKeys: ReadonlySet<string>
-): string | undefined {
-	if (name === "") return undefined;
-	if (declaredKeys.has(name)) return name;
-	const flipped = withFirstLetterFlipped(name);
-	return declaredKeys.has(flipped) ? flipped : undefined;
 }
 
 /** The letter or digit that a capital-letter suffix has to start after. */
@@ -87,29 +46,12 @@ function isWordEnd(ch: string | undefined): boolean {
 	return ch !== undefined && /[a-z0-9]/.test(ch);
 }
 
-/** The declared key that `name` only differs from beyond the first letter's case, if `name` doesn't match. */
-export function matchKeyIgnoringCase(
-	name: string,
-	declaredKeys: ReadonlySet<string>
-): string | undefined {
-	if (resolveKey(name, declaredKeys) !== undefined) return undefined;
-	const lower = name.toLowerCase();
-	return [...declaredKeys].find((key) => key.toLowerCase() === lower);
-}
-
-export function matchFolderKey(
-	folderName: string,
-	declaredKeys: ReadonlySet<string>
-): string | undefined {
-	return resolveKey(folderName, declaredKeys);
-}
-
 export function matchMarkerKey(
 	fileName: string,
-	declaredKeys: ReadonlySet<string>
+	keys: DeclaredKeys
 ): string | undefined {
 	if (!fileName.startsWith(".") || fileName.length < 2) return undefined;
-	return resolveKey(fileName.slice(1), declaredKeys);
+	return keys.resolve(fileName.slice(1));
 }
 
 export type SuffixForm = "separator" | "capital";
@@ -124,7 +66,7 @@ function findSeparatorMatch(
 	key: string
 ): SuffixCandidate | undefined {
 	for (const sep of SEPARATOR_CHARS) {
-		for (const spelling of [key, withFirstLetterFlipped(key)]) {
+		for (const spelling of [key, DeclaredKeys.flipFirstLetter(key)]) {
 			if (remaining.endsWith(sep + spelling)) {
 				return {
 					strippedLength: sep.length + spelling.length,

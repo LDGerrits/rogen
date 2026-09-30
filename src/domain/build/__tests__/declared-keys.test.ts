@@ -1,8 +1,8 @@
+import { DeclaredKeys } from "../../config/config.js";
 import {
-	matchFolderKey,
-	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
+	readFolderName,
 	unwrapInvisibleFolder,
 } from "../declared-keys.js";
 
@@ -14,50 +14,32 @@ const ROUTES_AND_TAGS = new Set([
 	"mock",
 	"debug",
 ]);
-
-describe("matchFolderKey", () => {
-	it("matches a folder named exactly after a declared key", () => {
-		expect(matchFolderKey("server", ROUTES)).toBe("server");
-	});
-
-	it("matches with the first letter in the other case and reports the declared key", () => {
-		expect(matchFolderKey("Server", ROUTES)).toBe("server");
-		expect(matchFolderKey("server", new Set(["Server"]))).toBe("Server");
-	});
-
-	it("does not match any other difference in case", () => {
-		expect(matchFolderKey("SERVER", ROUTES)).toBeUndefined();
-		expect(matchFolderKey("sERVER", ROUTES)).toBeUndefined();
-	});
-
-	it("does not match an undeclared name", () => {
-		expect(matchFolderKey("Inventory", ROUTES)).toBeUndefined();
-	});
-});
+const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
+const ALL_KEYS = new DeclaredKeys(ROUTES, ["mock", "debug"]);
 
 describe("matchMarkerKey", () => {
 	it("matches a marker file named after a declared key", () => {
-		expect(matchMarkerKey(".server", ROUTES)).toBe("server");
+		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("matches a tag marker", () => {
-		expect(matchMarkerKey(".mock", ROUTES_AND_TAGS)).toBe("mock");
+		expect(matchMarkerKey(".mock", ALL_KEYS)).toBe("mock");
 	});
 
 	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey(".Server", ROUTES)).toBe("server");
+		expect(matchMarkerKey(".Server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("does not match any other difference in case", () => {
-		expect(matchMarkerKey(".SERVER", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey(".SERVER", ROUTE_KEYS)).toBeUndefined();
 	});
 
 	it("ignores a name that doesn't start with a dot", () => {
-		expect(matchMarkerKey("server", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey("server", ROUTE_KEYS)).toBeUndefined();
 	});
 
 	it("ignores a bare dot", () => {
-		expect(matchMarkerKey(".", ROUTES)).toBeUndefined();
+		expect(matchMarkerKey(".", ROUTE_KEYS)).toBeUndefined();
 	});
 });
 
@@ -189,22 +171,6 @@ describe("matchSuffixKeys", () => {
 	});
 });
 
-describe("matchKeyIgnoringCase", () => {
-	it("returns the declared key that a name only differs from beyond the first letter", () => {
-		expect(matchKeyIgnoringCase("SERVER", ROUTES)).toBe("server");
-		expect(matchKeyIgnoringCase("sERVER", ROUTES)).toBe("server");
-	});
-
-	it("ignores a name that matches, including with the first letter flipped", () => {
-		expect(matchKeyIgnoringCase("server", ROUTES)).toBeUndefined();
-		expect(matchKeyIgnoringCase("Server", ROUTES)).toBeUndefined();
-	});
-
-	it("ignores an unrelated name", () => {
-		expect(matchKeyIgnoringCase("Inventory", ROUTES)).toBeUndefined();
-	});
-});
-
 describe("unwrapInvisibleFolder", () => {
 	it("removes the parentheses and marks the folder invisible", () => {
 		expect(unwrapInvisibleFolder("(mock)")).toEqual({
@@ -226,5 +192,39 @@ describe("unwrapInvisibleFolder", () => {
 				name,
 				invisible: false,
 			});
+	});
+});
+
+describe("readFolderName", () => {
+	it("should read a folder named after a route as that route", () => {
+		expect(readFolderName("Server", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: false,
+		});
+	});
+
+	it("should read a folder named after a tag as that tag", () => {
+		expect(readFolderName("mock", ALL_KEYS)).toEqual({
+			kind: "tag",
+			key: "mock",
+			invisible: false,
+		});
+	});
+
+	it("should read parentheses off first and mark the folder invisible", () => {
+		expect(readFolderName("(server)", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: true,
+		});
+	});
+
+	it("should read any other folder as plain", () => {
+		expect(readFolderName("Inventory", ALL_KEYS)).toEqual({
+			kind: "plain",
+			name: "Inventory",
+			invisible: false,
+		});
 	});
 });

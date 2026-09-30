@@ -1,9 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { err, ok } from "../../base/result.js";
-import {
-	ConfigService,
-	brokenConfigsError,
-} from "../../domain/config/config-service.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -53,13 +50,13 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 						`root dirs: ${list(config.rootDirs.map(relative))}`,
 						`sync dir: ${list(config.syncDir ? [relative(config.syncDir)] : [])}`,
 						`project file: ${relative(config.outFile)}`,
-						`tags: ${list(Object.keys(config.tags).filter((tag) => config.tags[tag]))}`,
+						`tags: ${list(config.enabledTags)}`,
 					].join("\n")
 				);
 			}
 		}
 
-		const broken = brokenConfigsError(configService.configs);
+		const broken = configService.getBrokenError();
 		if (broken) return err(broken);
 
 		const count = configService.configs.length;

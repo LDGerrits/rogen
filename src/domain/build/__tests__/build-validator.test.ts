@@ -1,6 +1,7 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { BuildValidator } from "../build-validator.js";
@@ -66,7 +67,7 @@ describe("BuildValidator", () => {
 
 	describe("checkSyncDir", () => {
 		const emittedConfigOf = (
-			overrides: Partial<ResolvedConfig> = {}
+			overrides: ResolvedConfigSpec = {}
 		): ResolvedConfig =>
 			baseConfigOf({ syncDir: abs("out"), ...overrides });
 
@@ -196,7 +197,7 @@ describe("BuildValidator", () => {
 		});
 
 		const distConfigOf = (
-			overrides: Partial<ResolvedConfig> = {}
+			overrides: ResolvedConfigSpec = {}
 		): ResolvedConfig =>
 			baseConfigOf({ syncDir: abs("dist"), ...overrides });
 
@@ -207,7 +208,7 @@ describe("BuildValidator", () => {
 			const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 			const check = async (
-				overrides: Partial<ResolvedConfig> = {},
+				overrides: ResolvedConfigSpec = {},
 				tools: readonly SyncTool[] = syncTools
 			) => {
 				const config = distConfigOf(overrides);

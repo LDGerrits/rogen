@@ -10,6 +10,7 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { PlacedBuild, ScannedRoot } from "../build-record.js";
 import { placeFiles } from "../placement.js";
@@ -52,30 +53,6 @@ describe("placeFiles", () => {
 
 			expect(result.isErr() ? result.error : []).toMatchObject([
 				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
-			]);
-		});
-
-		it("should report every route whose target's service is unsupported", () => {
-			const result = prepare(
-				{
-					routes: {
-						server: "Nowhere",
-						client: "Elsewhere/x",
-						"*": "Workspace",
-					},
-				},
-				untouchedIndex
-			);
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{
-					code: "roblox.unsupportedService",
-					resource: abs("default.project.json"),
-				},
-				{
-					code: "roblox.unsupportedService",
-					resource: abs("default.project.json"),
-				},
 			]);
 		});
 
@@ -845,7 +822,7 @@ describe("placeFiles", () => {
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-		const read = async (overrides: Partial<ResolvedConfig> = {}) => {
+		const read = async (overrides: ResolvedConfigSpec = {}) => {
 			const config = configOf({
 				routes: {
 					server: "ServerScriptService",
@@ -1035,7 +1012,7 @@ describe("placeFiles", () => {
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 		const route = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			rootDirs: readonly string[] = [abs("src")]
 		) => {
 			const config = configOf({
@@ -1055,7 +1032,7 @@ describe("placeFiles", () => {
 		};
 
 		const paths = async (
-			overrides: Partial<ResolvedConfig> = {},
+			overrides: ResolvedConfigSpec = {},
 			rootDirs?: readonly string[]
 		) =>
 			(await route(overrides, rootDirs))
@@ -1337,9 +1314,7 @@ describe("placeFiles", () => {
 		});
 
 		describe("letter case mismatches", () => {
-			const caseWarnings = async (
-				overrides: Partial<ResolvedConfig> = {}
-			) =>
+			const caseWarnings = async (overrides: ResolvedConfigSpec = {}) =>
 				(await route(overrides))
 					.unwrap()
 					.warnings.filter(
@@ -1458,7 +1433,7 @@ describe("placeFiles", () => {
 
 		describe("capital route suffixes", () => {
 			const capitalWarnings = async (
-				overrides: Partial<ResolvedConfig> = {}
+				overrides: ResolvedConfigSpec = {}
 			) =>
 				(await route(overrides))
 					.unwrap()
@@ -1576,22 +1551,6 @@ describe("placeFiles", () => {
 					"ReplicatedStorage/shared/Inventory/Types",
 				]);
 			});
-
-			it("should fail with a diagnostic when a target's service is unsupported", async () => {
-				await write("src/Types.luau");
-
-				const result = await route({
-					routes: { "*": "Nowhere/shared" },
-				});
-
-				expect(result.isErr() ? result.error : []).toMatchObject([
-					{
-						severity: DiagnosticSeverity.Error,
-						code: "roblox.unsupportedService",
-						resource: abs("default.project.json"),
-					},
-				]);
-			});
 		});
 
 		describe("suffixes and stacked keys", () => {
@@ -1678,7 +1637,7 @@ describe("placeFiles", () => {
 
 		describe("tags", () => {
 			const tagsOf = async (
-				overrides: Partial<ResolvedConfig> = { tags: { mock: true } }
+				overrides: ResolvedConfigSpec = { tags: { mock: true } }
 			) =>
 				(await route(overrides))
 					.unwrap()

@@ -1,12 +1,8 @@
 import path from "path";
-import { JSONSchema } from "../../base/json-schema.js";
-import { isInside } from "../../base/path.js";
-import { Registry } from "../../platform/registry/registry.js";
-import {
-	Extensions,
-	ConfigRegistry,
-} from "../../platform/config/config-registry.js";
-import { RojoTree } from "../rojo/rojo-project.js";
+import { safeStringify } from "../../base/json.js";
+import { commonAncestor, isInside } from "../../base/path.js";
+import { Target } from "../roblox/roblox.js";
+import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 
 export interface RogenConfig {
 	readonly $schema?: string;
@@ -20,24 +16,6 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
-export interface ResolvedTemplate {
-	readonly file: string;
-	readonly project: Partial<RojoTree>;
-}
-
-export interface ResolvedConfig {
-	/** The config file itself, the leaf of its `extends` chain. */
-	readonly file: string;
-	readonly name: string;
-	readonly rootDirs: string[];
-	readonly routes: Record<string, string>;
-	readonly tags: Record<string, boolean>;
-	readonly exclude: string[];
-	readonly template?: ResolvedTemplate;
-	readonly syncDir?: string;
-	readonly outFile: string;
-}
-
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";
 
@@ -47,6 +25,16 @@ export const configFileName = (stem: string): string =>
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
+
+const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
+
+/** The schema a config written by this release points at. */
+export const SCHEMA_URL = schemaUrlFor("2.0.0");
+
+export function schemaUrlFor(version: string): string {
+	const channel = version.includes("-") ? version : version.split(".")[0];
+	return `${SCHEMA_BASE_URL}/${channel}/rogen.json`;
+}
 
 /** How a root dir overlaps another of `rootDirs`; a file under both would belong to both. */
 export type RootDirOverlap =
@@ -68,88 +56,165 @@ export function rootDirOverlap(
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
-const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
+/**
+ * The route and tag keys a config declares. A name spells a key exactly or
+ * with the first letter in the other case, so two keys that differ only in
+ * that letter would match the same names.
+ */
+export class DeclaredKeys {
+	/** The route that takes every file no other route claims. */
+	static readonly FALLBACK_ROUTE = "*";
 
-export function schemaUrlFor(version: string): string {
-	const channel = version.includes("-") ? version : version.split(".")[0];
-	return `${SCHEMA_BASE_URL}/${channel}/rogen.json`;
+	private static readonly NAME = /^[A-Za-z][A-Za-z0-9]*$/;
+
+	/** Every route key but the fallback, which no name can spell. */
+	readonly routeKeys: ReadonlySet<string>;
+	readonly tagKeys: ReadonlySet<string>;
+	readonly all: ReadonlySet<string>;
+
+	constructor(routeKeys: Iterable<string>, tagKeys: Iterable<string>) {
+		this.routeKeys = new Set(
+			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
+		);
+		this.tagKeys = new Set(tagKeys);
+		this.all = new Set([...this.routeKeys, ...this.tagKeys]);
+	}
+
+	/** Whether `text` can be a key: letters and digits, starting with a letter. */
+	static isName(text: string): boolean {
+		return DeclaredKeys.NAME.test(text);
+	}
+
+	/** Keys that share this identity match the same names. */
+	static identityOf(key: string): string {
+		return key.slice(0, 1).toLowerCase() + key.slice(1);
+	}
+
+	/** The same name with the first letter in the other case. */
+	static flipFirstLetter(name: string): string {
+		const first = name[0];
+		const flipped =
+			first === first.toLowerCase()
+				? first.toUpperCase()
+				: first.toLowerCase();
+		return flipped + name.slice(1);
+	}
+
+	isTag(key: string): boolean {
+		return this.tagKeys.has(key);
+	}
+
+	/** The key `name` spells, exactly or with the first letter in the other case. */
+	resolve(name: string): string | undefined {
+		return this.resolveIn(name, this.all);
+	}
+
+	resolveRoute(name: string): string | undefined {
+		return this.resolveIn(name, this.routeKeys);
+	}
+
+	resolveTag(name: string): string | undefined {
+		return this.resolveIn(name, this.tagKeys);
+	}
+
+	/** The key `name` only differs from beyond the first letter's case, when `name` doesn't spell a key. */
+	nearMiss(name: string): string | undefined {
+		if (this.resolve(name) !== undefined) return undefined;
+		const lower = name.toLowerCase();
+		return [...this.all].find((key) => key.toLowerCase() === lower);
+	}
+
+	private resolveIn(
+		name: string,
+		keys: ReadonlySet<string>
+	): string | undefined {
+		if (name === "") return undefined;
+		if (keys.has(name)) return name;
+		const flipped = DeclaredKeys.flipFirstLetter(name);
+		return keys.has(flipped) ? flipped : undefined;
+	}
 }
 
-const registry = Registry.as<ConfigRegistry>(Extensions.Config);
+/** The Rojo project file a config builds on top of. */
+export class ResolvedTemplate {
+	constructor(
+		readonly file: string,
+		readonly project: RojoProject<ParsedProjectFile>
+	) {}
 
-const routesSchema: JSONSchema = {
-	type: "object",
-	default: {},
-	description:
-		'Route key -> "Service" or "Service/Folder/...", where Service is ' +
-		"any service Rojo can write to, such as ServerScriptService or " +
-		"ReplicatedStorage. Only declared " +
-		"keys route: there is no built-in set, so an absent or empty " +
-		"routes leaves every file unrouted (rogen init writes a starting set).",
-	additionalProperties: { type: "string" },
-};
+	equals(other: ResolvedTemplate | undefined): boolean {
+		return (
+			other !== undefined &&
+			this.file === other.file &&
+			safeStringify(this.project.getTree()) ===
+				safeStringify(other.project.getTree())
+		);
+	}
+}
 
-const tagsSchema: JSONSchema = {
-	type: "object",
-	default: {},
-	description:
-		"Every tag this project uses, and whether it is on in this config. " +
-		"A standalone config must know the whole declared set, or an " +
-		"undeclared suffix ships silently as part of an instance name.",
-	additionalProperties: { type: "boolean" },
-};
+export interface ResolvedConfigFields {
+	/** The config file itself, the leaf of its `extends` chain. */
+	readonly file: string;
+	readonly name: string;
+	readonly rootDirs: readonly string[];
+	/** In declaration order. */
+	readonly routes: ReadonlyMap<string, Target>;
+	/** Tag name to whether it is on. */
+	readonly tags: Readonly<Record<string, boolean>>;
+	readonly exclude: readonly string[];
+	readonly template?: ResolvedTemplate;
+	readonly syncDir?: string;
+	readonly outFile: string;
+}
 
-registry.registerConfig({
-	id: "rogen.core",
-	title: "Rogen configuration",
-	type: "object",
-	properties: {
-		$schema: {
-			type: "string",
-			description: "The published JSON Schema URI for editor validation.",
-		},
-		extends: {
-			type: "string",
-			description:
-				"Another *.rogen.json to inherit from, relative to this file.",
-		},
-		rootDirs: {
-			type: "array",
-			items: { type: "string" },
-			default: ["src"],
-			description:
-				"Directories Rogen scans and watches, merged into one tree; " +
-				"the last wins on a clash.",
-		},
-		routes: routesSchema,
-		tags: tagsSchema,
-		exclude: {
-			type: "array",
-			items: { type: "string" },
-			default: [],
-			description:
-				"Globs never built, relative to this file's directory.",
-		},
-		template: {
-			type: "string",
-			description:
-				"A Rojo project file whose tree Rogen merges its generated " +
-				"nodes into.",
-		},
-		syncDir: {
-			type: "string",
-			description:
-				"The directory Rojo syncs from, when that isn't your root " +
-				"dirs. Set it to your compiler's output directory - " +
-				'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
-				"plain Luau.",
-		},
-		outFile: {
-			type: "string",
-			description:
-				"The Rojo project file Rogen writes. Defaults to this " +
-				"config's own file name, with .rogen.json replaced by " +
-				".project.json.",
-		},
-	},
-});
+/** A config with its layers merged and validated: every path is absolute and every route target is parsed. */
+export class ResolvedConfig {
+	readonly file: string;
+	readonly name: string;
+	readonly rootDirs: readonly string[];
+	readonly routes: ReadonlyMap<string, Target>;
+	readonly tags: Readonly<Record<string, boolean>>;
+	readonly exclude: readonly string[];
+	readonly template?: ResolvedTemplate;
+	readonly syncDir?: string;
+	readonly outFile: string;
+	readonly keys: DeclaredKeys;
+
+	constructor(fields: ResolvedConfigFields) {
+		this.file = fields.file;
+		this.name = fields.name;
+		this.rootDirs = fields.rootDirs;
+		this.routes = fields.routes;
+		this.tags = fields.tags;
+		this.exclude = fields.exclude;
+		this.template = fields.template;
+		this.syncDir = fields.syncDir;
+		this.outFile = fields.outFile;
+		this.keys = new DeclaredKeys(
+			fields.routes.keys(),
+			Object.keys(fields.tags)
+		);
+	}
+
+	/** What the config is asked for by. */
+	get label(): string {
+		return configLabel(this.file);
+	}
+
+	/** The directory the project file is written to, and every path in it is relative to. */
+	get projectDir(): string {
+		return path.dirname(this.outFile);
+	}
+
+	/** The deepest directory holding every root dir, or `undefined` without any. */
+	get commonRoot(): string | undefined {
+		return this.rootDirs.length > 0
+			? commonAncestor(this.rootDirs)
+			: undefined;
+	}
+
+	/** The tags that are on. */
+	get enabledTags(): string[] {
+		return Object.keys(this.tags).filter((tag) => this.tags[tag]);
+	}
+}

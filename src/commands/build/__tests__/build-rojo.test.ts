@@ -8,7 +8,7 @@ import { CoreOutputService } from "../../../domain/output/core-output-service.js
 import { OutputService } from "../../../domain/output/output-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import "../../../domain/config/config.js";
+import "../../../domain/config/config-schema.js";
 import {
 	classes,
 	describeWithRojo,

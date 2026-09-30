@@ -1,5 +1,5 @@
 import { Event } from "../../base/event.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result } from "../../base/result.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -54,6 +54,12 @@ export class ConfigEntry {
 	}
 }
 
+/** A config that resolved, with the entry it came from. */
+export interface ResolvedEntry {
+	readonly entry: ConfigEntry;
+	readonly config: ResolvedConfig;
+}
+
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 	/** Fires once per config whose resolved value changed; `resource` is the config file. */
@@ -61,6 +67,15 @@ export interface ConfigService {
 
 	readonly configs: readonly ConfigEntry[];
 	readonly files: ReadonlySet<string>;
+
+	/** The entry for the config file `file`, if this run selected it. */
+	getConfig(file: string): ConfigEntry | undefined;
+	/** The configs that resolved, each with the entry it came from. A broken config that was valid before is still here, as its last valid version. */
+	getResolvedEntries(): ResolvedEntry[];
+	/** The configs, or every error when any file is broken now. Warnings don't fail it. */
+	requireValidEntries(): Result<ResolvedEntry[], DiagnosticsError>;
+	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
+	getBrokenError(): Error | undefined;
 
 	/** Fails only when the configs cannot be found; a broken config lands on its entry. */
 	initialize(refs: ConfigRefs): Promise<Result<void, Error>>;
@@ -76,45 +91,3 @@ export interface ConfigService {
 
 export const ConfigService =
 	createServiceIdentifier<ConfigService>("configService");
-
-/** A config that resolved, with the entry it came from. */
-export interface ResolvedEntry {
-	readonly entry: ConfigEntry;
-	readonly config: ResolvedConfig;
-}
-
-/** The configs that resolved, each with the entry it came from. */
-export function resolvedEntries(
-	entries: readonly ConfigEntry[]
-): ResolvedEntry[] {
-	return entries.flatMap((entry) =>
-		entry.resolved ? [{ entry, config: entry.resolved }] : []
-	);
-}
-
-export function resolvedConfigs(
-	entries: readonly ConfigEntry[]
-): ResolvedConfig[] {
-	return resolvedEntries(entries).map(({ config }) => config);
-}
-
-export function requireValidConfigs(
-	entries: readonly ConfigEntry[]
-): Result<ResolvedConfig[], DiagnosticsError> {
-	const errors = entries.flatMap((entry) => entry.errors);
-	if (errors.length > 0) return err(new DiagnosticsError(errors));
-
-	return ok(resolvedConfigs(entries));
-}
-
-/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
-export function brokenConfigsError(
-	entries: readonly ConfigEntry[]
-): Error | undefined {
-	const broken = entries.filter((entry) => entry.isBroken);
-	return broken.length > 0
-		? new Error(
-				`${broken.length} of ${entries.length} configs have errors.`
-			)
-		: undefined;
-}

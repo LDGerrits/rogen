@@ -1,4 +1,4 @@
-import "../../config/config.js";
+import "../../config/config-schema.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -8,7 +8,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { SCHEMA_URL as SCHEMA } from "../init-files.js";
+import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import {
 	BaseConfig,
 	PlaceChoices,

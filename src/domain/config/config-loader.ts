@@ -1,14 +1,11 @@
 import path from "path";
 import { ErrorUtils } from "../../base/errors.js";
-import { isObject } from "../../base/object.js";
-import { parse } from "../../base/jsonc.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ConfigFile,
-	readConfigFile,
+	ConfigFileReader,
 } from "../../platform/config/config-file.js";
-import { UNREADABLE_CONFIG_CODE } from "../../platform/config/config-file-diagnostics.js";
 import {
 	Config,
 	ConfigModel,
@@ -21,15 +18,17 @@ import {
 import {
 	Diagnostic,
 	DiagnosticLocation,
+	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { projectFileName } from "../rojo/rojo-project.js";
 import { Target } from "../roblox/roblox.js";
-import { ConfigDiagnostics } from "./config-diagnostics.js";
+import { projectFileName, RojoProject } from "../rojo/rojo-project.js";
 import { ConfigOverrides } from "./config-service.js";
 import {
+	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
@@ -45,7 +44,7 @@ export interface LoadedConfig {
 	/** The merged layers, once the chain could be read. */
 	readonly config?: Config;
 	/** The CLI tags this config doesn't declare; `undefined` when its chain could not be read. */
-	readonly undeclaredTags?: readonly string[];
+	readonly skippedTags?: readonly string[];
 	readonly resolved: Result<ResolvedConfig, Diagnostic[]>;
 }
 
@@ -58,10 +57,14 @@ interface ConfigChain {
 
 /** Reads a config file, its `extends` chain and its template, then resolves and validates them. */
 export class ConfigLoader {
+	private readonly reader: ConfigFileReader;
+
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly environmentService: EnvironmentService
-	) {}
+	) {
+		this.reader = new ConfigFileReader(fileSystemService);
+	}
 
 	/** Never throws for a problem the user can cause. */
 	async load(
@@ -77,7 +80,7 @@ export class ConfigLoader {
 			};
 		}
 
-		const layered = layerConfig(
+		const layered = new LayeredConfig(
 			chain.layers,
 			overrides,
 			this.environmentService.cwd
@@ -88,19 +91,15 @@ export class ConfigLoader {
 		const loaded = {
 			chain: chain.files,
 			files: templateFile ? [...chain.files, templateFile] : chain.files,
-			undeclaredTags: layered.undeclaredTags,
+			skippedTags: layered.skippedTags,
 		};
 
 		const template = templateFile
-			? await this.readTemplate(
-					templateFile,
-					locateConfigValue(layered, "template")
-				)
+			? await this.readTemplate(templateFile, layered.locate("template"))
 			: undefined;
 		if (template?.isErr()) return { ...loaded, resolved: template };
 
-		const resolved = resolveConfig(
-			layered,
+		const resolved = new ConfigValidator(layered).validate(
 			template?.isOk() ? template.value : undefined
 		);
 		return {
@@ -124,31 +123,32 @@ export class ConfigLoader {
 					files,
 					layers,
 					diagnostics: [
-						ConfigDiagnostics.extendsCycle(referrer, cycle),
+						errorDiagnostic(
+							"config.extendsCycle",
+							referrer,
+							`extends cycle: ${cycle.join(" -> ")}.`
+						),
 					],
 				};
 			}
 
 			files.push(current);
-			const loaded = await readConfigFile(
-				this.fileSystemService,
-				current
-			);
+			const loaded = await this.reader.read(current);
 			if (loaded.isErr()) {
-				const from = referrer;
-				const target = current;
+				const { kind, diagnostics } = loaded.error;
 				return {
 					files,
 					layers,
-					diagnostics: loaded.error.map((diagnostic) =>
-						from && diagnostic.code === UNREADABLE_CONFIG_CODE
-							? ConfigDiagnostics.extendsUnreadable(
-									from,
-									target,
-									diagnostic.message
-								)
-							: diagnostic
-					),
+					diagnostics:
+						referrer && kind === "unreadable"
+							? [
+									errorDiagnostic(
+										"config.extendsUnreadable",
+										referrer,
+										`"extends" target "${current}": ${diagnostics[0].message}`
+									),
+								]
+							: diagnostics,
 				};
 			}
 
@@ -175,243 +175,290 @@ export class ConfigLoader {
 			text = await this.fileSystemService.readFile(file);
 		} catch (error) {
 			return err([
-				ConfigDiagnostics.templateUnreadable(
+				errorDiagnostic(
+					"config.templateUnreadable",
 					location,
-					ErrorUtils.fromUnknown(error).message
+					`the template could not be read: ${ErrorUtils.fromUnknown(error).message}.`
 				),
 			]);
 		}
 
-		const parsed = parse(text);
-		if (parsed.isErr()) {
+		const project = RojoProject.parse(text);
+		if (project.isErr()) {
 			return err([
-				ConfigDiagnostics.templateInvalid(
+				errorDiagnostic(
+					"config.templateInvalid",
 					location,
-					parsed.error.message
+					`the template is not a valid Rojo project file: ${project.error.message}`
 				),
 			]);
 		}
-		if (!isObject(parsed.value)) {
-			return err([
-				ConfigDiagnostics.templateInvalid(
-					location,
-					"it must be a JSON object."
-				),
-			]);
-		}
-		return ok({ file, project: parsed.value });
+		return ok(new ResolvedTemplate(file, project.value));
 	}
 }
 
-const LEAF_ONLY_KEYS = ["extends", "$schema", "outFile"];
+/** A config's chain merged with the defaults and the command line, with each value traceable to the file that set it. */
+class LayeredConfig {
+	private static readonly LEAF_ONLY_KEYS = ["extends", "$schema", "outFile"];
 
-interface LayeredConfig {
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
 	readonly files: readonly ConfigFile[];
 	/** The tags the CLI named that no layer declares, so they were left out of `config`. */
-	readonly undeclaredTags: readonly string[];
-}
+	readonly skippedTags: readonly string[];
 
-function layerConfig(
-	chain: readonly ConfigFile[],
-	overrides: ConfigOverrides,
-	cwd: string
-): LayeredConfig {
-	const files = [...chain].reverse();
-	const leaf = chain[0];
-	const defaults = Registry.as<ConfigRegistry>(
-		Extensions.Config
-	).getConfigModel();
-	const layers = files.map((file) => layerModel(file, file === leaf));
+	/** `chain` is the leaf first, then each parent. */
+	constructor(
+		chain: readonly ConfigFile[],
+		overrides: ConfigOverrides,
+		cwd: string
+	) {
+		this.files = [...chain].reverse();
+		const leaf = chain[0];
+		const defaults = Registry.as<ConfigRegistry>(
+			Extensions.Config
+		).getConfigModel();
+		const layers = this.files.map((file) =>
+			LayeredConfig.layerModel(file, file === leaf)
+		);
 
-	const declared = new Set(
-		layers.flatMap((layer) =>
-			Object.keys(layer.getValue<Record<string, boolean>>("tags") ?? {})
-		)
-	);
-	const tagNames = Object.keys(overrides.tags);
-
-	return {
-		files,
-		undeclaredTags: tagNames.filter((tag) => !declared.has(tag)),
-		config: new Config(
+		const declared = new Set(
+			layers.flatMap((layer) =>
+				Object.keys(
+					layer.getValue<Record<string, boolean>>("tags") ?? {}
+				)
+			)
+		);
+		const tagNames = Object.keys(overrides.tags);
+		this.skippedTags = tagNames.filter((tag) => !declared.has(tag));
+		this.config = new Config(
 			new ConfigModel(
-				absolutize(defaults.contents, path.dirname(leaf.file))
+				LayeredConfig.absolutize(
+					defaults.contents,
+					path.dirname(leaf.file)
+				)
 			),
 			layers,
-			cliModel(
+			LayeredConfig.cliModel(
 				overrides,
 				tagNames.filter((tag) => declared.has(tag)),
 				cwd
 			)
-		),
-	};
-}
-
-function cliModel(
-	overrides: ConfigOverrides,
-	declaredTags: readonly string[],
-	cwd: string
-): ConfigModel {
-	const contents: Record<string, unknown> = {};
-	for (const key of ["outFile", "syncDir", "template"] as const) {
-		if (overrides[key] !== undefined) contents[key] = overrides[key];
-	}
-	if (declaredTags.length > 0) {
-		contents.tags = Object.fromEntries(
-			declaredTags.map((tag) => [tag, overrides.tags[tag]])
 		);
 	}
-	return new ConfigModel(absolutize(contents, cwd));
-}
 
-/** Relative paths resolve against the directory of the file that wrote them. */
-function layerModel(file: ConfigFile, isLeaf: boolean): ConfigModel {
-	const contents = { ...file.model.contents };
-	if (!isLeaf) {
-		for (const key of LEAF_ONLY_KEYS) delete contents[key];
+	get leaf(): ConfigFile {
+		return this.files[this.files.length - 1];
 	}
-	return new ConfigModel(absolutize(contents, path.dirname(file.file)));
-}
 
-function absolutize(
-	contents: Record<string, unknown>,
-	dir: string
-): Record<string, unknown> {
-	const absolute = (value: string) => path.resolve(dir, value);
-	const result = { ...contents };
+	/** Where the config set `section`, or the leaf file when nothing did. */
+	locate(...section: ConfigSection[]): DiagnosticLocation {
+		const path = section.flatMap((part) =>
+			typeof part === "string" ? [part] : part
+		);
+		const { source } = this.config.inspect(path);
+		if (source?.tier !== "layer") return { resource: this.leaf.file };
+		const file = this.files[source.index];
+		return { resource: file.file, position: file.positionOf(path) };
+	}
 
-	for (const key of ["template", "syncDir", "outFile"]) {
-		const value = result[key];
-		if (typeof value === "string") result[key] = absolute(value);
+	private static cliModel(
+		overrides: ConfigOverrides,
+		declaredTags: readonly string[],
+		cwd: string
+	): ConfigModel {
+		const contents: Record<string, unknown> = {};
+		for (const key of ["outFile", "syncDir", "template"] as const) {
+			if (overrides[key] !== undefined) contents[key] = overrides[key];
+		}
+		if (declaredTags.length > 0) {
+			contents.tags = Object.fromEntries(
+				declaredTags.map((tag) => [tag, overrides.tags[tag]])
+			);
+		}
+		return new ConfigModel(LayeredConfig.absolutize(contents, cwd));
 	}
-	if (Array.isArray(result.rootDirs)) {
-		result.rootDirs = result.rootDirs.map(absolute);
-	}
-	if (Array.isArray(result.exclude)) {
-		result.exclude = result.exclude.map((glob: string) =>
-			path.posix.join(toPosix(dir), glob)
+
+	private static layerModel(file: ConfigFile, isLeaf: boolean): ConfigModel {
+		const contents = { ...file.model.contents };
+		if (!isLeaf) {
+			for (const key of LayeredConfig.LEAF_ONLY_KEYS)
+				delete contents[key];
+		}
+		return new ConfigModel(
+			LayeredConfig.absolutize(contents, path.dirname(file.file))
 		);
 	}
-	return result;
-}
 
-function locateConfigValue(
-	{ config, files }: LayeredConfig,
-	section: ConfigSection
-): DiagnosticLocation {
-	const { source } = config.inspect(section);
-	if (source?.tier !== "layer") {
-		return { resource: files[files.length - 1].file };
+	/** Relative paths resolve against the directory of the file that wrote them. */
+	private static absolutize(
+		contents: Record<string, unknown>,
+		dir: string
+	): Record<string, unknown> {
+		const absolute = (value: string) => path.resolve(dir, value);
+		const result = { ...contents };
+
+		for (const key of ["template", "syncDir", "outFile"]) {
+			const value = result[key];
+			if (typeof value === "string") result[key] = absolute(value);
+		}
+		if (Array.isArray(result.rootDirs)) {
+			result.rootDirs = result.rootDirs.map(absolute);
+		}
+		if (Array.isArray(result.exclude)) {
+			result.exclude = result.exclude.map((glob: string) =>
+				path.posix.join(toPosix(dir), glob)
+			);
+		}
+		return result;
 	}
-	const file = files[source.index];
-	return { resource: file.file, position: file.positionOf(section) };
 }
 
 const FALLBACK_NAME = "project";
+const NAME_RULE = "use letters and digits only, starting with a letter";
 
-function resolveConfig(
-	layered: LayeredConfig,
-	template: ResolvedTemplate | undefined
-): Result<ResolvedConfig, Diagnostic[]> {
-	const { config, files } = layered;
-	const leaf = files[files.length - 1];
-	const dir = path.dirname(leaf.file);
-	const stem = configLabel(leaf.file);
-	const templateName = template?.project.name;
+/** Checks every rule on a config's values that doesn't need the source tree, and hands back the config with its route targets parsed. */
+class ConfigValidator {
+	private readonly problems = new DiagnosticCollector();
+	private readonly rootDirs: readonly string[];
+	private readonly routes: Readonly<Record<string, string>>;
+	private readonly tags: Readonly<Record<string, boolean>>;
+	private readonly outFile: string;
 
-	const resolved: ResolvedConfig = {
-		file: leaf.file,
-		name:
-			(typeof templateName === "string" && templateName) ||
-			path.basename(dir) ||
-			FALLBACK_NAME,
-		rootDirs: config.getValue<string[]>("rootDirs"),
-		routes: config.getValue<Record<string, string>>("routes"),
-		tags: config.getValue<Record<string, boolean>>("tags"),
-		exclude: config.getValue<string[]>("exclude"),
-		...(template && { template }),
-		syncDir: config.getValue<string | undefined>("syncDir"),
-		outFile:
+	constructor(private readonly layered: LayeredConfig) {
+		const { config } = layered;
+		this.rootDirs = config.getValue<string[]>("rootDirs");
+		this.routes = config.getValue<Record<string, string>>("routes");
+		this.tags = config.getValue<Record<string, boolean>>("tags");
+		this.outFile =
 			config.getValue<string | undefined>("outFile") ??
-			path.join(dir, projectFileName(stem)),
-	};
-
-	const problems = validateConfig(layered, resolved);
-	return problems.length > 0 ? err(problems) : ok(resolved);
-}
-
-const FALLBACK_ROUTE = "*";
-const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/;
-
-/** Keys that share this identity match the same folders, markers and suffixes. */
-const matchIdentity = (key: string): string =>
-	key.slice(0, 1).toLowerCase() + key.slice(1);
-
-/** Every rule that can be checked without touching the source tree. */
-function validateConfig(
-	layered: LayeredConfig,
-	resolved: ResolvedConfig
-): Diagnostic[] {
-	const locate = (...section: string[]) =>
-		locateConfigValue(layered, section);
-	const problems: Diagnostic[] = [];
-
-	const routeKeys = Object.keys(resolved.routes);
-	const declared = new Map<string, string>();
-	const claim = (key: string, location: DiagnosticLocation) => {
-		const other = declared.get(matchIdentity(key));
-		if (other === undefined) declared.set(matchIdentity(key), key);
-		else
-			problems.push(ConfigDiagnostics.ambiguousKey(location, key, other));
-	};
-	for (const key of routeKeys) {
-		const location = locate("routes", key);
-		if (key !== FALLBACK_ROUTE && !NAME_PATTERN.test(key)) {
-			problems.push(ConfigDiagnostics.invalidRouteKey(location, key));
-		} else if (key !== FALLBACK_ROUTE) {
-			claim(key, location);
-		}
-		const target = Target.parse(resolved.routes[key], location);
-		if (target.isErr()) problems.push(...target.error);
+			path.join(
+				path.dirname(layered.leaf.file),
+				projectFileName(configLabel(layered.leaf.file))
+			);
 	}
 
-	for (const tag of Object.keys(resolved.tags)) {
-		const location = locate("tags", tag);
-		if (!NAME_PATTERN.test(tag)) {
-			problems.push(ConfigDiagnostics.invalidTagName(location, tag));
-		} else if (routeKeys.includes(tag)) {
-			problems.push(ConfigDiagnostics.tagClashesWithRoute(location, tag));
-		} else {
-			claim(tag, location);
-		}
-	}
+	validate(
+		template: ResolvedTemplate | undefined
+	): Result<ResolvedConfig, Diagnostic[]> {
+		const { config } = this.layered;
+		const dir = path.dirname(this.layered.leaf.file);
+		const claimed = new Map<string, string>();
 
-	if (resolved.template?.file === resolved.outFile) {
-		const explicit = layered.config.inspect("outFile").source?.tier;
-		problems.push(
-			ConfigDiagnostics.outFileIsTemplate(
-				explicit === "layer" ? locate("outFile") : locate("template"),
-				resolved.outFile
-			)
+		const routes = this.checkRoutes(claimed);
+		this.checkTags(claimed);
+		this.checkOutFile(template);
+		this.checkRootDirs();
+
+		return this.problems.toResult(
+			new ResolvedConfig({
+				file: this.layered.leaf.file,
+				name:
+					template?.project.name ||
+					path.basename(dir) ||
+					FALLBACK_NAME,
+				rootDirs: this.rootDirs,
+				routes,
+				tags: this.tags,
+				exclude: config.getValue<string[]>("exclude"),
+				template,
+				syncDir: config.getValue<string | undefined>("syncDir"),
+				outFile: this.outFile,
+			})
 		);
 	}
 
-	resolved.rootDirs.forEach((rootDir, index) => {
-		const overlap = rootDirOverlap(resolved.rootDirs, index);
-		if (!overlap) return;
-		const location = locate("rootDirs", String(index));
-		problems.push(
-			overlap.kind === "duplicate"
-				? ConfigDiagnostics.duplicateRootDir(location, rootDir)
-				: ConfigDiagnostics.nestedRootDir(
+	private checkRoutes(claimed: Map<string, string>): Map<string, Target> {
+		const targets = new Map<string, Target>();
+		for (const [key, text] of Object.entries(this.routes)) {
+			const location = this.layered.locate("routes", key);
+			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
+				if (DeclaredKeys.isName(key))
+					this.claim(claimed, key, location);
+				else {
+					this.problems.error(
+						"config.invalidRouteKey",
 						location,
-						rootDir,
-						overlap.outer
-					)
-		);
-	});
+						`route key "${key}" is invalid: ${NAME_RULE}.`
+					);
+				}
+			}
+			const target = Target.parse(text, location);
+			if (target.isErr()) this.problems.add(target.error);
+			else targets.set(key, target.value);
+		}
+		return targets;
+	}
 
-	return problems;
+	private checkTags(claimed: Map<string, string>): void {
+		for (const tag of Object.keys(this.tags)) {
+			const location = this.layered.locate("tags", tag);
+			if (!DeclaredKeys.isName(tag)) {
+				this.problems.error(
+					"config.invalidTagName",
+					location,
+					`tag "${tag}" is invalid: ${NAME_RULE}.`
+				);
+			} else if (tag in this.routes) {
+				this.problems.error(
+					"config.tagClashesWithRoute",
+					location,
+					`tag "${tag}" has the same name as a route key; rename one of them.`
+				);
+			} else {
+				this.claim(claimed, tag, location);
+			}
+		}
+	}
+
+	private checkOutFile(template: ResolvedTemplate | undefined): void {
+		if (template?.file !== this.outFile) return;
+		const explicit = this.layered.config.inspect("outFile").source?.tier;
+		this.problems.error(
+			"config.outFileIsTemplate",
+			explicit === "layer"
+				? this.layered.locate("outFile")
+				: this.layered.locate("template"),
+			`the output file ${this.outFile} is also the template, and a build would overwrite it. Set "outFile" to another path.`
+		);
+	}
+
+	private checkRootDirs(): void {
+		this.rootDirs.forEach((rootDir, index) => {
+			const overlap = rootDirOverlap(this.rootDirs, index);
+			if (!overlap) return;
+			const location = this.layered.locate("rootDirs", String(index));
+			if (overlap.kind === "duplicate") {
+				this.problems.error(
+					"config.duplicateRootDir",
+					location,
+					`root dir "${rootDir}" is listed twice; a file under it would belong to both. Remove one.`
+				);
+			} else {
+				this.problems.error(
+					"config.nestedRootDir",
+					location,
+					`root dir "${rootDir}" is inside root dir "${overlap.outer}"; a file under it would belong to both. Remove one.`
+				);
+			}
+		});
+	}
+
+	/** Two keys that differ only in the case of their first letter would match the same names. */
+	private claim(
+		claimed: Map<string, string>,
+		key: string,
+		location: DiagnosticLocation
+	): void {
+		const identity = DeclaredKeys.identityOf(key);
+		const other = claimed.get(identity);
+		if (other === undefined) claimed.set(identity, key);
+		else {
+			this.problems.error(
+				"config.ambiguousKey",
+				location,
+				`"${key}" and "${other}" differ only in the case of their first letter, so both would match the same names; keep one of them.`
+			);
+		}
+	}
 }

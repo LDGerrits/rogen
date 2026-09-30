@@ -13,6 +13,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
+import { DeclaredKeys } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { MetaReplacement } from "../toolchain/toolchain.js";
@@ -23,7 +24,6 @@ import {
 	RoutedFile,
 	ScannedRoot,
 } from "./build-record.js";
-import { withFirstLetterFlipped } from "./declared-keys.js";
 import {
 	SyncedLayout,
 	emittedPath,
@@ -289,7 +289,7 @@ function caseMismatch({ keys, roots, readings }: AssembledBuild): Diagnostic[] {
 		return warningDiagnostic(
 			"route.caseMismatch",
 			{ resource },
-			`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${withFirstLetterFlipped(key)}", or declare it as written.`
+			`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
 		);
 	});
 }
@@ -388,10 +388,8 @@ function untaggedClash({ config, clashes }: AssembledBuild): Diagnostic[] {
 function runContextTarget({ config, targets }: AssembledBuild): Diagnostic[] {
 	if (config.template?.project.emitLegacyScripts !== false) return [];
 	const routes = [...targets]
-		.filter(
-			([, target]) => target.isPlayerScripts
-		)
-		.map(([key]) => `"${key}" → ${config.routes[key]}`);
+		.filter(([, target]) => target.isPlayerScripts)
+		.map(([key]) => `"${key}" → ${config.routes.get(key)}`);
 	return routes.length > 0
 		? [
 				warningDiagnostic(

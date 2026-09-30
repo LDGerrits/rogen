@@ -1,13 +1,12 @@
 import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig } from "../config/config.js";
+import { RogenConfig, SCHEMA_URL } from "../config/config.js";
 import { RojoTree, projectFileName } from "../rojo/rojo-project.js";
 import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitChoices } from "./init-choices.js";
 import {
-	SCHEMA_URL,
 	configFile,
 	existingFileDiagnostics,
 	extendsRef,

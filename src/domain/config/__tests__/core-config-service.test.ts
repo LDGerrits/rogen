@@ -1,10 +1,11 @@
 import { jest } from "@jest/globals";
-import "../config.js";
+import "../config-schema.js";
 import { ResultError } from "../../../base/result.js";
 import { ConfigChangeEvent } from "../../../platform/config/config.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfig } from "../config.js";
 import { ConfigRefs } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
@@ -17,6 +18,25 @@ describe("domain/config/core-config-service", () => {
 			file,
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
+
+	/** A config as plain values: routes as the text they were written in, the template as the project it holds. */
+	const plain = (config: ResolvedConfig | undefined) =>
+		config && {
+			file: config.file,
+			name: config.name,
+			rootDirs: config.rootDirs,
+			routes: Object.fromEntries(
+				[...config.routes].map(([key, target]) => [key, String(target)])
+			),
+			tags: config.tags,
+			exclude: config.exclude,
+			syncDir: config.syncDir,
+			outFile: config.outFile,
+			template: config.template && {
+				file: config.template.file,
+				project: config.template.project.getTree(),
+			},
+		};
 
 	const start = async (refs: Partial<ConfigRefs> = {}) => {
 		const result = await service.initialize({
@@ -49,7 +69,7 @@ describe("domain/config/core-config-service", () => {
 			const [entry] = service.configs;
 			expect(entry.file).toBe("/repo/default.rogen.json");
 			expect(entry.diagnostics).toEqual([]);
-			expect(entry.resolved).toMatchObject({
+			expect(plain(entry.resolved)).toMatchObject({
 				rootDirs: ["/repo/src"],
 				routes: {},
 				tags: {},
@@ -215,7 +235,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(plain(service.configs[0].resolved)).toMatchObject({
 				routes: {
 					server: "ServerScriptService",
 					"*": "ReplicatedStorage/shared",
@@ -347,7 +367,7 @@ describe("domain/config/core-config-service", () => {
 				"/repo/lobby-source.rogen.json",
 				"/repo/core.rogen.json",
 			]);
-			expect(service.configs[0].resolved).toEqual({
+			expect(plain(service.configs[0].resolved)).toEqual({
 				file: "/repo/lobby.rogen.json",
 				name: "repo",
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
@@ -652,7 +672,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved?.routes).toEqual({});
+			expect(plain(service.configs[0].resolved)?.routes).toEqual({});
 		});
 
 		it("should default outFile from the config's stem", async () => {
@@ -736,7 +756,7 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(service.configs[0].resolved?.template).toEqual({
+				expect(plain(service.configs[0].resolved)?.template).toEqual({
 					file: "/repo/t.project.json",
 					project: {
 						name: "Game",

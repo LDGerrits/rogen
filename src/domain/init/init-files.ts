@@ -10,14 +10,12 @@ import {
 	DEFAULT_CONFIG_STEM,
 	RogenConfig,
 	configFileName,
-	schemaUrlFor,
 } from "../config/config.js";
 import { PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { TEMPLATE_FILE } from "./template.js";
 
 export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
-export const SCHEMA_URL = schemaUrlFor("2.0.0");
 
 export const InitDiagnostics = {
 	configExists: (location: DiagnosticLocation) =>

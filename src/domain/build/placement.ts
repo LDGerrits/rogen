@@ -13,7 +13,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-file.js";
 import { RojoProject, instanceKey } from "../rojo/rojo-project.js";
@@ -36,10 +36,7 @@ import {
 	TagMatch,
 } from "./build-record.js";
 import {
-	FALLBACK_ROUTE,
 	SuffixSpan,
-	declaredKeysOf,
-	matchKeyIgnoringCase,
 	matchMarkerKey,
 	matchSuffixKeys,
 	readFolderName,
@@ -86,7 +83,7 @@ export function findConfigsWithoutRoutes(
 	configs: readonly Pick<ResolvedConfig, "file" | "routes">[]
 ): Diagnostic[] {
 	return configs
-		.filter(({ routes }) => Object.keys(routes).length === 0)
+		.filter(({ routes }) => routes.size === 0)
 		.map(({ file }) =>
 			errorDiagnostic(
 				"route.noRoutes",
@@ -105,23 +102,14 @@ function prepareBuild(
 	const withoutRoutes = findConfigsWithoutRoutes([config]);
 	if (withoutRoutes.length > 0) return err(withoutRoutes);
 
-	const targets = new Map<string, Target>();
-	const errors: Diagnostic[] = [];
-	for (const [key, value] of Object.entries(config.routes)) {
-		const target = Target.parse(value, { resource: config.outFile });
-		if (target.isOk()) targets.set(key, target.value);
-		else errors.push(...target.error);
-	}
-	if (errors.length > 0) return err(errors);
-
 	const layout = syncLayoutOf(config, tools);
 	return ok({
 		config,
 		index,
 		layout,
 		template: templateProject(config, layout.projectDir),
-		keys: declaredKeysOf(config),
-		targets,
+		keys: config.keys,
+		targets: config.routes,
 	});
 }
 
@@ -251,7 +239,6 @@ function readPaths(
 	{ keys }: Pick<PreparedBuild, "keys">,
 	roots: readonly ScannedRoot[]
 ): PathReadings {
-	const { routeKeys, tagKeys, all } = keys;
 	const folders = new Map<string, FolderRead>();
 	const markers = new Map<string, MarkerRead>();
 	const entries = new Map<string, EntryRead>();
@@ -261,14 +248,14 @@ function readPaths(
 		let read = folders.get(key);
 		if (!read) {
 			const segment = path.posix.basename(dir);
-			const reading = readFolderName(segment, routeKeys, tagKeys);
+			const reading = readFolderName(segment, keys);
 			read = {
 				...reading,
 				segment,
 				dir,
 				nearMissKey:
 					reading.kind === "plain"
-						? matchKeyIgnoringCase(reading.name, all)
+						? keys.nearMiss(reading.name)
 						: undefined,
 			};
 			folders.set(key, read);
@@ -291,8 +278,8 @@ function readPaths(
 			readFoldersAbove(root.rootDir, marker);
 			const name = path.posix.basename(marker);
 			markers.set(joinPosix(root.rootDir, marker), {
-				key: matchMarkerKey(name, all),
-				nearMissKey: matchKeyIgnoringCase(name.slice(1), all),
+				key: matchMarkerKey(name, keys),
+				nearMissKey: keys.nearMiss(name.slice(1)),
 			});
 		}
 		for (const metaFile of root.metaFiles)
@@ -304,7 +291,7 @@ function readPaths(
 				fileName,
 				kind,
 				stem,
-				match: matchSuffixKeys(stem, all),
+				match: matchSuffixKeys(stem, keys.all),
 			});
 		}
 	}
@@ -413,7 +400,7 @@ function routeEntry(
 		context
 	);
 
-	const route = claims.route?.key ?? FALLBACK_ROUTE;
+	const route = claims.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
 	const target = context.targets.get(route);
 	if (!target) return undefined;
 

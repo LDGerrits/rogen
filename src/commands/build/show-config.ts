@@ -1,5 +1,4 @@
 import path from "path";
-import { commonAncestor } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
@@ -8,9 +7,10 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 	return {
 		name: config.name,
 		rootDirs: config.rootDirs,
-		commonRoot:
-			config.rootDirs.length > 0 ? commonAncestor(config.rootDirs) : null,
-		routes: config.routes,
+		commonRoot: config.commonRoot ?? null,
+		routes: Object.fromEntries(
+			[...config.routes].map(([key, target]) => [key, target.toString()])
+		),
 		tags: config.tags,
 		exclude: config.exclude,
 		template: config.template?.file ?? null,

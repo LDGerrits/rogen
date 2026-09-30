@@ -16,62 +16,75 @@ export interface ConfigFile {
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
 }
 
-/** Never throws for a problem the user can cause; those come back as diagnostics. */
-export async function readConfigFile(
-	fileSystem: FileSystemService,
-	file: string
-): Promise<Result<ConfigFile, Diagnostic[]>> {
-	let text: string;
-	try {
-		text = await fileSystem.readFile(file);
-	} catch (error) {
-		return err([
-			ConfigFileDiagnostics.unreadable(
-				{ resource: file, position: { line: 1, column: 1 } },
-				ErrorUtils.fromUnknown(error).message
-			),
-		]);
-	}
-	return parseConfigFile(text, file);
+export interface ConfigFileFailure {
+	/** `unreadable` when the file couldn't be read at all, `invalid` when what it holds is wrong. */
+	readonly kind: "unreadable" | "invalid";
+	readonly diagnostics: readonly Diagnostic[];
 }
 
-function parseConfigFile(
-	text: string,
-	file: string
-): Result<ConfigFile, Diagnostic[]> {
-	const { root, value, errors } = parseJsonc(text);
+/** Reads config files and checks them against the registered schema. */
+export class ConfigFileReader {
+	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	if (errors.length > 0) {
-		return err(
-			errors.map(({ message, line, column }) =>
-				ConfigFileDiagnostics.invalidSyntax(
-					{ resource: file, position: { line, column } },
-					message
+	/** Never throws for a problem the user can cause; those come back as diagnostics. */
+	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
+		let text: string;
+		try {
+			text = await this.fileSystemService.readFile(file);
+		} catch (error) {
+			return err({
+				kind: "unreadable",
+				diagnostics: [
+					ConfigFileDiagnostics.unreadable(
+						{ resource: file, position: { line: 1, column: 1 } },
+						ErrorUtils.fromUnknown(error).message
+					),
+				],
+			});
+		}
+		return this.parse(text, file);
+	}
+
+	private parse(
+		text: string,
+		file: string
+	): Result<ConfigFile, ConfigFileFailure> {
+		const invalid = (diagnostics: Diagnostic[]) =>
+			err<ConfigFileFailure>({ kind: "invalid", diagnostics });
+		const { root, value, errors } = parseJsonc(text);
+
+		if (errors.length > 0) {
+			return invalid(
+				errors.map(({ message, line, column }) =>
+					ConfigFileDiagnostics.invalidSyntax(
+						{ resource: file, position: { line, column } },
+						message
+					)
 				)
-			)
-		);
+			);
+		}
+
+		if (root?.kind !== "object") {
+			return invalid([
+				ConfigFileDiagnostics.notAnObject({
+					resource: file,
+					position: { line: 1, column: 1 },
+				}),
+			]);
+		}
+
+		const schema = Registry.as<ConfigRegistry>(
+			Extensions.Config
+		).getJsonSchema();
+		const problems = validateNode(root, schema, file);
+		if (problems.length > 0) return invalid(problems);
+
+		return ok({
+			file,
+			model: new ConfigModel(value as Record<string, unknown>),
+			positionOf: (section) => positionIn(root, section),
+		});
 	}
-
-	if (root?.kind !== "object") {
-		return err([
-			ConfigFileDiagnostics.notAnObject({
-				resource: file,
-				position: { line: 1, column: 1 },
-			}),
-		]);
-	}
-
-	const schema = Registry.as<ConfigRegistry>(
-		Extensions.Config
-	).getJsonSchema();
-	const problems = validateNode(root, schema, file);
-	if (problems.length > 0) return err(problems);
-
-	return ok({
-		file,
-		model: new ConfigModel(value as Record<string, unknown>),
-		positionOf: (section) => positionIn(root, section),
-	});
 }
 
 function positionIn(

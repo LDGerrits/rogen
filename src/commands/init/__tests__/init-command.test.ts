@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import "../../../domain/config/config.js";
+import "../../../domain/config/config-schema.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -9,9 +9,9 @@ import { CoreToolchainService } from "../../../domain/toolchain/core-toolchain-s
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../../domain/init/core-init-service.js";
 import { InitService } from "../../../domain/init/init-service.js";
-import { SCHEMA_URL } from "../../../domain/init/init-files.js";
+import { SCHEMA_URL } from "../../../domain/config/config.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { readConfigFile } from "../../../platform/config/config-file.js";
+import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	EnvironmentService,
@@ -324,7 +324,11 @@ describe("init command", () => {
 				const text = await read(file);
 				expect(() => JSON.parse(text)).not.toThrow();
 				expect(
-					(await readConfigFile(memFs, path.join(cwd, file))).isOk()
+					(
+						await new ConfigFileReader(memFs).read(
+							path.join(cwd, file)
+						)
+					).isOk()
 				).toBe(true);
 			}
 		});

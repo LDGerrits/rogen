@@ -36,9 +36,9 @@ export function summarizeBuild({
 			excluded: countOf("excluded", root.leftOut.values()),
 			skippedLinks: countOf("skipped", root.leftOut.values()),
 		})),
-		routes: Object.entries(config.routes).map(([key, target]) => ({
+		routes: [...config.routes].map(([key, target]) => ({
 			key,
-			target,
+			target: target.toString(),
 			files: files.filter((file) => file.route === key).length,
 		})),
 		// Every routed file with an off tag was pruned, so off tags count those.

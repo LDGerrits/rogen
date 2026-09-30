@@ -4,12 +4,6 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigEntry,
-	ResolvedEntry,
-	requireValidConfigs,
-	resolvedEntries,
-} from "../config/config-service.js";
 import { findOutputClashes } from "../output/output.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -43,17 +37,15 @@ export class CoreBuildService implements BuildService {
 	}
 
 	checkBuildable(
-		entries: readonly ConfigEntry[]
-	): Result<ResolvedEntry[], DiagnosticsError> {
-		const valid = requireValidConfigs(entries);
-		if (valid.isErr()) return valid;
+		configs: readonly ResolvedConfig[]
+	): Result<void, DiagnosticsError> {
 		const upfront = [
-			...findConfigsWithoutRoutes(valid.value),
-			...findOutputClashes(valid.value),
+			...findConfigsWithoutRoutes(configs),
+			...findOutputClashes(configs),
 		];
 		return upfront.length > 0
 			? err(new DiagnosticsError(upfront))
-			: ok(resolvedEntries(entries));
+			: ok(undefined);
 	}
 
 	async build(

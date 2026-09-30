@@ -1,14 +1,9 @@
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-file.js";
 import { RojoNode, RojoProject, RojoTree } from "../rojo/rojo-project.js";
-import {
-	DeclaredKeys,
-	FolderReading,
-	SuffixForm,
-	SuffixMatch,
-} from "./declared-keys.js";
+import { FolderReading, SuffixForm, SuffixMatch } from "./declared-keys.js";
 import { SyncLayout } from "./sync-layout.js";
 
 export interface ScannedFile {

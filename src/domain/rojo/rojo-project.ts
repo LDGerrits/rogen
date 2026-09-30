@@ -71,6 +71,7 @@ export interface ProjectFile {
 	readonly tree: RojoNode;
 	readonly name?: unknown;
 	readonly globIgnorePaths?: unknown;
+	readonly emitLegacyScripts?: unknown;
 }
 
 /** A project file read from disk, whose other fields pass through untouched. */
@@ -140,6 +141,35 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		return Array.isArray(globIgnorePaths)
 			? globIgnorePaths.filter((glob) => typeof glob === "string")
 			: [];
+	}
+
+	/** Whether Rojo emits legacy scripts; `undefined` when the project doesn't say. */
+	get emitLegacyScripts(): boolean | undefined {
+		const { emitLegacyScripts } = this.project;
+		return typeof emitLegacyScripts === "boolean"
+			? emitLegacyScripts
+			: undefined;
+	}
+
+	/**
+	 * A project file with this project's fields, given a name, a tree and
+	 * globs. Fields Rogen doesn't model pass through untouched.
+	 */
+	toFile(parts: {
+		readonly name: string;
+		readonly tree: RojoNode;
+		readonly globIgnorePaths: readonly string[];
+	}): RojoTree {
+		const { globIgnorePaths: _globs, ...fields } = this.getTree();
+		const file = {
+			...fields,
+			name: parts.name,
+			tree: parts.tree,
+		} as RojoTree;
+		if (parts.globIgnorePaths.length > 0) {
+			file.globIgnorePaths = [...parts.globIgnorePaths];
+		}
+		return file;
 	}
 
 	/** A copy, so what the caller does to it can't reach back into the model. */

@@ -129,6 +129,8 @@ export class TreeAssembler {
 	}
 }
 
+const NO_TEMPLATE = new RojoProject({ tree: {} });
+
 /** Merges the placed files into the template, collapsing a directory into one `$path` where Rojo would see the same files. */
 function assembleTree({
 	config,
@@ -172,13 +174,11 @@ function assembleTree({
 			...ignored.map((source) => syncPath(source, layout).optional),
 		]),
 	];
-	const tree: RojoTree = {
-		...config.template?.project,
+	const tree = (config.template?.project ?? NO_TEMPLATE).toFile({
 		name: config.name,
 		tree: project.getTree().tree,
-	};
-	if (globIgnorePaths.length > 0) tree.globIgnorePaths = globIgnorePaths;
-	else delete tree.globIgnorePaths;
+		globIgnorePaths,
+	});
 	return { tree, collapsed };
 }
 

@@ -2,7 +2,7 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig, configFileName } from "../config/config.js";
+import { RogenConfig, SCHEMA_URL, configFileName } from "../config/config.js";
 import { ConfigEntry } from "../config/config-service.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import {
@@ -13,7 +13,6 @@ import {
 } from "../toolchain/toolchain.js";
 import {
 	DEFAULT_CONFIG_FILE,
-	SCHEMA_URL,
 	configFile,
 	existingFileDiagnostics,
 	extendsRef,
