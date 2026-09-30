@@ -25,3 +25,10 @@ $ rogen where src/Net/HttpMock.luau -t mock
 exit 0
 stdout:
   src/Net/HttpMock.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · tag mock (capital suffix)
+
+$ rogen where ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
+exit 0
+stdout:
+  src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
+  src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
+  ReplicatedStorage/Shared/Nope -> no file places it

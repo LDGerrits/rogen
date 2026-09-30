@@ -57,7 +57,16 @@ src/Net/Types.lua -> replaced by src/Net/Types.luau
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
-`where` maps files, so a directory is shorthand for the files inside it, never a line of its own, and it is not a listing of what's on disk. With no path it maps every file in the tree, which also answers the reverse question: `rogen where | grep 'Shared/Net/Types$'` finds the file behind an instance.
+`where` maps files, so a directory is shorthand for the files inside it, never a line of its own, and it is not a listing of what's on disk. With no path it maps every file in the tree.
+
+It also answers the reverse question. An argument that starts with a service is an instance, written the way Studio prints it or with slashes, and `where` prints the files placed at it or inside it. Paste the start of an error line as it is: a leading `game.` and everything from the line number on are dropped.
+
+```
+$ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
+src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
+```
+
+An instance no file places says `no file places it`; the template's own nodes, such as package mounts, are among those. When the working directory holds a folder named after the service, the argument is read as that path instead.
 
 A placed file shows its instance path, the governing route and how it matched (`folder`, `marker`, `suffix`, `capital suffix` or `fallback`), and any active tags. A file that isn't placed says why: `pruned` by a dormant tag, `replaced by` the file that took its name, `displaced` by a template node, `unrouted`, `excluded` with the glob that matched, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
 

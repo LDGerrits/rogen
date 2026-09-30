@@ -1,6 +1,10 @@
 import { groupBy } from "../../base/collections.js";
 import { relativeTo } from "../../base/path.js";
-import { FileLocation, RouteMatch } from "../../domain/build/build-service.js";
+import {
+	FileLocation,
+	InstanceLocation,
+	RouteMatch,
+} from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 
 interface ConfigLines {
@@ -67,14 +71,33 @@ export class LocationReport {
 
 	constructor(private readonly cwd: string) {}
 
-	/** What `label`'s config says about each location. */
-	add(label: string, locations: readonly FileLocation[]): void {
+	/** What `label`'s config says about each location, then about the files behind each instance. */
+	add(
+		label: string,
+		locations: readonly FileLocation[],
+		instances: readonly InstanceLocation[] = []
+	): void {
+		const describe = (
+			location: FileLocation
+		): readonly [string, string] => [
+			location.source,
+			describeLocation(location, this.cwd),
+		];
 		this.configs.push({
 			label,
-			lines: locations.map((location) => [
-				location.source,
-				describeLocation(location, this.cwd),
-			]),
+			lines: [
+				...locations.map(describe),
+				...instances.flatMap(({ reference, files }) =>
+					files.length > 0
+						? files.map(describe)
+						: [
+								[
+									reference.text,
+									`${reference.text} -> no file places it`,
+								] as const,
+							]
+				),
+			],
 		});
 	}
 

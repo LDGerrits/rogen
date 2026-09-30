@@ -5,6 +5,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { InstanceReference } from "../../roblox/roblox.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
@@ -533,6 +534,48 @@ describe("CoreBuildService", () => {
 			expect(
 				result.isErr() ? result.error.diagnostics : []
 			).toMatchObject([{ code: "route.noRoutes" }]);
+		});
+	});
+
+	describe("locateInstances", () => {
+		const routes = {
+			server: "ServerScriptService",
+			"*": "ReplicatedStorage/Shared",
+		};
+
+		it("should find the files placed at an instance and inside it", async () => {
+			await fs.writeFile(abs("src/Inventory/server/Save.luau"), "");
+			await fs.writeFile(abs("src/Inventory/server/Load.luau"), "");
+			await fs.writeFile(abs("src/Inventory/Types.luau"), "");
+			const reference = InstanceReference.parse(
+				"ServerScriptService.Inventory"
+			)!;
+
+			const result = await buildServiceOfFs().locateInstances(
+				configOf({ routes }),
+				[reference]
+			);
+
+			expect(
+				result.unwrap()[0].files.map(({ source }) => source)
+			).toEqual([
+				toPosix(abs("src/Inventory/server/Load.luau")),
+				toPosix(abs("src/Inventory/server/Save.luau")),
+			]);
+		});
+
+		it("should find no file for an instance nothing places", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const reference = InstanceReference.parse(
+				"ServerScriptService.Missing:3"
+			)!;
+
+			const result = await buildServiceOfFs().locateInstances(
+				configOf({ routes }),
+				[reference]
+			);
+
+			expect(result.unwrap()).toEqual([{ reference, files: [] }]);
 		});
 	});
 
