@@ -87,7 +87,12 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 			return { node: location.node };
 		case "excluded":
 			return { pattern: location.pattern };
-		default:
+		case "unrouted":
+		case "skipped":
+		case "outside":
+		case "ignored":
+		case "missing":
+		case "empty":
 			return {};
 	}
 }
