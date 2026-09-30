@@ -6,13 +6,7 @@ import {
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
-import {
-	Darklua,
-	DetectedWorkspace,
-	Language,
-	Mount,
-} from "../toolchain/toolchain.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { DetectedWorkspace, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, sourceStemOf } from "./config-set.js";
 import { InitChoices, defaultSyncDir } from "./init-choices.js";
 import {
@@ -21,6 +15,7 @@ import {
 	parseInitName,
 	placeFolder,
 	variantFileNames,
+	DARKLUA,
 } from "./init-files.js";
 import { defaultMounts, offeredMounts, selectMounts } from "./mounts.js";
 import { BaseConfig, PlaceChoices } from "./place-plan.js";
@@ -89,10 +84,7 @@ interface NameQuestion {
 
 /** Asks the questions `init` needs answered, from a prompt, in the language the toolchain detected. */
 export class InitQuestions {
-	constructor(
-		private readonly promptService: PromptService,
-		private readonly toolchainService: ToolchainService
-	) {}
+	constructor(private readonly promptService: PromptService) {}
 
 	/**
 	 * Asks what to add when `default.rogen.json` exists, and otherwise for a new
@@ -139,8 +131,8 @@ export class InitQuestions {
 			addition === "place"
 				? new ConfigSet(
 						candidate,
-						this.toolchainService.getLanguage(workspace.language),
-						workspace.darklua
+						workspace.language,
+						workspace.usesDarklua
 					).placeFiles
 				: variantFileNames(candidate);
 		if (name) {
@@ -210,24 +202,22 @@ export class InitQuestions {
 
 		const languageId = await this.promptService.select({
 			message: "Language",
-			choices: this.toolchainService
-				.getLanguages()
-				.map(({ id, label, detectedHint }) => ({
-					value: id,
-					label,
-					hint: id === workspace.language ? detectedHint : undefined,
-				})),
-			initialValue: workspace.language,
+			choices: workspace.languages.map(({ id, label, detectedHint }) => ({
+				value: id,
+				label,
+				hint: id === workspace.language.id ? detectedHint : undefined,
+			})),
+			initialValue: workspace.language.id,
 		});
 		if (languageId === undefined) return ok(undefined);
-		const language = this.toolchainService.getLanguage(languageId);
+		const language = workspace.languageFor(languageId);
 
 		const darklua = await this.promptService.confirm({
 			message: "Does Darklua process your code before Rojo syncs it?",
 			description:
 				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: workspace.darklua ? Darklua.detectedHint : undefined,
-			initialValue: workspace.darklua,
+			hint: workspace.usesDarklua ? DARKLUA.detectedHint : undefined,
+			initialValue: workspace.usesDarklua,
 		});
 		if (darklua === undefined) return ok(undefined);
 
@@ -246,13 +236,13 @@ export class InitQuestions {
 		const template = await this.askTemplate(existingFiles, outputs);
 		if (template === undefined) return ok(undefined);
 
-		let syncDir = defaultSyncDir(language, darklua, workspace);
+		let syncDir = defaultSyncDir(language, darklua);
 		if (darklua) {
 			const answer = await this.promptService.text({
 				message: "Sync dir",
 				description:
 					"The folder Darklua writes into. Rojo syncs from here.",
-				placeholder: Darklua.defaultSyncDir,
+				placeholder: DARKLUA.defaultSyncDir,
 				validate: required("a sync dir"),
 			});
 			if (answer === undefined) return ok(undefined);
@@ -285,7 +275,7 @@ export class InitQuestions {
 			places = answer;
 		}
 
-		const outDir = language.compiler?.outDir(workspace);
+		const outDir = language.compiler?.outDir;
 		return ok({
 			name: chosenName,
 			language,

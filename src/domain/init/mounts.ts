@@ -3,7 +3,6 @@ import {
 	Language,
 	Mount,
 	MountCandidate,
-	packageMounts,
 } from "../toolchain/toolchain.js";
 
 /** What the packages question offers: the package manager's folders, then the language's own. */
@@ -11,8 +10,8 @@ export const offeredMounts = (
 	workspace: DetectedWorkspace,
 	language: Language
 ): MountCandidate[] => [
-	...packageMounts(workspace, language),
-	...language.offeredMounts(workspace),
+	...workspace.packageMounts(language),
+	...language.offeredMounts(),
 ];
 
 const toMount = ({ path, installed, landing }: MountCandidate): Mount => ({
@@ -28,7 +27,7 @@ export function selectMounts(
 	ticked: readonly string[]
 ): Mount[] {
 	return [
-		...language.alwaysMounted(workspace).map(toMount),
+		...language.alwaysMounted().map(toMount),
 		...offeredMounts(workspace, language)
 			.filter(({ path }) => ticked.includes(path))
 			.map(toMount),

@@ -1,10 +1,8 @@
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { ConfigSet, sourceStemOf } from "../config-set.js";
 
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-const luau = toolchain.getLanguage("luau");
-const robloxTs = toolchain.getLanguage("roblox-ts");
+const luau = workspaceOf().languageFor("luau");
+const robloxTs = workspaceOf().languageFor("roblox-ts");
 
 describe("sourceStemOf", () => {
 	it("should call default's source config source", () => {

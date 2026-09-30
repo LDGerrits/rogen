@@ -22,8 +22,6 @@ export const syncTools = toolchain.getSyncTools();
 const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
 	_serviceBrand: undefined,
 	detect: (directory) => toolchain.detect(directory),
-	getLanguage: (id) => toolchain.getLanguage(id),
-	getLanguages: () => toolchain.getLanguages(),
 	getSyncTools: () => [...syncTools, ...extraTools],
 });
 

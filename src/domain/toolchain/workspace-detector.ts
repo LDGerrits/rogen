@@ -8,8 +8,7 @@ import { RojoFile } from "../rojo/rojo-file.js";
 import {
 	Darklua,
 	DetectedWorkspace,
-	Language,
-	PACKAGE_MANAGERS,
+	LanguageDetector,
 	PLACES_DIR,
 	PackageManager,
 } from "./toolchain.js";
@@ -23,56 +22,50 @@ interface DetectedPackages {
 	readonly packageDirs: readonly string[];
 }
 
-/** Reads what a workspace uses of the languages it was given. */
+/** Reads what a workspace uses of the languages and tools it was given. */
 export class WorkspaceDetector {
+	private readonly darklua = new Darklua();
+
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly languages: readonly [Language, ...Language[]]
+		private readonly languages: readonly [
+			LanguageDetector,
+			...LanguageDetector[],
+		]
 	) {}
 
 	async detect(cwd: string): Promise<DetectedWorkspace> {
-		const [detections, darklua, packages, hasSrc, places] =
+		const [languages, usesDarklua, packages, hasSrc, places] =
 			await Promise.all([
 				Promise.all(
-					this.languages.map((language) => language.detect(cwd))
+					this.languages.map((detector) => detector.detect(cwd))
 				),
 				this.detectDarklua(cwd),
 				this.detectPackages(cwd),
 				this.fileSystemService.exists(path.join(cwd, "src")),
 				this.findPlaces(path.join(cwd, PLACES_DIR)),
 			]);
-		const language =
-			this.languages.find((_, index) => detections[index].present) ??
-			this.languages[0];
 		const codeFolders = await this.findCodeFolders(cwd, [
 			...packages.packageDirs,
-			...detections.flatMap(({ reservedFolders }) => reservedFolders),
+			...languages.flatMap(({ reservedFolders }) => reservedFolders),
 			...(places.length > 0 ? [PLACES_DIR] : []),
 		]);
 
-		return {
-			language: language.id,
-			darklua,
+		return new DetectedWorkspace({
+			languages,
+			usesDarklua,
 			codeFolders,
 			hasSrc,
-			...(packages.packageManager && {
-				packageManager: packages.packageManager,
-			}),
+			packageManager: packages.packageManager,
 			packageDirs: new Set(packages.packageDirs),
 			places,
-			languageFacts: Object.fromEntries(
-				this.languages.flatMap(({ id }, index) => {
-					const { facts } = detections[index];
-					return facts === undefined ? [] : [[id, facts]];
-				})
-			),
-		};
+		});
 	}
 
 	private async detectDarklua(cwd: string): Promise<boolean> {
 		const found = await Promise.all(
-			Darklua.configFiles.map((file) =>
+			this.darklua.configFiles.map((file) =>
 				this.fileSystemService.exists(path.join(cwd, file))
 			)
 		);
@@ -83,23 +76,17 @@ export class WorkspaceDetector {
 	private async detectPackages(cwd: string): Promise<DetectedPackages> {
 		const has = (name: string) =>
 			this.fileSystemService.exists(path.join(cwd, name));
-		const layouts = Object.values(PACKAGE_MANAGERS);
-		const [isWally, isPesde, installed] = await Promise.all([
-			has(PACKAGE_MANAGERS.wally.manifest),
-			has(PACKAGE_MANAGERS.pesde.manifest),
+		const managers = PackageManager.PRIORITY;
+		const [manifests, installed] = await Promise.all([
+			Promise.all(managers.map(({ manifest }) => has(manifest))),
 			Promise.all(
-				layouts
+				managers
 					.flatMap(({ shared, server }) => [shared, server])
 					.map(async (dir) => ((await has(dir)) ? dir : undefined))
 			),
 		]);
-		const packageManager: PackageManager | undefined = isPesde
-			? "pesde"
-			: isWally
-				? "wally"
-				: undefined;
 		return {
-			...(packageManager && { packageManager }),
+			packageManager: managers.find((_, index) => manifests[index]),
 			packageDirs: installed.filter((dir) => dir !== undefined),
 		};
 	}

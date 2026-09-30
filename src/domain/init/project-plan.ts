@@ -3,7 +3,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig, SCHEMA_URL } from "../config/config.js";
 import { RojoTree, projectFileName } from "../rojo/rojo-project.js";
-import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
+import { PlannedFile } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitChoices } from "./init-choices.js";
 import {
@@ -11,6 +11,7 @@ import {
 	existingFileDiagnostics,
 	extendsRef,
 	placeFolder,
+	DARKLUA,
 } from "./init-files.js";
 import { InitPlan, NextSteps, tagsStep, watchCommand } from "./init-plan.js";
 import { startingRoutes } from "./starting-routes.js";
@@ -71,7 +72,7 @@ function nextSteps(
 		],
 		darklua:
 			darklua && syncDir
-				? Darklua.processCommands(directory, processed, syncDir)
+				? DARKLUA.processCommands(directory, processed, syncDir)
 				: [],
 		edits: [
 			`Add your own routes under "routes" in ${configName}.`,

@@ -1,20 +1,23 @@
 import { capitalized } from "../../base/string.js";
 import {
 	Language,
-	LanguageDetection,
+	LanguageDetector,
 	MountCandidate,
 	PackageManager,
 } from "./toolchain.js";
 
 /** Plain Luau: Rojo syncs the root dirs as they are. It's what `init` assumes when no other language is found. */
-export class Luau implements Language {
+export class Luau implements Language, LanguageDetector {
 	readonly id = "luau";
 	readonly label = "Luau";
 	readonly extension = "luau";
-	readonly defaultPackageManager: PackageManager = "wally";
+	readonly defaultPackageManager = PackageManager.WALLY;
+	readonly present = false;
+	readonly reservedFolders: readonly string[] = [];
 
-	async detect(): Promise<LanguageDetection> {
-		return { present: false, reservedFolders: [] };
+	/** Luau leaves nothing of its own in the workspace, so there is nothing to read. */
+	async detect(): Promise<Language> {
+		return this;
 	}
 
 	routeKey(id: string): string {

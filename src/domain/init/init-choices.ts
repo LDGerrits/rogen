@@ -1,9 +1,5 @@
-import {
-	Darklua,
-	DetectedWorkspace,
-	Language,
-	Mount,
-} from "../toolchain/toolchain.js";
+import { DARKLUA } from "./init-files.js";
+import { DetectedWorkspace, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { defaultMounts } from "./mounts.js";
 import { defaultRootDir } from "./root-dirs.js";
@@ -31,11 +27,10 @@ export interface InitChoices {
 /** The sync dir `init` writes: Darklua's output, else the compiler's, else none. */
 export function defaultSyncDir(
 	language: Language,
-	darklua: boolean,
-	workspace: DetectedWorkspace
+	darklua: boolean
 ): string | undefined {
-	if (darklua) return Darklua.defaultSyncDir;
-	return language.compiler?.outDir(workspace);
+	if (darklua) return DARKLUA.defaultSyncDir;
+	return language.compiler?.outDir;
 }
 
 /** The choices when every question takes its default, as a non-interactive `init` does. */
@@ -46,9 +41,9 @@ export function defaultInitChoices(
 	existingFiles: ReadonlySet<string>,
 	withPlaces: boolean
 ): InitChoices {
-	const { darklua } = workspace;
-	const syncDir = defaultSyncDir(language, darklua, workspace);
-	const outDir = language.compiler?.outDir(workspace);
+	const darklua = workspace.usesDarklua;
+	const syncDir = defaultSyncDir(language, darklua);
+	const outDir = language.compiler?.outDir;
 	const template = defaultTemplateChoice(
 		existingFiles,
 		new ConfigSet(name, language, darklua).outputFiles

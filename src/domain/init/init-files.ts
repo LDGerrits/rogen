@@ -11,10 +11,11 @@ import {
 	RogenConfig,
 	configFileName,
 } from "../config/config.js";
-import { PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
+import { Darklua, PLACES_DIR, PlannedFile } from "../toolchain/toolchain.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { TEMPLATE_FILE } from "./template.js";
 
+export const DARKLUA = new Darklua();
 export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
 
 export const InitDiagnostics = {

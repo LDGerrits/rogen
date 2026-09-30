@@ -42,7 +42,7 @@ export class CoreInitService implements InitService {
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService
 	) {
-		this.questions = new InitQuestions(promptService, toolchainService);
+		this.questions = new InitQuestions(promptService);
 	}
 
 	async prepare(
@@ -112,7 +112,7 @@ export class CoreInitService implements InitService {
 				kind: "project",
 				choices: defaultInitChoices(
 					workspace,
-					this.toolchainService.getLanguage(workspace.language),
+					workspace.language,
 					name,
 					existingFiles,
 					givenName === undefined
@@ -179,8 +179,8 @@ export class CoreInitService implements InitService {
 		return planPlace({
 			choices: answers.choices,
 			base: base.value,
-			language: this.toolchainService.getLanguage(workspace.language),
-			darklua: workspace.darklua,
+			language: workspace.language,
+			darklua: workspace.usesDarklua,
 			workspace,
 			directory,
 			existingFiles,

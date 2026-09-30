@@ -56,7 +56,7 @@ describe("CoreInitService", () => {
 
 			expect(request.directory).toBe(directory);
 			expect(request.existingFiles).toEqual(new Set(["tsconfig.json"]));
-			expect(request.workspace.language).toBe("roblox-ts");
+			expect(request.workspace.language.id).toBe("roblox-ts");
 			expect(request.name).toBe("default");
 			expect(request.givenName).toBeUndefined();
 		});

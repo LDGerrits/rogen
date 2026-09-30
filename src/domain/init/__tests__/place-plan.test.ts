@@ -5,9 +5,11 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
-import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
+import {
+	WorkspaceSpec,
+	withRobloxTs,
+	workspaceOf,
+} from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import {
 	BaseConfig,
@@ -18,19 +20,10 @@ import {
 } from "../place-plan.js";
 
 const directory = path.resolve("/mock/my-game");
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: true,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
-};
-const darklua: DetectedWorkspace = { ...luau, darklua: true };
-const rbxts: DetectedWorkspace = withRobloxTs(
+const luau: WorkspaceSpec = { hasSrc: true };
+const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+const rbxts: WorkspaceSpec = withRobloxTs(
 	{ ...luau, language: "roblox-ts" },
 	{ outDir: "out", tsconfigHasInclude: true }
 );
@@ -38,19 +31,21 @@ const rbxts: DetectedWorkspace = withRobloxTs(
 const choices: PlaceChoices = { name: "lobby", folder: "places/lobby" };
 
 const plan = (
-	workspace: DetectedWorkspace,
+	spec: WorkspaceSpec,
 	base: BaseConfig,
 	existingFiles: readonly string[] = []
-) =>
-	planPlace({
+) => {
+	const workspace = workspaceOf(spec);
+	return planPlace({
 		choices,
 		base,
-		language: toolchain.getLanguage(workspace.language),
-		darklua: workspace.darklua,
+		language: workspace.language,
+		darklua: workspace.usesDarklua,
 		workspace,
 		directory,
 		existingFiles: new Set(existingFiles),
 	});
+};
 
 const written = (result: ReturnType<typeof plan>) => {
 	const value = result.unwrap();
@@ -235,7 +230,7 @@ describe("planPlace", () => {
 			const { configs, tsconfig } = written(
 				plan(
 					withRobloxTs(
-						{ ...rbxts, darklua: true },
+						{ ...rbxts, usesDarklua: true },
 						{ outDir: "build" }
 					),
 					{ rootDirs: ["src"], syncDir: "dist" }
@@ -274,37 +269,10 @@ describe("planPlace", () => {
 			]);
 		});
 
-		it("should hand the compiler the project's language and Darklua choice over what was detected", () => {
-			const roblox = toolchain.getLanguage("roblox-ts");
-			const seen: DetectedWorkspace[] = [];
-			const compiler = {
-				...roblox.compiler!,
-				outDir: (workspace: DetectedWorkspace) => {
-					seen.push(workspace);
-					return "out";
-				},
-			};
-
-			planPlace({
-				choices,
-				base: { rootDirs: ["src"] },
-				language: { ...roblox, compiler },
-				darklua: true,
-				workspace: luau,
-				directory,
-				existingFiles: new Set(),
-			});
-
-			expect(seen[0]).toMatchObject({
-				language: "roblox-ts",
-				darklua: true,
-			});
-		});
-
 		it("should say what Darklua must process on top", () => {
 			const { nextSteps } = written(
 				plan(
-					{ ...rbxts, darklua: true },
+					{ ...rbxts, usesDarklua: true },
 					{ rootDirs: ["src"], syncDir: "dist" }
 				)
 			);

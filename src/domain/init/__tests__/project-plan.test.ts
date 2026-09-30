@@ -1,14 +1,12 @@
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
-	robloxTsFacts,
+	WorkspaceSpec,
 	withRobloxTs,
+	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import {
 	InitChoices,
@@ -32,16 +30,8 @@ const ROBLOX_TS_ROUTES = {
 
 const directory = path.resolve("/mock/my-game");
 
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: false,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
-};
-const withPackages: Partial<DetectedWorkspace> = {
+const luau: WorkspaceSpec = {};
+const withPackages: WorkspaceSpec = {
 	packageManager: "wally",
 	packageDirs: new Set(["Packages"]),
 };
@@ -52,24 +42,24 @@ const mounts = {
 	},
 };
 
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
 const defaultInitChoices = (
-	workspace: DetectedWorkspace,
+	spec: WorkspaceSpec,
 	name: string,
 	existingFiles: ReadonlySet<string>,
 	withPlaces: boolean
-) =>
-	defaultChoicesFor(
+) => {
+	const workspace = workspaceOf(spec);
+	return defaultChoicesFor(
 		workspace,
-		toolchain.getLanguage(workspace.language),
+		workspace.language,
 		name,
 		existingFiles,
 		withPlaces
 	);
+};
 
 const planResult = (
-	workspace: DetectedWorkspace,
+	workspace: WorkspaceSpec,
 	name = "default",
 	existingFiles: readonly string[] = []
 ) =>
@@ -86,7 +76,7 @@ const plan = (...args: Parameters<typeof planResult>) =>
 const errorsOf = (result: ReturnType<typeof planResult>) =>
 	(result as ResultError<Diagnostic[]>).error;
 
-const treeOf = (workspace: Partial<DetectedWorkspace>) => {
+const treeOf = (workspace: WorkspaceSpec) => {
 	const { template } = plan({ ...luau, ...workspace });
 	return template && JSON.parse(template.content).tree;
 };
@@ -169,7 +159,7 @@ describe("planProject", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: DetectedWorkspace = { ...luau, darklua: true };
+		const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
 
 		it("should write a source config and a default config extending it", () => {
 			const files = plan(darklua);
@@ -222,14 +212,14 @@ describe("planProject", () => {
 
 	describe("language and darklua", () => {
 		const planFor = (
-			language: DetectedWorkspace["language"],
+			language: WorkspaceSpec["language"],
 			darklua: boolean,
 			name = "default"
 		) =>
 			planProject({
 				choices: defaultInitChoices(
 					withRobloxTs(
-						{ ...luau, language, darklua },
+						{ ...luau, language, usesDarklua: darklua },
 						{ outDir: "build" }
 					),
 					name,
@@ -330,7 +320,7 @@ describe("planProject", () => {
 			const files = planProject({
 				choices: {
 					...defaultInitChoices(
-						{ ...luau, darklua: true },
+						{ ...luau, usesDarklua: true },
 						"default",
 						new Set(),
 						false
@@ -385,7 +375,7 @@ describe("planProject", () => {
 			const workspace = {
 				...luau,
 				language,
-			} as DetectedWorkspace;
+			} as WorkspaceSpec;
 			const files = planProject({
 				choices: {
 					...defaultInitChoices(
@@ -887,16 +877,16 @@ describe("planProject", () => {
 	});
 
 	describe("package mounts", () => {
-		const rbxts: Partial<DetectedWorkspace> = { language: "roblox-ts" };
+		const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 		it("should mount include and @rbxts for roblox-ts, and the scopes it found", () => {
 			expect(
 				treeOf({
 					...rbxts,
-					languageFacts: robloxTsFacts({
+					robloxTs: {
 						rbxtsScopes: ["@rbxts", "@flamework"],
 						hasInclude: true,
-					}),
+					},
 				})
 			).toEqual({
 				$className: "DataModel",
@@ -930,10 +920,10 @@ describe("planProject", () => {
 		it("should not mount a scope that is not installed by default", () => {
 			const scopes = treeOf({
 				...rbxts,
-				languageFacts: robloxTsFacts({
+				robloxTs: {
 					rbxtsScopes: ["@rbxts"],
 					hasInclude: true,
-				}),
+				},
 			}).ReplicatedStorage.rbxts_include.node_modules;
 
 			expect(Object.keys(scopes)).toEqual(["$className", "@rbxts"]);
@@ -942,10 +932,10 @@ describe("planProject", () => {
 		it("should never mount include or a scope for luau", () => {
 			expect(
 				treeOf({
-					languageFacts: robloxTsFacts({
+					robloxTs: {
 						hasInclude: true,
 						rbxtsScopes: ["@rbxts"],
-					}),
+					},
 				})
 			).toBeUndefined();
 		});
@@ -1036,10 +1026,10 @@ describe("planProject", () => {
 			expect(
 				treeOf({
 					language: "roblox-ts",
-					languageFacts: robloxTsFacts({
+					robloxTs: {
 						rbxtsScopes: ["@rbxts"],
 						hasInclude: true,
-					}),
+					},
 					packageDirs: new Set(["Packages"]),
 				}).ReplicatedStorage.Packages
 			).toBeUndefined();
@@ -1049,7 +1039,7 @@ describe("planProject", () => {
 			const tree = treeOf({
 				...withPackages,
 				language: "roblox-ts",
-				languageFacts: robloxTsFacts({ rbxtsScopes: ["@rbxts"] }),
+				robloxTs: { rbxtsScopes: ["@rbxts"] },
 			});
 
 			expect(Object.keys(tree)).toEqual([
@@ -1087,7 +1077,7 @@ describe("planProject", () => {
 
 		it("should write the chosen sync dir", () => {
 			const files = planChoices({
-				language: toolchain.getLanguage("roblox-ts"),
+				language: workspaceOf().languageFor("roblox-ts"),
 				syncDir: "lib",
 			});
 
@@ -1179,10 +1169,11 @@ describe("planProject", () => {
 		});
 
 		it("should report every darklua config that already exists", () => {
-			const result = planResult({ ...luau, darklua: true }, "default", [
-				"source.rogen.json",
-				"default.rogen.json",
-			]);
+			const result = planResult(
+				{ ...luau, usesDarklua: true },
+				"default",
+				["source.rogen.json", "default.rogen.json"]
+			);
 
 			expect(errorsOf(result).map((error) => error.resource)).toEqual([
 				path.join(directory, "source.rogen.json"),

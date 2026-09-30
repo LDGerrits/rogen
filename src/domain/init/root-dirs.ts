@@ -10,7 +10,7 @@ export function defaultRootDir(
 	workspace: DetectedWorkspace,
 	language: Language
 ): string {
-	const configured = language.configuredRootDir(workspace);
+	const configured = language.configuredRootDir();
 	if (configured !== undefined) return configured;
 	if (workspace.hasSrc) return DEFAULT_ROOT_DIR;
 	return workspace.codeFolders.length === 1

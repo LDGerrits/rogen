@@ -1,4 +1,3 @@
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import path from "path";
 import { ResultError, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -8,72 +7,67 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { DetectedWorkspace } from "../../toolchain/toolchain.js";
 import {
-	robloxTsFacts,
+	WorkspaceSpec,
 	withRobloxTs,
+	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { defaultInitChoices as defaultChoicesFor } from "../init-choices.js";
 import { InitContext, InitQuestions } from "../init-questions.js";
 
 const directory = path.resolve("/mock/my-game");
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 const askInit = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) => new InitQuestions(prompts, toolchain).ask(context, name);
+) => new InitQuestions(prompts).ask(context, name);
 
 const askInitChoices = (
 	prompts: MockPromptService,
 	context: InitContext,
 	name?: string
-) => new InitQuestions(prompts, toolchain).askProject(context, name);
+) => new InitQuestions(prompts).askProject(context, name);
 
 const defaultInitChoices = (
-	workspace: DetectedWorkspace,
+	spec: WorkspaceSpec,
 	name: string,
 	existingFiles: ReadonlySet<string>,
 	withPlaces: boolean
-) =>
-	defaultChoicesFor(
+) => {
+	const workspace = workspaceOf(spec);
+	return defaultChoicesFor(
 		workspace,
-		toolchain.getLanguage(workspace.language),
+		workspace.language,
 		name,
 		existingFiles,
 		withPlaces
 	);
-
-const luau: DetectedWorkspace = {
-	language: "luau",
-	darklua: false,
-	codeFolders: [],
-	hasSrc: false,
-	packageDirs: new Set(),
-	places: [],
-	languageFacts: {},
 };
-const rbxts: DetectedWorkspace = {
-	...luau,
+
+const luau: WorkspaceSpec = {};
+const rbxts: WorkspaceSpec = {
 	language: "roblox-ts",
-	languageFacts: robloxTsFacts({
+	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
 		hasInclude: true,
-	}),
+	},
 	packageManager: "wally",
-	packageDirs: new Set(["Packages"]),
+	packageDirs: ["Packages"],
 };
 
 const contextOf = (
-	workspace: DetectedWorkspace,
+	workspace: WorkspaceSpec,
 	existing: readonly string[] = []
-) => ({ workspace, directory, existingFiles: new Set(existing) });
+) => ({
+	workspace: workspaceOf(workspace),
+	directory,
+	existingFiles: new Set(existing),
+});
 
 const ask = (
-	workspace: DetectedWorkspace,
+	workspace: WorkspaceSpec,
 	answers: readonly ScriptedAnswer[],
 	name?: string,
 	existing: readonly string[] = []
@@ -97,7 +91,7 @@ const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
 describe("InitQuestions askProject", () => {
 	it("should give the non-interactive choices when every default is accepted", async () => {
-		const darklua = { ...luau, darklua: true };
+		const darklua = { ...luau, usesDarklua: true };
 		for (const workspace of [
 			rbxts,
 			luau,
@@ -225,7 +219,7 @@ describe("InitQuestions askProject", () => {
 	describe("darklua", () => {
 		it("should be preselected when found", async () => {
 			const choices = await asked(
-				{ ...luau, darklua: true },
+				{ ...luau, usesDarklua: true },
 				acceptAll(9)
 			);
 
@@ -241,7 +235,10 @@ describe("InitQuestions askProject", () => {
 				...acceptAll(6),
 			]);
 
-			expect(choices).toMatchObject({ darklua: true, syncDir: "dist" });
+			expect(choices).toMatchObject({
+				darklua: true,
+				syncDir: "dist",
+			});
 		});
 
 		it("should fail before the remaining questions when a file it would write exists", async () => {
@@ -292,7 +289,7 @@ describe("InitQuestions askProject", () => {
 
 			await askInitChoices(
 				prompts,
-				contextOf({ ...luau, darklua: true })
+				contextOf({ ...luau, usesDarklua: true })
 			);
 
 			expect(syncDirPrompt(prompts)?.placeholder).toBe("dist");
@@ -313,7 +310,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	describe("root dirs", () => {
-		const rootDirsPrompt = async (workspace: DetectedWorkspace) => {
+		const rootDirsPrompt = async (workspace: WorkspaceSpec) => {
 			const prompts = new MockPromptService(acceptAll(9));
 			await askInitChoices(prompts, contextOf(workspace));
 			return prompts.prompts.find(({ message }) =>
@@ -436,7 +433,7 @@ describe("InitQuestions askProject", () => {
 
 	describe("packages", () => {
 		const optionsFor = async (
-			workspace: DetectedWorkspace,
+			workspace: WorkspaceSpec,
 			existing: readonly string[] = []
 		) => {
 			const prompts = new MockPromptService(acceptAll(9));
@@ -611,7 +608,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	describe("routes", () => {
-		const routesPrompt = async (workspace: DetectedWorkspace) => {
+		const routesPrompt = async (workspace: WorkspaceSpec) => {
 			const prompts = new MockPromptService(acceptAll(9));
 			let choices: { value: string; label: string; hint?: string }[] = [];
 			let initial: readonly string[] | undefined;
@@ -734,7 +731,10 @@ describe("InitQuestions askProject", () => {
 	it("should show every text question as a placeholder with a description", async () => {
 		const prompts = new MockPromptService(acceptAll(10));
 
-		await askInitChoices(prompts, contextOf({ ...rbxts, darklua: true }));
+		await askInitChoices(
+			prompts,
+			contextOf({ ...rbxts, usesDarklua: true })
+		);
 
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
 		expect(text.map(({ message }) => message)).toEqual([
@@ -772,7 +772,7 @@ describe("InitQuestions askProject", () => {
 });
 
 describe("InitQuestions askProject layout", () => {
-	const withPlaces: DetectedWorkspace = {
+	const withPlaces: WorkspaceSpec = {
 		...luau,
 		hasSrc: true,
 		places: ["lobby", "match"],

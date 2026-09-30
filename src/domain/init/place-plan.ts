@@ -6,7 +6,6 @@ import { RogenConfig, SCHEMA_URL, configFileName } from "../config/config.js";
 import { ConfigEntry } from "../config/config-service.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import {
-	Darklua,
 	DetectedWorkspace,
 	Language,
 	PlannedFile,
@@ -16,6 +15,7 @@ import {
 	configFile,
 	existingFileDiagnostics,
 	extendsRef,
+	DARKLUA,
 } from "./init-files.js";
 import { ConfigSet } from "./config-set.js";
 import { InitPlan, tagsStep, watchCommand } from "./init-plan.js";
@@ -102,22 +102,15 @@ export function planPlace(
 		darklua,
 		directory,
 	} = options;
-	const workspace: DetectedWorkspace = {
-		...options.workspace,
-		language: language.id,
-		darklua,
-	};
 	const { compiler } = language;
 	const configSet = new ConfigSet(name, language, darklua);
 	const rootDirs = [...base.rootDirs, folder];
 	const projectFile = projectFileName(name);
 
-	const outDir = compiler && `${compiler.outDir(workspace)}/${name}`;
+	const outDir = compiler && `${compiler.outDir}/${name}`;
 	const syncBase =
 		compiler || darklua
-			? (base.syncDir ??
-				compiler?.outDir(workspace) ??
-				Darklua.defaultSyncDir)
+			? (base.syncDir ?? compiler?.outDir ?? DARKLUA.defaultSyncDir)
 			: undefined;
 	const syncDir = syncBase && `${syncBase}/${name}`;
 	const compiled =
@@ -129,7 +122,6 @@ export function planPlace(
 			sharedRootDirs: base.rootDirs,
 			outDir,
 			projectFile,
-			workspace,
 		});
 
 	const { sourceFile } = configSet;
@@ -168,7 +160,7 @@ export function planPlace(
 				],
 				darklua:
 					darklua && syncDir
-						? Darklua.processCommands(
+						? DARKLUA.processCommands(
 								directory,
 								outDir ? [outDir] : rootDirs,
 								syncDir
