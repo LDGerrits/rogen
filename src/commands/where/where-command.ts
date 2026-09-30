@@ -50,6 +50,7 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const cwd = accessor.get(EnvironmentService).cwd;
+			const logService = accessor.get(LogService);
 
 			// The positionals are paths, so only the flags pick configs.
 			const loaded = await configService.initialize(
@@ -83,15 +84,14 @@ registerCommand(
 				report.add(config.label, located.value, behind.value);
 			}
 
-			const log = accessor.get(LogService);
 			if (args.json) {
-				log.print(
+				logService.print(
 					JSON.stringify(report.json(given.length === 0), null, 2)
 				);
 				return ok(undefined);
 			}
 			const lines = report.lines(given.length === 0);
-			if (lines.length > 0) log.print(lines.join("\n"));
+			if (lines.length > 0) logService.print(lines.join("\n"));
 			return ok(undefined);
 		}
 
@@ -107,9 +107,7 @@ registerCommand(
 				const reference = InstanceReference.parse(arg);
 				if (
 					reference &&
-					!(await fileSystem.exists(
-						path.resolve(cwd, reference.service)
-					))
+					!(await fileSystem.exists(path.resolve(cwd, reference.service)))
 				)
 					instances.push(reference);
 				else paths.push(path.resolve(cwd, arg));

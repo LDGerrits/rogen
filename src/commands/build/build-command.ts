@@ -63,6 +63,8 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
+			const logService = accessor.get(LogService);
+			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const loaded = await configService.initialize(
 				configRefsFromArgs(args, args._.slice(1))
@@ -77,10 +79,25 @@ registerCommand(
 			if (buildable.isErr()) return buildable;
 
 			const attempts = await this.buildAll(buildService, targets.value);
+			const errors = attempts.flatMap(({ project }) =>
+				project.isErr() ? project.error.diagnostics : []
+			);
 			const unselected = await configService.listUnselectedConfigFiles();
 			return args.json
-				? this.reportAsJson(accessor, attempts, unselected)
-				: this.report(accessor, attempts, unselected);
+				? this.reportAsJson(
+						buildService,
+						logService,
+						attempts,
+						errors,
+						unselected
+					)
+				: this.report(
+						buildService,
+						new BuildLog(logService, cwd),
+						attempts,
+						errors,
+						unselected
+					);
 		}
 
 		/** Every config builds before any is written, so a failure writes nothing. */
@@ -100,73 +117,87 @@ registerCommand(
 			return attempts;
 		}
 
-		private async report(
-			accessor: ServicesAccessor,
+		/** Writes each project in turn and says how it went, stopping at the first failure. */
+		private async writeAll(
+			buildService: BuildService,
 			attempts: readonly BuildAttempt[],
+			written: (attempt: BuildAttempt, changed: boolean) => void
+		): Promise<Result<void, Error>> {
+			for (const attempt of attempts) {
+				const result = await buildService.write(
+					attempt.project.unwrap()
+				);
+				if (result.isErr()) return result;
+				written(attempt, result.value.written);
+			}
+			return ok(undefined);
+		}
+
+		private async report(
+			buildService: BuildService,
+			log: BuildLog,
+			attempts: readonly BuildAttempt[],
+			errors: readonly Diagnostic[],
 			unselected: readonly string[]
 		): Promise<Result<void, Error>> {
-			const buildService = accessor.get(BuildService);
-			const log = new BuildLog(
-				accessor.get(LogService),
-				accessor.get(EnvironmentService).cwd
-			);
 			log.begin("build", attempts, unselected);
 
-			const errors = attempts.flatMap(({ project }) =>
-				project.isErr() ? project.error.diagnostics : []
-			);
 			if (errors.length > 0) {
 				for (const { project } of attempts)
 					if (project.isOk()) log.diagnostics(project.value.warnings);
 				return err(new DiagnosticsError(errors));
 			}
 
-			for (const attempt of attempts) {
-				const project = attempt.project.unwrap();
-				if (attempts.length > 1) log.heading(attempt);
-				const written = await buildService.write(project);
-				if (written.isErr()) return written;
-				log.written(
-					attempt,
-					written.value.written,
-					project.summary,
-					diagnosticsOf(attempt)
-				);
-			}
+			const written = await this.writeAll(
+				buildService,
+				attempts,
+				(attempt, changed) => {
+					if (attempts.length > 1) log.heading(attempt);
+					log.written(
+						attempt,
+						changed,
+						attempt.project.unwrap().summary,
+						diagnosticsOf(attempt)
+					);
+				}
+			);
+			if (written.isErr()) return written;
 
 			log.end(attempts.length);
 			return ok(undefined);
 		}
 
 		private async reportAsJson(
-			accessor: ServicesAccessor,
+			buildService: BuildService,
+			logService: LogService,
 			attempts: readonly BuildAttempt[],
+			errors: readonly Diagnostic[],
 			unselected: readonly string[]
 		): Promise<Result<void, Error>> {
-			const buildService = accessor.get(BuildService);
 			const report = new BuildReport();
-			const errors = attempts.flatMap(({ project }) =>
-				project.isErr() ? project.error.diagnostics : []
-			);
 
-			for (const attempt of attempts) {
-				const { config, project } = attempt;
-				if (errors.length > 0 || project.isErr()) {
-					report.add(config, "notWritten", diagnosticsOf(attempt));
-					continue;
-				}
-				const written = await buildService.write(project.value);
-				if (written.isErr()) return written;
-				report.add(
-					config,
-					written.value.written ? "wrote" : "unchanged",
-					diagnosticsOf(attempt)
+			if (errors.length > 0) {
+				for (const attempt of attempts)
+					report.add(
+						attempt.config,
+						"notWritten",
+						diagnosticsOf(attempt)
+					);
+			} else {
+				const written = await this.writeAll(
+					buildService,
+					attempts,
+					(attempt, changed) =>
+						report.add(
+							attempt.config,
+							changed ? "wrote" : "unchanged",
+							diagnosticsOf(attempt)
+						)
 				);
+				if (written.isErr()) return written;
 			}
 
-			accessor
-				.get(LogService)
-				.print(JSON.stringify(report.json(unselected), null, 2));
+			logService.print(JSON.stringify(report.json(unselected), null, 2));
 			return errors.length > 0
 				? err(new ReportedError(new DiagnosticsError(errors)))
 				: ok(undefined);

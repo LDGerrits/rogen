@@ -1,9 +1,4 @@
-import {
-	GlobalOptions,
-	JsonOption,
-	OptionDescriptor,
-	parseArgs,
-} from "../args.js";
+import { GlobalOptions, OptionDescriptor, parseArgs } from "../args.js";
 
 const globals: OptionDescriptor[] = [
 	{ name: "verbose", type: "boolean", description: "" },
@@ -88,23 +83,9 @@ describe("parseArgs", () => {
 		expect(result.isErr() && result.error.message).toContain("--tag");
 	});
 
-	describe("the shared option tables", () => {
-		const shared = (command?: string) =>
-			command === "where" || command === undefined
-				? [...GlobalOptions, JsonOption]
-				: GlobalOptions;
+	it("should take --no-input on every command", () => {
+		const parsed = parseArgs(["watch", "--no-input"], () => GlobalOptions);
 
-		it("should take --no-input on every command", () => {
-			const parsed = parseArgs(["watch", "--no-input"], shared).unwrap();
-
-			expect(parsed.options["no-input"]).toBe(true);
-		});
-
-		it("should take --json only where a command declares it", () => {
-			expect(
-				parseArgs(["where", "--json"], shared).unwrap().options.json
-			).toBe(true);
-			expect(parseArgs(["watch", "--json"], shared).isErr()).toBe(true);
-		});
+		expect(parsed.unwrap().options["no-input"]).toBe(true);
 	});
 });

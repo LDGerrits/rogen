@@ -1,0 +1,47 @@
+$ rogen init --no-input
+exit 0
+stdout:
+  rogen init
+  Created default.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 1 file.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- src/Inventory/Save.server.luau

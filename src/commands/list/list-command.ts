@@ -63,7 +63,8 @@ registerCommand(
 			});
 			if (loaded.isErr()) return loaded;
 
-			if (args.json) return this.listAsJson(accessor);
+			if (args.json)
+				return this.listAsJson(configService, logService, cwd);
 
 			logService.intro("rogen list");
 			for (const entry of configService.configs)
@@ -77,15 +78,14 @@ registerCommand(
 			return ok(undefined);
 		}
 
-		private listAsJson(accessor: ServicesAccessor): Result<void, Error> {
-			const configService = accessor.get(ConfigService);
-			const report = new ConfigReport(
-				accessor.get(EnvironmentService).cwd
-			);
+		private listAsJson(
+			configService: ConfigService,
+			logService: LogService,
+			cwd: string
+		): Result<void, Error> {
+			const report = new ConfigReport(cwd);
 			for (const entry of configService.configs) report.add(entry);
-			accessor
-				.get(LogService)
-				.print(JSON.stringify(report.json(), null, 2));
+			logService.print(JSON.stringify(report.json(), null, 2));
 
 			const broken = configService.getBrokenError();
 			return broken ? err(new ReportedError(broken)) : ok(undefined);
