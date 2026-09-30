@@ -1,0 +1,7 @@
+$ rogen init a b
+exit 1
+stdout:
+  rogen init
+  init failed.
+stderr:
+  error: init takes at most one config name.

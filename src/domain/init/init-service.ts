@@ -31,7 +31,7 @@ export interface InitPlan {
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
-	/** Checks the names given after `init`, reads the working directory and asks what to write; `ok(undefined)` means the user cancelled. Writes nothing. */
+	/** Asks what to write and writes nothing; `ok(undefined)` means the user cancelled. */
 	plan(
 		names: readonly string[]
 	): Promise<Result<InitPlan | undefined, Error>>;

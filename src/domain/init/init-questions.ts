@@ -28,14 +28,14 @@ export interface PlacesQuestion {
 	readonly reserved: ReadonlySet<string>;
 }
 
-/** How the questions word a language; the toolchain reports what a workspace holds, and this file owns the words. */
+/** The wording of the questions for one language. */
 interface LanguageCopy {
 	readonly label: string;
 	/** The language question's hint when the workspace uses this language. */
 	readonly detectedHint?: string;
 	/** Added to the packages question's description. */
 	readonly packagesNote?: string;
-	/** For a language with a compiler, which reads one root dir. */
+	/** Only for a language whose compiler reads a single root dir. */
 	readonly rootDir?: {
 		readonly description: string;
 		readonly severalProblem: string;

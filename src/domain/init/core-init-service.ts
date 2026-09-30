@@ -39,7 +39,6 @@ export class CoreInitService implements InitService {
 		return this.planIn(directory.value);
 	}
 
-	/** Checks the names given after `init` and reads the directory's entries and toolchain; asks and writes nothing. */
 	private async prepare(
 		names: readonly string[]
 	): Promise<Result<InitDirectory, Error>> {
