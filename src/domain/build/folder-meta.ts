@@ -5,7 +5,12 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
-import { RojoNode, RojoProject, instanceKey } from "../rojo/rojo-project.js";
+import {
+	InstanceMap,
+	RojoNode,
+	RojoProject,
+	instanceKey,
+} from "../rojo/rojo-project.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
@@ -180,19 +185,19 @@ export class FolderMetaApplier {
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
 		const { config, template, files, routed, leftOut } = this.placement;
-		const sharedWithFile = new Map(
-			files.map((file) => [instanceKey(file.instancePath), file])
-		);
+		const sharedWithFile = new InstanceMap<RoutedFile>();
+		for (const file of files) sharedWithFile.set(file.instancePath, file);
 		const displaced = routed.filter(
 			(file) => leftOut.get(file.entry.source)?.status === "displaced"
 		);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
-		for (const [instance, node] of this.reachedNodes([
+		for (const [nodePath, node] of this.reachedNodes([
 			...files,
 			...displaced,
 		])) {
+			const instance = instanceKey(nodePath);
 			const metas = [...node.dirs]
 				.filter((dir) => !this.collapsed.covers(dir))
 				.flatMap((dir) => this.metaByDir.get(dir) ?? [])
@@ -214,7 +219,7 @@ export class FolderMetaApplier {
 				);
 			}
 
-			const shared = sharedWithFile.get(instance);
+			const shared = sharedWithFile.get(nodePath);
 			if (shared) {
 				outcomes.push({
 					kind: "shared",
@@ -270,17 +275,16 @@ export class FolderMetaApplier {
 
 	private reachedNodes(
 		files: readonly RoutedFile[]
-	): Map<string, ReachedNode> {
-		const reached = new Map<string, ReachedNode>();
+	): InstanceMap<ReachedNode> {
+		const reached = new InstanceMap<ReachedNode>();
 		for (const { entry, folderNodes } of files) {
 			for (const { instancePath, dir } of folderNodes) {
-				const key = instanceKey(instancePath);
-				const node = reached.get(key) ?? {
+				const node = reached.get(instancePath) ?? {
 					instancePath,
 					dirs: new Set(),
 				};
 				node.dirs.add(joinPosix(entry.rootDir, dir));
-				reached.set(key, node);
+				reached.set(instancePath, node);
 			}
 		}
 		return reached;

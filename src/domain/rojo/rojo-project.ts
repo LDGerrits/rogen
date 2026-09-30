@@ -45,6 +45,35 @@ function childNodes(node: RojoNode): [string, RojoNode][] {
 	);
 }
 
+/** A map keyed by instance path, kept in the order paths were first set. */
+export class InstanceMap<V> implements Iterable<[readonly string[], V]> {
+	private readonly entries = new Map<
+		string,
+		{ readonly path: readonly string[]; value: V }
+	>();
+
+	get(instancePath: readonly string[]): V | undefined {
+		return this.entries.get(instanceKey(instancePath))?.value;
+	}
+
+	set(instancePath: readonly string[], value: V): this {
+		const key = instanceKey(instancePath);
+		const existing = this.entries.get(key);
+		if (existing) existing.value = value;
+		else this.entries.set(key, { path: instancePath, value });
+		return this;
+	}
+
+	*values(): IterableIterator<V> {
+		for (const { value } of this.entries.values()) yield value;
+	}
+
+	*[Symbol.iterator](): IterableIterator<[readonly string[], V]> {
+		for (const { path, value } of this.entries.values())
+			yield [path, value];
+	}
+}
+
 export interface RojoTree {
 	name: string;
 	tree: RojoNode;

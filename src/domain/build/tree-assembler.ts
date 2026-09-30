@@ -9,7 +9,12 @@ import {
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
-import { RojoProject, RojoTree, instanceKey } from "../rojo/rojo-project.js";
+import {
+	InstanceMap,
+	RojoProject,
+	RojoTree,
+	instanceKey,
+} from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
 	FolderMeta,
@@ -194,14 +199,14 @@ export class TreeAssembler {
 		isReserved: (instancePath: readonly string[]) => boolean
 	): Map<string, readonly string[]> {
 		const placed = files.map((file) => this.placeEntry(file));
-		const claims = new Map<string, number>();
+		const claims = new InstanceMap<number>();
 		const entriesByDir = new Map<string, PlacedEntry[]>();
 		const namedDirs = new Set<string>();
 		for (const entry of placed) {
 			const { instancePath, folderNodes, entry: scanned } = entry.file;
 			for (let length = 1; length <= instancePath.length; length++) {
-				const key = instanceKey(instancePath.slice(0, length));
-				claims.set(key, (claims.get(key) ?? 0) + 1);
+				const claimed = instancePath.slice(0, length);
+				claims.set(claimed, (claims.get(claimed) ?? 0) + 1);
 			}
 
 			const rootDir = toPosix(scanned.rootDir);
@@ -234,7 +239,7 @@ export class TreeAssembler {
 			if (
 				instancePath &&
 				!isReserved(instancePath) &&
-				claims.get(instanceKey(instancePath)) === entries.length
+				claims.get(instancePath) === entries.length
 			)
 				collapsed.set(dir, instancePath);
 		}

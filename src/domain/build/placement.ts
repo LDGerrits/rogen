@@ -4,7 +4,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { instanceKey } from "../rojo/rojo-project.js";
+import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildSummary, LeftOut } from "./build-service.js";
 import { BuildTemplate } from "./build-template.js";
@@ -200,7 +200,7 @@ export class Placer {
 
 		const problems = new DiagnosticCollector();
 		const clashes: InstanceClash[] = [];
-		const winners = new Map<string, RoutedFile>();
+		const winners = new InstanceMap<RoutedFile>();
 		for (const root of groupBy(
 			kept,
 			(file) => file.entry.rootDir
@@ -221,7 +221,7 @@ export class Placer {
 				else if (claimants.length > 1)
 					clashes.push({ instance, claimants });
 				winners.set(
-					instance,
+					claimants[0].instancePath,
 					tagged[0] ?? untagged[untagged.length - 1]
 				);
 			}
@@ -229,7 +229,7 @@ export class Placer {
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
 		for (const file of kept) {
-			const winner = winners.get(instanceKey(file.instancePath));
+			const winner = winners.get(file.instancePath);
 			if (winner && winner !== file)
 				leftOut.push([
 					file.entry.source,
