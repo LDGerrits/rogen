@@ -1,5 +1,7 @@
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { DarkluaDetector } from "./darklua.js";
 import { Luau } from "./luau.js";
+import { PackageManagerDetector } from "./package-managers.js";
 import { RobloxTsCompiler, RobloxTsDetector } from "./roblox-ts.js";
 import { Darklua, DetectedWorkspace, SyncTool } from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
@@ -14,10 +16,13 @@ export class CoreToolchainService implements ToolchainService {
 	constructor(fileSystemService: FileSystemService) {
 		const darklua = new Darklua();
 		this.syncTools = [darklua, new RobloxTsCompiler()];
-		this.detector = new WorkspaceDetector(fileSystemService, darklua, [
-			new Luau(),
-			new RobloxTsDetector(fileSystemService),
-		]);
+		this.detector = new WorkspaceDetector(
+			fileSystemService,
+			darklua,
+			new DarkluaDetector(fileSystemService, darklua),
+			new PackageManagerDetector(fileSystemService),
+			[new Luau(), new RobloxTsDetector(fileSystemService)]
+		);
 	}
 
 	detect(directory: string): Promise<DetectedWorkspace> {

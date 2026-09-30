@@ -1,6 +1,7 @@
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
+import { directoryOf } from "./init-fixtures.js";
 
 const luau = workspaceOf().languageFor("luau");
 const robloxTs = workspaceOf().languageFor("roblox-ts");
@@ -126,6 +127,23 @@ describe("ConfigSet naming", () => {
 
 	it("should start the default config from default.rogen.json", () => {
 		expect(ConfigSet.DEFAULT_FILE).toBe("default.rogen.json");
+	});
+
+	describe("handWrittenProjectFiles", () => {
+		it("should leave out the template, which is not hand-written", () => {
+			const target = directoryOf({
+				existing: [
+					"game.project.json",
+					"template.project.json",
+					"other.project.json",
+					"other.rogen.json",
+				],
+			});
+
+			expect(ConfigSet.handWrittenProjectFiles(target)).toEqual([
+				"game.project.json",
+			]);
+		});
 	});
 
 	describe("parseName", () => {

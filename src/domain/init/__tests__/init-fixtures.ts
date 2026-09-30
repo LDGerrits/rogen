@@ -11,7 +11,8 @@ import {
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
-import { InitDirectory, TEMPLATE_FILE } from "../init-directory.js";
+import { TEMPLATE_FILE } from "../config-set.js";
+import { InitDirectory } from "../init-directory.js";
 import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";
 

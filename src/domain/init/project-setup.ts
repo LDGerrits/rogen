@@ -2,8 +2,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig, configFileName, defaultOutFileName } from "../config/config.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
-import { ConfigSet } from "./config-set.js";
-import { InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
+import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
 import { PlaceSetup } from "./place-setup.js";
@@ -270,7 +270,7 @@ export class ProjectSetup implements Setup {
 	): PlannedTemplate {
 		const { directory } = this;
 		if (directory.has(TEMPLATE_FILE)) {
-			const handWritten = directory.handWrittenProjectFiles;
+			const handWritten = ConfigSet.handWrittenProjectFiles(directory);
 			const replaced = configSet.outputFiles.filter((file) =>
 				handWritten.includes(file)
 			);
