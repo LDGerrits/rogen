@@ -174,3 +174,9 @@ export function parseArgs(
 		return err(ErrorUtils.fromUnknown(error));
 	}
 }
+
+/** Whether `flag` was typed before any `--`, however the rest of the line parses. */
+export function hasFlag(argv: readonly string[], flag: string): boolean {
+	const end = argv.indexOf("--");
+	return (end === -1 ? argv : argv.slice(0, end)).includes(flag);
+}

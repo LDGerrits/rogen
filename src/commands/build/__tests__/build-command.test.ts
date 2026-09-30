@@ -476,6 +476,45 @@ describe("build command", () => {
 			expect(await fs.exists(abs("source.project.json"))).toBe(false);
 		});
 
+		it("should say a project file that could not be written was not written, and why, and still print the rest", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("other/B.luau"), "");
+			await fs.createDirectory(abs("blocked"));
+
+			const { result, document } = await buildJson(
+				new MockConfigService([
+					buildable(),
+					buildable(
+						{ rootDirs: [abs("other")], outFile: abs("blocked") },
+						"/repo/lobby.rogen.json"
+					),
+				])
+			);
+
+			expect(
+				document.configs.map(
+					({ file, outcome }: Record<string, string>) => [
+						file,
+						outcome,
+					]
+				)
+			).toEqual([
+				["/repo/default.rogen.json", "wrote"],
+				["/repo/lobby.rogen.json", "notWritten"],
+			]);
+			expect(document.configs[1].diagnostics).toEqual([
+				expect.objectContaining({
+					file: abs("blocked"),
+					severity: "error",
+					code: "output.writeFailed",
+				}),
+			]);
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
 		it("should print nothing but the document", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 

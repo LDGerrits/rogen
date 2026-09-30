@@ -2,7 +2,7 @@ $ rogen list --json
 exit 0
 stdout:
   {
-    "default.rogen.json": {
+    "<dir>/default.rogen.json": {
       "extends": [
         "<dir>/source.rogen.json"
       ],
@@ -27,7 +27,7 @@ stdout:
       "outFile": "<dir>/default.project.json",
       "diagnostics": []
     },
-    "lobby.rogen.json": {
+    "<dir>/lobby.rogen.json": {
       "extends": [],
       "name": "project",
       "rootDirs": [
@@ -48,7 +48,7 @@ stdout:
       "outFile": "<dir>/out/lobby.project.json",
       "diagnostics": []
     },
-    "source.rogen.json": {
+    "<dir>/source.rogen.json": {
       "extends": [],
       "name": "project",
       "rootDirs": [
@@ -77,7 +77,7 @@ $ rogen list lobby --json
 exit 0
 stdout:
   {
-    "lobby.rogen.json": {
+    "<dir>/lobby.rogen.json": {
       "extends": [],
       "name": "project",
       "rootDirs": [

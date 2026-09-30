@@ -1,4 +1,5 @@
 import path from "path";
+import { formatJsonDocument } from "../../base/json.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { InstanceReference } from "../../domain/roblox/roblox.js";
@@ -86,7 +87,7 @@ registerCommand(
 
 			if (args.json) {
 				logService.print(
-					JSON.stringify(report.json(given.length === 0), null, 2)
+					formatJsonDocument(report.json(given.length === 0))
 				);
 				return ok(undefined);
 			}

@@ -1,4 +1,5 @@
 import { DisposableStore } from "./base/disposable.js";
+import { formatJsonDocument } from "./base/json.js";
 import {
 	CancelledError,
 	ReportedError,
@@ -10,7 +11,7 @@ import {
 	Extensions,
 } from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { parseArgs } from "./platform/environment/args.js";
+import { hasFlag, parseArgs } from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -70,7 +71,7 @@ function reportFailure(
 ): void {
 	if (error instanceof ReportedError) return;
 	if (json) {
-		logService.print(JSON.stringify(failureToJson(error), null, 2));
+		logService.print(formatJsonDocument(failureToJson(error)));
 		return;
 	}
 	if (error instanceof CancelledError) {
@@ -98,17 +99,22 @@ async function main(): Promise<void> {
 			commandRegistry.getOptions(command)
 		);
 
-		const given = argsResult.isOk() ? argsResult.value.options : undefined;
+		// Read from the raw line, so a parse error is reported the way the flags ask.
 		// A JSON document is read by a program, which can't answer a prompt.
+		const json = hasFlag(rawArgs, "--json");
 		const promptService = new ConsolePromptService({
-			noInput: Boolean(given?.["no-input"] || given?.json),
+			noInput: json || hasFlag(rawArgs, "--no-input"),
 		});
 		const logService: LogService = promptService.isInteractive
 			? new TerminalLogService(process.cwd())
 			: new PlainLogService(process.cwd());
 
 		if (argsResult.isErr()) {
-			logService.error(argsResult.error.message);
+			if (json)
+				logService.print(
+					formatJsonDocument(failureToJson(argsResult.error))
+				);
+			else logService.error(argsResult.error.message);
 			process.exitCode = 1;
 			return;
 		}
@@ -196,12 +202,7 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			reportFailure(
-				logService,
-				result.error,
-				command,
-				Boolean(cliArgs.json)
-			);
+			reportFailure(logService, result.error, command, json);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

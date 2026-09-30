@@ -7,12 +7,13 @@ import {
 } from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 
-/** What one config says about a source: a location, or that no file places the instance named by `source`. */
-interface Answer {
-	readonly label: string;
-	readonly source: string;
-	readonly location?: FileLocation;
-}
+/** What one config says: where a path lands, or that no file places an instance. */
+type Answer =
+	| { readonly label: string; readonly location: FileLocation }
+	| { readonly label: string; readonly instance: string };
+
+const sourceOf = (answer: Answer): string =>
+	"location" in answer ? answer.location.source : answer.instance;
 
 const MATCH_LABELS: Record<RouteMatch, string> = {
 	folder: "folder",
@@ -107,7 +108,6 @@ export class LocationReport {
 		this.configs++;
 		const answer = (location: FileLocation): Answer => ({
 			label,
-			source: location.source,
 			location,
 		});
 		this.answers.push(
@@ -115,7 +115,7 @@ export class LocationReport {
 			...instances.flatMap(({ reference, files }) =>
 				files.length > 0
 					? files.map(answer)
-					: [{ label, source: reference.text }]
+					: [{ label, instance: reference.text }]
 			)
 		);
 	}
@@ -139,28 +139,28 @@ export class LocationReport {
 	json(sorted = false): Record<string, unknown>[] {
 		return this.bySource(sorted)
 			.flat()
-			.map(({ label, source, location }) => ({
-				config: label,
-				...(location
+			.map((answer) => ({
+				config: answer.label,
+				...("location" in answer
 					? {
-							source,
-							status: location.status,
-							...locationFields(location),
+							source: answer.location.source,
+							status: answer.location.status,
+							...locationFields(answer.location),
 						}
-					: { instance: source, status: "noFile" }),
+					: { instance: answer.instance, status: "noFile" }),
 			}));
 	}
 
 	private bySource(sorted: boolean): Answer[][] {
-		const bySource = groupBy(this.answers, ({ source }) => source);
+		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
 		if (sorted) sources.sort();
 		return sources.map((source) => bySource.get(source) ?? []);
 	}
 
-	private describe({ source, location }: Answer): string {
-		return location
-			? describeLocation(location, this.cwd)
-			: `${source} -> no file places it`;
+	private describe(answer: Answer): string {
+		return "location" in answer
+			? describeLocation(answer.location, this.cwd)
+			: `${answer.instance} -> no file places it`;
 	}
 }

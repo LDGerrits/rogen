@@ -2,7 +2,7 @@ $ rogen list default --json
 exit 0
 stdout:
   {
-    "default.rogen.json": {
+    "<dir>/default.rogen.json": {
       "extends": [
         "<dir>/base.rogen.json"
       ],

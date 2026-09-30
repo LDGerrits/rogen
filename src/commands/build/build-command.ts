@@ -1,4 +1,5 @@
 import { ReportedError } from "../../base/errors.js";
+import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	BuildService,
@@ -28,6 +29,11 @@ import { BuildReport } from "./build-report.js";
 
 interface BuildAttempt extends ResolvedEntry {
 	readonly project: Result<BuiltProject, DiagnosticsError>;
+}
+
+interface WriteFailure {
+	readonly attempt: BuildAttempt;
+	readonly error: DiagnosticsError;
 }
 
 /** What a config's build had to say, for the run to report. */
@@ -122,12 +128,13 @@ registerCommand(
 			buildService: BuildService,
 			attempts: readonly BuildAttempt[],
 			written: (attempt: BuildAttempt, changed: boolean) => void
-		): Promise<Result<void, Error>> {
+		): Promise<Result<void, WriteFailure>> {
 			for (const attempt of attempts) {
 				const result = await buildService.write(
 					attempt.project.unwrap()
 				);
-				if (result.isErr()) return result;
+				if (result.isErr())
+					return err({ attempt, error: result.error });
 				written(attempt, result.value.written);
 			}
 			return ok(undefined);
@@ -161,7 +168,7 @@ registerCommand(
 					);
 				}
 			);
-			if (written.isErr()) return written;
+			if (written.isErr()) return err(written.error.error);
 
 			log.end(attempts.length);
 			return ok(undefined);
@@ -175,8 +182,10 @@ registerCommand(
 			unselected: readonly string[]
 		): Promise<Result<void, Error>> {
 			const report = new BuildReport();
+			let failure: DiagnosticsError | undefined;
 
 			if (errors.length > 0) {
+				failure = new DiagnosticsError(errors);
 				for (const attempt of attempts)
 					report.add(
 						attempt.config,
@@ -194,13 +203,21 @@ registerCommand(
 							diagnosticsOf(attempt)
 						)
 				);
-				if (written.isErr()) return written;
+				if (written.isErr()) {
+					const { attempt: failed, error } = written.error;
+					failure = error;
+					for (const attempt of attempts.slice(
+						attempts.indexOf(failed)
+					))
+						report.add(attempt.config, "notWritten", [
+							...diagnosticsOf(attempt),
+							...(attempt === failed ? error.diagnostics : []),
+						]);
+				}
 			}
 
-			logService.print(JSON.stringify(report.json(unselected), null, 2));
-			return errors.length > 0
-				? err(new ReportedError(new DiagnosticsError(errors)))
-				: ok(undefined);
+			logService.print(formatJsonDocument(report.json(unselected)));
+			return failure ? err(new ReportedError(failure)) : ok(undefined);
 		}
 	}
 );

@@ -41,7 +41,7 @@ export class CancelledError extends Error {
 	override readonly name = "CancelledError";
 }
 
-/** A failure the command has already reported in full; only the exit code is left to set. */
+/** A failure already reported in full; only the exit code is left to set. */
 export class ReportedError extends Error {
 	override readonly name = "ReportedError";
 

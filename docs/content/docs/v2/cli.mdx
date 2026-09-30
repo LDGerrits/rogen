@@ -152,7 +152,7 @@ Text you asked for, like help, the version and a `--json` document, is printed e
 
 ## JSON output
 
-`--json` replaces a command's text with one JSON document on stdout. The exit code is the one the text form would give, and a failure prints a document too, so a program can read stdout whatever the exit code. Nothing else goes to stdout, `--quiet` and `--verbose` don't change it, and it never draws a frame. A mistake in the command line itself, such as an unknown flag, is printed as text on stderr, since no command has run.
+`--json` replaces a command's text with one JSON document on stdout. The exit code is the one the text form would give, and a failure prints a document too, so a program can read stdout whatever the exit code. Nothing else goes to stdout, `--quiet` and `--verbose` don't change it, and it never draws a frame. A mistake in the command line itself, such as an unknown flag, prints `{ "error": "..." }` too: the flag is read before the rest of the line is parsed.
 
 Paths are absolute. A diagnostic is an object, and its `code` is the part a program can match on, since the wording of `message` may change:
 
@@ -205,7 +205,7 @@ An array with one entry per config and path, in the order the text form prints t
 
 ### `list --json`
 
-An object keyed by config file, relative to the working directory. Each value has `extends` (the parents, nearest first) and `diagnostics`, and for a config that resolved, `name`, `rootDirs`, `commonRoot`, `routes`, `tags`, `exclude`, `template`, `syncDir` and `outFile`. Unset `template`, `syncDir` and `commonRoot` are `null`. A config with errors has only `extends` and `diagnostics`, the other configs are still printed, and the exit code is 1.
+An object keyed by the config file's absolute path. Each value has `extends` (the parents, nearest first) and `diagnostics`, and for a config that resolved, `name`, `rootDirs`, `commonRoot`, `routes`, `tags`, `exclude`, `template`, `syncDir` and `outFile`. Unset `template`, `syncDir` and `commonRoot` are `null`. A config with errors has only `extends` and `diagnostics`, the other configs are still printed, and the exit code is 1.
 
 ## Output
 

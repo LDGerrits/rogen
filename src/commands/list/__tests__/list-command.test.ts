@@ -225,7 +225,7 @@ describe("list command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({
-				"default.rogen.json": {
+				"/repo/default.rogen.json": {
 					extends: ["/repo/base.rogen.json"],
 					name: "repo",
 					rootDirs: ["/repo/src", "/repo/lobby"],
@@ -251,8 +251,8 @@ describe("list command", () => {
 			await run({ json: true });
 
 			expect(Object.keys(document())).toEqual([
-				"default.rogen.json",
-				"lobby.rogen.json",
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
 			]);
 		});
 
@@ -261,7 +261,7 @@ describe("list command", () => {
 
 			await run({ json: true, tag: ["mock"] });
 
-			expect(document()["default.rogen.json"].tags).toEqual({
+			expect(document()["/repo/default.rogen.json"].tags).toEqual({
 				mock: true,
 			});
 		});
@@ -272,8 +272,8 @@ describe("list command", () => {
 
 			const result = await run({ json: true });
 
-			expect(document()["a.rogen.json"]).toHaveProperty("rootDirs");
-			expect(document()["b.rogen.json"]).toEqual({
+			expect(document()["/repo/a.rogen.json"]).toHaveProperty("rootDirs");
+			expect(document()["/repo/b.rogen.json"]).toEqual({
 				extends: [],
 				diagnostics: [
 					expect.objectContaining({

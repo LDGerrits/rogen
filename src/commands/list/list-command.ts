@@ -1,4 +1,5 @@
 import { ReportedError } from "../../base/errors.js";
+import { formatJsonDocument } from "../../base/json.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
@@ -63,8 +64,7 @@ registerCommand(
 			});
 			if (loaded.isErr()) return loaded;
 
-			if (args.json)
-				return this.listAsJson(configService, logService, cwd);
+			if (args.json) return this.listAsJson(configService, logService);
 
 			logService.intro("rogen list");
 			for (const entry of configService.configs)
@@ -80,12 +80,10 @@ registerCommand(
 
 		private listAsJson(
 			configService: ConfigService,
-			logService: LogService,
-			cwd: string
+			logService: LogService
 		): Result<void, Error> {
-			const report = new ConfigReport(cwd);
-			for (const entry of configService.configs) report.add(entry);
-			logService.print(JSON.stringify(report.json(), null, 2));
+			const report = new ConfigReport(configService.configs);
+			logService.print(formatJsonDocument(report.json()));
 
 			const broken = configService.getBrokenError();
 			return broken ? err(new ReportedError(broken)) : ok(undefined);

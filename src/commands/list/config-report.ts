@@ -1,22 +1,15 @@
-import { relativeTo } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 
 /** The configs a run read, as one JSON document keyed by config file. */
 export class ConfigReport {
-	private readonly entries: ConfigEntry[] = [];
-
-	constructor(private readonly cwd: string) {}
-
-	add(entry: ConfigEntry): void {
-		this.entries.push(entry);
-	}
+	constructor(private readonly entries: readonly ConfigEntry[]) {}
 
 	json(): Record<string, unknown> {
 		return Object.fromEntries(
 			this.entries.map((entry) => [
-				relativeTo(this.cwd, entry.file),
+				entry.file,
 				{
 					extends: entry.parents,
 					...(!entry.isBroken && entry.resolved
