@@ -22,7 +22,7 @@ import {
 import { BuildValidator } from "./build-validator.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 import { Placement, Placer } from "./placement.js";
-import { SyncDirCheck } from "./sync-layout.js";
+import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 
 export class CoreBuildService implements BuildService {
