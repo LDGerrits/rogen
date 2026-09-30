@@ -64,6 +64,27 @@ describe("platform/diagnostics/diagnostic", () => {
 			);
 			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
 		});
+
+		it.each([
+			["/", "see /etc/foo", "see /etc/foo"],
+			["/repo/", "see /repo/src/A.luau", "see src/A.luau"],
+			["/repo", "see /mnt/repo/src/A.luau", "see /mnt/repo/src/A.luau"],
+			["/repo", "(/repo/a, /repo/b)", "(a, b)"],
+		])(
+			"should strip the working directory %j from %j only at the start of a path",
+			(cwd, message, expected) => {
+				const diagnostic: Diagnostic = {
+					severity: DiagnosticSeverity.Warning,
+					code: "test.example",
+					message,
+					resource: "/elsewhere",
+				};
+
+				expect(renderDiagnostic(diagnostic, cwd)).toContain(
+					` warning: ${expected}`
+				);
+			}
+		);
 	});
 
 	describe("diagnosticToJson", () => {

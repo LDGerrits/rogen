@@ -59,10 +59,27 @@ const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> = {
 	[DiagnosticSeverity.Warning]: "warning",
 };
 
+/** Drops `prefix` wherever it starts a path, not where it is the tail of a longer one. */
+function stripPrefix(text: string, prefix: string): string {
+	let result = "";
+	let from = 0;
+	for (
+		let at = text.indexOf(prefix);
+		at !== -1;
+		at = text.indexOf(prefix, from)
+	) {
+		const inLongerPath = at > 0 && /[\w./\\-]/.test(text[at - 1]);
+		result += text.slice(from, inLongerPath ? at + prefix.length : at);
+		from = at + prefix.length;
+	}
+	return result + text.slice(from);
+}
+
 function stripDirectory(text: string, dir: string): string {
-	const prefixes = new Set([`${dir}${path.sep}`, `${toPosix(dir)}/`]);
-	return [...prefixes].reduce(
-		(result, prefix) => result.replaceAll(prefix, ""),
+	const bare = dir.replace(/[\\/]+$/, "");
+	if (bare === "") return text;
+	return [`${bare}${path.sep}`, `${toPosix(bare)}/`].reduce(
+		stripPrefix,
 		text
 	);
 }
