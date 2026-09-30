@@ -113,10 +113,6 @@ export interface Compiler {
 	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
-	/** A compiler reads one root dir; this explains it in the root dir question. */
-	readonly rootDirDescription: string;
-	/** The answer to the root dir question when several were given. */
-	readonly severalRootDirs: string;
 	/** The files a place named `name` adds, beside its config and project file. */
 	placeFileNames(name: string): readonly string[];
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
@@ -125,16 +121,10 @@ export interface Compiler {
 /** A language `init` can set up, as this workspace uses it; what differs between languages is answered here. */
 export interface Language {
 	readonly id: string;
-	/** As the language question shows it. */
-	readonly label: string;
 	/** The script extension written in examples, such as `Analytics.mock.luau`. */
 	readonly extension: string;
-	/** The language question's hint when this language was detected. */
-	readonly detectedHint?: string;
 	/** The package manager offered when the workspace has none. */
 	readonly defaultPackageManager?: PackageManager;
-	/** Added to the packages question's description. */
-	readonly packagesNote?: string;
 	/** Set when code is compiled before Rojo syncs it. */
 	readonly compiler?: Compiler;
 	/** Whether the workspace uses this language. Whether or not it does, the user may still pick it. */
@@ -250,7 +240,6 @@ export class Darklua implements SyncTool {
 	readonly id = "darklua";
 	/** Where Darklua writes unless told otherwise. */
 	readonly defaultSyncDir = "dist";
-	readonly detectedHint = "found .darklua.json";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",

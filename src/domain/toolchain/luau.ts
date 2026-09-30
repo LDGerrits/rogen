@@ -9,7 +9,6 @@ import {
 /** Plain Luau: Rojo syncs the root dirs as they are. It's what `init` assumes when no other language is found. */
 export class Luau implements Language, LanguageDetector {
 	readonly id = "luau";
-	readonly label = "Luau";
 	readonly extension = "luau";
 	readonly defaultPackageManager = PackageManager.WALLY;
 	readonly present = false;
