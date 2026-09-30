@@ -1,0 +1,101 @@
+$ rogen list --json
+exit 0
+stdout:
+  {
+    "default.rogen.json": {
+      "extends": [
+        "<dir>/source.rogen.json"
+      ],
+      "name": "project",
+      "rootDirs": [
+        "<dir>/src"
+      ],
+      "commonRoot": "<dir>/src",
+      "routes": {
+        "server": "ServerScriptService",
+        "client": "StarterPlayer/StarterPlayerScripts",
+        "shared": "ReplicatedStorage/shared",
+        "*": "ReplicatedStorage/shared"
+      },
+      "tags": {
+        "mock": false,
+        "dev": true
+      },
+      "exclude": [],
+      "template": null,
+      "syncDir": "<dir>/dist",
+      "outFile": "<dir>/default.project.json",
+      "diagnostics": []
+    },
+    "lobby.rogen.json": {
+      "extends": [],
+      "name": "project",
+      "rootDirs": [
+        "<dir>/core",
+        "<dir>/places/lobby"
+      ],
+      "commonRoot": "<dir>",
+      "routes": {
+        "server": "ServerScriptService",
+        "client": "StarterPlayer/StarterPlayerScripts",
+        "shared": "ReplicatedStorage/shared",
+        "*": "ReplicatedStorage/shared"
+      },
+      "tags": {},
+      "exclude": [],
+      "template": null,
+      "syncDir": null,
+      "outFile": "<dir>/out/lobby.project.json",
+      "diagnostics": []
+    },
+    "source.rogen.json": {
+      "extends": [],
+      "name": "project",
+      "rootDirs": [
+        "<dir>/src"
+      ],
+      "commonRoot": "<dir>/src",
+      "routes": {
+        "server": "ServerScriptService",
+        "client": "StarterPlayer/StarterPlayerScripts",
+        "shared": "ReplicatedStorage/shared",
+        "*": "ReplicatedStorage/shared"
+      },
+      "tags": {
+        "mock": false,
+        "dev": true
+      },
+      "exclude": [],
+      "template": null,
+      "syncDir": null,
+      "outFile": "<dir>/source.project.json",
+      "diagnostics": []
+    }
+  }
+
+$ rogen list lobby --json
+exit 0
+stdout:
+  {
+    "lobby.rogen.json": {
+      "extends": [],
+      "name": "project",
+      "rootDirs": [
+        "<dir>/core",
+        "<dir>/places/lobby"
+      ],
+      "commonRoot": "<dir>",
+      "routes": {
+        "server": "ServerScriptService",
+        "client": "StarterPlayer/StarterPlayerScripts",
+        "shared": "ReplicatedStorage/shared",
+        "*": "ReplicatedStorage/shared"
+      },
+      "tags": {},
+      "exclude": [],
+      "template": null,
+      "syncDir": null,
+      "outFile": "<dir>/out/lobby.project.json",
+      "diagnostics": []
+    }
+  }

@@ -53,7 +53,7 @@ export function warningDiagnostic(
 	};
 }
 
-const SEVERITY_LABELS: Record<DiagnosticSeverity, string> = {
+const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> = {
 	[DiagnosticSeverity.Error]: "error",
 	[DiagnosticSeverity.Warning]: "warning",
 };
@@ -69,6 +69,27 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
 	return `${where} - ${SEVERITY_LABELS[severity]}: ${message}`;
+}
+
+export interface DiagnosticJson {
+	readonly file: string;
+	readonly line?: number;
+	readonly column?: number;
+	readonly severity: "error" | "warning";
+	readonly code: string;
+	readonly message: string;
+}
+
+/** The form a `--json` run prints; the code is here and not in the text, since only a program matches on it. */
+export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
+	const { resource, position, severity, code, message } = diagnostic;
+	return {
+		file: resource,
+		...(position && { line: position.line, column: position.column }),
+		severity: SEVERITY_LABELS[severity],
+		code,
+		message,
+	};
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {

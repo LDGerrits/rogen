@@ -1,0 +1,159 @@
+$ rogen where --json
+exit 0
+stdout:
+  [
+    {
+      "config": "default",
+      "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Combat",
+        "Moves",
+        "Punch"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Combat/Server/Moves/init.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Combat",
+        "Moves"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Inventory/Server/Save.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Inventory",
+        "Save"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/HttpClient.luau",
+      "status": "placed",
+      "instancePath": [
+        "StarterPlayer",
+        "StarterPlayerScripts",
+        "Net",
+        "Http"
+      ],
+      "route": "Client",
+      "routeMatch": "capital",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/HttpMock.luau",
+      "status": "pruned",
+      "tags": [
+        {
+          "tag": "mock",
+          "form": "capital"
+        }
+      ]
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/Types.lua",
+      "status": "replaced",
+      "by": "<dir>/src/Net/Types.luau"
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/Types.luau",
+      "status": "placed",
+      "instancePath": [
+        "ReplicatedStorage",
+        "Shared",
+        "Net",
+        "Types"
+      ],
+      "route": "*",
+      "routeMatch": "fallback",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Specs",
+      "status": "excluded",
+      "pattern": "<dir>/src/Specs"
+    }
+  ]
+
+$ rogen where --json src/Net/HttpMock.luau -t mock
+exit 0
+stdout:
+  [
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/HttpMock.luau",
+      "status": "placed",
+      "instancePath": [
+        "ReplicatedStorage",
+        "Shared",
+        "Net",
+        "Http"
+      ],
+      "route": "*",
+      "routeMatch": "fallback",
+      "tags": [
+        {
+          "tag": "mock",
+          "form": "capital"
+        }
+      ]
+    }
+  ]
+
+$ rogen where --json ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
+exit 0
+stdout:
+  [
+    {
+      "config": "default",
+      "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Combat",
+        "Moves",
+        "Punch"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Combat/Server/Moves/init.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Combat",
+        "Moves"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "tags": []
+    },
+    {
+      "config": "default",
+      "instance": "ReplicatedStorage/Shared/Nope",
+      "status": "noFile"
+    }
+  ]

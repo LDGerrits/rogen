@@ -1,6 +1,7 @@
 import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
+import { ReportedError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DisposableStore } from "../../../base/disposable.js";
@@ -11,10 +12,7 @@ import {
 } from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config-service.js";
-import {
-	ConfigEntry,
-	ConfigService,
-} from "../../../domain/config/config-service.js";
+import { ConfigService } from "../../../domain/config/config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
@@ -355,112 +353,160 @@ describe("build command", () => {
 		);
 	});
 
-	describe("--show-config", () => {
-		const show = (entries: ConfigEntry[]) => {
-			const logService = new NullLogService();
-			const info = jest.spyOn(logService, "print");
-			const result = run(new MockConfigService(entries), logService, {
+	describe("--json", () => {
+		const buildJson = async (
+			configService: MockConfigService,
+			logService = new MockLogService()
+		) => {
+			const result = await run(configService, logService, {
 				_: ["build"],
-				"show-config": true,
+				json: true,
 			});
-			return { info, result };
+			const printed = logService.entries
+				.filter(({ kind }) => kind === "print")
+				.map(({ text }) => text)
+				.join("\n");
+			return {
+				result,
+				logService,
+				document: printed === "" ? undefined : JSON.parse(printed),
+			};
 		};
 
-		it("should print the resolved config as strict JSON, with the derived values", async () => {
-			const { info, result } = show([
-				mockEntry({
-					name: "Game",
-					rootDirs: ["/repo/core/src", "/repo/lobby/src"],
-					routes: { server: "ServerScriptService" },
-					tags: { mock: true },
-					exclude: ["/repo/**/*.spec.luau"],
-					outFile: "/repo/default.project.json",
-				}),
-			]);
+		it("should print what each config wrote, and the configs it did not build", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
 
-			expect((await result).isOk()).toBe(true);
-			expect(info).toHaveBeenCalledTimes(1);
-			expect(JSON.parse(String(info.mock.calls[0][0]))).toEqual({
-				name: "Game",
-				rootDirs: ["/repo/core/src", "/repo/lobby/src"],
-				commonRoot: "/repo",
-				routes: { server: "ServerScriptService" },
-				tags: { mock: true },
-				exclude: ["/repo/**/*.spec.luau"],
-				template: null,
-				syncDir: null,
-				outFile: "/repo/default.project.json",
-			});
-		});
+			const { result, document } = await buildJson(
+				new MockConfigService(
+					[buildable()],
+					["/repo/default.rogen.json", "/repo/other.rogen.json"]
+				)
+			);
 
-		it("should name the template file and the sync dir when they are set", async () => {
-			const { info, result } = show([
-				mockEntry({
-					rootDirs: ["/repo/src"],
-					syncDir: "/repo/out",
-					template: {
-						file: "/repo/base.project.json",
-						project: { name: "Base" },
+			expect(result.isOk()).toBe(true);
+			expect(document).toEqual({
+				configs: [
+					{
+						file: "/repo/default.rogen.json",
+						outFile: "/repo/default.project.json",
+						outcome: "wrote",
+						diagnostics: [],
 					},
+				],
+				notBuilding: ["/repo/other.rogen.json"],
+			});
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
+		it("should say unchanged for a project file that was already up to date", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await run(
+				new MockConfigService([buildable()]),
+				new NullLogService()
+			);
+
+			const { document } = await buildJson(
+				new MockConfigService([buildable()])
+			);
+
+			expect(document.configs[0].outcome).toBe("unchanged");
+		});
+
+		it("should list a config's warnings with their codes", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const { result, document } = await buildJson(
+				new MockConfigService([
+					buildable({ routes: { server: "ServerScriptService" } }),
+				])
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(document.configs[0].outcome).toBe("wrote");
+			expect(document.configs[0].diagnostics).toEqual([
+				expect.objectContaining({
+					file: abs("src/A.luau"),
+					severity: "warning",
+					code: expect.any(String),
+					message: expect.stringContaining("matched no route"),
 				}),
 			]);
-			await result;
-
-			expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
-				template: "/repo/base.project.json",
-				syncDir: "/repo/out",
-			});
 		});
 
-		it("should print one JSON object keyed by config file for several configs", async () => {
-			const { info, result } = show([
-				mockEntry({ rootDirs: ["/repo/a"] }, "/repo/lobby.rogen.json"),
-				mockEntry({ rootDirs: ["/repo/b"] }, "/repo/match.rogen.json"),
+		it("should print every config as not written, with its errors, and fail without reporting again", async () => {
+			await fs.writeFile(abs("src/Combat/A.luau"), "");
+			await fs.writeFile(abs("src/Combat/init.meta.json"), '{"id": 1}');
+			await fs.writeFile(abs("other/B.luau"), "");
+
+			const { result, document } = await buildJson(
+				new MockConfigService([
+					buildable({}, "/repo/default.rogen.json"),
+					buildable(
+						{
+							rootDirs: [abs("other")],
+							outFile: abs("source.project.json"),
+						},
+						"/repo/source.rogen.json"
+					),
+				])
+			);
+
+			expect(
+				document.configs.map(
+					({ file, outcome }: Record<string, string>) => [
+						file,
+						outcome,
+					]
+				)
+			).toEqual([
+				["/repo/default.rogen.json", "notWritten"],
+				["/repo/source.rogen.json", "notWritten"],
 			]);
-			await result;
-
-			const printed = JSON.parse(String(info.mock.calls[0][0]));
-			expect(Object.keys(printed)).toEqual([
-				"lobby.rogen.json",
-				"match.rogen.json",
+			expect(document.configs[0].diagnostics).toEqual([
+				expect.objectContaining({
+					file: abs("src/Combat/init.meta.json"),
+					severity: "error",
+				}),
 			]);
-			expect(printed["match.rogen.json"].rootDirs).toEqual(["/repo/b"]);
+			expect(document.configs[1].diagnostics).toEqual([]);
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+			expect(await fs.exists(abs("source.project.json"))).toBe(false);
 		});
 
-		it("should not build, and not print anything but the config", async () => {
-			await fs.writeFile("/repo/other.rogen.json", "{}");
-			const { info, result } = show([mockEntry()]);
-			await result;
+		it("should print nothing but the document", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
 
-			expect(info).toHaveBeenCalledTimes(1);
-			expect(String(info.mock.calls[0][0])).not.toContain("Building");
+			const { logService } = await buildJson(
+				new MockConfigService([buildable()])
+			);
+
+			expect(
+				logService.entries.filter(({ kind }) => kind !== "print")
+			).toEqual([]);
 		});
 
-		it("should print a broken config's diagnostics in its own entry and fail", async () => {
-			const broken = mockEntry({}, "/repo/broken.rogen.json", {
-				resolved: undefined,
+		it("should fail without printing when a config is invalid, for the caller to report", async () => {
+			const entry = mockEntry({}, undefined, {
 				diagnostics: [
 					errorDiagnostic(
 						"config.unknownField",
-						{ resource: "/repo/broken.rogen.json" },
+						{ resource: "/repo/default.rogen.json" },
 						"boom."
 					),
 				],
 			});
-			const { info, result } = show([
-				mockEntry({}, "/repo/ok.rogen.json"),
-				broken,
-			]);
 
-			expect(((await result) as ResultError<Error>).error.message).toBe(
-				"1 of 2 configs have errors."
+			const { result, logService } = await buildJson(
+				new MockConfigService([entry])
 			);
-			expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
-				"ok.rogen.json": { name: "repo" },
-				"broken.rogen.json": {
-					diagnostics: ["/repo/broken.rogen.json - error: boom."],
-				},
-			});
+
+			expect(result.isErr() && result.error).not.toBeInstanceOf(
+				ReportedError
+			);
+			expect(logService.entries).toEqual([]);
 		});
 	});
 
@@ -489,7 +535,7 @@ describe("build command", () => {
 				"dev",
 				"--no-tag",
 				"prod",
-				"--show-config"
+				"--json"
 			).unwrap();
 
 			expect(command).toBe("build");
@@ -501,7 +547,7 @@ describe("build command", () => {
 				template: "base.project.json",
 				tag: ["mock", "dev"],
 				"no-tag": ["prod"],
-				"show-config": true,
+				json: true,
 			});
 		});
 
@@ -533,6 +579,7 @@ describe("build command", () => {
 			"--build",
 			"--init",
 			"--trace",
+			"--show-config",
 		])("should reject the old flag %s", (flag) => {
 			expect(parse("build", flag).isErr()).toBe(true);
 		});

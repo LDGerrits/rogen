@@ -38,16 +38,13 @@ describe("ConsolePromptService", () => {
 			expect(piped.isInteractive).toBe(false);
 		});
 
-		it.each(["true", "1", "yes"])(
-			"should be false when CI is %s",
-			(ci) => {
-				const automated = new ConsolePromptService({
-					...terminal,
-					env: { CI: ci },
-				});
-				expect(automated.isInteractive).toBe(false);
-			}
-		);
+		it.each(["true", "1", "yes"])("should be false when CI is %s", (ci) => {
+			const automated = new ConsolePromptService({
+				...terminal,
+				env: { CI: ci },
+			});
+			expect(automated.isInteractive).toBe(false);
+		});
 
 		it.each([undefined, "", "0", "false", "FALSE"])(
 			"should be true when CI is %p",

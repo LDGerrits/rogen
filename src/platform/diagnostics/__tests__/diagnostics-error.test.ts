@@ -1,5 +1,5 @@
 import { errorDiagnostic } from "../diagnostic.js";
-import { DiagnosticsError } from "../diagnostics-error.js";
+import { DiagnosticsError, failureToJson } from "../diagnostics-error.js";
 
 describe("platform/diagnostics/diagnostics-error", () => {
 	describe("DiagnosticsError", () => {
@@ -38,6 +38,40 @@ describe("platform/diagnostics/diagnostics-error", () => {
 
 		it("should be an Error", () => {
 			expect(new DiagnosticsError(diagnostics)).toBeInstanceOf(Error);
+		});
+	});
+
+	describe("failureToJson", () => {
+		it("should list the diagnostics of a DiagnosticsError", () => {
+			const error = new DiagnosticsError([
+				errorDiagnostic(
+					"test.first",
+					{
+						resource: "/repo/a.json",
+						position: { line: 2, column: 5 },
+					},
+					"first."
+				),
+			]);
+
+			expect(failureToJson(error)).toEqual({
+				diagnostics: [
+					{
+						file: "/repo/a.json",
+						line: 2,
+						column: 5,
+						severity: "error",
+						code: "test.first",
+						message: "first.",
+					},
+				],
+			});
+		});
+
+		it("should carry the message of any other error", () => {
+			expect(failureToJson(new Error("No config found."))).toEqual({
+				error: "No config found.",
+			});
 		});
 	});
 });

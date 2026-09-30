@@ -446,7 +446,9 @@ describe("init command", () => {
 
 			const source = await readJson("game.rogen.json");
 			expect(source.rootDirs).toEqual(["src", "lib"]);
-			expect((await readJson("game-sync.rogen.json")).syncDir).toBe("out");
+			expect((await readJson("game-sync.rogen.json")).syncDir).toBe(
+				"out"
+			);
 		});
 
 		it("should write the ticked routes and leave unmatched files out", async () => {

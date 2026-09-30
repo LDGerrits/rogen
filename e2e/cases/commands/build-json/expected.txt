@@ -1,0 +1,65 @@
+$ rogen build lobby match --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "file": "<dir>/lobby.rogen.json",
+        "outFile": "<dir>/lobby.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      },
+      {
+        "file": "<dir>/match.rogen.json",
+        "outFile": "<dir>/match.project.json",
+        "outcome": "wrote",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Util.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder."
+          },
+          {
+            "file": "<dir>/src/Util.spec.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder."
+          },
+          {
+            "file": "<dir>/src/client/Hud.client.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder."
+          },
+          {
+            "file": "<dir>/lib/Signal.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder."
+          }
+        ]
+      }
+    ],
+    "notBuilding": []
+  }
+
+written:
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Util: ModuleScript  <- src/Util.luau
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/server/Save.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Hud: LocalScript  <- src/client/Hud.client.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/server/Save.mock.server.luau

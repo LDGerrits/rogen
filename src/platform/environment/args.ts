@@ -17,6 +17,7 @@ export interface ParsedArgs {
 	verbose?: boolean;
 	quiet?: boolean;
 	"no-input"?: boolean;
+	json?: boolean;
 	all?: boolean;
 	config?: string[];
 	"out-file"?: string;
@@ -24,7 +25,6 @@ export interface ParsedArgs {
 	template?: string;
 	tag?: string[];
 	"no-tag"?: string[];
-	"show-config"?: boolean;
 }
 
 /** The options every command takes. */
@@ -53,6 +53,13 @@ export const GlobalOptions: readonly OptionDescriptor[] = [
 		description: "Never ask, and print plain lines.",
 	},
 ];
+
+/** For the commands whose answer a program reads. */
+export const JsonOption: OptionDescriptor = {
+	name: "json",
+	type: "boolean",
+	description: "Print one JSON document instead of text.",
+};
 
 const AllOption: OptionDescriptor = {
 	name: "all",

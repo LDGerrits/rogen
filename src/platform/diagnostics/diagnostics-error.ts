@@ -1,5 +1,7 @@
 import {
 	Diagnostic,
+	DiagnosticJson,
+	diagnosticToJson,
 	renderDiagnostic,
 	renderDiagnostics,
 } from "./diagnostic.js";
@@ -21,4 +23,15 @@ export class DiagnosticsError extends Error {
 		this.name = "DiagnosticsError";
 		this.diagnostics = unique;
 	}
+}
+
+/** What a `--json` run prints when it fails before it has anything else to show. */
+export function failureToJson(
+	error: Error
+):
+	| { readonly diagnostics: readonly DiagnosticJson[] }
+	| { readonly error: string } {
+	return error instanceof DiagnosticsError
+		? { diagnostics: error.diagnostics.map(diagnosticToJson) }
+		: { error: error.message };
 }

@@ -12,6 +12,7 @@ import {
 } from "../../platform/commands/commands.js";
 import {
 	ConfigSelectionOptions,
+	JsonOption,
 	ParsedArgs,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -37,7 +38,7 @@ registerCommand(
 							isVariadic: true,
 						},
 					],
-					options: ConfigSelectionOptions,
+					options: [...ConfigSelectionOptions, JsonOption],
 				},
 			});
 		}
@@ -82,9 +83,15 @@ registerCommand(
 				report.add(config.label, located.value, behind.value);
 			}
 
+			const log = accessor.get(LogService);
+			if (args.json) {
+				log.print(
+					JSON.stringify(report.json(given.length === 0), null, 2)
+				);
+				return ok(undefined);
+			}
 			const lines = report.lines(given.length === 0);
-			if (lines.length > 0)
-				accessor.get(LogService).print(lines.join("\n"));
+			if (lines.length > 0) log.print(lines.join("\n"));
 			return ok(undefined);
 		}
 
@@ -100,7 +107,9 @@ registerCommand(
 				const reference = InstanceReference.parse(arg);
 				if (
 					reference &&
-					!(await fileSystem.exists(path.resolve(cwd, reference.service)))
+					!(await fileSystem.exists(
+						path.resolve(cwd, reference.service)
+					))
 				)
 					instances.push(reference);
 				else paths.push(path.resolve(cwd, arg));

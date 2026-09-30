@@ -17,7 +17,7 @@ src/Inventory/Client/InventoryController.luau  ->  StarterPlayer/StarterPlayerSc
 src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
 ```
 
-- Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen build --show-config` resolves an `extends` chain.
+- Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
 - A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
 - Inside a routing folder, a route key at the end of a name is ignored: `Shared/HttpClient.luau` stays `HttpClient`.
 - `rogen where <path>` prints where a file lands and why, before or after it exists; `rogen where | grep <Instance>` finds the file behind an instance.

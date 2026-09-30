@@ -49,7 +49,7 @@ A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `ext
 
 - `rogen build [name…]` builds `<name>.rogen.json`, or `default` when bare, and `--all` builds every config here. `-c <path>` builds a config the name rule can't reach. `rogen lobby` is an error.
 - `rogen where [path…]` prints where each file lands and why, writes nothing, and places a path that doesn't exist yet as if it did. A directory stands for the files in it, and no path maps the whole tree. `-t`, `-T`, `-c` and `--all` pick tags and configs.
-- `rogen build --show-config` prints the resolved config, with every default and absolute path.
+- `rogen list [name…] --json` prints each config resolved, with every default and absolute path. `--json` also works on `where` and `build`: one JSON document on stdout, whatever the exit code, with each diagnostic's stable `code`. Read it instead of parsing text.
 - `-o`, `-s` and `--template` override `outFile`, `syncDir` and `template` for one build.
 - Diagnostics print as `file:line:col - severity: message`. Errors exit 1; warnings exit 0 and still name something to fix.
 - `rogen init [name]` writes a starting config. Without a terminal, or with `--no-input`, it takes every default without asking. Pass `--no-input` when your shell is a pseudo-terminal.

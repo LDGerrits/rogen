@@ -1,5 +1,9 @@
 import { DisposableStore } from "./base/disposable.js";
-import { CancelledError, setUnexpectedErrorHandler } from "./base/errors.js";
+import {
+	CancelledError,
+	ReportedError,
+	setUnexpectedErrorHandler,
+} from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -20,7 +24,10 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { LogLevel, LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
-import { DiagnosticsError } from "./platform/diagnostics/diagnostics-error.js";
+import {
+	DiagnosticsError,
+	failureToJson,
+} from "./platform/diagnostics/diagnostics-error.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
@@ -58,8 +65,14 @@ export default function run(): void {
 function reportFailure(
 	logService: LogService,
 	error: Error,
-	command: string
+	command: string,
+	json: boolean
 ): void {
+	if (error instanceof ReportedError) return;
+	if (json) {
+		logService.print(JSON.stringify(failureToJson(error), null, 2));
+		return;
+	}
 	if (error instanceof CancelledError) {
 		logService.closeFrame(error.message);
 		return;
@@ -86,8 +99,9 @@ async function main(): Promise<void> {
 		);
 
 		const given = argsResult.isOk() ? argsResult.value.options : undefined;
+		// A JSON document is read by a program, which can't answer a prompt.
 		const promptService = new ConsolePromptService({
-			noInput: Boolean(given?.["no-input"]),
+			noInput: Boolean(given?.["no-input"] || given?.json),
 		});
 		const logService: LogService = promptService.isInteractive
 			? new TerminalLogService(process.cwd())
@@ -182,7 +196,12 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			reportFailure(logService, result.error, command);
+			reportFailure(
+				logService,
+				result.error,
+				command,
+				Boolean(cliArgs.json)
+			);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

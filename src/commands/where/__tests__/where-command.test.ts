@@ -108,7 +108,10 @@ describe("where command", () => {
 
 	it("should print the files behind an instance pasted from a Studio error", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Inventory/Server/Save.luau", "src/Inventory/Types.luau");
+		await write(
+			"src/Inventory/Server/Save.luau",
+			"src/Inventory/Types.luau"
+		);
 
 		await run({
 			_: [
@@ -233,6 +236,128 @@ describe("where command", () => {
 		expect(printed()).toEqual([]);
 	});
 
+	describe("with --json", () => {
+		const document = () =>
+			JSON.parse(printed().join("\n")) as Record<string, unknown>[];
+
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				tags: { mock: false },
+			});
+			await write(
+				"src/Inventory/Server/Save.luau",
+				"src/Net/HttpMock.luau"
+			);
+		});
+
+		it("should print one JSON document with an entry per path", async () => {
+			const result = await run({
+				_: [
+					"src/Inventory/Server/Save.luau",
+					"src/Net/HttpMock.luau",
+					"src/Nowhere.luau",
+				],
+				json: true,
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).not.toEqual([]);
+			expect(document()).toEqual([
+				{
+					config: "default",
+					source: "/repo/src/Inventory/Server/Save.luau",
+					status: "placed",
+					instancePath: ["ServerScriptService", "Inventory", "Save"],
+					route: "Server",
+					routeMatch: "folder",
+					tags: [],
+				},
+				{
+					config: "default",
+					source: "/repo/src/Net/HttpMock.luau",
+					status: "pruned",
+					tags: [{ tag: "mock", form: "capital" }],
+				},
+				{
+					config: "default",
+					source: "/repo/src/Nowhere.luau",
+					status: "placed",
+					instancePath: ["ReplicatedStorage", "Shared", "Nowhere"],
+					route: "*",
+					routeMatch: "fallback",
+					tags: [],
+				},
+			]);
+		});
+
+		it("should print an entry for an instance no file places", async () => {
+			await run({
+				_: [
+					"ServerScriptService.Inventory.Save:3",
+					"ServerScriptService.Gone",
+				],
+				json: true,
+			});
+
+			expect(document()).toEqual([
+				expect.objectContaining({
+					source: "/repo/src/Inventory/Server/Save.luau",
+					status: "placed",
+				}),
+				{
+					config: "default",
+					instance: "ServerScriptService.Gone",
+					status: "noFile",
+				},
+			]);
+		});
+
+		it("should print nothing but the document, however loud the log level", async () => {
+			await run({ json: true, verbose: true });
+
+			expect(
+				logService.entries.filter(({ kind }) => kind !== "print")
+			).toEqual([]);
+		});
+
+		it("should print an empty array when nothing is placed", async () => {
+			await fs.delete("/repo/src/Inventory/Server/Save.luau");
+			await fs.delete("/repo/src/Net/HttpMock.luau");
+
+			await run({ json: true });
+
+			expect(document()).toEqual([]);
+		});
+
+		it("should print an entry for every config, even when they agree", async () => {
+			await writeConfig("lobby.rogen.json", { routes: ROUTES });
+
+			await run({
+				_: ["src/Inventory/Server/Save.luau"],
+				json: true,
+				all: true,
+			});
+
+			expect(document().map(({ config }) => config)).toEqual([
+				"default",
+				"lobby",
+			]);
+		});
+
+		it("should fail without printing when the config is broken, for the caller to report", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				bogus: 1,
+			});
+
+			const result = await run({ json: true });
+
+			expect(result.isErr()).toBe(true);
+			expect(printed()).toEqual([]);
+		});
+	});
+
 	describe("flags", () => {
 		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 		const parse = (...argv: string[]) =>
@@ -252,6 +377,7 @@ describe("where command", () => {
 					"dev"
 				).isOk()
 			).toBe(true);
+			expect(parse("where", "--json").isOk()).toBe(true);
 			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
 			expect(parse("where", "-s", "dist").isErr()).toBe(true);
 		});
