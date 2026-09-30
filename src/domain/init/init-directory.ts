@@ -10,10 +10,10 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
+	labelOfDefaultOutFile,
 	rootDirOverlap,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
-import { PROJECT_SUFFIX } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
 /** The template project file `init` starts, which the configs it writes name. */
@@ -65,14 +65,14 @@ export class InitDirectory {
 	/** Project files here that no config beside them writes, other than `template.project.json`. */
 	get handWrittenProjectFiles(): string[] {
 		return [...this.entries]
-			.filter(
-				(file) =>
-					file.endsWith(PROJECT_SUFFIX) &&
+			.filter((file) => {
+				const label = labelOfDefaultOutFile(file);
+				return (
+					label !== undefined &&
 					file !== TEMPLATE_FILE &&
-					!this.has(
-						configFileName(file.slice(0, -PROJECT_SUFFIX.length))
-					)
-			)
+					!this.has(configFileName(label))
+				);
+			})
 			.sort();
 	}
 

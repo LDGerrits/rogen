@@ -1,7 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../config/config.js";
-import { projectFileName } from "../rojo/rojo-project.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
@@ -248,7 +247,7 @@ export class ProjectSetup implements Setup {
 			...(compiler ? [compiler.compileCommand] : []),
 			// Darklua reads the source-rooted project, so both are kept current.
 			ConfigSet.watchCommand(stems),
-			`rojo serve ${projectFileName(name)}`
+			ConfigSet.serveCommand(name)
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(

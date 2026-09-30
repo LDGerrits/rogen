@@ -6,6 +6,8 @@ import {
 	SCHEMA_URL,
 	configFileName,
 	configLabel,
+	defaultOutFileName,
+	labelOfDefaultOutFile,
 	rootDirOverlap,
 	schemaUrlFor,
 } from "../config.js";
@@ -18,6 +20,20 @@ describe("domain/config/config", () => {
 
 		it("should take the stem back out of a config path", () => {
 			expect(configLabel("/repo/lobby.rogen.json")).toBe("lobby");
+		});
+	});
+
+	describe("defaultOutFileName and labelOfDefaultOutFile", () => {
+		it("should name the project file a config writes by default", () => {
+			expect(defaultOutFileName("lobby")).toBe("lobby.project.json");
+		});
+
+		it("should take the label back out of a default output", () => {
+			expect(labelOfDefaultOutFile("lobby.project.json")).toBe("lobby");
+		});
+
+		it("should not read a label out of a file that isn't a project file", () => {
+			expect(labelOfDefaultOutFile("lobby.json")).toBeUndefined();
 		});
 	});
 

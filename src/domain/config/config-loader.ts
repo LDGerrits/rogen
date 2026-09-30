@@ -25,13 +25,14 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { Target } from "../roblox/roblox.js";
-import { projectFileName, RojoProject } from "../rojo/rojo-project.js";
+import { RojoProject } from "../rojo/rojo-project.js";
 import { ConfigOverrides } from "./config-service.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
+	defaultOutFileName,
 	rootDirOverlap,
 } from "./config.js";
 
@@ -334,7 +335,7 @@ class ConfigValidator {
 			config.getValue<string | undefined>("outFile") ??
 			path.join(
 				path.dirname(layered.leaf.file),
-				projectFileName(configLabel(layered.leaf.file))
+				defaultOutFileName(configLabel(layered.leaf.file))
 			);
 	}
 

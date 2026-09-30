@@ -1,7 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName } from "../config/config.js";
-import { projectFileName } from "../rojo/rojo-project.js";
+import { configFileName, defaultOutFileName } from "../config/config.js";
 import { CompiledPlace, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -144,7 +143,7 @@ export class PlaceSetup implements Setup {
 			ConfigSet.watchCommand(
 				hasSourceParent ? configSet.stems : [configSet.name]
 			),
-			`rojo serve ${projectFileName(configSet.name)}`
+			ConfigSet.serveCommand(configSet.name)
 		);
 		if (configSet.darklua && syncDir) {
 			builder.addDarkluaCommands(
@@ -191,7 +190,7 @@ export class PlaceSetup implements Setup {
 							rootDirs,
 							sharedRootDirs: base.rootDirs,
 							outDir,
-							projectFile: projectFileName(name),
+							projectFile: defaultOutFileName(name),
 						})
 					: undefined,
 			hasSourceParent: Boolean(configSet.sourceFile && base.parent),
@@ -251,7 +250,7 @@ export class VariantSetup implements Setup {
 		});
 		builder.addRun(
 			ConfigSet.watchCommand([name]),
-			`rojo serve ${projectFileName(name)}`
+			ConfigSet.serveCommand(name)
 		);
 		builder.addEdit(
 			`Turn tags on or off under "tags", or add "exclude", in ${configFileName(name)}.`
