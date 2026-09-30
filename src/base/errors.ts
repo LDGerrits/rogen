@@ -41,6 +41,15 @@ export class CancelledError extends Error {
 	override readonly name = "CancelledError";
 }
 
+/** A failure already reported in full; only the exit code is left to set. */
+export class ReportedError extends Error {
+	override readonly name = "ReportedError";
+
+	constructor(cause: Error) {
+		super(cause.message, { cause });
+	}
+}
+
 export type UnexpectedErrorHandler = (error: Error) => void;
 
 // Throws on the next tick so a silent failure doesn't stay silent.

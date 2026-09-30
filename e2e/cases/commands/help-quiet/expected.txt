@@ -10,15 +10,16 @@ stdout:
     build [name...]  Writes each named config's project file.
     help [command]   Prints usage, or details for one command.
     init [name]      Writes a starting config, detecting the workspace and asking in a terminal.
-    list             Lists every config here with its root dirs, sync dir, project file and tags.
+    list [name...]   Lists every config here with its root dirs, sync dir, project file and tags.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]  Prints where each file lands in the game, and why.
   
   Options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
   
   Run 'rogen help <command>' for details on a command.

@@ -1039,11 +1039,11 @@ describe("watch command", () => {
 		const parse = (...argv: string[]) =>
 			parseArgs(argv, (command) => registry.getOptions(command));
 
-		it("should accept the override flags, but not --show-config", () => {
+		it("should accept the override flags, but not --json", () => {
 			expect(
 				parse("watch", "-t", "mock", "-c", "a.rogen.json").isOk()
 			).toBe(true);
-			expect(parse("watch", "--show-config").isErr()).toBe(true);
+			expect(parse("watch", "--json").isErr()).toBe(true);
 		});
 
 		it("should accept --all", () => {

@@ -69,7 +69,7 @@ The **template** is the Rojo project file that Rogen merges its generated tree i
 
 Rojo syncs from your compiler's output, not from your source. The **sync directory**, set by `syncDir`, is that output: `out` for roblox-ts, `dist` for Darklua. Emitted `$path` entries point there instead of at the root directories. Plain Luau has none, so its paths point at the root directories themselves.
 
-A file at `p` is emitted at `syncDir / relative(commonRoot, p)`, with `.ts` and `.tsx` rewritten to `.luau`. The **common root** is the deepest directory that contains every root directory. It's derived, never written in the config, and `rogen build --show-config` prints it. With one root directory the common root *is* that directory, so `syncDir` simply replaces it:
+A file at `p` is emitted at `syncDir / relative(commonRoot, p)`, with `.ts` and `.tsx` rewritten to `.luau`. The **common root** is the deepest directory that contains every root directory. It's derived, never written in the config, and `rogen list --json` prints it. With one root directory the common root *is* that directory, so `syncDir` simply replaces it:
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">

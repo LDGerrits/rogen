@@ -1,0 +1,15 @@
+$ rogen build --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "line": 3,
+        "column": 2,
+        "severity": "error",
+        "code": "config.unknownField",
+        "message": "unknown field \"outDir\"."
+      }
+    ]
+  }

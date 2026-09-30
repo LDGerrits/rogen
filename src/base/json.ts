@@ -33,3 +33,8 @@ export function safeStringify(obj: unknown): string {
 export function formatJsonFile(value: unknown): string {
 	return `${JSON.stringify(value, null, "\t")}\n`;
 }
+
+/** Two-space JSON without a trailing newline, for a program to read from stdout. */
+export function formatJsonDocument(value: unknown): string {
+	return JSON.stringify(value, null, 2);
+}

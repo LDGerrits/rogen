@@ -17,13 +17,14 @@ stdout:
         --template <value>  Overrides template.
     -t, --tag <value>       Turns a tag on. (repeatable)
     -T, --no-tag <value>    Turns a tag off. (repeatable)
-        --show-config       Prints the resolved config and exits.
+        --json              Print one JSON document instead of text.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help watch
 exit 0
@@ -46,10 +47,11 @@ stdout:
     -T, --no-tag <value>    Turns a tag off. (repeatable)
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help init
 exit 0
@@ -63,10 +65,11 @@ stdout:
     name  The config to write. Defaults to default.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen help list
 exit 0
@@ -74,13 +77,24 @@ stdout:
   Lists every config here with its root dirs, sync dir, project file and tags.
   
   Usage:
-    rogen list [options]
+    rogen list [name...] [options]
+  
+  Arguments:
+    name  A config to list. Every config here when none is given.
+  
+  Options:
+        --all             Every config in the working directory.
+    -c, --config <value>  An explicit config path. (repeatable)
+    -t, --tag <value>     Turns a tag on. (repeatable)
+    -T, --no-tag <value>  Turns a tag off. (repeatable)
+        --json            Print one JSON document instead of text.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.
 
 $ rogen build --help
 exit 0
@@ -101,10 +115,11 @@ stdout:
         --template <value>  Overrides template.
     -t, --tag <value>       Turns a tag on. (repeatable)
     -T, --no-tag <value>    Turns a tag off. (repeatable)
-        --show-config       Prints the resolved config and exits.
+        --json              Print one JSON document instead of text.
   
   Global options:
-    -h, --help     Print help.
-    -v, --version  Print the version.
-        --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+    -h, --help      Print help.
+    -v, --version   Print the version.
+        --verbose   Print debug output.
+    -q, --quiet     Only print errors.
+        --no-input  Never ask, and print plain lines.

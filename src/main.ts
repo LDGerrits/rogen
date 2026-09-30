@@ -1,12 +1,17 @@
 import { DisposableStore } from "./base/disposable.js";
-import { CancelledError, setUnexpectedErrorHandler } from "./base/errors.js";
+import { formatJsonDocument } from "./base/json.js";
+import {
+	CancelledError,
+	ReportedError,
+	setUnexpectedErrorHandler,
+} from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
 	Extensions,
 } from "./platform/commands/commands.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { parseArgs } from "./platform/environment/args.js";
+import { hasFlag, parseArgs } from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -20,7 +25,10 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { LogLevel, LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
-import { DiagnosticsError } from "./platform/diagnostics/diagnostics-error.js";
+import {
+	DiagnosticsError,
+	failureToJson,
+} from "./platform/diagnostics/diagnostics-error.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
@@ -58,8 +66,14 @@ export default function run(): void {
 function reportFailure(
 	logService: LogService,
 	error: Error,
-	command: string
+	command: string,
+	json: boolean
 ): void {
+	if (error instanceof ReportedError) return;
+	if (json) {
+		logService.print(formatJsonDocument(failureToJson(error)));
+		return;
+	}
 	if (error instanceof CancelledError) {
 		logService.closeFrame(error.message);
 		return;
@@ -77,11 +91,6 @@ async function main(): Promise<void> {
 	const disposables = new DisposableStore();
 
 	try {
-		const promptService = new ConsolePromptService();
-		const logService: LogService = promptService.isInteractive
-			? new TerminalLogService(process.cwd())
-			: new PlainLogService(process.cwd());
-
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands
 		);
@@ -90,8 +99,22 @@ async function main(): Promise<void> {
 			commandRegistry.getOptions(command)
 		);
 
+		// Read from the raw line, so a parse error is reported the way the flags ask.
+		// A JSON document is read by a program, which can't answer a prompt.
+		const json = hasFlag(rawArgs, "--json");
+		const promptService = new ConsolePromptService({
+			noInput: json || hasFlag(rawArgs, "--no-input"),
+		});
+		const logService: LogService = promptService.isInteractive
+			? new TerminalLogService(process.cwd())
+			: new PlainLogService(process.cwd());
+
 		if (argsResult.isErr()) {
-			logService.error(argsResult.error.message);
+			if (json)
+				logService.print(
+					formatJsonDocument(failureToJson(argsResult.error))
+				);
+			else logService.error(argsResult.error.message);
 			process.exitCode = 1;
 			return;
 		}
@@ -179,7 +202,7 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			reportFailure(logService, result.error, command);
+			reportFailure(logService, result.error, command, json);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

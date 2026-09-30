@@ -1,4 +1,4 @@
-import { safeStringify } from "../json.js";
+import { formatJsonDocument, safeStringify } from "../json.js";
 import { sortObject } from "../objects.js";
 
 describe("sortObject", () => {
@@ -52,5 +52,13 @@ describe("safeStringify", () => {
 
 		const result = safeStringify(input);
 		expect(result).toBe('{"a":{"val":1},"b":"[Circular]"}');
+	});
+});
+
+describe("formatJsonDocument", () => {
+	it("should indent with two spaces and end without a newline", () => {
+		expect(formatJsonDocument({ a: [1] })).toBe(
+			'{\n  "a": [\n    1\n  ]\n}'
+		);
 	});
 });

@@ -12,7 +12,8 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { parseArgs } from "../../../platform/environment/args.js";
+import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
+import { ReportedError } from "../../../base/errors.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -23,7 +24,9 @@ describe("list command", () => {
 	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
-	let run: () => Promise<Result<void, Error>>;
+	let run: (
+		options?: Omit<ParsedArgs, "_"> & { _?: string[] }
+	) => Promise<Result<void, Error>>;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
 		fs.writeFile(
@@ -66,7 +69,11 @@ describe("list command", () => {
 		const commandService = store.add(
 			new CoreCommandService(services, logService)
 		);
-		run = () => commandService.executeCommand("list", { _: ["list"] });
+		run = ({ _ = [], ...options } = {}) =>
+			commandService.executeCommand("list", {
+				_: ["list", ..._],
+				...options,
+			});
 	});
 
 	afterEach(() => {
@@ -163,14 +170,166 @@ describe("list command", () => {
 		);
 	});
 
+	it("should list only the named configs", async () => {
+		await write("default.rogen.json", {});
+		await write("lobby.rogen.json", {});
+		await write("match.rogen.json", {});
+
+		await run({ _: ["lobby", "match"] });
+
+		expect(steps()).toEqual(["lobby.rogen.json", "match.rogen.json"]);
+	});
+
+	it("should list the config at an explicit path", async () => {
+		await write("default.rogen.json", {});
+		await write("places/lobby.rogen.json", {});
+
+		await run({ config: ["places/lobby.rogen.json"] });
+
+		expect(steps()).toEqual(["places/lobby.rogen.json"]);
+	});
+
+	it("should show the tags that are on once tag flags are applied", async () => {
+		await write("default.rogen.json", { tags: { mock: true, dev: false } });
+
+		await run({ tag: ["dev"], "no-tag": ["mock"] });
+
+		expect(under("default.rogen.json")).toEqual([
+			expect.stringContaining("tags: dev"),
+		]);
+	});
+
+	describe("with --json", () => {
+		const document = () =>
+			JSON.parse(
+				logService.entries
+					.filter(({ kind }) => kind === "print")
+					.map(({ text }) => text)
+					.join("\n")
+			) as Record<string, Record<string, unknown>>;
+
+		it("should print each config's resolved fields, keyed by its file", async () => {
+			await write("base.rogen.json", {
+				routes: { Server: "ServerScriptService" },
+			});
+			await write("default.rogen.json", {
+				extends: "base.rogen.json",
+				rootDirs: ["src", "lobby"],
+				routes: { "*": "ReplicatedStorage/Shared" },
+				tags: { mock: true },
+				exclude: ["**/*.spec.luau"],
+				syncDir: "out",
+			});
+
+			const result = await run({ _: ["default"], json: true });
+
+			expect(result.isOk()).toBe(true);
+			expect(document()).toEqual({
+				"/repo/default.rogen.json": {
+					extends: ["/repo/base.rogen.json"],
+					name: "repo",
+					rootDirs: ["/repo/src", "/repo/lobby"],
+					commonRoot: "/repo",
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage/Shared",
+					},
+					tags: { mock: true },
+					exclude: ["/repo/**/*.spec.luau"],
+					template: null,
+					syncDir: "/repo/out",
+					outFile: "/repo/default.project.json",
+					diagnostics: [],
+				},
+			});
+		});
+
+		it("should print every config here when none is named", async () => {
+			await write("lobby.rogen.json", {});
+			await write("default.rogen.json", {});
+
+			await run({ json: true });
+
+			expect(Object.keys(document())).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+		});
+
+		it("should apply tag flags to the printed tags", async () => {
+			await write("default.rogen.json", { tags: { mock: false } });
+
+			await run({ json: true, tag: ["mock"] });
+
+			expect(document()["/repo/default.rogen.json"].tags).toEqual({
+				mock: true,
+			});
+		});
+
+		it("should print a broken config's diagnostics in place of its fields and fail without reporting again", async () => {
+			await write("a.rogen.json", {});
+			await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
+
+			const result = await run({ json: true });
+
+			expect(document()["/repo/a.rogen.json"]).toHaveProperty("rootDirs");
+			expect(document()["/repo/b.rogen.json"]).toEqual({
+				extends: [],
+				diagnostics: [
+					expect.objectContaining({
+						file: "/repo/b.rogen.json",
+						line: 2,
+						column: 2,
+						severity: "error",
+						code: expect.any(String),
+					}),
+				],
+			});
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+		});
+
+		it("should print nothing but the document", async () => {
+			await write("default.rogen.json", {});
+
+			await run({ json: true });
+
+			expect(
+				logService.entries.filter(({ kind }) => kind !== "print")
+			).toEqual([]);
+		});
+
+		it("should fail without printing when no config is found, for the caller to report", async () => {
+			const result = await run({ json: true });
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.entries).toEqual([]);
+		});
+	});
+
 	describe("flags", () => {
 		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 		const parse = (...argv: string[]) =>
 			parseArgs(argv, (command) => registry.getOptions(command));
 
-		it("should not accept the config-picking flags", () => {
-			expect(parse("list", "-c", "a.rogen.json").isErr()).toBe(true);
-			expect(parse("list", "--all").isErr()).toBe(true);
+		it("should accept the config-picking flags and --json, but not the output overrides", () => {
+			expect(
+				parse(
+					"list",
+					"lobby",
+					"--all",
+					"-c",
+					"a.rogen.json",
+					"-t",
+					"mock",
+					"-T",
+					"dev",
+					"--json"
+				).isOk()
+			).toBe(true);
+			expect(parse("list", "-o", "out.project.json").isErr()).toBe(true);
+			expect(parse("list", "-s", "dist").isErr()).toBe(true);
 		});
 	});
 });

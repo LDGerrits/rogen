@@ -1,8 +1,0 @@
-{
-	"steps": [
-		[
-			"build",
-			"--show-config"
-		]
-	]
-}

@@ -7,11 +7,13 @@ import {
 } from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 
-interface ConfigLines {
-	readonly label: string;
-	/** Each line with the source path it is about. */
-	readonly lines: readonly (readonly [source: string, line: string])[];
-}
+/** What one config says: where a path lands, or that no file places an instance. */
+type Answer =
+	| { readonly label: string; readonly location: FileLocation }
+	| { readonly label: string; readonly instance: string };
+
+const sourceOf = (answer: Answer): string =>
+	"location" in answer ? answer.location.source : answer.instance;
 
 const MATCH_LABELS: Record<RouteMatch, string> = {
 	folder: "folder",
@@ -65,9 +67,40 @@ function outcomeOf(
 	}
 }
 
+/** The fields a location adds to its source and status in the JSON form. */
+function locationFields(location: FileLocation): Record<string, unknown> {
+	switch (location.status) {
+		case "placed":
+			return {
+				instancePath: location.instancePath,
+				route: location.route,
+				routeMatch: location.routeMatch,
+				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+			};
+		case "pruned":
+			return {
+				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+			};
+		case "replaced":
+			return { by: location.by };
+		case "displaced":
+			return { node: location.node };
+		case "excluded":
+			return { pattern: location.pattern };
+		case "unrouted":
+		case "skipped":
+		case "outside":
+		case "ignored":
+		case "missing":
+		case "empty":
+			return {};
+	}
+}
+
 /** Where files land, one line per path however many configs answered. */
 export class LocationReport {
-	private readonly configs: ConfigLines[] = [];
+	private readonly answers: Answer[] = [];
+	private configs = 0;
 
 	constructor(private readonly cwd: string) {}
 
@@ -77,50 +110,62 @@ export class LocationReport {
 		locations: readonly FileLocation[],
 		instances: readonly InstanceLocation[] = []
 	): void {
-		const describe = (
-			location: FileLocation
-		): readonly [string, string] => [
-			location.source,
-			describeLocation(location, this.cwd),
-		];
-		this.configs.push({
+		this.configs++;
+		const answer = (location: FileLocation): Answer => ({
 			label,
-			lines: [
-				...locations.map(describe),
-				...instances.flatMap(({ reference, files }) =>
-					files.length > 0
-						? files.map(describe)
-						: [
-								[
-									reference.text,
-									`${reference.text} -> no file places it`,
-								] as const,
-							]
-				),
-			],
+			location,
 		});
+		this.answers.push(
+			...locations.map(answer),
+			...instances.flatMap(({ reference, files }) =>
+				files.length > 0
+					? files.map(answer)
+					: [{ label, instance: reference.text }]
+			)
+		);
 	}
 
 	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Paths keep the order they were first given in, or are sorted. */
 	lines(sorted = false): string[] {
-		const bySource = groupBy(
-			this.configs.flatMap(({ label, lines }) =>
-				lines.map(([source, line]) => ({ source, label, line }))
-			),
-			({ source }) => source
-		);
+		return this.bySource(sorted).flatMap((answers) => {
+			const lines = answers.map((answer) => this.describe(answer));
+			const agreed =
+				answers.length === this.configs &&
+				lines.every((line) => line === lines[0]);
+			return agreed || this.configs === 1
+				? [lines[0]]
+				: answers.map(
+						({ label }, index) => `${label}: ${lines[index]}`
+					);
+		});
+	}
 
+	/** One entry per config and path, in the order `lines` puts the paths. */
+	json(sorted = false): Record<string, unknown>[] {
+		return this.bySource(sorted)
+			.flat()
+			.map((answer) => ({
+				config: answer.label,
+				...("location" in answer
+					? {
+							source: answer.location.source,
+							status: answer.location.status,
+							...locationFields(answer.location),
+						}
+					: { instance: answer.instance, status: "noFile" }),
+			}));
+	}
+
+	private bySource(sorted: boolean): Answer[][] {
+		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
 		if (sorted) sources.sort();
-		return sources.flatMap((source) => {
-			const answers = bySource.get(source) ?? [];
-			const [first] = answers;
-			const agreed =
-				answers.length === this.configs.length &&
-				answers.every(({ line }) => line === first.line);
-			return agreed || this.configs.length === 1
-				? [first.line]
-				: answers.map(({ label, line }) => `${label}: ${line}`);
-		});
+		return sources.map((source) => bySource.get(source) ?? []);
+	}
+
+	private describe(answer: Answer): string {
+		return "location" in answer
+			? describeLocation(answer.location, this.cwd)
+			: `${answer.instance} -> no file places it`;
 	}
 }

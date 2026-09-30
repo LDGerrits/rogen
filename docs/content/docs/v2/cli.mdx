@@ -72,7 +72,7 @@ A placed file shows its instance path, the governing route and how it matched (`
 
 An init folder is one instance, so its init script is the folder's line and every other script below it is a child of it.
 
-Positionals are paths here, not config names. `where` reads the default config; pick others with `-c` or `--all`, and turn tags on or off with `-t` and `-T`. With several configs a line is printed once when they all agree, and otherwise once per config, headed by its name.
+Add `--json` to read the answer as data (see [JSON output](#json-output)). Positionals are paths here, not config names. `where` reads the default config; pick others with `-c` or `--all`, and turn tags on or off with `-t` and `-T`. With several configs a line is printed once when they all agree, and otherwise once per config, headed by its name.
 
 ### `init [name]`
 
@@ -84,9 +84,11 @@ Answers are checked where they're typed: root directories may not nest or repeat
 
 It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and tags.
 
-### `list`
+### `list [name…]`
 
 Lists every `*.rogen.json` in the working directory, with its root directories, sync directory, project file and active tags. With variants as files, this is where "what can this repo build?" is answered.
+
+Name configs to list only those, and use `-c`, `--all`, `-t` and `-T` to pick configs and turn tags on or off first. With `--json` it prints each config fully resolved, with every default explicit and every path absolute, which is how to read the common root or an `extends` chain.
 
 ### `help [command]`
 
@@ -98,7 +100,7 @@ Prints the installed version.
 
 ## Options
 
-`build` and `watch` accept the override flags. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
+`build` and `watch` accept the override flags, and `where` and `list` the flags that pick configs: `--all`, `-c`, `-t` and `-T`. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
 
 ### `--all`
 
@@ -132,9 +134,9 @@ Turns a tag off. Repeatable. It is the capital of `-t`, the way `ssh -t` and `ss
 	`-o`, `-s` and `--template` target one config, so using them with several names is an error. A tag flag applies wherever a built config declares that tag, and is an error only when none does.
 </Callout>
 
-### `--show-config`
+### `--json`
 
-`build` only. Prints the resolved config, with every default explicit and every path absolute, and exits.
+`build`, `where` and `list`. Prints one JSON document on stdout instead of text, for a program to read. See [JSON output](#json-output).
 
 ### Global options
 
@@ -144,11 +146,71 @@ Turns a tag off. Repeatable. It is the capital of `-t`, the way `ssh -t` and `ss
 | `-v, --version` | Prints the version. |
 | `--verbose` | Prints debug output. Can't be combined with `--quiet`. |
 | `-q, --quiet` | Prints errors only. Can't be combined with `--verbose`. |
+| `--no-input` | Never asks, and prints plain lines. |
 
-Text you asked for, like help, the version and `--show-config`, is printed even with `--quiet`.
+Text you asked for, like help, the version and a `--json` document, is printed even with `--quiet`.
+
+## JSON output
+
+`--json` replaces a command's text with one JSON document on stdout. The exit code is the one the text form would give, and a failure prints a document too, so a program can read stdout whatever the exit code. Nothing else goes to stdout, `--quiet` and `--verbose` don't change it, and it never draws a frame. A mistake in the command line itself, such as an unknown flag, prints `{ "error": "..." }` too: the flag is read before the rest of the line is parsed.
+
+Paths are absolute. A diagnostic is an object, and its `code` is the part a program can match on, since the wording of `message` may change:
+
+```json
+{
+	"file": "/repo/default.rogen.json",
+	"line": 3,
+	"column": 2,
+	"severity": "error",
+	"code": "config.unknownField",
+	"message": "unknown field \"outDir\"."
+}
+```
+
+`line` and `column` are left out when a diagnostic is about a whole file or folder. When a command fails before it has anything to report, such as when a config is invalid or none is found, the document is `{ "diagnostics": [...] }` for diagnostics, or `{ "error": "..." }` for anything else.
+
+### `build --json`
+
+```json
+{
+	"configs": [
+		{
+			"file": "/repo/default.rogen.json",
+			"outFile": "/repo/default.project.json",
+			"outcome": "wrote",
+			"diagnostics": []
+		}
+	],
+	"notBuilding": ["/repo/lobby.rogen.json"]
+}
+```
+
+`outcome` is `wrote`, `unchanged` or `notWritten`. When any config fails to build, none is written, and every config is `notWritten` with its own diagnostics. `notBuilding` lists the configs here that the run wasn't asked to build.
+
+### `where --json`
+
+An array with one entry per config and path, in the order the text form prints them, with no lines folded together. Every entry has `config` and `status`, and a `source` path, plus the fields its status carries:
+
+| `status` | Fields |
+|---|---|
+| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `tags` |
+| `pruned` | `tags`, the dormant ones |
+| `replaced` | `by`, the file that took its instance path |
+| `displaced` | `node`, the template node's path |
+| `excluded` | `pattern`, the glob that matched |
+| `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
+| `noFile` | `instance` in place of `source`: no file places an instance that was asked for |
+
+`routeMatch` is `folder`, `marker`, `separator`, `capital` or `fallback`. Each of `tags` is `{ "tag": "mock", "form": "capital" }`, where `form` is `folder`, `marker`, `separator` or `capital`.
+
+### `list --json`
+
+An object keyed by the config file's absolute path. Each value has `extends` (the parents, nearest first) and `diagnostics`, and for a config that resolved, `name`, `rootDirs`, `commonRoot`, `routes`, `tags`, `exclude`, `template`, `syncDir` and `outFile`. Unset `template`, `syncDir` and `commonRoot` are `null`. A config with errors has only `extends` and `diagnostics`, the other configs are still printed, and the exit code is 1.
 
 ## Output
 
 Every command prints through one logger. In a terminal it draws a framed layout with symbols. Without a terminal (CI, pipes, a redirect) it prints plain lines with no gutter or color, so nothing that greps the output breaks.
+
+Rogen also takes the plain path, and never asks a question, when the `CI` environment variable is set to anything but empty, `0` or `false`, when `TERM` is `dumb`, and with `--no-input`. Use `--no-input` from a tool that runs commands in a pseudo-terminal, where `init` would otherwise wait for answers.
 
 A build result line is `<file> · wrote`, `<file> · unchanged` or `<file> · not written`. Diagnostics keep their `file:line:col - severity: message` shape on their own lines under it, so editors and CI can parse them. The file is relative to the working directory, and a warning about a source file is located at that file, one line per file. A command that fails prints the error inside the frame and exits with 1.

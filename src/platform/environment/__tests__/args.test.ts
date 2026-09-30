@@ -1,4 +1,9 @@
-import { OptionDescriptor, parseArgs } from "../args.js";
+import {
+	GlobalOptions,
+	OptionDescriptor,
+	hasFlag,
+	parseArgs,
+} from "../args.js";
 
 const globals: OptionDescriptor[] = [
 	{ name: "verbose", type: "boolean", description: "" },
@@ -81,5 +86,25 @@ describe("parseArgs", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(result.isErr() && result.error.message).toContain("--tag");
+	});
+
+	it("should take --no-input on every command", () => {
+		const parsed = parseArgs(["watch", "--no-input"], () => GlobalOptions);
+
+		expect(parsed.unwrap().options["no-input"]).toBe(true);
+	});
+});
+
+describe("hasFlag", () => {
+	it("should see a flag next to one the parser rejects", () => {
+		expect(hasFlag(["build", "--json", "--bogus"], "--json")).toBe(true);
+	});
+
+	it("should not see a flag after --", () => {
+		expect(hasFlag(["build", "--", "--json"], "--json")).toBe(false);
+	});
+
+	it("should not see a flag that is absent", () => {
+		expect(hasFlag(["build", "lobby"], "--json")).toBe(false);
 	});
 });

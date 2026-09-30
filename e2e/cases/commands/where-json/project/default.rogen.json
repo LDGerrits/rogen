@@ -1,0 +1,17 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"tags": {
+		"mock": false
+	},
+	"exclude": [
+		"src/Specs"
+	]
+}
