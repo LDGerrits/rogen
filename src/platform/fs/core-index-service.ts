@@ -14,7 +14,7 @@ import {
 	toPosix,
 } from "../../base/path.js";
 import { Emitter, Event } from "../../base/event.js";
-import { FileChange, FileChangeType } from "./file-events.js";
+import { FileChange, FileChangeType } from "./file-changes.js";
 import { IndexService } from "./index-service.js";
 
 const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];

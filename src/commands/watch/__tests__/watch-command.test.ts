@@ -19,7 +19,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import {
 	FileChange,
 	FileChangeType,
-} from "../../../platform/fs/file-events.js";
+} from "../../../platform/fs/file-changes.js";
 import {
 	FileSystemService,
 	FileType,

@@ -1,7 +1,7 @@
 import path from "path";
-import { compareStrings } from "../../base/collection.js";
+import { compareStrings } from "../../base/collections.js";
 import { joinPosix, toPosix } from "../../base/path.js";
-import { capitalized, listLimited } from "../../base/string.js";
+import { capitalized, listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -11,7 +11,7 @@ import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 type InstancelessFolder =

@@ -9,7 +9,7 @@ import { CoreReconciliationService } from "../../../platform/watcher/core-reconc
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { WatchUpdate } from "../watch-service.js";
-import { CoreWatchSession } from "../watch-session.js";
+import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 
 describe("CoreWatchSession", () => {

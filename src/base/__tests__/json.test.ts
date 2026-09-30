@@ -1,5 +1,5 @@
 import { safeStringify } from "../json.js";
-import { sortObject } from "../object.js";
+import { sortObject } from "../objects.js";
 
 describe("sortObject", () => {
 	it("should sort object keys alphabetically and recursively", () => {

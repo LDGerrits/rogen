@@ -1,8 +1,8 @@
 import { SCHEMA_URL } from "../../config/config.js";
-import { InitPlanBuilder } from "../init-plan.js";
+import { InitPlanBuilder } from "../init-plan-builder.js";
 import { directory, directoryOf } from "./init-fixtures.js";
 
-describe("domain/init/init-plan", () => {
+describe("domain/init/init-plan-builder", () => {
 	describe("InitPlanBuilder", () => {
 		const builderFor = (existing: readonly string[] = []) =>
 			new InitPlanBuilder(directoryOf({ existing }));

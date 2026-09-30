@@ -1,6 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { plural } from "../../base/string.js";
+import { plural } from "../../base/strings.js";
 import {
 	ConfigEntry,
 	ConfigService,

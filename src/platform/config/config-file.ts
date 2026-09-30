@@ -7,7 +7,7 @@ import {
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
 import { FileSystemService } from "../fs/file-system-service.js";
-import { JsoncDocumentReader } from "../jsonc/jsonc-document.js";
+import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
 import { Registry } from "../registry/registry.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 import { ConfigRegistry, Extensions } from "./config-registry.js";

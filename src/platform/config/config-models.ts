@@ -1,4 +1,4 @@
-import { mergeDeep } from "../../base/object.js";
+import { mergeDeep } from "../../base/objects.js";
 import { safeStringify } from "../../base/json.js";
 
 /** A section is a dotted path, or its segments when a key may itself contain a dot. */

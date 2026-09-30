@@ -1,4 +1,4 @@
-import { compareStrings, groupBy } from "../collection.js";
+import { compareStrings, groupBy } from "../collections.js";
 
 describe("groupBy", () => {
 	it("should group items under their key in the order they appear", () => {

@@ -10,7 +10,7 @@ import {
 	selectServices,
 } from "./services-module.js";
 
-const OUTPUT = path.resolve("src/domain/roblox/services.ts");
+const OUTPUT = path.resolve("src/domain/roblox/supported-services.ts");
 
 async function fetchOk(url: string): Promise<Response> {
 	const response = await fetch(url);

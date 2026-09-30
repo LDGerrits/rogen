@@ -1,6 +1,6 @@
 import path from "path";
 import { relativeTo } from "../../base/path.js";
-import { plural } from "../../base/string.js";
+import { plural } from "../../base/strings.js";
 import {
 	ConfigNotice,
 	RebuildReport,
@@ -12,7 +12,7 @@ import {
 	isError,
 	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileChange, FileChangeType } from "../../platform/fs/file-events.js";
+import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ResolvedEntry } from "../../domain/config/config-service.js";
 import { BuildLog } from "../build/build-log.js";

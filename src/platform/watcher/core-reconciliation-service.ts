@@ -1,7 +1,7 @@
 import { Emitter, Event } from "../../base/event.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractDisposable, Disposable } from "../../base/disposable.js";
-import { FileChange, normalizeFileChanges } from "../fs/file-events.js";
+import { FileChange, normalizeFileChanges } from "../fs/file-changes.js";
 import { ReconciliationService } from "./reconciliation-service.js";
 
 export interface ReconciliationOptions {

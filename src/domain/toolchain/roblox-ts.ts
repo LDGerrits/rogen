@@ -1,7 +1,7 @@
 import path from "path";
 import { formatJsonFile } from "../../base/json.js";
 import { parse } from "../../base/jsonc.js";
-import { isObject } from "../../base/object.js";
+import { isObject } from "../../base/objects.js";
 import { normalizeDir } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {

@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { FileType } from "../fs/file-system-service.js";
 import { toPosix } from "../../base/path.js";
-import { FileChangeType } from "../fs/file-events.js";
+import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { isIgnored, WatchOptions, WatchRequest } from "./watcher.js";
 

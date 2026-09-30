@@ -1,6 +1,6 @@
 import path from "path";
 import { ancestors, toPosix } from "../../base/path.js";
-import { listLimited } from "../../base/string.js";
+import { listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,

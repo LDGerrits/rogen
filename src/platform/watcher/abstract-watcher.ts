@@ -1,7 +1,7 @@
 import { AbstractDisposable } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { FileChange } from "../fs/file-events.js";
+import { FileChange } from "../fs/file-changes.js";
 import { LogService } from "../log/log-service.js";
 import { WatchOptions, WatchRequest, Watcher } from "./watcher.js";
 

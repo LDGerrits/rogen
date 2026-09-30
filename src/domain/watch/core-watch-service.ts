@@ -3,7 +3,7 @@ import { ReconciliationService } from "../../platform/watcher/reconciliation-ser
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigService } from "../config/config-service.js";
-import { CoreWatchSession } from "./watch-session.js";
+import { CoreWatchSession } from "./core-watch-session.js";
 import { WatchService, WatchSession } from "./watch-service.js";
 
 export class CoreWatchService implements WatchService {

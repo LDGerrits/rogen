@@ -1,6 +1,6 @@
 import { RojoTree } from "../../rojo/rojo-project.js";
 import { SyncLayout } from "../sync-layout.js";
-import { BuildTemplate } from "../template.js";
+import { BuildTemplate } from "../build-template.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
 const mountedPackages: Partial<RojoTree> = {

@@ -1,13 +1,13 @@
-import { compareStrings, groupBy } from "../../base/collection.js";
+import { compareStrings, groupBy } from "../../base/collections.js";
 import { JSONSchema } from "../../base/json-schema.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document.js";
+import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { RojoNode, RojoProject, instanceKey } from "../rojo/rojo-project.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 
 export interface FolderMetaFields {
 	readonly className?: string;

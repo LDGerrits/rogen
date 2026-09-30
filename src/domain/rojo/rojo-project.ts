@@ -1,4 +1,4 @@
-import { isObject } from "../../base/object.js";
+import { isObject } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 

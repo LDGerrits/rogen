@@ -18,7 +18,7 @@ const modules = {
 		build: ["build-service"],
 		config: ["config", "config-service"],
 		init: ["init-service"],
-		roblox: ["roblox", "services"],
+		roblox: ["roblox", "supported-services"],
 		rojo: ["rojo-file", "rojo-project"],
 		toolchain: ["toolchain", "toolchain-service"],
 		watch: ["watch-service"],

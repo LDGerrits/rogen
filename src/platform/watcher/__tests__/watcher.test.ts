@@ -4,7 +4,7 @@ import { isIgnored } from "../watcher.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { FileType } from "../../fs/file-system-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
-import { FileChangeType } from "../../fs/file-events.js";
+import { FileChangeType } from "../../fs/file-changes.js";
 
 describe("MemoryWatcher", () => {
 	let memoryFs: MemoryFileSystemService;

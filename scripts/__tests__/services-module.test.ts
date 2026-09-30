@@ -3,7 +3,7 @@ import path from "path";
 import {
 	SERVICES_ROJO_VERSION,
 	SUPPORTED_SERVICES,
-} from "../../src/domain/roblox/services.js";
+} from "../../src/domain/roblox/supported-services.js";
 import {
 	ReflectionDatabase,
 	renderServicesModule,
@@ -76,9 +76,9 @@ describe("scripts/services-module", () => {
 			expect(source).toContain("export function isSupportedService");
 		});
 	});
-	describe("services.ts", () => {
+	describe("supported-services.ts", () => {
 		it("should be the output of the generator, not edited by hand", () => {
-			const file = path.resolve("src/domain/roblox/services.ts");
+			const file = path.resolve("src/domain/roblox/supported-services.ts");
 			expect(fs.readFileSync(file, "utf8")).toBe(
 				renderServicesModule(SUPPORTED_SERVICES, SERVICES_ROJO_VERSION)
 			);

@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collection.js";
+import { compareStrings } from "../../base/collections.js";
 import { ancestors, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -18,7 +18,7 @@ import {
 	FolderMetaParser,
 } from "./folder-meta.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 
 /** A placed build with its tree; what the rules report on. */

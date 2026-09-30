@@ -1,6 +1,6 @@
-import { isSupportedService } from "../services.js";
+import { isSupportedService } from "../supported-services.js";
 
-describe("domain/roblox/services", () => {
+describe("domain/roblox/supported-services", () => {
 	describe("isSupportedService", () => {
 		it.each([
 			"ServerScriptService",

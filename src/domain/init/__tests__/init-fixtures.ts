@@ -12,7 +12,7 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { InitDirectory, TEMPLATE_FILE } from "../init-directory.js";
-import { InitPlanBuilder, Setup } from "../init-plan.js";
+import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";
 
 export const directory = path.resolve("/mock/my-game");

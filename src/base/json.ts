@@ -1,4 +1,4 @@
-import { isObject, sortObject } from "./object.js";
+import { isObject, sortObject } from "./objects.js";
 
 /**
  * Serializes object into JSON in alphabetical order.

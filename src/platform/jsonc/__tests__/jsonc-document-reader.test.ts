@@ -1,5 +1,5 @@
 import { JSONSchema } from "../../../base/json-schema.js";
-import { JsoncDocumentReader } from "../jsonc-document.js";
+import { JsoncDocumentReader } from "../jsonc-document-reader.js";
 
 const FILE = "/repo/a.json";
 
@@ -13,7 +13,7 @@ const schema: JSONSchema = {
 	},
 };
 
-describe("platform/jsonc/jsonc-document", () => {
+describe("platform/jsonc/jsonc-document-reader", () => {
 	describe("JsoncDocumentReader", () => {
 		const reader = new JsoncDocumentReader({
 			codePrefix: "thing",
