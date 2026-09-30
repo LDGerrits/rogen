@@ -7,7 +7,7 @@ import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-colle
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { RojoNode, RojoProject, instanceKey } from "../rojo/rojo-project.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 
 export interface FolderMetaFields {
 	readonly className?: string;

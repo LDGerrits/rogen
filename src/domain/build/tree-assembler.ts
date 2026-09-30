@@ -18,7 +18,7 @@ import {
 	FolderMetaParser,
 } from "./folder-meta.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 
 /** A placed build with its tree; what the rules report on. */

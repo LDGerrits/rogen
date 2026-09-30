@@ -12,8 +12,9 @@ import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Addition, InitQuestions } from "./init-questions.js";
 import { InitPlan, InitService } from "./init-service.js";
-import { PlaceSetup, VariantSetup } from "./place-setup.js";
+import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
+import { VariantSetup } from "./variant-setup.js";
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;

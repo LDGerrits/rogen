@@ -10,7 +10,7 @@ import {
 	NameReader,
 	NameReadings,
 	SuffixSpan,
-} from "./name-reading.js";
+} from "./name-reader.js";
 import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */

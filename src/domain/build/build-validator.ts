@@ -11,7 +11,7 @@ import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
-import { RoutedFile } from "./routing.js";
+import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 type InstancelessFolder =
