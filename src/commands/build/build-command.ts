@@ -9,19 +9,19 @@ import {
 	ConfigEntry,
 	ConfigService,
 	ResolvedEntry,
+	configRefsFromArgs,
 } from "../../domain/config/config-service.js";
-import { registerCommand } from "../../platform/commands/commands.js";
+import {
+	AbstractCommand,
+	registerCommand,
+} from "../../platform/commands/commands.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { renderDiagnostic } from "../../platform/diagnostics/render-diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
+import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	AbstractConfigCommand,
-	ConfigOptions,
-} from "../config/config-command.js";
 import { BuildLog } from "./build-log.js";
 
 interface BuiltTarget extends ResolvedEntry {
@@ -64,7 +64,7 @@ function configsAsJson(entries: readonly ConfigEntry[]): string {
 }
 
 registerCommand(
-	class BuildCommand extends AbstractConfigCommand {
+	class BuildCommand extends AbstractCommand {
 		constructor() {
 			super({
 				id: "build",
@@ -91,10 +91,15 @@ registerCommand(
 			});
 		}
 
-		protected async runWithConfigs(
+		async run(
 			accessor: ServicesAccessor,
 			args: ParsedArgs
 		): Promise<Result<void, Error>> {
+			const loaded = await accessor
+				.get(ConfigService)
+				.initialize(configRefsFromArgs(args, args._.slice(1)));
+			if (loaded.isErr()) return loaded;
+
 			return args["show-config"]
 				? this.showConfig(accessor)
 				: this.build(accessor);

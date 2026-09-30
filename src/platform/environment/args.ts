@@ -26,6 +26,91 @@ export interface ParsedArgs {
 	"show-config"?: boolean;
 }
 
+/** The options every command takes. */
+export const GlobalOptions: readonly OptionDescriptor[] = [
+	{ name: "help", short: "h", type: "boolean", description: "Print help." },
+	{
+		name: "version",
+		short: "v",
+		type: "boolean",
+		description: "Print the version.",
+	},
+	{
+		name: "verbose",
+		type: "boolean",
+		description: "Print debug output.",
+	},
+	{
+		name: "quiet",
+		short: "q",
+		type: "boolean",
+		description: "Only print errors.",
+	},
+];
+
+const AllOption: OptionDescriptor = {
+	name: "all",
+	type: "boolean",
+	description: "Every config in the working directory.",
+};
+
+const ConfigPathOption: OptionDescriptor = {
+	name: "config",
+	short: "c",
+	type: "string",
+	multiple: true,
+	description: "An explicit config path.",
+};
+
+const TagOption: OptionDescriptor = {
+	name: "tag",
+	short: "t",
+	type: "string",
+	multiple: true,
+	description: "Turns a tag on.",
+};
+
+const NoTagOption: OptionDescriptor = {
+	name: "no-tag",
+	short: "T",
+	type: "string",
+	multiple: true,
+	description: "Turns a tag off.",
+};
+
+/** The flags that pick the configs a command reads and which tags are on in them. */
+export const ConfigSelectionOptions: readonly OptionDescriptor[] = [
+	AllOption,
+	ConfigPathOption,
+	TagOption,
+	NoTagOption,
+];
+
+/** The flags that pick, or override, the configs a command builds. */
+export const ConfigOptions: readonly OptionDescriptor[] = [
+	AllOption,
+	ConfigPathOption,
+	{
+		name: "out-file",
+		short: "o",
+		type: "string",
+		description: "Overrides outFile.",
+	},
+	{
+		name: "sync-dir",
+		short: "s",
+		type: "string",
+		description: "Overrides syncDir.",
+	},
+	{
+		name: "template",
+		type: "string",
+		description: "Overrides template.",
+	},
+	TagOption,
+	NoTagOption,
+];
+
 export interface ParsedCli {
 	command: string;
 	options: ParsedArgs;

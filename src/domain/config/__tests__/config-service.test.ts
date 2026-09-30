@@ -6,9 +6,55 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
+import { ParsedArgs } from "../../../platform/environment/args.js";
+import { configRefsFromArgs } from "../config-service.js";
 import { MockConfigService, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
+	describe("configRefsFromArgs", () => {
+		const refs = (args: Partial<ParsedArgs>, names: string[] = []) =>
+			configRefsFromArgs({ _: ["build"], ...args }, names);
+
+		it("should take the given names and the -c paths", () => {
+			const result = refs({ config: ["extra.rogen.json"] }, [
+				"lobby",
+				"match",
+			]);
+
+			expect(result.names).toEqual(["lobby", "match"]);
+			expect(result.paths).toEqual(["extra.rogen.json"]);
+		});
+
+		it("should carry the overrides, with tags as on and off", () => {
+			const result = refs({
+				"out-file": "out.project.json",
+				"sync-dir": "dist",
+				template: "base.project.json",
+				tag: ["mock", "dev"],
+				"no-tag": ["prod"],
+			});
+
+			expect(result.overrides).toEqual({
+				outFile: "out.project.json",
+				syncDir: "dist",
+				template: "base.project.json",
+				tags: { mock: true, dev: true, prod: false },
+			});
+		});
+
+		it("should carry no overrides when no flag is given", () => {
+			expect(refs({}).overrides).toEqual({ tags: {} });
+		});
+
+		it("should ask for every config with --all", () => {
+			expect(refs({ all: true })).toMatchObject({
+				names: [],
+				paths: [],
+				all: true,
+			});
+		});
+	});
+
 	describe("ConfigEntry", () => {
 		it("should list its errors and leave out its warnings", () => {
 			const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");

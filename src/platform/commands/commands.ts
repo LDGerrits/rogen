@@ -1,7 +1,11 @@
 import { Disposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
-import { OptionDescriptor, ParsedArgs } from "../environment/args.js";
+import {
+	GlobalOptions,
+	OptionDescriptor,
+	ParsedArgs,
+} from "../environment/args.js";
 import {
 	ServicesAccessor,
 	createServiceIdentifier,
@@ -47,27 +51,6 @@ export interface CommandMetadata {
 	}[];
 	readonly options?: readonly OptionDescriptor[];
 }
-
-export const GlobalOptions: readonly OptionDescriptor[] = [
-	{ name: "help", short: "h", type: "boolean", description: "Print help." },
-	{
-		name: "version",
-		short: "v",
-		type: "boolean",
-		description: "Print the version.",
-	},
-	{
-		name: "verbose",
-		type: "boolean",
-		description: "Print debug output.",
-	},
-	{
-		name: "quiet",
-		short: "q",
-		type: "boolean",
-		description: "Only print errors.",
-	},
-];
 
 export interface CommandRegistry {
 	readonly onDidRegisterCommand: Event<string>;

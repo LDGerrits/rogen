@@ -1,20 +1,25 @@
 import path from "path";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigService } from "../../domain/config/config-service.js";
-import { registerCommand } from "../../platform/commands/commands.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
+import {
+	ConfigService,
+	configRefsFromArgs,
+} from "../../domain/config/config-service.js";
+import {
+	AbstractCommand,
+	registerCommand,
+} from "../../platform/commands/commands.js";
+import {
+	ConfigSelectionOptions,
+	ParsedArgs,
+} from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	AbstractConfigCommand,
-	ConfigSelectionOptions,
-} from "../config/config-command.js";
 import { LocationReport } from "./location-report.js";
 
 registerCommand(
-	class WhereCommand extends AbstractConfigCommand {
+	class WhereCommand extends AbstractCommand {
 		constructor() {
 			super({
 				id: "where",
@@ -35,19 +40,20 @@ registerCommand(
 			});
 		}
 
-		/** Its positionals are paths, so only the flags pick configs. */
-		protected override configNames(): readonly string[] {
-			return [];
-		}
-
-		protected async runWithConfigs(
+		async run(
 			accessor: ServicesAccessor,
 			args: ParsedArgs
 		): Promise<Result<void, Error>> {
+			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const targets = accessor.get(ConfigService).requireValidEntries();
+			// The positionals are paths, so only the flags pick configs.
+			const loaded = await configService.initialize(
+				configRefsFromArgs(args, [])
+			);
+			if (loaded.isErr()) return loaded;
+			const targets = configService.requireValidEntries();
 			if (targets.isErr()) return targets;
 
 			const paths = args._.slice(1).map((file) =>

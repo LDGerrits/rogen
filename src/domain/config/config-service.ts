@@ -3,6 +3,7 @@ import { Result } from "../../base/result.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { ParsedArgs } from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
@@ -21,6 +22,31 @@ export interface ConfigRefs {
 	/** Every config in the working directory, instead of names or paths. */
 	readonly all?: boolean;
 	readonly overrides?: ConfigOverrides;
+}
+
+/** The configs `names` and the command line's flags pick, and the overrides those flags set. */
+export function configRefsFromArgs(
+	args: ParsedArgs,
+	names: readonly string[]
+): ConfigRefs {
+	return {
+		names,
+		paths: args.config ?? [],
+		all: args.all === true,
+		overrides: {
+			outFile: args["out-file"],
+			syncDir: args["sync-dir"],
+			template: args.template,
+			tags: {
+				...Object.fromEntries(
+					(args.tag ?? []).map((tag) => [tag, true])
+				),
+				...Object.fromEntries(
+					(args["no-tag"] ?? []).map((tag) => [tag, false])
+				),
+			},
+		},
+	};
 }
 
 /** A snapshot of one config; a later reload replaces it rather than mutating it. */

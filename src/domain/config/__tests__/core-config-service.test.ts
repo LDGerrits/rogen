@@ -60,6 +60,68 @@ describe("domain/config/core-config-service", () => {
 	});
 
 	describe("initialize", () => {
+		const refusal = async (refs: Partial<ConfigRefs>) => {
+			await write("/repo/lobby.rogen.json", {});
+			await write("/repo/match.rogen.json", {});
+			const result = await start(refs);
+			expect(service.configs).toEqual([]);
+			return result.isErr() ? result.error.message : "";
+		};
+
+		it.each([
+			["-o", { outFile: "a.json" }],
+			["-s", { syncDir: "dist" }],
+			["--template", { template: "t.json" }],
+		])("should refuse %s with several configs", async (flag, override) => {
+			expect(
+				await refusal({
+					names: ["lobby", "match"],
+					overrides: { ...override, tags: {} },
+				})
+			).toBe(
+				`${flag} targets a single config, but several were named. Name one config, or set it in the file.`
+			);
+		});
+
+		it("should count -c paths towards the several configs", async () => {
+			expect(
+				await refusal({
+					names: ["lobby"],
+					paths: ["match.rogen.json"],
+					overrides: { outFile: "a.json", tags: {} },
+				})
+			).toMatch(/^-o targets a single config/);
+		});
+
+		it("should refuse -o with every config", async () => {
+			expect(
+				await refusal({
+					all: true,
+					overrides: { outFile: "a.json", tags: {} },
+				})
+			).toMatch(/^-o targets a single config/);
+		});
+
+		it("should allow -o with one config", async () => {
+			await write("/repo/lobby.rogen.json", {});
+
+			const result = await start({
+				names: ["lobby"],
+				overrides: { outFile: "a.json", tags: {} },
+			});
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it.each<[string, Partial<ConfigRefs>]>([
+			["a name", { names: ["lobby"] }],
+			["a -c path", { paths: ["lobby.rogen.json"] }],
+		])("should refuse every config with %s", async (_what, refs) => {
+			expect(await refusal({ all: true, ...refs })).toBe(
+				"--all already builds every config here, so it takes no names or -c paths. Drop one or the other."
+			);
+		});
+
 		it("should resolve the default config with defaults applied", async () => {
 			await write("/repo/default.rogen.json", {});
 

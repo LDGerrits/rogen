@@ -4,10 +4,10 @@ import {
 	Command,
 	CommandRegistry,
 	Extensions,
-	GlobalOptions,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
+	GlobalOptions,
 	OptionDescriptor,
 	ParsedArgs,
 } from "../../platform/environment/args.js";

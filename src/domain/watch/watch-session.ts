@@ -13,10 +13,7 @@ import {
 	Watcher,
 	WatchRequest,
 } from "../../platform/watcher/watcher.js";
-import {
-	BuildService,
-	OutputFile,
-} from "../build/build-service.js";
+import { BuildService, OutputFile } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import {

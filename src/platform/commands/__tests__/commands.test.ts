@@ -7,10 +7,13 @@ import {
 	Command,
 	CommandRegistry,
 	Extensions,
-	GlobalOptions,
 	registerCommand,
 } from "../commands.js";
-import { OptionDescriptor, ParsedArgs } from "../../environment/args.js";
+import {
+	OptionDescriptor,
+	ParsedArgs,
+	GlobalOptions,
+} from "../../environment/args.js";
 import { ServicesAccessor } from "../../instantiation/instantiation.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
 

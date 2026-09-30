@@ -9,10 +9,12 @@ import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
 	Extensions,
-	GlobalOptions,
 } from "../../../platform/commands/commands.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { parseArgs } from "../../../platform/environment/args.js";
+import {
+	GlobalOptions,
+	parseArgs,
+} from "../../../platform/environment/args.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import {
 	LogService,

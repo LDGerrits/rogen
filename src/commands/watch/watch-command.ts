@@ -3,21 +3,24 @@ import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+import {
+	ConfigService,
+	configRefsFromArgs,
+} from "../../domain/config/config-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
-import { registerCommand } from "../../platform/commands/commands.js";
+import {
+	AbstractCommand,
+	registerCommand,
+} from "../../platform/commands/commands.js";
+import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	AbstractConfigCommand,
-	ConfigOptions,
-} from "../config/config-command.js";
 import { WatchLog } from "./watch-log.js";
 
 registerCommand(
-	class WatchCommand extends AbstractConfigCommand {
+	class WatchCommand extends AbstractCommand {
 		constructor() {
 			super({
 				id: "watch",
@@ -38,8 +41,9 @@ registerCommand(
 		}
 
 		/** Watches until the process is asked to shut down. */
-		protected async runWithConfigs(
-			accessor: ServicesAccessor
+		async run(
+			accessor: ServicesAccessor,
+			args: ParsedArgs
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
@@ -51,6 +55,10 @@ registerCommand(
 				accessor.get(EnvironmentService).cwd
 			);
 
+			const loaded = await configService.initialize(
+				configRefsFromArgs(args, args._.slice(1))
+			);
+			if (loaded.isErr()) return loaded;
 			const targets = configService.requireValidEntries();
 			if (targets.isErr()) return targets;
 			const buildable = buildService.checkBuildable(
