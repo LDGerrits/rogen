@@ -76,7 +76,7 @@ describe("scripts/services-module", () => {
 			expect(source).toContain("export function isSupportedService");
 		});
 	});
-	describe("services.ts", () => {
+	describe("supported-services.ts", () => {
 		it("should be the output of the generator, not edited by hand", () => {
 			const file = path.resolve("src/domain/roblox/supported-services.ts");
 			expect(fs.readFileSync(file, "utf8")).toBe(

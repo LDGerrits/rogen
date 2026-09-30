@@ -7,11 +7,11 @@ import { ResolvedConfig } from "../config/config.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildSummary, LeftOut } from "./build-service.js";
-import { NameReader, NameReadings } from "./name-reader.js";
-import { RoutedFile, Router } from "./router.js";
-import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { SyncLayout } from "./sync-layout.js";
 import { BuildTemplate } from "./build-template.js";
+import { NameReader, NameReadings } from "./name-reader.js";
+import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
+import { RoutedFile, Router } from "./router.js";
+import { SyncLayout } from "./sync-layout.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {

@@ -25,7 +25,7 @@ const sourceFiles = (dir: string): string[] =>
 const exportedNames = (text: string) =>
 	[
 		...text.matchAll(
-			/^export (?:declare )?(?:abstract )?(?:async )?(?:class|interface|type|enum|const|function) ([A-Za-z0-9_]+)/gm
+			/^export (?:declare )?(?:abstract )?(?:async )?(?:const )?(?:class|interface|type|enum|const|function) ([A-Za-z0-9_]+)/gm
 		),
 	].map(([, name]) => kebab(name));
 
