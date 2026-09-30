@@ -16,7 +16,7 @@ import {
 	resolvedConfigs,
 } from "../config/config-service.js";
 import { OutputService } from "../output/output-service.js";
-import { INIT_META_FILE } from "../rojo/rojo-files.js";
+import { RojoFile } from "../rojo/rojo-file.js";
 import { PrintedDiagnostics } from "./printed-diagnostics.js";
 import { WatchPlan, createWatchPlan } from "./watch-plan.js";
 
@@ -72,7 +72,7 @@ function dropSourceUpdates(
 		(change) =>
 			change.type !== FileChangeType.UPDATED ||
 			contentFiles.has(change.path) ||
-			path.basename(change.path) === INIT_META_FILE
+			path.basename(change.path) === RojoFile.INIT_META
 	);
 }
 

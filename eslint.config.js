@@ -19,7 +19,7 @@ const domainModules = {
 	init: ["init-plan", "init-service"],
 	output: ["output", "output-service"],
 	roblox: ["roblox"],
-	rojo: ["rojo-files", "rojo-project"],
+	rojo: ["rojo-file", "rojo-project"],
 	toolchain: ["toolchain", "toolchain-service"],
 	watch: ["watch-service", "watch-session"],
 };

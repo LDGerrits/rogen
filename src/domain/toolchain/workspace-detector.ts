@@ -4,7 +4,7 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { SCRIPT_EXTENSIONS } from "../rojo/rojo-files.js";
+import { RojoFile } from "../rojo/rojo-file.js";
 import {
 	Darklua,
 	DetectedWorkspace,
@@ -116,7 +116,7 @@ export class WorkspaceDetector {
 			visible.some(
 				([name, type]) =>
 					isFileType(type) &&
-					SCRIPT_EXTENSIONS.some((extension) =>
+					RojoFile.SCRIPT_EXTENSIONS.some((extension) =>
 						name.endsWith(extension)
 					)
 			)

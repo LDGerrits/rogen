@@ -14,19 +14,8 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { Target, parseTarget } from "../roblox/roblox.js";
-import {
-	INIT_META_FILE,
-	RojoFileKind,
-	RojoScriptSuffix,
-	classifyFile,
-	isInitScript,
-	isMetaFile,
-	rojoAssignedName,
-	rojoScriptSuffix,
-	stripRojoDataSuffix,
-	suffixSeparator,
-} from "../rojo/rojo-files.js";
+import { Target } from "../roblox/roblox.js";
+import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo-file.js";
 import { RojoProject, instanceKey } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
@@ -119,7 +108,7 @@ function prepareBuild(
 	const targets = new Map<string, Target>();
 	const errors: Diagnostic[] = [];
 	for (const [key, value] of Object.entries(config.routes)) {
-		const target = parseTarget(value, { resource: config.outFile });
+		const target = Target.parse(value, { resource: config.outFile });
 		if (target.isOk()) targets.set(key, target.value);
 		else errors.push(...target.error);
 	}
@@ -193,12 +182,15 @@ function scanRoot(
 		}
 
 		const initFile = kept
-			.filter(([name, type]) => isFileType(type) && isInitScript(name))
+			.filter(
+				([name, type]) =>
+					isFileType(type) && new RojoFile(name).isInitScript
+			)
 			.map(([name]) => name)
 			.sort()[0];
 		if (initFile && relativeDir) {
-			if (kept.some(([name]) => name === INIT_META_FILE))
-				metaFiles.push(relativeTo(INIT_META_FILE));
+			if (kept.some(([name]) => name === RojoFile.INIT_META))
+				metaFiles.push(relativeTo(RojoFile.INIT_META));
 			entries.push({
 				kind: "init-folder",
 				rootDir,
@@ -217,8 +209,9 @@ function scanRoot(
 				subdirs.push(path.join(dir, name));
 			} else {
 				// A key can't contain a dot, so a dot-file with a file type is never a marker.
-				const kind = classifyFile(name);
-				if (isMetaFile(name)) {
+				const file = new RojoFile(name);
+				const kind = file.kind;
+				if (file.isMeta) {
 					metaFiles.push(relativeTo(name));
 				} else if (kind) {
 					entries.push({
@@ -332,7 +325,7 @@ function suffixedNameOf(entry: ScannedEntry): {
 	return {
 		fileName,
 		kind,
-		stem: kind === "data" ? stripRojoDataSuffix(stem) : stem,
+		stem: kind === "data" ? RojoFile.dataNameOf(stem) : stem,
 	};
 }
 
@@ -484,29 +477,28 @@ function readLeaf(
 ): LeafReading {
 	const isInitFolder = entry.kind === "init-folder";
 	const tagSpans = tagSpansOf(match.spans, context);
-	claims.tags.push(
-		...tagSpans.map((span) => asTagMatch(span, fileName, kind))
-	);
+	claims.tags.push(...tagSpans.map((span) => asTagMatch(span, fileName)));
 	const routeSpan = claims.route
 		? undefined
 		: match.spans.find((span) => context.routeKeys.has(span.key));
 	if (routeSpan) claims.route = { key: routeSpan.key, match: routeSpan.form };
-	const separatorName =
-		routeSpan && separatorNameOf(fileName, kind, routeSpan);
+	const separatorName = routeSpan && separatorNameOf(fileName, routeSpan);
 
 	if (isInitFolder)
 		return { name: leaf, separatorName, buriedScriptSuffix: undefined };
 
 	const buriedScriptSuffix =
-		kind === "script" && tagSpans.length > 0 && !rojoScriptSuffix(stem)
-			? rojoScriptSuffix(stripSpans(stem, tagSpans))
+		kind === "script" &&
+		tagSpans.length > 0 &&
+		!RojoFile.scriptSuffixOf(stem)
+			? RojoFile.scriptSuffixOf(stripSpans(stem, tagSpans))
 			: undefined;
 	const stripped = stripSpans(
 		stem,
 		routeSpan ? [...tagSpans, routeSpan] : tagSpans
 	);
 	return {
-		name: kind === "script" ? rojoAssignedName(stripped) : stripped,
+		name: kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
 		separatorName,
 		buriedScriptSuffix,
 	};
@@ -519,23 +511,22 @@ function tagSpansOf(
 	return spans.filter((span) => context.tagKeys.has(span.key));
 }
 
-function asTagMatch(
-	span: SuffixSpan,
-	fileName: string,
-	kind: RojoFileKind
-): TagMatch {
+function asTagMatch(span: SuffixSpan, fileName: string): TagMatch {
 	const match = { tag: span.key, form: span.form };
-	const separatorName = separatorNameOf(fileName, kind, span);
+	const separatorName = separatorNameOf(fileName, span);
 	return separatorName ? { ...match, separatorName } : match;
 }
 
 function separatorNameOf(
 	fileName: string,
-	kind: RojoFileKind,
 	span: SuffixSpan
 ): string | undefined {
 	return span.form === "capital"
-		? withSeparatorSuffix(fileName, span, suffixSeparator(kind, span.key))
+		? withSeparatorSuffix(
+				fileName,
+				span,
+				new RojoFile(fileName).suffixSeparator(span.key)
+			)
 		: undefined;
 }
 

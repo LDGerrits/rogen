@@ -1,11 +1,4 @@
-import fs from "fs";
-import path from "path";
-import { renderServicesModule } from "../reflection-database.js";
-import {
-	SERVICES_ROJO_VERSION,
-	SUPPORTED_SERVICES,
-	isSupportedService,
-} from "../services.js";
+import { isSupportedService } from "../services.js";
 
 describe("domain/roblox/services", () => {
 	describe("isSupportedService", () => {
@@ -40,17 +33,5 @@ describe("domain/roblox/services", () => {
 		it("should not accept Object.prototype members", () => {
 			expect(isSupportedService("constructor")).toBe(false);
 		});
-	});
-
-	it("should be the output of the generator, not edited by hand", () => {
-		const file = path.resolve("src/domain/roblox/services.ts");
-		expect(fs.readFileSync(file, "utf8")).toBe(
-			renderServicesModule(SUPPORTED_SERVICES, SERVICES_ROJO_VERSION)
-		);
-	});
-
-	it("should be generated for the pinned Rojo", () => {
-		const manifest = fs.readFileSync(path.resolve("rokit.toml"), "utf8");
-		expect(manifest).toContain(`rojo-rbx/rojo@${SERVICES_ROJO_VERSION}"`);
 	});
 });

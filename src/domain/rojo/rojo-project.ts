@@ -1,4 +1,6 @@
 import { isObject } from "../../base/object.js";
+import { parse } from "../../base/jsonc.js";
+import { Result, err, ok } from "../../base/result.js";
 
 export interface OptionalRojoPath {
 	readonly optional: string;
@@ -67,7 +69,18 @@ export interface MountedPath {
 /** Any project file: Rogen's own output, or a template read from disk with fields Rogen doesn't model. */
 export interface ProjectFile {
 	readonly tree: RojoNode;
+	readonly name?: unknown;
+	readonly globIgnorePaths?: unknown;
 }
+
+/** A project file read from disk, whose other fields pass through untouched. */
+export interface ParsedProjectFile extends ProjectFile {
+	readonly [key: string]: unknown;
+}
+
+/** Services stay bare, since Rojo knows their class; deeper containers are folders. */
+const plainContainer: ContainerFactory = (instancePath) =>
+	instancePath.length === 1 ? {} : { $className: "Folder" };
 
 /** The suffix of a Rojo project file, such as `default.project.json`. */
 export const PROJECT_SUFFIX = ".project.json";
@@ -85,18 +98,57 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 
 	constructor(
 		project: T,
-		private readonly createContainer: ContainerFactory
+		private readonly createContainer: ContainerFactory = plainContainer
 	) {
 		this.project = structuredClone(project);
 	}
 
-	/** The live project, not a copy. */
+	/**
+	 * Reads a project file. A file without a `tree` gets a bare DataModel, so
+	 * a template may carry only project fields. Fails when the text isn't a
+	 * JSON object, or its `tree` isn't one.
+	 */
+	static parse(
+		text: string,
+		createContainer?: ContainerFactory
+	): Result<RojoProject<ParsedProjectFile>, Error> {
+		const parsed = parse(text);
+		if (parsed.isErr()) return err(parsed.error);
+		if (!isObject(parsed.value)) {
+			return err(new Error("it must be a JSON object."));
+		}
+		const { tree = { $className: "DataModel" } } = parsed.value;
+		if (!isObject(tree))
+			return err(new Error("its tree must be an object."));
+		return ok(
+			new RojoProject<ParsedProjectFile>(
+				{ ...parsed.value, tree },
+				createContainer
+			)
+		);
+	}
+
+	/** The project's own name, when it has a non-empty one. */
+	get name(): string | undefined {
+		const { name } = this.project;
+		return typeof name === "string" && name !== "" ? name : undefined;
+	}
+
+	/** The `globIgnorePaths` entries that are strings. */
+	get globIgnorePaths(): string[] {
+		const { globIgnorePaths } = this.project;
+		return Array.isArray(globIgnorePaths)
+			? globIgnorePaths.filter((glob) => typeof glob === "string")
+			: [];
+	}
+
+	/** A copy, so what the caller does to it can't reach back into the model. */
 	getTree(): T {
-		return this.project;
+		return structuredClone(this.project);
 	}
 
 	/** `undefined` when no node is there, or the path crosses a value that isn't a node. */
-	getNode(instancePath: readonly string[]): RojoNode | undefined {
+	getNode(instancePath: readonly string[]): Readonly<RojoNode> | undefined {
 		let current: unknown = this.project.tree;
 		for (const segment of instancePath) {
 			if (!isObject(current)) return undefined;
@@ -173,6 +225,53 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			for (const [, child] of childNodes(node)) visit(child);
 		};
 		visit(this.project.tree);
+	}
+
+	/**
+	 * Adds each `$path` node of `additions` that this project doesn't have,
+	 * creating missing containers the way `additions` does. A node already
+	 * where one would go wins, and its `$path` is reported as skipped.
+	 */
+	mergeMissing(additions: RojoProject<ProjectFile>): {
+		added: MountedPath[];
+		skipped: MountedPath[];
+	} {
+		const added: MountedPath[] = [];
+		const skipped: MountedPath[] = [];
+		const pathsBelow = (node: RojoNode, at: readonly string[]) =>
+			new RojoProject({ tree: node }).getPaths().map((mounted) => ({
+				path: mounted.path,
+				instancePath: [...at, ...mounted.instancePath],
+			}));
+		const merge = (
+			node: RojoNode,
+			from: RojoNode,
+			at: readonly string[]
+		) => {
+			for (const [key, value] of childNodes(from)) {
+				const existing = node[key];
+				const here = [...at, key];
+				if (value.$path !== undefined) {
+					if (existing === undefined) {
+						node[key] = value;
+						added.push(...pathsBelow(value, here));
+					} else {
+						skipped.push(...pathsBelow(value, here));
+					}
+				} else if (isObject(existing)) {
+					merge(existing, value, here);
+				} else if (existing === undefined) {
+					const container: RojoNode = value.$className
+						? { $className: value.$className }
+						: {};
+					const before = added.length;
+					merge(container, value, here);
+					if (added.length > before) node[key] = container;
+				}
+			}
+		};
+		merge(this.project.tree, additions.getTree().tree, []);
+		return { added, skipped };
 	}
 
 	private ensureNode(instancePath: readonly string[]): RojoNode {

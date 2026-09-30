@@ -1,5 +1,5 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { containerClassName, parseTarget } from "../roblox.js";
+import { Target, containerClassName } from "../roblox.js";
 
 const location = {
 	resource: "/repo/default.rogen.json",
@@ -7,16 +7,16 @@ const location = {
 };
 
 describe("domain/roblox/roblox", () => {
-	describe("parseTarget", () => {
+	describe("Target.parse", () => {
 		it("should read a bare service", () => {
 			expect(
-				parseTarget("ServerScriptService", location).unwrap()
+				Target.parse("ServerScriptService", location).unwrap()
 			).toEqual({ service: "ServerScriptService", folders: [] });
 		});
 
 		it("should split a nested target into its service and folders", () => {
 			expect(
-				parseTarget(
+				Target.parse(
 					"StarterPlayer/StarterPlayerScripts",
 					location
 				).unwrap()
@@ -28,7 +28,10 @@ describe("domain/roblox/roblox", () => {
 
 		it("should keep every folder below the service", () => {
 			expect(
-				parseTarget("ReplicatedStorage/shared/utils", location).unwrap()
+				Target.parse(
+					"ReplicatedStorage/shared/utils",
+					location
+				).unwrap()
 			).toEqual({
 				service: "ReplicatedStorage",
 				folders: ["shared", "utils"],
@@ -37,7 +40,7 @@ describe("domain/roblox/roblox", () => {
 
 		it("should accept TextChatService as a first segment", () => {
 			expect(
-				parseTarget("TextChatService/Config", location).unwrap()
+				Target.parse("TextChatService/Config", location).unwrap()
 			).toEqual({ service: "TextChatService", folders: ["Config"] });
 		});
 
@@ -51,7 +54,7 @@ describe("domain/roblox/roblox", () => {
 		])(
 			"should reject %j as a first segment that is not a supported service",
 			(target) => {
-				const result = parseTarget(target, location);
+				const result = Target.parse(target, location);
 
 				expect(result.isErr() && result.error).toEqual([
 					{
@@ -61,6 +64,37 @@ describe("domain/roblox/roblox", () => {
 						...location,
 					},
 				]);
+			}
+		);
+	});
+
+	describe("Target", () => {
+		it("should name the instance it points at", () => {
+			const target = Target.parse(
+				"ReplicatedStorage/shared/utils",
+				location
+			).unwrap();
+
+			expect(target.instancePath).toEqual([
+				"ReplicatedStorage",
+				"shared",
+				"utils",
+			]);
+			expect(target.toString()).toBe("ReplicatedStorage/shared/utils");
+		});
+
+		it.each([
+			["StarterPlayer/StarterPlayerScripts", true],
+			["StarterPlayer/StarterCharacterScripts/Nested", true],
+			["StarterPlayer", false],
+			["StarterPlayer/Other", false],
+			["ReplicatedStorage/StarterPlayerScripts", false],
+		])(
+			"should say whether %s holds player scripts: %s",
+			(text, expected) => {
+				expect(
+					Target.parse(text, location).unwrap().isPlayerScripts
+				).toBe(expected);
 			}
 		);
 	});

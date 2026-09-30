@@ -9,7 +9,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { INIT_META_FILE, rojoFileName } from "../rojo/rojo-files.js";
+import { RojoFile } from "../rojo/rojo-file.js";
 import {
 	RojoNode,
 	RojoProject,
@@ -89,7 +89,8 @@ export class TreeAssembler {
 
 		for (const root of roots) {
 			for (const metaFile of root.metaFiles) {
-				if (path.posix.basename(metaFile) !== INIT_META_FILE) continue;
+				if (path.posix.basename(metaFile) !== RojoFile.INIT_META)
+					continue;
 				const file = path.join(root.rootDir, metaFile);
 				const parsed = await this.readMetaFile(file);
 				if (parsed.isErr()) {
@@ -199,7 +200,9 @@ function placeEntry(file: RoutedFile): PlacedEntry {
 /** The name Rojo gives the entry when it enumerates the directory itself. */
 function rojoNameOf(entry: ScannedEntry): string {
 	const name = path.posix.basename(entry.relativePath);
-	return entry.kind === "init-folder" ? name : rojoFileName(entry.kind, name);
+	return entry.kind === "init-folder"
+		? name
+		: new RojoFile(name).instanceName;
 }
 
 /**

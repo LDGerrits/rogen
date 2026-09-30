@@ -7,11 +7,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import {
-	classifyFile,
-	isInitScript,
-	rojoFileName,
-} from "../rojo/rojo-files.js";
+import { RojoFile } from "../rojo/rojo-file.js";
 import { BuildSummary, FileLocation } from "./build-service.js";
 import { LeftOut, PlacedBuild, ScannedRoot, TagMatch } from "./build-record.js";
 
@@ -118,14 +114,14 @@ function membersOfInitFolder(
 				visit(`${dir}/${name}`, [...below, name]);
 				continue;
 			}
-			const kind = classifyFile(name);
-			if (!isFileType(type) || !kind) continue;
+			const file = new RojoFile(name);
+			if (!isFileType(type) || !file.kind) continue;
 			members.push({
 				source: `${dir}/${name}`,
 				instancePath: [
 					...folderInstance,
 					...below,
-					...(isInitScript(name) ? [] : [rojoFileName(kind, name)]),
+					...(file.isInitScript ? [] : [file.instanceName]),
 				],
 			});
 		}
@@ -185,7 +181,7 @@ export function withPlannedFiles(
 
 	for (const target of paths) {
 		const rootDir = rootDirs.find((dir) => isInside(target, dir));
-		if (!rootDir || !classifyFile(path.basename(target))) continue;
+		if (!rootDir || !new RojoFile(path.basename(target)).kind) continue;
 		if (has(path.dirname(target), path.basename(target))) continue;
 
 		add(target, FileType.File);

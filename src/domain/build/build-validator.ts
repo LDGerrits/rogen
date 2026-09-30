@@ -13,14 +13,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import {
-	INIT_META_FILE,
-	META_FILE_SUFFIX,
-	classifyFile,
-	rojoDataName,
-	rojoMetaFile,
-	rojoMetaName,
-} from "../rojo/rojo-files.js";
+import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { MetaReplacement } from "../toolchain/toolchain.js";
 import {
@@ -60,11 +53,6 @@ const RULES: readonly BuildRule[] = [
 
 const LISTED_PATHS = 3;
 const DIAGNOSED_PATHS = 10;
-
-const PLAYER_SCRIPT_CONTAINERS = new Set([
-	"StarterPlayerScripts",
-	"StarterCharacterScripts",
-]);
 
 /** Reports on a finished build and decides nothing. */
 export class BuildValidator {
@@ -146,7 +134,7 @@ export class BuildValidator {
 				const emitted = emittedPath(source, layout);
 				if (await this.fileSystemService.exists(emitted)) continue;
 				missing.push(toPosix(source));
-				const stem = emitted.slice(0, -META_FILE_SUFFIX.length);
+				const stem = emitted.slice(0, -RojoFile.META_SUFFIX.length);
 				for (const replacement of replacements)
 					if (
 						await this.fileSystemService.exists(
@@ -401,9 +389,7 @@ function runContextTarget({ config, targets }: AssembledBuild): Diagnostic[] {
 	if (config.template?.project.emitLegacyScripts !== false) return [];
 	const routes = [...targets]
 		.filter(
-			([, { service, folders }]) =>
-				service === "StarterPlayer" &&
-				PLAYER_SCRIPT_CONTAINERS.has(folders[0])
+			([, target]) => target.isPlayerScripts
 		)
 		.map(([key]) => `"${key}" → ${config.routes[key]}`);
 	return routes.length > 0
@@ -480,10 +466,10 @@ function sharedWithFile(
 		return warningDiagnostic(
 			"meta.sharedWithScript",
 			location,
-			`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, INIT_META_FILE)} instead.`
+			`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, RojoFile.INIT_META)} instead.`
 		);
 	const fileName = path.posix.basename(entry.relativePath);
-	const fix = rojoMetaFile(fileName) ?? `${fileName}.meta.json`;
+	const fix = new RojoFile(fileName).metaFile ?? `${fileName}.meta.json`;
 	return warningDiagnostic(
 		"meta.sharedWithScript",
 		location,
@@ -559,7 +545,7 @@ function findUnclaimedMeta(
 	return roots.flatMap((root) =>
 		root.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
-			if (fileName === INIT_META_FILE) return [];
+			if (fileName === RojoFile.INIT_META) return [];
 			const listing =
 				index.getEntries(
 					path.join(root.rootDir, path.posix.dirname(metaFile))
@@ -567,8 +553,9 @@ function findUnclaimedMeta(
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
 				.map(([sibling]) => sibling);
-			const name = fileName.slice(0, -META_FILE_SUFFIX.length);
-			if (siblings.some((file) => rojoMetaName(file) === name)) return [];
+			const name = fileName.slice(0, -RojoFile.META_SUFFIX.length);
+			if (siblings.some((file) => new RojoFile(file).metaName === name))
+				return [];
 
 			const folder = listing.get(name);
 			return [
@@ -590,17 +577,18 @@ function hintFor(
 	siblings: readonly string[],
 	isFolder: boolean
 ): string | undefined {
-	if (isFolder) return `a folder's meta is ${name}/init${META_FILE_SUFFIX}`;
+	if (isFolder)
+		return `a folder's meta is ${name}/init${RojoFile.META_SUFFIX}`;
 	for (const file of siblings) {
 		if (stemOf(file) !== name) continue;
-		const metaName = rojoMetaName(file);
-		if (metaName) return `Rojo reads ${metaName}${META_FILE_SUFFIX}`;
+		const metaName = new RojoFile(file).metaName;
+		if (metaName) return `Rojo reads ${metaName}${RojoFile.META_SUFFIX}`;
 	}
 	const withoutMeta = siblings.find(
 		(file) =>
-			rojoMetaName(file) === undefined &&
-			classifyFile(file) !== undefined &&
-			[stemOf(file), rojoDataName(file)].includes(name)
+			new RojoFile(file).metaName === undefined &&
+			new RojoFile(file).kind !== undefined &&
+			[stemOf(file), new RojoFile(file).dataName].includes(name)
 	);
 	return withoutMeta ? `${withoutMeta} takes no meta` : undefined;
 }
