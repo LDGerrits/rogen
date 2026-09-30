@@ -1,8 +1,7 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { compareStrings } from "../../base/collection.js";
 import { ancestors, isInside, toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -127,19 +126,19 @@ export class TreeAssembler {
 	}
 
 	private async readMetaFile(file: string) {
-		let text: string;
-		try {
-			text = await this.fileSystemService.readFile(file);
-		} catch (error) {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		if (text.isErr()) {
 			return err([
 				errorDiagnostic(
 					"meta.unreadable",
 					{ resource: file },
-					`the meta file could not be read: ${ErrorUtils.fromUnknown(error).message}.`
+					`the meta file could not be read: ${text.error.message}.`
 				),
 			]);
 		}
-		return new FolderMetaParser(file).parse(text);
+		return new FolderMetaParser(file).parse(text.value);
 	}
 
 	/** Merges the placed files into `project`, collapsing a directory into one `$path` where Rojo would see the same files. */

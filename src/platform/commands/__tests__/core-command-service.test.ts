@@ -1,3 +1,4 @@
+import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError, err, ok } from "../../../base/result.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
@@ -113,6 +114,34 @@ describe("CoreCommandService", () => {
 			await commandService.executeCommand("foo", { _: [] });
 
 			expect(order).toEqual(["will:foo", "handler", "did:foo"]);
+		});
+
+		it("should not fire onDidExecuteCommand while the handler is still running", async () => {
+			const finish = new DeferredPromise<void>();
+			const events: string[] = [];
+			store.add(
+				registry.registerCommand({
+					id: "foo",
+					metadata: { description: "foo" },
+					handler: async () => {
+						await finish.p;
+						return ok(undefined);
+					},
+				})
+			);
+			store.add(
+				commandService.onDidExecuteCommand((e) =>
+					events.push(e.commandId)
+				)
+			);
+
+			const running = commandService.executeCommand("foo", { _: [] });
+			await Promise.resolve();
+			expect(events).toEqual([]);
+
+			finish.complete();
+			await running;
+			expect(events).toEqual(["foo"]);
 		});
 
 		it("should not fire events for an unknown command", async () => {

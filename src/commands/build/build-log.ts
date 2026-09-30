@@ -11,7 +11,7 @@ import { LogService } from "../../platform/log/log-service.js";
 
 /** The `extends` chain and skipped tag flags of a config. */
 function describeConfig(entry: ConfigEntry, cwd: string): string[] {
-	const parents = entry.chain.slice(1).map((file) => relativeTo(cwd, file));
+	const parents = entry.parents.map((file) => relativeTo(cwd, file));
 	return [
 		...(parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : []),
 		...entry.skippedTags.map(

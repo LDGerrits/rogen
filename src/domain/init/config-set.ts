@@ -1,6 +1,9 @@
 import { Result, err, ok } from "../../base/result.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
-import { projectFileName } from "../rojo/rojo-project.js";
+import {
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+	defaultOutFileName,
+} from "../config/config.js";
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "./init-directory.js";
 
@@ -32,7 +35,12 @@ export class ConfigSet {
 
 	/** The files a variant named `name` writes, plus its project file. */
 	static variantFilesOf(name: string): string[] {
-		return [configFileName(name), projectFileName(name)];
+		return [configFileName(name), defaultOutFileName(name)];
+	}
+
+	/** The command that serves the project file the config named `name` writes. */
+	static serveCommand(name: string): string {
+		return `rojo serve ${defaultOutFileName(name)}`;
 	}
 
 	/** The command that watches the configs with these stems. */
@@ -63,7 +71,7 @@ export class ConfigSet {
 				)
 			);
 		}
-		if (projectFileName(name) === TEMPLATE_FILE) {
+		if (defaultOutFileName(name) === TEMPLATE_FILE) {
 			return err(
 				new Error(
 					`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`
@@ -105,7 +113,7 @@ export class ConfigSet {
 
 	/** The project files the configs write, the synced one first. */
 	get outputFiles(): string[] {
-		return this.stems.map(projectFileName);
+		return this.stems.map(defaultOutFileName);
 	}
 
 	/** The config where routes and tags are edited: the one holding the root dirs. */
@@ -119,7 +127,7 @@ export class ConfigSet {
 			configFileName(this.name),
 			...(this.sourceFile ? [this.sourceFile] : []),
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			projectFileName(this.name),
+			defaultOutFileName(this.name),
 		];
 	}
 }

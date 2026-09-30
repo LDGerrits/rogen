@@ -1,49 +1,36 @@
-import { Emitter, Event } from "../../base/event.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { LogService } from "../log/log-service.js";
-import { toPosix } from "../../base/path.js";
+import { containsPosix, toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
-import { FileChange } from "../fs/file-events.js";
+import { LogService } from "../log/log-service.js";
+import { AbstractWatcher } from "./abstract-watcher.js";
 import {
 	IgnoredPath,
 	isIgnored,
-	Watcher,
 	WatchOptions,
 	WatchRequest,
 } from "./watcher.js";
 
-export class MemoryWatcher implements Watcher {
-	declare readonly _serviceBrand: undefined;
-
-	private readonly _onDidChangeFile = new Emitter<FileChange[]>();
-	readonly onDidChangeFile: Event<FileChange[]> = this._onDidChangeFile.event;
-
-	private readonly _onDidError = new Emitter<Error>();
-	readonly onDidError: Event<Error> = this._onDidError.event;
-
+export class MemoryWatcher extends AbstractWatcher {
 	private activeRequests: WatchRequest[] = [];
 	private ignored: readonly IgnoredPath[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
 	constructor(
 		private readonly memoryFs: MemoryFileSystemService,
-		private readonly logService: LogService
-	) {}
+		logService: LogService
+	) {
+		super(logService);
+	}
 
-	async watch(
+	protected async startWatching(
 		requests: WatchRequest[],
-		options: WatchOptions = {}
+		options: WatchOptions
 	): Promise<void> {
 		this.ignored = options.ignored ?? [];
 		this.activeRequests = requests.map((req) => ({
 			...req,
 			path: toPosix(req.path),
 		}));
-
-		const targetPaths = requests.map((r) => r.path);
-		this.logService.debug(
-			`Started watching paths: ${targetPaths.join(", ")}`
-		);
 
 		if (!this.watchDisposables) {
 			this.watchDisposables = new DisposableStore();
@@ -52,24 +39,18 @@ export class MemoryWatcher implements Watcher {
 				const normalizedChangePath = toPosix(change.path);
 				if (isIgnored(normalizedChangePath, this.ignored)) return;
 
-				const isWatched = this.activeRequests.some((req) => {
-					if (req.recursive) {
-						return (
-							normalizedChangePath === req.path ||
-							normalizedChangePath.startsWith(req.path + "/")
-						);
-					}
-					return normalizedChangePath === req.path;
-				});
+				const isWatched = this.activeRequests.some((req) =>
+					req.recursive
+						? containsPosix(req.path, normalizedChangePath)
+						: normalizedChangePath === req.path
+				);
 
 				if (isWatched) {
-					this._onDidChangeFile.fire([
-						{
-							type: change.type,
-							path: normalizedChangePath,
-							fileType: change.fileType,
-						},
-					]);
+					this.fireChange({
+						type: change.type,
+						path: normalizedChangePath,
+						fileType: change.fileType,
+					});
 				}
 			}, this.watchDisposables);
 		}

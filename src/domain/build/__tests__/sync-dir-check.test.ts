@@ -4,7 +4,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
-import { SyncDirCheck } from "../sync-layout.js";
+import { SyncDirCheck } from "../sync-dir-check.js";
 import {
 	abs,
 	configOf as baseConfigOf,

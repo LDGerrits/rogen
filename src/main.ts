@@ -157,7 +157,7 @@ async function main(): Promise<void> {
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())
 		);
-		const watcher = new DiskWatcher(logService);
+		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
 		services.set(ReconciliationService, reconciliationService);
 		services.set(

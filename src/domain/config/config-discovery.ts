@@ -1,6 +1,5 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	FileSystemService,
@@ -81,20 +80,19 @@ export class ConfigDiscovery {
 	/** Every `*.rogen.json` directly in the working directory, as sorted absolute paths; fails when there is none. */
 	async find(): Promise<Result<string[], Error>> {
 		const cwd = this.environmentService.cwd;
-		let entries: [string, FileType][];
-		try {
-			entries = await this.fileSystemService.readDirectory(cwd);
-		} catch (error) {
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(cwd)
+		);
+		if (listing.isErr()) {
 			return err(
 				new Error(
-					`Could not look for a config file in ${cwd}: ` +
-						`${ErrorUtils.fromUnknown(error).message}`,
-					{ cause: error }
+					`Could not look for a config file in ${cwd}: ${listing.error.message}`,
+					{ cause: listing.error }
 				)
 			);
 		}
 
-		const candidates = configFileNames(entries);
+		const candidates = configFileNames(listing.value);
 
 		if (candidates.length === 0) {
 			return err(

@@ -59,9 +59,9 @@ registerCommand(
 		): void {
 			const relative = (file: string) => relativeTo(cwd, file);
 			logService.step(relative(entry.file));
-			if (entry.chain.length > 1) {
+			if (entry.parents.length > 0) {
 				logService.info(
-					`extends: ${entry.chain.slice(1).map(relative).join(" -> ")}`
+					`extends: ${entry.parents.map(relative).join(" -> ")}`
 				);
 			}
 

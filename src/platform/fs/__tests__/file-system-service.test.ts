@@ -43,15 +43,6 @@ describe("MemoryFileSystemService: core operations", () => {
 			expect(entries).toContainEqual(["components", FileType.Directory]);
 		});
 
-		it("should parse and return JSON from readJson", async () => {
-			await memFs.writeFile(
-				"config.json",
-				JSON.stringify({ key: "value" })
-			);
-			const data = await memFs.readJson<{ key: string }>("config.json");
-			expect(data.key).toBe("value");
-		});
-
 		it("should successfully copy a file to a new destination", async () => {
 			await memFs.writeFile("src.txt", "data");
 			await memFs.copy("src.txt", "dest.txt");

@@ -1,14 +1,13 @@
-import { ErrorUtils } from "../../base/errors.js";
-import { JSONSchema } from "../../base/json-schema.js";
-import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
-import { Result, err, ok } from "../../base/result.js";
+import { JsoncNode } from "../../base/jsonc.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
 	DiagnosticPosition,
-	errorDiagnostic as error,
+	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
 import { FileSystemService } from "../fs/file-system-service.js";
+import { JsoncDocumentReader } from "../jsonc/jsonc-document.js";
 import { Registry } from "../registry/registry.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 import { ConfigRegistry, Extensions } from "./config-registry.js";
@@ -28,64 +27,48 @@ export interface ConfigFileFailure {
 
 /** Reads config files and checks them against the registered schema. */
 export class ConfigFileReader {
+	private static readonly documents = new JsoncDocumentReader({
+		codePrefix: "config",
+		noun: "a config",
+	});
+
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
-		let text: string;
-		try {
-			text = await this.fileSystemService.readFile(file);
-		} catch (error) {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		if (text.isErr()) {
 			return err({
 				kind: "unreadable",
 				diagnostics: [
-					ConfigFileDiagnostics.unreadable(
+					unreadable(
 						{ resource: file, position: { line: 1, column: 1 } },
-						ErrorUtils.fromUnknown(error).message
+						text.error.message
 					),
 				],
 			});
 		}
-		return this.parse(text, file);
+		return this.parse(text.value, file);
 	}
 
 	private parse(
 		text: string,
 		file: string
 	): Result<ConfigFile, ConfigFileFailure> {
-		const invalid = (diagnostics: Diagnostic[]) =>
-			err<ConfigFileFailure>({ kind: "invalid", diagnostics });
-		const { root, value, errors } = parseJsonc(text);
-
-		if (errors.length > 0) {
-			return invalid(
-				errors.map(({ message, line, column }) =>
-					ConfigFileDiagnostics.invalidSyntax(
-						{ resource: file, position: { line, column } },
-						message
-					)
-				)
-			);
-		}
-
-		if (root?.kind !== "object") {
-			return invalid([
-				ConfigFileDiagnostics.notAnObject({
-					resource: file,
-					position: { line: 1, column: 1 },
-				}),
-			]);
-		}
-
 		const schema = Registry.as<ConfigRegistry>(
 			Extensions.Config
 		).getJsonSchema();
-		const problems = validateNode(root, schema, file);
-		if (problems.length > 0) return invalid(problems);
+		const document = ConfigFileReader.documents.read(text, file, schema);
+		if (document.isErr()) {
+			return err({ kind: "invalid", diagnostics: document.error });
+		}
 
+		const { root, value } = document.value;
 		return ok({
 			file,
-			model: new ConfigModel(value as Record<string, unknown>),
+			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
 		});
 	}
@@ -112,99 +95,9 @@ function positionIn(
 	return node && { line: node.line, column: node.column };
 }
 
-const ConfigFileDiagnostics = {
-	invalidSyntax: (location: DiagnosticLocation, detail: string) =>
-		error("config.invalidSyntax", location, `invalid JSONC: ${detail}.`),
-	notAnObject: (location: DiagnosticLocation) =>
-		error(
-			"config.notAnObject",
-			location,
-			"a config must be a JSON object."
-		),
-	unknownField: (location: DiagnosticLocation, name: string) =>
-		error("config.unknownField", location, `unknown field "${name}".`),
-	wrongType: (
-		location: DiagnosticLocation,
-		path: string,
-		expected: string,
-		found: string
-	) =>
-		error(
-			"config.wrongType",
-			location,
-			`"${path}": expected ${expected}, found ${found}.`
-		),
-	unreadable: (location: DiagnosticLocation, detail: string) =>
-		error(
-			"config.unreadable",
-			location,
-			`the config could not be read: ${detail}.`
-		),
-};
-
-const KIND_NAMES: Record<JsoncNode["kind"], string> = {
-	object: "an object",
-	array: "an array",
-	string: "a string",
-	number: "a number",
-	boolean: "a boolean",
-	null: "null",
-};
-
-function validateNode(
-	node: JsoncNode,
-	schema: JSONSchema,
-	file: string,
-	path = ""
-): Diagnostic[] {
-	const location = (at: { line: number; column: number }) => ({
-		resource: file,
-		position: { line: at.line, column: at.column },
-	});
-
-	const expected = schema.type === undefined ? [] : [schema.type].flat();
-	if (expected.length > 0 && !expected.includes(node.kind)) {
-		return [
-			ConfigFileDiagnostics.wrongType(
-				location(node),
-				path,
-				expected.map((kind) => KIND_NAMES[kind]).join(" or "),
-				KIND_NAMES[node.kind]
-			),
-		];
-	}
-
-	if (node.kind === "array" && schema.items) {
-		const items = schema.items;
-		return node.items.flatMap((item, index) =>
-			validateNode(item, items, file, `${path}[${index}]`)
-		);
-	}
-
-	if (node.kind !== "object") return [];
-
-	return node.properties.flatMap((property) => {
-		const propertyPath = path ? `${path}.${property.name}` : property.name;
-		const known = schema.properties?.[property.name];
-		if (known) {
-			return validateNode(property.value, known, file, propertyPath);
-		}
-		if (schema.additionalProperties === false) {
-			return [
-				ConfigFileDiagnostics.unknownField(
-					location(property),
-					propertyPath
-				),
-			];
-		}
-		if (typeof schema.additionalProperties === "object") {
-			return validateNode(
-				property.value,
-				schema.additionalProperties,
-				file,
-				propertyPath
-			);
-		}
-		return [];
-	});
-}
+const unreadable = (location: DiagnosticLocation, detail: string) =>
+	errorDiagnostic(
+		"config.unreadable",
+		location,
+		`the config could not be read: ${detail}.`
+	);

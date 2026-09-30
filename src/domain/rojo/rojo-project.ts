@@ -8,7 +8,7 @@ export interface OptionalRojoPath {
 
 export type RojoPath = string | OptionalRojoPath;
 
-export function isRojoPath(value: unknown): value is RojoPath {
+function isRojoPath(value: unknown): value is RojoPath {
 	return (
 		typeof value === "string" ||
 		(isObject(value) && typeof value.optional === "string")
@@ -38,7 +38,7 @@ export function instanceKey(instancePath: readonly string[]): string {
 }
 
 /** A node's children: every key Rojo reads as an instance name, in file order. */
-export function childNodes(node: RojoNode): [string, RojoNode][] {
+function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
 			!entry[0].startsWith("$") && isObject(entry[1])

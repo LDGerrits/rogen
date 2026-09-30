@@ -107,43 +107,78 @@ const platformImplementationPattern = {
 		"Domain and commands depend on platform contract files, never on an implementation. Only main.ts and tests name one.",
 };
 
+// The outside world is reached through platform services, never directly.
+const OUTSIDE_WORLD_MODULES = [
+	"fs",
+	"fs/promises",
+	"child_process",
+	"os",
+	"http",
+	"https",
+	"net",
+	"chokidar",
+].flatMap((name) => [name, `node:${name}`]);
+
+const outsideWorldImports = {
+	paths: OUTSIDE_WORLD_MODULES.map((name) => ({
+		name,
+		message:
+			"Only platform implementations reach the outside world; depend on a platform service instead.",
+	})),
+};
+
 const folders = (depth) => "*/".repeat(depth);
 
 const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 	(layer === "base" ? [0, 1, 2, 3] : [1, 2, 3]).flatMap((depth) => {
 		const patterns = layerPatterns(layer, depth);
-		const rule = (list) => ({
-			"no-restricted-imports": ["error", { patterns: list }],
+		const rule = (list, extra = {}) => ({
+			"no-restricted-imports": ["error", { patterns: list, ...extra }],
 		});
 		const internals = (module) => ({
 			files: [`src/${layer}/${module}/${folders(depth - 1)}*.ts`],
 			ignores: ["**/__tests__/**"],
-			rules: rule([
-				...patterns,
-				...internalsPatterns(layer, module, depth),
-				platformImplementationPattern,
-			]),
+			rules: rule(
+				[
+					...patterns,
+					...internalsPatterns(layer, module, depth),
+					platformImplementationPattern,
+				],
+				outsideWorldImports
+			),
 		});
 		// A contract must not depend on what it hides.
 		const publicOnly = (module) => ({
 			files: modules[layer][module].map(
 				(file) => `src/${layer}/${module}/${file}.ts`
 			),
-			rules: rule([
-				...patterns,
-				...internalsPatterns(layer, module, depth),
-				platformImplementationPattern,
-				{
-					regex: `^\\./(?!(${modules[layer][module].join("|")})\\.js$)`,
-					message: `A public file of ${module} imports only its other public files.`,
-				},
-			]),
+			rules: rule(
+				[
+					...patterns,
+					...internalsPatterns(layer, module, depth),
+					platformImplementationPattern,
+					{
+						regex: `^\\./(?!(${modules[layer][module].join("|")})\\.js$)`,
+						message: `A public file of ${module} imports only its other public files.`,
+					},
+				],
+				outsideWorldImports
+			),
 		});
 		return [
 			{
 				files: [`src/${layer}/${folders(depth)}*.ts`],
 				rules: rule(patterns),
 			},
+			...(layer === "base"
+				? [
+						{
+							files: [`src/${layer}/${folders(depth)}*.ts`],
+							ignores: ["**/__tests__/**"],
+							rules: rule(patterns, outsideWorldImports),
+						},
+					]
+				: []),
 			...Object.keys(modules[layer] ?? {}).flatMap((module) => [
 				internals(module),
 				...(depth === 1 && modules[layer][module].length > 0
@@ -181,6 +216,24 @@ export default defineConfig(
 		},
 	},
 	...layerConfigs,
+	{
+		files: ["src/{base,domain,commands}/**/*.ts"],
+		ignores: ["**/__tests__/**", "src/base/platform.ts"],
+		rules: {
+			"no-restricted-globals": [
+				"error",
+				{
+					name: "process",
+					message:
+						"Ask a platform service (environment, lifecycle) instead of the process.",
+				},
+				{
+					name: "console",
+					message: "Write through LogService.",
+				},
+			],
+		},
+	},
 	{
 		files: ["src/**/*.test.ts", "e2e/**/*.test.ts", "tests/**/*.spec.ts"],
 		...jestPlugin.configs["flat/recommended"],

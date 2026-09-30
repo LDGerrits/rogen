@@ -42,6 +42,11 @@ export function contains(parent: string, child: string): boolean {
 	return child === parent || isInside(child, parent);
 }
 
+/** Whether the POSIX path `child` is `parent` or lies under it, compared as text. */
+export function containsPosix(parent: string, child: string): boolean {
+	return child === parent || child.startsWith(`${parent}/`);
+}
+
 /** `dirs` without repeats and without any dir that lies inside another, in their first order. */
 export function outermostDirs(dirs: readonly string[]): string[] {
 	const unique = [...new Set(dirs)];

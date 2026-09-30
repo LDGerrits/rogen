@@ -1,5 +1,5 @@
 import { formatJsonFile } from "../../base/json.js";
-import { normalizeDir } from "../../base/path.js";
+import { containsPosix, normalizeDir } from "../../base/path.js";
 import {
 	MountedPath,
 	ParsedProjectFile,
@@ -18,9 +18,6 @@ export type TemplateChoice =
 	| { readonly kind: "copy"; readonly from: string }
 	/** Reference a hand-written project file as it is. */
 	| { readonly kind: "use"; readonly file: string };
-
-const isUnder = (target: string, dir: string) =>
-	target === dir || target.startsWith(`${dir}/`);
 
 const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 	$path: optional ? { optional: path } : path,
@@ -65,7 +62,7 @@ export class StarterTemplate {
 
 		const edited = this.copy();
 		const removed = edited.removeNodes((target) =>
-			claimed.some((dir) => isUnder(normalizeDir(target), dir))
+			claimed.some((dir) => containsPosix(dir, normalizeDir(target)))
 		);
 		return {
 			template: new StarterTemplate(edited),
@@ -84,7 +81,9 @@ export class StarterTemplate {
 			.map(({ path }) => normalizeDir(rojoPathTarget(path)));
 		const missing = mounts.filter(
 			(mount) =>
-				!mounted.some((dir) => isUnder(normalizeDir(mount.path), dir))
+				!mounted.some((dir) =>
+					containsPosix(dir, normalizeDir(mount.path))
+				)
 		);
 		const additions = new RojoProject<ProjectFile>({ tree: {} });
 		for (const mount of missing)

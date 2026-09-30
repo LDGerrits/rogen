@@ -293,7 +293,9 @@ export class BuildValidator {
 				`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, RojoFile.INIT_META)} instead.`
 			);
 		const fileName = path.posix.basename(entry.relativePath);
-		const fix = new RojoFile(fileName).metaFile ?? `${fileName}.meta.json`;
+		const fix =
+			new RojoFile(fileName).metaFile ??
+			`${fileName}${RojoFile.META_SUFFIX}`;
 		return warningDiagnostic(
 			"meta.sharedWithScript",
 			location,
@@ -344,7 +346,7 @@ export class BuildValidator {
 			warningDiagnostic(
 				"meta.appliesToNothing",
 				{ resource: this.config.outFile },
-				`${metas.length} init.meta.json ${one ? "file applies" : "files apply"} to nothing, because ${one ? "its folder never becomes" : "their folders never become"} an instance (${listLimited(metas, LISTED_PATHS)}). Move the meta into the folder that should get it.`
+				`${metas.length} ${RojoFile.INIT_META} ${one ? "file applies" : "files apply"} to nothing, because ${one ? "its folder never becomes" : "their folders never become"} an instance (${listLimited(metas, LISTED_PATHS)}). Move the meta into the folder that should get it.`
 			),
 		];
 	}

@@ -3,6 +3,7 @@ import {
 	ancestors,
 	commonAncestor,
 	contains,
+	containsPosix,
 	isInside,
 	joinPosix,
 	normalizeDir,
@@ -108,6 +109,18 @@ describe("normalizeDir", () => {
 		it("should reject a sibling and a parent", () => {
 			expect(contains(abs("src"), abs("src-extra"))).toBe(false);
 			expect(contains(abs("src/shared"), abs("src"))).toBe(false);
+		});
+	});
+
+	describe("containsPosix", () => {
+		it("should accept the same path and one under it", () => {
+			expect(containsPosix("src", "src")).toBe(true);
+			expect(containsPosix("src", "src/shared")).toBe(true);
+		});
+
+		it("should reject a sibling that shares a prefix, and a parent", () => {
+			expect(containsPosix("src", "src-extra")).toBe(false);
+			expect(containsPosix("src/shared", "src")).toBe(false);
 		});
 	});
 

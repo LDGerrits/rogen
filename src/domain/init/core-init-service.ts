@@ -1,6 +1,5 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -46,21 +45,18 @@ export class CoreInitService implements InitService {
 		if (name.isErr()) return name;
 
 		const directory = this.environmentService.cwd;
-		let entries: ReadonlySet<string>;
-		try {
-			entries = new Set(
-				(await this.fileSystemService.readDirectory(directory)).map(
-					([entry]) => entry
-				)
-			);
-		} catch (error) {
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(directory)
+		);
+		if (listing.isErr()) {
 			return err(
 				new Error(
-					`Failed to read ${directory}: ${ErrorUtils.fromUnknown(error).message}`,
-					{ cause: error }
+					`Failed to read ${directory}: ${listing.error.message}`,
+					{ cause: listing.error }
 				)
 			);
 		}
+		const entries = new Set(listing.value.map(([entry]) => entry));
 
 		return ok(
 			new InitDirectory(
@@ -104,16 +100,17 @@ export class CoreInitService implements InitService {
 		onWritten: (fileName: string) => void
 	): Promise<Result<void, Error>> {
 		for (const { fileName, content } of plan.files) {
-			try {
-				await this.fileSystemService.writeFile(
+			const written = await tryWithAsync(() =>
+				this.fileSystemService.writeFile(
 					path.join(plan.directory, fileName),
 					content
-				);
-			} catch (error) {
+				)
+			);
+			if (written.isErr()) {
 				return err(
 					new Error(
-						`Failed to write ${fileName}: ${ErrorUtils.fromUnknown(error).message}`,
-						{ cause: error }
+						`Failed to write ${fileName}: ${written.error.message}`,
+						{ cause: written.error }
 					)
 				);
 			}

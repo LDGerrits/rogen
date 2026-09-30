@@ -1,7 +1,6 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { contains, normalizeDir, toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -10,10 +9,10 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
+	labelOfDefaultOutFile,
 	rootDirOverlap,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
-import { PROJECT_SUFFIX } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 
 /** The template project file `init` starts, which the configs it writes name. */
@@ -65,14 +64,14 @@ export class InitDirectory {
 	/** Project files here that no config beside them writes, other than `template.project.json`. */
 	get handWrittenProjectFiles(): string[] {
 		return [...this.entries]
-			.filter(
-				(file) =>
-					file.endsWith(PROJECT_SUFFIX) &&
+			.filter((file) => {
+				const label = labelOfDefaultOutFile(file);
+				return (
+					label !== undefined &&
 					file !== TEMPLATE_FILE &&
-					!this.has(
-						configFileName(file.slice(0, -PROJECT_SUFFIX.length))
-					)
-			)
+					!this.has(configFileName(label))
+				);
+			})
 			.sort();
 	}
 
@@ -91,17 +90,18 @@ export class InitDirectory {
 
 	async readFile(fileName: string): Promise<Result<string, Diagnostic[]>> {
 		const file = path.join(this.path, fileName);
-		try {
-			return ok(await this.fileSystemService.readFile(file));
-		} catch (error) {
-			return err([
-				errorDiagnostic(
-					"init.templateUnreadable",
-					{ resource: file },
-					`couldn't read this file to copy it: ${ErrorUtils.fromUnknown(error).message}`
-				),
-			]);
-		}
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isOk()
+			? text
+			: err([
+					errorDiagnostic(
+						"init.templateUnreadable",
+						{ resource: file },
+						`couldn't read this file to copy it: ${text.error.message}`
+					),
+				]);
 	}
 
 	/** What a place inherits from `default.rogen.json`, resolved the way a build would, so a place joins a config that builds. Read once. */
@@ -185,7 +185,7 @@ export class InitDirectory {
 		const relative = (absolute: string) =>
 			toPosix(path.relative(this.path, absolute));
 		const { rootDirs, syncDir } = entry.resolved;
-		const parent = entry.chain[1];
+		const [parent] = entry.parents;
 		return ok({
 			rootDirs: rootDirs.map(relative),
 			...(syncDir && { syncDir: relative(syncDir) }),

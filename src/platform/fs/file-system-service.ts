@@ -44,8 +44,6 @@ export interface FileSystemService {
 
 	/** Rejects with ENOENT for a link to nothing and ELOOP for links that only point at each other. */
 	realPath(filePath: string): Promise<string>;
-
-	readJson<T>(filePath: string): Promise<T>;
 }
 
 export const FileSystemService =

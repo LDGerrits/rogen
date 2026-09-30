@@ -1,8 +1,7 @@
 import path from "path";
 import { groupBy } from "../../base/collection.js";
-import { ErrorUtils } from "../../base/errors.js";
 import { stableStringify } from "../../base/json.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -23,7 +22,7 @@ import {
 import { BuildValidator } from "./build-validator.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 import { Placement, Placer } from "./placement.js";
-import { SyncDirCheck } from "./sync-layout.js";
+import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 
 export class CoreBuildService implements BuildService {
@@ -82,30 +81,29 @@ export class CoreBuildService implements BuildService {
 		const content = `${stableStringify(project.tree)}\n`;
 		const temporary = new OutputFile(outFile).stagingFile();
 
-		try {
+		const written = await tryWithAsync(async () => {
 			if (
 				(await this.fileSystemService.isFile(outFile)) &&
 				(await this.fileSystemService.readFile(outFile)) === content
 			) {
-				return ok({ written: false });
+				return false;
 			}
 			await this.fileSystemService.writeFile(temporary, content);
 			await this.fileSystemService.rename(temporary, outFile, true);
-			return ok({ written: true });
-		} catch (error) {
-			await this.fileSystemService
-				.delete(temporary)
-				.catch(() => undefined);
-			return err(
-				new DiagnosticsError([
-					errorDiagnostic(
-						"output.writeFailed",
-						{ resource: outFile },
-						`the project file could not be written: ${ErrorUtils.fromUnknown(error).message}`
-					),
-				])
-			);
-		}
+			return true;
+		});
+		if (written.isOk()) return ok({ written: written.value });
+
+		await this.fileSystemService.delete(temporary).catch(() => undefined);
+		return err(
+			new DiagnosticsError([
+				errorDiagnostic(
+					"output.writeFailed",
+					{ resource: outFile },
+					`the project file could not be written: ${written.error.message}`
+				),
+			])
+		);
 	}
 
 	async locate(

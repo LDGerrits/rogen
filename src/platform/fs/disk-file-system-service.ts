@@ -119,9 +119,4 @@ export class DiskFileSystemService implements FileSystemService {
 		await this.createDirectory(path.dirname(destination));
 		await fs.promises.rename(source, destination);
 	}
-
-	async readJson<T>(filePath: string): Promise<T> {
-		const content = await this.readFile(filePath);
-		return JSON.parse(content) as T;
-	}
 }

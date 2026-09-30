@@ -1,7 +1,6 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	ConfigFile,
 	ConfigFileReader,
@@ -25,13 +24,14 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { Target } from "../roblox/roblox.js";
-import { projectFileName, RojoProject } from "../rojo/rojo-project.js";
+import { RojoProject } from "../rojo/rojo-project.js";
 import { ConfigOverrides } from "./config-service.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
+	defaultOutFileName,
 	rootDirOverlap,
 } from "./config.js";
 
@@ -170,20 +170,20 @@ export class ConfigLoader {
 		file: string,
 		location: DiagnosticLocation
 	): Promise<Result<ResolvedTemplate, Diagnostic[]>> {
-		let text: string;
-		try {
-			text = await this.fileSystemService.readFile(file);
-		} catch (error) {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		if (text.isErr()) {
 			return err([
 				errorDiagnostic(
 					"config.templateUnreadable",
 					location,
-					`the template could not be read: ${ErrorUtils.fromUnknown(error).message}.`
+					`the template could not be read: ${text.error.message}.`
 				),
 			]);
 		}
 
-		const project = RojoProject.parse(text);
+		const project = RojoProject.parse(text.value);
 		if (project.isErr()) {
 			return err([
 				errorDiagnostic(
@@ -334,7 +334,7 @@ class ConfigValidator {
 			config.getValue<string | undefined>("outFile") ??
 			path.join(
 				path.dirname(layered.leaf.file),
-				projectFileName(configLabel(layered.leaf.file))
+				defaultOutFileName(configLabel(layered.leaf.file))
 			);
 	}
 

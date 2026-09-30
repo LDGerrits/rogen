@@ -2,35 +2,21 @@ import chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
 import { FileType } from "../fs/file-system-service.js";
-import { Emitter, Event } from "../../base/event.js";
-import { LogService } from "../log/log-service.js";
 import { toPosix } from "../../base/path.js";
-import { FileChange, FileChangeType } from "../fs/file-events.js";
-import { isIgnored, Watcher, WatchOptions, WatchRequest } from "./watcher.js";
+import { FileChangeType } from "../fs/file-events.js";
+import { AbstractWatcher } from "./abstract-watcher.js";
+import { isIgnored, WatchOptions, WatchRequest } from "./watcher.js";
 
-export class DiskWatcher implements Watcher {
-	declare readonly _serviceBrand: undefined;
-
-	private readonly _onDidChangeFile = new Emitter<FileChange[]>();
-	readonly onDidChangeFile: Event<FileChange[]> = this._onDidChangeFile.event;
-
-	private readonly _onDidError = new Emitter<Error>();
-	readonly onDidError: Event<Error> = this._onDidError.event;
-
+export class DiskWatcher extends AbstractWatcher {
 	private watcher: chokidar.FSWatcher | null = null;
 
-	constructor(private readonly logService: LogService) {}
-
-	async watch(
+	protected async startWatching(
 		requests: WatchRequest[],
-		options: WatchOptions = {}
+		options: WatchOptions
 	): Promise<void> {
 		await this.stop();
 
 		const targetPaths = requests.map((r) => r.path);
-		this.logService.debug(
-			`Started watching paths: ${targetPaths.join(", ")}`
-		);
 
 		this.watcher = chokidar.watch(targetPaths, {
 			ignoreInitial: true,
@@ -60,7 +46,7 @@ export class DiskWatcher implements Watcher {
 
 		this.watcher.on("error", (error) => {
 			this.logService.error(`DiskWatcher crashed: ${error.message}`);
-			this._onDidError.fire(error);
+			this.fireError(error);
 		});
 
 		// Until chokidar is ready, new files count as initial and are ignored.
@@ -73,9 +59,7 @@ export class DiskWatcher implements Watcher {
 		rawPath: string,
 		fileType: FileType
 	): void {
-		this._onDidChangeFile.fire([
-			{ type, path: toPosix(rawPath), fileType },
-		]);
+		this.fireChange({ type, path: toPosix(rawPath), fileType });
 	}
 
 	async stop(): Promise<void> {
