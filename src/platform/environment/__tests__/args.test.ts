@@ -27,11 +27,13 @@ const optionsFor = (command?: string) =>
 		? [...globals, ...buildOptions]
 		: globals;
 
+const isCommand = (command: string) =>
+	["build", "watch", "help", "version"].includes(command);
+
+const parse = (argv: string[]) => parseArgs(argv, optionsFor, isCommand);
+
 const values = (argv: string[]) =>
-	parseArgs(argv, optionsFor).unwrap().options as unknown as Record<
-		string,
-		unknown
-	>;
+	parse(argv).unwrap().options as unknown as Record<string, unknown>;
 
 describe("parseArgs", () => {
 	it("should parse a command's own options alongside the global ones", () => {
@@ -42,54 +44,85 @@ describe("parseArgs", () => {
 	});
 
 	it("should map positional commands correctly and attach them to the '_' array", () => {
-		const { command, options } = parseArgs(
-			["watch", "extra_arg"],
-			optionsFor
-		).unwrap();
+		const { command, options } = parse(["watch", "extra_arg"]).unwrap();
 
 		expect(command).toBe("watch");
 		expect(options._).toEqual(["watch", "extra_arg"]);
 	});
 
 	it("should default to build, and let --help and --version win", () => {
-		expect(parseArgs([], optionsFor).unwrap().command).toBe("build");
-		expect(parseArgs(["-t", "a"], optionsFor).unwrap().command).toBe(
-			"build"
-		);
-		expect(parseArgs(["--help"], optionsFor).unwrap().command).toBe("help");
-		expect(parseArgs(["build", "-v"], optionsFor).unwrap().command).toBe(
-			"version"
-		);
+		expect(parse([]).unwrap().command).toBe("build");
+		expect(parse(["-t", "a"]).unwrap().command).toBe("build");
+		expect(parse(["--help"]).unwrap().command).toBe("help");
+		expect(parse(["build", "-v"]).unwrap().command).toBe("version");
 	});
 
 	it("should put the defaulted command first in the positionals", () => {
 		expect(values(["-q"])._).toEqual(["build"]);
 	});
 
+	it("should leave the positionals empty when --help or --version picks the command", () => {
+		expect(values(["--help"])._).toEqual([]);
+		expect(values(["--version"])._).toEqual([]);
+	});
+
 	it("should reject --verbose together with --quiet", () => {
-		const result = parseArgs(["build", "--verbose", "-q"], optionsFor);
+		const result = parse(["build", "--verbose", "-q"]);
 
 		expect(result.isErr() && result.error.message).toContain(
 			"--verbose can't be combined with --quiet"
 		);
 	});
 
-	it("should return an error naming an unknown option", () => {
-		const result = parseArgs(["build", "--fake-flag"], optionsFor);
+	it("should name an unknown option and point at the command's help", () => {
+		const result = parse(["build", "--fake-flag"]);
 
-		expect(result.isErr()).toBe(true);
-		expect(result.isErr() && result.error.message).toContain("--fake-flag");
+		expect(result.isErr() && result.error.message).toBe(
+			"Unknown option '--fake-flag'. Run 'rogen help build' to see what build accepts."
+		);
+	});
+
+	it("should name an unknown short option as it was typed", () => {
+		const result = parse(["watch", "-w"]);
+
+		expect(result.isErr() && result.error.message).toContain(
+			"Unknown option '-w'"
+		);
 	});
 
 	it("should reject an option that belongs to another command", () => {
-		const result = parseArgs(["watch", "--tag", "a"], optionsFor);
+		const result = parse(["watch", "--tag", "a"]);
 
-		expect(result.isErr()).toBe(true);
-		expect(result.isErr() && result.error.message).toContain("--tag");
+		expect(result.isErr() && result.error.message).toBe(
+			"Unknown option '--tag'. Run 'rogen help watch' to see what watch accepts."
+		);
+	});
+
+	it("should leave an unknown command to the command service", () => {
+		const parsed = parse(["deploy", "--tag", "x"]).unwrap();
+
+		expect(parsed.command).toBe("deploy");
+	});
+
+	it.each([
+		[["build", "--tag"], "Option '--tag' needs a value."],
+		[["build", "-t", "--quiet"], "Option '-t' needs a value."],
+		[
+			["build", "--quiet=yes"],
+			"Option '--quiet' is a flag and takes no value.",
+		],
+	])("should explain a misplaced value in %j", (argv, message) => {
+		const result = parse(argv);
+
+		expect(result.isErr() && result.error.message).toBe(message);
 	});
 
 	it("should take --no-input on every command", () => {
-		const parsed = parseArgs(["watch", "--no-input"], () => GlobalOptions);
+		const parsed = parseArgs(
+			["watch", "--no-input"],
+			() => GlobalOptions,
+			isCommand
+		);
 
 		expect(parsed.unwrap().options["no-input"]).toBe(true);
 	});

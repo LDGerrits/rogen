@@ -2,5 +2,5 @@ $ rogen watch --json
 exit 1
 stdout:
   {
-    "error": "Unknown option '--json'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- \"--json\""
+    "error": "Unknown option '--json'. Run 'rogen help watch' to see what watch accepts."
   }

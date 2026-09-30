@@ -361,7 +361,11 @@ describe("where command", () => {
 	describe("flags", () => {
 		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 		const parse = (...argv: string[]) =>
-			parseArgs(argv, (command) => registry.getOptions(command));
+			parseArgs(
+				argv,
+				(command) => registry.getOptions(command),
+				(command) => registry.getCommand(command) !== undefined
+			);
 
 		it("should accept the config-picking flags, but not the output overrides", () => {
 			expect(

@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["build", "--nope"],
+		["build", "--root-dir", "src"],
+		["watch", "-w"],
+		["build", "--tag"],
+		["build", "--json=yes"]
+	]
+}

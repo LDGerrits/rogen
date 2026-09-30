@@ -1,0 +1,24 @@
+$ rogen build --nope
+exit 1
+stderr:
+  error: Unknown option '--nope'. Run 'rogen help build' to see what build accepts.
+
+$ rogen build --root-dir src
+exit 1
+stderr:
+  error: Unknown option '--root-dir'. Run 'rogen help build' to see what build accepts.
+
+$ rogen watch -w
+exit 1
+stderr:
+  error: Unknown option '-w'. Run 'rogen help watch' to see what watch accepts.
+
+$ rogen build --tag
+exit 1
+stderr:
+  error: Option '--tag' needs a value.
+
+$ rogen build --json=yes
+exit 1
+stderr:
+  error: Option '--json' is a flag and takes no value.
