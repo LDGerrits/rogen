@@ -35,7 +35,9 @@ describe("CoreBuildService", () => {
 
 			const result = await buildServiceOfFs().build(config);
 
-			expect(result.isErr() ? result.error : []).toMatchObject([
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([
 				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
 			]);
 		});
@@ -96,9 +98,9 @@ describe("CoreBuildService", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "tag.activeClash" },
-			]);
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([{ code: "tag.activeClash" }]);
 		});
 
 		it("should warn about a missing root dir and still succeed", async () => {
@@ -473,7 +475,7 @@ describe("CoreBuildService", () => {
 				await indexOf(store, fs, [])
 			).build(configOf({ routes: {} }));
 
-			expect(result.isErr() && result.error).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
 			]);
 		});
@@ -487,7 +489,7 @@ describe("CoreBuildService", () => {
 				await indexOf(store, fs, [abs("src")])
 			).build(configOf());
 
-			expect(result.isErr() && result.error).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "meta.notAnObject" },
 			]);
 		});
@@ -528,9 +530,9 @@ describe("CoreBuildService", () => {
 				configOf({ routes: {} })
 			);
 
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{ code: "route.noRoutes" },
-			]);
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([{ code: "route.noRoutes" }]);
 		});
 	});
 

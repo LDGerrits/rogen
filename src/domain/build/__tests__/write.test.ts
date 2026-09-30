@@ -147,7 +147,9 @@ describe("CoreBuildService.write", () => {
 			const result = await write(treeOf());
 
 			expect(result.isErr()).toBe(true);
-			expect(result.isErr() ? result.error[0] : undefined).toMatchObject({
+			expect(
+				result.isErr() ? result.error.diagnostics[0] : undefined
+			).toMatchObject({
 				code: "output.writeFailed",
 				resource: outFile,
 			});

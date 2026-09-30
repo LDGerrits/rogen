@@ -154,14 +154,16 @@ export interface BuildService {
 	build(
 		config: ResolvedConfig,
 		options?: BuildOptions
-	): Promise<Result<BuiltProject, Diagnostic[]>>;
+	): Promise<Result<BuiltProject, DiagnosticsError>>;
 
 	/**
 	 * Writes `project` to its out file, leaving it untouched when its bytes
 	 * wouldn't change, so Rojo doesn't re-sync and `watch` doesn't rebuild on
 	 * its own write.
 	 */
-	write(project: BuiltProject): Promise<Result<WrittenProject, Diagnostic[]>>;
+	write(
+		project: BuiltProject
+	): Promise<Result<WrittenProject, DiagnosticsError>>;
 
 	/**
 	 * Where each of `paths` lands in `config`'s tree, or why it lands nowhere;
@@ -171,7 +173,7 @@ export interface BuildService {
 	locate(
 		config: ResolvedConfig,
 		paths?: readonly string[]
-	): Promise<Result<FileLocation[], Diagnostic[]>>;
+	): Promise<Result<FileLocation[], DiagnosticsError>>;
 }
 
 export const BuildService =

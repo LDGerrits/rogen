@@ -80,7 +80,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			const project = await buildService.build(target.config, {
 				checkSyncDir: true,
 			});
-			if (project.isErr()) errors.push(...project.error);
+			if (project.isErr()) errors.push(...project.error.diagnostics);
 			else built.push({ ...target, project: project.value });
 		}
 		if (errors.length > 0) {
@@ -91,8 +91,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		for (const { entry, config, project } of built) {
 			if (built.length > 1) logService.step(config.label);
 			const written = await buildService.write(project);
-			if (written.isErr())
-				return err(new DiagnosticsError(written.error));
+			if (written.isErr()) return written;
 
 			buildLog.written(
 				{ entry, config },

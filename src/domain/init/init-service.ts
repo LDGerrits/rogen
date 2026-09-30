@@ -1,5 +1,5 @@
 import { Result } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
@@ -39,7 +39,7 @@ export interface InitService {
 	/** Decides everything `init` writes and says; `ok(undefined)` means the user cancelled. */
 	plan(
 		directory: InitDirectory
-	): Promise<Result<InitPlan | undefined, Diagnostic[]>>;
+	): Promise<Result<InitPlan | undefined, DiagnosticsError>>;
 
 	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
 	write(

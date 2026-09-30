@@ -1144,7 +1144,9 @@ describe("TreeAssembler", () => {
 
 				const result = await assembleResult({ routes: SPLIT });
 
-				expect(result.isErr() ? result.error : []).toMatchObject([
+				expect(
+					result.isErr() ? result.error.diagnostics : []
+				).toMatchObject([
 					{
 						code: "meta.idOnSeveralNodes",
 						resource: abs("src/Combat/init.meta.json"),
@@ -1244,7 +1246,7 @@ describe("TreeAssembler", () => {
 
 				const result = await assembleResult({ routes: SPLIT });
 
-				const errors = result.isErr() ? result.error : [];
+				const errors = result.isErr() ? result.error.diagnostics : [];
 				expect(errors).toMatchObject([{ code: "meta.sameNode" }]);
 				expect(errors[0].message).toContain(
 					abs("src/Combat/init.meta.json")

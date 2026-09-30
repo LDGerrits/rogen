@@ -1,6 +1,6 @@
 import path from "path";
 import { isIgnored } from "../../../platform/watcher/ignored-paths.js";
-import { WatchPlan, WatchPlanConfig } from "../watch-plan.js";
+import { WatchPlan, WatchPlanConfig } from "../watch-session.js";
 
 const config = (
 	file: string,

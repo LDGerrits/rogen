@@ -1,12 +1,11 @@
 import path from "path";
-import { err, ok } from "../../base/result.js";
+import { ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	CommandRegistry,
 	Extensions,
 } from "../../platform/commands/commands.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
@@ -46,8 +45,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				config,
 				paths.length > 0 ? paths : undefined
 			);
-			if (located.isErr())
-				return err(new DiagnosticsError(located.error));
+			if (located.isErr()) return located;
 			report.add(config.label, located.value);
 		}
 

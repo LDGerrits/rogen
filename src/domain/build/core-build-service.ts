@@ -56,12 +56,13 @@ export class CoreBuildService implements BuildService {
 	async build(
 		config: ResolvedConfig,
 		options: BuildOptions = {}
-	): Promise<Result<BuiltProject, Diagnostic[]>> {
+	): Promise<Result<BuiltProject, DiagnosticsError>> {
 		await this.indexService.ensureIndexed(config.rootDirs);
 		const placement = this.place(this.indexService, config);
-		if (placement.isErr()) return placement;
+		if (placement.isErr())
+			return err(new DiagnosticsError(placement.error));
 		const assembly = await this.assembler.assemble(placement.value);
-		if (assembly.isErr()) return assembly;
+		if (assembly.isErr()) return err(new DiagnosticsError(assembly.error));
 		return ok({
 			outFile: config.outFile,
 			tree: assembly.value.tree,
@@ -76,7 +77,7 @@ export class CoreBuildService implements BuildService {
 
 	async write(
 		project: BuiltProject
-	): Promise<Result<WrittenProject, Diagnostic[]>> {
+	): Promise<Result<WrittenProject, DiagnosticsError>> {
 		const { outFile } = project;
 		const content = `${stableStringify(project.tree)}\n`;
 		const temporary = new OutputFile(outFile).stagingFile();
@@ -95,27 +96,30 @@ export class CoreBuildService implements BuildService {
 			await this.fileSystemService
 				.delete(temporary)
 				.catch(() => undefined);
-			return err([
-				errorDiagnostic(
-					"output.writeFailed",
-					{ resource: outFile },
-					`the project file could not be written: ${ErrorUtils.fromUnknown(error).message}`
-				),
-			]);
+			return err(
+				new DiagnosticsError([
+					errorDiagnostic(
+						"output.writeFailed",
+						{ resource: outFile },
+						`the project file could not be written: ${ErrorUtils.fromUnknown(error).message}`
+					),
+				])
+			);
 		}
 	}
 
 	async locate(
 		config: ResolvedConfig,
 		paths?: readonly string[]
-	): Promise<Result<FileLocation[], Diagnostic[]>> {
+	): Promise<Result<FileLocation[], DiagnosticsError>> {
 		await this.indexService.ensureIndexed(config.rootDirs);
 		const index = paths
 			? new PlannedFilesIndex(this.indexService, config.rootDirs, paths)
 			: this.indexService;
-		return this.place(index, config).map((placement) =>
-			new FileLocator(placement).locate(paths)
-		);
+		const placement = this.place(index, config);
+		return placement.isErr()
+			? err(new DiagnosticsError(placement.error))
+			: ok(new FileLocator(placement.value).locate(paths));
 	}
 
 	private place(

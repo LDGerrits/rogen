@@ -1,9 +1,7 @@
 import { groupBy } from "../../base/collection.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { instanceKey } from "../rojo/rojo-project.js";
@@ -215,7 +213,7 @@ export class Placer {
 				]);
 		}
 
-		const errors: Diagnostic[] = [];
+		const problems = new DiagnosticCollector();
 		const clashes: InstanceClash[] = [];
 		const winners = new Map<string, RoutedFile>();
 		for (const root of groupBy(
@@ -230,12 +228,10 @@ export class Placer {
 					(file) => file.tags.length === 0
 				);
 				if (tagged.length > 1)
-					errors.push(
-						errorDiagnostic(
-							"tag.activeClash",
-							{ resource: this.config.outFile },
-							`${tagged.length} files with active tags all become "${instance}" (${tagged.map(({ entry }) => entry.source).join(", ")}). Only one can apply: turn a tag off or rename a file.`
-						)
+					problems.error(
+						"tag.activeClash",
+						{ resource: this.config.outFile },
+						`${tagged.length} files with active tags all become "${instance}" (${tagged.map(({ entry }) => entry.source).join(", ")}). Only one can apply: turn a tag off or rename a file.`
 					);
 				else if (claimants.length > 1)
 					clashes.push({ instance, claimants });
@@ -245,7 +241,7 @@ export class Placer {
 				);
 			}
 		}
-		if (errors.length > 0) return err(errors);
+		if (problems.hasErrors) return err([...problems.diagnostics]);
 
 		for (const file of kept) {
 			const winner = winners.get(instanceKey(file.instancePath));

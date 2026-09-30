@@ -1,7 +1,7 @@
 import path from "path";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
@@ -69,7 +69,7 @@ export class CoreInitService implements InitService {
 
 	async plan(
 		directory: InitDirectory
-	): Promise<Result<InitPlan | undefined, Diagnostic[]>> {
+	): Promise<Result<InitPlan | undefined, DiagnosticsError>> {
 		// A run that can't ask never gets to pick another name, so the one it has must be free.
 		const knownName =
 			directory.givenName ??
@@ -77,17 +77,18 @@ export class CoreInitService implements InitService {
 		const taken = directory.checkFree(
 			knownName ? [configFileName(knownName)] : []
 		);
-		if (taken.length > 0) return err(taken);
+		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
 		const setup = await this.chooseSetup(directory);
 		if (!setup) return ok(undefined);
 		const asked = await setup.ask();
-		if (asked.isErr()) return asked;
+		if (asked.isErr()) return err(new DiagnosticsError(asked.error));
 		if (!asked.value) return ok(undefined);
 
 		const builder = new InitPlanBuilder(directory);
 		setup.plan(builder);
-		return builder.build();
+		const plan = builder.build();
+		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
 
 	async write(

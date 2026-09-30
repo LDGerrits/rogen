@@ -514,8 +514,8 @@ describe("CoreBuildService.locate", () => {
 
 		const result = await buildServiceOf(fs, index).locate(config);
 
-		expect(result.isErr() && result.error.map(({ code }) => code)).toEqual([
-			"route.noRoutes",
-		]);
+		expect(
+			result.isErr() && result.error.diagnostics.map(({ code }) => code)
+		).toEqual(["route.noRoutes"]);
 	});
 });

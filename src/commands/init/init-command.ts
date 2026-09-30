@@ -1,7 +1,6 @@
 import { ok, err } from "../../base/result.js";
 import { CancelledError } from "../../base/errors.js";
 import { InitService, NextSteps } from "../../domain/init/init-service.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { Registry } from "../../platform/registry/registry.js";
@@ -50,7 +49,7 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 
 		logService.intro("rogen init");
 		const planned = await initService.plan(directory.value);
-		if (planned.isErr()) return err(new DiagnosticsError(planned.error));
+		if (planned.isErr()) return planned;
 		const plan = planned.value;
 		if (!plan) return err(new CancelledError("init cancelled."));
 

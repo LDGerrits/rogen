@@ -247,9 +247,9 @@ describe("CoreInitService", () => {
 					["arena.rogen.json"]
 				);
 
-				expect(result.isErr() && result.error).toMatchObject([
-					{ code: "init.configExists" },
-				]);
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([{ code: "init.configExists" }]);
 			});
 
 			it("should add a separate config named on the command line when it can't ask", async () => {
