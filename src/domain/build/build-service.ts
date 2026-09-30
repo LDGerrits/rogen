@@ -16,8 +16,6 @@ export type RouteMatch = MatchForm | "fallback";
 export interface TagMatch {
 	readonly tag: string;
 	readonly form: MatchForm;
-	/** The file name with a capital suffix written as a separator suffix. */
-	readonly separatorName?: string;
 }
 
 /** Why the scan left a path out; the path is the key it is stored under. */

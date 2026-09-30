@@ -56,7 +56,6 @@ describe("LocationReport", () => {
 						{
 							tag: "mock",
 							form: "capital",
-							separatorName: "Http.mock.luau",
 						},
 					],
 				})

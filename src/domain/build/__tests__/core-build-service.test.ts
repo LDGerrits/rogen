@@ -81,13 +81,13 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should return the tag stage's warnings", async () => {
-			await fs.writeFile(abs("src/HttpMock.luau"), "");
-			const config = configOf({ tags: { mock: false } });
+			await fs.writeFile(abs("src/Save.server.mock.luau"), "");
+			const config = configOf({ tags: { mock: true } });
 
 			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
-				{ code: "tag.dormantCapitalSuffix" },
+				{ code: "tag.buriedScriptSuffix" },
 			]);
 		});
 

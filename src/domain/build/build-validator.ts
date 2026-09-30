@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix, toPosix } from "../../base/path.js";
-import { capitalized, listLimited } from "../../base/strings.js";
+import { listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -37,9 +37,7 @@ export class BuildValidator {
 			...this.unresolvedLink(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
-			...this.capitalSuffix(),
 			...this.unrouted(),
-			...this.dormantCapitalSuffix(),
 			...this.buriedScriptSuffix(),
 			...this.untaggedClash(),
 			...this.runContextTarget(),
@@ -125,26 +123,6 @@ export class BuildValidator {
 		});
 	}
 
-	/** A capital suffix routes a file whose name may only happen to end in a route key. */
-	private capitalSuffix(): Diagnostic[] {
-		const routedBySuffix = this.placement.routed
-			.filter(({ separatorName }) => separatorName)
-			.map((file): [string, RoutedFile] => [file.entry.source, file]);
-		const shared = [...this.config.keys.routeKeys].find(
-			(key) => key.toLowerCase() === "shared"
-		);
-		const keep = shared
-			? `${shared}/ or mark its folder .${shared}`
-			: "another routing folder";
-		return this.diagnosePaths(routedBySuffix, (resource, file) => {
-			return warningDiagnostic(
-				"route.capitalSuffix",
-				{ resource },
-				`routed to "${file.route}" by its capital suffix, so it becomes ${instanceKey(file.instancePath)}. To route it on purpose, name it ${file.separatorName}; to keep its name, put it under ${keep}.`
-			);
-		});
-	}
-
 	private unrouted(): Diagnostic[] {
 		return this.diagnosePaths(
 			this.placement.leftOut.withStatus("unrouted"),
@@ -154,30 +132,6 @@ export class BuildValidator {
 					{ resource },
 					'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
 				)
-		);
-	}
-
-	/** A capital suffix pruned a file whose name may only happen to end in a tag. */
-	private dormantCapitalSuffix(): Diagnostic[] {
-		const byTag = new Map<string, Map<string, string>>();
-		for (const [source, why] of this.placement.leftOut.withStatus(
-			"pruned"
-		)) {
-			for (const { tag, separatorName } of why.tags)
-				if (separatorName)
-					byTag.set(
-						tag,
-						(byTag.get(tag) ?? new Map()).set(source, separatorName)
-					);
-		}
-		return [...byTag].flatMap(([tag, separatorNames]) =>
-			this.diagnosePaths([...separatorNames], (resource, separatorName) =>
-				warningDiagnostic(
-					"tag.dormantCapitalSuffix",
-					{ resource },
-					`pruned because its capital suffix matches the dormant tag "${tag}". If it's a variant, name it ${separatorName}; if not, rename it so it doesn't end in "${capitalized(tag)}".`
-				)
-			)
 		);
 	}
 

@@ -100,6 +100,6 @@ For a permanent variant, use a second config that extends the first and flips th
 
 `rogen build mocked` then writes `mocked.project.json`.
 
-<Callout type="warn" title="Capital suffixes prune with a warning">
-	`HttpMock.luau` matches a dormant `mock` tag on its capital letter and is pruned. `Mock`, `Debug`, `Dev` and `Test` are common trailing nouns in Roblox code, and a tag misfire deletes a file. Rogen warns about each file pruned this way. Use the separator form (`Http.mock.luau`) for real variants.
+<Callout type="warn" title="Capital suffixes are tags too">
+	`HttpMock.luau` matches a dormant `mock` tag on its capital letter and is pruned, silently. `Mock`, `Debug`, `Dev` and `Test` are common trailing nouns, so a file that only happens to end in one leaves the game. `rogen where` shows which tag pruned a file. Name real variants with a separator (`Http.mock.luau`), and rename a file that ends in a tag by accident.
 </Callout>
