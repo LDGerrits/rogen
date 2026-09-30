@@ -185,7 +185,7 @@ export class InitDirectory {
 		const relative = (absolute: string) =>
 			toPosix(path.relative(this.path, absolute));
 		const { rootDirs, syncDir } = entry.resolved;
-		const parent = entry.chain[1];
+		const [parent] = entry.parents;
 		return ok({
 			rootDirs: rootDirs.map(relative),
 			...(syncDir && { syncDir: relative(syncDir) }),

@@ -74,6 +74,11 @@ export class ConfigEntry {
 		this.errors = fields.diagnostics.filter(isError);
 	}
 
+	/** The configs it extends, the nearest first. */
+	get parents(): readonly string[] {
+		return this.chain.slice(1);
+	}
+
 	/** Whether the file is broken now, or there is no valid version of it to build. */
 	get isBroken(): boolean {
 		return this.errors.length > 0 || this.resolved === undefined;

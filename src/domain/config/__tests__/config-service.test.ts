@@ -69,6 +69,25 @@ describe("domain/config/config-service", () => {
 
 			expect(entry.errors).toEqual([error]);
 		});
+
+		it("should list the configs it extends, nearest first", () => {
+			const entry = mockEntry({}, "/repo/a.rogen.json", {
+				chain: [
+					"/repo/a.rogen.json",
+					"/repo/b.rogen.json",
+					"/repo/c.rogen.json",
+				],
+			});
+
+			expect(entry.parents).toEqual([
+				"/repo/b.rogen.json",
+				"/repo/c.rogen.json",
+			]);
+		});
+
+		it("should have no parents when it extends nothing", () => {
+			expect(mockEntry({}, "/repo/a.rogen.json").parents).toEqual([]);
+		});
 	});
 
 	describe("getBrokenError", () => {
