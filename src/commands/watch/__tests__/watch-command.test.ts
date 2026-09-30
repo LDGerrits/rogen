@@ -67,7 +67,6 @@ describe("watch command", () => {
 	});
 
 	const startWatch = async (names: string[] = []) => {
-		await configService.initialize({ names, paths: [] });
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		services.set(ConfigService, configService);
@@ -92,7 +91,7 @@ describe("watch command", () => {
 		);
 		return store
 			.add(new CoreCommandService(services, logService))
-			.executeCommand("watch", { _: ["watch"] });
+			.executeCommand("watch", { _: ["watch", ...names] });
 	};
 
 	const run = async (names: string[] = []) => {

@@ -14,13 +14,12 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { BuildLog } from "../build/build-log.js";
-import { ConfigOptions } from "../config-options.js";
+import { ConfigOptions, configRefsFromArgs } from "../config-options.js";
 import { WatchLog } from "./watch-log.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "watch",
 	metadata: {
-		requiresConfig: true,
 		description:
 			"Builds, then rebuilds whenever sources or configs change.",
 		args: [
@@ -29,18 +28,22 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				description: "A config to watch.",
 				isOptional: true,
 				isVariadic: true,
-				namesConfig: true,
 			},
 		],
 		options: ConfigOptions,
 	},
-	handler: async (accessor) => {
+	handler: async (accessor, args) => {
 		const logService = accessor.get(LogService);
 		const lifecycleService = accessor.get(LifecycleService);
 		const configService = accessor.get(ConfigService);
 		const buildService = accessor.get(BuildService);
 		const watchService = accessor.get(WatchService);
 		const cwd = accessor.get(EnvironmentService).cwd;
+
+		const refs = configRefsFromArgs(args);
+		if (refs.isErr()) return refs;
+		const loaded = await configService.initialize(refs.value);
+		if (loaded.isErr()) return loaded;
 
 		const valid = configService.requireValidEntries();
 		if (valid.isErr()) return valid;

@@ -9,13 +9,15 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { ConfigSelectionOptions } from "../config-options.js";
+import {
+	ConfigSelectionOptions,
+	configRefsFromArgs,
+} from "../config-options.js";
 import { LocationReport } from "./location-report.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "where",
 	metadata: {
-		requiresConfig: true,
 		description: "Prints where each file lands in the game, and why.",
 		args: [
 			{
@@ -33,6 +35,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		const configService = accessor.get(ConfigService);
 		const buildService = accessor.get(BuildService);
 		const cwd = accessor.get(EnvironmentService).cwd;
+
+		const refs = configRefsFromArgs(args, []);
+		if (refs.isErr()) return refs;
+		const loaded = await configService.initialize(refs.value);
+		if (loaded.isErr()) return loaded;
 
 		const valid = configService.requireValidEntries();
 		if (valid.isErr()) return valid;

@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import "../build-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { configRefsFromArgs } from "../../config-options.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -44,8 +43,6 @@ describeWithRojo("build command against Rojo", () => {
 		const configService = store.add(
 			new CoreConfigService(fileSystem, environment)
 		);
-		const refs = configRefsFromArgs(args).unwrap();
-		(await configService.initialize(refs)).unwrap();
 
 		const services = new ServiceCollection();
 		services.set(ConfigService, configService);

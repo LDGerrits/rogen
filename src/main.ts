@@ -40,7 +40,6 @@ import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
-import { configRefsForCommand } from "./commands/config-options.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import "./domain/config/config-schema.js";
 import "./commands/build/build-command.js";
@@ -121,19 +120,6 @@ async function main(): Promise<void> {
 			new CoreConfigService(fileSystemService, environment)
 		);
 		services.set(ConfigService, configService);
-
-		const metadata = commandRegistry.getCommand(command)?.metadata;
-		if (metadata?.requiresConfig) {
-			const refs = configRefsForCommand(metadata, cliArgs);
-			const initialized = refs.isOk()
-				? await configService.initialize(refs.value)
-				: refs;
-			if (initialized.isErr()) {
-				reportFailure(logService, initialized.error, command);
-				process.exitCode = 1;
-				return;
-			}
-		}
 
 		const reconciliationService = disposables.add(
 			new CoreReconciliationService(logService)

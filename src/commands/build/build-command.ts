@@ -16,14 +16,13 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Registry } from "../../platform/registry/registry.js";
-import { ConfigOptions } from "../config-options.js";
+import { ConfigOptions, configRefsFromArgs } from "../config-options.js";
 import { BuildLog } from "./build-log.js";
 import { showConfig } from "./show-config.js";
 
 Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 	id: "build",
 	metadata: {
-		requiresConfig: true,
 		description: "Writes each named config's project file.",
 		args: [
 			{
@@ -31,7 +30,6 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 				description: "A config to build.",
 				isOptional: true,
 				isVariadic: true,
-				namesConfig: true,
 			},
 		],
 		options: [
@@ -52,6 +50,11 @@ Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 			for (const diagnostic of diagnostics)
 				logService.diagnostic(diagnostic);
 		};
+
+		const refs = configRefsFromArgs(args);
+		if (refs.isErr()) return refs;
+		const loaded = await configService.initialize(refs.value);
+		if (loaded.isErr()) return loaded;
 
 		if (args["show-config"]) {
 			logService.print(showConfig(configService.configs));
