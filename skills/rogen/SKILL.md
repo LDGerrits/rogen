@@ -20,11 +20,11 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
 - A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
 - Inside a routing folder, a route key at the end of a name is ignored: `Shared/HttpClient.luau` stays `HttpClient`.
-- `rogen where <path>` prints where a file lands and why, before or after it exists; `rogen where | grep <Instance>` finds the file behind an instance.
+- `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`rogen where ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
 ## After a batch of changes
 
-- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant tag, or replaced by another file.
+- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant tag, replaced by another file, excluded by a glob, or displaced by a template node.
 - Then run `rogen build --all` once and fix every warning that names your files.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
