@@ -7,7 +7,6 @@ stdout:
 stderr:
   src/Inventory/Load.SERVER.luau - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server" or "Server", or declare it as written.
   src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written.
-  src/Inventory/HttpClient.luau - warning: routed to "client" by its capital suffix, so it becomes StarterPlayer/StarterPlayerScripts/Inventory/Http. To route it on purpose, name it Http-client.luau; to keep its name, put it under shared/ or mark its folder .shared.
 
 written:
   default.project.json

@@ -4,8 +4,6 @@ stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
-stderr:
-  src/Net/HttpMock.luau - warning: pruned because its capital suffix matches the dormant tag "mock". If it's a variant, name it Http.mock.luau; if not, rename it so it doesn't end in "Mock".
 
 written:
   default.project.json

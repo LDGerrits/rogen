@@ -1,6 +1,10 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName, defaultOutFileName } from "../config/config.js";
+import {
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+	defaultOutFileName,
+} from "../config/config.js";
 import { CompiledPlace, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -77,10 +81,19 @@ export class PlaceSetup implements Setup {
 		const folder = await questions.placeFolder(directory, base.value, name);
 		if (folder === undefined) return ok(false);
 
+		// A Darklua repo's default is source-rooted; its sync dir is on the synced config beside it.
+		const syncFile = configFileName(
+			ConfigSet.syncStemOf(DEFAULT_CONFIG_STEM)
+		);
+		const syncDir =
+			base.value.syncDir ??
+			(directory.has(syncFile)
+				? await directory.syncDirOf(syncFile)
+				: undefined);
 		this.join = {
 			language: workspace.language,
 			darklua: workspace.usesDarklua,
-			base: base.value,
+			base: { ...base.value, ...(syncDir && { syncDir }) },
 		};
 		this.choices = { name, folder };
 		return ok(true);
@@ -89,13 +102,11 @@ export class PlaceSetup implements Setup {
 	plan(builder: InitPlanBuilder): void {
 		this.planFiles(builder);
 		this.planSteps(builder);
-		const { configSet, hasSourceParent } = this.layout();
+		const { configSet } = this.layout();
 		builder.addEdit(
 			ConfigSet.tagsStep(
 				configSet.language,
-				hasSourceParent
-					? configSet.editedFile
-					: configFileName(configSet.name)
+				configFileName(configSet.name)
 			)
 		);
 	}
@@ -104,17 +115,13 @@ export class PlaceSetup implements Setup {
 	planFiles(builder: InitPlanBuilder): void {
 		const { configSet, rootDirs, syncDir, compiled } = this.layout();
 		const { name } = configSet;
-		const { base } = this.requireJoin();
-
-		const { sourceFile } = configSet;
-		const parent = sourceFile ? base.parent : undefined;
-		if (sourceFile && parent) {
-			builder.addConfig(configSet.sourceStem, {
-				extends: ConfigSet.reference(parent),
+		if (configSet.sourced) {
+			builder.addConfig(name, {
+				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
 				rootDirs,
 			});
-			builder.addConfig(name, {
-				extends: ConfigSet.reference(sourceFile),
+			builder.addConfig(configSet.syncStem, {
+				extends: ConfigSet.reference(configFileName(name)),
 				syncDir,
 			});
 		} else {
@@ -136,14 +143,11 @@ export class PlaceSetup implements Setup {
 			syncDir,
 			compiled,
 			outDir,
-			hasSourceParent,
 		} = this.layout();
 		builder.addRun(
 			...(compiled ? [compiled.compileCommand] : []),
-			ConfigSet.watchCommand(
-				hasSourceParent ? configSet.stems : [configSet.name]
-			),
-			ConfigSet.serveCommand(configSet.name)
+			ConfigSet.watchCommand(configSet.stems),
+			ConfigSet.serveCommand(configSet.servedStem)
 		);
 		if (configSet.darklua && syncDir) {
 			builder.addDarkluaCommands(
@@ -152,6 +156,12 @@ export class PlaceSetup implements Setup {
 					outDir ? [outDir] : rootDirs,
 					syncDir
 				)
+			);
+		}
+		if (configSet.sourced) {
+			builder.addSourcemapSteps(
+				defaultOutFileName(configSet.name),
+				this.directory.workspace.darklua
 			);
 		}
 	}
@@ -163,7 +173,6 @@ export class PlaceSetup implements Setup {
 		readonly outDir: string | undefined;
 		readonly syncDir: string | undefined;
 		readonly compiled: CompiledPlace | undefined;
-		readonly hasSourceParent: boolean;
 	} {
 		const { language, darklua, base } = this.requireJoin();
 		const { name, folder } = this.requireChoices();
@@ -193,7 +202,6 @@ export class PlaceSetup implements Setup {
 							projectFile: defaultOutFileName(name),
 						})
 					: undefined,
-			hasSourceParent: Boolean(configSet.sourceFile && base.parent),
 		};
 	}
 

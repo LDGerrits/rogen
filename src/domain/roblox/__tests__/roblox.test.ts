@@ -1,5 +1,9 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { Target, containerClassName } from "../roblox.js";
+import {
+	InstanceReference,
+	Target,
+	containerClassName,
+} from "../roblox.js";
 
 const location = {
 	resource: "/repo/default.rogen.json",
@@ -120,6 +124,68 @@ describe("domain/roblox/roblox", () => {
 					"StarterPlayerScripts",
 				])
 			).toBe("Folder");
+		});
+	});
+
+	describe("InstanceReference", () => {
+		const parse = (text: string) => InstanceReference.parse(text)?.text;
+
+		it("should read a dotted path as Studio prints it", () => {
+			expect(parse("ServerScriptService.Inventory.Save")).toBe(
+				"ServerScriptService.Inventory.Save"
+			);
+		});
+
+		it("should read a slashed path", () => {
+			expect(
+				InstanceReference.parse("ServerScriptService/Inventory/Save")
+			).toMatchObject({
+				text: "ServerScriptService/Inventory/Save",
+				separator: "/",
+			});
+		});
+
+		it("should drop a leading game and everything from the line number on", () => {
+			expect(
+				parse(
+					"game.ServerScriptService.Inventory.Save:12: attempt to index nil"
+				)
+			).toBe("ServerScriptService.Inventory.Save");
+		});
+
+		it("should take the name from a quoted stack frame", () => {
+			expect(
+				parse("Script 'ServerScriptService.Inventory.Save', Line 12")
+			).toBe("ServerScriptService.Inventory.Save");
+		});
+
+		it("should not read a path that doesn't start with a service", () => {
+			expect(parse("src/Inventory/Save.luau")).toBeUndefined();
+			expect(parse("Inventory.Save")).toBeUndefined();
+		});
+
+		it("should contain the instance itself and what's inside it, not a longer name", () => {
+			const reference = InstanceReference.parse(
+				"ServerScriptService.Inventory"
+			)!;
+
+			expect(
+				reference.contains(["ServerScriptService", "Inventory"])
+			).toBe(true);
+			expect(
+				reference.contains(["ServerScriptService", "Inventory", "Save"])
+			).toBe(true);
+			expect(
+				reference.contains(["ServerScriptService", "InventoryData"])
+			).toBe(false);
+		});
+
+		it("should match a name that holds a dot", () => {
+			expect(
+				InstanceReference.parse(
+					"ReplicatedStorage.Shared.Types.shared"
+				)!.contains(["ReplicatedStorage", "Shared", "Types.shared"])
+			).toBe(true);
 		});
 	});
 });

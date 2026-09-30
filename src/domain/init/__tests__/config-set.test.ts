@@ -5,13 +5,13 @@ import { ConfigSet } from "../config-set.js";
 const luau = workspaceOf().languageFor("luau");
 const robloxTs = workspaceOf().languageFor("roblox-ts");
 
-describe("ConfigSet.sourceStemOf", () => {
-	it("should call default's source config source", () => {
-		expect(ConfigSet.sourceStemOf("default")).toBe("source");
+describe("ConfigSet.syncStemOf", () => {
+	it("should call default's synced config sync", () => {
+		expect(ConfigSet.syncStemOf("default")).toBe("sync");
 	});
 
 	it("should suffix any other name", () => {
-		expect(ConfigSet.sourceStemOf("lobby")).toBe("lobby-source");
+		expect(ConfigSet.syncStemOf("lobby")).toBe("lobby-sync");
 	});
 });
 
@@ -19,11 +19,11 @@ describe("ConfigSet", () => {
 	describe("without a processor", () => {
 		const set = new ConfigSet("default", luau, false);
 
-		it("should write one config, edited in place", () => {
+		it("should write one config, and serve it", () => {
 			expect(set.sourced).toBe(false);
-			expect(set.sourceFile).toBeUndefined();
+			expect(set.syncFile).toBeUndefined();
 			expect(set.configFiles).toEqual(["default.rogen.json"]);
-			expect(set.editedFile).toBe("default.rogen.json");
+			expect(set.servedStem).toBe("default");
 			expect(set.stems).toEqual(["default"]);
 		});
 
@@ -35,24 +35,24 @@ describe("ConfigSet", () => {
 	describe("with Darklua reading the root dirs", () => {
 		const set = new ConfigSet("game", luau, true);
 
-		it("should write a source config first, then the synced one", () => {
+		it("should write the named config first, then the synced one", () => {
 			expect(set.sourced).toBe(true);
-			expect(set.sourceFile).toBe("game-source.rogen.json");
+			expect(set.syncFile).toBe("game-sync.rogen.json");
 			expect(set.configFiles).toEqual([
-				"game-source.rogen.json",
 				"game.rogen.json",
+				"game-sync.rogen.json",
 			]);
 		});
 
-		it("should edit the source config, since it holds the root dirs", () => {
-			expect(set.editedFile).toBe("game-source.rogen.json");
+		it("should serve the synced project", () => {
+			expect(set.servedStem).toBe("game-sync");
 		});
 
-		it("should list the synced project first", () => {
-			expect(set.stems).toEqual(["game", "game-source"]);
+		it("should list the source-rooted project first", () => {
+			expect(set.stems).toEqual(["game", "game-sync"]);
 			expect(set.outputFiles).toEqual([
 				"game.project.json",
-				"game-source.project.json",
+				"game-sync.project.json",
 			]);
 		});
 	});
@@ -74,10 +74,10 @@ describe("ConfigSet", () => {
 			]);
 		});
 
-		it("should add the source config of a sourced place", () => {
+		it("should add the synced config of a sourced place", () => {
 			expect(new ConfigSet("lobby", luau, true).placeFiles).toEqual([
 				"lobby.rogen.json",
-				"lobby-source.rogen.json",
+				"lobby-sync.rogen.json",
 				"lobby.project.json",
 			]);
 		});
@@ -113,8 +113,8 @@ describe("ConfigSet naming", () => {
 	it("should watch default without naming it, and any other set by its stems", () => {
 		expect(ConfigSet.watchCommand(["default"])).toBe("rogen watch");
 		expect(ConfigSet.watchCommand(["lobby"])).toBe("rogen watch lobby");
-		expect(ConfigSet.watchCommand(["lobby", "lobby-source"])).toBe(
-			"rogen watch lobby lobby-source"
+		expect(ConfigSet.watchCommand(["lobby", "lobby-sync"])).toBe(
+			"rogen watch lobby lobby-sync"
 		);
 	});
 

@@ -106,6 +106,39 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should print the files behind an instance pasted from a Studio error", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Inventory/Server/Save.luau", "src/Inventory/Types.luau");
+
+		await run({
+			_: [
+				"ServerScriptService.Inventory.Save:12: attempt to index nil",
+				"ReplicatedStorage/Shared/Inventory",
+				"ServerScriptService.Missing",
+			],
+		});
+
+		expect(printed()).toEqual([
+			"src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)",
+			"src/Inventory/Types.luau -> ReplicatedStorage/Shared/Inventory/Types · route * (fallback)",
+			"ServerScriptService.Missing -> no file places it",
+		]);
+	});
+
+	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
+		await writeConfig("default.rogen.json", {
+			rootDirs: ["."],
+			routes: { ...ROUTES, ReplicatedFirst: "ReplicatedFirst" },
+		});
+		await write("ReplicatedFirst/Boot.client.luau");
+
+		await run({ _: ["ReplicatedFirst/Boot.client.luau"] });
+
+		expect(printed()).toEqual([
+			"ReplicatedFirst/Boot.client.luau -> ReplicatedFirst/Boot · route ReplicatedFirst (folder)",
+		]);
+	});
+
 	it("should print every file in the tree when given no path", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await write("src/B.luau", "src/A/Server/C.luau");

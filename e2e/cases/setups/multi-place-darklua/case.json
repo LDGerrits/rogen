@@ -3,9 +3,9 @@
 		[
 			"build",
 			"lobby",
-			"lobby-source",
+			"lobby-sync",
 			"match",
-			"match-source"
+			"match-sync"
 		]
 	]
 }

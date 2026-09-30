@@ -1,6 +1,7 @@
 import path from "path";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
+import { InstanceReference } from "../../domain/roblox/roblox.js";
 import {
 	ConfigService,
 	configRefsFromArgs,
@@ -14,6 +15,7 @@ import {
 	ParsedArgs,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { LocationReport } from "./location-report.js";
@@ -30,7 +32,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. Every file when none is given.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -56,23 +58,54 @@ registerCommand(
 			const targets = configService.requireValidEntries();
 			if (targets.isErr()) return targets;
 
-			const paths = args._.slice(1).map((file) =>
-				path.resolve(cwd, file)
+			const given = args._.slice(1);
+			const { paths, instances } = await this.readTargets(
+				accessor.get(FileSystemService),
+				cwd,
+				given
 			);
 			const report = new LocationReport(cwd);
 			for (const { config } of targets.value) {
-				const located = await buildService.locate(
-					config,
-					paths.length > 0 ? paths : undefined
-				);
+				const located =
+					paths.length > 0 || instances.length === 0
+						? await buildService.locate(
+								config,
+								paths.length > 0 ? paths : undefined
+							)
+						: ok([]);
 				if (located.isErr()) return located;
-				report.add(config.label, located.value);
+				const behind = await buildService.locateInstances(
+					config,
+					instances
+				);
+				if (behind.isErr()) return behind;
+				report.add(config.label, located.value, behind.value);
 			}
 
-			const lines = report.lines(paths.length === 0);
+			const lines = report.lines(given.length === 0);
 			if (lines.length > 0)
 				accessor.get(LogService).print(lines.join("\n"));
 			return ok(undefined);
+		}
+
+		/** An argument that starts with a service is an instance, unless the working directory holds an entry of that name. */
+		private async readTargets(
+			fileSystem: FileSystemService,
+			cwd: string,
+			given: readonly string[]
+		): Promise<{ paths: string[]; instances: InstanceReference[] }> {
+			const paths: string[] = [];
+			const instances: InstanceReference[] = [];
+			for (const arg of given) {
+				const reference = InstanceReference.parse(arg);
+				if (
+					reference &&
+					!(await fileSystem.exists(path.resolve(cwd, reference.service)))
+				)
+					instances.push(reference);
+				else paths.push(path.resolve(cwd, arg));
+			}
+			return { paths, instances };
 		}
 	}
 );

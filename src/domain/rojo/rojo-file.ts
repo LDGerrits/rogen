@@ -108,16 +108,4 @@ export class RojoFile {
 			: `${name}${RojoFile.META_SUFFIX}`;
 	}
 
-	/** A dot, or a dash when Rojo reads `.key` for this kind of file, so the suffix stays in the name. */
-	suffixSeparator(key: string): "." | "-" {
-		return this.readsAsSuffix(key) ? "-" : ".";
-	}
-
-	private readsAsSuffix(key: string): boolean {
-		const probe = `x.${key.toLowerCase()}`;
-		if (this.kind === "script") {
-			return RojoFile.scriptSuffixOf(probe) !== undefined;
-		}
-		return this.kind === "data" && RojoFile.dataNameOf(probe) !== probe;
-	}
 }

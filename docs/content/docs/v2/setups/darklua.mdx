@@ -29,9 +29,9 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    `init` writes **two** configs. `source.rogen.json` holds the tree, with paths into `src`, and `default.rogen.json` extends it and adds the sync directory:
+    `init` writes **two** configs. `default.rogen.json` holds the tree, with paths into `src`, and `sync.rogen.json` extends it and adds the sync directory:
 
-    ```json title="source.rogen.json"
+    ```json title="default.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"rootDirs": ["src"],
@@ -44,17 +44,18 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
     }
     ```
 
-    ```json title="default.rogen.json"
+    ```json title="sync.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"extends": "./source.rogen.json",
+    	"extends": "./default.rogen.json",
     	"syncDir": "dist"
     }
     ```
 
-    The two configs are one tree rendered twice. `default.project.json` points into `dist` and is the file for `rojo serve`. `source.project.json` points into `src` and is for Darklua, whose `convert_require` rule reads a Rojo sourcemap made from source paths.
+    The two configs are one tree rendered twice. `default.project.json` points into `src`. `sync.project.json` points into `dist` and is the file for `rojo serve`.
 
-    The synced config is the default because serving a source-rooted project would sync unprocessed code into Studio. The source config is the parent because a child can add a field but never remove one.
+    The source-rooted config is the default because luau-lsp generates its sourcemap from `default.project.json` without any settings, and Darklua's `convert_require` rule reads that same `sourcemap.json`. Your editor maps instances to the files you edit, and Darklua rewrites requires against your source, with nothing configured. It's also the parent, because a child can add a field but never remove one.
+
   </Tab>
   <Tab value="roblox-ts">
     `init` writes **one** config. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync directory:
@@ -101,8 +102,24 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
     Watch both configs, so the project file for Darklua stays current too:
 
     ```bash
-    rogen watch default source
+    rogen watch default sync
     ```
+
+    Darklua reads `sourcemap.json`, which luau-lsp keeps current from `default.project.json` while your editor is open. Without luau-lsp, keep it current yourself:
+
+    ```bash
+    rojo sourcemap default.project.json --output sourcemap.json --watch
+    ```
+
+    Then serve the synced project:
+
+    ```bash
+    rojo serve sync.project.json
+    ```
+
+    <Callout type="warn">
+    	A bare `rojo serve` picks up `default.project.json` and syncs your unprocessed source. Always name `sync.project.json`.
+    </Callout>
   </Tab>
   <Tab value="roblox-ts">
     ```
@@ -115,15 +132,15 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
     darklua process out dist --watch
     rogen watch
     ```
+
+    Then start Rojo with `rojo serve`.
   </Tab>
 </Tabs>
-
-Then start Rojo with `rojo serve`.
 
 </Step>
 
 </Steps>
 
 <Callout type="info">
-	`rogen build` and `rogen watch` print one line naming any `*.rogen.json` they weren't asked to build, so forgetting the source config in a Darklua setup doesn't go unnoticed.
+	`rogen build` and `rogen watch` print one line naming any `*.rogen.json` they weren't asked to build, so forgetting the synced config in a Darklua setup doesn't go unnoticed.
 </Callout>

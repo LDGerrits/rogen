@@ -8,7 +8,8 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
-import { FileLocation } from "./build-service.js";
+import { InstanceReference } from "../roblox/roblox.js";
+import { FileLocation, PlacedLocation } from "./build-service.js";
 import { Placement } from "./placement.js";
 
 interface Member {
@@ -33,6 +34,17 @@ export class FileLocator {
 			for (const location of this.locatePath(target))
 				found.set(location.source, location);
 		return [...found.values()];
+	}
+
+	/** The placed files at `reference` or inside it, by source. */
+	locateInstance(reference: InstanceReference): PlacedLocation[] {
+		return [...this.scanned.values()]
+			.filter(
+				(location): location is PlacedLocation =>
+					location.status === "placed" &&
+					reference.contains(location.instancePath)
+			)
+			.sort(this.bySource);
 	}
 
 	private locateScanned(): Map<string, FileLocation> {

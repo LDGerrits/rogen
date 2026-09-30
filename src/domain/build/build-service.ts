@@ -5,6 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
+import { InstanceReference } from "../roblox/roblox.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 
 /** How a route or tag key matched a file by its name. */
@@ -16,8 +17,6 @@ export type RouteMatch = MatchForm | "fallback";
 export interface TagMatch {
 	readonly tag: string;
 	readonly form: MatchForm;
-	/** The file name with a capital suffix written as a separator suffix. */
-	readonly separatorName?: string;
 }
 
 /** Why the scan left a path out; the path is the key it is stored under. */
@@ -115,6 +114,12 @@ export interface UnplacedLocation extends Located {
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
 
+/** The files placed at an instance or inside it; none when no file places it. */
+export interface InstanceLocation {
+	readonly reference: InstanceReference;
+	readonly files: readonly PlacedLocation[];
+}
+
 /** The project file a config writes, and the staging files its writes go through. */
 export class OutputFile {
 	constructor(readonly path: string) {}
@@ -159,6 +164,12 @@ export interface BuildService {
 		config: ResolvedConfig,
 		paths?: readonly string[]
 	): Promise<Result<FileLocation[], DiagnosticsError>>;
+
+	/** The files placed at each of `references`, or inside it, in `config`'s tree. */
+	locateInstances(
+		config: ResolvedConfig,
+		references: readonly InstanceReference[]
+	): Promise<Result<InstanceLocation[], DiagnosticsError>>;
 }
 
 export const BuildService =

@@ -1,6 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig } from "../config/config.js";
+import { RogenConfig, configFileName, defaultOutFileName } from "../config/config.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory, TEMPLATE_FILE } from "./init-directory.js";
@@ -171,10 +171,10 @@ export class ProjectSetup implements Setup {
 		});
 
 		if (template.file) builder.setTemplate(template.file);
-		if (configSet.sourceFile) {
-			builder.addConfig(configSet.sourceStem, starter());
-			builder.addConfig(name, {
-				extends: ConfigSet.reference(configSet.sourceFile),
+		if (configSet.sourced) {
+			builder.addConfig(name, starter());
+			builder.addConfig(configSet.syncStem, {
+				extends: ConfigSet.reference(configFileName(name)),
 				...(syncDir && { syncDir }),
 			});
 		} else {
@@ -197,9 +197,6 @@ export class ProjectSetup implements Setup {
 					base: {
 						rootDirs,
 						...(syncDir && { syncDir }),
-						...(configSet.sourceFile && {
-							parent: configSet.sourceFile,
-						}),
 					},
 				},
 				{ name: place, folder: ConfigSet.placeFolderOf(place) }
@@ -220,8 +217,8 @@ export class ProjectSetup implements Setup {
 		}
 		builder.addEdit(...template.edits);
 		builder.addEdit(
-			`Add your own routes under "routes" in ${configSet.editedFile}.`,
-			ConfigSet.tagsStep(language, configSet.editedFile)
+			`Add your own routes under "routes" in ${configFileName(name)}.`,
+			ConfigSet.tagsStep(language, configFileName(name))
 		);
 		if (first) first.planSteps(builder);
 		else this.planSteps(builder, choices, configSet);
@@ -237,8 +234,9 @@ export class ProjectSetup implements Setup {
 	private planSteps(
 		builder: InitPlanBuilder,
 		{ rootDirs, syncDir, outDir }: ProjectChoices,
-		{ name, language, darklua, stems }: ConfigSet
+		configSet: ConfigSet
 	): void {
+		const { name, language, darklua, stems } = configSet;
 		const { compiler } = language;
 		const processed = compiler
 			? [outDir ?? compiler.defaultOutDir]
@@ -247,7 +245,7 @@ export class ProjectSetup implements Setup {
 			...(compiler ? [compiler.compileCommand] : []),
 			// Darklua reads the source-rooted project, so both are kept current.
 			ConfigSet.watchCommand(stems),
-			ConfigSet.serveCommand(name)
+			ConfigSet.serveCommand(configSet.servedStem)
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(
@@ -256,6 +254,12 @@ export class ProjectSetup implements Setup {
 					processed,
 					syncDir
 				)
+			);
+		}
+		if (configSet.sourced) {
+			builder.addSourcemapSteps(
+				defaultOutFileName(name),
+				this.directory.workspace.darklua
 			);
 		}
 	}

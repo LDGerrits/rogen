@@ -1383,100 +1383,21 @@ describe("Placer", () => {
 		});
 
 		describe("capital route suffixes", () => {
-			const capitalWarnings = async (
-				overrides: ResolvedConfigSpec = {}
-			) =>
-				(await route(overrides))
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "route.capitalSuffix"
-					);
-
-			it("should warn at a file that a capital suffix routes, naming where it lands and the separator form", async () => {
+			it("should route and rename a file by its capital suffix without a warning", async () => {
 				await write("src/Net/HttpClient.luau");
 
-				const [warning] = await capitalWarnings();
-
-				expect(warning).toMatchObject({
-					severity: DiagnosticSeverity.Warning,
-					resource: abs("src/Net/HttpClient.luau"),
-				});
-				expect(warning.message).toContain('"client"');
-				expect(warning.message).toContain(
-					"StarterPlayer/StarterPlayerScripts/Net/Http"
-				);
-				expect(warning.message).toContain("Http-client.luau");
+				expect(await paths()).toEqual([
+					"StarterPlayer/StarterPlayerScripts/Net/Http",
+				]);
+				expect((await route()).unwrap().warnings).toEqual([]);
 			});
 
-			it("should name the outer routing folder and marker to keep the name when a shared route is declared", async () => {
-				await write("src/Net/HttpClient.luau");
-
-				const [warning] = await capitalWarnings({
-					routes: { ...ROUTES, shared: "ReplicatedStorage/shared" },
-				});
-
-				expect(warning.message).toContain(
-					"under shared/ or mark its folder .shared"
-				);
-			});
-
-			it("should not name a folder when no shared route is declared", async () => {
-				await write("src/Net/HttpClient.luau");
-
-				const [warning] = await capitalWarnings();
-
-				expect(warning.message).toContain(
-					"under another routing folder"
-				);
-			});
-
-			it("should warn at the folder of an init script that a capital suffix routes", async () => {
-				await write("src/Net/init.helperServer.luau");
-
-				const [warning] = await capitalWarnings();
-
-				expect(warning.resource).toBe(abs("src/Net"));
-				expect(warning.message).toContain("init.helper-server.luau");
-			});
-
-			it("should keep a model's .model in the separator form", async () => {
-				await write("src/Props/CrateServer.model.json");
-
-				const [warning] = await capitalWarnings();
-
-				expect(warning.message).toContain("Crate.server.model.json");
-			});
-
-			it("should write a route Rojo doesn't read as a suffix with a dot", async () => {
-				await write("src/Net/UtilShared.luau");
-
-				const [warning] = await capitalWarnings({
-					routes: { ...ROUTES, shared: "ReplicatedStorage/shared" },
-				});
-
-				expect(warning.message).toContain("Util.shared.luau");
-			});
-
-			it("should write a route Rojo reads as a script class with a dash", async () => {
-				await write("src/Net/HttpPlugin.luau");
-
-				const [warning] = await capitalWarnings({
-					routes: { ...ROUTES, plugin: "ServerStorage" },
-				});
-
-				expect(warning.message).toContain("Http-plugin.luau");
-			});
-
-			it("should not warn about a separator suffix", async () => {
-				await write("src/Net/Http-client.luau", "src/Hud.client.luau");
-
-				expect(await capitalWarnings()).toEqual([]);
-			});
-
-			it("should not warn about a capital suffix that an outer route governs", async () => {
+			it("should leave a capital suffix alone when an outer route governs", async () => {
 				await write("src/server/Net/HttpClient.luau");
 
-				expect(await capitalWarnings()).toEqual([]);
+				expect(await paths()).toEqual([
+					"ServerScriptService/Net/HttpClient",
+				]);
 			});
 		});
 
@@ -1644,7 +1565,6 @@ describe("Placer", () => {
 						{
 							tag: "mock",
 							form: "capital",
-							separatorName: "Http.mock.luau",
 						},
 					],
 				]);
@@ -2037,7 +1957,7 @@ describe("Placer", () => {
 		});
 
 		describe("capital suffix on a dormant tag", () => {
-			it("should prune the files and warn about each capital match, at that file", async () => {
+			it("should prune the files without a warning", async () => {
 				await write(
 					"src/HttpMock.luau",
 					"src/DataMock.luau",
@@ -2048,36 +1968,7 @@ describe("Placer", () => {
 
 				expect(result.files).toEqual([]);
 				expect(prunedPaths(result)).toHaveLength(3);
-				expect(result.warnings.map(({ resource }) => resource)).toEqual(
-					[abs("src/DataMock.luau"), abs("src/HttpMock.luau")]
-				);
-				expect(result.warnings[0]).toMatchObject({
-					severity: DiagnosticSeverity.Warning,
-					code: "tag.dormantCapitalSuffix",
-				});
-				expect(result.warnings[0].message).toContain('"mock"');
-				expect(result.warnings[0].message).toContain("Data.mock.luau");
-			});
-
-			it("should write a tag Rojo reads as a script class with a dash", async () => {
-				await write("src/HelperPlugin.luau");
-
-				const { warnings } = (await apply({ plugin: false })).unwrap();
-
-				expect(warnings[0].message).toContain("Helper-plugin.luau");
-			});
-
-			it("should warn once for each tag a file matches on a capital", async () => {
-				await write("src/HttpMock.luau", "src/UnitTest.luau");
-
-				const { warnings } = (
-					await apply({ mock: false, test: false })
-				).unwrap();
-
-				expect(warnings.map((warning) => warning.code)).toEqual([
-					"tag.dormantCapitalSuffix",
-					"tag.dormantCapitalSuffix",
-				]);
+				expect(result.warnings).toEqual([]);
 			});
 
 			it("should not warn or prune when the tag is active", async () => {

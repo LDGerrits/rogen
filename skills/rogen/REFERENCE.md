@@ -23,7 +23,7 @@ A tag marks a variant. Declare every tag in `tags` with whether it is on: `"tags
 
 - `Analytics.mock.luau` becomes `Analytics` while `mock` is on, replacing the untagged file, and is left out while it is off.
 - A tag folder (`mock/`) or marker file (`.mock`) tags everything inside. `dev/Service.luau` beside `prod/Service.luau` lets the active tag pick which file becomes `Service`.
-- Write variants with a separator (`Http.mock.luau`). A capital suffix (`HttpMock`) matches too, and is pruned with a warning.
+- A capital suffix (`HttpMock`) matches a tag too: it is pruned, without a warning, while the tag is off. Check `rogen where` before naming a file after a word that is also a tag.
 - Two files with active tags at one name are an error; two untagged files at one name are a warning.
 - `-t mock` turns a tag on and `-T mock` turns it off, for one build. For a lasting variant, write a config that extends and flips it.
 

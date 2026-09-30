@@ -7,7 +7,6 @@ import { MatchForm, RouteMatch, TagMatch } from "./build-service.js";
 import {
 	EntryRead,
 	FolderRead,
-	NameReader,
 	NameReadings,
 	SuffixSpan,
 } from "./name-reader.js";
@@ -24,8 +23,6 @@ export interface RoutedFile {
 	/** The governing route key, or `*`. */
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The file name with a capital route suffix written as a separator suffix that Rojo leaves in the name. */
-	readonly separatorName?: string;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
 	/** Routing, tag and invisible folders name no node, so they have none. */
@@ -52,7 +49,6 @@ class Claims {
 
 interface LeafReading {
 	readonly name: string;
-	readonly separatorName: string | undefined;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 }
 
@@ -89,11 +85,7 @@ export class Router {
 		const read = this.readings.entryAt(entry.source);
 		const claims = new Claims();
 		const folders = this.readFolders(entry, read, markers, claims);
-		const { name, separatorName, buriedScriptSuffix } = this.readLeaf(
-			entry,
-			read,
-			claims
-		);
+		const { name, buriedScriptSuffix } = this.readLeaf(entry, read, claims);
 
 		const route = claims.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
 		const target = this.targets.get(route);
@@ -108,7 +100,6 @@ export class Router {
 		return {
 			route,
 			routeMatch: claims.route?.match ?? "fallback",
-			separatorName,
 			instancePath: [...parent, name],
 			folderNodes,
 			tags: claims.tags,
@@ -151,25 +142,22 @@ export class Router {
 	/** Reads the suffixes of a file, or of an init folder's script, into `claims` and returns the instance name. */
 	private readLeaf(
 		entry: ScannedEntry,
-		{ fileName, kind, stem, match }: EntryRead,
+		{ kind, stem, match }: EntryRead,
 		claims: Claims
 	): LeafReading {
 		const tagSpans = match.spans.filter((span) =>
 			this.keys.isTag(span.key)
 		);
 		for (const span of tagSpans)
-			claims.claimTag(this.asTagMatch(span, fileName));
+			claims.claimTag(this.asTagMatch(span));
 		const routeSpan = claims.route
 			? undefined
 			: match.spans.find((span) => this.keys.routeKeys.has(span.key));
 		if (routeSpan) claims.claimRoute(routeSpan.key, routeSpan.form);
-		const separatorName =
-			routeSpan && this.separatorNameOf(fileName, routeSpan);
 
 		if (entry.kind === "init-folder") {
 			return {
 				name: path.posix.basename(entry.relativePath),
-				separatorName,
 				buriedScriptSuffix: undefined,
 			};
 		}
@@ -187,28 +175,12 @@ export class Router {
 		return {
 			name:
 				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
-			separatorName,
 			buriedScriptSuffix,
 		};
 	}
 
-	private asTagMatch(span: SuffixSpan, fileName: string): TagMatch {
-		const match = { tag: span.key, form: span.form };
-		const separatorName = this.separatorNameOf(fileName, span);
-		return separatorName ? { ...match, separatorName } : match;
-	}
-
-	private separatorNameOf(
-		fileName: string,
-		span: SuffixSpan
-	): string | undefined {
-		return span.form === "capital"
-			? NameReader.withSeparatorSuffix(
-					fileName,
-					span,
-					new RojoFile(fileName).suffixSeparator(span.key)
-				)
-			: undefined;
+	private asTagMatch(span: SuffixSpan): TagMatch {
+		return { tag: span.key, form: span.form };
 	}
 
 	/** Keeps the stem whole rather than return an empty name. */

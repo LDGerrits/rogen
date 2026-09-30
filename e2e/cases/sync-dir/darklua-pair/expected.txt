@@ -1,28 +1,18 @@
-$ rogen build default source
+$ rogen build default sync
 exit 0
 stdout:
-  rogen build · default, source
+  rogen build · default, sync
   default
     default.project.json · wrote
-  source
-    source.project.json · wrote
+  sync
+    sync.project.json · wrote
   Built 2 configs.
 
 written:
   default.project.json
-  source.project.json
+  sync.project.json
 
 $ rojo sourcemap default.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      Inventory: Folder
-        Types: ModuleScript  <- dist/Inventory/Types.luau
-  ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Save: Script  <- dist/Inventory/Save.server.luau
-
-$ rojo sourcemap source.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
@@ -31,3 +21,13 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Save: Script  <- src/Inventory/Save.server.luau
+
+$ rojo sourcemap sync.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- dist/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- dist/Inventory/Save.server.luau

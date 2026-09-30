@@ -184,7 +184,7 @@ describe("init command", () => {
 
 			await runInit();
 
-			expect(await exists("source.rogen.json")).toBe(false);
+			expect(await exists("sync.rogen.json")).toBe(false);
 		});
 
 		it("should write one config synced from dist for roblox-ts with darklua", async () => {
@@ -193,35 +193,35 @@ describe("init command", () => {
 
 			await runInit();
 
-			expect(await exists("source.rogen.json")).toBe(false);
+			expect(await exists("sync.rogen.json")).toBe(false);
 			expect((await readJson("default.rogen.json")).syncDir).toBe("dist");
 		});
 
-		it("should write a source config and a synced default config for darklua", async () => {
+		it("should write a source-rooted default and a sync config for darklua", async () => {
 			await write(".darklua.json");
 
 			await runInit();
 
-			const source = await readJson("source.rogen.json");
-			const config = await readJson("default.rogen.json");
+			const source = await readJson("default.rogen.json");
+			const synced = await readJson("sync.rogen.json");
 			expect(source.syncDir).toBeUndefined();
 			expect(source.routes).toEqual(LUAU_ROUTES);
-			expect(config.extends).toBe("./source.rogen.json");
-			expect(config.syncDir).toBe("dist");
-			expect(config.routes).toBeUndefined();
+			expect(synced.extends).toBe("./default.rogen.json");
+			expect(synced.syncDir).toBe("dist");
+			expect(synced.routes).toBeUndefined();
 		});
 
-		it("should write <name> and <name>-source for a named darklua config", async () => {
+		it("should write <name> and <name>-sync for a named darklua config", async () => {
 			await write(".darklua.json5");
 
 			await runInit(["lobby"]);
 
-			expect((await readJson("lobby.rogen.json")).extends).toBe(
-				"./lobby-source.rogen.json"
+			expect((await readJson("lobby-sync.rogen.json")).extends).toBe(
+				"./lobby.rogen.json"
 			);
-			expect(await exists("lobby-source.rogen.json")).toBe(true);
+			expect(await exists("lobby.rogen.json")).toBe(true);
 			expect(await exists("default.rogen.json")).toBe(false);
-			expect(await exists("source.rogen.json")).toBe(false);
+			expect(await exists("sync.rogen.json")).toBe(false);
 		});
 	});
 
@@ -298,18 +298,18 @@ describe("init command", () => {
 			);
 		});
 
-		it("should put the template in the darklua source config only", async () => {
+		it("should put the template in the darklua source-rooted config only", async () => {
 			await write(".darklua.json");
 			await write("wally.toml");
 			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
 
-			expect((await readJson("source.rogen.json")).template).toBe(
+			expect((await readJson("default.rogen.json")).template).toBe(
 				"template.project.json"
 			);
 			expect(
-				(await readJson("default.rogen.json")).template
+				(await readJson("sync.rogen.json")).template
 			).toBeUndefined();
 		});
 	});
@@ -322,7 +322,7 @@ describe("init command", () => {
 
 			await runInit();
 
-			for (const file of ["default.rogen.json", "source.rogen.json"]) {
+			for (const file of ["default.rogen.json", "sync.rogen.json"]) {
 				const text = await read(file);
 				expect(() => JSON.parse(text)).not.toThrow();
 				expect(
@@ -444,9 +444,9 @@ describe("init command", () => {
 
 			await runInit([], prompts);
 
-			const source = await readJson("game-source.rogen.json");
+			const source = await readJson("game.rogen.json");
 			expect(source.rootDirs).toEqual(["src", "lib"]);
-			expect((await readJson("game.rogen.json")).syncDir).toBe("out");
+			expect((await readJson("game-sync.rogen.json")).syncDir).toBe("out");
 		});
 
 		it("should write the ticked routes and leave unmatched files out", async () => {
@@ -538,7 +538,7 @@ describe("init command", () => {
 		});
 
 		it("should fail after the Darklua question when a file it would write exists", async () => {
-			await write("source.rogen.json", "{}");
+			await write("sync.rogen.json", "{}");
 			const prompts = new MockPromptService([
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
@@ -550,7 +550,7 @@ describe("init command", () => {
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
-					resource: path.join(cwd, "source.rogen.json"),
+					resource: path.join(cwd, "sync.rogen.json"),
 				},
 			]);
 			expect(prompts.asked).toHaveLength(3);
@@ -679,10 +679,10 @@ describe("init command", () => {
 			expect(await exists("lobby.rogen.json")).toBe(true);
 		});
 
-		it("should fail before the place folder when a given name would overwrite a Darklua source", async () => {
+		it("should fail before the place folder when a given name would overwrite a Darklua synced config", async () => {
 			await write(".darklua.json");
 			await write("default.rogen.json", "{}");
-			await write("lobby-source.rogen.json", "{}");
+			await write("lobby-sync.rogen.json", "{}");
 			const prompts = offerAnd();
 
 			const result = await runInit(["lobby"], prompts);
@@ -690,7 +690,7 @@ describe("init command", () => {
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
-					resource: path.join(cwd, "lobby-source.rogen.json"),
+					resource: path.join(cwd, "lobby-sync.rogen.json"),
 				},
 			]);
 			expect(prompts.asked).toHaveLength(1);
@@ -712,9 +712,9 @@ describe("init command", () => {
 			expect(prompts.asked).toHaveLength(1);
 		});
 
-		it("should allow a place name whose -source file exists when no source config is written", async () => {
+		it("should allow a place name whose -sync file exists when no synced config is written", async () => {
 			await setUpLuau();
-			await write("lobby-source.rogen.json", "{}");
+			await write("lobby-sync.rogen.json", "{}");
 
 			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
 
@@ -740,31 +740,31 @@ describe("init command", () => {
 			expect(await exists("template.project.json")).toBe(false);
 		});
 
-		it("should write a source config and a synced config for a Darklua place", async () => {
+		it("should write a source-rooted config and a synced config for a Darklua place", async () => {
 			await write(".darklua.json");
 			await write(
 				"default.rogen.json",
-				JSON.stringify({
-					extends: "./source.rogen.json",
-					syncDir: "dist",
-				})
+				JSON.stringify({ rootDirs: ["src"] })
 			);
 			await write(
-				"source.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
+				"sync.rogen.json",
+				JSON.stringify({
+					extends: "./default.rogen.json",
+					syncDir: "build",
+				})
 			);
 
 			const logService = new MockLogService();
 
 			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
 
-			expect(await readJson("lobby-source.rogen.json")).toMatchObject({
-				extends: "./source.rogen.json",
+			expect(await readJson("lobby.rogen.json")).toMatchObject({
+				extends: "./default.rogen.json",
 				rootDirs: ["src", "places/lobby"],
 			});
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				extends: "./lobby-source.rogen.json",
-				syncDir: "dist/lobby",
+			expect(await readJson("lobby-sync.rogen.json")).toMatchObject({
+				extends: "./lobby.rogen.json",
+				syncDir: "build/lobby",
 			});
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
@@ -1052,7 +1052,7 @@ describe("init command", () => {
 			await write(".darklua.json");
 			await write("wally.toml");
 			await memFs.createDirectory(path.join(cwd, "Packages"));
-			await write("source.rogen.json", "{}");
+			await write("sync.rogen.json", "{}");
 
 			const result = await runInit();
 

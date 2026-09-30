@@ -20,7 +20,9 @@ describe("domain/init/init-directory", () => {
 					JSON.stringify(content)
 				);
 
-			const readBase = async () => {
+			const withTarget = async <T>(
+				read: (target: InitDirectory) => Promise<T>
+			): Promise<T> => {
 				const configService = new CoreConfigService(
 					fs,
 					new MockEnvironmentService({ _: [] }, directory)
@@ -34,10 +36,13 @@ describe("domain/init/init-directory", () => {
 					fs,
 					configService
 				);
-				const base = await target.defaultConfig();
+				const result = await read(target);
 				configService[Symbol.dispose]();
-				return base;
+				return result;
 			};
+
+			const readBase = () =>
+				withTarget((target) => target.defaultConfig());
 
 			beforeEach(async () => {
 				fs = new MemoryFileSystemService();
@@ -54,20 +59,30 @@ describe("domain/init/init-directory", () => {
 				expect(base).toEqual({ rootDirs: ["src", "shared"] });
 			});
 
-			it("should read the resolved value through extends, with the parent", async () => {
+			it("should read the resolved value through extends", async () => {
 				await write("default.rogen.json", {
-					extends: "./source.rogen.json",
+					extends: "./core.rogen.json",
 					syncDir: "dist",
 				});
-				await write("source.rogen.json", { rootDirs: ["core"] });
+				await write("core.rogen.json", { rootDirs: ["core"] });
 
 				const base = (await readBase()).unwrap();
 
-				expect(base).toEqual({
-					rootDirs: ["core"],
+				expect(base).toEqual({ rootDirs: ["core"], syncDir: "dist" });
+			});
+
+			it("should read another config's sync dir through extends", async () => {
+				await write("default.rogen.json", { rootDirs: ["src"] });
+				await write("sync.rogen.json", {
+					extends: "./default.rogen.json",
 					syncDir: "dist",
-					parent: "source.rogen.json",
 				});
+
+				expect(
+					await withTarget((target) =>
+						target.syncDirOf("sync.rogen.json")
+					)
+				).toBe("dist");
 			});
 
 			it("should fail with diagnostics when default.rogen.json is broken", async () => {

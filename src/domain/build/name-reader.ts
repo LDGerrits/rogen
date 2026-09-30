@@ -49,20 +49,6 @@ export class NameReader {
 
 	constructor(private readonly keys: DeclaredKeys) {}
 
-	/** The file name with the span's suffix rewritten as `<separator><key>`. */
-	static withSeparatorSuffix(
-		fileName: string,
-		span: SuffixSpan,
-		separator: string
-	): string {
-		return (
-			fileName.slice(0, span.start) +
-			separator +
-			span.key +
-			fileName.slice(span.start + span.length)
-		);
-	}
-
 	/** A folder written `(name)` is the folder `name`, left out of the tree. */
 	static unwrapInvisibleFolder(folderName: string): {
 		readonly name: string;

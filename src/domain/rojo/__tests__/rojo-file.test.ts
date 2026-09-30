@@ -92,46 +92,6 @@ describe("domain/rojo/rojo-file", () => {
 			});
 		});
 
-		describe("suffixSeparator", () => {
-			const script = new RojoFile("Save.luau");
-
-			it.each(["server", "client", "plugin"])(
-				"should use a dash for %s on a script, which Rojo reads as the class",
-				(key) => {
-					expect(script.suffixSeparator(key)).toBe("-");
-				}
-			);
-
-			it("should compare a script key without regard to case", () => {
-				expect(script.suffixSeparator("Server")).toBe("-");
-			});
-
-			it.each(["shared", "mock", "dev"])(
-				"should use a dot for %s on a script",
-				(key) => {
-					expect(script.suffixSeparator(key)).toBe(".");
-				}
-			);
-
-			it.each(["model", "project"])(
-				"should use a dash for %s on a data file, which Rojo reads as a model or a project",
-				(key) => {
-					expect(
-						new RojoFile("Config.json").suffixSeparator(key)
-					).toBe("-");
-				}
-			);
-
-			it("should use a dot for a script class name on a data file or a model", () => {
-				const data = new RojoFile("Config.json");
-				const model = new RojoFile("Gun.rbxm");
-
-				expect(data.suffixSeparator("server")).toBe(".");
-				expect(model.suffixSeparator("server")).toBe(".");
-				expect(model.suffixSeparator("model")).toBe(".");
-			});
-		});
-
 		describe("scriptNameOf", () => {
 			it.each(["client", "plugin", "server"])(
 				"should strip a trailing .%s",

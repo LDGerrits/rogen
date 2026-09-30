@@ -3,7 +3,7 @@
 		[
 			"build",
 			"default",
-			"source"
+			"sync"
 		]
 	]
 }

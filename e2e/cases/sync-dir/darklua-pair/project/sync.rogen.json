@@ -1,0 +1,4 @@
+{
+	"extends": "./default.rogen.json",
+	"syncDir": "dist"
+}

@@ -2,42 +2,36 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Created source.rogen.json.
   Created default.rogen.json.
+  Created sync.rogen.json.
   Next steps
     Run each in its own terminal:
-      rogen watch default source
-      rojo serve default.project.json
+      rogen watch default sync
+      rojo serve sync.project.json
     Have Darklua process your code into the sync dir:
       darklua process src dist
-    Add your own routes under "routes" in source.rogen.json.
-    Add tags under "tags" in source.rogen.json to swap in variants like Analytics.mock.luau.
+    Add your own routes under "routes" in default.rogen.json.
+    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
+    Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch
   Wrote 2 files.
 
-$ rogen build default source
+$ rogen build default sync
 exit 0
 stdout:
-  rogen build · default, source
+  rogen build · default, sync
   default
     default.project.json · wrote
-  source
-    source.project.json · wrote
+  sync
+    sync.project.json · wrote
   Built 2 configs.
 
 written:
   default.project.json
   default.rogen.json
-  source.project.json
-  source.rogen.json
+  sync.project.json
+  sync.rogen.json
 
 default.rogen.json:
-{
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./source.rogen.json",
-	"syncDir": "dist"
-}
-
-source.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"rootDirs": [
@@ -51,12 +45,19 @@ source.rogen.json:
 	}
 }
 
+sync.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"syncDir": "dist"
+}
+
 $ rojo sourcemap default.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
-    Save: Script  <- dist/Save.server.luau
+    Save: Script  <- src/Save.server.luau
 
-$ rojo sourcemap source.project.json
+$ rojo sourcemap sync.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
-    Save: Script  <- src/Save.server.luau
+    Save: Script  <- dist/Save.server.luau

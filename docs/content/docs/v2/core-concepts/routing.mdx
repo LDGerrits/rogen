@@ -88,10 +88,10 @@ Level2Server.luau   ->  ServerScriptService/.../Level2
 HTTPServer.luau        (not a match: the capital must follow a lower-case letter or digit)
 ```
 
-The matching suffix is stripped from the instance name. Prefixes don't route. A capital suffix routes with a warning, because it's usually a word that belongs to the name: see [Escaping an Accidental Route](#escaping-an-accidental-route).
+The matching suffix is stripped from the instance name. Prefixes don't route. A name can end in a route key by accident, so check [Escaping an Accidental Route](#escaping-an-accidental-route).
 
-<Callout type="warn" title="Suffix routing is supported, not recommended">
-	Rojo reads `.server` and `.client` at the end of a script name as the script's class: `Hud.client.luau` becomes a `LocalScript`. A route suffix decides **where** a script goes, never **what class** it is. So routing a *module* by suffix needs another separator (`Combat-server.luau`), which lands in `ServerScriptService` as a `ModuleScript`. That reads confusingly next to `Hud.server.luau`. Prefer routing folders and use suffixes for the odd file.
+<Callout type="info" title="A suffix sets where a script goes, not its class">
+	Rojo reads `.server` and `.client` at the end of a script name as the script's class: `Hud.client.luau` becomes a `LocalScript`. A route suffix decides **where** a script goes, never **what class** it is. So routing a *module* by suffix needs a capital (`CombatServer.luau`) or another separator (`Combat-server.luau`), which lands in `ServerScriptService` as a `ModuleScript`. Routing folders read best when a feature has several files per side, and suffixes suit a small feature with a file or two.
 </Callout>
 
 Tag suffixes are different: `Analytics.mock.luau` means nothing to Rojo. See [Tags](/docs/v2/core-concepts/tags).
@@ -129,7 +129,7 @@ src/Inventory/Hud.client.luau            ->  StarterPlayer/StarterPlayerScripts/
 
 ### Escaping an Accidental Route
 
-Suffix matching is flexible, so a name can route by accident: with a `client` route, `HttpClient.luau` goes to `client` and loses its `Client` suffix, becoming `Http`. `rogen build` warns about every file a capital suffix routes, naming where it lands. When the routing is intended, write the suffix with a separator and the warning goes away. The warning suggests a dot (`Util.shared.luau`), or a dash when Rojo reads that suffix itself: `.server`, `.client` and `.plugin` on a script, `.model` and `.project` on a data file (`Http-client.luau`). When it isn't, put the file under an outer route, and that route governs instead:
+Suffix matching is flexible, so a name can route by accident: with a `client` route, `HttpClient.luau` goes to `client` and loses its `Client` suffix, becoming `Http`. `rogen where` shows where a file lands and which suffix routed it. To keep such a name, put the file under an outer route, and that route governs instead:
 
 ```
 src/Net/HttpClient.luau         ->  StarterPlayer/StarterPlayerScripts/Net/Http

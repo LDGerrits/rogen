@@ -10,12 +10,14 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { InstanceReference } from "../roblox/roblox.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildOptions,
 	BuildService,
 	BuiltProject,
 	FileLocation,
+	InstanceLocation,
 	OutputFile,
 	WrittenProject,
 } from "./build-service.js";
@@ -118,6 +120,23 @@ export class CoreBuildService implements BuildService {
 		return placement.isErr()
 			? err(new DiagnosticsError(placement.error))
 			: ok(new FileLocator(placement.value).locate(paths));
+	}
+
+	async locateInstances(
+		config: ResolvedConfig,
+		references: readonly InstanceReference[]
+	): Promise<Result<InstanceLocation[], DiagnosticsError>> {
+		await this.indexService.ensureIndexed(config.rootDirs);
+		const placement = this.place(this.indexService, config);
+		if (placement.isErr())
+			return err(new DiagnosticsError(placement.error));
+		const locator = new FileLocator(placement.value);
+		return ok(
+			references.map((reference) => ({
+				reference,
+				files: locator.locateInstance(reference),
+			}))
+		);
 	}
 
 	private place(

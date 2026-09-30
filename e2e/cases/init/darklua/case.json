@@ -6,7 +6,7 @@
 		[
 			"build",
 			"default",
-			"source"
+			"sync"
 		]
 	]
 }

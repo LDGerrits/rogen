@@ -141,7 +141,6 @@ describe("CoreBuildService.locate", () => {
 					{
 						tag: "mock",
 						form: "capital",
-						separatorName: "Data.mock.luau",
 					},
 				],
 			},

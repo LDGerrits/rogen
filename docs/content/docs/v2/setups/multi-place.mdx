@@ -112,31 +112,35 @@ The config's name names its project file: `lobby.rogen.json` writes `lobby.proje
 
 ## With Darklua
 
-Each place needs a project file for Studio **and** a source-rooted one for Darklua, so a place is two configs: `lobby-source` extends `source` and adds the place's root directory, and `lobby` extends `lobby-source` and adds a sync directory.
-
-```json title="lobby-source.rogen.json"
-{
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./source.rogen.json",
-	"rootDirs": ["src", "places/lobby"]
-}
-```
+Each place needs a source-rooted project file for Darklua **and** a synced one for Studio, so a place is two configs: `lobby` extends `default` and adds the place's root directory, and `lobby-sync` extends `lobby` and adds a sync directory.
 
 ```json title="lobby.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./lobby-source.rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": ["src", "places/lobby"]
+}
+```
+
+```json title="lobby-sync.rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./lobby.rogen.json",
 	"syncDir": "dist/lobby"
 }
 ```
 
-The common root of `src` and `places/lobby` is the repo root, so the synced paths are `dist/lobby/src/…` and `dist/lobby/places/lobby/…`. Run Darklua once per root directory to match:
+The common root of `src` and `places/lobby` is the repo root, so the synced paths are `dist/lobby/src/…` and `dist/lobby/places/lobby/…`. Run Darklua once per root directory to match, keep the place's sourcemap current for Darklua's `convert_require`, and serve the synced project:
 
 ```bash
 darklua process src dist/lobby/src
 darklua process places/lobby dist/lobby/places/lobby
-rogen watch lobby lobby-source
+rogen watch lobby lobby-sync
+rojo sourcemap lobby.project.json --output sourcemap.json --watch
+rojo serve lobby-sync.project.json
 ```
+
+luau-lsp regenerates `sourcemap.json` from `default.project.json`, which holds only the shared code, and would overwrite the place's. While you work on a place, point luau-lsp at it with `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 
 A merged source config for every place wouldn't work: Darklua rewrites requires against the sourcemap, so the sourcemap must be the place's own tree, and places that override each other's files would collapse into one.
 
