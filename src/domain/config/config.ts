@@ -56,11 +56,7 @@ export function rootDirOverlap(
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
-/**
- * The route and tag keys a config declares. A name spells a key exactly or
- * with the first letter in the other case, so two keys that differ only in
- * that letter would match the same names.
- */
+/** The route and tag keys a config declares; a name spells a key exactly or with its first letter flipped. */
 export class DeclaredKeys {
 	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";

@@ -342,10 +342,18 @@ export interface RoutedFile {
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
 }
 
-/** What the folders and markers above a file, then its own suffixes, claim for it. */
-interface Claims {
+/** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
+class Claims {
 	route: { readonly key: string; readonly match: MatchForm } | undefined;
-	readonly tags: TagMatch[];
+	readonly tags: TagMatch[] = [];
+
+	claimRoute(key: string, match: MatchForm): void {
+		this.route ??= { key, match };
+	}
+
+	claimTag(tag: TagMatch): void {
+		this.tags.push(tag);
+	}
 }
 
 interface LeafReading {
@@ -385,7 +393,7 @@ export class Router {
 		markers: ReadonlyMap<string, string[]>
 	): Omit<RoutedFile, "entry"> | undefined {
 		const read = this.readings.entryAt(entry.source);
-		const claims: Claims = { route: undefined, tags: [] };
+		const claims = new Claims();
 		const folders = this.readFolders(entry, read, markers, claims);
 		const { name, separatorName, buriedScriptSuffix } = this.readLeaf(
 			entry,
@@ -428,8 +436,8 @@ export class Router {
 				)?.key;
 				if (key === undefined) continue;
 				if (this.keys.isTag(key))
-					claims.tags.push({ tag: key, form: "marker" });
-				else claims.route ??= { key, match: "marker" };
+					claims.claimTag({ tag: key, form: "marker" });
+				else claims.claimRoute(key, "marker");
 			}
 		};
 
@@ -437,9 +445,9 @@ export class Router {
 		const folders: FolderRead[] = [];
 		for (const folder of read.folders) {
 			if (folder.kind === "route")
-				claims.route ??= { key: folder.key, match: "folder" };
+				claims.claimRoute(folder.key, "folder");
 			else if (folder.kind === "tag")
-				claims.tags.push({ tag: folder.key, form: "folder" });
+				claims.claimTag({ tag: folder.key, form: "folder" });
 			else if (!folder.invisible) folders.push(folder);
 			applyMarkers(folder.dir);
 		}
@@ -455,14 +463,12 @@ export class Router {
 		const tagSpans = match.spans.filter((span) =>
 			this.keys.isTag(span.key)
 		);
-		claims.tags.push(
-			...tagSpans.map((span) => this.asTagMatch(span, fileName))
-		);
+		for (const span of tagSpans)
+			claims.claimTag(this.asTagMatch(span, fileName));
 		const routeSpan = claims.route
 			? undefined
 			: match.spans.find((span) => this.keys.routeKeys.has(span.key));
-		if (routeSpan)
-			claims.route = { key: routeSpan.key, match: routeSpan.form };
+		if (routeSpan) claims.claimRoute(routeSpan.key, routeSpan.form);
 		const separatorName =
 			routeSpan && this.separatorNameOf(fileName, routeSpan);
 

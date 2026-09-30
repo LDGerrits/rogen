@@ -15,12 +15,7 @@ function compareVersions(a: string, b: string): number {
 	return 0;
 }
 
-/**
- * The paths a release publishes to. A pre-release only gets its exact version,
- * so a breaking change can't reach stable users. An alias is skipped when a
- * newer stable release is already published, so a late patch to an older line
- * can't roll it back.
- */
+/** The paths a release publishes to: a pre-release only its exact version, and an alias only when no newer stable release holds it. */
 export function schemaChannels(
 	version: string,
 	published: readonly string[] = []

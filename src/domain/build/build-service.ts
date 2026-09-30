@@ -70,11 +70,7 @@ export interface BuildSummary {
 }
 
 export interface BuildOptions {
-	/**
-	 * Also check that the sync dir holds the compiler's output for every root
-	 * dir and meta file. That only changes when the compiler runs, so a watch
-	 * checks it when a config loads rather than on every rebuild.
-	 */
+	/** Also checks the sync dir holds the compiler's output; that only changes when the compiler runs, so a watch does it on load. */
 	readonly checkSyncDir?: boolean;
 }
 
@@ -138,10 +134,7 @@ export class OutputFile {
 	}
 }
 
-/**
- * Builds configs from the index and writes them. Every answer comes from the
- * same stages, so what `locate` reports is what `build` does.
- */
+/** Builds configs from the index and writes them; `locate` and `build` share every stage. */
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
@@ -156,20 +149,12 @@ export interface BuildService {
 		options?: BuildOptions
 	): Promise<Result<BuiltProject, DiagnosticsError>>;
 
-	/**
-	 * Writes `project` to its out file, leaving it untouched when its bytes
-	 * wouldn't change, so Rojo doesn't re-sync and `watch` doesn't rebuild on
-	 * its own write.
-	 */
+	/** Writes `project` to its out file, leaving it untouched when its bytes wouldn't change. */
 	write(
 		project: BuiltProject
 	): Promise<Result<WrittenProject, DiagnosticsError>>;
 
-	/**
-	 * Where each of `paths` lands in `config`'s tree, or why it lands nowhere;
-	 * every scanned path without `paths`. A directory stands for what's in it,
-	 * and a source file that doesn't exist yet is placed as if it did.
-	 */
+	/** Where each of `paths` lands in `config`'s tree, or why it lands nowhere; a directory stands for what's in it. */
 	locate(
 		config: ResolvedConfig,
 		paths?: readonly string[]

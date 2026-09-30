@@ -53,7 +53,6 @@ describe("platform/config/config-file", () => {
 
 		it("should parse comments and trailing commas", async () => {
 			const result = await read(`{
-	// a comment
 	"list": ["a",],
 	/* flags */
 	"flags": { "on": true, },

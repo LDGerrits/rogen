@@ -188,12 +188,7 @@ export class TreeAssembler {
 		};
 	}
 
-	/**
-	 * Directories whose every file on disk is placed under its Rojo name, mapped
-	 * to the instance path the directory becomes. Only the outermost of nested
-	 * candidates is kept, and only a directory that names its own node: Rojo would
-	 * apply a routing, tag or invisible folder's `init.meta.json` to its parent.
-	 */
+	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
 	private collapsibleDirs(
 		files: readonly RoutedFile[],
 		leftOut: readonly string[],

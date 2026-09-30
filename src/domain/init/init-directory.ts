@@ -130,11 +130,7 @@ export class InitDirectory {
 			: undefined;
 	}
 
-	/**
-	 * The first reason `entries` can't be a config's root dirs, or `undefined`.
-	 * The config's own overlap rule decides what would be rejected, so init never
-	 * writes a config that can't build.
-	 */
+	/** The first reason `entries` can't be a config's root dirs, decided by the config's own overlap rule. */
 	rootDirsProblem(entries: readonly string[]): string | undefined {
 		if (entries.length === 0) return "Enter at least one root dir.";
 		for (const entry of entries) {

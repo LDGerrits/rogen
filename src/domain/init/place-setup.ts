@@ -20,12 +20,7 @@ export interface PlaceJoin {
 	readonly base: BaseConfig;
 }
 
-/**
- * A place extends `default.rogen.json` and adds its own folder to the root
- * dirs. When code is compiled or processed before Rojo syncs it, the place
- * syncs from its own subfolder of the sync dir; plain Luau syncs from the
- * root dirs themselves.
- */
+/** A place extends `default.rogen.json` with its own root dir, syncing from its own subfolder when code is compiled or processed. */
 export class PlaceSetup implements Setup {
 	private constructor(
 		private readonly directory: InitDirectory,

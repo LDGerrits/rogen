@@ -89,11 +89,7 @@ export const PROJECT_SUFFIX = ".project.json";
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
-/**
- * A Rojo project file being edited. The owner decides what an ancestor
- * created on its behalf looks like, so the same model serves Rogen's
- * generated tree and the templates `init` writes.
- */
+/** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
 export class RojoProject<T extends ProjectFile = RojoTree> {
 	private readonly project: T;
 
@@ -104,11 +100,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		this.project = structuredClone(project);
 	}
 
-	/**
-	 * Reads a project file. A file without a `tree` gets a bare DataModel, so
-	 * a template may carry only project fields. Fails when the text isn't a
-	 * JSON object, or its `tree` isn't one.
-	 */
+	/** A file without a `tree` gets a bare DataModel; it fails when the text, its tree or a node in it isn't an object. */
 	static parse(
 		text: string,
 		createContainer?: ContainerFactory
@@ -118,15 +110,35 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		if (!isObject(parsed.value)) {
 			return err(new Error("it must be a JSON object."));
 		}
-		const { tree = { $className: "DataModel" } } = parsed.value;
+		const tree = parsed.value.tree ?? { $className: "DataModel" };
 		if (!isObject(tree))
 			return err(new Error("its tree must be an object."));
+		const notNode = RojoProject.findNonNode(tree, []);
+		if (notNode) {
+			return err(
+				new Error(`"${instanceKey(notNode)}" must be an object.`)
+			);
+		}
 		return ok(
 			new RojoProject<ParsedProjectFile>(
 				{ ...parsed.value, tree },
 				createContainer
 			)
 		);
+	}
+
+	private static findNonNode(
+		node: RojoNode,
+		at: readonly string[]
+	): readonly string[] | undefined {
+		for (const [key, value] of Object.entries(node)) {
+			if (key.startsWith("$")) continue;
+			const here = [...at, key];
+			if (!isObject(value)) return here;
+			const inner = RojoProject.findNonNode(value, here);
+			if (inner) return inner;
+		}
+		return undefined;
 	}
 
 	/** The project's own name, when it has a non-empty one. */
@@ -151,10 +163,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			: undefined;
 	}
 
-	/**
-	 * A project file with this project's fields, given a name, a tree and
-	 * globs. Fields Rogen doesn't model pass through untouched.
-	 */
+	/** A project file with this project's fields and the given name, tree and globs; fields Rogen doesn't model pass through. */
 	toFile(parts: {
 		readonly name: string;
 		readonly tree: RojoNode;
@@ -187,12 +196,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		return isObject(current) ? current : undefined;
 	}
 
-	/**
-	 * Merges `data` into the node at `instancePath`, creating each missing
-	 * ancestor with the container factory. A node that gets a `$path` drops
-	 * a `Folder` class, since Rojo takes the class from what the path holds.
-	 * Throws when an ancestor isn't a node.
-	 */
+	/** Merges `data` into the node at `instancePath`, creating missing ancestors; a node that gets a `$path` drops a `Folder` class. Throws when an ancestor isn't a node. */
 	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
 		if (instancePath.length === 0) return;
 		const parent = this.ensureNode(instancePath.slice(0, -1));
@@ -257,11 +261,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		visit(this.project.tree);
 	}
 
-	/**
-	 * Adds each `$path` node of `additions` that this project doesn't have,
-	 * creating missing containers the way `additions` does. A node already
-	 * where one would go wins, and its `$path` is reported as skipped.
-	 */
+	/** Adds the `$path` nodes of `additions` this project lacks; a node already there wins and its `$path` is skipped. */
 	mergeMissing(additions: RojoProject<ProjectFile>): {
 		added: MountedPath[];
 		skipped: MountedPath[];

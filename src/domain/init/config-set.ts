@@ -4,12 +4,7 @@ import { projectFileName } from "../rojo/rojo-project.js";
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "./init-directory.js";
 
-/**
- * The names of what `init` writes for one config name. A processor that reads
- * the root dirs themselves, rather than a compiler's output, resolves requires
- * from a source-rooted project, so its name gets a pair: a source config rooted
- * at the root dirs, and the synced one extending it. Every other name gets one.
- */
+/** The names `init` writes for one config name; a Darklua repo without a compiler gets a source config and a synced one. */
 export class ConfigSet {
 	/** The config a project starts with. */
 	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);

@@ -22,24 +22,8 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 			for (const [path, why] of source) this.reasons.set(path, why);
 	}
 
-	get size(): number {
-		return this.reasons.size;
-	}
-
 	get(source: string): LeftOut | undefined {
 		return this.reasons.get(source);
-	}
-
-	has(source: string): boolean {
-		return this.reasons.has(source);
-	}
-
-	keys(): IterableIterator<string> {
-		return this.reasons.keys();
-	}
-
-	values(): IterableIterator<LeftOut> {
-		return this.reasons.values();
 	}
 
 	[Symbol.iterator](): IterableIterator<[string, LeftOut]> {

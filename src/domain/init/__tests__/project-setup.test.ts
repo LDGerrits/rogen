@@ -40,7 +40,6 @@ const mounts = {
 	},
 };
 
-/** What an unattended run answers, as the choices a plan starts from. */
 const defaultProjectChoices = async (
 	spec: WorkspaceSpec,
 	name: string,

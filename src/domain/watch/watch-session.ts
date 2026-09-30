@@ -34,7 +34,7 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** The problems in a config's latest load; with errors, the last valid version is still what builds. */
+/** The problems in a config's latest load, none when it loaded cleanly; with errors, the last valid version is still what builds. */
 export interface ConfigNotice {
 	readonly file: string;
 	readonly errors: readonly Diagnostic[];
@@ -123,12 +123,7 @@ export class WatchPlan {
 	}
 }
 
-/**
- * A running watch: it watches every config's root dirs and files, reloads a
- * config that changes, re-plans what it watches until that settles, and
- * rebuilds each affected config incrementally. Rebuilds of one config never
- * overlap, and updates fire in the order their changes arrived.
- */
+/** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
 export class WatchSession extends AbstractDisposable {
 	private readonly _onDidUpdate = this._register(new Emitter<WatchUpdate>());
 	readonly onDidUpdate: Event<WatchUpdate> = this._onDidUpdate.event;
@@ -144,6 +139,7 @@ export class WatchSession extends AbstractDisposable {
 	private readonly changedConfigs = new Set<string>();
 	/** The files each config's latest build read, beyond the config files themselves. */
 	private readonly readFiles = new Map<string, ReadonlySet<string>>();
+	private readonly failing = new Set<string>();
 	private rebuilding = 0;
 	private settled = false;
 	private notices: ConfigNotice[] = [];
@@ -218,13 +214,11 @@ export class WatchSession extends AbstractDisposable {
 		super[Symbol.dispose]();
 	}
 
-	/**
-	 * The tree is a function of the directory listing and the files a build
-	 * read, so an update to any other file changes nothing. Until a build has
-	 * settled what it reads, every update counts.
-	 */
+	/** An update to a file no build read changes nothing; while what a build read is unknown, every update counts. */
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
-		if (!this.settled || this.rebuilding > 0) return [...changes];
+		if (!this.settled || this.rebuilding > 0 || this.failing.size > 0) {
+			return [...changes];
+		}
 		const contentFiles = this.configService.files;
 		return changes.filter(
 			(change) =>
@@ -237,13 +231,13 @@ export class WatchSession extends AbstractDisposable {
 	}
 
 	private noteConfig(entry: ConfigEntry): void {
-		const errors = entry.diagnostics.filter(isError);
-		const warnings = entry.diagnostics.filter(
-			(diagnostic) => !isError(diagnostic)
-		);
-		if (errors.length + warnings.length > 0) {
-			this.notices.push({ file: entry.file, errors, warnings });
-		}
+		this.notices.push({
+			file: entry.file,
+			errors: entry.errors,
+			warnings: entry.diagnostics.filter(
+				(diagnostic) => !isError(diagnostic)
+			),
+		});
 	}
 
 	/** `load` also checks the sync dir, which only changes when the config or its compiler does. */
@@ -254,12 +248,10 @@ export class WatchSession extends AbstractDisposable {
 		const entry = this.configService.getConfig(file);
 		const config = entry?.resolved;
 		if (!entry || !config) return undefined;
-		const failed = (diagnostics: readonly Diagnostic[]): RebuildReport => ({
-			entry,
-			config,
-			outcome: "failed",
-			diagnostics,
-		});
+		const failed = (diagnostics: readonly Diagnostic[]): RebuildReport => {
+			this.failing.add(file);
+			return { entry, config, outcome: "failed", diagnostics };
+		};
 
 		const built = await this.buildService.build(config, {
 			checkSyncDir: load,
@@ -267,6 +259,7 @@ export class WatchSession extends AbstractDisposable {
 		if (built.isErr()) return failed(built.error.diagnostics);
 		const written = await this.buildService.write(built.value);
 		if (written.isErr()) return failed(written.error.diagnostics);
+		this.failing.delete(file);
 		this.readFiles.set(file, new Set(built.value.readFiles));
 
 		return {

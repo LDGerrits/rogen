@@ -200,6 +200,32 @@ describe("WatchSession", () => {
 		expect(updates).toHaveLength(2);
 	});
 
+	it("should rebuild for the fix to a folder meta that made the build fail", async () => {
+		await fs.createDirectory("/repo/src/Combat");
+		await fs.writeFile("/repo/src/Combat/Hit.luau", "");
+		await fs.writeFile("/repo/src/Combat/init.meta.json", "{ broken");
+		await start();
+		expect(updates[0].reports[0].outcome).toBe("failed");
+
+		await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
+		await settle();
+
+		expect(updates).toHaveLength(2);
+		expect(updates[1].reports[0].outcome).toBe("wrote");
+	});
+
+	it("should report a config with no problems, so a fixed one is forgotten", async () => {
+		await start();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
+		await writeConfig("/repo/default.rogen.json", {});
+		await settle();
+
+		const notice = updates[updates.length - 1].notices[0];
+		expect(notice.file).toBe("/repo/default.rogen.json");
+		expect(notice.errors).toEqual([]);
+	});
+
 	it("should run nothing new once it stops, and stop the watcher", async () => {
 		const session = await start();
 		const stop = jest.spyOn(watcher, "stop");

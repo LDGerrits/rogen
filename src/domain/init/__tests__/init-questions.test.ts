@@ -35,7 +35,6 @@ const askInitChoices = async (
 	return asked.isErr() ? asked : ok(asked.value ? setup.answers : undefined);
 };
 
-/** What an unattended run answers, which is what a user accepting every default gets. */
 const defaultInitChoices = async (
 	workspace: WorkspaceSpec,
 	name = "default",

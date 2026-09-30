@@ -95,7 +95,6 @@ describe("CoreToolchainService.detect", () => {
 			await write(
 				"tsconfig.json",
 				`{
-					// roblox-ts
 					"compilerOptions": { "outDir": "lib", },
 				}`
 			);

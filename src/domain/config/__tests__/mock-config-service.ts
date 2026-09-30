@@ -7,7 +7,6 @@ import { AbstractConfigService } from "../abstract-config-service.js";
 import { ResolvedConfig, ResolvedTemplate } from "../config.js";
 import { ConfigEntry, ConfigService } from "../config-service.js";
 
-/** The fields of a resolved config as a test writes them: routes as text, a template as the JSON it holds. */
 export interface ResolvedConfigSpec {
 	readonly file?: string;
 	readonly name?: string;
@@ -50,7 +49,6 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	});
 }
 
-/** `entry` overrides the entry's own fields, e.g. its diagnostics, or `resolved: undefined` for a config that never resolved. */
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
 	file = "/repo/default.rogen.json",

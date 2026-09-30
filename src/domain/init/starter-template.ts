@@ -50,17 +50,13 @@ export class StarterTemplate {
 		return new StarterTemplate(project);
 	}
 
-	/** `undefined` when `text` isn't a project object with a tree. */
+	/** `undefined` when `text` isn't a project file. */
 	static parse(text: string): StarterTemplate | undefined {
 		const project = RojoProject.parse(text);
 		return project.isOk() ? new StarterTemplate(project.value) : undefined;
 	}
 
-	/**
-	 * This template without the nodes whose `$path` points into `dirs`, which
-	 * Rogen generates now, and where those nodes were. `undefined` when a dir is
-	 * the whole folder, so it can't tell.
-	 */
+	/** This template without the nodes that point into `dirs`, and where they were; `undefined` when a dir is the whole folder. */
 	withoutNodesIn(
 		dirs: readonly string[]
 	): { template: StarterTemplate; removed: string[] } | undefined {
@@ -77,11 +73,7 @@ export class StarterTemplate {
 		};
 	}
 
-	/**
-	 * This template with the `mounts` it doesn't mount yet, itself or through a
-	 * parent folder, each as `<path> at <node>`, in tree order. A node already
-	 * where a mount would go wins, and every mount at or below it is `skipped`.
-	 */
+	/** This template plus the `mounts` it lacks, as `<path> at <node>`; a node already there wins and its mounts are `skipped`. */
 	withMounts(mounts: readonly Mount[]): {
 		template: StarterTemplate;
 		added: string[];

@@ -8,14 +8,13 @@ import { WorkspaceDetector } from "./workspace-detector.js";
 export class CoreToolchainService implements ToolchainService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly syncTools: readonly SyncTool[] = [
-		new Darklua(),
-		new RobloxTsCompiler(),
-	];
+	private readonly syncTools: readonly SyncTool[];
 	private readonly detector: WorkspaceDetector;
 
 	constructor(fileSystemService: FileSystemService) {
-		this.detector = new WorkspaceDetector(fileSystemService, [
+		const darklua = new Darklua();
+		this.syncTools = [darklua, new RobloxTsCompiler()];
+		this.detector = new WorkspaceDetector(fileSystemService, darklua, [
 			new Luau(),
 			new RobloxTsDetector(fileSystemService),
 		]);

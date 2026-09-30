@@ -19,10 +19,8 @@ export const directory = path.resolve("/mock/my-game");
 
 export interface DirectorySpec {
 	readonly workspace?: WorkspaceSpec;
-	/** The entries already in the directory. */
 	readonly existing?: readonly string[];
 	readonly givenName?: string;
-	/** What `default.rogen.json` resolves to, relative to the directory, when it exists. */
 	readonly defaultConfig?: {
 		readonly rootDirs: readonly string[];
 		readonly syncDir?: string;
@@ -32,7 +30,6 @@ export interface DirectorySpec {
 	readonly path?: string;
 }
 
-/** An `InitDirectory` over in-memory collaborators. */
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	const dir = spec.path ?? directory;
 	const file = path.join(dir, "default.rogen.json");
@@ -57,7 +54,6 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	);
 }
 
-/** A plan as the setups' tests read it: the template, the configs and the compiler's files apart. */
 export interface LegacyPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
@@ -81,7 +77,6 @@ export const legacyPlan = ({
 	nextSteps,
 });
 
-/** Plans what `setup` has been asked into a plan, failing the way the service does. */
 export function planOf(
 	setup: Setup,
 	target: InitDirectory

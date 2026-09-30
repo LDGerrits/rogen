@@ -24,11 +24,10 @@ interface DetectedPackages {
 
 /** Reads what a workspace uses of the languages and tools it was given. */
 export class WorkspaceDetector {
-	private readonly darklua = new Darklua();
-
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
 		private readonly fileSystemService: FileSystemService,
+		private readonly darklua: Darklua,
 		private readonly languages: readonly [
 			LanguageDetector,
 			...LanguageDetector[],
@@ -53,6 +52,7 @@ export class WorkspaceDetector {
 		]);
 
 		return new DetectedWorkspace({
+			darklua: this.darklua,
 			languages,
 			usesDarklua,
 			codeFolders,

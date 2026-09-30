@@ -37,12 +37,7 @@ const splitList = (value: string): string[] =>
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");
 
-/**
- * The questions `init` asks, one method each, from a prompt. Every question
- * owns its default: a run that can't ask takes it without prompting, so the
- * answers of an unattended run are the ones a user accepting everything gets.
- * A question resolves to `undefined` when the user cancels.
- */
+/** The questions `init` asks; each owns its default, which a run that can't ask takes without prompting. */
 export class InitQuestions {
 	constructor(private readonly promptService: PromptService) {}
 
@@ -50,10 +45,7 @@ export class InitQuestions {
 		return this.promptService.isInteractive;
 	}
 
-	/**
-	 * What to add beside an existing `default.rogen.json`. A run that can't
-	 * ask adds a separate config, the one kind that needs no further answers.
-	 */
+	/** What to add beside `default.rogen.json`; a run that can't ask adds a separate config. */
 	async whatToAdd(): Promise<Addition | undefined> {
 		if (!this.interactive) return "separate";
 		return this.promptService.select<Addition>({
@@ -99,10 +91,7 @@ export class InitQuestions {
 		});
 	}
 
-	/**
-	 * A name for what is being added. It has no default, so a run that can't
-	 * ask stops here; the name is on the command line instead.
-	 */
+	/** A name has no default, so a run that can't ask stops here. */
 	async name(
 		directory: InitDirectory,
 		{ message, description, filesFor }: NameQuestion
@@ -200,10 +189,7 @@ export class InitQuestions {
 			: splitList(answer).map(normalizeDir);
 	}
 
-	/**
-	 * Copies the first hand-written project file among `outputs`, the ones the
-	 * new configs would replace, so a build never loses it. Otherwise starts new.
-	 */
+	/** Copies the hand-written project file a new config would replace, else starts a new template. */
 	async template(
 		directory: InitDirectory,
 		outputs: readonly string[]

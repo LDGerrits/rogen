@@ -92,11 +92,7 @@ export class BuildTemplate {
 		return this.templateFile ? path.dirname(this.templateFile) : "";
 	}
 
-	/**
-	 * A `$path` target from the template is real source on disk (Wally's
-	 * `Packages`, rbxts's `include`), so it is only rebased, never moved under
-	 * `syncDir`.
-	 */
+	/** A template `$path` is real source on disk, so it is rebased, never moved under `syncDir`. */
 	private rebase(target: string): string {
 		return this.layout.relativeToProject(
 			path.resolve(this.templateDir, target)

@@ -19,7 +19,6 @@ describe("domain/config/core-config-service", () => {
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
 
-	/** A config as plain values: routes as the text they were written in, the template as the project it holds. */
 	const plain = (config: ResolvedConfig | undefined) =>
 		config && {
 			file: config.file,

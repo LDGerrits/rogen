@@ -22,7 +22,6 @@ const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
 export const syncTools = toolchain.getSyncTools();
 
-/** The real toolchain with `extraTools` added to its sync tools. */
 const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
 	_serviceBrand: undefined,
 	detect: (directory) => toolchain.detect(directory),

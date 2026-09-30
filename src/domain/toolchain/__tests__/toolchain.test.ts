@@ -119,6 +119,7 @@ describe("DetectedWorkspace", () => {
 		expect(
 			() =>
 				new DetectedWorkspace({
+					darklua: darklua,
 					languages: [],
 					usesDarklua: false,
 					packageDirs: new Set(),

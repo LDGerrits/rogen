@@ -255,6 +255,30 @@ describe("RojoProject", () => {
 			);
 		});
 
+		it("should treat a null tree as a missing one", () => {
+			const project = RojoProject.parse('{ "tree": null }').unwrap();
+
+			expect(project.getTree().tree).toEqual({ $className: "DataModel" });
+		});
+
+		it("should fail when a node below the tree isn't an object, which no insert could go through", () => {
+			const result = RojoProject.parse(
+				'{ "tree": { "ReplicatedStorage": { "Packages": 5 } } }'
+			);
+
+			expect(result.isErr() && result.error.message).toBe(
+				'"ReplicatedStorage/Packages" must be an object.'
+			);
+		});
+
+		it("should leave the $ fields of a node to hold anything", () => {
+			const result = RojoProject.parse(
+				'{ "tree": { "$properties": { "A": 1 }, "$ignoreUnknownInstances": true } }'
+			);
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should create ancestors the plain way unless told otherwise", () => {
 			const project = RojoProject.parse('{ "tree": {} }').unwrap();
 

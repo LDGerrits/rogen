@@ -34,10 +34,7 @@ export class PackageManager {
 		readonly server: string
 	) {}
 
-	/**
-	 * The folders it offers to mount. A manifest means packages are coming, so
-	 * they start ticked, installed or not.
-	 */
+	/** The folders it offers to mount; a manifest means packages are coming, so they start ticked. */
 	mounts(
 		installedDirs: ReadonlySet<string>,
 		hasManifest: boolean
@@ -125,11 +122,7 @@ export interface Compiler {
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
 }
 
-/**
- * A language `init` can set up, as this workspace uses it. Everything that
- * differs between Luau and roblox-ts is answered here, so the planner never
- * names a language. What the workspace holds of it stays inside.
- */
+/** A language `init` can set up, as this workspace uses it; what differs between languages is answered here. */
 export interface Language {
 	readonly id: string;
 	/** As the language question shows it. */
@@ -165,6 +158,7 @@ export interface LanguageDetector {
 }
 
 export interface DetectedWorkspaceFields {
+	readonly darklua: Darklua;
 	/** Every language, as the language question lists them. The first is the one assumed when none is present. */
 	readonly languages: readonly Language[];
 	/** Whether the workspace has a Darklua config. */
@@ -182,7 +176,7 @@ export interface DetectedWorkspaceFields {
 /** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
 	/** Darklua as this workspace can be set up for it. */
-	readonly darklua = new Darklua();
+	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly usesDarklua: boolean;
 	readonly packageManager?: PackageManager;
@@ -195,6 +189,7 @@ export class DetectedWorkspace {
 		if (fields.languages.length === 0) {
 			throw new Error("A workspace needs at least one language.");
 		}
+		this.darklua = fields.darklua;
 		this.languages = fields.languages;
 		this.usesDarklua = fields.usesDarklua;
 		this.packageManager = fields.packageManager;
@@ -250,12 +245,7 @@ export interface SyncTool {
 	readonly metaReplacement?: MetaReplacement;
 }
 
-/**
- * Darklua, the one processor `init` sets up: it rewrites code into a folder
- * of its own, which becomes the sync dir. A language without a compiler has
- * Darklua read the root dirs themselves, so it also needs a project file
- * rooted at the source to resolve requires from.
- */
+/** Darklua, the one processor `init` sets up: it writes processed code into the sync dir, which Rojo syncs instead. */
 export class Darklua implements SyncTool {
 	readonly id = "darklua";
 	/** Where Darklua writes unless told otherwise. */
@@ -270,10 +260,7 @@ export class Darklua implements SyncTool {
 		note: "Darklua converts every .meta.json this way.",
 	};
 
-	/**
-	 * One `darklua process` per directory it reads. Each lands at its path
-	 * relative to their common root, which is where the synced project points.
-	 */
+	/** One `darklua process` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
