@@ -11,10 +11,6 @@ import {
 	ConfigSection,
 } from "../../platform/config/config-models.js";
 import {
-	ConfigRegistry,
-	Extensions,
-} from "../../platform/config/config-registry.js";
-import {
 	Diagnostic,
 	DiagnosticLocation,
 	errorDiagnostic,
@@ -22,9 +18,9 @@ import {
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { Registry } from "../../platform/registry/registry.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoProject } from "../rojo/rojo-project.js";
+import { configDefaults, configSchema } from "./config-schema.js";
 import { ConfigOverrides } from "./config-service.js";
 import {
 	DeclaredKeys,
@@ -63,7 +59,7 @@ export class ConfigLoader {
 		private readonly fileSystemService: FileSystemService,
 		private readonly environmentService: EnvironmentService
 	) {
-		this.reader = new ConfigFileReader(fileSystemService);
+		this.reader = new ConfigFileReader(fileSystemService, configSchema);
 	}
 
 	/** Never throws for a problem the user can cause. */
@@ -215,9 +211,6 @@ class LayeredConfig {
 	) {
 		this.files = [...chain].reverse();
 		const leaf = chain[0];
-		const defaults = Registry.as<ConfigRegistry>(
-			Extensions.Config
-		).getConfigModel();
 		const layers = this.files.map((file) =>
 			LayeredConfig.layerModel(file, file === leaf)
 		);
@@ -234,7 +227,7 @@ class LayeredConfig {
 		this.config = new Config(
 			new ConfigModel(
 				LayeredConfig.absolutize(
-					defaults.contents,
+					configDefaults.contents,
 					path.dirname(leaf.file)
 				)
 			),

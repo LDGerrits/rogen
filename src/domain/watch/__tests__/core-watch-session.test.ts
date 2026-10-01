@@ -1,4 +1,3 @@
-import "../../config/config-schema.js";
 import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";

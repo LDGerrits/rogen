@@ -1,14 +1,8 @@
-import "../config-schema.js";
-import { Registry } from "../../../platform/registry/registry.js";
-import {
-	Extensions,
-	ConfigRegistry,
-} from "../../../platform/config/config-registry.js";
+import { configDefaults, configSchema } from "../config-schema.js";
 
 describe("domain/config/config-schema", () => {
-	describe("contribution", () => {
-		const registry = Registry.as<ConfigRegistry>(Extensions.Config);
-		const schema = registry.getJsonSchema();
+	describe("configSchema", () => {
+		const schema = configSchema;
 
 		const ROOT_FIELDS = [
 			"$schema",
@@ -85,6 +79,17 @@ describe("domain/config/config-schema", () => {
 			for (const field of ROOT_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
+		});
+	});
+
+	describe("configDefaults", () => {
+		it("holds exactly the fields the schema gives a default", () => {
+			expect(configDefaults.contents).toEqual({
+				rootDirs: ["src"],
+				routes: {},
+				tags: {},
+				exclude: [],
+			});
 		});
 	});
 });

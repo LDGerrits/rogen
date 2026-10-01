@@ -1,4 +1,3 @@
-import "../config-schema.js";
 import { ResultError } from "../../../base/result.js";
 import {
 	DiagnosticSeverity,

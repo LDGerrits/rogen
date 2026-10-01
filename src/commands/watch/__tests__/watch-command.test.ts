@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import "../watch-command.js";
-import "../../../domain/config/config-schema.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";

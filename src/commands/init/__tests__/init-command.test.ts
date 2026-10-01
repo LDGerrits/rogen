@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import "../../../domain/config/config-schema.js";
 import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -11,6 +10,7 @@ import { CoreInitService } from "../../../domain/init/core-init-service.js";
 import { InitService } from "../../../domain/init/init-service.js";
 import { SCHEMA_URL } from "../../../domain/config/config.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
+import { configSchema } from "../../../domain/config/config-schema.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
@@ -327,7 +327,7 @@ describe("init command", () => {
 				expect(() => JSON.parse(text)).not.toThrow();
 				expect(
 					(
-						await new ConfigFileReader(memFs).read(
+						await new ConfigFileReader(memFs, configSchema).read(
 							path.join(cwd, file)
 						)
 					).isOk()

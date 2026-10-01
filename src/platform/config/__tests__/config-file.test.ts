@@ -1,56 +1,53 @@
 import { ConfigFileFailure, ConfigFileReader } from "../config-file.js";
-import { ConfigRegistry, Extensions } from "../config-registry.js";
+import { JSONSchema } from "../../../base/json-schema.js";
 import { Result, ResultError } from "../../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
-import { Registry } from "../../registry/registry.js";
 
 const FILE = "/repo/a.json";
+
+const SCHEMA: JSONSchema = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		$schema: { type: "string" },
+		name: { type: "string" },
+		list: { type: "array", items: { type: "string" } },
+		flags: {
+			type: "object",
+			additionalProperties: { type: "boolean" },
+		},
+		words: {
+			type: "object",
+			additionalProperties: { type: "string" },
+		},
+		build: {
+			type: "object",
+			additionalProperties: false,
+			properties: { out: { type: "string" } },
+		},
+		entries: {
+			type: "array",
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: { name: { type: "string" } },
+			},
+		},
+	},
+};
 
 describe("platform/config/config-file", () => {
 	describe("ConfigFileReader", () => {
 		let fs: MemoryFileSystemService;
 		let reader: ConfigFileReader;
 
-		beforeAll(() => {
-			Registry.as<ConfigRegistry>(Extensions.Config).registerConfig({
-				id: "config-file-test",
-				type: "object",
-				properties: {
-					$schema: { type: "string" },
-					name: { type: "string" },
-					list: { type: "array", items: { type: "string" } },
-					flags: {
-						type: "object",
-						additionalProperties: { type: "boolean" },
-					},
-					words: {
-						type: "object",
-						additionalProperties: { type: "string" },
-					},
-					build: {
-						type: "object",
-						additionalProperties: false,
-						properties: { out: { type: "string" } },
-					},
-					entries: {
-						type: "array",
-						items: {
-							type: "object",
-							additionalProperties: false,
-							properties: { name: { type: "string" } },
-						},
-					},
-				},
-			});
-		});
-
 		beforeEach(async () => {
 			fs = new MemoryFileSystemService();
-			reader = new ConfigFileReader(fs);
+			reader = new ConfigFileReader(fs, SCHEMA);
 			await fs.createDirectory("/repo");
 		});
 
