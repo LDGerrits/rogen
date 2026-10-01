@@ -749,6 +749,28 @@ describe("CoreBuildService", () => {
 			expect(result.files).toMatchObject([{ status: "placed" }]);
 			expect(result.instances[0].files).toHaveLength(1);
 		});
+
+		it("should answer an instance from the files that exist, even beside a new path", async () => {
+			await fs.writeFile(abs("src/server/Save.luau"), "");
+
+			const result = (
+				await locate(
+					configOf({ routes }),
+					"src/server/Load.luau",
+					"ServerScriptService"
+				)
+			).unwrap();
+
+			expect(result.files).toMatchObject([
+				{
+					source: toPosix(abs("src/server/Load.luau")),
+					status: "placed",
+				},
+			]);
+			expect(
+				result.instances[0].files.map(({ source }) => source)
+			).toEqual([toPosix(abs("src/server/Save.luau"))]);
+		});
 	});
 
 	describe("requireBuildable", () => {

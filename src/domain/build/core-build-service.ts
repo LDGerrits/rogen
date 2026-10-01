@@ -23,6 +23,7 @@ import {
 	BuiltProject,
 	ConfigBuild,
 	ConfigLocations,
+	FileLocation,
 	LocateTargets,
 	OutputFile,
 	WrittenProject,
@@ -204,27 +205,46 @@ export class CoreBuildService implements BuildService {
 		targets?: LocateTargets
 	): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		const { paths, instances } = await this.classify(targets);
-		const asked = paths.length > 0 || instances.length > 0;
 		await this.indexService.ensureIndexed(config.rootDirs);
-		const index =
-			paths.length > 0
-				? new PlannedFilesIndex(
-						this.indexService,
-						config.rootDirs,
-						paths
-					)
-				: this.indexService;
-		const placement = this.place(index, config);
-		if (placement.isErr())
-			return err(new DiagnosticsError(placement.error));
-		const locator = new FileLocator(placement.value);
+
+		let files: FileLocation[] = [];
+		if (paths.length > 0) {
+			const planned = this.locatorOf(
+				new PlannedFilesIndex(
+					this.indexService,
+					config.rootDirs,
+					paths
+				),
+				config
+			);
+			if (planned.isErr()) return err(planned.error);
+			files = planned.value.locate(paths);
+			if (instances.length === 0) return ok({ files, instances: [] });
+		}
+
+		// A planned file can move the files that exist, and an instance is only ever made by those.
+		const existing = this.locatorOf(this.indexService, config);
+		if (existing.isErr()) return err(existing.error);
 		return ok({
-			files: asked ? locator.locate(paths) : locator.locate(),
+			files:
+				paths.length > 0 || instances.length > 0
+					? files
+					: existing.value.locate(),
 			instances: instances.map((reference) => ({
 				reference,
-				files: locator.locateInstance(reference),
+				files: existing.value.locateInstance(reference),
 			})),
 		});
+	}
+
+	private locatorOf(
+		index: IndexReader,
+		config: ResolvedConfig
+	): Result<FileLocator, DiagnosticsError> {
+		const placement = this.place(index, config);
+		return placement.isErr()
+			? err(new DiagnosticsError(placement.error))
+			: ok(new FileLocator(placement.value));
 	}
 
 	private async classify(
