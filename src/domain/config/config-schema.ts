@@ -1,11 +1,5 @@
 import { JSONSchema } from "../../base/json-schema.js";
-import {
-	ConfigRegistry,
-	Extensions,
-} from "../../platform/config/config-registry.js";
-import { Registry } from "../../platform/registry/registry.js";
-
-const registry = Registry.as<ConfigRegistry>(Extensions.Config);
+import { ConfigModel } from "../../platform/config/config-models.js";
 
 const routesSchema: JSONSchema = {
 	type: "object",
@@ -29,10 +23,10 @@ const tagsSchema: JSONSchema = {
 	additionalProperties: { type: "boolean" },
 };
 
-registry.registerConfig({
-	id: "rogen.core",
-	title: "Rogen configuration",
+/** What a `*.rogen.json` may hold; a key outside it is an error. */
+export const configSchema: JSONSchema = {
 	type: "object",
+	additionalProperties: false,
 	properties: {
 		$schema: {
 			type: "string",
@@ -82,4 +76,14 @@ registry.registerConfig({
 				".project.json.",
 		},
 	},
-});
+};
+
+/** The values a config has before any file or flag sets them. */
+export const configDefaults = new ConfigModel(
+	Object.fromEntries(
+		Object.entries(configSchema.properties ?? {}).flatMap(
+			([key, schema]) =>
+				schema.default === undefined ? [] : [[key, schema.default]]
+		)
+	)
+);

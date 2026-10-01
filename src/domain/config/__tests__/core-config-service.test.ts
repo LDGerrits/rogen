@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import "../config-schema.js";
 import { ResultError } from "../../../base/result.js";
 import { ConfigChangeEvent } from "../../../platform/config/config.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";

@@ -1,5 +1,4 @@
 import "../where-command.js";
-import "../../../domain/config/config-schema.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { Result } from "../../../base/result.js";
 import { BuildService } from "../../../domain/build/build-service.js";

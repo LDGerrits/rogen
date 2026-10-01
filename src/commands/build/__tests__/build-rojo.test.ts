@@ -5,7 +5,6 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import "../../../domain/config/config-schema.js";
 import {
 	classes,
 	describeWithRojo,

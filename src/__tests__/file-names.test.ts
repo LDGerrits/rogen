@@ -6,8 +6,6 @@ const LAYERS = ["platform", "domain", "commands"];
 const EXCEPTIONS: Readonly<Record<string, string>> = {
 	"platform/environment/args":
 		"the option tables and parseArgs sit beside ParsedArgs",
-	"domain/config/config-schema":
-		"registers into ConfigRegistry and exports nothing",
 };
 
 const kebab = (name: string) =>

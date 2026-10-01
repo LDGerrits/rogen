@@ -1,3 +1,4 @@
+import { JSONSchema } from "../../base/json-schema.js";
 import { JsoncNode } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -8,9 +9,7 @@ import {
 } from "../diagnostics/diagnostic.js";
 import { FileSystemService } from "../fs/file-system-service.js";
 import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
-import { Registry } from "../registry/registry.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
-import { ConfigRegistry, Extensions } from "./config-registry.js";
 
 export interface ConfigFile {
 	readonly file: string;
@@ -25,14 +24,17 @@ export interface ConfigFileFailure {
 	readonly diagnostics: readonly Diagnostic[];
 }
 
-/** Reads config files and checks them against the registered schema. */
+/** Reads config files and checks them against `schema`. */
 export class ConfigFileReader {
 	private static readonly documents = new JsoncDocumentReader({
 		codePrefix: "config",
 		noun: "a config",
 	});
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		private readonly fileSystemService: FileSystemService,
+		private readonly schema: JSONSchema
+	) {}
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
@@ -57,10 +59,11 @@ export class ConfigFileReader {
 		text: string,
 		file: string
 	): Result<ConfigFile, ConfigFileFailure> {
-		const schema = Registry.as<ConfigRegistry>(
-			Extensions.Config
-		).getJsonSchema();
-		const document = ConfigFileReader.documents.read(text, file, schema);
+		const document = ConfigFileReader.documents.read(
+			text,
+			file,
+			this.schema
+		);
 		if (document.isErr()) {
 			return err({ kind: "invalid", diagnostics: document.error });
 		}

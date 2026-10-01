@@ -1,4 +1,3 @@
-import "../../config/config-schema.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
