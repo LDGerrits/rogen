@@ -66,7 +66,7 @@ describe("Placer", () => {
 		let fs: MemoryFileSystemService;
 		let store: DisposableStore;
 
-		const newIndex = () => store.add(new CoreIndexService(fs));
+		const newIndex = () => new CoreIndexService(fs);
 
 		const scan = async (options: Partial<ScanOptions> = {}) => {
 			const scanOptions: ScanOptions = {

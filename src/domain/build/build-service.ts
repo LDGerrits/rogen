@@ -1,4 +1,4 @@
-import { generateUuid } from "../../base/uuid.js";
+import { randomUUID } from "crypto";
 import { toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -166,7 +166,7 @@ export class OutputFile {
 
 	/** A fresh file to stage a write through, so concurrent writers never share one. */
 	stagingFile(): string {
-		return `${this.path}.${generateUuid()}.tmp`;
+		return `${this.path}.${randomUUID()}.tmp`;
 	}
 
 	/** Matches the staging file of any writer, in posix form. */

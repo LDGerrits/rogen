@@ -66,9 +66,7 @@ describe("list command", () => {
 			ConfigService,
 			store.add(new CoreConfigService(fs, environment))
 		);
-		const commandService = store.add(
-			new CoreCommandService(services, logService)
-		);
+		const commandService = new CoreCommandService(services, logService);
 		run = ({ _ = [], ...options } = {}) =>
 			commandService.executeCommand("list", {
 				_: ["list", ..._],

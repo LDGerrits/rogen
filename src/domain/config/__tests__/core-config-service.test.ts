@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import "../config-schema.js";
 import { ResultError } from "../../../base/result.js";
-import { ConfigChangeEvent } from "../../../platform/config/config.js";
+import { ConfigChangeEvent } from "../config-service.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -611,9 +611,6 @@ describe("domain/config/core-config-service", () => {
 				"/repo/one.rogen.json",
 				"/repo/two.rogen.json",
 			]);
-			const [event] = listener.mock.calls[0];
-			expect(event.affectsConfig("rootDirs")).toBe(true);
-			expect(event.affectsConfig("routes")).toBe(false);
 			expect(service.configs[0].resolved?.rootDirs).toEqual(["/repo/b"]);
 			expect(service.configs[2].resolved?.rootDirs).toEqual(["/repo/z"]);
 		});
@@ -901,9 +898,6 @@ describe("domain/config/core-config-service", () => {
 
 				expect(service.configs[0].resolved?.name).toBe("Two");
 				expect(listener).toHaveBeenCalledTimes(1);
-				expect(
-					listener.mock.calls[0][0].affectsConfig("template")
-				).toBe(true);
 			});
 		});
 

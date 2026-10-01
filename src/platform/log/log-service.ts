@@ -14,7 +14,6 @@ export interface LogService {
 	readonly _serviceBrand: undefined;
 
 	setLevel(level: LogLevel): void;
-	getLevel(): LogLevel;
 
 	error(message: string | Error, ...args: unknown[]): void;
 	warn(message: string, ...args: unknown[]): void;

@@ -1,5 +1,4 @@
 import { Disposable } from "../../base/disposable.js";
-import { Emitter, Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import {
 	GlobalOptions,
@@ -12,15 +11,8 @@ import {
 } from "../instantiation/instantiation.js";
 import { Registry } from "../registry/registry.js";
 
-export interface CommandEvent {
-	readonly commandId: string;
-	readonly args: ParsedArgs;
-}
-
 export interface CommandService {
 	readonly _serviceBrand: undefined;
-	readonly onWillExecuteCommand: Event<CommandEvent>;
-	readonly onDidExecuteCommand: Event<CommandEvent>;
 	executeCommand(
 		commandId: string,
 		args: ParsedArgs
@@ -53,8 +45,6 @@ export interface CommandMetadata {
 }
 
 export interface CommandRegistry {
-	readonly onDidRegisterCommand: Event<string>;
-
 	/** @throws Error if `id` is already registered, or no handler is given. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
@@ -90,10 +80,6 @@ function findConflict(
 class CoreCommandRegistry implements CommandRegistry {
 	private readonly commands = new Map<string, Command>();
 
-	private readonly _onDidRegisterCommand = new Emitter<string>();
-	readonly onDidRegisterCommand: Event<string> =
-		this._onDidRegisterCommand.event;
-
 	registerCommand(command: Command): Disposable {
 		const { id } = command;
 
@@ -118,7 +104,6 @@ class CoreCommandRegistry implements CommandRegistry {
 		}
 
 		this.commands.set(id, command);
-		this._onDidRegisterCommand.fire(id);
 
 		return {
 			[Symbol.dispose]: () => {

@@ -28,7 +28,7 @@ describe("ServiceCollection", () => {
 			const services = new ServiceCollection();
 			services.set(FooService, { name: "foo" });
 
-			expect(services.has(BarService)).toBe(false);
+			expect(() => services.get(BarService)).toThrow(/barService/);
 		});
 	});
 

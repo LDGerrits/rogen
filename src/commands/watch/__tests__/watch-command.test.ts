@@ -76,7 +76,7 @@ describe("watch command", () => {
 		services.set(ConfigService, configService);
 		services.set(FileSystemService, memFs);
 		services.set(LifecycleService, lifecycle);
-		const indexService = store.add(new CoreIndexService(memFs));
+		const indexService = new CoreIndexService(memFs);
 		const buildService = buildServiceOf(memFs, indexService);
 		services.set(BuildService, buildService);
 		services.set(
@@ -93,9 +93,10 @@ describe("watch command", () => {
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")
 		);
-		return store
-			.add(new CoreCommandService(services, logService))
-			.executeCommand("watch", { _: ["watch", ...names] });
+		return new CoreCommandService(services, logService).executeCommand(
+			"watch",
+			{ _: ["watch", ...names] }
+		);
 	};
 
 	const run = async (names: string[] = []) => {

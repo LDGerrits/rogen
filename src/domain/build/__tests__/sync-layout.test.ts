@@ -29,7 +29,6 @@ describe("SyncLayout", () => {
 			syncDir: abs("out"),
 			projectDir: abs("game"),
 		});
-		expect(layout.isSynced).toBe(true);
 	});
 
 	it("should leave the sync dir out when there is none", () => {
@@ -39,7 +38,6 @@ describe("SyncLayout", () => {
 		);
 
 		expect(layout.syncDir).toBeUndefined();
-		expect(layout.isSynced).toBe(false);
 	});
 
 	it("should build in the project dir when there are no root dirs", () => {

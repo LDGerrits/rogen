@@ -37,7 +37,7 @@ describe("CoreWatchSession", () => {
 
 	const start = async (names: string[] = []) => {
 		await configService.initialize({ names, paths: [] });
-		const indexService = store.add(new CoreIndexService(fs));
+		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
 				watcher,

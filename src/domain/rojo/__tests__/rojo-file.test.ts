@@ -75,19 +75,19 @@ describe("domain/rojo/rojo-file", () => {
 			});
 		});
 
-		describe("scriptSuffix", () => {
+		describe("scriptSuffixOf", () => {
 			it.each(["server", "client", "plugin"])(
 				"should read a trailing .%s",
 				(suffix) => {
-					expect(
-						new RojoFile(`main.${suffix}.luau`).scriptSuffix
-					).toBe(suffix);
+					expect(RojoFile.scriptSuffixOf(`main.${suffix}`)).toBe(
+						suffix
+					);
 				}
 			);
 
 			it("should ignore a suffix that isn't right before the extension", () => {
 				expect(
-					new RojoFile("Foo.server.mock.luau").scriptSuffix
+					RojoFile.scriptSuffixOf("Foo.server.mock")
 				).toBeUndefined();
 			});
 		});

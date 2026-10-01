@@ -5,9 +5,6 @@ export class NullLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	setLevel(_level: LogLevel): void {}
-	getLevel(): LogLevel {
-		return LogLevel.Off;
-	}
 	error(_message: string | Error, ..._args: unknown[]): void {}
 	warn(_message: string, ..._args: unknown[]): void {}
 	info(_message: string, ..._args: unknown[]): void {}

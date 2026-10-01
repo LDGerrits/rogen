@@ -6,23 +6,18 @@ import {
 } from "./file-system-service.js";
 import { Sequencer } from "../../base/async.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { AbstractDisposable } from "../../base/disposable.js";
 import {
 	ancestors,
 	contains,
 	outermostDirs,
 	toPosix,
 } from "../../base/path.js";
-import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "./file-changes.js";
 import { IndexService } from "./index-service.js";
 
 const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
 
-export class CoreIndexService
-	extends AbstractDisposable
-	implements IndexService
-{
+export class CoreIndexService implements IndexService {
 	declare readonly _serviceBrand: undefined;
 
 	private tree = new Map<string, Map<string, FileType>>();
@@ -30,12 +25,7 @@ export class CoreIndexService
 	private covered: readonly string[] = [];
 	private readonly indexing = new Sequencer();
 
-	private readonly _onDidUpdate = this._register(new Emitter<FileChange[]>());
-	readonly onDidUpdate: Event<FileChange[]> = this._onDidUpdate.event;
-
-	constructor(private readonly fileSystemService: FileSystemService) {
-		super();
-	}
+	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	initialize(sourcePaths: readonly string[]): Promise<void> {
 		return this.indexing.queue(async () => {
@@ -158,8 +148,6 @@ export class CoreIndexService
 				}
 			}
 		}
-
-		this._onDidUpdate.fire(changes);
 	}
 
 	private addEntry(posixDir: string, name: string, type: FileType): void {

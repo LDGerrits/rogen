@@ -38,9 +38,7 @@ describe("help command", () => {
 		info = jest.spyOn(logService, "print");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
-		commandService = store.add(
-			new CoreCommandService(services, logService)
-		);
+		commandService = new CoreCommandService(services, logService);
 	});
 
 	afterEach(() => {

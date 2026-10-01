@@ -46,13 +46,14 @@ describeWithRojo("build command against Rojo", () => {
 		services.set(ConfigService, configService);
 		services.set(EnvironmentService, environment);
 		services.set(FileSystemService, fileSystem);
-		const indexService = store.add(new CoreIndexService(fileSystem));
+		const indexService = new CoreIndexService(fileSystem);
 		services.set(IndexService, indexService);
 		services.set(BuildService, buildServiceOf(fileSystem, indexService));
 		services.set(LogService, logService);
-		return store
-			.add(new CoreCommandService(services, logService))
-			.executeCommand("build", args);
+		return new CoreCommandService(services, logService).executeCommand(
+			"build",
+			args
+		);
 	};
 
 	beforeEach(() => {

@@ -8,10 +8,6 @@ describe("CoreIndexService", () => {
 	let memoryFs: MemoryFileSystemService;
 	let indexService: CoreIndexService;
 
-	afterEach(() => {
-		indexService[Symbol.dispose]();
-	});
-
 	beforeEach(() => {
 		memoryFs = new MemoryFileSystemService();
 		indexService = new CoreIndexService(memoryFs);
@@ -314,23 +310,6 @@ describe("CoreIndexService", () => {
 					"ui.ts"
 				)
 			).toBeUndefined();
-		});
-
-		it("should emit an onDidUpdate event when changes are applied", () => {
-			const listener = jest.fn();
-			indexService.onDidUpdate(listener);
-
-			const changes = [
-				{
-					type: FileChangeType.ADDED,
-					path: "src/temp.ts",
-					fileType: FileType.File,
-				},
-			];
-			indexService.applyChanges(changes);
-
-			expect(listener).toHaveBeenCalledTimes(1);
-			expect(listener).toHaveBeenCalledWith(changes);
 		});
 	});
 

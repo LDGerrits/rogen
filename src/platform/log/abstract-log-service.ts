@@ -33,10 +33,6 @@ export abstract class AbstractLogService implements LogService {
 		this.level = level;
 	}
 
-	getLevel(): LogLevel {
-		return this.level;
-	}
-
 	protected canLog(level: LogLevel): boolean {
 		return this.level !== LogLevel.Off && this.level >= level;
 	}

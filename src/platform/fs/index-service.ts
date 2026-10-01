@@ -1,4 +1,3 @@
-import { Event } from "../../base/event.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
 import { FileType } from "./file-system-service.js";
@@ -17,9 +16,6 @@ export interface IndexReader {
  */
 export interface IndexService extends IndexReader {
 	readonly _serviceBrand: undefined;
-
-	/** Fires after `applyChanges` has updated the listing. */
-	readonly onDidUpdate: Event<FileChange[]>;
 
 	/** Runs after any earlier `initialize` or `ensureIndexed` finishes. Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
 	initialize(sourcePaths: readonly string[]): Promise<void>;

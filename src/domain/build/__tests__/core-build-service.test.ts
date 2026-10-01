@@ -20,8 +20,7 @@ describe("CoreBuildService", () => {
 	let fs: MemoryFileSystemService;
 	let store: DisposableStore;
 
-	const buildServiceOfFs = () =>
-		buildServiceOf(fs, store.add(new CoreIndexService(fs)));
+	const buildServiceOfFs = () => buildServiceOf(fs, new CoreIndexService(fs));
 
 	const buildOf = async (config: ResolvedConfig) => {
 		const index = await indexOf(store, fs, config.rootDirs);

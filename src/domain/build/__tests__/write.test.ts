@@ -45,7 +45,7 @@ describe("CoreBuildService.write", () => {
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		store = new DisposableStore();
-		service = buildServiceOf(fs, store.add(new CoreIndexService(fs)));
+		service = buildServiceOf(fs, new CoreIndexService(fs));
 	});
 
 	afterEach(() => {
