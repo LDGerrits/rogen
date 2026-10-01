@@ -44,7 +44,7 @@ export class ChangeBatcher extends AbstractDisposable {
 
 		if (this.buffer.length > this.options.burstThreshold) {
 			this.logService.warn(
-				`Threshold reached (${this.buffer.length} > ${this.options.burstThreshold}). Requesting full reconciliation.`
+				`Threshold reached (${this.buffer.length} > ${this.options.burstThreshold}). Dropping the buffered changes.`
 			);
 			this.clearBuffer();
 			this._onDidOverflow.fire();
