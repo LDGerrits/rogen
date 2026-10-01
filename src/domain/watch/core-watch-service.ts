@@ -1,5 +1,5 @@
 import { IndexService } from "../../platform/fs/index-service.js";
-import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
+import { LogService } from "../../platform/log/log-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigService } from "../config/config-service.js";
@@ -11,7 +11,7 @@ export class CoreWatchService implements WatchService {
 
 	constructor(
 		private readonly watcher: Watcher,
-		private readonly reconciliationService: ReconciliationService,
+		private readonly logService: LogService,
 		private readonly configService: ConfigService,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService
@@ -20,7 +20,7 @@ export class CoreWatchService implements WatchService {
 	watch(): WatchSession {
 		return new CoreWatchSession(
 			this.watcher,
-			this.reconciliationService,
+			this.logService,
 			this.configService,
 			this.indexService,
 			this.buildService

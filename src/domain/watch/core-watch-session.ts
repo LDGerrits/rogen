@@ -5,11 +5,12 @@ import { Emitter, Event } from "../../base/event.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService } from "../../platform/fs/index-service.js";
-import { ReconciliationService } from "../../platform/watcher/reconciliation-service.js";
+import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
+import { ChangeBatcher } from "./change-batcher.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
 	ConfigNotice,
@@ -31,6 +32,7 @@ export class CoreWatchSession
 	private readonly _onDidError = this._register(new Emitter<Error>());
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
+	private readonly batcher: ChangeBatcher;
 	private readonly intake = new Sequencer();
 	private readonly updates = new Sequencer();
 	private readonly rebuilds = new Map<string, Sequencer>();
@@ -50,12 +52,13 @@ export class CoreWatchSession
 
 	constructor(
 		private readonly watcher: Watcher,
-		private readonly reconciliationService: ReconciliationService,
+		private readonly logService: LogService,
 		private readonly configService: ConfigService,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService
 	) {
 		super();
+		this.batcher = this._register(new ChangeBatcher(logService));
 		this.plan = new WatchPlan(this.currentConfigs);
 	}
 
@@ -76,19 +79,17 @@ export class CoreWatchSession
 			this.watcher.onDidChangeFile((changes) => {
 				const relevant = this.dropSourceUpdates(changes);
 				if (relevant.length > 0) {
-					this.reconciliationService.queueEvents(relevant);
+					this.batcher.queueEvents(relevant);
 				}
 			})
 		);
 		this._register(
-			this.reconciliationService.onDidEmitChanges((changes) =>
+			this.batcher.onDidEmitChanges((changes) =>
 				this.enqueue(() => this.onChanges(changes))
 			)
 		);
 		this._register(
-			this.reconciliationService.onDidRequestReconciliation(() =>
-				this.enqueue(() => this.onBurst())
-			)
+			this.batcher.onDidOverflow(() => this.enqueue(() => this.onBurst()))
 		);
 
 		this.configService.configs.forEach((entry) => this.noteConfig(entry));
