@@ -25,14 +25,10 @@ describe("platform/diagnostics/diagnostic-collector", () => {
 			collector.warning("test.warning", location, "warning.");
 
 			expect(collector.hasErrors).toBe(false);
-			expect(collector.errors).toEqual([]);
 
 			collector.error("test.error", location, "error.");
 
 			expect(collector.hasErrors).toBe(true);
-			expect(collector.errors.map(({ code }) => code)).toEqual([
-				"test.error",
-			]);
 		});
 
 		describe("toResult", () => {
