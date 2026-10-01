@@ -5,6 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
+import { ConfigEntry, ResolvedEntry } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 
@@ -73,7 +74,7 @@ export interface BuildOptions {
 	readonly checkSyncDir?: boolean;
 }
 
-/** One config built in memory; writing it is the caller's step. */
+/** One config built in memory, which `run` goes on to write. */
 export interface BuiltProject {
 	/** Where `write` puts it. */
 	readonly outFile: string;
@@ -90,6 +91,32 @@ export interface WrittenProject {
 	/** Whether the file changed; unchanged bytes are left alone. */
 	readonly written: boolean;
 }
+
+/** What a run did for one config. */
+interface ConfigBuildFields {
+	readonly config: ResolvedConfig;
+	readonly warnings: readonly Diagnostic[];
+	/** What `checkSyncDir` found; empty when it wasn't asked for. */
+	readonly syncWarnings: readonly Diagnostic[];
+	/** Why the config failed, none for any other outcome. */
+	readonly errors: readonly Diagnostic[];
+}
+
+/** `failed` is a config whose build or write went wrong; `notWritten` built, but another config's failure stopped the run first. */
+export type ConfigBuild = ConfigBuildFields &
+	(
+		| {
+				readonly outcome: "wrote" | "unchanged" | "notWritten";
+				readonly summary: BuildSummary;
+				/** The files whose contents the build read, which a change to must rebuild it. */
+				readonly readFiles: readonly string[];
+		  }
+		| {
+				readonly outcome: "failed";
+				readonly summary?: undefined;
+				readonly readFiles?: undefined;
+		  }
+	);
 
 interface Located {
 	/** An absolute POSIX path. */
@@ -139,25 +166,25 @@ export class OutputFile {
 	}
 }
 
-/** Builds configs from the index and writes them; `locate` and `build` share every stage. */
+/** Builds configs from the index and writes them; `locate` and `run` share every stage. */
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** What must hold across the configs before any is built: each declares routes, and no two write one file. */
-	checkBuildable(
+	/** The resolved configs of `entries` when every entry is valid and they can be built together, else every error. */
+	requireBuildable(
+		entries: readonly ConfigEntry[]
+	): Result<ResolvedEntry[], DiagnosticsError>;
+
+	/** The configs that declare no routes or share an out file, by config file, each with why. */
+	blockedConfigs(
 		configs: readonly ResolvedConfig[]
-	): Result<void, DiagnosticsError>;
+	): ReadonlyMap<string, readonly Diagnostic[]>;
 
-	/** Builds `config` in memory from an index of its root dirs, reading only folder meta from disk. */
-	build(
-		config: ResolvedConfig,
+	/** Builds every config, then writes them in order; any build failure writes nothing, and a failed write leaves the rest unwritten. */
+	run(
+		configs: readonly ResolvedConfig[],
 		options?: BuildOptions
-	): Promise<Result<BuiltProject, DiagnosticsError>>;
-
-	/** Writes `project` to its out file, leaving it untouched when its bytes wouldn't change. */
-	write(
-		project: BuiltProject
-	): Promise<Result<WrittenProject, DiagnosticsError>>;
+	): Promise<ConfigBuild[]>;
 
 	/** Where each of `paths` lands in `config`'s tree, or why it lands nowhere; a directory stands for what's in it. */
 	locate(

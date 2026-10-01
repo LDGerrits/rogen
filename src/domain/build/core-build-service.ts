@@ -10,12 +10,18 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import {
+	ConfigEntry,
+	ResolvedEntry,
+	requireValidEntries,
+} from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildOptions,
 	BuildService,
 	BuiltProject,
+	ConfigBuild,
 	FileLocation,
 	InstanceLocation,
 	OutputFile,
@@ -26,6 +32,25 @@ import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 import { Placement, Placer } from "./placement.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
+
+interface Blocker {
+	readonly diagnostic: Diagnostic;
+	readonly files: readonly string[];
+}
+
+function failedBuild(
+	config: ResolvedConfig,
+	errors: readonly Diagnostic[],
+	built?: BuiltProject
+): ConfigBuild {
+	return {
+		config,
+		outcome: "failed",
+		warnings: built?.warnings ?? [],
+		syncWarnings: built?.syncWarnings ?? [],
+		errors,
+	};
+}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -42,16 +67,30 @@ export class CoreBuildService implements BuildService {
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
 	}
 
-	checkBuildable(
+	requireBuildable(
+		entries: readonly ConfigEntry[]
+	): Result<ResolvedEntry[], DiagnosticsError> {
+		const valid = requireValidEntries(entries);
+		if (valid.isErr()) return valid;
+
+		const blockers = this.blockers(valid.value.map(({ config }) => config));
+		return blockers.length > 0
+			? err(
+					new DiagnosticsError(
+						blockers.map(({ diagnostic }) => diagnostic)
+					)
+				)
+			: valid;
+	}
+
+	blockedConfigs(
 		configs: readonly ResolvedConfig[]
-	): Result<void, DiagnosticsError> {
-		const upfront = [
-			...configs.flatMap((config) => this.missingRoutes(config)),
-			...this.outputClashes(configs),
-		];
-		return upfront.length > 0
-			? err(new DiagnosticsError(upfront))
-			: ok(undefined);
+	): ReadonlyMap<string, readonly Diagnostic[]> {
+		const blocked = new Map<string, Diagnostic[]>();
+		for (const { diagnostic, files } of this.blockers(configs))
+			for (const file of files)
+				blocked.set(file, [...(blocked.get(file) ?? []), diagnostic]);
+		return blocked;
 	}
 
 	async build(
@@ -76,6 +115,7 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
+	/** Writes `project` to its out file, leaving it untouched when its bytes wouldn't change. */
 	async write(
 		project: BuiltProject
 	): Promise<Result<WrittenProject, DiagnosticsError>> {
@@ -106,6 +146,51 @@ export class CoreBuildService implements BuildService {
 				),
 			])
 		);
+	}
+
+	async run(
+		configs: readonly ResolvedConfig[],
+		options: BuildOptions = {}
+	): Promise<ConfigBuild[]> {
+		const built: Result<BuiltProject, DiagnosticsError>[] = [];
+		for (const config of configs)
+			built.push(await this.build(config, options));
+
+		let stopped = built.some((result) => result.isErr());
+		const builds: ConfigBuild[] = [];
+		for (const [index, result] of built.entries()) {
+			const config = configs[index];
+			if (result.isErr()) {
+				builds.push(failedBuild(config, result.error.diagnostics));
+				continue;
+			}
+			const project = result.value;
+			const report = {
+				config,
+				warnings: project.warnings,
+				syncWarnings: project.syncWarnings,
+				errors: [],
+				summary: project.summary,
+				readFiles: project.readFiles,
+			};
+			if (stopped) {
+				builds.push({ ...report, outcome: "notWritten" });
+				continue;
+			}
+			const written = await this.write(project);
+			if (written.isErr()) {
+				stopped = true;
+				builds.push(
+					failedBuild(config, written.error.diagnostics, project)
+				);
+				continue;
+			}
+			builds.push({
+				...report,
+				outcome: written.value.written ? "wrote" : "unchanged",
+			});
+		}
+		return builds;
 	}
 
 	async locate(
@@ -165,22 +250,30 @@ export class CoreBuildService implements BuildService {
 				];
 	}
 
-	/** One error per out file that several configs write. */
-	private outputClashes(configs: readonly ResolvedConfig[]): Diagnostic[] {
+	/** Each problem across `configs`, with the config files it blocks. */
+	private blockers(configs: readonly ResolvedConfig[]): Blocker[] {
 		const byOutFile = groupBy(
 			configs,
 			({ outFile }) => path.resolve(outFile),
 			({ file }) => file
 		);
-
-		return [...byOutFile]
-			.filter(([, files]) => files.length > 1)
-			.map(([outFile, files]) =>
-				errorDiagnostic(
-					"output.sameOutFile",
-					{ resource: outFile },
-					`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
-				)
-			);
+		return [
+			...configs.flatMap((config) =>
+				this.missingRoutes(config).map((diagnostic) => ({
+					diagnostic,
+					files: [config.file],
+				}))
+			),
+			...[...byOutFile]
+				.filter(([, files]) => files.length > 1)
+				.map(([outFile, files]) => ({
+					diagnostic: errorDiagnostic(
+						"output.sameOutFile",
+						{ resource: outFile },
+						`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
+					),
+					files,
+				})),
+		];
 	}
 }

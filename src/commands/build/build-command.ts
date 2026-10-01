@@ -1,10 +1,7 @@
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	BuildService,
-	BuiltProject,
-} from "../../domain/build/build-service.js";
+import { BuildService, ConfigBuild } from "../../domain/build/build-service.js";
 import {
 	ConfigService,
 	ResolvedEntry,
@@ -27,20 +24,12 @@ import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildReport } from "./build-report.js";
 
-interface BuildAttempt extends ResolvedEntry {
-	readonly project: Result<BuiltProject, DiagnosticsError>;
-}
-
-interface WriteFailure {
-	readonly attempt: BuildAttempt;
-	readonly error: DiagnosticsError;
-}
-
-/** What a config's build had to say, for the run to report. */
-function diagnosticsOf({ project }: BuildAttempt): readonly Diagnostic[] {
-	return project.isErr()
-		? project.error.diagnostics
-		: [...project.value.warnings, ...project.value.syncWarnings];
+/** What a config's build warned about; its errors are the run's to report. */
+function warningsOf({
+	warnings,
+	syncWarnings,
+}: ConfigBuild): readonly Diagnostic[] {
+	return [...warnings, ...syncWarnings];
 }
 
 registerCommand(
@@ -77,147 +66,70 @@ registerCommand(
 			);
 			if (loaded.isErr()) return loaded;
 
-			const targets = configService.requireValidEntries();
+			const targets = buildService.requireBuildable(
+				configService.configs
+			);
 			if (targets.isErr()) return targets;
-			const buildable = buildService.checkBuildable(
-				targets.value.map(({ config }) => config)
-			);
-			if (buildable.isErr()) return buildable;
 
-			const attempts = await this.buildAll(buildService, targets.value);
-			const errors = attempts.flatMap(({ project }) =>
-				project.isErr() ? project.error.diagnostics : []
+			const builds = await buildService.run(
+				targets.value.map(({ config }) => config),
+				{ checkSyncDir: true }
 			);
+			const errors = builds.flatMap((build) => build.errors);
 			const unselected = await configService.listUnselectedConfigFiles();
 			return args.json
-				? this.reportAsJson(
-						buildService,
-						logService,
-						attempts,
-						errors,
-						unselected
-					)
+				? this.reportAsJson(logService, builds, errors, unselected)
 				: this.report(
-						buildService,
 						new BuildLog(logService, cwd),
-						attempts,
+						targets.value,
+						builds,
 						errors,
 						unselected
 					);
 		}
 
-		/** Every config builds before any is written, so a failure writes nothing. */
-		private async buildAll(
-			buildService: BuildService,
-			targets: readonly ResolvedEntry[]
-		): Promise<BuildAttempt[]> {
-			const attempts: BuildAttempt[] = [];
-			for (const target of targets) {
-				attempts.push({
-					...target,
-					project: await buildService.build(target.config, {
-						checkSyncDir: true,
-					}),
-				});
-			}
-			return attempts;
-		}
-
-		/** Writes each project in turn and says how it went, stopping at the first failure. */
-		private async writeAll(
-			buildService: BuildService,
-			attempts: readonly BuildAttempt[],
-			written: (attempt: BuildAttempt, changed: boolean) => void
-		): Promise<Result<void, WriteFailure>> {
-			for (const attempt of attempts) {
-				const result = await buildService.write(
-					attempt.project.unwrap()
-				);
-				if (result.isErr())
-					return err({ attempt, error: result.error });
-				written(attempt, result.value.written);
-			}
-			return ok(undefined);
-		}
-
-		private async report(
-			buildService: BuildService,
+		private report(
 			log: BuildLog,
-			attempts: readonly BuildAttempt[],
+			targets: readonly ResolvedEntry[],
+			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
 			unselected: readonly string[]
-		): Promise<Result<void, Error>> {
-			log.begin("build", attempts, unselected);
+		): Result<void, Error> {
+			log.begin("build", targets, unselected);
 
-			if (errors.length > 0) {
-				for (const { project } of attempts)
-					if (project.isOk()) log.diagnostics(project.value.warnings);
-				return err(new DiagnosticsError(errors));
-			}
-
-			const written = await this.writeAll(
-				buildService,
-				attempts,
-				(attempt, changed) => {
-					if (attempts.length > 1) log.heading(attempt);
+			for (const [index, build] of builds.entries()) {
+				if (
+					build.outcome === "wrote" ||
+					build.outcome === "unchanged"
+				) {
+					if (builds.length > 1) log.heading(targets[index]);
 					log.written(
-						attempt,
-						changed,
-						attempt.project.unwrap().summary,
-						diagnosticsOf(attempt)
+						targets[index],
+						build.outcome === "wrote",
+						build.summary,
+						warningsOf(build)
 					);
-				}
-			);
-			if (written.isErr()) return err(written.error.error);
+				} else log.diagnostics(warningsOf(build));
+			}
+			if (errors.length > 0) return err(new DiagnosticsError(errors));
 
-			log.end(attempts.length);
+			log.end(builds.length);
 			return ok(undefined);
 		}
 
-		private async reportAsJson(
-			buildService: BuildService,
+		private reportAsJson(
 			logService: LogService,
-			attempts: readonly BuildAttempt[],
+			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
 			unselected: readonly string[]
-		): Promise<Result<void, Error>> {
+		): Result<void, Error> {
 			const report = new BuildReport();
-			let failure: DiagnosticsError | undefined;
-
-			if (errors.length > 0) {
-				failure = new DiagnosticsError(errors);
-				for (const attempt of attempts)
-					report.add(
-						attempt.config,
-						"notWritten",
-						diagnosticsOf(attempt)
-					);
-			} else {
-				const written = await this.writeAll(
-					buildService,
-					attempts,
-					(attempt, changed) =>
-						report.add(
-							attempt.config,
-							changed ? "wrote" : "unchanged",
-							diagnosticsOf(attempt)
-						)
-				);
-				if (written.isErr()) {
-					const { attempt: failed, error } = written.error;
-					failure = error;
-					for (const attempt of attempts.slice(
-						attempts.indexOf(failed)
-					))
-						report.add(attempt.config, "notWritten", [
-							...diagnosticsOf(attempt),
-							...(attempt === failed ? error.diagnostics : []),
-						]);
-				}
-			}
+			for (const build of builds) report.add(build);
 
 			logService.print(formatJsonDocument(report.json(unselected)));
-			return failure ? err(new ReportedError(failure)) : ok(undefined);
+			return errors.length > 0
+				? err(new ReportedError(new DiagnosticsError(errors)))
+				: ok(undefined);
 		}
 	}
 );

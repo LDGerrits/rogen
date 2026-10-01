@@ -1,5 +1,5 @@
 import { Event } from "../../base/event.js";
-import { Result } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -89,6 +89,20 @@ export class ConfigEntry {
 export interface ResolvedEntry {
 	readonly entry: ConfigEntry;
 	readonly config: ResolvedConfig;
+}
+
+/** The entries that resolved, or every error when any entry is broken now. Warnings don't fail it. */
+export function requireValidEntries(
+	entries: readonly ConfigEntry[]
+): Result<ResolvedEntry[], DiagnosticsError> {
+	const errors = entries.flatMap((entry) => entry.errors);
+	return errors.length > 0
+		? err(new DiagnosticsError(errors))
+		: ok(
+				entries.flatMap((entry) =>
+					entry.resolved ? [{ entry, config: entry.resolved }] : []
+				)
+			);
 }
 
 export interface ConfigService {

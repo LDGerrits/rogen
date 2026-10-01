@@ -1,10 +1,18 @@
+import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	DiagnosticSeverity,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
+import {
+	ResolvedConfigSpec,
+	mockEntry,
+} from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { ConfigEntry } from "../../config/config-service.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
@@ -525,6 +533,114 @@ describe("CoreBuildService", () => {
 		});
 	});
 
+	describe("run", () => {
+		const lobby = (spec: ResolvedConfigSpec = {}) =>
+			configOf({
+				file: abs("lobby.rogen.json"),
+				outFile: abs("lobby.project.json"),
+				rootDirs: [abs("lobby")],
+				...spec,
+			});
+
+		const runOf = async (
+			configs: readonly ResolvedConfig[],
+			options?: { checkSyncDir?: boolean }
+		) => {
+			const index = await indexOf(
+				store,
+				fs,
+				configs.flatMap(({ rootDirs }) => rootDirs)
+			);
+			return buildServiceOf(fs, index).run(configs, options);
+		};
+
+		const outcomesOf = (builds: Awaited<ReturnType<typeof runOf>>) =>
+			builds.map(({ config, outcome }) => [config.file, outcome]);
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("lobby/B.luau"), "");
+		});
+
+		it("should write every config's project file and say what each did", async () => {
+			const configs = [configOf(), lobby()];
+
+			const first = await runOf(configs);
+			const second = await runOf(configs);
+
+			expect(outcomesOf(first)).toEqual([
+				[abs("default.rogen.json"), "wrote"],
+				[abs("lobby.rogen.json"), "wrote"],
+			]);
+			expect(first).toMatchObject([
+				{ summary: { roots: [{ files: 1 }] } },
+				{ summary: { roots: [{ files: 1 }] } },
+			]);
+			expect(await fs.exists(abs("lobby.project.json"))).toBe(true);
+			expect(second.map(({ outcome }) => outcome)).toEqual([
+				"unchanged",
+				"unchanged",
+			]);
+		});
+
+		it("should write nothing when any config fails to build", async () => {
+			const result = await runOf([configOf(), lobby({ routes: {} })]);
+
+			expect(outcomesOf(result)).toEqual([
+				[abs("default.rogen.json"), "notWritten"],
+				[abs("lobby.rogen.json"), "failed"],
+			]);
+			expect(result[1]).toMatchObject({
+				errors: [{ code: "route.noRoutes" }],
+			});
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should stop at the first config that cannot be written", async () => {
+			await fs.createDirectory(abs("lobby.project.json"));
+			await fs.writeFile(abs("arena/C.luau"), "");
+
+			const result = await runOf([
+				configOf(),
+				lobby(),
+				lobby({
+					file: abs("arena.rogen.json"),
+					outFile: abs("arena.project.json"),
+					rootDirs: [abs("arena")],
+				}),
+			]);
+
+			expect(outcomesOf(result)).toEqual([
+				[abs("default.rogen.json"), "wrote"],
+				[abs("lobby.rogen.json"), "failed"],
+				[abs("arena.rogen.json"), "notWritten"],
+			]);
+			expect(result[1]).toMatchObject({
+				errors: [{ code: "output.writeFailed" }],
+			});
+			expect(result[2]).toMatchObject({ errors: [] });
+			expect(await fs.exists(abs("arena.project.json"))).toBe(false);
+		});
+
+		it("should keep the sync dir warnings of a config that was not written", async () => {
+			const result = await runOf(
+				[configOf({ syncDir: abs("dist") }), lobby({ routes: {} })],
+				{ checkSyncDir: true }
+			);
+
+			expect(result[0]).toMatchObject({
+				outcome: "notWritten",
+				syncWarnings: [{ code: "output.nothingEmitted" }],
+			});
+		});
+
+		it("should check the sync dir only when asked", async () => {
+			const result = await runOf([configOf({ syncDir: abs("dist") })]);
+
+			expect(result[0]).toMatchObject({ syncWarnings: [] });
+		});
+	});
+
 	describe("locate", () => {
 		it("should fail when the config declares no routes", async () => {
 			const result = await buildServiceOfFs().locate(
@@ -579,22 +695,62 @@ describe("CoreBuildService", () => {
 		});
 	});
 
-	describe("checkBuildable", () => {
-		const check = (...configs: ResolvedConfig[]) =>
-			buildServiceOfFs().checkBuildable(configs);
+	describe("requireBuildable", () => {
+		const entryOf = (
+			spec: ResolvedConfigSpec = {},
+			file = abs("default.rogen.json")
+		) =>
+			mockEntry(
+				{
+					rootDirs: [abs("src")],
+					routes: { "*": "ReplicatedStorage" },
+					outFile: abs(
+						`${path.basename(file, ".rogen.json")}.project.json`
+					),
+					...spec,
+				},
+				file
+			);
+		const check = (...entries: ConfigEntry[]) =>
+			buildServiceOfFs().requireBuildable(entries);
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
 			if (result.isOk()) throw new Error("Expected the check to fail.");
 			return result.error.diagnostics;
 		};
 
+		it("should return each config with the entry it came from", () => {
+			const entry = entryOf();
+
+			const result = check(entry);
+
+			expect(result.unwrap()).toEqual([
+				{ entry, config: entry.resolved },
+			]);
+		});
+
+		it("should fail with a config's errors when it is invalid", () => {
+			const broken = mockEntry({}, abs("broken.rogen.json"), {
+				resolved: undefined,
+				diagnostics: [
+					errorDiagnostic(
+						"config.invalidSyntax",
+						{ resource: abs("broken.rogen.json") },
+						"not JSON"
+					),
+				],
+			});
+
+			const result = check(entryOf(), broken);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "config.invalidSyntax" },
+			]);
+		});
+
 		it("should name each config file that declares no routes", () => {
 			const result = check(
-				configOf({ routes: { "*": "Workspace" } }),
-				configOf({
-					file: abs("bare.rogen.json"),
-					outFile: abs("bare.project.json"),
-					routes: {},
-				})
+				entryOf({ routes: { "*": "Workspace" } }),
+				entryOf({ routes: {} }, abs("bare.rogen.json"))
 			);
 
 			expect(diagnosticsOf(result)).toMatchObject([
@@ -604,8 +760,11 @@ describe("CoreBuildService", () => {
 
 		it("should refuse two configs that write one file", () => {
 			const result = check(
-				configOf(),
-				configOf({ file: abs("other.rogen.json") })
+				entryOf(),
+				entryOf(
+					{ outFile: abs("default.project.json") },
+					abs("other.rogen.json")
+				)
 			);
 
 			expect(diagnosticsOf(result)).toMatchObject([
@@ -615,9 +774,44 @@ describe("CoreBuildService", () => {
 				},
 			]);
 		});
+	});
 
-		it("should pass configs that can all be built", () => {
-			expect(check(configOf()).isOk()).toBe(true);
+	describe("blockedConfigs", () => {
+		const blocked = (...configs: ResolvedConfig[]) =>
+			buildServiceOfFs().blockedConfigs(configs);
+
+		it("should name every config that shares an out file, each with the same error", () => {
+			const result = blocked(
+				configOf(),
+				configOf({ file: abs("other.rogen.json") }),
+				configOf({
+					file: abs("lobby.rogen.json"),
+					outFile: abs("lobby.project.json"),
+				})
+			);
+
+			expect([...result.keys()]).toEqual([
+				abs("default.rogen.json"),
+				abs("other.rogen.json"),
+			]);
+			expect(result.get(abs("default.rogen.json"))).toMatchObject([
+				{ code: "output.sameOutFile" },
+			]);
+			expect(result.get(abs("other.rogen.json"))).toEqual(
+				result.get(abs("default.rogen.json"))
+			);
+		});
+
+		it("should name a config that declares no routes", () => {
+			const result = blocked(configOf({ routes: {} }));
+
+			expect(result.get(abs("default.rogen.json"))).toMatchObject([
+				{ code: "route.noRoutes" },
+			]);
+		});
+
+		it("should be empty when every config can be built", () => {
+			expect(blocked(configOf()).size).toBe(0);
 		});
 	});
 });
