@@ -204,6 +204,7 @@ export class CoreBuildService implements BuildService {
 		targets?: LocateTargets
 	): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		const { paths, instances } = await this.classify(targets);
+		const asked = paths.length > 0 || instances.length > 0;
 		await this.indexService.ensureIndexed(config.rootDirs);
 		const index =
 			paths.length > 0
@@ -218,9 +219,7 @@ export class CoreBuildService implements BuildService {
 			return err(new DiagnosticsError(placement.error));
 		const locator = new FileLocator(placement.value);
 		return ok({
-			files: targets?.args.length
-				? locator.locate(paths)
-				: locator.locate(),
+			files: asked ? locator.locate(paths) : locator.locate(),
 			instances: instances.map((reference) => ({
 				reference,
 				files: locator.locateInstance(reference),
