@@ -317,8 +317,6 @@ describe("CoreBuildService.locate", () => {
 			await write("src/Other.luau");
 			const config = configOf();
 			const index = await indexOfConfig(config);
-			const updates: unknown[] = [];
-			store.add(index.onDidUpdate((changes) => updates.push(changes)));
 
 			await buildServiceOf(fs, index).locate(config, {
 				args: [abs("src/Combat/Server/Hit.luau")],
@@ -326,7 +324,6 @@ describe("CoreBuildService.locate", () => {
 			});
 
 			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
-			expect(updates).toEqual([]);
 		});
 
 		it("should sit beside the files that exist", async () => {
@@ -505,7 +502,7 @@ describe("CoreBuildService.locate", () => {
 
 		const located = await buildServiceOf(
 			fs,
-			store.add(new CoreIndexService(fs))
+			new CoreIndexService(fs)
 		).locate(configOf());
 
 		expect(located.unwrap().files).toMatchObject([

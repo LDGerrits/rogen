@@ -14,9 +14,9 @@ describe("version command", () => {
 	let services: ServiceCollection;
 
 	const run = () =>
-		store
-			.add(new CoreCommandService(services, logService))
-			.executeCommand("version", { _: ["version"] });
+		new CoreCommandService(services, logService).executeCommand("version", {
+			_: ["version"],
+		});
 
 	beforeEach(() => {
 		store = new DisposableStore();

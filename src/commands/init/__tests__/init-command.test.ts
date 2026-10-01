@@ -76,9 +76,10 @@ describe("init command", () => {
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
 
-		return store
-			.add(new CoreCommandService(services, logService))
-			.executeCommand("init", environment.args);
+		return new CoreCommandService(services, logService).executeCommand(
+			"init",
+			environment.args
+		);
 	};
 
 	const write = (file: string, content = "") =>

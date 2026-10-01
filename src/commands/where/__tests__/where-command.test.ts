@@ -58,14 +58,12 @@ describe("where command", () => {
 		services.set(LogService, logService);
 		services.set(FileSystemService, fs);
 		services.set(EnvironmentService, environment);
-		const indexService = store.add(new CoreIndexService(fs));
+		const indexService = new CoreIndexService(fs);
 		services.set(IndexService, indexService);
 		services.set(BuildService, buildServiceOf(fs, indexService));
 		const configService = store.add(new CoreConfigService(fs, environment));
 		services.set(ConfigService, configService);
-		const commandService = store.add(
-			new CoreCommandService(services, logService)
-		);
+		const commandService = new CoreCommandService(services, logService);
 		run = async ({ _ = [], ...options }) => {
 			const args = { _: ["where", ..._], ...options };
 			return commandService.executeCommand("where", args);

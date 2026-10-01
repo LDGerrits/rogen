@@ -1,11 +1,16 @@
 import { Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
+
+/** A config file whose resolved value changed. */
+export interface ConfigChangeEvent {
+	/** The config file. */
+	readonly resource: string;
+}
 
 /** Per-invocation values that sit above every layer of a config's chain. */
 export interface ConfigOverrides {

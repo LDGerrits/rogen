@@ -1,6 +1,6 @@
 import { Emitter, Event } from "../../../base/event.js";
 import { Result, ok } from "../../../base/result.js";
-import { ConfigChangeEvent } from "../../../platform/config/config.js";
+import { ConfigChangeEvent } from "../config-service.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
 import { AbstractConfigService } from "../abstract-config-service.js";
@@ -109,8 +109,4 @@ export class MockConfigService
 	}
 
 	async reload(_files: readonly string[]): Promise<void> {}
-
-	fireChangeEvent(keys: string[], resource = "/repo/default.rogen.json") {
-		this._onDidChangeConfig.fire(new ConfigChangeEvent(keys, resource));
-	}
 }

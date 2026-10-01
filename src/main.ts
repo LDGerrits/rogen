@@ -109,9 +109,7 @@ async function main(): Promise<void> {
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
-		const indexService = disposables.add(
-			new CoreIndexService(fileSystemService)
-		);
+		const indexService = new CoreIndexService(fileSystemService);
 		services.set(FileSystemService, fileSystemService);
 		services.set(IndexService, indexService);
 		const toolchainService = new CoreToolchainService(fileSystemService);
@@ -153,9 +151,7 @@ async function main(): Promise<void> {
 			)
 		);
 
-		const commandService = disposables.add(
-			new CoreCommandService(services, logService)
-		);
+		const commandService = new CoreCommandService(services, logService);
 		services.set(CommandService, commandService);
 
 		const result = await commandService.executeCommand(command, cliArgs);

@@ -64,7 +64,7 @@ export async function indexOf(
 	fs: MemoryFileSystemService,
 	rootDirs: readonly string[]
 ): Promise<CoreIndexService> {
-	const index = store.add(new CoreIndexService(fs));
+	const index = new CoreIndexService(fs);
 	await index.initialize([...rootDirs]);
 	return index;
 }

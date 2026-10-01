@@ -103,7 +103,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		overrides: Pick<ResolvedConfigSpec, "routes" | "tags"> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
-		const index = store.add(new CoreIndexService(fileSystem));
+		const index = new CoreIndexService(fileSystem);
 		const config = mockConfig({
 			file: path.join(dir, "ours.rogen.json"),
 			name: "t",

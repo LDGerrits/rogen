@@ -20,10 +20,6 @@ export class SyncLayout {
 		this.projectDir = config.projectDir;
 	}
 
-	get isSynced(): boolean {
-		return this.syncDir !== undefined;
-	}
-
 	/** What the tools write instead of a `.meta.json`, which Rojo then no longer applies. */
 	get metaReplacements(): MetaReplacement[] {
 		return this.tools.flatMap(

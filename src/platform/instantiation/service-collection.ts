@@ -7,10 +7,6 @@ export class ServiceCollection implements ServicesAccessor {
 		this.entries.set(id, instance);
 	}
 
-	has(id: ServiceIdentifier<unknown>): boolean {
-		return this.entries.has(id);
-	}
-
 	get<T>(id: ServiceIdentifier<T>): T {
 		if (!this.entries.has(id)) {
 			throw new Error(`No service registered for "${id.serviceId}".`);

@@ -1,11 +1,10 @@
-import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError, err, ok } from "../../../base/result.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
 import { LogService } from "../../log/log-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
 import { Registry } from "../../registry/registry.js";
-import { CommandEvent, CommandRegistry, Extensions } from "../commands.js";
+import { CommandRegistry, Extensions } from "../commands.js";
 import { CoreCommandService } from "../core-command-service.js";
 
 describe("CoreCommandService", () => {
@@ -19,9 +18,7 @@ describe("CoreCommandService", () => {
 		store = new DisposableStore();
 		services = new ServiceCollection();
 		services.set(LogService, logService);
-		commandService = store.add(
-			new CoreCommandService(services, logService)
-		);
+		commandService = new CoreCommandService(services, logService);
 	});
 
 	afterEach(() => {
@@ -86,76 +83,6 @@ describe("CoreCommandService", () => {
 			expect((result as ResultError<Error>).error.message).toContain(
 				"rogen build prod"
 			);
-		});
-
-		it("should fire onWillExecuteCommand before and onDidExecuteCommand after the handler runs", async () => {
-			const order: string[] = [];
-			store.add(
-				registry.registerCommand({
-					id: "foo",
-					metadata: { description: "foo" },
-					handler: async () => {
-						order.push("handler");
-						return ok(undefined);
-					},
-				})
-			);
-			store.add(
-				commandService.onWillExecuteCommand((e: CommandEvent) =>
-					order.push(`will:${e.commandId}`)
-				)
-			);
-			store.add(
-				commandService.onDidExecuteCommand((e: CommandEvent) =>
-					order.push(`did:${e.commandId}`)
-				)
-			);
-
-			await commandService.executeCommand("foo", { _: [] });
-
-			expect(order).toEqual(["will:foo", "handler", "did:foo"]);
-		});
-
-		it("should not fire onDidExecuteCommand while the handler is still running", async () => {
-			const finish = new DeferredPromise<void>();
-			const events: string[] = [];
-			store.add(
-				registry.registerCommand({
-					id: "foo",
-					metadata: { description: "foo" },
-					handler: async () => {
-						await finish.p;
-						return ok(undefined);
-					},
-				})
-			);
-			store.add(
-				commandService.onDidExecuteCommand((e) =>
-					events.push(e.commandId)
-				)
-			);
-
-			const running = commandService.executeCommand("foo", { _: [] });
-			await Promise.resolve();
-			expect(events).toEqual([]);
-
-			finish.complete();
-			await running;
-			expect(events).toEqual(["foo"]);
-		});
-
-		it("should not fire events for an unknown command", async () => {
-			const events: CommandEvent[] = [];
-			store.add(
-				commandService.onWillExecuteCommand((e) => events.push(e))
-			);
-			store.add(
-				commandService.onDidExecuteCommand((e) => events.push(e))
-			);
-
-			await commandService.executeCommand("prod", { _: [] });
-
-			expect(events).toEqual([]);
 		});
 	});
 });

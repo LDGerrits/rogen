@@ -71,10 +71,6 @@ export class RojoFile {
 		return this.kind === "script" && INIT_SCRIPT.test(this.name);
 	}
 
-	get scriptSuffix(): RojoScriptSuffix | undefined {
-		return RojoFile.scriptSuffixOf(this.stem);
-	}
-
 	/** The name Rojo gives the file when it enumerates the directory itself. */
 	get instanceName(): string {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
@@ -107,5 +103,4 @@ export class RojoFile {
 			? undefined
 			: `${name}${RojoFile.META_SUFFIX}`;
 	}
-
 }

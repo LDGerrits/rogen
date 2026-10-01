@@ -97,8 +97,8 @@ describe("platform/config/config-models", () => {
 			});
 		});
 
-		describe("compare", () => {
-			it("should list the keys whose merged value differs", () => {
+		describe("equals", () => {
+			it("should tell whether the merged values are the same", () => {
 				const before = new Config(
 					new ConfigModel({ a: 1 }),
 					[new ConfigModel({ b: { c: 1 }, d: 1 })],
@@ -110,7 +110,8 @@ describe("platform/config/config-models", () => {
 					new ConfigModel()
 				);
 
-				expect(before.compare(after).sort()).toEqual(["b", "e"]);
+				expect(before.equals(after)).toBe(false);
+				expect(before.equals(before)).toBe(true);
 			});
 		});
 	});

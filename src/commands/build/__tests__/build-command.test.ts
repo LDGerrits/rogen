@@ -51,7 +51,7 @@ describe("build command", () => {
 		configService: MockConfigService,
 		logService: LogService,
 		args: ParsedArgs = { _: ["build"] },
-		index: IndexService = store.add(new CoreIndexService(fs))
+		index: IndexService = new CoreIndexService(fs)
 	) => {
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
@@ -63,9 +63,10 @@ describe("build command", () => {
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")
 		);
-		return store
-			.add(new CoreCommandService(services, logService))
-			.executeCommand("build", args);
+		return new CoreCommandService(services, logService).executeCommand(
+			"build",
+			args
+		);
 	};
 
 	const buildable = (

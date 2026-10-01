@@ -28,10 +28,6 @@ export class ConfigModel {
 
 		return current as T;
 	}
-
-	isEmpty(): boolean {
-		return this.keys.length === 0;
-	}
 }
 
 export type ConfigSource =
@@ -90,29 +86,26 @@ export class Config {
 		};
 	}
 
-	getAllKeys(): string[] {
-		const keys = new Set<string>([
+	/** Whether every key resolves to the same value in both. */
+	equals(other: Config): boolean {
+		const keys = new Set([...this.keys(), ...other.keys()]);
+		for (const key of keys) {
+			if (
+				safeStringify(this.getValue(key)) !==
+				safeStringify(other.getValue(key))
+			) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private keys(): string[] {
+		return [
 			...this.defaultConfig.keys,
 			...this.layers.flatMap((layer) => layer.keys),
 			...this.cliConfig.keys,
-		]);
-		return Array.from(keys);
-	}
-
-	compare(other: Config): string[] {
-		const changedKeys: string[] = [];
-		const allKeys = new Set([...this.getAllKeys(), ...other.getAllKeys()]);
-
-		for (const key of allKeys) {
-			const thisValue = this.getValue(key);
-			const otherValue = other.getValue(key);
-
-			if (safeStringify(thisValue) !== safeStringify(otherValue)) {
-				changedKeys.push(key);
-			}
-		}
-
-		return changedKeys;
+		];
 	}
 
 	private sourceOf(

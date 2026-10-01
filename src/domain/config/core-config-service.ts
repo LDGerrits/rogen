@@ -2,7 +2,6 @@ import { Sequencer } from "../../base/async.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Config } from "../../platform/config/config-models.js";
-import { ConfigChangeEvent } from "../../platform/config/config.js";
 import { ConfigOptions } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -10,6 +9,7 @@ import { AbstractConfigService } from "./abstract-config-service.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
+	ConfigChangeEvent,
 	ConfigEntry,
 	ConfigOverrides,
 	ConfigRefs,
@@ -78,26 +78,17 @@ class ManagedConfig {
 		});
 	}
 
-	/** What the reload changed in the resolved config, or `undefined` when nothing did. */
-	async reload(): Promise<ConfigChangeEvent | undefined> {
+	/** Whether the reload changed the resolved config. */
+	async reload(): Promise<boolean> {
 		const before = { config: this.config, entry: this.entry };
 		await this.load();
-		if (!this.config) return undefined;
+		if (!this.config) return false;
 
-		const keys = before.config
-			? before.config.compare(this.config)
-			: this.config.getAllKeys();
+		if (!before.config || !before.config.equals(this.config)) return true;
 		const template = before.entry.resolved?.template;
-		if (
-			template
-				? !template.equals(this.entry.resolved?.template)
-				: this.entry.resolved?.template
-		) {
-			keys.push("template");
-		}
-		return keys.length > 0
-			? new ConfigChangeEvent(keys, this.file)
-			: undefined;
+		return template
+			? !template.equals(this.entry.resolved?.template)
+			: this.entry.resolved?.template !== undefined;
 	}
 }
 
@@ -208,13 +199,17 @@ export class CoreConfigService
 	reload(files: readonly string[]): Promise<void> {
 		return this.reloads.queue(async () => {
 			const changed = new Set(files);
-			const events = await Promise.all(
-				this.managed.map((config) =>
-					config.reads(changed) ? config.reload() : undefined
+			const reloaded = await Promise.all(
+				this.managed.map(async (config) =>
+					config.reads(changed) && (await config.reload())
+						? config
+						: undefined
 				)
 			);
-			for (const event of events) {
-				if (event) this._onDidChangeConfig.fire(event);
+			for (const config of reloaded) {
+				if (config) {
+					this._onDidChangeConfig.fire({ resource: config.file });
+				}
 			}
 		});
 	}

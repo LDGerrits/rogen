@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ok } from "../../../base/result.js";
 import { Registry } from "../../registry/registry.js";
@@ -84,15 +83,6 @@ describe("CommandRegistry", () => {
 			first[Symbol.dispose]();
 
 			expect(registry.getCommand("foo")).toBe(second);
-		});
-
-		it("should fire onDidRegisterCommand with the id", () => {
-			const listener = jest.fn<(id: string) => void>();
-			store.add(registry.onDidRegisterCommand(listener));
-
-			store.add(registry.registerCommand(command("foo")));
-
-			expect(listener).toHaveBeenCalledWith("foo");
 		});
 
 		it("should throw for a duplicate id", () => {
