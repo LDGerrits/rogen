@@ -1,6 +1,7 @@
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
+import { InitPlanBuilder } from "../init-plan-builder.js";
 import { directoryOf } from "./init-fixtures.js";
 
 const luau = workspaceOf().languageFor("luau");
@@ -187,6 +188,136 @@ describe("ConfigSet naming", () => {
 			expect(
 				new ConfigSet("game", luau, false).syncDirBy(darklua)
 			).toBeUndefined();
+		});
+	});
+});
+
+describe("ConfigSet planning", () => {
+	const target = directoryOf();
+	const own = { rootDirs: ["src"], routes: { "*": "ReplicatedStorage" } };
+
+	const planned = (plan: (builder: InitPlanBuilder) => void) => {
+		const builder = new InitPlanBuilder(target);
+		plan(builder);
+		return builder.build().unwrap();
+	};
+	const configsOf = (plan: ReturnType<typeof planned>) =>
+		Object.fromEntries(
+			plan.files.map(({ fileName, content }) => [
+				fileName,
+				JSON.parse(content),
+			])
+		);
+
+	describe("planConfigs", () => {
+		it("should write one config that carries the sync dir", () => {
+			const plan = planned((builder) =>
+				new ConfigSet("game", robloxTs, false).planConfigs(
+					builder,
+					own,
+					"out"
+				)
+			);
+
+			expect(configsOf(plan)).toMatchObject({
+				"game.rogen.json": { ...own, syncDir: "out" },
+			});
+			expect(plan.files).toHaveLength(1);
+		});
+
+		it("should leave out the sync dir when there is none", () => {
+			const plan = planned((builder) =>
+				new ConfigSet("game", luau, false).planConfigs(builder, own)
+			);
+
+			expect(configsOf(plan)["game.rogen.json"]).not.toHaveProperty(
+				"syncDir"
+			);
+		});
+
+		it("should move the sync dir to the synced config beside a sourced one", () => {
+			const plan = planned((builder) =>
+				new ConfigSet("game", luau, true).planConfigs(
+					builder,
+					own,
+					"dist"
+				)
+			);
+
+			const configs = configsOf(plan);
+			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
+				"game.rogen.json",
+				"game-sync.rogen.json",
+			]);
+			expect(configs["game.rogen.json"]).toMatchObject(own);
+			expect(configs["game.rogen.json"]).not.toHaveProperty("syncDir");
+			expect(configs["game-sync.rogen.json"]).toMatchObject({
+				extends: "./game.rogen.json",
+				syncDir: "dist",
+			});
+		});
+	});
+
+	describe("planSteps", () => {
+		const steps = (set: ConfigSet, compileCommand?: string) =>
+			planned((builder) =>
+				set.planSteps(builder, target, {
+					compileCommand,
+					processed: ["src"],
+					syncDir: set.syncDirBy(target.workspace.darklua),
+				})
+			).nextSteps;
+
+		it("should run the compile, watch and serve commands in turn", () => {
+			expect(
+				steps(new ConfigSet("game", luau, false), "rbxtsc -w").run
+			).toEqual([
+				"rbxtsc -w",
+				"rogen watch game",
+				"rojo serve game.project.json",
+			]);
+		});
+
+		it("should have no compile command for plain Luau", () => {
+			expect(steps(new ConfigSet("game", luau, false)).run).toEqual([
+				"rogen watch game",
+				"rojo serve game.project.json",
+			]);
+		});
+
+		it("should watch both configs of a sourced set and serve the synced one", () => {
+			const { run } = steps(new ConfigSet("game", luau, true));
+
+			expect(run.slice(0, 2)).toEqual([
+				"rogen watch game game-sync",
+				"rojo serve game-sync.project.json",
+			]);
+		});
+
+		it("should process the dirs into the sync dir when Darklua is used", () => {
+			const { darklua } = steps(new ConfigSet("game", luau, true));
+
+			expect(darklua).toEqual(
+				target.workspace.darklua.processCommands(
+					target.path,
+					["src"],
+					"dist"
+				)
+			);
+		});
+
+		it("should keep a sourced set's sourcemap current", () => {
+			const { run } = steps(new ConfigSet("game", luau, true));
+
+			expect(run).toContain(
+				target.workspace.darklua.sourcemapCommand("game.project.json")
+			);
+		});
+
+		it("should have no Darklua commands without Darklua", () => {
+			expect(steps(new ConfigSet("game", luau, false)).darklua).toEqual(
+				[]
+			);
 		});
 	});
 });
