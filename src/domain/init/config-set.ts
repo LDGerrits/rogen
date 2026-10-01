@@ -1,11 +1,13 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	DEFAULT_CONFIG_STEM,
+	RogenConfig,
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 
 /** The template project file `init` starts, which the configs it writes name. */
 export const TEMPLATE_FILE = "template.project.json";
@@ -128,6 +130,57 @@ export class ConfigSet {
 	/** The config whose project file Rojo serves: the synced one, when there is one. */
 	get servedStem(): string {
 		return this.sourced ? this.syncStem : this.name;
+	}
+
+	/** Writes `own`, which carries the sync dir; a sourced set keeps `own` rooted at the source, and a second config extending it takes the sync dir. */
+	planConfigs(
+		builder: InitPlanBuilder,
+		own: RogenConfig,
+		syncDir?: string
+	): void {
+		if (this.sourced) {
+			builder.addConfig(this.name, own);
+			builder.addConfig(this.syncStem, {
+				extends: ConfigSet.reference(configFileName(this.name)),
+				...(syncDir && { syncDir }),
+			});
+		} else {
+			builder.addConfig(this.name, {
+				...own,
+				...(syncDir && { syncDir }),
+			});
+		}
+	}
+
+	/** The commands that build and serve the set: a compiler's own, watching and serving the configs, then what Darklua needs to read `processed` into `syncDir`. */
+	planSteps(
+		builder: InitPlanBuilder,
+		directory: InitDirectory,
+		{
+			compileCommand,
+			processed,
+			syncDir,
+		}: {
+			readonly compileCommand?: string;
+			readonly processed: readonly string[];
+			readonly syncDir?: string;
+		}
+	): void {
+		const { darklua } = directory.workspace;
+		builder.addRun(
+			...(compileCommand ? [compileCommand] : []),
+			// Darklua reads the source-rooted project, so both are kept current.
+			ConfigSet.watchCommand(this.stems),
+			ConfigSet.serveCommand(this.servedStem)
+		);
+		if (this.darklua && syncDir) {
+			builder.addDarkluaCommands(
+				...darklua.processCommands(directory.path, processed, syncDir)
+			);
+		}
+		if (this.sourced) {
+			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
+		}
 	}
 
 	/** The files a place named like this writes, plus its project file, which mustn't exist either. */

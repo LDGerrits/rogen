@@ -227,6 +227,113 @@ describe("CoreWatchSession", () => {
 		expect(notice.errors).toEqual([]);
 	});
 
+	describe("a reload that makes two configs write one file", () => {
+		const clash = async () => {
+			await fs.createDirectory("/repo/lobby");
+			await fs.writeFile("/repo/src/A.luau", "");
+			await fs.writeFile("/repo/lobby/B.luau", "");
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+			});
+			await start(["default", "lobby"]);
+		};
+		const lastReports = () =>
+			Object.fromEntries(
+				updates[updates.length - 1].reports.map((report) => [
+					report.config.file,
+					report,
+				])
+			);
+
+		it("should fail both configs with the error and write neither", async () => {
+			await clash();
+			const before = await fs.readFile("/repo/default.project.json");
+
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+				outFile: "default.project.json",
+			});
+			await settle();
+
+			const reports = lastReports();
+			for (const file of [
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+			]) {
+				expect(reports[file].outcome).toBe("failed");
+				expect(reports[file].diagnostics).toMatchObject([
+					{ code: "output.sameOutFile" },
+				]);
+			}
+			expect(await fs.readFile("/repo/default.project.json")).toBe(
+				before
+			);
+			expect(errors).toEqual([]);
+		});
+
+		it("should keep both failed on a source change while the clash stands", async () => {
+			await clash();
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+				outFile: "default.project.json",
+			});
+			await settle();
+			const before = await fs.readFile("/repo/default.project.json");
+
+			await fs.writeFile("/repo/lobby/C.luau", "");
+			await settle();
+
+			expect(lastReports()["/repo/lobby.rogen.json"].outcome).toBe(
+				"failed"
+			);
+			expect(await fs.readFile("/repo/default.project.json")).toBe(
+				before
+			);
+		});
+
+		it("should check the sync dir of a config again once its clash is fixed", async () => {
+			await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
+			await clash();
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+				outFile: "default.project.json",
+			});
+			await settle();
+
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+			});
+			await settle();
+
+			expect(
+				lastReports()["/repo/default.rogen.json"].syncDiagnostics
+			).toMatchObject([{ code: "output.nothingEmitted" }]);
+		});
+
+		it("should build both again once the clash is fixed", async () => {
+			await clash();
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+				outFile: "default.project.json",
+			});
+			await settle();
+
+			await writeConfig("/repo/lobby.rogen.json", {
+				rootDirs: ["lobby"],
+			});
+			await settle();
+
+			const reports = lastReports();
+			expect(
+				Object.values(reports).map(({ outcome }) => outcome)
+			).toEqual(["unchanged", "unchanged"]);
+			expect(Object.keys(reports).sort()).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+		});
+	});
+
 	it("should run nothing new once it stops, and stop the watcher", async () => {
 		const session = await start();
 		const stop = jest.spyOn(watcher, "stop");

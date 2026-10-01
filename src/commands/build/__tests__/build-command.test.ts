@@ -249,6 +249,33 @@ describe("build command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	it("should still print the sync dir warning of a config when another fails to build", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		await fs.writeFile(abs("bad/Combat/A.luau"), "");
+		await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
+		const logService = new NullLogService();
+		const diagnostic = jest.spyOn(logService, "diagnostic");
+
+		const result = await run(
+			new MockConfigService([
+				buildable({ syncDir: abs("out") }, "/repo/default.rogen.json"),
+				buildable(
+					{
+						rootDirs: [abs("bad")],
+						outFile: abs("bad.project.json"),
+					},
+					"/repo/bad.rogen.json"
+				),
+			]),
+			logService
+		);
+
+		expect(result.isErr()).toBe(true);
+		expect(diagnostic.mock.calls).toMatchObject([
+			[{ message: expect.stringContaining("nothing emitted") }],
+		]);
+	});
+
 	it("should warn about unrouted files without failing", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();

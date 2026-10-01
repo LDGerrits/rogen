@@ -39,6 +39,8 @@ export class CoreWatchSession
 	/** The files each config's latest build read, beyond the config files themselves. */
 	private readonly readFiles = new Map<string, ReadonlySet<string>>();
 	private readonly failing = new Set<string>();
+	/** The configs that can't be built beside the others, by config file, from the latest load. */
+	private blocked: ReadonlyMap<string, readonly Diagnostic[]> = new Map();
 	private rebuilding = 0;
 	private settled = false;
 	private notices: ConfigNotice[] = [];
@@ -90,6 +92,7 @@ export class CoreWatchSession
 		);
 
 		this.configService.configs.forEach((entry) => this.noteConfig(entry));
+		this.refreshBlocked();
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
@@ -147,27 +150,36 @@ export class CoreWatchSession
 		const entry = this.configService.getConfig(file);
 		const config = entry?.resolved;
 		if (!entry || !config) return undefined;
-		const failed = (diagnostics: readonly Diagnostic[]): RebuildReport => {
+		const blocked = this.blocked.get(file);
+		if (blocked) {
 			this.failing.add(file);
-			return { entry, config, outcome: "failed", diagnostics };
-		};
+			return { entry, config, outcome: "failed", diagnostics: blocked };
+		}
 
-		const built = await this.buildService.build(config, {
+		const [build] = await this.buildService.run([config], {
 			checkSyncDir: load,
 		});
-		if (built.isErr()) return failed(built.error.diagnostics);
-		const written = await this.buildService.write(built.value);
-		if (written.isErr()) return failed(written.error.diagnostics);
+		if (build.outcome === "notWritten")
+			throw new Error("A run of one config can't leave it unwritten.");
+		if (build.outcome === "failed") {
+			this.failing.add(file);
+			return {
+				entry,
+				config,
+				outcome: "failed",
+				diagnostics: build.errors,
+			};
+		}
 		this.failing.delete(file);
-		this.readFiles.set(file, new Set(built.value.readFiles));
+		this.readFiles.set(file, new Set(build.readFiles));
 
 		return {
 			entry,
 			config,
-			outcome: written.value.written ? "wrote" : "unchanged",
-			diagnostics: built.value.warnings,
-			...(load && { syncDiagnostics: built.value.syncWarnings }),
-			summary: built.value.summary,
+			outcome: build.outcome,
+			diagnostics: build.warnings,
+			...(load && { syncDiagnostics: build.syncWarnings }),
+			summary: build.summary,
 		};
 	}
 
@@ -282,6 +294,15 @@ export class CoreWatchSession
 		return true;
 	}
 
+	/** Re-checks the configs as a set, and returns the config files whose block was lifted or put on. */
+	private refreshBlocked(): string[] {
+		const before = this.blocked;
+		this.blocked = this.buildService.blockedConfigs(this.currentConfigs);
+		return [...new Set([...before.keys(), ...this.blocked.keys()])].filter(
+			(file) => before.has(file) !== this.blocked.has(file)
+		);
+	}
+
 	private async reloadConfigs(files: readonly string[]): Promise<string[]> {
 		await this.configService.reload(files);
 		this.configService.configs.forEach((entry) => this.noteConfig(entry));
@@ -291,9 +312,11 @@ export class CoreWatchSession
 	}
 
 	/** Reloads until the watch plan settles, since a reload can change what's watched. */
-	private async applyConfigChanges(
-		files: readonly string[]
-	): Promise<{ reloaded: string[]; reindexed: boolean }> {
+	private async applyConfigChanges(files: readonly string[]): Promise<{
+		reloaded: string[];
+		reindexed: boolean;
+		reblocked: string[];
+	}> {
 		const reloaded = new Set<string>();
 		let reindexed = false;
 		let toReload = files;
@@ -306,7 +329,11 @@ export class CoreWatchSession
 			// A config edited while the watcher restarted was never reported.
 			toReload = [...this.configService.files];
 		}
-		return { reloaded: [...reloaded], reindexed };
+		return {
+			reloaded: [...reloaded],
+			reindexed,
+			reblocked: this.refreshBlocked(),
+		};
 	}
 
 	private async onChanges(changes: FileChange[]): Promise<void> {
@@ -316,8 +343,9 @@ export class CoreWatchSession
 
 		let reloaded: string[] = [];
 		let reindexed = false;
+		let reblocked: string[] = [];
 		if (configFiles.length > 0) {
-			({ reloaded, reindexed } =
+			({ reloaded, reindexed, reblocked } =
 				await this.applyConfigChanges(configFiles));
 		}
 
@@ -330,6 +358,7 @@ export class CoreWatchSession
 
 		const affected = new Set([
 			...reloaded,
+			...reblocked,
 			...(reindexed ? this.currentConfigs.map(({ file }) => file) : []),
 			...sourceChanges.flatMap((change) =>
 				this.plan.configsFor(change.path)
@@ -343,7 +372,10 @@ export class CoreWatchSession
 				reloaded: reloaded.length > 0,
 			},
 			[...affected].map((file) =>
-				this.queueRebuild(file, reloaded.includes(file))
+				this.queueRebuild(
+					file,
+					reloaded.includes(file) || reblocked.includes(file)
+				)
 			),
 			sourceChanges
 		);

@@ -27,18 +27,24 @@ export interface ConfigNotice {
 	readonly warnings: readonly Diagnostic[];
 }
 
-export interface RebuildReport {
+interface RebuildFields {
 	readonly entry: ConfigEntry;
 	/** The version of the config that was built. */
 	readonly config: ResolvedConfig;
-	readonly outcome: "wrote" | "unchanged" | "failed";
 	/** The build's warnings, or why it failed. */
 	readonly diagnostics: readonly Diagnostic[];
 	/** What the sync dir check found; `undefined` when this round didn't check it. */
 	readonly syncDiagnostics?: readonly Diagnostic[];
-	/** Set when the build succeeded. */
-	readonly summary?: BuildSummary;
 }
+
+export type RebuildReport = RebuildFields &
+	(
+		| {
+				readonly outcome: "wrote" | "unchanged";
+				readonly summary: BuildSummary;
+		  }
+		| { readonly outcome: "failed"; readonly summary?: undefined }
+	);
 
 /** One round of rebuilds, fired once every rebuild in it has finished. */
 export interface WatchUpdate {

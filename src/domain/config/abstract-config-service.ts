@@ -1,6 +1,4 @@
 import { AbstractDisposable } from "../../base/disposable.js";
-import { Result, err, ok } from "../../base/result.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ConfigEntry, ResolvedEntry } from "./config-service.js";
 
 /** The questions every config service answers from its `configs`. */
@@ -15,13 +13,6 @@ export abstract class AbstractConfigService extends AbstractDisposable {
 		return this.configs.flatMap((entry) =>
 			entry.resolved ? [{ entry, config: entry.resolved }] : []
 		);
-	}
-
-	requireValidEntries(): Result<ResolvedEntry[], DiagnosticsError> {
-		const errors = this.configs.flatMap((entry) => entry.errors);
-		return errors.length > 0
-			? err(new DiagnosticsError(errors))
-			: ok(this.getResolvedEntries());
 	}
 
 	getBrokenError(): Error | undefined {

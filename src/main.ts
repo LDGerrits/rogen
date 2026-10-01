@@ -1,15 +1,11 @@
 import { DisposableStore } from "./base/disposable.js";
-import { formatJsonDocument } from "./base/json.js";
-import {
-	CancelledError,
-	ReportedError,
-	setUnexpectedErrorHandler,
-} from "./base/errors.js";
+import { setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
 	Extensions,
 } from "./platform/commands/commands.js";
+import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import { hasFlag, parseArgs } from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
@@ -25,10 +21,6 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { LogLevel, LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
-import {
-	DiagnosticsError,
-	failureToJson,
-} from "./platform/diagnostics/diagnostics-error.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
@@ -63,30 +55,6 @@ export default function run(): void {
 	});
 }
 
-function reportFailure(
-	logService: LogService,
-	error: Error,
-	command: string,
-	json: boolean
-): void {
-	if (error instanceof ReportedError) return;
-	if (json) {
-		logService.print(formatJsonDocument(failureToJson(error)));
-		return;
-	}
-	if (error instanceof CancelledError) {
-		logService.closeFrame(error.message);
-		return;
-	}
-	if (error instanceof DiagnosticsError) {
-		for (const diagnostic of error.diagnostics)
-			logService.diagnostic(diagnostic);
-	} else {
-		logService.error(error.message);
-	}
-	logService.closeFrame(`${command} failed.`);
-}
-
 async function main(): Promise<void> {
 	const disposables = new DisposableStore();
 
@@ -110,13 +78,10 @@ async function main(): Promise<void> {
 		const logService: LogService = promptService.isInteractive
 			? new TerminalLogService(process.cwd())
 			: new PlainLogService(process.cwd());
+		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
-			if (json)
-				logService.print(
-					formatJsonDocument(failureToJson(argsResult.error))
-				);
-			else logService.error(argsResult.error.message);
+			failure.report(argsResult.error);
 			process.exitCode = 1;
 			return;
 		}
@@ -204,7 +169,7 @@ async function main(): Promise<void> {
 		const result = await commandService.executeCommand(command, cliArgs);
 
 		if (result.isErr()) {
-			reportFailure(logService, result.error, command, json);
+			failure.report(result.error, command);
 			process.exitCode = 1;
 		} else {
 			process.exitCode = 0;

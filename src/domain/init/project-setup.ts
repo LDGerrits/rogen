@@ -1,6 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { RogenConfig, configFileName, defaultOutFileName } from "../config/config.js";
+import { RogenConfig, configFileName } from "../config/config.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
@@ -163,23 +163,14 @@ export class ProjectSetup implements Setup {
 		const starting = new StartingRoutes(language);
 		const { compiler } = language;
 
-		const starter = (starterSyncDir?: string): RogenConfig => ({
+		const starter: RogenConfig = {
 			rootDirs: [...rootDirs],
 			routes: starting.starting(choices.routes, choices.fallback),
 			...(template.reference && { template: template.reference }),
-			...(starterSyncDir && { syncDir: starterSyncDir }),
-		});
+		};
 
 		if (template.file) builder.setTemplate(template.file);
-		if (configSet.sourced) {
-			builder.addConfig(name, starter());
-			builder.addConfig(configSet.syncStem, {
-				extends: ConfigSet.reference(configFileName(name)),
-				...(syncDir && { syncDir }),
-			});
-		} else {
-			builder.addConfig(name, starter(syncDir));
-		}
+		configSet.planConfigs(builder, starter, syncDir);
 
 		for (const note of template.notes) builder.addNote(note);
 		if (compiler && !darklua && syncDir) {
@@ -236,32 +227,12 @@ export class ProjectSetup implements Setup {
 		{ rootDirs, syncDir, outDir }: ProjectChoices,
 		configSet: ConfigSet
 	): void {
-		const { name, language, darklua, stems } = configSet;
-		const { compiler } = language;
-		const processed = compiler
-			? [outDir ?? compiler.defaultOutDir]
-			: rootDirs;
-		builder.addRun(
-			...(compiler ? [compiler.compileCommand] : []),
-			// Darklua reads the source-rooted project, so both are kept current.
-			ConfigSet.watchCommand(stems),
-			ConfigSet.serveCommand(configSet.servedStem)
-		);
-		if (darklua && syncDir) {
-			builder.addDarkluaCommands(
-				...this.directory.workspace.darklua.processCommands(
-					this.directory.path,
-					processed,
-					syncDir
-				)
-			);
-		}
-		if (configSet.sourced) {
-			builder.addSourcemapSteps(
-				defaultOutFileName(name),
-				this.directory.workspace.darklua
-			);
-		}
+		const { compiler } = configSet.language;
+		configSet.planSteps(builder, this.directory, {
+			compileCommand: compiler?.compileCommand,
+			processed: compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs,
+			syncDir,
+		});
 	}
 
 	private planTemplate(

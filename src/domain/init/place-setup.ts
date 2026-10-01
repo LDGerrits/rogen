@@ -114,56 +114,27 @@ export class PlaceSetup implements Setup {
 	/** The configs, the compiler's own files and the one-time edits, which a project sets up for every place. */
 	planFiles(builder: InitPlanBuilder): void {
 		const { configSet, rootDirs, syncDir, compiled } = this.layout();
-		const { name } = configSet;
-		if (configSet.sourced) {
-			builder.addConfig(name, {
+		configSet.planConfigs(
+			builder,
+			{
 				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
 				rootDirs,
-			});
-			builder.addConfig(configSet.syncStem, {
-				extends: ConfigSet.reference(configFileName(name)),
-				syncDir,
-			});
-		} else {
-			builder.addConfig(name, {
-				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
-				rootDirs,
-				...(syncDir && { syncDir }),
-			});
-		}
+			},
+			syncDir
+		);
 		for (const file of compiled?.files ?? []) builder.addCompilerFile(file);
 		builder.addSetup(...(compiled?.setup ?? []));
 	}
 
 	/** The commands that build and serve the place; a project gives them for its first place only. */
 	planSteps(builder: InitPlanBuilder): void {
-		const {
-			configSet,
-			rootDirs,
+		const { configSet, rootDirs, syncDir, compiled, outDir } =
+			this.layout();
+		configSet.planSteps(builder, this.directory, {
+			compileCommand: compiled?.compileCommand,
+			processed: outDir ? [outDir] : rootDirs,
 			syncDir,
-			compiled,
-			outDir,
-		} = this.layout();
-		builder.addRun(
-			...(compiled ? [compiled.compileCommand] : []),
-			ConfigSet.watchCommand(configSet.stems),
-			ConfigSet.serveCommand(configSet.servedStem)
-		);
-		if (configSet.darklua && syncDir) {
-			builder.addDarkluaCommands(
-				...this.directory.workspace.darklua.processCommands(
-					this.directory.path,
-					outDir ? [outDir] : rootDirs,
-					syncDir
-				)
-			);
-		}
-		if (configSet.sourced) {
-			builder.addSourcemapSteps(
-				defaultOutFileName(configSet.name),
-				this.directory.workspace.darklua
-			);
-		}
+		});
 	}
 
 	/** What the place's own folder, its language and where its code is compiled or processed to come to. */

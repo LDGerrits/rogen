@@ -183,20 +183,15 @@ export class WatchLog {
 		this.buildLog.diagnostics(warnings);
 	}
 
-	private report({
-		entry,
-		config,
-		outcome,
-		diagnostics,
-		summary,
-	}: RebuildReport): void {
-		if (outcome === "failed" || !summary) {
+	private report(report: RebuildReport): void {
+		const { entry, config, diagnostics } = report;
+		if (report.outcome === "failed") {
 			this.buildLog.notWritten({ entry, config }, diagnostics);
 		} else {
 			this.buildLog.written(
 				{ entry, config },
-				outcome === "wrote",
-				summary,
+				report.outcome === "wrote",
+				report.summary,
 				diagnostics
 			);
 		}

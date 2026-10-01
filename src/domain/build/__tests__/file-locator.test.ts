@@ -38,10 +38,12 @@ describe("CoreBuildService.locate", () => {
 	) => {
 		const config = configOf(overrides);
 		const index = await indexOfConfig(config);
-		const absolute = paths?.map((p) => abs(p));
 		return (
-			await buildServiceOf(fs, index).locate(config, absolute)
-		).unwrap();
+			await buildServiceOf(fs, index).locate(config, {
+				args: paths?.map((p) => abs(p)) ?? [],
+				cwd: abs(),
+			})
+		).unwrap().files;
 	};
 
 	const instancePaths = (located: Awaited<ReturnType<typeof locate>>) =>
@@ -318,9 +320,10 @@ describe("CoreBuildService.locate", () => {
 			const updates: unknown[] = [];
 			store.add(index.onDidUpdate((changes) => updates.push(changes)));
 
-			await buildServiceOf(fs, index).locate(config, [
-				abs("src/Combat/Server/Hit.luau"),
-			]);
+			await buildServiceOf(fs, index).locate(config, {
+				args: [abs("src/Combat/Server/Hit.luau")],
+				cwd: abs(),
+			});
 
 			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
 			expect(updates).toEqual([]);
@@ -396,10 +399,11 @@ describe("CoreBuildService.locate", () => {
 
 			expect(
 				(
-					await buildServiceOf(fs, index).locate(config, [
-						abs("src/Pipe.md"),
-					])
-				).unwrap()
+					await buildServiceOf(fs, index).locate(config, {
+						args: [abs("src/Pipe.md")],
+						cwd: abs(),
+					})
+				).unwrap().files
 			).toEqual([{ status: "ignored", source: abs("src/Pipe.md") }]);
 		});
 
@@ -407,15 +411,18 @@ describe("CoreBuildService.locate", () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
 			const buildService = buildServiceOf(fs, index);
 
-			const named = await buildService.locate(config, [
-				abs("src/Pipe.luau"),
-			]);
+			const named = await buildService.locate(config, {
+				args: [abs("src/Pipe.luau")],
+				cwd: abs(),
+			});
 			const all = await buildService.locate(config);
 
-			expect(named.unwrap()).toEqual(
+			expect(named.unwrap().files).toEqual(
 				all
 					.unwrap()
-					.filter(({ source }) => source === abs("src/Pipe.luau"))
+					.files.filter(
+						({ source }) => source === abs("src/Pipe.luau")
+					)
 			);
 		});
 	});
@@ -501,7 +508,7 @@ describe("CoreBuildService.locate", () => {
 			store.add(new CoreIndexService(fs))
 		).locate(configOf());
 
-		expect(located.unwrap()).toMatchObject([
+		expect(located.unwrap().files).toMatchObject([
 			{ status: "placed", source: abs("src/A.luau") },
 		]);
 	});

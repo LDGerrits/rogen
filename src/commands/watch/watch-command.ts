@@ -59,12 +59,10 @@ registerCommand(
 				configRefsFromArgs(args, args._.slice(1))
 			);
 			if (loaded.isErr()) return loaded;
-			const targets = configService.requireValidEntries();
-			if (targets.isErr()) return targets;
-			const buildable = buildService.checkBuildable(
-				targets.value.map(({ config }) => config)
+			const targets = buildService.requireBuildable(
+				configService.configs
 			);
-			if (buildable.isErr()) return buildable;
+			if (targets.isErr()) return targets;
 			log.begin(
 				targets.value,
 				await configService.listUnselectedConfigFiles()
