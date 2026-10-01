@@ -147,6 +147,19 @@ export interface InstanceLocation {
 	readonly files: readonly PlacedLocation[];
 }
 
+/** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
+export interface LocateTargets {
+	readonly args: readonly string[];
+	readonly cwd: string;
+}
+
+export interface ConfigLocations {
+	/** One per path argument; every file when no argument was given. */
+	readonly files: readonly FileLocation[];
+	/** One per instance argument. */
+	readonly instances: readonly InstanceLocation[];
+}
+
 /** The project file a config writes, and the staging files its writes go through. */
 export class OutputFile {
 	constructor(readonly path: string) {}
@@ -186,17 +199,11 @@ export interface BuildService {
 		options?: BuildOptions
 	): Promise<ConfigBuild[]>;
 
-	/** Where each of `paths` lands in `config`'s tree, or why it lands nowhere; a directory stands for what's in it. */
+	/** Where each argument lands in `config`'s tree: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. */
 	locate(
 		config: ResolvedConfig,
-		paths?: readonly string[]
-	): Promise<Result<FileLocation[], DiagnosticsError>>;
-
-	/** The files placed at each of `references`, or inside it, in `config`'s tree. */
-	locateInstances(
-		config: ResolvedConfig,
-		references: readonly InstanceReference[]
-	): Promise<Result<InstanceLocation[], DiagnosticsError>>;
+		targets?: LocateTargets
+	): Promise<Result<ConfigLocations, DiagnosticsError>>;
 }
 
 export const BuildService =

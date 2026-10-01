@@ -1,8 +1,6 @@
-import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { InstanceReference } from "../../domain/roblox/roblox.js";
 import {
 	ConfigService,
 	configRefsFromArgs,
@@ -18,7 +16,6 @@ import {
 	ParsedArgs,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { LocationReport } from "./location-report.js";
@@ -63,27 +60,18 @@ registerCommand(
 			if (targets.isErr()) return targets;
 
 			const given = args._.slice(1);
-			const { paths, instances } = await this.readTargets(
-				accessor.get(FileSystemService),
-				cwd,
-				given
-			);
 			const report = new LocationReport(cwd);
 			for (const { config } of targets.value) {
-				const located =
-					paths.length > 0 || instances.length === 0
-						? await buildService.locate(
-								config,
-								paths.length > 0 ? paths : undefined
-							)
-						: ok([]);
+				const located = await buildService.locate(config, {
+					args: given,
+					cwd,
+				});
 				if (located.isErr()) return located;
-				const behind = await buildService.locateInstances(
-					config,
-					instances
+				report.add(
+					config.label,
+					located.value.files,
+					located.value.instances
 				);
-				if (behind.isErr()) return behind;
-				report.add(config.label, located.value, behind.value);
 			}
 
 			if (args.json) {
@@ -95,26 +83,6 @@ registerCommand(
 			const lines = report.lines(given.length === 0);
 			if (lines.length > 0) logService.print(lines.join("\n"));
 			return ok(undefined);
-		}
-
-		/** An argument that starts with a service is an instance, unless the working directory holds an entry of that name. */
-		private async readTargets(
-			fileSystem: FileSystemService,
-			cwd: string,
-			given: readonly string[]
-		): Promise<{ paths: string[]; instances: InstanceReference[] }> {
-			const paths: string[] = [];
-			const instances: InstanceReference[] = [];
-			for (const arg of given) {
-				const reference = InstanceReference.parse(arg);
-				if (
-					reference &&
-					!(await fileSystem.exists(path.resolve(cwd, reference.service)))
-				)
-					instances.push(reference);
-				else paths.push(path.resolve(cwd, arg));
-			}
-			return { paths, instances };
 		}
 	}
 );

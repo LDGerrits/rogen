@@ -22,8 +22,8 @@ import {
 	BuildService,
 	BuiltProject,
 	ConfigBuild,
-	FileLocation,
-	InstanceLocation,
+	ConfigLocations,
+	LocateTargets,
 	OutputFile,
 	WrittenProject,
 } from "./build-service.js";
@@ -201,33 +201,51 @@ export class CoreBuildService implements BuildService {
 
 	async locate(
 		config: ResolvedConfig,
-		paths?: readonly string[]
-	): Promise<Result<FileLocation[], DiagnosticsError>> {
+		targets?: LocateTargets
+	): Promise<Result<ConfigLocations, DiagnosticsError>> {
+		const { paths, instances } = await this.classify(targets);
 		await this.indexService.ensureIndexed(config.rootDirs);
-		const index = paths
-			? new PlannedFilesIndex(this.indexService, config.rootDirs, paths)
-			: this.indexService;
+		const index =
+			paths.length > 0
+				? new PlannedFilesIndex(
+						this.indexService,
+						config.rootDirs,
+						paths
+					)
+				: this.indexService;
 		const placement = this.place(index, config);
-		return placement.isErr()
-			? err(new DiagnosticsError(placement.error))
-			: ok(new FileLocator(placement.value).locate(paths));
-	}
-
-	async locateInstances(
-		config: ResolvedConfig,
-		references: readonly InstanceReference[]
-	): Promise<Result<InstanceLocation[], DiagnosticsError>> {
-		await this.indexService.ensureIndexed(config.rootDirs);
-		const placement = this.place(this.indexService, config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
 		const locator = new FileLocator(placement.value);
-		return ok(
-			references.map((reference) => ({
+		return ok({
+			files: targets?.args.length
+				? locator.locate(paths)
+				: locator.locate(),
+			instances: instances.map((reference) => ({
 				reference,
 				files: locator.locateInstance(reference),
-			}))
-		);
+			})),
+		});
+	}
+
+	private async classify(
+		targets?: LocateTargets
+	): Promise<{ paths: string[]; instances: InstanceReference[] }> {
+		const paths: string[] = [];
+		const instances: InstanceReference[] = [];
+		if (!targets) return { paths, instances };
+		for (const arg of targets.args) {
+			const reference = InstanceReference.parse(arg);
+			if (
+				reference &&
+				!(await this.fileSystemService.exists(
+					path.resolve(targets.cwd, reference.service)
+				))
+			)
+				instances.push(reference);
+			else paths.push(path.resolve(targets.cwd, arg));
+		}
+		return { paths, instances };
 	}
 
 	private place(

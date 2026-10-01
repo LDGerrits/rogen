@@ -13,7 +13,6 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { ConfigEntry } from "../../config/config-service.js";
-import { InstanceReference } from "../../roblox/roblox.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
@@ -647,56 +646,108 @@ describe("CoreBuildService", () => {
 	});
 
 	describe("locate", () => {
+		const routes = {
+			server: "ServerScriptService",
+			"*": "ReplicatedStorage/Shared",
+		};
+		const locate = (config: ResolvedConfig, ...args: string[]) =>
+			buildServiceOfFs().locate(config, { args, cwd: abs() });
+
 		it("should fail when the config declares no routes", async () => {
-			const result = await buildServiceOfFs().locate(
-				configOf({ routes: {} })
-			);
+			const result = await locate(configOf({ routes: {} }));
 
 			expect(
 				result.isErr() ? result.error.diagnostics : []
 			).toMatchObject([{ code: "route.noRoutes" }]);
 		});
-	});
 
-	describe("locateInstances", () => {
-		const routes = {
-			server: "ServerScriptService",
-			"*": "ReplicatedStorage/Shared",
-		};
+		it("should list every file and no instance without arguments", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const result = (await locate(configOf())).unwrap();
+
+			expect(result.files.map(({ source }) => source)).toEqual([
+				toPosix(abs("src/A.luau")),
+			]);
+			expect(result.instances).toEqual([]);
+		});
 
 		it("should find the files placed at an instance and inside it", async () => {
 			await fs.writeFile(abs("src/Inventory/server/Save.luau"), "");
 			await fs.writeFile(abs("src/Inventory/server/Load.luau"), "");
 			await fs.writeFile(abs("src/Inventory/Types.luau"), "");
-			const reference = InstanceReference.parse(
-				"ServerScriptService.Inventory"
-			)!;
 
-			const result = await buildServiceOfFs().locateInstances(
-				configOf({ routes }),
-				[reference]
-			);
+			const result = (
+				await locate(
+					configOf({ routes }),
+					"ServerScriptService.Inventory"
+				)
+			).unwrap();
 
 			expect(
-				result.unwrap()[0].files.map(({ source }) => source)
+				result.instances[0].files.map(({ source }) => source)
 			).toEqual([
 				toPosix(abs("src/Inventory/server/Load.luau")),
 				toPosix(abs("src/Inventory/server/Save.luau")),
 			]);
+			expect(result.files).toEqual([]);
 		});
 
 		it("should find no file for an instance nothing places", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
-			const reference = InstanceReference.parse(
-				"ServerScriptService.Missing:3"
-			)!;
 
-			const result = await buildServiceOfFs().locateInstances(
-				configOf({ routes }),
-				[reference]
-			);
+			const result = (
+				await locate(
+					configOf({ routes }),
+					"ServerScriptService.Missing:3"
+				)
+			).unwrap();
 
-			expect(result.unwrap()).toEqual([{ reference, files: [] }]);
+			expect(result.instances).toMatchObject([{ files: [] }]);
+		});
+
+		it("should place a path relative to the working directory", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const result = (await locate(configOf(), "src/A.luau")).unwrap();
+
+			expect(result.files).toMatchObject([
+				{ source: toPosix(abs("src/A.luau")), status: "placed" },
+			]);
+		});
+
+		it("should read an argument as an instance unless the working directory holds that name", async () => {
+			await fs.writeFile(abs("ReplicatedStorage/Shared.luau"), "");
+
+			const result = (
+				await locate(
+					configOf({ routes }),
+					"ServerScriptService.Inventory",
+					"ReplicatedStorage/Shared.luau"
+				)
+			).unwrap();
+
+			expect(
+				result.instances.map(({ reference }) => reference.text)
+			).toEqual(["ServerScriptService.Inventory"]);
+			expect(result.files.map(({ source }) => source)).toEqual([
+				toPosix(abs("ReplicatedStorage/Shared.luau")),
+			]);
+		});
+
+		it("should answer paths and instances from one call", async () => {
+			await fs.writeFile(abs("src/server/Save.luau"), "");
+
+			const result = (
+				await locate(
+					configOf({ routes }),
+					"src/server/Save.luau",
+					"ServerScriptService.Save"
+				)
+			).unwrap();
+
+			expect(result.files).toMatchObject([{ status: "placed" }]);
+			expect(result.instances[0].files).toHaveLength(1);
 		});
 	});
 
