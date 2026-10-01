@@ -9,20 +9,16 @@ import {
 	OutputFile,
 } from "../../../domain/build/build-service.js";
 import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
-import { WatchService } from "../../../domain/watch/watch-service.js";
+import {
+	WatchService,
+	WatchUpdate,
+} from "../../../domain/watch/watch-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
-import {
-	FileChange,
-	FileChangeType,
-} from "../../../platform/fs/file-changes.js";
-import {
-	FileSystemService,
-	FileType,
-} from "../../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
@@ -30,7 +26,6 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import { parseArgs } from "../../../platform/environment/args.js";
@@ -46,11 +41,11 @@ const isDefaultStaging = (file: string): boolean =>
 describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
-	let reconciliation: CoreReconciliationService;
 	let configService: CoreConfigService;
 	let store: DisposableStore;
 	let lifecycle: MockLifecycleService;
 	let logService: MockLogService;
+	let updates: WatchUpdate[];
 
 	const settle = async () => {
 		await jest.advanceTimersByTimeAsync(150);
@@ -78,16 +73,20 @@ describe("watch command", () => {
 		const indexService = store.add(new CoreIndexService(memFs));
 		const buildService = buildServiceOf(memFs, indexService);
 		services.set(BuildService, buildService);
-		services.set(
-			WatchService,
-			new CoreWatchService(
-				watcher,
-				reconciliation,
-				configService,
-				indexService,
-				buildService
-			)
+		const watchService = new CoreWatchService(
+			watcher,
+			logService,
+			configService,
+			indexService,
+			buildService
 		);
+		const watch = watchService.watch.bind(watchService);
+		watchService.watch = () => {
+			const session = watch();
+			store.add(session.onDidUpdate((update) => updates.push(update)));
+			return session;
+		};
+		services.set(WatchService, watchService);
 		services.set(
 			EnvironmentService,
 			new MockEnvironmentService(undefined, "/repo")
@@ -111,11 +110,8 @@ describe("watch command", () => {
 		);
 	};
 
-	const emitted = () => {
-		const batches: FileChange[][] = [];
-		store.add(reconciliation.onDidEmitChanges((c) => batches.push(c)));
-		return batches;
-	};
+	const changeUpdates = () =>
+		updates.filter(({ cause }) => cause.kind === "change");
 
 	beforeEach(async () => {
 		jest.useFakeTimers();
@@ -126,10 +122,7 @@ describe("watch command", () => {
 		store = new DisposableStore();
 		lifecycle = new MockLifecycleService();
 		logService = new MockLogService();
-		reconciliation = new CoreReconciliationService(logService, {
-			burstThreshold: 200,
-			debounceMs: 100,
-		});
+		updates = [];
 		configService = new CoreConfigService(
 			memFs,
 			new MockEnvironmentService(undefined, "/repo")
@@ -141,7 +134,6 @@ describe("watch command", () => {
 		lifecycle.shutdown();
 		jest.restoreAllMocks();
 		await watcher.stop();
-		reconciliation[Symbol.dispose]();
 		configService[Symbol.dispose]();
 		store[Symbol.dispose]();
 		jest.runOnlyPendingTimers();
@@ -294,12 +286,11 @@ describe("watch command", () => {
 		it("should emit one batch for one change to a root shared by two configs", async () => {
 			await write("/repo/source.rogen.json", config());
 			await run(["default", "source"]);
-			const batches = emitted();
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(batches).toHaveLength(1);
+			expect(changeUpdates()).toHaveLength(1);
 		});
 
 		it("should not rebuild off its own write to a watched root", async () => {
@@ -308,13 +299,14 @@ describe("watch command", () => {
 				config({ outFile: "src/out.project.json" })
 			);
 			await run();
-			const batches = emitted();
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(batches).toHaveLength(1);
-			expect(batches[0].map((c) => c.path)).toEqual(["/repo/src/A.luau"]);
+			expect(changeUpdates()).toHaveLength(1);
+			expect(changeUpdates()[0].changes.map((c) => c.path)).toEqual([
+				"/repo/src/A.luau",
+			]);
 		});
 	});
 
@@ -341,12 +333,11 @@ describe("watch command", () => {
 		it("should not queue an update to a source file", async () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await run();
-			const queueEvents = jest.spyOn(reconciliation, "queueEvents");
 
 			await memFs.writeFile("/repo/src/A.luau", "-- edited");
 			await settle();
 
-			expect(queueEvents).not.toHaveBeenCalled();
+			expect(changeUpdates()).toEqual([]);
 		});
 
 		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
@@ -997,12 +988,11 @@ describe("watch command", () => {
 			await settle();
 			lifecycle.shutdown();
 			await running;
-			const queueEvents = jest.spyOn(reconciliation, "queueEvents");
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(queueEvents).not.toHaveBeenCalled();
+			expect(changeUpdates()).toEqual([]);
 		});
 
 		it("should return an error and stop the watcher when watching fails", async () => {
@@ -1016,17 +1006,19 @@ describe("watch command", () => {
 		});
 
 		it("should leave no subscription behind when watching fails", async () => {
-			jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
+			const watch = watcher.watch.bind(watcher);
+			jest.spyOn(watcher, "watch").mockImplementation(
+				async (requests, options) => {
+					await watch(requests, options);
+					throw new Error("boom");
+				}
+			);
+			// Keeps the watcher reporting, so only the session's own subscriptions can react.
+			jest.spyOn(watcher, "stop").mockResolvedValue();
 			await startWatch();
 			const rename = jest.spyOn(memFs, "rename");
 
-			reconciliation.queueEvents([
-				{
-					type: FileChangeType.ADDED,
-					path: "/repo/src/A.luau",
-					fileType: FileType.File,
-				},
-			]);
+			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
 			expect(rename).not.toHaveBeenCalled();

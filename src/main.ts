@@ -25,9 +25,7 @@ import { ConsolePromptService } from "./platform/prompt/console-prompt-service.j
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
 import { ProductService } from "./platform/product/product-service.js";
-import { CoreReconciliationService } from "./platform/watcher/core-reconciliation-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
-import { ReconciliationService } from "./platform/watcher/reconciliation-service.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
 import { CoreBuildService } from "./domain/build/core-build-service.js";
@@ -108,10 +106,6 @@ async function main(): Promise<void> {
 		);
 		services.set(ConfigService, configService);
 
-		const reconciliationService = disposables.add(
-			new CoreReconciliationService(logService)
-		);
-
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
@@ -148,12 +142,11 @@ async function main(): Promise<void> {
 		);
 		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
-		services.set(ReconciliationService, reconciliationService);
 		services.set(
 			WatchService,
 			new CoreWatchService(
 				watcher,
-				reconciliationService,
+				logService,
 				configService,
 				indexService,
 				buildService

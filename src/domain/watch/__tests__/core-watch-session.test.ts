@@ -4,7 +4,6 @@ import { MockEnvironmentService } from "../../../platform/environment/__tests__/
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
-import { CoreReconciliationService } from "../../../platform/watcher/core-reconciliation-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { WatchUpdate } from "../watch-service.js";
@@ -40,12 +39,7 @@ describe("CoreWatchSession", () => {
 		const session = store.add(
 			new CoreWatchSession(
 				watcher,
-				store.add(
-					new CoreReconciliationService(new NullLogService(), {
-						burstThreshold: 200,
-						debounceMs: 100,
-					})
-				),
+				new NullLogService(),
 				configService,
 				indexService,
 				buildServiceOf(fs, indexService)
