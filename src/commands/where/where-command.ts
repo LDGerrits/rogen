@@ -6,6 +6,7 @@ import { InstanceReference } from "../../domain/roblox/roblox.js";
 import {
 	ConfigService,
 	configRefsFromArgs,
+	requireValidEntries,
 } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -58,7 +59,7 @@ registerCommand(
 				configRefsFromArgs(args, [])
 			);
 			if (loaded.isErr()) return loaded;
-			const targets = configService.requireValidEntries();
+			const targets = requireValidEntries(configService.configs);
 			if (targets.isErr()) return targets;
 
 			const given = args._.slice(1);

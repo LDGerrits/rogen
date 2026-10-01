@@ -52,6 +52,22 @@ function failedBuild(
 	};
 }
 
+function builtAs(
+	config: ResolvedConfig,
+	project: BuiltProject,
+	outcome: "wrote" | "unchanged" | "notWritten"
+): ConfigBuild {
+	return {
+		config,
+		outcome,
+		warnings: project.warnings,
+		syncWarnings: project.syncWarnings,
+		errors: [],
+		summary: project.summary,
+		readFiles: project.readFiles,
+	};
+}
+
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
 
@@ -156,39 +172,29 @@ export class CoreBuildService implements BuildService {
 		for (const config of configs)
 			built.push(await this.build(config, options));
 
-		let stopped = built.some((result) => result.isErr());
-		const builds: ConfigBuild[] = [];
+		const builds = built.map((result, index) =>
+			result.isErr()
+				? failedBuild(configs[index], result.error.diagnostics)
+				: builtAs(configs[index], result.value, "notWritten")
+		);
+		if (builds.some(({ outcome }) => outcome === "failed")) return builds;
+
 		for (const [index, result] of built.entries()) {
-			const config = configs[index];
-			if (result.isErr()) {
-				builds.push(failedBuild(config, result.error.diagnostics));
-				continue;
-			}
-			const project = result.value;
-			const report = {
-				config,
-				warnings: project.warnings,
-				syncWarnings: project.syncWarnings,
-				errors: [],
-				summary: project.summary,
-				readFiles: project.readFiles,
-			};
-			if (stopped) {
-				builds.push({ ...report, outcome: "notWritten" });
-				continue;
-			}
+			const project = result.unwrap();
 			const written = await this.write(project);
 			if (written.isErr()) {
-				stopped = true;
-				builds.push(
-					failedBuild(config, written.error.diagnostics, project)
+				builds[index] = failedBuild(
+					configs[index],
+					written.error.diagnostics,
+					project
 				);
-				continue;
+				break;
 			}
-			builds.push({
-				...report,
-				outcome: written.value.written ? "wrote" : "unchanged",
-			});
+			builds[index] = builtAs(
+				configs[index],
+				project,
+				written.value.written ? "wrote" : "unchanged"
+			);
 		}
 		return builds;
 	}

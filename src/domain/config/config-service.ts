@@ -117,8 +117,6 @@ export interface ConfigService {
 	getConfig(file: string): ConfigEntry | undefined;
 	/** The configs that resolved, each with the entry it came from. A broken config that was valid before is still here, as its last valid version. */
 	getResolvedEntries(): ResolvedEntry[];
-	/** The configs, or every error when any file is broken now. Warnings don't fail it. */
-	requireValidEntries(): Result<ResolvedEntry[], DiagnosticsError>;
 	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
 	getBrokenError(): Error | undefined;
 

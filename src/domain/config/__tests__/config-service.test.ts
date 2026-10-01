@@ -7,7 +7,7 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { ParsedArgs } from "../../../platform/environment/args.js";
-import { configRefsFromArgs } from "../config-service.js";
+import { configRefsFromArgs, requireValidEntries } from "../config-service.js";
 import { MockConfigService, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
@@ -169,7 +169,7 @@ describe("domain/config/config-service", () => {
 				mockEntry({ rootDirs: ["/repo/b"] }, "/repo/b.rogen.json"),
 			]);
 
-			const result = service.requireValidEntries();
+			const result = requireValidEntries(service.configs);
 
 			expect(
 				result.unwrap().map(({ config }) => config.rootDirs)
@@ -184,7 +184,7 @@ describe("domain/config/config-service", () => {
 				}),
 			]);
 
-			const result = service.requireValidEntries();
+			const result = requireValidEntries(service.configs);
 
 			const error = (result as ResultError<DiagnosticsError>).error;
 			expect(error.diagnostics).toEqual([problem]);
@@ -198,7 +198,7 @@ describe("domain/config/config-service", () => {
 				mockEntry({}, undefined, { diagnostics: [problem] }),
 			]);
 
-			expect(service.requireValidEntries().isErr()).toBe(true);
+			expect(requireValidEntries(service.configs).isErr()).toBe(true);
 		});
 
 		it("should not fail on warnings", () => {
@@ -212,7 +212,7 @@ describe("domain/config/config-service", () => {
 			]);
 
 			expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-			expect(service.requireValidEntries().isOk()).toBe(true);
+			expect(requireValidEntries(service.configs).isOk()).toBe(true);
 		});
 	});
 });

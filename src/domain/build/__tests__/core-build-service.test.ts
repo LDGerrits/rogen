@@ -563,21 +563,26 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should write every config's project file and say what each did", async () => {
-			const configs = [configOf(), lobby()];
+			const result = await runOf([configOf(), lobby()]);
 
-			const first = await runOf(configs);
-			const second = await runOf(configs);
-
-			expect(outcomesOf(first)).toEqual([
+			expect(outcomesOf(result)).toEqual([
 				[abs("default.rogen.json"), "wrote"],
 				[abs("lobby.rogen.json"), "wrote"],
 			]);
-			expect(first).toMatchObject([
+			expect(result).toMatchObject([
 				{ summary: { roots: [{ files: 1 }] } },
 				{ summary: { roots: [{ files: 1 }] } },
 			]);
 			expect(await fs.exists(abs("lobby.project.json"))).toBe(true);
-			expect(second.map(({ outcome }) => outcome)).toEqual([
+		});
+
+		it("should say unchanged for a project file that is up to date", async () => {
+			const configs = [configOf(), lobby()];
+			await runOf(configs);
+
+			const result = await runOf(configs);
+
+			expect(result.map(({ outcome }) => outcome)).toEqual([
 				"unchanged",
 				"unchanged",
 			]);
@@ -750,7 +755,10 @@ describe("CoreBuildService", () => {
 		it("should name each config file that declares no routes", () => {
 			const result = check(
 				entryOf({ routes: { "*": "Workspace" } }),
-				entryOf({ routes: {} }, abs("bare.rogen.json"))
+				entryOf(
+					{ routes: {}, outFile: abs("bare.project.json") },
+					abs("bare.rogen.json")
+				)
 			);
 
 			expect(diagnosticsOf(result)).toMatchObject([

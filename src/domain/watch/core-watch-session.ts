@@ -159,7 +159,9 @@ export class CoreWatchSession
 		const [build] = await this.buildService.run([config], {
 			checkSyncDir: load,
 		});
-		if (build.outcome === "failed" || build.outcome === "notWritten") {
+		if (build.outcome === "notWritten")
+			throw new Error("A run of one config can't leave it unwritten.");
+		if (build.outcome === "failed") {
 			this.failing.add(file);
 			return {
 				entry,
