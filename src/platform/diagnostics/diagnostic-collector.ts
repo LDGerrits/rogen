@@ -15,10 +15,6 @@ export class DiagnosticCollector {
 		return this.collected;
 	}
 
-	get errors(): Diagnostic[] {
-		return this.collected.filter(isError);
-	}
-
 	get hasErrors(): boolean {
 		return this.collected.some(isError);
 	}
