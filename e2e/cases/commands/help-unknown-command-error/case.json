@@ -1,8 +1,6 @@
 {
 	"steps": [
-		[
-			"help",
-			"deploy"
-		]
+		["help", "deploy"],
+		["help", "wacth"]
 	]
 }

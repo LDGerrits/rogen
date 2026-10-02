@@ -90,11 +90,27 @@ describe("parseArgs", () => {
 		);
 	});
 
-	it("should reject an option that belongs to another command", () => {
+	it("should say an option belongs to another command", () => {
 		const result = parse(["watch", "--tag", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"Unknown option '--tag'. Run 'rogen help watch' to see what watch accepts."
+			"watch doesn't take '--tag'. Run 'rogen help watch' to see what watch accepts."
+		);
+	});
+
+	it("should suggest the option a misspelled one is closest to", () => {
+		const result = parse(["build", "--qiuet"]);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"Unknown option '--qiuet'. Did you mean '--quiet'?"
+		);
+	});
+
+	it("should suggest only among the command's own options", () => {
+		const result = parse(["watch", "--tga", "a"]);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"Unknown option '--tga'. Run 'rogen help watch' to see what watch accepts."
 		);
 	});
 

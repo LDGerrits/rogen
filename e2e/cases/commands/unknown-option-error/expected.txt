@@ -22,3 +22,13 @@ $ rogen build --json=yes
 exit 1
 stderr:
   error: Option '--json' is a flag and takes no value.
+
+$ rogen build --jsno
+exit 1
+stderr:
+  error: Unknown option '--jsno'. Did you mean '--json'?
+
+$ rogen init --tag x
+exit 1
+stderr:
+  error: init doesn't take '--tag'. Run 'rogen help init' to see what init accepts.

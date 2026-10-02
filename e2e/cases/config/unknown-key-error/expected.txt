@@ -2,3 +2,4 @@ $ rogen build
 exit 1
 stderr:
   default.rogen.json:3:2 - error: unknown field "outDir".
+  default.rogen.json:4:2 - error: unknown field "exlude". Did you mean "exclude"?

@@ -84,5 +84,23 @@ describe("CoreCommandService", () => {
 				"rogen build prod"
 			);
 		});
+
+		it("should suggest the command a misspelled one is closest to", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "build",
+					metadata: { description: "build" },
+					handler: async () => ok(undefined),
+				})
+			);
+
+			const result = await commandService.executeCommand("biuld", {
+				_: ["biuld"],
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"biuld\". Did you mean 'rogen build'?"
+			);
+		});
 	});
 });

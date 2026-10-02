@@ -1,6 +1,7 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
+import { closestMatch } from "../../base/strings.js";
 
 export interface OptionDescriptor {
 	readonly name: string;
@@ -139,6 +140,7 @@ function toOptionTable(options: readonly OptionDescriptor[]) {
 }
 
 type Token = ReturnType<typeof nodeParseArgs>["tokens"];
+type OptionToken = Extract<NonNullable<Token>[number], { kind: "option" }>;
 
 function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	return nodeParseArgs({
@@ -159,17 +161,38 @@ function commandOf(
 	return positionals.length > 0 ? positionals[0].toLowerCase() : "build";
 }
 
+function unknownOption(
+	{ name, rawName }: OptionToken,
+	options: readonly OptionDescriptor[],
+	allOptions: readonly OptionDescriptor[],
+	command: string
+): string {
+	const help = `Run 'rogen help ${command}' to see what ${command} accepts.`;
+	if (allOptions.some((option) => option.name === name))
+		return `${command} doesn't take '${rawName}'. ${help}`;
+	const suggestion = rawName.startsWith("--")
+		? closestMatch(
+				name,
+				options.map((option) => option.name)
+			)
+		: undefined;
+	return suggestion
+		? `Unknown option '${rawName}'. Did you mean '--${suggestion}'?`
+		: `Unknown option '${rawName}'. ${help}`;
+}
+
 /** Node's own wording varies by version and talks about positionals, so the options are checked here. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
+	allOptions: readonly OptionDescriptor[],
 	command: string
 ): string | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
 		if (!option) {
-			return `Unknown option '${token.rawName}'. Run 'rogen help ${command}' to see what ${command} accepts.`;
+			return unknownOption(token, options, allOptions, command);
 		}
 		if (option.type === "boolean" && token.value !== undefined) {
 			return `Option '${token.rawName}' is a flag and takes no value.`;
@@ -196,7 +219,8 @@ export function parseArgs(
 	isCommand: (command: string) => boolean
 ): Result<ParsedCli, Error> {
 	try {
-		const { values, positionals, tokens } = tokenize(args, optionsFor());
+		const allOptions = optionsFor();
+		const { values, positionals, tokens } = tokenize(args, allOptions);
 		const command = commandOf(values, positionals);
 		if (command === "build" && positionals.length === 0)
 			positionals.push(command);
@@ -205,6 +229,7 @@ export function parseArgs(
 			const problem = findOptionProblem(
 				tokens ?? [],
 				optionsFor(command),
+				allOptions,
 				command
 			);
 			if (problem) return err(new Error(problem));

@@ -1,14 +1,7 @@
 {
 	"steps": [
-		[
-			"build",
-			"--tag",
-			"nope"
-		],
-		[
-			"build",
-			"--no-tag",
-			"nope"
-		]
+		["build", "--tag", "nope"],
+		["build", "--no-tag", "nope"],
+		["build", "--tag", "mokc"]
 	]
 }

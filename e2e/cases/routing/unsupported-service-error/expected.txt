@@ -1,5 +1,6 @@
 $ rogen build
 exit 1
 stderr:
-  default.rogen.json:6:13 - error: "ServerScriptServices" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.
-  default.rogen.json:7:8 - error: "CoreGui" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.
+  default.rogen.json:6:13 - error: "ServerScriptServices" is not a supported service. Did you mean "ServerScriptService"?
+  default.rogen.json:7:13 - error: "StarterPlayerScripts" is not a supported service. Did you mean "StarterPlayer/StarterPlayerScripts"?
+  default.rogen.json:8:8 - error: "CoreGui" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.

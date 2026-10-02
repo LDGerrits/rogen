@@ -82,6 +82,32 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 				});
 			});
 
+			it("should suggest the listed field a misspelled one is closest to", () => {
+				const [diagnostic] = failures('{ "nmae": "a" }');
+
+				expect(diagnostic.message).toBe(
+					'unknown field "nmae". Did you mean "name"?'
+				);
+			});
+
+			it("should not suggest a field the object already has", () => {
+				const [diagnostic] = failures('{ "name": "a", "nmae": "b" }');
+
+				expect(diagnostic.message).toBe('unknown field "nmae".');
+			});
+
+			it("should suggest a nested field at its path", () => {
+				const nested: JSONSchema = {
+					type: "object",
+					properties: { inner: schema },
+				};
+				const result = read('{ "inner": { "lsit": [] } }', nested);
+
+				expect(result.isErr() && result.error[0].message).toBe(
+					'unknown field "inner.lsit". Did you mean "inner.list"?'
+				);
+			});
+
 			it("should not mistake an inherited property name for a listed field", () => {
 				expect(read('{ "constructor": 1 }').isOk()).toBe(false);
 				expect(

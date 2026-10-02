@@ -7,3 +7,8 @@ $ rogen deploy --tag x
 exit 1
 stderr:
   error: Unknown command "deploy". To build a config, run 'rogen build deploy'; run 'rogen help' to see the commands.
+
+$ rogen biuld
+exit 1
+stderr:
+  error: Unknown command "biuld". Did you mean 'rogen build'?
