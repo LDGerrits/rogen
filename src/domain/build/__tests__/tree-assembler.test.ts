@@ -1,5 +1,6 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
@@ -198,12 +199,15 @@ describe("TreeAssembler", () => {
 				expect(
 					(value.tree.ReplicatedStorage as RojoNode).Packages
 				).toEqual({ $path: "Packages" });
-				expect(warnings).toMatchObject([
-					{ code: "tree.templateClash" },
+				expect(warnings).toEqual([
+					{
+						severity: DiagnosticSeverity.Warning,
+						code: "tree.templateClash",
+						resource: abs("src/Packages"),
+						message:
+							'the template defines "ReplicatedStorage/Packages" too, so its node is kept and this folder is left out. Rename one of them to keep both.',
+					},
 				]);
-				expect(warnings[0].message).toContain(
-					"ReplicatedStorage/Packages"
-				);
 			});
 		});
 
@@ -1298,8 +1302,14 @@ describe("TreeAssembler", () => {
 					$attributes: { FromTemplate: true },
 					Hud: { $path: optional("src/Gui/client/Hud.luau") },
 				});
-				expect(warnings).toMatchObject([
-					{ code: "meta.templateClass" },
+				expect(warnings).toEqual([
+					{
+						severity: DiagnosticSeverity.Warning,
+						code: "meta.templateClass",
+						resource: abs("src/Gui/init.meta.json"),
+						message:
+							'the template makes "StarterPlayer/StarterPlayerScripts/Gui" a Folder, so its class is kept over this meta\'s ScreenGui.',
+					},
 				]);
 			});
 
@@ -1326,13 +1336,15 @@ describe("TreeAssembler", () => {
 					nodeAt(value.tree, "ServerScriptService", "Packages")
 				).toEqual({ $path: "Packages" });
 				expect(warnings).toMatchObject([
-					{ code: "tree.templateClash" },
+					{
+						code: "tree.templateClash",
+						resource: abs("src/Packages"),
+					},
 					{
 						code: "meta.templatePath",
 						resource: abs("src/Packages/init.meta.json"),
 					},
 				]);
-				expect(warnings[0].message).toContain(abs("src/Packages"));
 			});
 
 			it("should still copy meta onto a template node when the template displaced a file in the folder", async () => {
@@ -1359,7 +1371,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should warn once about meta in a routing, tag or invisible folder or a root dir", async () => {
+			it("should warn at each meta in a routing, tag or invisible folder or a root dir", async () => {
 				await write(
 					"src/Combat/server/A.luau",
 					"src/Combat/dev/B.luau",
@@ -1380,12 +1392,17 @@ describe("TreeAssembler", () => {
 					tags: { dev: true },
 				});
 
+				const nothing = (dir: string, kind: string) => ({
+					code: "meta.appliesToNothing",
+					resource: abs(`${dir}/init.meta.json`),
+					message: `applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`,
+				});
 				expect(warnings).toMatchObject([
-					{ code: "meta.appliesToNothing" },
+					nothing("src/Combat/(group)", "an invisible folder"),
+					nothing("src/Combat/dev", "a tag folder"),
+					nothing("src/Combat/server", "a routing folder"),
+					nothing("src", "a root dir"),
 				]);
-				expect(warnings[0].message).toMatch(
-					/^4 init\.meta\.json files apply to nothing/
-				);
 			});
 
 			it("should not warn about meta in a folder whose files were all pruned", async () => {

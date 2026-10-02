@@ -2,6 +2,7 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import {
+	Diagnostic,
 	DiagnosticSeverity,
 	errorDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
@@ -107,7 +108,10 @@ describe("CoreBuildService", () => {
 
 			expect(
 				result.isErr() ? result.error.diagnostics : []
-			).toMatchObject([{ code: "tag.activeClash" }]);
+			).toMatchObject([
+				{ code: "tag.activeClash", resource: abs("src/A.dev.luau") },
+				{ code: "tag.activeClash", resource: abs("src/A.mock.luau") },
+			]);
 		});
 
 		it("should warn about a missing root dir and still succeed", async () => {
@@ -261,7 +265,11 @@ describe("CoreBuildService", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should warn once with the name Rojo reads, the folder's meta, or that the file takes none", async () => {
+			const messageAt = (warnings: readonly Diagnostic[], file: string) =>
+				warnings.find(({ resource }) => resource === toPosix(abs(file)))
+					?.message;
+
+			it("should warn at each meta with the name Rojo reads, the folder's meta, or that the file takes none", async () => {
 				const warnings = await warningsFor([
 					"src/Save.server.luau",
 					"src/Save.server.meta.json",
@@ -276,17 +284,19 @@ describe("CoreBuildService", () => {
 					"src/Nothing.meta.json",
 				]);
 
-				expect(warnings).toHaveLength(1);
-				expect(warnings[0].resource).toBe(abs("default.project.json"));
-				expect(warnings[0].message).toMatch(
-					/^6 meta files belong to no file/
+				expect(warnings).toHaveLength(6);
+				expect(messageAt(warnings, "src/Bar.meta.json")).toBe(
+					"belongs to no file, so Rojo ignores it. A folder's meta is Bar/init.meta.json."
 				);
-				for (const entry of [
-					`${toPosix(abs("src/Bar.meta.json"))} (a folder's meta is Bar/init.meta.json)`,
-					`${toPosix(abs("src/Crate.meta.json"))} (Crate.model.json takes no meta)`,
-					`${toPosix(abs("src/Foo.meta.json"))} (a folder's meta is Foo/init.meta.json)`,
-				])
-					expect(warnings[0].message).toContain(entry);
+				expect(messageAt(warnings, "src/Crate.meta.json")).toBe(
+					"belongs to no file, so Rojo ignores it. Crate.model.json takes no meta."
+				);
+				expect(messageAt(warnings, "src/Foo.meta.json")).toBe(
+					"belongs to no file, so Rojo ignores it. A folder's meta is Foo/init.meta.json."
+				);
+				expect(messageAt(warnings, "src/Nothing.meta.json")).toBe(
+					"belongs to no file, so Rojo ignores it. A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."
+				);
 			});
 
 			it("should give the folder hint for a folder holding no file Rogen places", async () => {
@@ -303,9 +313,9 @@ describe("CoreBuildService", () => {
 				);
 
 				for (const name of ["Empty", "Legacy", "Notes"])
-					expect(warnings[0].message).toContain(
-						`${toPosix(abs(`src/${name}.meta.json`))} (a folder's meta is ${name}/init.meta.json)`
-					);
+					expect(
+						messageAt(warnings, `src/${name}.meta.json`)
+					).toContain(`A folder's meta is ${name}/init.meta.json.`);
 			});
 
 			it("should name the meta Rojo reads for a script's full stem", async () => {
@@ -314,9 +324,9 @@ describe("CoreBuildService", () => {
 					"src/Save.server.meta.json",
 				]);
 
-				expect(warnings[0].message).toContain(
-					`${toPosix(abs("src/Save.server.meta.json"))} (Rojo reads Save.meta.json)`
-				);
+				expect(
+					messageAt(warnings, "src/Save.server.meta.json")
+				).toContain("Rojo reads Save.meta.json.");
 			});
 
 			it("should say a model file takes no meta", async () => {
@@ -325,8 +335,8 @@ describe("CoreBuildService", () => {
 					"src/Tree.meta.json",
 				]);
 
-				expect(warnings[0].message).toContain(
-					`${toPosix(abs("src/Tree.meta.json"))} (Tree.rbxm takes no meta)`
+				expect(messageAt(warnings, "src/Tree.meta.json")).toContain(
+					"Tree.rbxm takes no meta."
 				);
 			});
 		});

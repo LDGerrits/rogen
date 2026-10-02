@@ -5,7 +5,9 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.project.json - warning: 3 meta files belong to no file, so Rojo ignores them (src/Inventory/Bots.meta.json (a folder's meta is Bots/init.meta.json), src/Inventory/Crate.meta.json (Crate.model.json takes no meta), src/Inventory/Save.server.meta.json (Rojo reads Save.meta.json)). A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin.
+  src/Inventory/Bots.meta.json - warning: belongs to no file, so Rojo ignores it. A folder's meta is Bots/init.meta.json.
+  src/Inventory/Crate.meta.json - warning: belongs to no file, so Rojo ignores it. Crate.model.json takes no meta.
+  src/Inventory/Save.server.meta.json - warning: belongs to no file, so Rojo ignores it. Rojo reads Save.meta.json.
 
 written:
   default.project.json
