@@ -1,10 +1,15 @@
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { SupportedService, isSupportedService } from "./supported-services.js";
+import {
+	SUPPORTED_SERVICES,
+	SupportedService,
+	isSupportedService,
+} from "./supported-services.js";
 
 const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterPlayerScripts",
@@ -25,15 +30,25 @@ export class Target {
 	): Result<Target, Diagnostic[]> {
 		const [service, ...folders] = text.split("/");
 		if (!isSupportedService(service)) {
+			const suggestion = Target.serviceFor(service);
 			return err([
 				errorDiagnostic(
 					"roblox.unsupportedService",
 					location,
-					`"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
+					suggestion
+						? `"${service}" is not a supported service. Did you mean "${[suggestion, ...folders].join("/")}"?`
+						: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
 				),
 			]);
 		}
 		return ok(new Target(service, folders));
+	}
+
+	/** The service a misspelled one most likely meant; a player script container is reached through StarterPlayer. */
+	private static serviceFor(name: string): string | undefined {
+		const container = closestMatch(name, PLAYER_SCRIPT_CONTAINERS);
+		if (container) return `StarterPlayer/${container}`;
+		return closestMatch(name, SUPPORTED_SERVICES);
 	}
 
 	get instancePath(): readonly string[] {

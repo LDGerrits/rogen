@@ -1,9 +1,5 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import {
-	InstanceReference,
-	Target,
-	containerClassName,
-} from "../roblox.js";
+import { InstanceReference, Target, containerClassName } from "../roblox.js";
 
 const location = {
 	resource: "/repo/default.rogen.json",
@@ -73,6 +69,26 @@ describe("domain/roblox/roblox", () => {
 	});
 
 	describe("Target", () => {
+		it.each([
+			["ReplicatedStorge/Shared", "ReplicatedStorage/Shared"],
+			["replicatedstorage", "ReplicatedStorage"],
+			[
+				"StarterPlayerScripts/Hud",
+				"StarterPlayer/StarterPlayerScripts/Hud",
+			],
+			["StarterPlayerScript", "StarterPlayer/StarterPlayerScripts"],
+			[
+				"startercharacterscripts",
+				"StarterPlayer/StarterCharacterScripts",
+			],
+		])("should suggest a supported service for %j", (text, suggestion) => {
+			const result = Target.parse(text, location);
+
+			expect(result.isErr() && result.error[0].message).toContain(
+				`Did you mean "${suggestion}"?`
+			);
+		});
+
 		it("should name the instance it points at", () => {
 			const target = Target.parse(
 				"ReplicatedStorage/shared/utils",

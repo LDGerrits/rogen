@@ -2025,7 +2025,7 @@ describe("Placer", () => {
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should fail naming both files when two active tags claim one name", async () => {
+			it("should fail at each file when two active tags claim one name", async () => {
 				await write(
 					"src/Analytics.mock.luau",
 					"src/Analytics.dev.luau"
@@ -2037,12 +2037,14 @@ describe("Placer", () => {
 					{
 						severity: DiagnosticSeverity.Error,
 						code: "tag.activeClash",
-						resource: abs("default.project.json"),
+						resource: abs("src/Analytics.dev.luau"),
+						message: `becomes "ReplicatedStorage/Analytics" with an active tag, and so does ${abs("src/Analytics.mock.luau")}. Only one can apply: turn a tag off or rename a file.`,
+					},
+					{
+						code: "tag.activeClash",
+						resource: abs("src/Analytics.mock.luau"),
 					},
 				]);
-				const message = result.isErr() ? result.error[0].message : "";
-				expect(message).toContain(abs("src/Analytics.dev.luau"));
-				expect(message).toContain(abs("src/Analytics.mock.luau"));
 			});
 
 			it("should fail when two files carry the same active tag", async () => {
@@ -2055,7 +2057,7 @@ describe("Placer", () => {
 				);
 			});
 
-			it("should warn about two untagged files and use the last", async () => {
+			it("should warn at the untagged file left out, naming the one used", async () => {
 				await write("src/Types.luau", "src/Types.lua");
 
 				const result = (await apply({})).unwrap();
@@ -2063,17 +2065,48 @@ describe("Placer", () => {
 				expect(
 					result.files.map((file) => file.entry.relativePath)
 				).toEqual(["Types.luau"]);
-				expect(result.warnings).toMatchObject([
+				expect(result.warnings).toEqual([
 					{
 						severity: DiagnosticSeverity.Warning,
-						code: "tag.untaggedClash",
+						code: "tree.instanceClash",
+						resource: abs("src/Types.lua"),
+						message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
 					},
 				]);
-				expect(result.warnings[0].message).toContain(
-					abs("src/Types.lua")
+			});
+
+			it("should name the clash's winner in its own root dir when a later root dir wins", async () => {
+				await write(
+					"core/Types.luau",
+					"core/Types.lua",
+					"lobby/Types.luau"
 				);
-				expect(result.warnings[0].message).toContain(
-					abs("src/Types.luau")
+
+				const result = (
+					await apply({}, [abs("core"), abs("lobby")])
+				).unwrap();
+
+				expect(result.warnings).toMatchObject([
+					{
+						resource: abs("core/Types.lua"),
+						message: expect.stringContaining(
+							`as ${abs("core/Types.luau")} does`
+						),
+					},
+				]);
+			});
+
+			it("should warn at every untagged file left out of a clash", async () => {
+				await write(
+					"src/Types.luau",
+					"src/Types.lua",
+					"src/Types.json"
+				);
+
+				const result = (await apply({})).unwrap();
+
+				expect(result.warnings.map(({ resource }) => resource)).toEqual(
+					[abs("src/Types.json"), abs("src/Types.lua")]
 				);
 			});
 

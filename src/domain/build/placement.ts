@@ -46,7 +46,7 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	}
 }
 
-/** Files from one root dir that claim one instance path; the tag stage kept the last. */
+/** Files from one root dir that claim one instance path; within the root dir, the last one wins. */
 export interface InstanceClash {
 	readonly instance: string;
 	readonly claimants: readonly RoutedFile[];
@@ -212,14 +212,20 @@ export class Placer {
 				const untagged = claimants.filter(
 					(file) => file.tags.length === 0
 				);
-				if (tagged.length > 1)
-					problems.error(
-						"tag.activeClash",
-						{ resource: this.config.outFile },
-						`${tagged.length} files with active tags all become "${instance}" (${tagged.map(({ entry }) => entry.source).join(", ")}). Only one can apply: turn a tag off or rename a file.`
-					);
-				else if (claimants.length > 1)
+				if (tagged.length > 1) {
+					for (const { entry } of tagged) {
+						const others = tagged
+							.filter((other) => other.entry !== entry)
+							.map((other) => other.entry.source);
+						problems.error(
+							"tag.activeClash",
+							{ resource: entry.source },
+							`becomes "${instance}" with an active tag, and so ${others.length === 1 ? "does" : "do"} ${others.join(", ")}. Only one can apply: turn a tag off or rename a file.`
+						);
+					}
+				} else if (claimants.length > 1) {
 					clashes.push({ instance, claimants });
+				}
 				winners.set(
 					claimants[0].instancePath,
 					tagged[0] ?? untagged[untagged.length - 1]

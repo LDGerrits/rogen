@@ -89,6 +89,14 @@ describe("help command", () => {
 				'Unknown command "prod"'
 			);
 		});
+
+		it("should suggest the command a misspelled one is closest to", async () => {
+			const result = await help("wacth");
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"wacth\". Did you mean 'rogen help watch'?"
+			);
+		});
 	});
 
 	describe("option table", () => {

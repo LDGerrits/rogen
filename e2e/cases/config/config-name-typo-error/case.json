@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["build", "lobyy"]
+	],
+	"rojo": false
+}

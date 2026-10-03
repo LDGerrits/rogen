@@ -916,7 +916,10 @@ describe("watch command", () => {
 				expect(block.lines).toEqual([
 					"default.project.json · not written",
 					expect.stringMatching(
-						/^diagnosticError: .*default\.project\.json - error: /
+						/^diagnosticError: .*Analytics\.dev\.luau - error: /
+					),
+					expect.stringMatching(
+						/^diagnosticError: .*Analytics\.mock\.luau - error: /
 					),
 				]);
 			});

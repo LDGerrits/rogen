@@ -1,5 +1,6 @@
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	FileSystemService,
@@ -10,6 +11,7 @@ import {
 	CONFIG_SUFFIX,
 	DEFAULT_CONFIG_STEM,
 	configFileName,
+	configLabel,
 } from "./config.js";
 import { ConfigRefs } from "./config-service.js";
 
@@ -42,11 +44,7 @@ export class ConfigDiscovery {
 			for (const name of names) {
 				const candidate = path.join(cwd, configFileName(name));
 				if (!(await this.fileSystemService.exists(candidate))) {
-					return err(
-						new Error(
-							`Config "${name}" not found: looked for ${candidate}`
-						)
-					);
+					return err(await this.notFound(name, candidate));
 				}
 				resolved.push(candidate);
 			}
@@ -105,6 +103,19 @@ export class ConfigDiscovery {
 		}
 
 		return ok(candidates.map((name) => path.join(cwd, name)));
+	}
+
+	/** Suggests the config here that `name` is most likely a misspelling of. */
+	private async notFound(name: string, candidate: string): Promise<Error> {
+		const found = await this.find();
+		const suggestion = closestMatch(
+			name,
+			found.isOk() ? found.value.map(configLabel) : []
+		);
+		return new Error(
+			`Config "${name}" not found: looked for ${candidate}` +
+				(suggestion ? `. Did you mean "${suggestion}"?` : "")
+		);
 	}
 
 	private async resolveDefault(): Promise<Result<string, Error>> {

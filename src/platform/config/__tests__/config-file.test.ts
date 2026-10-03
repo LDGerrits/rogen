@@ -206,7 +206,9 @@ describe("platform/config/config-file", () => {
 					d.message,
 					d.position?.column,
 				])
-			).toEqual([['unknown field "build.oot".', 14]]);
+			).toEqual([
+				['unknown field "build.oot". Did you mean "build.out"?', 14],
+			]);
 		});
 
 		it("should report an unknown field inside an array item", async () => {
@@ -219,7 +221,12 @@ describe("platform/config/config-file", () => {
 					d.message,
 					d.position?.column,
 				])
-			).toEqual([['unknown field "entries[1].nam".', 34]]);
+			).toEqual([
+				[
+					'unknown field "entries[1].nam". Did you mean "entries[1].name"?',
+					34,
+				],
+			]);
 		});
 
 		it("should reject a value of the wrong type", async () => {

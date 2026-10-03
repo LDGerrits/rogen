@@ -1,6 +1,7 @@
 {
 	"steps": [
 		["prod"],
-		["deploy", "--tag", "x"]
+		["deploy", "--tag", "x"],
+		["biuld"]
 	]
 }

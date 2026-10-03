@@ -1209,6 +1209,16 @@ describe("domain/config/core-config-service", () => {
 			);
 		});
 
+		it("should suggest the declared tag a misspelled one is closest to", async () => {
+			await write("/repo/default.rogen.json", { tags: { mock: false } });
+
+			const result = await start({ overrides: { tags: { mokc: true } } });
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				'Tag "mokc" is not declared by any config being built. Did you mean "mock"?'
+			);
+		});
+
 		it("should apply a tag where it is declared and say where it was skipped", async () => {
 			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
 			await write("/repo/match.rogen.json", {});

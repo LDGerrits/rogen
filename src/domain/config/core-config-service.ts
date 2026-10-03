@@ -1,6 +1,7 @@
 import { Sequencer } from "../../base/async.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigOptions } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -223,9 +224,16 @@ export class CoreConfigService
 				config.skippedTags?.includes(tag)
 			);
 			if (allReadable && skipped.length === this.managed.length) {
+				const declared = this.managed.flatMap((config) =>
+					Object.keys(config.entry.resolved?.tags ?? {})
+				);
+				const suggestion = closestMatch(tag, declared);
 				return err(
 					new Error(
-						`Tag "${tag}" is not declared by any config being built. Add it under "tags" in a config, or drop the flag.`
+						`Tag "${tag}" is not declared by any config being built. ` +
+							(suggestion
+								? `Did you mean "${suggestion}"?`
+								: `Add it under "tags" in a config, or drop the flag.`)
 					)
 				);
 			}

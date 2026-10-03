@@ -99,6 +99,17 @@ describe("ConfigDiscovery", () => {
 			expect(errorMessage(result)).toContain("ghost");
 			expect(errorMessage(result)).toContain("/repo/ghost.rogen.json");
 		});
+
+		it("should suggest the config a misspelled name is closest to", async () => {
+			await fs.writeFile("/repo/lobby.rogen.json", "{}");
+			await fs.writeFile("/repo/match.rogen.json", "{}");
+
+			const result = await discovery.discover({ names: ["lobyy"] });
+
+			expect(errorMessage(result)).toBe(
+				'Config "lobyy" not found: looked for /repo/lobyy.rogen.json. Did you mean "lobby"?'
+			);
+		});
 	});
 
 	describe("with -c paths", () => {

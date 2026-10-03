@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix, toPosix } from "../../base/path.js";
-import { listLimited } from "../../base/strings.js";
+import { joinPosix } from "../../base/path.js";
+import { capitalized } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -15,9 +15,8 @@ import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 type InstancelessFolder =
-	"root dir" | "routing folder" | "tag folder" | "invisible folder";
+	"a root dir" | "a routing folder" | "a tag folder" | "an invisible folder";
 
-const LISTED_PATHS = 3;
 const DIAGNOSED_PATHS = 10;
 
 /** Reports on a finished build and decides nothing. */
@@ -39,7 +38,7 @@ export class BuildValidator {
 			...this.caseMismatch(),
 			...this.unrouted(),
 			...this.buriedScriptSuffix(),
-			...this.untaggedClash(),
+			...this.instanceClash(),
 			...this.runContextTarget(),
 			...this.templateClash(),
 			...this.metaNotCopied(),
@@ -75,18 +74,17 @@ export class BuildValidator {
 	}
 
 	private unclaimedMeta(): Diagnostic[] {
-		const unclaimed = this.placement
-			.unclaimedMeta()
-			.map(({ path, hint }) => (hint ? `${path} (${hint})` : path));
-		if (unclaimed.length === 0) return [];
-		const one = unclaimed.length === 1;
-		return [
-			warningDiagnostic(
-				"meta.unclaimed",
-				{ resource: this.config.outFile },
-				`${unclaimed.length} meta ${one ? "file belongs" : "files belong"} to no file, so Rojo ignores ${one ? "it" : "them"} (${listLimited(unclaimed, LISTED_PATHS)}). A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin.`
-			),
-		];
+		return this.diagnosePaths(
+			this.placement
+				.unclaimedMeta()
+				.map(({ path, hint }) => [path, hint]),
+			(resource, hint) =>
+				warningDiagnostic(
+					"meta.unclaimed",
+					{ resource },
+					`belongs to no file, so Rojo ignores it. ${hint ? `${capitalized(hint)}.` : "A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."}`
+				)
+		);
 	}
 
 	/** A folder, marker or suffix that only differs from a declared key in letter case is read as an ordinary name. */
@@ -152,18 +150,23 @@ export class BuildValidator {
 	}
 
 	/** Only one untagged file can become an instance; a tagged one replacing it is the point of tags. */
-	private untaggedClash(): Diagnostic[] {
+	private instanceClash(): Diagnostic[] {
 		return this.placement.clashes
 			.filter(({ claimants }) =>
 				claimants.every((file) => file.tags.length === 0)
 			)
-			.map(({ instance, claimants }) =>
-				warningDiagnostic(
-					"tag.untaggedClash",
-					{ resource: this.config.outFile },
-					`${claimants.length} files all become "${instance}" (${claimants.map(({ entry }) => entry.source).join(", ")}), so only the last one is used.`
-				)
-			);
+			.flatMap(({ instance, claimants }) => {
+				const winner = claimants[claimants.length - 1].entry.source;
+				return claimants
+					.slice(0, -1)
+					.map(({ entry }) =>
+						warningDiagnostic(
+							"tree.instanceClash",
+							{ resource: entry.source },
+							`becomes "${instance}", as ${winner} does, which takes its place. Rename one of them to keep both.`
+						)
+					);
+			});
 	}
 
 	/** Rojo can't give scripts a run context there, so they'd never run. */
@@ -183,22 +186,27 @@ export class BuildValidator {
 			: [];
 	}
 
-	/** One warning per template node and the file or folder it displaced. */
+	/** One warning per file or folder the template displaced. */
 	private templateClash(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		const clashes = new Map<string, { instance: string; source: string }>();
+		const clashes = new Map<
+			string,
+			{ instance: string; kind: "file" | "folder" }
+		>();
 		for (const file of routed) {
 			const why = leftOut.get(file.entry.source);
 			if (why?.status !== "displaced") continue;
-			const instance = instanceKey(why.node);
 			const source = this.namingSource(file, why.node);
-			clashes.set(`${instance}\0${source}`, { instance, source });
+			clashes.set(source, {
+				instance: instanceKey(why.node),
+				kind: source === file.entry.source ? "file" : "folder",
+			});
 		}
-		return [...clashes.values()].map(({ instance, source }) =>
+		return [...clashes].map(([resource, { instance, kind }]) =>
 			warningDiagnostic(
 				"tree.templateClash",
-				{ resource: this.config.outFile },
-				`"${instance}" is defined by both the template and ${source}, so the template's is kept and ${source} is left out. Rename one of them to keep both.`
+				{ resource },
+				`the template defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
 			)
 		);
 	}
@@ -270,8 +278,8 @@ export class BuildValidator {
 			return [
 				warningDiagnostic(
 					"meta.templateClass",
-					{ resource: this.config.outFile },
-					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, but ${meta.file} makes it a ${meta.className}, so the template's class is kept.`
+					{ resource: meta.file },
+					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.className}.`
 				),
 			];
 		});
@@ -284,25 +292,23 @@ export class BuildValidator {
 			rootDir,
 			dir,
 		}: FolderMeta): InstancelessFolder | undefined => {
-			if (dir === "") return "root dir";
+			if (dir === "") return "a root dir";
 			const folder = readings.folders.get(joinPosix(rootDir, dir));
-			if (folder?.kind === "route") return "routing folder";
-			if (folder?.kind === "tag") return "tag folder";
-			return folder?.invisible ? "invisible folder" : undefined;
+			if (folder?.kind === "route") return "a routing folder";
+			if (folder?.kind === "tag") return "a tag folder";
+			return folder?.invisible ? "an invisible folder" : undefined;
 		};
 		const metas = this.assembly.folderMeta.flatMap((meta) => {
 			const kind = instanceless(meta);
-			return kind ? [`${toPosix(meta.file)} (${kind})`] : [];
+			return kind ? [[meta.file, kind] as const] : [];
 		});
-		if (metas.length === 0) return [];
-		const one = metas.length === 1;
-		return [
+		return this.diagnosePaths(metas, (resource, kind) =>
 			warningDiagnostic(
 				"meta.appliesToNothing",
-				{ resource: this.config.outFile },
-				`${metas.length} ${RojoFile.INIT_META} ${one ? "file applies" : "files apply"} to nothing, because ${one ? "its folder never becomes" : "their folders never become"} an instance (${listLimited(metas, LISTED_PATHS)}). Move the meta into the folder that should get it.`
-			),
-		];
+				{ resource },
+				`applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`
+			)
+		);
 	}
 
 	/** One diagnostic per path, up to a cap; the last one says how many more went unlisted. */

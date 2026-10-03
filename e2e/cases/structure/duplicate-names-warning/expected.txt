@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.project.json - warning: 2 files all become "ReplicatedStorage/shared/Inventory/Types" (src/Inventory/Types.lua, src/Inventory/Types.luau), so only the last one is used.
+  src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both.
 
 written:
   default.project.json

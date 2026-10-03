@@ -5,13 +5,13 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  src/Combat/server/init.meta.json - warning: applies to nothing, because a routing folder never becomes an instance. Move the meta into the folder that should get it.
+  src/Combat/init.meta.json - warning: the template makes "ServerScriptService/Combat" a Model, so its class is kept over this meta's Actor.
 
 written:
   default.project.json
 
 $ rojo sourcemap default.project.json
-project: DataModel
+Game: DataModel
   ServerScriptService: ServerScriptService
-    Combat: Folder
+    Combat: Model
       Hit: ModuleScript  <- src/Combat/server/Hit.luau

@@ -1,6 +1,7 @@
 import { JSONSchema } from "../../base/json-schema.js";
 import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -121,11 +122,24 @@ export class JsoncDocumentReader {
 				return this.validate(property.value, known, file, propertyPath);
 			}
 			if (schema.additionalProperties === false) {
+				const present = new Set(
+					node.properties.map(({ name }) => name)
+				);
+				const suggestion = closestMatch(
+					property.name,
+					Object.keys(schema.properties ?? {}).filter(
+						(name) => !present.has(name)
+					)
+				);
+				const prefix = path ? `${path}.` : "";
 				return [
 					this.error(
 						"unknownField",
 						location(property),
-						`unknown field "${propertyPath}".`
+						`unknown field "${propertyPath}".` +
+							(suggestion
+								? ` Did you mean "${prefix}${suggestion}"?`
+								: "")
 					),
 				];
 			}

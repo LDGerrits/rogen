@@ -12,3 +12,48 @@ export function listLimited(items: readonly string[], limit: number): string {
 export function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
+
+/** Edits between `a` and `b`, counting two swapped neighbours as one. */
+function editDistance(a: string, b: string): number {
+	let twoBack: number[] = [];
+	let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+	for (let i = 1; i <= a.length; i++) {
+		const current = [i];
+		for (let j = 1; j <= b.length; j++) {
+			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+			current[j] = Math.min(
+				previous[j] + 1,
+				current[j - 1] + 1,
+				previous[j - 1] + cost
+			);
+			if (
+				i > 1 &&
+				j > 1 &&
+				a[i - 1] === b[j - 2] &&
+				a[i - 2] === b[j - 1]
+			)
+				current[j] = Math.min(current[j], twoBack[j - 2] + 1);
+		}
+		twoBack = previous;
+		previous = current;
+	}
+	return previous[b.length];
+}
+
+/** The candidate `word` most likely misspells, judged as TypeScript does: up to two edits in five letters, ignoring case. */
+export function closestMatch(
+	word: string,
+	candidates: Iterable<string>
+): string | undefined {
+	const lower = word.toLowerCase();
+	let best: string | undefined;
+	let bestDistance = Math.floor(word.length * 0.4) + 1;
+	for (const candidate of candidates) {
+		const distance = editDistance(lower, candidate.toLowerCase());
+		if (distance < bestDistance) {
+			best = candidate;
+			bestDistance = distance;
+		}
+	}
+	return best;
+}

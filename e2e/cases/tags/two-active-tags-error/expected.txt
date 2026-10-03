@@ -4,4 +4,5 @@ stdout:
   rogen build · default
   build failed.
 stderr:
-  default.project.json - error: 2 files with active tags all become "ReplicatedStorage/shared/Analytics/Analytics" (src/Analytics/Analytics.dev.luau, src/Analytics/Analytics.mock.luau). Only one can apply: turn a tag off or rename a file.
+  src/Analytics/Analytics.dev.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active tag, and so does src/Analytics/Analytics.mock.luau. Only one can apply: turn a tag off or rename a file.
+  src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active tag, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a tag off or rename a file.

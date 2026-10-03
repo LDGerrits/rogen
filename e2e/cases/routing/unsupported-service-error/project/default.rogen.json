@@ -4,6 +4,7 @@
 	],
 	"routes": {
 		"server": "ServerScriptServices",
+		"client": "StarterPlayerScripts",
 		"*": "CoreGui"
 	}
 }

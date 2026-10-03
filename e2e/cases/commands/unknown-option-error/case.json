@@ -4,6 +4,8 @@
 		["build", "--root-dir", "src"],
 		["watch", "-w"],
 		["build", "--tag"],
-		["build", "--json=yes"]
+		["build", "--json=yes"],
+		["build", "--jsno"],
+		["init", "--tag", "x"]
 	]
 }

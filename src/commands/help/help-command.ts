@@ -1,4 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import {
 	AbstractCommand,
 	Command,
@@ -138,9 +139,15 @@ registerCommand(
 
 			const command = registry.getCommand(target.toLowerCase());
 			if (!command) {
+				const suggestion = closestMatch(
+					target,
+					registry.getCommands().keys()
+				);
 				return err(
 					new Error(
-						`Unknown command "${target}". Run 'rogen help' to see available commands.`
+						suggestion
+							? `Unknown command "${target}". Did you mean 'rogen help ${suggestion}'?`
+							: `Unknown command "${target}". Run 'rogen help' to see available commands.`
 					)
 				);
 			}
