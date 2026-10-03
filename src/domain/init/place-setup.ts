@@ -1,5 +1,9 @@
+import path from "path";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
@@ -80,6 +84,20 @@ export class PlaceSetup implements Setup {
 
 		const folder = await questions.placeFolder(directory, base.value, name);
 		if (folder === undefined) return ok(false);
+		// A run that can't ask takes the default folder unchecked.
+		const problem = directory.placeFolderProblem(
+			base.value.rootDirs,
+			folder
+		);
+		if (problem) {
+			return err([
+				errorDiagnostic(
+					"init.invalidPlaceFolder",
+					{ resource: path.join(directory.path, folder) },
+					problem
+				),
+			]);
+		}
 
 		// A Darklua repo's default is source-rooted; its sync dir is on the synced config beside it.
 		const syncFile = configFileName(

@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["init", "lobby"],
+		["build", "default", "lobby"]
+	]
+}

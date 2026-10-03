@@ -1,0 +1,58 @@
+$ rogen init lobby
+exit 0
+stdout:
+  rogen init
+  Created lobby.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch lobby
+      rojo serve lobby.project.json
+    Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 1 file.
+
+$ rogen build default lobby
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · wrote
+  Built 2 configs.
+
+written:
+  default.project.json
+  lobby.project.json
+  lobby.rogen.json
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau

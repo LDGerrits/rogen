@@ -32,7 +32,7 @@ A tag marks a variant. Declare every tag in `tags` with whether it is on: `"tags
 A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `extends`, `rootDirs` (default `["src"]`), `routes`, `tags`, `exclude`, `template`, `syncDir` and `outFile` (default `<name>.project.json`). Unknown keys are errors.
 
 - `extends` merges `routes` and `tags` key by key, and the child replaces lists and strings. `outFile` and `$schema` are never inherited. A child can't remove anything, so invert the chain instead.
-- Several `rootDirs` merge into one tree, and the later one wins a clash. A place is a config that extends `default` and adds its own directory: `"rootDirs": ["src", "places/lobby"]`.
+- Several `rootDirs` merge into one tree, and the later one wins a clash. A place is a config that extends `default` and adds its own directory: `"rootDirs": ["src", "places/lobby"]`. Add one with `rogen init <name> --no-input`.
 - `exclude` lists globs that are never built, such as `**/*.spec.luau`.
 - `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash.
 - `syncDir` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
@@ -52,4 +52,4 @@ A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `ext
 - `rogen list [name…] --json` prints each config resolved, with every default and absolute path. `--json` also works on `where` and `build`: one JSON document on stdout, whatever the exit code, with each diagnostic's stable `code`. Read it instead of parsing text.
 - `-o`, `-s` and `--template` override `outFile`, `syncDir` and `template` for one build.
 - Diagnostics print as `file:line:col - severity: message`. Errors exit 1; warnings exit 0 and still name something to fix.
-- `rogen init [name]` writes a starting config. Without a terminal, or with `--no-input`, it takes every default without asking. Pass `--no-input` when your shell is a pseudo-terminal.
+- `rogen init [name]` writes a starting config. Without a terminal, or with `--no-input`, it takes every default without asking: beside an existing `default.rogen.json`, `rogen init <name>` adds the place `<name>` with its code in `places/<name>`. Write a variant yourself: `{ "extends": "./default.rogen.json" }`. Pass `--no-input` when your shell is a pseudo-terminal.

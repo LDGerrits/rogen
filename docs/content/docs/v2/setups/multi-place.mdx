@@ -31,10 +31,11 @@ Keep shared code in `src`, and each place's own code in `places/<name>`.
 
 Starting fresh, run `rogen init` and pick **Several places that share code**; with folders already in `places/`, that's the default. It asks the usual questions for the shared config, then the place names, and writes one config per place.
 
-To add a place later, run `rogen init` again in a terminal and pick **A place**. It asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project.
+To add a place later, run `rogen init` again in a terminal and pick **A place**. It asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project. Without a terminal, or with `--no-input`, `rogen init lobby` takes those defaults and adds the place without asking, which is how a script or a coding agent adds one:
 
 ```bash
-rogen init
+rogen init                    # in a terminal, then pick A place
+rogen init lobby --no-input   # without asking
 ```
 
 A place folder may not overlap the shared root directories, and `init` never edits an existing file. What it writes depends on the toolchain:

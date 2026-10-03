@@ -1,0 +1,21 @@
+{
+	"name": "project",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": {
+					"optional": "include"
+				},
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": {
+							"optional": "node_modules/@rbxts"
+						}
+					}
+				}
+			}
+		}
+	}
+}

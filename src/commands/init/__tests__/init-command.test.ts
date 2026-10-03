@@ -285,7 +285,7 @@ describe("init command", () => {
 			);
 		});
 
-		it("should share one template between two configs", async () => {
+		it("should let a later place inherit default's template through extends", async () => {
 			await write("wally.toml");
 			await memFs.createDirectory(path.join(cwd, "Packages"));
 
@@ -294,9 +294,9 @@ describe("init command", () => {
 			await runInit(["lobby"]);
 
 			expect(await read("template.project.json")).toBe(template);
-			expect((await readJson("lobby.rogen.json")).template).toBe(
-				"template.project.json"
-			);
+			const lobby = await readJson("lobby.rogen.json");
+			expect(lobby.extends).toBe("./default.rogen.json");
+			expect(lobby.template).toBeUndefined();
 		});
 
 		it("should put the template in the darklua source-rooted config only", async () => {
@@ -624,7 +624,7 @@ describe("init command", () => {
 			);
 		});
 
-		it("should not offer a place without a terminal", async () => {
+		it("should ask for a place name when it can't ask what to add", async () => {
 			await setUpLuau();
 			const prompts = new MockPromptService([], false);
 
@@ -708,7 +708,7 @@ describe("init command", () => {
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
-					code: "init.configExists",
+					code: "init.fileExists",
 					resource: path.join(cwd, "lobby.project.json"),
 				},
 			]);
@@ -1003,7 +1003,7 @@ describe("init command", () => {
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
-					code: "init.configExists",
+					code: "init.fileExists",
 					resource: path.join(cwd, "prod.project.json"),
 				},
 			]);

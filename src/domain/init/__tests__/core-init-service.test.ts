@@ -247,21 +247,95 @@ describe("CoreInitService", () => {
 				).toMatchObject([{ code: "init.configExists" }]);
 			});
 
-			it("should add a separate config named on the command line when it can't ask", async () => {
-				await write("default.rogen.json", config);
+			describe("when it can't ask", () => {
+				const planNamed = async (
+					names: readonly string[],
+					defaultConfig = config
+				) => {
+					await write("default.rogen.json", defaultConfig);
+					return serviceFor(new MockPromptService([], false)).plan(
+						names
+					);
+				};
 
-				const plan = (
-					await serviceFor(new MockPromptService([], false)).plan([
-						"lobby",
-					])
-				).unwrap();
+				it("should add the place named on the command line, as Enter would", async () => {
+					const plan = (await planNamed(["lobby"])).unwrap();
 
-				expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-					"lobby.rogen.json",
-				]);
-				expect(
-					JSON.parse(plan?.files[0].content ?? "{}").extends
-				).toBeUndefined();
+					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
+						["lobby.rogen.json"]
+					);
+					expect(
+						JSON.parse(plan?.files[0].content ?? "{}")
+					).toMatchObject({
+						extends: "./default.rogen.json",
+						rootDirs: ["src", "places/lobby"],
+					});
+				});
+
+				it("should say how to add a place when none is named", async () => {
+					const result = await planNamed([]);
+
+					expect(
+						result.isErr() &&
+							result.error instanceof DiagnosticsError &&
+							result.error.diagnostics
+					).toMatchObject([
+						{
+							code: "init.configExists",
+							resource: path.join(
+								directory,
+								"default.rogen.json"
+							),
+							message:
+								"this config already exists. To add a place beside it, run 'rogen init <name>'.",
+						},
+					]);
+				});
+
+				it("should name a taken project file without asking to delete it", async () => {
+					await write("lobby.project.json", "{}");
+
+					const result = await planNamed(["lobby"]);
+
+					expect(
+						result.isErr() &&
+							result.error instanceof DiagnosticsError &&
+							result.error.diagnostics
+					).toMatchObject([
+						{
+							code: "init.fileExists",
+							resource: path.join(
+								directory,
+								"lobby.project.json"
+							),
+							message:
+								"this file already exists, and init never overwrites one. Pick another name.",
+						},
+					]);
+				});
+
+				it("should fail rather than add a place folder inside default's root dirs", async () => {
+					const result = await planNamed(
+						["lobby"],
+						JSON.stringify({
+							rootDirs: ["places"],
+							routes: { "*": "ReplicatedStorage" },
+						})
+					);
+
+					expect(
+						result.isErr() &&
+							result.error instanceof DiagnosticsError &&
+							result.error.diagnostics
+					).toMatchObject([
+						{
+							code: "init.invalidPlaceFolder",
+							resource: path.join(directory, "places/lobby"),
+							message:
+								"places/lobby overlaps places, one of default's root dirs. Pick a folder outside it.",
+						},
+					]);
+				});
 			});
 		});
 

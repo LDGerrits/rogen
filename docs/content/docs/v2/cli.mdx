@@ -80,6 +80,8 @@ Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It det
 
 In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. On a first run it asks whether you're setting up one place or several; with folders in `places/` it sets up several, writing one config per place that extends `default`. When `default.rogen.json` already exists, it asks what to add: a **place**, a **variant** of default, or a separate config.
 
+Without a terminal it takes those same defaults, so beside an existing `default.rogen.json`, `rogen init lobby` adds the place `lobby` with its code in `places/lobby`, and a bare `rogen init` fails, since a place needs a name. A variant is one line to write yourself: `{ "extends": "./default.rogen.json" }`.
+
 Answers are checked where they're typed: root directories may not nest or repeat, and a roblox-ts project takes one. It never overwrites, and never touches `.gitignore` or editor settings. When a hand-written project file such as `default.project.json` exists, which a build would replace, `init` copies it to `template.project.json` first, so its name, properties and packages carry over.
 
 It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and tags.
