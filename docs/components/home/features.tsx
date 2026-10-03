@@ -87,7 +87,8 @@ export function Features() {
 							<p className="text-gray-400 text-sm leading-relaxed">
 								Feature folders, layers in the style of VS Code,
 								or ECS with Jecs or Matter. Pick the layout that
-								fits your game
+								fits your game, and enforce its import rules
+								with a linter
 							</p>
 						</div>
 						<span className="text-gray-400 text-sm font-medium flex items-center gap-1">

@@ -8,8 +8,8 @@ description: Why a Rogen layout suits coding agents, and how to tell an agent ab
 A coding agent works best when the context it needs is in one place, and when you can check what it did. A Rogen layout gives it both.
 
 1. **One folder, one feature.** Everything about the shop is in `Shop/`. Point the agent at that folder and it has the right context, without reading three trees to find the pieces.
-2. **Reviewable diffs.** An agent's change shows up as files in the folders it touched. A diff confined to `Shop/` touched the shop and nothing else, and you can see that from the file list before reading a line.
-3. **Boundaries you can state in a sentence.** "Features don't require each other." "`Shared` requires only `Shared`." Rules like these are visible in the paths and easy to state, so they're easy to put in `AGENTS.md` and to check in review. Rogen doesn't enforce them. The [architecture pages](/docs/v2/architectures) give the rules for each layout.
+2. **A small blast radius.** An agent's change shows up as files in the folders it touched. A diff confined to `Shop/` touched the shop and nothing else, and when features don't require each other, it can only break the shop. You can see that from the file list before reading a line.
+3. **Boundaries a linter can check.** "Features don't require each other." "`platform` doesn't require `features`." "`Shared` requires only `Shared`." Each is a rule about paths, and feature folders put the layer, the feature and the side in every path. State the rules in `AGENTS.md` and enforce them with a linter: the agent runs it, sees the boundary it crossed, and fixes it before you review. Grouping by `Controllers/` and `Services/` can't express these rules at all. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 4. **Placement is declared.** Where a file ends up in Studio is decided by a short `routes` map in the config, not by conventions the agent has to guess from the tree.
 5. **No generated file to break.** The `*.project.json` is output. Rogen replaces it on every build, so there's no hand-maintained project file for an agent to corrupt.
 6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` prints diagnostics for files that match no route, names that look like a route but aren't, and instances that clash. The agent runs both after moving files and fixes what they report.
@@ -59,6 +59,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see `ServerScriptService`.
 - Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`); string requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
 - roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+- Keep the import boundaries the repo states, in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 
 ### Ownership
 
