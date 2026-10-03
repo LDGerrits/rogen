@@ -80,6 +80,8 @@ Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It det
 
 In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. On a first run it asks whether you're setting up one place or several; with folders in `places/` it sets up several, writing one config per place that extends `default`. When `default.rogen.json` already exists, it asks what to add: a **place**, a **variant** of default, or a separate config.
 
+Without a terminal it takes those same defaults, so beside an existing `default.rogen.json`, `rogen init lobby` adds the place `lobby` with its code in `places/lobby`, and a bare `rogen init` fails, since a place needs a name. A variant is one line to write yourself: `{ "extends": "./default.rogen.json" }`. With `--json` it never asks either, and prints what it wrote and the next steps as data (see [JSON output](#init---json)).
+
 Answers are checked where they're typed: root directories may not nest or repeat, and a roblox-ts project takes one. It never overwrites, and never touches `.gitignore` or editor settings. When a hand-written project file such as `default.project.json` exists, which a build would replace, `init` copies it to `template.project.json` first, so its name, properties and packages carry over.
 
 It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and tags.
@@ -136,7 +138,7 @@ Turns a tag off. Repeatable. It is the capital of `-t`, the way `ssh -t` and `ss
 
 ### `--json`
 
-`build`, `where` and `list`. Prints one JSON document on stdout instead of text, for a program to read. See [JSON output](#json-output).
+`build`, `where`, `list` and `init`. Prints one JSON document on stdout instead of text, for a program to read. See [JSON output](#json-output).
 
 ### Global options
 
@@ -202,6 +204,23 @@ An array with one entry per config and path, in the order the text form prints t
 | `noFile` | `instance` in place of `source`: no file places an instance that was asked for |
 
 `routeMatch` is `folder`, `marker`, `separator`, `capital` or `fallback`. Each of `tags` is `{ "tag": "mock", "form": "capital" }`, where `form` is `folder`, `marker`, `separator` or `capital`.
+
+### `init --json`
+
+```json
+{
+	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
+	"notes": [],
+	"nextSteps": {
+		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
+		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen watch lobby", "rojo serve lobby.project.json"],
+		"darklua": [],
+		"edits": ["Add tags under \"tags\" in lobby.rogen.json to swap in variants like Analytics.mock.ts."]
+	}
+}
+```
+
+`files` lists what was written, in order. `notes` are what `init` said before writing, such as a hand-written project file kept as the template. `nextSteps` groups what to do next: `setup` holds one-time edits to make before anything runs, `run` the long-running commands that each need a terminal, `darklua` the commands that process code into the sync dir, and `edits` pointers to what to change in the written files. When a write fails, the document is `{ "files": [...], "error": "..." }`, listing the files written before it.
 
 ### `list --json`
 

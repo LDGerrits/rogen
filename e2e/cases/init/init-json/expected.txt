@@ -1,0 +1,52 @@
+$ rogen init --json
+exit 0
+stdout:
+  {
+    "files": [
+      "<dir>/default.rogen.json"
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [],
+      "run": [
+        "rogen watch",
+        "rojo serve default.project.json"
+      ],
+      "darklua": [],
+      "edits": [
+        "Add your own routes under \"routes\" in default.rogen.json.",
+        "Add tags under \"tags\" in default.rogen.json to swap in variants like Analytics.mock.luau."
+      ]
+    }
+  }
+
+$ rogen init --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "severity": "error",
+        "code": "init.configExists",
+        "message": "this config already exists. To add a place beside it, run 'rogen init <name>'."
+      }
+    ]
+  }
+
+written:
+  default.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

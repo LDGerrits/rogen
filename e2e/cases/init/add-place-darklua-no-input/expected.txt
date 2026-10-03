@@ -1,0 +1,83 @@
+$ rogen init lobby
+exit 0
+stdout:
+  rogen init
+  Created lobby.rogen.json.
+  Created lobby-sync.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch lobby lobby-sync
+      rojo serve lobby-sync.project.json
+      rojo sourcemap lobby.project.json --output sourcemap.json --watch
+    Have Darklua process your code into the sync dir:
+      darklua process src dist/lobby/src
+      darklua process places/lobby dist/lobby/places/lobby
+    Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.
+  Wrote 2 files.
+
+$ rogen build --all
+exit 0
+stdout:
+  rogen build · default, lobby-sync, lobby, sync
+  default
+    default.project.json · wrote
+  lobby-sync
+    lobby-sync.project.json · wrote
+  lobby
+    lobby.project.json · wrote
+  sync
+    sync.project.json · wrote
+  Built 4 configs.
+
+written:
+  default.project.json
+  lobby-sync.project.json
+  lobby-sync.rogen.json
+  lobby.project.json
+  lobby.rogen.json
+  sync.project.json
+
+lobby-sync.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./lobby.rogen.json",
+	"syncDir": "dist/lobby"
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+
+$ rojo sourcemap lobby-sync.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- dist/lobby/src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- dist/lobby/places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+    Lobby: Folder
+      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap sync.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Damage: ModuleScript  <- dist/Combat/Server/Damage.luau

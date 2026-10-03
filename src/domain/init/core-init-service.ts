@@ -79,6 +79,10 @@ export class CoreInitService implements InitService {
 		const knownName =
 			directory.givenName ??
 			(this.promptService.isInteractive ? undefined : directory.name);
+		const unnamed = this.promptService.isInteractive
+			? []
+			: directory.checkPlaceNamed();
+		if (unnamed.length > 0) return err(new DiagnosticsError(unnamed));
 		const taken = directory.checkFree(
 			knownName ? [configFileName(knownName)] : []
 		);

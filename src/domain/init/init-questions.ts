@@ -79,9 +79,9 @@ export class InitQuestions {
 		return this.promptService.isInteractive;
 	}
 
-	/** What to add beside `default.rogen.json`; a run that can't ask adds a separate config. */
+	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
 	async whatToAdd(): Promise<Addition | undefined> {
-		if (!this.interactive) return "separate";
+		if (!this.interactive) return "place";
 		return this.promptService.select<Addition>({
 			message: `${ConfigSet.DEFAULT_FILE} exists. What do you want to add?`,
 			choices: [

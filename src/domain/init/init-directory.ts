@@ -7,6 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
+	CONFIG_SUFFIX,
 	DEFAULT_CONFIG_STEM,
 	configFileName,
 	labelOfDefaultOutFile,
@@ -66,17 +67,40 @@ export class InitDirectory {
 			.sort();
 	}
 
-	/** One diagnostic per file in `fileNames` that already exists here. */
+	/** One diagnostic per file in `fileNames` that already exists here; only a config is safe to tell the user to delete. */
 	checkFree(fileNames: readonly string[]): Diagnostic[] {
 		return fileNames
 			.filter((fileName) => this.has(fileName))
 			.map((fileName) =>
-				errorDiagnostic(
-					"init.configExists",
-					{ resource: path.join(this.path, fileName) },
-					"this config already exists. Delete it to write a new one."
-				)
+				fileName.endsWith(CONFIG_SUFFIX)
+					? errorDiagnostic(
+							"init.configExists",
+							{ resource: path.join(this.path, fileName) },
+							"this config already exists. Delete it to write a new one."
+						)
+					: errorDiagnostic(
+							"init.fileExists",
+							{ resource: path.join(this.path, fileName) },
+							"this file already exists, and init never overwrites one. Pick another name."
+						)
 			);
+	}
+
+	/** Beside `default.rogen.json`, a run that can't ask adds a place, which has no default name. */
+	checkPlaceNamed(): Diagnostic[] {
+		if (this.givenName || !this.hasDefaultConfig) return [];
+		return [
+			errorDiagnostic(
+				"init.configExists",
+				{
+					resource: path.join(
+						this.path,
+						configFileName(DEFAULT_CONFIG_STEM)
+					),
+				},
+				"this config already exists. To add a place beside it, run 'rogen init <name>'."
+			),
+		];
 	}
 
 	async readFile(fileName: string): Promise<Result<string, Diagnostic[]>> {

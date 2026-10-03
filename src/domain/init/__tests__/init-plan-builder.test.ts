@@ -104,7 +104,7 @@ describe("domain/init/init-plan-builder", () => {
 					result.error.map(({ code, resource }) => [code, resource])
 			).toEqual([
 				["init.configExists", `${directory}/default.rogen.json`],
-				["init.configExists", `${directory}/tsconfig.lobby.json`],
+				["init.fileExists", `${directory}/tsconfig.lobby.json`],
 			]);
 		});
 
