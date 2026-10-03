@@ -63,7 +63,7 @@ async function main(): Promise<void> {
 		const argsResult = parseArgs(
 			rawArgs,
 			(command) => commandRegistry.getOptions(command),
-			(command) => commandRegistry.getCommand(command) !== undefined
+			[...commandRegistry.getCommands().keys()]
 		);
 
 		// Read from the raw line, so a parse error is reported the way the flags ask.

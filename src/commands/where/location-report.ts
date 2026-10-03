@@ -1,5 +1,6 @@
 import { groupBy } from "../../base/collections.js";
-import { relativeTo } from "../../base/path.js";
+import path from "path";
+import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import {
 	FileLocation,
 	InstanceLocation,
@@ -26,13 +27,11 @@ const MATCH_LABELS: Record<RouteMatch, string> = {
 /** One line: the path, where it lands, and why. */
 function describeLocation(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
-	return `${relative(location.source)} -> ${outcomeOf(location, relative)}`;
+	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
 }
 
-function outcomeOf(
-	location: FileLocation,
-	relative: (file: string) => string
-): string {
+function outcomeOf(location: FileLocation, cwd: string): string {
+	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
 			const tags = location.tags.map(
@@ -53,7 +52,8 @@ function outcomeOf(
 		case "unrouted":
 			return "unrouted · no route matches it";
 		case "excluded":
-			return `excluded · matches ${relative(location.pattern)}`;
+			// A glob keeps its slashes, which path.relative would turn into backslashes on Windows.
+			return `excluded · matches ${path.posix.relative(toPosix(cwd), location.pattern) || "."}`;
 		case "skipped":
 			return "skipped · the link loops or points at nothing";
 		case "outside":
@@ -82,7 +82,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
 			};
 		case "replaced":
-			return { by: location.by };
+			return { by: toNative(location.by) };
 		case "displaced":
 			return { node: location.node };
 		case "excluded":
@@ -148,7 +148,7 @@ export class LocationReport {
 				config: answer.label,
 				...("location" in answer
 					? {
-							source: answer.location.source,
+							source: toNative(answer.location.source),
 							status: answer.location.status,
 							...locationFields(answer.location),
 						}

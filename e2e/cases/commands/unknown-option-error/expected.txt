@@ -31,4 +31,4 @@ stderr:
 $ rogen init --tag x
 exit 1
 stderr:
-  error: init doesn't take '--tag'. Run 'rogen help init' to see what init accepts.
+  error: init doesn't take '--tag'. build, list, watch and where do.
