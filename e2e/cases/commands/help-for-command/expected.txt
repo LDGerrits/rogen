@@ -64,6 +64,9 @@ stdout:
   Arguments:
     name  The config to write. Defaults to default.
   
+  Options:
+        --json  Print one JSON document instead of text.
+  
   Global options:
     -h, --help      Print help.
     -v, --version   Print the version.

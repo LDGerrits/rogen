@@ -27,7 +27,7 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { parseArgs } from "../../../platform/environment/args.js";
+import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -55,10 +55,11 @@ describe("init command", () => {
 	const runInit = (
 		names: string[] = [],
 		promptService: PromptService = new MockPromptService([], false),
-		logService: LogService = new NullLogService()
+		logService: LogService = new NullLogService(),
+		options: Omit<ParsedArgs, "_"> = {}
 	) => {
 		const environment = new NativeEnvironmentService(
-			{ _: ["init", ...names] },
+			{ _: ["init", ...names], ...options },
 			cwd
 		);
 		const services = new ServiceCollection();
@@ -100,6 +101,96 @@ describe("init command", () => {
 
 	afterEach(() => {
 		store[Symbol.dispose]();
+	});
+
+	describe("--json", () => {
+		const runJson = async (names: string[] = []) => {
+			const logService = new MockLogService();
+			const result = await runInit(
+				names,
+				new MockPromptService([], false),
+				logService,
+				{ json: true }
+			);
+			return { result, logService };
+		};
+
+		it("should print only the files written and the next steps as one document", async () => {
+			await write("tsconfig.json", "{}");
+			await runInit();
+
+			const { result, logService } = await runJson(["lobby"]);
+
+			expect(result.isOk()).toBe(true);
+			expect(logService.entries.map(({ kind }) => kind)).toEqual([
+				"print",
+			]);
+			expect(JSON.parse(logService.entries[0].text)).toEqual({
+				files: [
+					path.join(cwd, "lobby.rogen.json"),
+					path.join(cwd, "tsconfig.lobby.json"),
+				],
+				notes: [],
+				nextSteps: {
+					setup: [
+						'Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
+					],
+					run: [
+						"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+						"rogen watch lobby",
+						"rojo serve lobby.project.json",
+					],
+					darklua: [],
+					edits: [
+						'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
+					],
+				},
+			});
+			expect(await exists("tsconfig.lobby.json")).toBe(true);
+		});
+
+		it("should print nothing and return the failure", async () => {
+			await write("default.rogen.json", "{}");
+
+			const { result, logService } = await runJson();
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+			expect(logService.entries).toEqual([]);
+		});
+
+		it("should name the files it wrote before a write failed", async () => {
+			await write("tsconfig.json", "{}");
+			await runInit();
+			const writeFile = memFs.writeFile.bind(memFs);
+			jest.spyOn(memFs, "writeFile").mockImplementation(
+				async (file, content) => {
+					if (file.endsWith("tsconfig.lobby.json"))
+						throw new Error("disk full");
+					return writeFile(file, content);
+				}
+			);
+
+			const { result, logService } = await runJson(["lobby"]);
+
+			expect(result.isErr()).toBe(true);
+			expect(JSON.parse(logService.entries[0].text)).toEqual({
+				files: [path.join(cwd, "lobby.rogen.json")],
+				error: "Failed to write tsconfig.lobby.json: disk full",
+			});
+		});
+
+		it("should be accepted on the command line", () => {
+			const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+			const parsed = parseArgs(
+				["init", "--json"],
+				(command) => registry.getOptions(command),
+				(command) => registry.getCommand(command) !== undefined
+			);
+
+			expect(parsed.unwrap().options.json).toBe(true);
+		});
 	});
 
 	describe("output", () => {

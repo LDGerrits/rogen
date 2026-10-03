@@ -38,6 +38,6 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 
 - `rogen build` overwrites the `*.project.json` each config writes: put changes in the config, or in the `template` it merges into.
 - The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
-- Add a place with `rogen init <name> --no-input` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make any one-time edit its next steps list, such as roblox-ts's `include`.
+- Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
 For tags and variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read [REFERENCE.md](REFERENCE.md).

@@ -1,12 +1,18 @@
-import { CancelledError } from "../../base/errors.js";
+import path from "path";
+import { CancelledError, ReportedError } from "../../base/errors.js";
+import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
-import { InitService, NextSteps } from "../../domain/init/init-service.js";
+import {
+	InitPlan,
+	InitService,
+	NextSteps,
+} from "../../domain/init/init-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
+import { JsonOption, ParsedArgs } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
@@ -44,6 +50,7 @@ registerCommand(
 							isOptional: true,
 						},
 					],
+					options: [JsonOption],
 				},
 			});
 		}
@@ -55,12 +62,23 @@ registerCommand(
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 
-			logService.intro("rogen init");
+			if (!args.json) logService.intro("rogen init");
 			const planned = await initService.plan(args._.slice(1));
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
 
+			return args.json
+				? this.writeAsJson(initService, logService, plan)
+				: this.writeAsText(initService, logService, plan, accessor);
+		}
+
+		private async writeAsText(
+			initService: InitService,
+			logService: LogService,
+			plan: InitPlan,
+			accessor: ServicesAccessor
+		): Promise<Result<void, Error>> {
 			// A blank gutter line sets the results apart from the last answer.
 			if (accessor.get(PromptService).isInteractive) logService.info("");
 			for (const note of plan.notes) logService.info(note);
@@ -72,6 +90,32 @@ registerCommand(
 			logService.step("Next steps");
 			for (const line of stepLines(plan.nextSteps)) logService.info(line);
 			logService.outro(`Wrote ${plural(plan.files.length, "file")}.`);
+			return ok(undefined);
+		}
+
+		/** A failed write still names the files written before it, so a program knows what is on disk. */
+		private async writeAsJson(
+			initService: InitService,
+			logService: LogService,
+			plan: InitPlan
+		): Promise<Result<void, Error>> {
+			const files: string[] = [];
+			const written = await initService.write(plan, (fileName) =>
+				files.push(path.join(plan.directory, fileName))
+			);
+			if (written.isErr()) {
+				logService.print(
+					formatJsonDocument({ files, error: written.error.message })
+				);
+				return err(new ReportedError(written.error));
+			}
+			logService.print(
+				formatJsonDocument({
+					files,
+					notes: plan.notes,
+					nextSteps: plan.nextSteps,
+				})
+			);
 			return ok(undefined);
 		}
 	}
