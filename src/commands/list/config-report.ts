@@ -1,3 +1,4 @@
+import { toNative } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
@@ -9,9 +10,9 @@ export class ConfigReport {
 	json(): Record<string, unknown> {
 		return Object.fromEntries(
 			this.entries.map((entry) => [
-				entry.file,
+				toNative(entry.file),
 				{
-					extends: entry.parents,
+					extends: entry.parents.map((file) => toNative(file)),
 					...(!entry.isBroken && entry.resolved
 						? describeConfig(entry.resolved)
 						: {}),
@@ -25,15 +26,15 @@ export class ConfigReport {
 function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 	return {
 		name: config.name,
-		rootDirs: config.rootDirs,
-		commonRoot: config.commonRoot ?? null,
+		rootDirs: config.rootDirs.map((file) => toNative(file)),
+		commonRoot: config.commonRoot ? toNative(config.commonRoot) : null,
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
 		tags: config.tags,
 		exclude: config.exclude,
-		template: config.template?.file ?? null,
-		syncDir: config.syncDir ?? null,
-		outFile: config.outFile,
+		template: config.template ? toNative(config.template.file) : null,
+		syncDir: config.syncDir ? toNative(config.syncDir) : null,
+		outFile: toNative(config.outFile),
 	};
 }

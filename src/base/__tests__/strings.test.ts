@@ -1,4 +1,10 @@
-import { capitalized, closestMatch, listLimited, plural } from "../strings.js";
+import {
+	capitalized,
+	closestMatch,
+	joinedWithAnd,
+	listLimited,
+	plural,
+} from "../strings.js";
 
 describe("capitalized", () => {
 	it("should uppercase the first letter and keep the rest", () => {
@@ -61,5 +67,16 @@ describe("closestMatch", () => {
 		).toBeUndefined();
 		expect(closestMatch("ab", ["cd"])).toBeUndefined();
 		expect(closestMatch("x", [])).toBeUndefined();
+	});
+});
+
+describe("joinedWithAnd", () => {
+	it.each([
+		[["a"], "a"],
+		[["a", "b"], "a and b"],
+		[["a", "b", "c"], "a, b and c"],
+		[[], ""],
+	])("should join %j as %j", (items, joined) => {
+		expect(joinedWithAnd(items)).toBe(joined);
 	});
 });

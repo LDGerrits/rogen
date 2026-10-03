@@ -27,10 +27,9 @@ const optionsFor = (command?: string) =>
 		? [...globals, ...buildOptions]
 		: globals;
 
-const isCommand = (command: string) =>
-	["build", "watch", "help", "version"].includes(command);
+const commands = ["build", "watch", "help", "version"];
 
-const parse = (argv: string[]) => parseArgs(argv, optionsFor, isCommand);
+const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
 
 const values = (argv: string[]) =>
 	parse(argv).unwrap().options as unknown as Record<string, unknown>;
@@ -94,7 +93,20 @@ describe("parseArgs", () => {
 		const result = parse(["watch", "--tag", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"watch doesn't take '--tag'. Run 'rogen help watch' to see what watch accepts."
+			"watch doesn't take '--tag'. build does."
+		);
+	});
+
+	it("should name every command that takes an option the command doesn't", () => {
+		const result = parseArgs(
+			["watch", "--tag", "a"],
+			(command) =>
+				command === "watch" ? globals : [...globals, ...buildOptions],
+			commands
+		);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"watch doesn't take '--tag'. build, help and version do."
 		);
 	});
 
@@ -137,7 +149,7 @@ describe("parseArgs", () => {
 		const parsed = parseArgs(
 			["watch", "--no-input"],
 			() => GlobalOptions,
-			isCommand
+			commands
 		);
 
 		expect(parsed.unwrap().options["no-input"]).toBe(true);

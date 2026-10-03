@@ -1207,11 +1207,9 @@ describe("init command", () => {
 	describe("flags", () => {
 		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 		const parse = (...argv: string[]) =>
-			parseArgs(
-				argv,
-				(command) => registry.getOptions(command),
-				(command) => registry.getCommand(command) !== undefined
-			);
+			parseArgs(argv, (command) => registry.getOptions(command), [
+				...registry.getCommands().keys(),
+			]);
 
 		it("should not accept the override flags", () => {
 			expect(parse("init", "-t", "mock").isErr()).toBe(true);

@@ -1,7 +1,7 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils } from "../../base/errors.js";
-import { closestMatch } from "../../base/strings.js";
+import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 
 export interface OptionDescriptor {
 	readonly name: string;
@@ -164,12 +164,12 @@ function commandOf(
 function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
-	allOptions: readonly OptionDescriptor[],
+	owners: readonly string[],
 	command: string
 ): string {
 	const help = `Run 'rogen help ${command}' to see what ${command} accepts.`;
-	if (allOptions.some((option) => option.name === name))
-		return `${command} doesn't take '${rawName}'. ${help}`;
+	if (owners.length > 0)
+		return `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${owners.length === 1 ? "does" : "do"}.`;
 	const suggestion = rawName.startsWith("--")
 		? closestMatch(
 				name,
@@ -181,18 +181,18 @@ function unknownOption(
 		: `Unknown option '${rawName}'. ${help}`;
 }
 
-/** Node's own wording varies by version and talks about positionals, so the options are checked here. */
+/** Node's own wording varies by version and talks about positionals, so the options are checked here. `ownersOf` names the commands that take an option. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
-	allOptions: readonly OptionDescriptor[],
+	ownersOf: (name: string) => string[],
 	command: string
 ): string | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
 		if (!option) {
-			return unknownOption(token, options, allOptions, command);
+			return unknownOption(token, options, ownersOf(token.name), command);
 		}
 		if (option.type === "boolean" && token.value !== undefined) {
 			return `Option '${token.rawName}' is a flag and takes no value.`;
@@ -216,20 +216,26 @@ function findOptionProblem(
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
-	isCommand: (command: string) => boolean
+	commands: readonly string[]
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
+		const ownersOf = (name: string) =>
+			commands
+				.filter((owner) =>
+					optionsFor(owner).some((option) => option.name === name)
+				)
+				.sort();
 		const { values, positionals, tokens } = tokenize(args, allOptions);
 		const command = commandOf(values, positionals);
 		if (command === "build" && positionals.length === 0)
 			positionals.push(command);
 
-		if (isCommand(command)) {
+		if (commands.includes(command)) {
 			const problem = findOptionProblem(
 				tokens ?? [],
 				optionsFor(command),
-				allOptions,
+				ownersOf,
 				command
 			);
 			if (problem) return err(new Error(problem));
