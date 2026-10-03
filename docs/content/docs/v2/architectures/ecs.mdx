@@ -137,4 +137,4 @@ Server systems stay in `ServerScriptService`, where clients can't see them. Comp
 - **A different model.** ECS asks you to think in data and queries instead of objects. UI and one-off logic are often simpler as plain modules beside it, which a feature folder allows.
 - **Systems are spread across folders.** Matter's getting-started loads every system from one folder. With systems in every feature, collecting them is your entry point's job.
 - **Ordering is global.** Systems in different features still run in one schedule. The order lives in the scheduler, not in the folders.
-- **Nothing checks the rules.** A system that requires another system still works. Keep the rule in review.
+- **Rogen doesn't check the rules.** A system that requires another system still works. Keep the rule in review, or lint it: see [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).

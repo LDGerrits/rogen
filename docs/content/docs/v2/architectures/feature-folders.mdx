@@ -140,7 +140,7 @@ Each feature folder appears once in every service it has code in. The routing fo
 ## Trade-offs
 
 - **Code used everywhere needs a home.** A `Signal` class or a remote wrapper belongs to no single feature. Give it a feature folder of its own, named after what it does. When there are many of these, the [layered](/docs/v2/architectures/layered) layout gives them a place.
-- **Nothing stops a feature from reaching into another.** Rogen doesn't check requires. Agree on which module of a feature others may require, and keep the rule in review.
+- **Rogen doesn't stop a feature from reaching into another.** It doesn't read requires. Because the feature is in every path, a linter can: see [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 - **Paths get one level deeper.** Requires read `ReplicatedStorage.Shared.Shop.ShopCatalog` instead of `ReplicatedStorage.Shared.ShopCatalog`.
 - **Big features need sub-folders.** A feature can hold folders of its own, and routing folders can sit at any depth inside them.
 

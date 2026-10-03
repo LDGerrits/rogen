@@ -42,11 +42,67 @@ Rogen's layout wasn't invented for Roblox. Large codebases that run in several e
 - **VS Code** organises its code in layers, and inside each layer by the runtime it targets. Workbench features live in `contrib/<feature>/` and are split again by runtime: [`contrib/terminal`](https://github.com/microsoft/vscode/tree/main/src/vs/workbench/contrib/terminal) has `common/`, `browser/` and `electron-browser/` folders (see the [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) wiki page). Read `common` as `Shared`, `browser` as `Client` and `node` as `Server`, and that's a Rogen feature folder.
 - **Nevermore**, Quenty's Roblox package library, puts `Client/`, `Server/` and `Shared/` inside every package (for example [`ragdoll`](https://github.com/Quenty/NevermoreEngine/tree/main/src/ragdoll/src)). Its [loader](https://github.com/Quenty/NevermoreEngine/blob/main/src/loader/README.md) splits them at runtime: "Modules will be split between client/server/shared based upon their parent". Rogen does the same split at build time, so Rojo syncs every script straight to its service.
 
-## Import Rules Are Yours to Keep
+## Enforcing the Rules
 
-Rogen routes files. It doesn't read your `require` calls, so it can't check them. The boundaries in these layouts are **visible and easy to state**, but nothing enforces them.
+Every rule on these pages is a rule about paths: `platform` doesn't require `features`, one feature doesn't require another, `Shared` doesn't require `Server`. Feature folders put the layer, the feature and the side in every file's path, so a linter can check each rule by comparing two paths.
 
-Roblox enforces one rule for you: `ServerScriptService` isn't replicated, so a client can't require server code at all. Everything else is a convention: a shared module that requires server code only fails when a client loads it, and no layout stops one feature from requiring another's internals. Keep the rules in code review, write them in your `AGENTS.md` (see [Working with agents](/docs/v2/agents)), or check them with a linter.
+Technical grouping can't express these rules. `InventoryController` sits in `client/Controllers/` beside every other controller, and nothing in its path says it belongs to the inventory, so "the inventory doesn't require trading" can't be written down, let alone checked.
+
+Rogen routes files. It doesn't read your `require` calls, so the checking is up to your tools. Roblox enforces one rule for you: `ServerScriptService` isn't replicated, so a client can't require server code at all. A shared module that requires server code only fails when a client loads it, and a feature that requires another's internals works fine until someone changes them.
+
+### roblox-ts
+
+ESLint's [`import/no-restricted-paths`](https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-restricted-paths.md) checks imports against folders. This config enforces the [layered](/docs/v2/architectures/layered) rules, with a zone per feature for the sideways rule:
+
+```js title="eslint.config.js"
+import { readdirSync } from "node:fs";
+import importPlugin from "eslint-plugin-import";
+
+const features = readdirSync("src/features");
+
+export default [
+	{
+		files: ["src/**/*.ts"],
+		plugins: { import: importPlugin },
+		settings: { "import/resolver": { typescript: true } },
+		rules: {
+			"import/no-restricted-paths": ["error", {
+				zones: [
+					// Layers only import the layers below them.
+					{ target: "./src/base", from: ["./src/platform", "./src/core", "./src/features", "./src/app"] },
+					{ target: "./src/platform", from: ["./src/core", "./src/features", "./src/app"] },
+					{ target: "./src/core", from: ["./src/features", "./src/app"] },
+					{ target: "./src/features", from: "./src/app" },
+					// Features don't import each other.
+					...features.map((name) => ({
+						target: `./src/features/${name}`,
+						from: "./src/features",
+						except: [`./${name}`],
+					})),
+					// Shared code runs on both sides.
+					{ target: "./src/**/shared/**", from: ["./src/**/server/**", "./src/**/client/**"] },
+					{ target: "./src/**/server/**", from: "./src/**/client/**" },
+					{ target: "./src/**/client/**", from: "./src/**/server/**" },
+				],
+			}],
+		},
+	},
+];
+```
+
+The resolver setting needs `eslint-import-resolver-typescript`. For [feature folders](/docs/v2/architectures/feature-folders), the side zones work as they are. Features there may import the helper features that hold shared code, so give each feature a zone whose `except` lists the helpers it may use.
+
+### Luau
+
+Luau has no common linter for requires yet. The check is the same comparison, though: the path of the requiring file against the path it requires. A short script in CI can do it, and until you have one, state the rules in your `AGENTS.md` and in review.
+
+### Why It Pays Off
+
+- **Smaller blast radius.** When features can't require each other, a change inside `features/Shop` can only break the shop. A pull request's file list tells you what it can affect, before you read a line.
+- **Deleting a feature is safe.** Nothing outside a feature requires it, so removing its folder can't break another one.
+- **Teams work in parallel.** Two people on two features touch different folders, and a crossed boundary fails in CI instead of surfacing in review weeks later.
+- **Agents stay inside the lines.** An agent runs the linter, sees the boundary it crossed, and fixes it before you review. `AGENTS.md` states the intent, and the linter checks it. See [Working with agents](/docs/v2/agents).
+- **The architecture doesn't erode.** Rules that live only in people's heads get broken one shortcut at a time. Rules in a lint config hold.
 
 <Callout type="info" title="About the examples">
 	The trees use the routes `rogen init` writes for Luau. In a roblox-ts project the routing folders are lowercase (`server/`, `client/`, `shared/`) and the files end in `.ts`. Client modules go to `StarterPlayerScripts` because that's where `init` routes them; point the `Client` route at a folder in `ReplicatedStorage` if you'd rather keep them there.

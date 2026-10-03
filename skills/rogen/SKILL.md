@@ -33,6 +33,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see `ServerScriptService`.
 - Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`); string requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
 - roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+- Keep the import boundaries the repo states, in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 
 ## Ownership
 

@@ -165,7 +165,7 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 ## Why It Fits a Game
 
 - **The server/client problem is VS Code's problem.** VS Code splits by runtime so that code for one environment never calls another's APIs. That's the rule between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
-- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about the other features, because nothing in `features` requires another feature.
+- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about the other features, because nothing in `features` requires another feature. A pull request that stays inside `features/Trading` can't break the rest of the game.
 - **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` that can be required, tested or disabled on its own.
 - **Live games change their feature set.** New modes and events are new folders in `features/`, on top of a core that changes less often.
 
@@ -173,7 +173,7 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 
 - **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers when utilities and infrastructure start piling up.
 - **Every module needs a layer.** Deciding between `core` and `features`, or `platform` and `base`, is a judgement call. Write down what each layer means for your game.
-- **The rules are conventions.** Rogen doesn't read requires, and Luau has no common equivalent of VS Code's ESLint rule. A `features` module that requires another feature still works. Keep the rule in review, or in your `AGENTS.md`.
+- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table; in Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 - **Longer paths in Studio**, unless you make the layers invisible, which trades the paths for possible name clashes.
 
 ## Feature-Sliced Design
