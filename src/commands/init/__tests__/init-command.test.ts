@@ -186,7 +186,7 @@ describe("init command", () => {
 			const parsed = parseArgs(
 				["init", "--json"],
 				(command) => registry.getOptions(command),
-				(command) => registry.getCommand(command) !== undefined
+				[...registry.getCommands().keys()]
 			);
 
 			expect(parsed.unwrap().options.json).toBe(true);
