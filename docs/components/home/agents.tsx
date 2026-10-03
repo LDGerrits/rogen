@@ -22,12 +22,12 @@ export function Agents() {
 							desc: "Point an agent at a feature folder and it has the right context",
 						},
 						{
-							title: "Reviewable diffs",
-							desc: "See what an agent touched from the list of folders it changed",
+							title: "A small blast radius",
+							desc: "A change inside one feature can only break that feature, and the file list shows which one",
 						},
 						{
-							title: "Boundaries you can state",
-							desc: "Rules like “features don't require each other” are visible in the paths and fit in one sentence",
+							title: "Boundaries a linter checks",
+							desc: "Rules like “features don't require each other” are rules about paths, so a linter can enforce them",
 						},
 						{
 							title: "Placement is declared",
