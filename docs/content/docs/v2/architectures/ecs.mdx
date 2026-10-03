@@ -1,0 +1,140 @@
+---
+title: ECS by Feature
+description: Entity Component System with Jecs or Matter, components shared and systems per side.
+---
+
+The architecture most specific to games. Data and behaviour are kept apart, and each feature folder owns the components and systems for one part of the game.
+
+## The Rule
+
+An Entity Component System has three parts. In the words of Sander Mertens, the author of flecs ([ECS FAQ](https://github.com/SanderMertens/ecs-faq)): "entities, which are unique identifiers", "components, which are plain datatypes without behavior", and "systems, which are functions matched with entities that have a certain set of components".
+
+Organised by feature:
+
+- **Components go in `Shared/`.** They're data, and both sides need to know their shape.
+- **Systems go where they run.** A system that decides (applying damage, validating speed) goes in `Server/`. A system that presents (a hit flash) goes in `Client/`. A system both sides run, such as movement that the client predicts, goes in `Shared/`.
+- **Systems don't require each other.** They communicate through the components they read and write.
+
+The world and the scheduler are shared by every feature, so they sit at the top.
+
+## Where It Comes From
+
+- **flecs.** [Designing with Flecs](https://github.com/SanderMertens/flecs/blob/master/docs/DesignWithFlecs.md) says to "make sure to define your modules around features", such as rendering, collision detection or input management.
+- **Bevy.** "All Bevy engine features are implemented as plugins" ([Bevy](https://bevy.org/learn/quick-start/getting-started/plugins/)). A plugin is a feature folder.
+- **Unity.** In [Netcode for Entities](https://docs.unity3d.com/Packages/com.unity.netcode@1.3/manual/client-server-worlds.html), each system runs in the client world, the server world, or both, which is the default. The side is a property of the system, not a top-level folder.
+- **Shipped games.** The ECS FAQ lists Overwatch, Diablo II: Resurrected and Minecraft Legends among others. Blizzard presented Overwatch's ECS architecture and its netcode at [GDC 2017](https://www.gdcvault.com/play/1024001/-Overwatch-Gameplay-Architecture-and).
+- **Roblox.** [Jecs](https://github.com/Ukendio/jecs) ("A fast, portable Entity Component System for Luau") and [Matter](https://matter-ecs.github.io/matter/) bring ECS to Luau. Matter's own example game is split by side at the root (`server/systems`, `client/systems`, `shared/components`). This page shows the same kind of game, split by feature.
+
+## On Disk
+
+<SystemWindow>
+	<TreeFolder name="src" open />
+	<TreeFolder name="(Ecs)" level={1} open dim />
+	<TreeFile name="Scheduler.luau" level={2} />
+	<TreeFile name="World.luau" level={2} />
+	<TreeFolder name="App" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFile name="main.client.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="main.server.luau" level={3} />
+	<TreeFolder name="Combat" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFolder name="Systems" level={3} open />
+	<TreeFile name="HitFlash.luau" level={4} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFolder name="Systems" level={3} open />
+	<TreeFile name="ApplyDamage.luau" level={4} />
+	<TreeFile name="Regenerate.luau" level={4} />
+	<TreeFolder name="Shared" level={2} open dim />
+	<TreeFile name="Components.luau" level={3} />
+	<TreeFolder name="Movement" level={1} open highlight />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFolder name="Systems" level={3} open />
+	<TreeFile name="ValidateSpeed.luau" level={4} />
+	<TreeFolder name="Shared" level={2} open dim />
+	<TreeFile name="Components.luau" level={3} />
+	<TreeFolder name="Systems" level={3} open />
+	<TreeFile name="Integrate.luau" level={4} />
+	<TreeFolder name="Replication" level={1} open highlight />
+	<TreeFolder name="Client" level={2} open dim />
+	<TreeFile name="Receive.luau" level={3} />
+	<TreeFolder name="Server" level={2} open dim />
+	<TreeFile name="Replicate.luau" level={3} />
+</SystemWindow>
+
+- `Combat` has its components in `Shared/` (`Health`, `Damage`), systems that decide on the server and a system that presents on the client.
+- `Movement/Shared/Systems/Integrate` runs on both sides: the server to simulate, the client to predict.
+- `Replication` copies component changes from the server's world to the clients'.
+
+## The Config
+
+The routes `rogen init` writes are enough:
+
+```json title="default.rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+`(Ecs)` is an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders) with no route, so the `*` route places `World` and `Scheduler` directly in `ReplicatedStorage/Shared`.
+
+## In Studio
+
+<StudioWindow>
+	<TreeService name="ReplicatedStorage" type="replicated" />
+	<TreeFolder name="Shared" level={1} />
+	<TreeFolder name="Combat" level={2} highlight />
+	<StudioFile name="Components" level={3} />
+	<TreeFolder name="Movement" level={2} highlight />
+	<StudioFile name="Components" level={3} />
+	<TreeFolder name="Systems" level={3} />
+	<StudioFile name="Integrate" level={4} />
+	<StudioFile name="Scheduler" level={2} />
+	<StudioFile name="World" level={2} />
+
+	<TreeService name="ServerScriptService" type="server" mt />
+	<TreeFolder name="App" level={1} highlight />
+	<StudioFile name="main" level={2} />
+	<TreeFolder name="Combat" level={1} highlight />
+	<TreeFolder name="Systems" level={2} />
+	<StudioFile name="ApplyDamage" level={3} />
+	<StudioFile name="Regenerate" level={3} />
+	<TreeFolder name="Movement" level={1} highlight />
+	<TreeFolder name="Systems" level={2} />
+	<StudioFile name="ValidateSpeed" level={3} />
+	<TreeFolder name="Replication" level={1} highlight />
+	<StudioFile name="Replicate" level={2} />
+
+	<TreeService name="StarterPlayer" type="player" mt />
+	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+	<TreeFolder name="App" level={2} highlight />
+	<StudioFile name="main" level={3} />
+	<TreeFolder name="Combat" level={2} highlight />
+	<TreeFolder name="Systems" level={3} />
+	<StudioFile name="HitFlash" level={4} />
+	<TreeFolder name="Replication" level={2} highlight />
+	<StudioFile name="Receive" level={3} />
+</StudioWindow>
+
+Server systems stay in `ServerScriptService`, where clients can't see them. Components and shared systems sit in `ReplicatedStorage`, so both sides require the same modules.
+
+## Why It Fits a Game
+
+- **Many entities, shared behaviour.** Mobs, projectiles and vehicles are combinations of the same components. A system written once applies to every entity that has them.
+- **The side is per system.** Like Unity's worlds, a system runs on the server, the client or both, and the folder it's in says which. A feature with authority on the server and effects on the client stays in one place.
+- **Components are the contract.** The server and client agree on data, not on each other's code. `Shared/Components.luau` is everything the two sides have in common.
+- **Performance.** Jecs advertises cache-friendly archetype storage, and ECS keeps hot loops over plain data.
+
+## Trade-offs
+
+- **A different model.** ECS asks you to think in data and queries instead of objects. UI and one-off logic are often simpler as plain modules beside it, which a feature folder allows.
+- **Systems are spread across folders.** Matter's getting-started loads every system from one folder. With systems in every feature, collecting them is your entry point's job.
+- **Ordering is global.** Systems in different features still run in one schedule. The order lives in the scheduler, not in the folders.
+- **Nothing checks the rules.** A system that requires another system still works. Keep the rule in review.

@@ -1,0 +1,207 @@
+---
+title: Migrating from v1
+description: Move a v1 project to v2, and what replaces each removed feature.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+v2 is a clean break. It doesn't read a v1 `.rogen.json`, and there's no `migrate` command. `init` writes a fresh config in a few seconds. What it can't tell you is what changed in your **tree**, and that's what this page is for.
+
+<Steps>
+
+<Step>
+### Run `rogen init`
+
+Install v2 (see [Installation](/docs/v2/installation)), then run `init` in the project root:
+
+```bash
+rogen init
+```
+
+It detects the language, Darklua and packages, and writes `default.rogen.json`. If a hand-written `default.project.json` is there, `init` copies it to `template.project.json` first, because v2 [owns its output](/docs/v2/core-concepts/output#output) and replaces whatever is there.
+
+</Step>
+
+<Step>
+### Match Your Old Paths
+
+v1 put a wrapper folder under each service: `ServerScriptService/server`, `StarterPlayerScripts/client`, `ReplicatedStorage/shared`. v2 has no wrappers; a route's target is the whole path. To keep every `require` path from v1 working, write the wrappers into the targets:
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"server": "ServerScriptService/server",
+		"client": "StarterPlayer/StarterPlayerScripts/client",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
+}
+```
+
+With v1's `unwrap`, drop the wrapper (`"server": "ServerScriptService"`). With `casing: "PascalCase"`, capitalise it (`"ReplicatedStorage/Shared"`). v1's `aliases` become routes too.
+
+</Step>
+
+<Step>
+### Move Your Tree
+
+Go through the [removed features](#removed-features) below. Each one lists what replaces it. Most projects only need to rename prefixed files and declare the services they used as folder names.
+
+</Step>
+
+<Step>
+### Build and Compare
+
+```bash
+rogen build
+```
+
+Read the warnings. Files that match no route, names that look like a route key but aren't, and two files becoming one instance are all reported. To check a file that landed somewhere unexpected, run `rogen where <path>`: it prints the route that placed the file, and why. Then open the project in Studio and compare it with the v1 build. Once they match, delete the old `.rogen.json`.
+
+</Step>
+
+</Steps>
+
+## Removed Features
+
+### Prefixes
+
+v1 routed and tagged by prefix as well as suffix (`server_Combat.luau`, `serverCombat.luau`). v2 reads **suffixes only**. Rename prefixed files, or better, move them into a [routing folder](/docs/v2/core-concepts/routing#routing-folders):
+
+```
+v1: src/Combat/server_Combat.luau
+v2: src/Combat/Server/Combat.luau
+```
+
+### The Deepest Rule Wins
+
+In v1 the deepest rule won, so a file's suffix beat its folder. In v2 the **outermost** route governs, and routes nested inside it are ignored. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+
+That fixes v1's best-known surprise:
+
+```
+src/ReplicatedFirst/main.client.luau
+v1: StarterPlayer/StarterPlayerScripts/client/main   (the .client suffix won)
+v2: ReplicatedFirst/main                             (the folder governs; still a LocalScript)
+```
+
+In v2, `ReplicatedFirst` is a route only if the config declares it: `"ReplicatedFirst": "ReplicatedFirst"`.
+
+### `.unwrap`, `unwrap` and `casing`
+
+Route targets are paths, so the wrapper folder is whatever the target says, or nothing. `"ServerScriptService"` is unwrapped; `"ReplicatedStorage/Shared"` is PascalCase. See [Targets](/docs/v2/core-concepts/routing#targets).
+
+### `.verbatim` and `verbatim`
+
+v1 used them to keep a keyword in a name (`HttpClient` losing `Client`). In v2, put the file under an outer route. It governs, so the suffix is ignored and stays in the name:
+
+```
+src/Net/HttpClient.luau         ->  StarterPlayer/StarterPlayerScripts/Net/Http
+src/Shared/Net/HttpClient.luau  ->  ReplicatedStorage/Shared/Net/HttpClient
+```
+
+A `.shared` marker file in `Net/` does the same without adding a folder. See [Escaping an Accidental Route](/docs/v2/core-concepts/routing#escaping-an-accidental-route).
+
+### `.structure`
+
+v1's `.structure` turned routing off below a folder. In v2, put the marker file of the route you want in that folder, such as `.shared`. It's the outer route, so it governs everything below, and nested suffixes stay in the names. Routing folders below it are still removed from the tree.
+
+### `.sync`
+
+v1 synced a `.sync` folder as it was, with no routing or tags. In v2, add it to the [template](/docs/v2/core-concepts/output#template) as a plain `$path` node, and `exclude` it so Rogen doesn't route it too:
+
+```json title="template.project.json"
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Roact": { "$path": "src/Vendor/Roact" }
+		}
+	}
+}
+```
+
+```json title="default.rogen.json"
+{
+	"template": "template.project.json",
+	"exclude": ["src/Vendor/**"]
+}
+```
+
+### `^` Hoisting
+
+v1 placed `^File` at the top of its service, without the folders above it. In v2, make the folders above it [invisible](/docs/v2/core-concepts/project-layout#invisible-folders):
+
+```
+v1: src/Physics/Server/^CollisionService.luau
+v2: src/(Physics)/Server/CollisionService.luau  ->  ServerScriptService/CollisionService
+```
+
+An invisible folder hoists everything in it, not one file.
+
+### The `ReplicatedStorage` Default
+
+v1 sent a file that matched no rule to `ReplicatedStorage`, which could ship server code to every client. v2 never picks a destination: declare the [fallback route](/docs/v2/core-concepts/routing#files-that-match-no-route) `"*"`. Without it, unmatched files are left out, with a warning.
+
+### Modes and Profiles
+
+v1 put several modes (`luau`, `ts`, `darklua` and custom ones) in one file, each with its own `output`, `build` and `tags`. In v2, one config file is one tree and one output. A second mode is a second config, a [variant](/docs/v2/configuration#extending-configs) that `extends` the first:
+
+```json title="prod.rogen.json"
+{
+	"extends": "./default.rogen.json",
+	"tags": { "dev": false }
+}
+```
+
+Build it by name: `rogen build prod`. `rogen list` shows every config the repo can build.
+
+### Built-in Service Keywords
+
+v1 routed any folder named after a service (`ReplicatedFirst/`, `StarterGui/`). In v2 only declared routes exist, so declare each one you use: `"StarterGui": "StarterGui"`. v1's `aliases` are routes as well.
+
+## Config Fields
+
+| v1 | v2 |
+|---|---|
+| `.rogen.json`, or the first `*.rogen.json` | `default.rogen.json`, or the only `*.rogen.json`. Every config is `<name>.rogen.json` |
+| `source` | `rootDirs` |
+| modes (`luau`, `ts`, `darklua`, custom) | one config per tree; variants are `<name>.rogen.json` |
+| a mode's `build` | `syncDir` |
+| a mode's `output` | `outFile`, one per config |
+| `tags` at the root and in modes | `tags`, root only. A variant sets its own |
+| `globIgnorePaths` | `exclude` |
+| `aliases` and built-in service keywords | `routes`. Only declared keys route |
+| `casing`, `unwrap` | route targets as paths |
+| `verbatim` | removed. Use an outer route |
+| `project`, or the legacy `template` | `template`, a path to a `*.project.json` only |
+
+## Behaviour
+
+| v1 | v2 |
+|---|---|
+| the mode is picked from the detected toolchain | detection only in `init`; a build does what the config says |
+| `build` replaces the first path segment | `syncDir` replaces the [common root](/docs/v2/core-concepts/output#sync-directory) of the root directories |
+| Rogen adopts an existing project file | Rogen owns `outFile` and replaces it; hand-written content goes in `template` |
+| packages and `rbxts_include` injected from the toolchain | mounted in the template, which `init` writes |
+| empty placeholder files for compiled toolchains | none: every emitted `$path` is optional |
+| a full rebuild on every change | incremental rebuilds, and the config reloads while watching |
+
+## CLI
+
+| v1 | v2 |
+|---|---|
+| `-m, --mode <mode>` | a config name: `rogen build prod` |
+| `-b, --build <path>` | `-s, --sync-dir <path>` |
+| `-s, --source <path>` | removed. Set `rootDirs` in a variant |
+| `-o, --output <path>` | `-o, --out-file <path>` |
+| `-p, --project <path>` | `--template <path>` |
+| `-t, --tag <tag>` | `-t, --tag <name>`, plus `-T, --no-tag <name>` |
+
+<Callout type="warn" title="-s changed meaning">
+	In v1, `-s` set the source directory. In v2 it sets the sync directory. Check scripts that call Rogen.
+</Callout>
+
+v2 also adds `extends`, `rogen list`, `rogen where`, `init [name]`, `--json`, JSONC configs, several configs in one command (`rogen build default lobby`, or `--all`) and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.

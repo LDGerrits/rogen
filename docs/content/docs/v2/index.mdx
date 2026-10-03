@@ -1,50 +1,49 @@
 ---
 title: Introduction
-description: Feature-based architecture for Roblox.
+description: Organise Roblox code by feature, not by where it runs.
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
-import { BookOpen, Rocket, Settings2 } from "lucide-react";
+import { BookOpen, LayoutGrid, Rocket, Settings2 } from "lucide-react";
 
 A bad folder structure slows development. Remembering where the related pieces are increases cognitive load. And finding files wastes time.
 
-## The Problem: Layer-Based Architecture
+## The Problem: Technical Grouping
 
-Typical Roblox projects structure their codebases in two ways:
+Most Roblox codebases group files by what kind of code they are, not by what they're about. That's **technical grouping**, and it comes in two forms:
 
-1. **By Environment:** Split code at the root into `server`, `client`, and `shared` folders.
-2. **By Type:** Inside the roots, group files by technical role (like `Controllers`, `Services`, or `Utils`).
+1. **By type:** folders for each technical role, such as `Controllers`, `Services` and `Utils`. Codebases in every industry do this, and it's a well-known anti-pattern.
+2. **By runtime, at the root:** `server`, `client` and `shared` folders at the top of the tree. Rojo maps folders one-to-one onto instances, so Roblox tooling forces this form on you. This is the one Rogen removes.
 
-The layout may be clean at the beginning but it gets messy in large codebases. Folders grow rapidly. Related files live far apart. Navigating the project becomes slow.
-Updating an **Inventory** system forces developers to search through massive file trees just to gather the related pieces.
+Either way, one feature is spread across the whole tree. Updating an **Inventory** system means searching three folders for its pieces, and deleting it means finding all of them.
 
 <PreviewGroup>
 	<SystemWindow>
 		<TreeFolder name="src" open />
 		<TreeFolder name="client" level={1} open />
 		<TreeFolder name="Controllers" level={2} open />
-		<TreeFile name="InventoryController.luau" level={3} highlight />
-
-    	<TreeFolder name="server" level={1} open mt />
-    	<TreeFolder name="Services" level={2} open />
-    	<TreeFile name="InventoryService.luau" level={3} highlight />
-
-    	<TreeFolder name="shared" level={1} open mt />
-    	<TreeFolder name="Types" level={2} open />
-    	<TreeFile name="InventoryTypes.luau" level={3} highlight />
-    </SystemWindow>
-
+		<TreeFile name="InventoryController.luau" level={3} />
+		<TreeFolder name="server" level={1} open />
+		<TreeFolder name="Services" level={2} open />
+		<TreeFile name="InventoryService.luau" level={3} />
+		<TreeFolder name="shared" level={1} open />
+		<TreeFolder name="Types" level={2} open />
+		<TreeFile name="InventoryTypes.luau" level={3} />
+	</SystemWindow>
 </PreviewGroup>
 
-<Callout type="warn">
-	**The Friction:** Context switching. Working on one feature requires
-	navigating through unrelated systems just to find the right server script.
-</Callout>
+This was named as a mistake in 1972. David Parnas argued that modules should hide design decisions, not follow the order the program runs in:
 
-## The Solution: Feature-Based Architecture
+> Since, in most cases, design decisions transcend time of execution, modules will not correspond to steps in the processing.
+>
+> — D. L. Parnas, [_On the Criteria To Be Used in Decomposing Systems into Modules_](https://wstomv.win.tue.nl/edu/2ip30/references/criteria_for_modularization.pdf) (1972)
 
-Keep all code for a specific feature (client, server, and shared code) inside a single, self-contained **feature folder**.
+On Roblox, _where code runs_ is that step. A feature has server, client and shared code, so the feature is the module, and where each piece runs is a detail inside it.
+
+## The Solution: Package by Feature
+
+Keep all the code for one feature (client, server and shared) in a single **feature folder**, named after what it does in your game. This is **package by feature**. Domain-driven design gives the same advice: name modules after the concepts of your domain (`Trading`, `Quests`), not after technical roles.
 
 Rogen reads the folder layout and the file names, and generates a Rojo **project file** that places every script in the Roblox **service** where it needs to run.
 Rogen doesn't sync anything itself: Rojo or Argon reads the generated project file and syncs the files into Roblox Studio.
@@ -73,9 +72,10 @@ Rogen doesn't sync anything itself: Rojo or Argon reads the generated project fi
     	<TreeFolder name="Inventory" level={1} highlight />
     	<StudioFile name="InventoryService" level={2} />
 
-    	<TreeService name="StarterPlayerScripts" type="player" mt />
-    	<TreeFolder name="Inventory" level={1} highlight />
-    	<StudioFile name="InventoryController" level={2} />
+    	<TreeService name="StarterPlayer" type="player" mt />
+    	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+    	<TreeFolder name="Inventory" level={2} highlight />
+    	<StudioFile name="InventoryController" level={3} />
     </StudioWindow>
 
 </PreviewGroup>
@@ -98,6 +98,8 @@ The **routes** in the [config](/docs/v2/configuration) say where each kind of co
 	receives the scripts in the right containers.
 </Callout>
 
+Feature folders are a starting point, not the only option. Layers are fine too, as long as dependencies point one way and each layer is organised by feature. [Architectures](/docs/v2/architectures) compares the layouts that work well with Rogen.
+
 ## Where to Go Next
 
 <Cards>
@@ -116,10 +118,17 @@ The **routes** in the [config](/docs/v2/configuration) say where each kind of co
 		How folders, marker files and suffixes decide where a file goes.
 	</Card>
 	<Card
+		icon={<LayoutGrid />}
+		title="Architectures"
+		href="/docs/v2/architectures"
+	>
+		Feature folders, layers and ECS, and when to pick each.
+	</Card>
+	<Card
 		icon={<Settings2 />}
 		title="Configuration"
 		href="/docs/v2/configuration"
 	>
-		Every field of a `.rogen.json` config.
+		Every field of a `*.rogen.json` config.
 	</Card>
 </Cards>
