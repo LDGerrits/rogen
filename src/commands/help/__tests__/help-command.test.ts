@@ -118,11 +118,9 @@ describe("help command", () => {
 						...(option.type === "string" ? ["x"] : []),
 					];
 					expect(
-						parseArgs(
-							argv,
-							(id) => registry.getOptions(id),
-							(id) => registry.getCommand(id) !== undefined
-						).isOk()
+						parseArgs(argv, (id) => registry.getOptions(id), [
+							...registry.getCommands().keys(),
+						]).isOk()
 					).toBe(true);
 				}
 			}

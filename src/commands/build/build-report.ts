@@ -1,3 +1,4 @@
+import { toNative } from "../../base/path.js";
 import { ConfigBuild } from "../../domain/build/build-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 
@@ -20,8 +21,8 @@ export class BuildReport {
 		errors,
 	}: ConfigBuild): void {
 		this.configs.push({
-			file: config.file,
-			outFile: config.outFile,
+			file: toNative(config.file),
+			outFile: toNative(config.outFile),
 			outcome: outcomeOf(outcome),
 			diagnostics: [...warnings, ...syncWarnings, ...errors].map(
 				diagnosticToJson
@@ -31,6 +32,9 @@ export class BuildReport {
 
 	/** `notBuilding` are the configs here that the run was not asked to build. */
 	json(notBuilding: readonly string[]): Record<string, unknown> {
-		return { configs: this.configs, notBuilding };
+		return {
+			configs: this.configs,
+			notBuilding: notBuilding.map((file) => toNative(file)),
+		};
 	}
 }

@@ -6,6 +6,16 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
+/** `filePath` as the platform writes it, the form a path is printed in. */
+export function toNative(
+	filePath: string,
+	platform: typeof path.posix = path
+): string {
+	return platform.sep === POSIX_SEP
+		? filePath
+		: filePath.replace(/\//g, platform.sep);
+}
+
 export function joinPosix(...segments: string[]): string {
 	return toPosix(path.join(...segments));
 }

@@ -10,6 +10,7 @@ import {
 	outermostDirs,
 	relativeTo,
 	stemOf,
+	toNative,
 	toPosix,
 } from "../path.js";
 
@@ -196,5 +197,19 @@ describe("normalizeDir", () => {
 		it("should throw when there are no directories", () => {
 			expect(() => commonAncestor([])).toThrow();
 		});
+	});
+});
+
+describe("toNative", () => {
+	it("should turn every forward slash into the platform's separator", () => {
+		expect(toNative("C:/repo/src\\Net/Http.luau", path.win32)).toBe(
+			"C:\\repo\\src\\Net\\Http.luau"
+		);
+	});
+
+	it("should leave a POSIX path as it is, backslashes and all", () => {
+		expect(toNative("/repo/src/a\\b.luau", path.posix)).toBe(
+			"/repo/src/a\\b.luau"
+		);
 	});
 });

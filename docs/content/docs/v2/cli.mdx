@@ -156,7 +156,7 @@ Text you asked for, like help, the version and a `--json` document, is printed e
 
 `--json` replaces a command's text with one JSON document on stdout. The exit code is the one the text form would give, and a failure prints a document too, so a program can read stdout whatever the exit code. Nothing else goes to stdout, `--quiet` and `--verbose` don't change it, and it never draws a frame. A mistake in the command line itself, such as an unknown flag, prints `{ "error": "..." }` too: the flag is read before the rest of the line is parsed.
 
-Paths are absolute. A diagnostic is an object, and its `code` is the part a program can match on, since the wording of `message` may change:
+Paths are absolute and use the operating system's separator, so on Windows they have backslashes. Instance paths and glob patterns aren't file paths, and keep `/`. A diagnostic is an object, and its `code` is the part a program can match on, since the wording of `message` may change:
 
 ```json
 {

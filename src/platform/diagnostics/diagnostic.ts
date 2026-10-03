@@ -1,5 +1,5 @@
 import path from "path";
-import { relativeTo, toPosix } from "../../base/path.js";
+import { relativeTo, toNative, toPosix } from "../../base/path.js";
 
 export enum DiagnosticSeverity {
 	Error,
@@ -93,7 +93,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 			: stripDirectory(diagnostic.message, cwd);
 	const resource =
 		cwd === undefined
-			? diagnostic.resource
+			? toNative(diagnostic.resource)
 			: relativeTo(cwd, diagnostic.resource);
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
@@ -114,7 +114,7 @@ export interface DiagnosticJson {
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 	const { resource, position, severity, code, message } = diagnostic;
 	return {
-		file: resource,
+		file: toNative(resource),
 		...(position && { line: position.line, column: position.column }),
 		severity: SEVERITY_LABELS[severity],
 		code,
