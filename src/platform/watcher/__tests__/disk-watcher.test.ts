@@ -170,6 +170,35 @@ describe("DiskWatcher", () => {
 			).toBe("");
 		});
 
+		it("should report a link to its own parent added later, without following it", async () => {
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.symlink(root, path.join(root, "Loop"), "junction");
+
+			await waitFor(() => has(FileChangeType.ADDED, linkPath("Loop")));
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			expect(
+				changes.filter((c) => c.path.startsWith(linkPath("Loop/")))
+			).toEqual([]);
+		});
+
+		it("should report a link to nothing added later, and its removal", async () => {
+			await watcher.watch([{ path: root, recursive: true }]);
+
+			await fs.symlink(
+				path.join(dir, "missing"),
+				path.join(root, "Broken"),
+				"junction"
+			);
+			await waitFor(() => has(FileChangeType.ADDED, linkPath("Broken")));
+			await fs.rm(path.join(root, "Broken"));
+
+			await waitFor(() =>
+				has(FileChangeType.DELETED, linkPath("Broken"))
+			);
+			expect(has(FileChangeType.DELETED, linkPath("Broken"))).toBe(true);
+		});
+
 		it("should not follow a link that points at its own parent", async () => {
 			await fs.symlink(root, path.join(root, "Loop"), "junction");
 			await watcher.watch([{ path: root, recursive: true }]);

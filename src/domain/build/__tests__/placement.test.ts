@@ -744,7 +744,8 @@ describe("Placer", () => {
 				await write("src/A.luau");
 				const index = newIndex();
 				await index.initialize([abs("src")]);
-				index.applyChanges([
+				await write("src/B.luau");
+				await index.applyChanges([
 					{
 						type: FileChangeType.ADDED,
 						path: abs("src/B.luau"),

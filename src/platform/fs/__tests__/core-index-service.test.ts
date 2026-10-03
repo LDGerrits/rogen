@@ -89,8 +89,9 @@ describe("CoreIndexService", () => {
 		it("should reflect applied changes in a directory's entries", async () => {
 			await memoryFs.createDirectory("src");
 			await indexService.initialize(["src"]);
+			await memoryFs.writeFile("src/new.luau", "");
 
-			indexService.applyChanges([
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.ADDED,
 					path: "src/new.luau",
@@ -212,7 +213,7 @@ describe("CoreIndexService", () => {
 			await memoryFs.createSymbolicLink("shared", "src/Shared");
 			await indexService.initialize(["src"]);
 
-			indexService.applyChanges([
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.DELETED,
 					path: "src/Shared",
@@ -225,14 +226,114 @@ describe("CoreIndexService", () => {
 		});
 	});
 
+	describe("applyChanges", () => {
+		const rescanOf = async (dirs: string[]) => {
+			const fresh = new CoreIndexService(memoryFs);
+			await fresh.initialize(["src"]);
+			return dirs.map((dir) => fresh.getEntries(dir));
+		};
+		const listingOf = (dirs: string[]) =>
+			dirs.map((dir) => indexService.getEntries(dir));
+		const added = (path: string, fileType: FileType) => ({
+			type: FileChangeType.ADDED,
+			path,
+			fileType,
+		});
+
+		beforeEach(async () => {
+			await memoryFs.writeFile("src/a.luau", "");
+			await memoryFs.writeFile("shared/b.luau", "");
+			await indexService.initialize(["src"]);
+		});
+
+		it("should record an added link to its own parent as only a link, as a rescan does", async () => {
+			await memoryFs.createSymbolicLink("src", "src/Loop");
+
+			await indexService.applyChanges([
+				added("src/Loop", FileType.Directory),
+				added("src/Loop/a.luau", FileType.File),
+			]);
+
+			expect(listingOf(["src", "src/Loop"])).toEqual(
+				await rescanOf(["src", "src/Loop"])
+			);
+			expect(indexService.getEntryType("src", "Loop")).toBe(
+				FileType.SymbolicLink
+			);
+		});
+
+		it("should record an added link to nothing as only a link, as a rescan does", async () => {
+			await memoryFs.createSymbolicLink("missing", "src/Broken");
+
+			await indexService.applyChanges([
+				added("src/Broken", FileType.File),
+			]);
+
+			expect(indexService.getEntryType("src", "Broken")).toBe(
+				FileType.SymbolicLink
+			);
+		});
+
+		it("should index an added linked directory whole, as a rescan does", async () => {
+			await memoryFs.createSymbolicLink("shared", "src/Shared");
+
+			await indexService.applyChanges([
+				added("src/Shared", FileType.Directory),
+			]);
+
+			expect(listingOf(["src", "src/Shared"])).toEqual(
+				await rescanOf(["src", "src/Shared"])
+			);
+		});
+
+		it("should record an added linked file as a file that is a link", async () => {
+			await memoryFs.createSymbolicLink("shared/b.luau", "src/B.luau");
+
+			await indexService.applyChanges([
+				added("src/B.luau", FileType.File),
+			]);
+
+			expect(indexService.getEntryType("src", "B.luau")).toBe(
+				FileType.File | FileType.SymbolicLink
+			);
+		});
+
+		it("should skip an added entry that is gone by the time it applies", async () => {
+			await indexService.applyChanges([
+				added("src/gone.luau", FileType.File),
+			]);
+
+			expect(indexService.hasEntry("src", "gone.luau")).toBe(false);
+		});
+
+		it("should wait for a scan in progress before applying", async () => {
+			await memoryFs.writeFile("src/new.luau", "");
+
+			const scanning = indexService.initialize(["src"]);
+			const applying = indexService.applyChanges([
+				{
+					type: FileChangeType.DELETED,
+					path: "src/new.luau",
+					fileType: FileType.File,
+				},
+			]);
+			await Promise.all([scanning, applying]);
+
+			expect(indexService.hasEntry("src", "new.luau")).toBe(false);
+		});
+	});
+
 	describe("File Changes & State Mutations", () => {
 		beforeEach(async () => {
 			await memoryFs.writeFile("src/core/math.ts", "");
 			await indexService.initialize(["src"]);
 		});
 
-		it("should insert added files into the topology", () => {
-			indexService.applyChanges([
+		it("should insert added files into the topology", async () => {
+			await memoryFs.writeFile("src/core/physics.ts", "");
+			await memoryFs.writeFile("src/core/.server", "");
+
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.ADDED,
 					path: "src/core/physics.ts",
@@ -252,8 +353,10 @@ describe("CoreIndexService", () => {
 			);
 		});
 
-		it("should implicitly create parent folders if an added file introduces a new path", () => {
-			indexService.applyChanges([
+		it("should implicitly create parent folders if an added file introduces a new path", async () => {
+			await memoryFs.writeFile("src/new_feature/data.ts", "");
+
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.ADDED,
 					path: "src/new_feature/data.ts",
@@ -266,10 +369,10 @@ describe("CoreIndexService", () => {
 			);
 		});
 
-		it("should remove deleted files from the topology", () => {
+		it("should remove deleted files from the topology", async () => {
 			expect(indexService.hasEntry("src/core", "math.ts")).toBe(true);
 
-			indexService.applyChanges([
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.DELETED,
 					path: "src/core/math.ts",
@@ -288,7 +391,7 @@ describe("CoreIndexService", () => {
 				indexService.hasEntry("src/features/inventory/client", "ui.ts")
 			).toBe(true);
 
-			indexService.applyChanges([
+			await indexService.applyChanges([
 				{
 					type: FileChangeType.DELETED,
 					path: "src/features",

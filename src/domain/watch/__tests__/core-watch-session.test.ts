@@ -145,6 +145,19 @@ describe("CoreWatchSession", () => {
 		}
 	});
 
+	it("should warn about a link to its own parent added while watching, as a fresh build does", async () => {
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+
+		await fs.createSymbolicLink("/repo/src", "/repo/src/Loop");
+		await settle();
+
+		expect(updates.at(-1)?.reports[0].diagnostics).toMatchObject([
+			{ code: "scan.unresolvedLink" },
+		]);
+		expect(updates.at(-1)?.reports[0].summary?.roots[0].files).toBe(1);
+	});
+
 	it("should report the sync dir check only for a round that made it", async () => {
 		await start();
 

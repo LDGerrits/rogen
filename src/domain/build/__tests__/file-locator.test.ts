@@ -1,5 +1,7 @@
+import { jest } from "@jest/globals";
+import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
-import { FileChangeType } from "../../../platform/fs/file-changes.js";
+import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -378,16 +380,18 @@ describe("CoreBuildService.locate", () => {
 
 	describe("an entry of unknown type", () => {
 		const unknownEntry = async (name: string) => {
-			await write("src/Other.luau");
+			await write("src/Other.luau", name);
+			const readDirectory = fs.readDirectory.bind(fs);
+			jest.spyOn(fs, "readDirectory").mockImplementation(async (dir) =>
+				(await readDirectory(dir)).map(([entry, type]) => [
+					entry,
+					toPosix(path.join(dir, entry)) === toPosix(abs(name))
+						? FileType.Unknown
+						: type,
+				])
+			);
 			const config = configOf();
 			const index = await indexOfConfig(config);
-			index.applyChanges([
-				{
-					type: FileChangeType.ADDED,
-					path: abs(name),
-					fileType: FileType.Unknown,
-				},
-			]);
 			return { config, index };
 		};
 

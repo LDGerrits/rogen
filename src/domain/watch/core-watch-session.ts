@@ -354,7 +354,7 @@ export class CoreWatchSession
 			this.plan.watches(change.path)
 		);
 		if (sourceChanges.length > 0) {
-			this.indexService.applyChanges(sourceChanges);
+			await this.indexService.applyChanges(sourceChanges);
 		}
 
 		const affected = new Set([

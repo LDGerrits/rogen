@@ -2,6 +2,7 @@ import chokidar from "chokidar";
 import * as fs from "fs";
 import * as path from "path";
 import { FileType } from "../fs/file-system-service.js";
+import { ErrorUtils } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
@@ -9,6 +10,9 @@ import { isIgnored, WatchOptions, WatchRequest } from "./watcher.js";
 
 export class DiskWatcher extends AbstractWatcher {
 	private watcher: chokidar.FSWatcher | null = null;
+	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
+	private unfollowed = new Set<string>();
+	private ready = false;
 
 	protected async startWatching(
 		requests: WatchRequest[],
@@ -17,6 +21,7 @@ export class DiskWatcher extends AbstractWatcher {
 		await this.stop();
 
 		const targetPaths = requests.map((r) => r.path);
+		const ignored = options.ignored ?? [];
 
 		this.watcher = chokidar.watch(targetPaths, {
 			ignoreInitial: true,
@@ -24,8 +29,7 @@ export class DiskWatcher extends AbstractWatcher {
 			depth: requests.some((r) => r.recursive) ? undefined : 0,
 			followSymlinks: true,
 			ignored: (target: string) =>
-				isIgnored(target, options.ignored ?? []) ||
-				linksToAncestor(target),
+				isIgnored(target, ignored) || this.skipUnfollowable(target),
 		});
 
 		this.watcher.on("add", (p) =>
@@ -44,6 +48,9 @@ export class DiskWatcher extends AbstractWatcher {
 			this.fireEvent(FileChangeType.DELETED, p, FileType.Directory)
 		);
 
+		// A link nothing descends into is never watched, so any activity rechecks the ones seen.
+		this.watcher.on("raw", () => this.dropRemovedLinks());
+
 		this.watcher.on("error", (error) => {
 			this.logService.error(`DiskWatcher crashed: ${error.message}`);
 			this.fireError(error);
@@ -52,6 +59,31 @@ export class DiskWatcher extends AbstractWatcher {
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;
 		await new Promise<void>((resolve) => watcher.once("ready", resolve));
+		this.ready = true;
+	}
+
+	/** Skips a link that can't be followed and reports it once, as a link, after the initial scan. */
+	private skipUnfollowable(target: string): boolean {
+		if (!isUnfollowableLink(target)) return false;
+		const posixTarget = toPosix(target);
+		if (!this.unfollowed.has(posixTarget)) {
+			this.unfollowed.add(posixTarget);
+			if (this.ready)
+				this.fireEvent(
+					FileChangeType.ADDED,
+					target,
+					FileType.SymbolicLink
+				);
+		}
+		return true;
+	}
+
+	private dropRemovedLinks(): void {
+		for (const link of this.unfollowed) {
+			if (isSymbolicLink(link)) continue;
+			this.unfollowed.delete(link);
+			this.fireEvent(FileChangeType.DELETED, link, FileType.SymbolicLink);
+		}
 	}
 
 	private fireEvent(
@@ -63,6 +95,8 @@ export class DiskWatcher extends AbstractWatcher {
 	}
 
 	async stop(): Promise<void> {
+		this.ready = false;
+		this.unfollowed = new Set();
 		if (this.watcher) {
 			await this.watcher.close();
 			this.watcher = null;
@@ -70,20 +104,36 @@ export class DiskWatcher extends AbstractWatcher {
 	}
 }
 
-// Following a link that points at an ancestor would report the tree again forever.
-function linksToAncestor(target: string): boolean {
+function isSymbolicLink(target: string): boolean {
 	try {
-		if (!fs.lstatSync(target).isSymbolicLink()) return false;
-		const real = fs.realpathSync(target);
-		for (
-			let ancestor = path.dirname(target);
-			;
-			ancestor = path.dirname(ancestor)
-		) {
-			if (fs.realpathSync(ancestor) === real) return true;
-			if (path.dirname(ancestor) === ancestor) return false;
-		}
+		return fs.lstatSync(target).isSymbolicLink();
 	} catch {
 		return false;
+	}
+}
+
+const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
+
+/** The index's rule, synchronously: a link to nothing, or one that leads back to an ancestor, would report the tree again forever or not at all. */
+function isUnfollowableLink(target: string): boolean {
+	if (!isSymbolicLink(target)) return false;
+	let real: string;
+	try {
+		real = fs.realpathSync(target);
+	} catch (error) {
+		// Throwing from chokidar's filter would stop the watcher.
+		return ErrorUtils.hasCode(error, ...UNRESOLVED_CODES);
+	}
+	for (
+		let ancestor = path.dirname(target);
+		;
+		ancestor = path.dirname(ancestor)
+	) {
+		try {
+			if (fs.realpathSync(ancestor) === real) return true;
+		} catch {
+			// An ancestor that can't be resolved can't be the link's target.
+		}
+		if (path.dirname(ancestor) === ancestor) return false;
 	}
 }

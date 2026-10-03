@@ -21,8 +21,13 @@ export interface IndexService extends IndexReader {
 	initialize(sourcePaths: readonly string[]): Promise<void>;
 	/** Indexes the dirs that no earlier call covers, where a dir inside a covered one counts as covered; the rest of the listing is kept. */
 	ensureIndexed(dirs: readonly string[]): Promise<void>;
-	/** Applies at once, never queued behind `initialize` or `ensureIndexed`; a scan in progress may overwrite a change to a dir it lists. */
-	applyChanges(changes: FileChange[]): void;
+	/**
+	 * Runs after any earlier call finishes, and leaves the index as a rescan
+	 * would: an added entry's type is read from the disk, not the change, an
+	 * added directory is indexed whole, and an entry that is gone by then is
+	 * skipped.
+	 */
+	applyChanges(changes: readonly FileChange[]): Promise<void>;
 }
 
 export const IndexService =
