@@ -6,7 +6,7 @@ import { FaCopy } from "react-icons/fa";
 
 export function Cta() {
 	const [copiedId, setCopiedId] = useState<string | null>(null);
-	const [version, setVersion] = useState<string>("1.3.1");
+	const [version, setVersion] = useState<string>("2.0.0");
 
 	useEffect(() => {
 		let isMounted = true;
@@ -99,7 +99,7 @@ export function Cta() {
 				</div>
 
 				<Link
-					href="/docs/v1/installation"
+					href="/docs/v2/installation"
 					className="text-gray-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-1"
 				>
 					Read the setup guide <span className="font-serif">→</span>

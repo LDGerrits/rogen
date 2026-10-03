@@ -33,15 +33,15 @@ export function Footer() {
 						<ul className="space-y-3 text-sm">
 							<li>
 								<Link
-									href="/docs/v1/introduction"
+									href="/docs/v2"
 									className="text-gray-500 hover:text-white transition-colors"
 								>
-									Docs (Latest)
+									Docs
 								</Link>
 							</li>
 							<li>
 								<Link
-									href="/docs/v1/installation"
+									href="/docs/v2/installation"
 									className="text-gray-500 hover:text-white transition-colors"
 								>
 									Quick Start
@@ -49,10 +49,10 @@ export function Footer() {
 							</li>
 							<li>
 								<Link
-									href="/docs/v2/introduction"
+									href="/docs/v2/architectures"
 									className="text-gray-500 hover:text-white transition-colors"
 								>
-									Rogen v2 Docs
+									Architectures
 								</Link>
 							</li>
 						</ul>

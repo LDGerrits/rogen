@@ -1,9 +1,10 @@
+import { Agents } from "@/components/home/agents";
 import { Cta } from "@/components/home/cta";
 import { Features } from "@/components/home/features";
 import { Footer } from "@/components/home/footer";
 import { Hero } from "@/components/home/hero";
 import { Preview } from "@/components/home/preview";
-import { Rules } from "@/components/home/rules";
+import { Routing } from "@/components/home/routing";
 import { Testimonials } from "@/components/home/testimonials";
 
 export default function HomePage() {
@@ -25,8 +26,9 @@ export default function HomePage() {
 			<div className="relative z-20">
 				<Hero />
 				<Preview />
+				<Routing />
 				<Features />
-				<Rules />
+				<Agents />
 				<Testimonials />
 				<Cta />
 				<Footer />
