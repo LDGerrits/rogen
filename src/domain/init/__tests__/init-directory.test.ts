@@ -35,9 +35,7 @@ describe("domain/init/init-directory", () => {
 					fs,
 					configService
 				);
-				const result = await read(target);
-				configService[Symbol.dispose]();
-				return result;
+				return read(target);
 			};
 
 			const readBase = () =>

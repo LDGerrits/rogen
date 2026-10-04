@@ -191,10 +191,11 @@ export class InitDirectory {
 
 	/** The sync dir the config in `fileName` resolves to, relative to the directory, if it has one and builds. */
 	async syncDirOf(fileName: string): Promise<string | undefined> {
-		const entry = await this.configService.readConfig(
+		const entry = await this.configService.read(
 			path.join(this.path, fileName)
 		);
-		const syncDir = entry.resolved?.syncDir;
+		const syncDir =
+			entry.status === "valid" ? entry.config.syncDir : undefined;
 		return syncDir && this.relative(syncDir);
 	}
 
@@ -205,12 +206,12 @@ export class InitDirectory {
 	private async readDefaultConfig(): Promise<
 		Result<BaseConfig, Diagnostic[]>
 	> {
-		const entry = await this.configService.readConfig(
+		const entry = await this.configService.read(
 			path.join(this.path, configFileName(DEFAULT_CONFIG_STEM))
 		);
-		if (!entry.resolved) return err([...entry.diagnostics]);
+		if (entry.status === "broken") return err([...entry.errors]);
 
-		const { rootDirs, syncDir } = entry.resolved;
+		const { rootDirs, syncDir } = entry.config;
 		return ok({
 			rootDirs: rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),

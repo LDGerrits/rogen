@@ -41,9 +41,12 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 			rootDirs: config?.rootDirs.map(absolute) ?? [],
 			syncDir: config?.syncDir && absolute(config.syncDir),
 		},
-		file,
-		{ chain: [file, ...(config?.parent ? [absolute(config.parent)] : [])] }
+		file
 	);
+	const withParent = {
+		...entry,
+		parents: config?.parent ? [absolute(config.parent)] : [],
+	};
 	return new InitDirectory(
 		dir,
 		new Set(spec.existing ?? []),
@@ -51,7 +54,7 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 		spec.givenName,
 		spec.givenName ?? "default",
 		spec.fileSystem ?? new MemoryFileSystemService(),
-		new MockConfigService([entry])
+		new MockConfigService([withParent])
 	);
 }
 

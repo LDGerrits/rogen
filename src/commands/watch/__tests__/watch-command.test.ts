@@ -72,7 +72,6 @@ describe("watch command", () => {
 		const watchService = new CoreWatchService(
 			watcher,
 			logService,
-			configService,
 			indexService,
 			buildService
 		);
@@ -121,7 +120,6 @@ describe("watch command", () => {
 		lifecycle.shutdown();
 		jest.restoreAllMocks();
 		await watcher.stop();
-		configService[Symbol.dispose]();
 		store[Symbol.dispose]();
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();

@@ -21,7 +21,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configDefaults, configSchema } from "./config-schema.js";
-import { ConfigOverrides } from "./config-service.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
@@ -30,6 +29,15 @@ import {
 	defaultOutFileName,
 	rootDirOverlap,
 } from "./config.js";
+
+/** Per-invocation values that sit above every layer of a config's chain. */
+export interface ConfigOverrides {
+	readonly outFile?: string;
+	readonly syncDir?: string;
+	readonly template?: string;
+	/** Tag name to whether it is on. */
+	readonly tags: Readonly<Record<string, boolean>>;
+}
 
 /** One read of one config, with everything a reload needs to compare against. */
 export interface LoadedConfig {
@@ -95,7 +103,10 @@ export class ConfigLoader {
 			: undefined;
 		if (template?.isErr()) return { ...loaded, resolved: template };
 
-		const resolved = new ConfigValidator(layered).validate(
+		const resolved = new ConfigValidator(
+			layered,
+			chain.files.slice(1)
+		).validate(
 			template?.isOk() ? template.value : undefined
 		);
 		return {
@@ -318,7 +329,10 @@ class ConfigValidator {
 	private readonly tags: Readonly<Record<string, boolean>>;
 	private readonly outFile: string;
 
-	constructor(private readonly layered: LayeredConfig) {
+	constructor(
+		private readonly layered: LayeredConfig,
+		private readonly parents: readonly string[]
+	) {
 		const { config } = layered;
 		this.rootDirs = config.getValue<string[]>("rootDirs");
 		this.routes = config.getValue<Record<string, string>>("routes");
@@ -346,6 +360,8 @@ class ConfigValidator {
 		return this.problems.toResult(
 			new ResolvedConfig({
 				file: this.layered.leaf.file,
+				parents: this.parents,
+				skippedTags: this.layered.skippedTags,
 				name:
 					template?.project.name ||
 					path.basename(dir) ||

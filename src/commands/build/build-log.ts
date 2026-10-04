@@ -2,19 +2,16 @@ import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build-service.js";
-import {
-	ConfigEntry,
-	ResolvedEntry,
-} from "../../domain/config/config-service.js";
+import { ResolvedConfig } from "../../domain/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 
 /** The `extends` chain and skipped tag flags of a config. */
-function describeConfig(entry: ConfigEntry, cwd: string): string[] {
-	const parents = entry.parents.map((file) => relativeTo(cwd, file));
+function describeConfig(config: ResolvedConfig, cwd: string): string[] {
+	const parents = config.parents.map((file) => relativeTo(cwd, file));
 	return [
 		...(parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : []),
-		...entry.skippedTags.map(
+		...config.skippedTags.map(
 			(tag) => `tag ${tag} skipped: not declared in this config`
 		),
 	];
@@ -68,11 +65,11 @@ export class BuildLog {
 	/** Opens the output: the command, the configs it builds and the ones it leaves out. */
 	begin(
 		command: string,
-		targets: readonly ResolvedEntry[],
+		configs: readonly ResolvedConfig[],
 		unselected: readonly string[]
 	): void {
 		this.logService.intro(
-			`rogen ${command} · ${targets.map(({ config }) => config.label).join(", ")}`
+			`rogen ${command} · ${configs.map(({ label }) => label).join(", ")}`
 		);
 		if (unselected.length > 0) {
 			this.logService.info(
@@ -82,13 +79,12 @@ export class BuildLog {
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
-	heading({ config }: ResolvedEntry): void {
+	heading(config: ResolvedConfig): void {
 		this.logService.step(config.label);
 	}
 
 	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
 	outcome(
-		entry: ConfigEntry,
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
 		note?: string
@@ -101,12 +97,12 @@ export class BuildLog {
 			case "wrote":
 			case "unchanged":
 				this.logService.success(line(build.outcome));
-				this.details(entry, build.summary);
+				this.details(build.config, build.summary);
 				break;
 			case "notWritten":
 			case "failed":
 				this.logService.error(line("not written"));
-				this.details(entry);
+				this.details(build.config);
 				break;
 		}
 		this.diagnostics(diagnostics);
@@ -123,9 +119,9 @@ export class BuildLog {
 	}
 
 	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */
-	private details(entry: ConfigEntry, summary?: BuildSummary): void {
+	private details(config: ResolvedConfig, summary?: BuildSummary): void {
 		for (const line of [
-			...describeConfig(entry, this.cwd),
+			...describeConfig(config, this.cwd),
 			...(summary ? describeBuild(summary, this.cwd) : []),
 		])
 			this.logService.debug(line);

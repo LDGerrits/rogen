@@ -5,7 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
-import { ConfigSelection, ResolvedEntry } from "../config/config-service.js";
+import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
 /** How a route or tag key matched a file by its name. */
@@ -180,7 +180,7 @@ export interface BuildService {
 	/** The resolved configs of `selection` when every one is valid and they can be built together, else every error. */
 	requireBuildable(
 		selection: ConfigSelection
-	): Result<ResolvedEntry[], DiagnosticsError>;
+	): Result<ResolvedConfig[], DiagnosticsError>;
 
 	/** The configs that declare no routes or share an out file, by config file, each with why. */
 	blockedConfigs(

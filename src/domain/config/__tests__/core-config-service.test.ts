@@ -1,16 +1,32 @@
 import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
-import { ConfigChangeEvent } from "../config-service.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../config.js";
-import { ConfigRefs } from "../config-service.js";
+import {
+	ConfigSelection,
+	buildableConfig,
+} from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
+
+interface Refs {
+	readonly names?: string[];
+	readonly paths?: string[];
+	readonly all?: boolean;
+	readonly overrides?: {
+		readonly outFile?: string;
+		readonly syncDir?: string;
+		readonly template?: string;
+		readonly tags: Record<string, boolean>;
+	};
+}
 
 describe("domain/config/core-config-service", () => {
 	let fs: MemoryFileSystemService;
 	let service: CoreConfigService;
+	let selection: ConfigSelection;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
 		fs.writeFile(
@@ -36,13 +52,35 @@ describe("domain/config/core-config-service", () => {
 			},
 		};
 
-	const start = async (refs: Partial<ConfigRefs> = {}) => {
-		const result = await service.initialize({
-			names: [],
-			paths: [],
-			...refs,
+	/** Selects the configs `refs` names, as the matching command line would. */
+	const start = async (
+		{ names = [], paths, all, overrides }: Refs = {},
+		cwd = "/repo"
+	) => {
+		const tags = Object.entries(overrides?.tags ?? {});
+		service = new CoreConfigService(
+			fs,
+			new MockEnvironmentService({ _: [] }, cwd)
+		);
+		const result = await service.select({
+			_: ["build", ...names],
+			config: paths,
+			all,
+			"out-file": overrides?.outFile,
+			"sync-dir": overrides?.syncDir,
+			template: overrides?.template,
+			tag: tags.filter(([, on]) => on).map(([tag]) => tag),
+			"no-tag": tags.filter(([, on]) => !on).map(([tag]) => tag),
 		});
+		if (result.isOk()) selection = result.value;
 		return result;
+	};
+
+	const resolved = (index = 0) => buildableConfig(selection.entries[index]);
+
+	const errors = (index = 0) => {
+		const entry = selection.entries[index];
+		return entry.status === "broken" ? entry.errors : [];
 	};
 
 	beforeEach(async () => {
@@ -54,11 +92,7 @@ describe("domain/config/core-config-service", () => {
 		);
 	});
 
-	afterEach(() => {
-		service[Symbol.dispose]();
-	});
-
-	describe("initialize", () => {
+	describe("select", () => {
 		it("should select the configs it loaded, and name the config files here it left out, sorted", async () => {
 			await write("/repo/match.rogen.json", {});
 			await write("/repo/default.rogen.json", {});
@@ -87,11 +121,10 @@ describe("domain/config/core-config-service", () => {
 			expect(selection.unselected).toEqual([]);
 		});
 
-		const refusal = async (refs: Partial<ConfigRefs>) => {
+		const refusal = async (refs: Refs) => {
 			await write("/repo/lobby.rogen.json", {});
 			await write("/repo/match.rogen.json", {});
 			const result = await start(refs);
-			expect(service.configs).toEqual([]);
 			return result.isErr() ? result.error.message : "";
 		};
 
@@ -140,7 +173,7 @@ describe("domain/config/core-config-service", () => {
 			expect(result.isOk()).toBe(true);
 		});
 
-		it.each<[string, Partial<ConfigRefs>]>([
+		it.each<[string, Refs]>([
 			["a name", { names: ["lobby"] }],
 			["a -c path", { paths: ["lobby.rogen.json"] }],
 		])("should refuse every config with %s", async (_what, refs) => {
@@ -154,10 +187,10 @@ describe("domain/config/core-config-service", () => {
 
 			expect((await start()).isOk()).toBe(true);
 
-			const [entry] = service.configs;
+			const [entry] = selection.entries;
 			expect(entry.file).toBe("/repo/default.rogen.json");
-			expect(entry.diagnostics).toEqual([]);
-			expect(plain(entry.resolved)).toMatchObject({
+			expect(entry.status).toBe("valid");
+			expect(plain(resolved(0))).toMatchObject({
 				rootDirs: ["/repo/src"],
 				routes: {},
 				tags: {},
@@ -172,7 +205,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["default", "source"] });
 
-			expect(service.configs.map((c) => c.resolved?.rootDirs)).toEqual([
+			expect(selection.entries.map((c) => buildableConfig(c)?.rootDirs)).toEqual([
 				["/repo/a"],
 				["/repo/b"],
 			]);
@@ -192,10 +225,11 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["default", "prod"] });
 
-			const [good, bad] = service.configs;
-			expect(good.diagnostics).toEqual([]);
-			expect(good.resolved).toBeDefined();
-			expect(bad.diagnostics).toMatchObject([
+			expect(selection.entries.map(({ status }) => status)).toEqual([
+				"valid",
+				"broken",
+			]);
+			expect(errors(1)).toMatchObject([
 				{
 					code: "config.unknownField",
 					resource: "/repo/prod.rogen.json",
@@ -209,17 +243,17 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved).toBeUndefined();
+			expect(resolved(0)).toBeUndefined();
 		});
 
-		it("should initialize two configs writing the same outFile", async () => {
+		it("should select two configs writing the same outFile", async () => {
 			await write("/repo/a.rogen.json", { outFile: "same.project.json" });
 			await write("/repo/b.rogen.json", { outFile: "same.project.json" });
 
 			const result = await start({ names: ["a", "b"] });
 
 			expect(result.isOk()).toBe(true);
-			expect(service.configs.map((c) => c.diagnostics)).toEqual([[], []]);
+			expect(selection.entries.map((_, index) => errors(index))).toEqual([[], []]);
 		});
 
 		it("should list every file of every chain", async () => {
@@ -230,22 +264,76 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.files).toEqual(
+			expect(selection.files).toEqual(
 				new Set(["/repo/default.rogen.json", "/repo/base.rogen.json"])
 			);
 		});
 	});
 
-	describe("readConfig", () => {
+	describe("selection", () => {
+		it("should read every config here for a scope of all when none is named", async () => {
+			await write("/repo/a.rogen.json", {});
+			await write("/repo/b.rogen.json", {});
+
+			const result = await service.select(
+				{ _: ["list"] },
+				{ unnamed: "all" }
+			);
+
+			expect(result.unwrap().entries.map(({ file }) => file)).toEqual([
+				"/repo/a.rogen.json",
+				"/repo/b.rogen.json",
+			]);
+		});
+
+		it("should return every config when all are valid", async () => {
+			await write("/repo/a.rogen.json", { rootDirs: ["a"] });
+			await write("/repo/b.rogen.json", { rootDirs: ["b"] });
+			await start({ names: ["a", "b"] });
+
+			expect(
+				selection
+					.requireValid()
+					.unwrap()
+					.map(({ rootDirs }) => rootDirs)
+			).toEqual([["/repo/a"], ["/repo/b"]]);
+			expect(selection.brokenError).toBeUndefined();
+		});
+
+		it("should fail with the errors of every broken config, and count them", async () => {
+			await write("/repo/a.rogen.json", {});
+			await write("/repo/b.rogen.json", { bogus: 1 });
+			await write("/repo/c.rogen.json", "{ nope");
+			await start({ names: ["a", "b", "c"] });
+
+			const result = selection.requireValid();
+
+			expect(
+				(result as ResultError<DiagnosticsError>).error.diagnostics
+			).toEqual([...errors(1), ...errors(2)]);
+			expect(selection.brokenError?.message).toBe(
+				"2 of 3 configs have errors."
+			);
+		});
+
+		it("should fail for a config that is broken now but has a last valid version", async () => {
+			await write("/repo/default.rogen.json", {});
+			await start();
+			await write("/repo/default.rogen.json", { bogus: 1 });
+			await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(selection.requireValid().isErr()).toBe(true);
+		});
+	});
+
+	describe("read", () => {
 		it("should resolve a config file without adding it to the configs", async () => {
 			await write("/repo/other.rogen.json", { rootDirs: ["lib"] });
 
-			const entry = await service.readConfig("/repo/other.rogen.json");
+			const entry = await service.read("/repo/other.rogen.json");
 
-			expect(entry.resolved?.rootDirs).toEqual(["/repo/lib"]);
-			expect(entry.diagnostics).toEqual([]);
-			expect(service.configs).toEqual([]);
-			expect(service.files.size).toBe(0);
+			expect(buildableConfig(entry)?.rootDirs).toEqual(["/repo/lib"]);
+			expect(entry.status).toBe("valid");
 		});
 
 		it("should follow the extends chain", async () => {
@@ -254,22 +342,18 @@ describe("domain/config/core-config-service", () => {
 				extends: "./base.rogen.json",
 			});
 
-			const entry = await service.readConfig("/repo/other.rogen.json");
+			const entry = await service.read("/repo/other.rogen.json");
 
-			expect(entry.chain).toEqual([
-				"/repo/other.rogen.json",
-				"/repo/base.rogen.json",
-			]);
-			expect(entry.resolved?.syncDir).toBe("/repo/out");
+			expect(entry.parents).toEqual(["/repo/base.rogen.json"]);
+			expect(buildableConfig(entry)?.syncDir).toBe("/repo/out");
 		});
 
 		it("should put the problems of a broken config on the entry", async () => {
 			await write("/repo/other.rogen.json", "{ nope");
 
-			const entry = await service.readConfig("/repo/other.rogen.json");
+			const entry = await service.read("/repo/other.rogen.json");
 
-			expect(entry.resolved).toBeUndefined();
-			expect(entry.diagnostics.length).toBeGreaterThan(0);
+			expect(entry).toMatchObject({ status: "broken", lastValid: undefined });
 		});
 	});
 
@@ -290,7 +374,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(plain(service.configs[0].resolved)).toMatchObject({
+			expect(plain(resolved(0))).toMatchObject({
 				routes: {
 					server: "ServerScriptService",
 					"*": "ReplicatedStorage/shared",
@@ -313,7 +397,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
 				exclude: ["/repo/**/*.spec.luau"],
 			});
@@ -333,7 +417,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/src"],
 				template: { file: "/repo/one.project.json" },
 				syncDir: "/repo/dist",
@@ -354,12 +438,9 @@ describe("domain/config/core-config-service", () => {
 				extends: "../shared/core.rogen.json",
 			});
 
-			await service.initialize({
-				names: [],
-				paths: ["places/default.rogen.json"],
-			});
+			await start({ paths: ["places/default.rogen.json"] });
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/shared/src"],
 				exclude: ["/repo/shared/**/*.spec.luau"],
 				template: { file: "/repo/shared/template.project.json" },
@@ -377,7 +458,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved?.outFile).toBe(
+			expect(resolved(0)?.outFile).toBe(
 				"/repo/default.project.json"
 			);
 		});
@@ -393,7 +474,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved?.outFile).toBe(
+			expect(resolved(0)?.outFile).toBe(
 				"/repo/build/game.project.json"
 			);
 		});
@@ -417,12 +498,11 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["lobby"] });
 
-			expect(service.configs[0].chain).toEqual([
-				"/repo/lobby.rogen.json",
+			expect(selection.entries[0].parents).toEqual([
 				"/repo/lobby-source.rogen.json",
 				"/repo/core.rogen.json",
 			]);
-			expect(plain(service.configs[0].resolved)).toEqual({
+			expect(plain(resolved(0))).toEqual({
 				file: "/repo/lobby.rogen.json",
 				name: "repo",
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
@@ -474,7 +554,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].diagnostics).toEqual([
+			expect(errors(0)).toEqual([
 				{
 					severity: DiagnosticSeverity.Error,
 					code: "config.extendsCycle",
@@ -495,7 +575,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			const [diagnostic] = service.configs[0].diagnostics;
+			const [diagnostic] = errors(0);
 			expect(diagnostic.resource).toBe("/repo/c.rogen.json");
 			expect(diagnostic.message).toBe(
 				"extends cycle: /repo/b.rogen.json -> /repo/c.rogen.json -> /repo/b.rogen.json."
@@ -512,7 +592,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			const [diagnostic] = service.configs[0].diagnostics;
+			const [diagnostic] = errors(0);
 			expect(diagnostic).toMatchObject({
 				severity: DiagnosticSeverity.Error,
 				code: "config.extendsUnreadable",
@@ -530,13 +610,13 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].diagnostics).toMatchObject([
+			expect(errors(0)).toMatchObject([
 				{
 					resource: "/repo/base.rogen.json",
 					code: "config.unknownField",
 				},
 			]);
-			expect(service.files).toContain("/repo/base.rogen.json");
+			expect(selection.files).toContain("/repo/base.rogen.json");
 		});
 
 		it("should reject null in an ancestor's routes and tags", async () => {
@@ -551,7 +631,7 @@ describe("domain/config/core-config-service", () => {
 			await start();
 
 			expect(
-				service.configs[0].diagnostics.map((d) => [
+				errors(0).map((d) => [
 					d.resource,
 					d.message,
 				])
@@ -572,20 +652,14 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved?.exclude).toEqual([
+			expect(resolved(0)?.exclude).toEqual([
 				"/repo/dist/",
 			]);
 		});
 	});
 
 	describe("reload", () => {
-		const listen = () => {
-			const listener = jest.fn<(event: ConfigChangeEvent) => void>();
-			service.onDidChangeConfig(listener);
-			return listener;
-		};
-
-		it("should fire one change event per affected config, naming it", async () => {
+		it("should report each config whose value changed, in selection order", async () => {
 			await write("/repo/base.rogen.json", { rootDirs: ["a"] });
 			await write("/repo/one.rogen.json", {
 				extends: "./base.rogen.json",
@@ -595,37 +669,33 @@ describe("domain/config/core-config-service", () => {
 			});
 			await write("/repo/other.rogen.json", { rootDirs: ["z"] });
 			await start({ names: ["one", "two", "other"] });
-			const listener = listen();
 
 			await write("/repo/base.rogen.json", { rootDirs: ["b"] });
-			await service.reload(["/repo/base.rogen.json"]);
+			const reload = await selection.reload(["/repo/base.rogen.json"]);
 
-			expect(listener).toHaveBeenCalledTimes(2);
-			expect(listener.mock.calls.map(([e]) => e.resource)).toEqual([
-				"/repo/one.rogen.json",
-				"/repo/two.rogen.json",
-			]);
-			expect(service.configs[0].resolved?.rootDirs).toEqual(["/repo/b"]);
-			expect(service.configs[2].resolved?.rootDirs).toEqual(["/repo/z"]);
+			expect(reload).toEqual({
+				changed: ["/repo/one.rogen.json", "/repo/two.rogen.json"],
+				notices: [],
+			});
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/b"]);
+			expect(resolved(2)?.rootDirs).toEqual(["/repo/z"]);
 		});
 
-		it("should fire nothing when the resolved value is unchanged", async () => {
+		it("should report nothing when the resolved value is unchanged", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
-			const listener = listen();
 
 			await write("/repo/default.rogen.json", {
 				rootDirs: ["a"],
 			});
-			await service.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(listener).not.toHaveBeenCalled();
+			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
-		it("should keep the last valid value when a reload breaks the config", async () => {
+		it("should keep the last valid value when a reload breaks the config, and report the new errors", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
-			const listener = listen();
 
 			await write(
 				"/repo/default.rogen.json",
@@ -634,54 +704,97 @@ describe("domain/config/core-config-service", () => {
 	"bogus": 1
 }`
 			);
-			await service.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			const [entry] = service.configs;
-			expect(entry.resolved?.rootDirs).toEqual(["/repo/a"]);
-			expect(entry.diagnostics).toMatchObject([
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/a"]);
+			expect(errors(0)).toMatchObject([
 				{
 					code: "config.unknownField",
 					position: { line: 3, column: 2 },
 				},
 			]);
-			expect(listener).not.toHaveBeenCalled();
+			expect(reload.changed).toEqual([]);
+			expect(reload.notices).toEqual([
+				{ file: "/repo/default.rogen.json", errors: errors(0) },
+			]);
 		});
 
-		it("should clear the diagnostics and fire once the file is fixed", async () => {
+		it("should report only the errors the previous load didn't have", async () => {
+			await write("/repo/default.rogen.json", { bogus: 1 });
+			await start();
+
+			await write("/repo/default.rogen.json", { bogus: 1, other: 2 });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(errors(0)).toHaveLength(2);
+			expect(
+				reload.notices.flatMap(({ errors }) =>
+					errors.map(({ message }) => message)
+				)
+			).toEqual([expect.stringContaining('"other"')]);
+		});
+
+		it("should report nothing new when a broken config breaks the same way again", async () => {
+			await write("/repo/default.rogen.json", { bogus: 1 });
+			await start();
+
+			await write("/repo/default.rogen.json", { bogus: 1 });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(reload).toEqual({ changed: [], notices: [] });
+		});
+
+		it("should clear the errors and report a change once the file is fixed", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
 			await write("/repo/default.rogen.json", { bogus: 1 });
-			await service.reload(["/repo/default.rogen.json"]);
-			const listener = listen();
+			await selection.reload(["/repo/default.rogen.json"]);
 
 			await write("/repo/default.rogen.json", { rootDirs: ["c"] });
-			await service.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(service.configs[0].diagnostics).toEqual([]);
-			expect(service.configs[0].resolved?.rootDirs).toEqual(["/repo/c"]);
-			expect(listener).toHaveBeenCalledTimes(1);
+			expect(errors(0)).toEqual([]);
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/c"]);
+			expect(reload).toEqual({
+				changed: ["/repo/default.rogen.json"],
+				notices: [],
+			});
 		});
 
-		it("should fire when a config that was never valid becomes valid", async () => {
+		it("should report a change when a config that was never valid becomes valid", async () => {
 			await write("/repo/default.rogen.json", "{ nope");
 			await start();
-			const listener = listen();
 
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
-			await service.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(service.configs[0].resolved?.rootDirs).toEqual(["/repo/a"]);
-			expect(listener).toHaveBeenCalledTimes(1);
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/a"]);
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
 
 		it("should ignore files no config reads", async () => {
 			await write("/repo/default.rogen.json", {});
 			await start();
-			const before = service.configs;
+			const [before] = selection.entries;
 
-			await service.reload(["/repo/unrelated.json"]);
+			await selection.reload(["/repo/unrelated.json"]);
 
-			expect(service.configs[0]).toBe(before[0]);
+			expect(selection.entries[0]).toBe(before);
+		});
+
+		it("should start watching the files a reload begins to read", async () => {
+			await write("/repo/base.rogen.json", {});
+			await write("/repo/default.rogen.json", {});
+			await start();
+
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+			await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(selection.files).toEqual(
+				new Set(["/repo/default.rogen.json", "/repo/base.rogen.json"])
+			);
 		});
 	});
 
@@ -692,7 +805,7 @@ describe("domain/config/core-config-service", () => {
 		) => {
 			await write(`/repo/${file}.rogen.json`, config);
 			await start({ names: [file] });
-			return service.configs[0].diagnostics.map((d) => [
+			return errors(0).map((d) => [
 				d.message,
 				d.resource,
 				d.position?.line,
@@ -711,7 +824,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				exclude: ["/repo/**/*.spec.luau"],
 				rootDirs: ["/repo/core"],
 				routes: {},
@@ -724,7 +837,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(plain(service.configs[0].resolved)?.routes).toEqual({});
+			expect(plain(resolved(0))?.routes).toEqual({});
 		});
 
 		it("should default outFile from the config's stem", async () => {
@@ -732,7 +845,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["lobby"] });
 
-			expect(service.configs[0].resolved?.outFile).toBe(
+			expect(resolved(0)?.outFile).toBe(
 				"/repo/lobby.project.json"
 			);
 		});
@@ -749,7 +862,7 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(service.configs[0].resolved?.name).toBe("FromTemplate");
+				expect(resolved(0)?.name).toBe("FromTemplate");
 			});
 
 			it("should fall back to the config's directory when the template has no name", async () => {
@@ -760,7 +873,7 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(service.configs[0].resolved?.name).toBe("repo");
+				expect(resolved(0)?.name).toBe("repo");
 			});
 
 			it("should fall back to the config's directory when there is no template", async () => {
@@ -768,20 +881,16 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(service.configs[0].resolved?.name).toBe("repo");
+				expect(resolved(0)?.name).toBe("repo");
 			});
 
 			it("should never be empty", async () => {
 				fs = new MemoryFileSystemService();
-				service = new CoreConfigService(
-					fs,
-					new MockEnvironmentService({ _: [] }, "/")
-				);
 				await write("/default.rogen.json", {});
 
-				await start();
+				await start({}, "/");
 
-				expect(service.configs[0].resolved?.name).toBe("project");
+				expect(resolved(0)?.name).toBe("project");
 			});
 
 			it("should ignore an empty template name", async () => {
@@ -792,7 +901,7 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(service.configs[0].resolved?.name).toBe("repo");
+				expect(resolved(0)?.name).toBe("repo");
 			});
 		});
 
@@ -808,14 +917,14 @@ describe("domain/config/core-config-service", () => {
 
 				await start();
 
-				expect(plain(service.configs[0].resolved)?.template).toEqual({
+				expect(plain(resolved(0))?.template).toEqual({
 					file: "/repo/t.project.json",
 					project: {
 						name: "Game",
 						tree: { $className: "DataModel" },
 					},
 				});
-				expect(service.files).toContain("/repo/t.project.json");
+				expect(selection.files).toContain("/repo/t.project.json");
 			});
 
 			it("should report a missing template at the field that named it", async () => {
@@ -832,7 +941,7 @@ describe("domain/config/core-config-service", () => {
 					2,
 					14,
 				]);
-				expect(service.files).toContain("/repo/missing.project.json");
+				expect(selection.files).toContain("/repo/missing.project.json");
 			});
 
 			it("should report a template that is not a JSON object", async () => {
@@ -878,20 +987,18 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
-			it("should fire a change when the template's contents change", async () => {
+			it("should report a change when the template's contents change", async () => {
 				await write("/repo/t.project.json", { name: "One", tree: {} });
 				await write("/repo/default.rogen.json", {
 					template: "t.project.json",
 				});
 				await start();
-				const listener = jest.fn<(event: ConfigChangeEvent) => void>();
-				service.onDidChangeConfig(listener);
 
 				await write("/repo/t.project.json", { name: "Two", tree: {} });
-				await service.reload(["/repo/t.project.json"]);
+				const reload = await selection.reload(["/repo/t.project.json"]);
 
-				expect(service.configs[0].resolved?.name).toBe("Two");
-				expect(listener).toHaveBeenCalledTimes(1);
+				expect(resolved(0)?.name).toBe("Two");
+				expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 			});
 		});
 
@@ -1130,12 +1237,12 @@ describe("domain/config/core-config-service", () => {
 				await write("/repo/default.rogen.json", {
 					rootDirs: ["a", "a/b"],
 				});
-				await service.reload(["/repo/default.rogen.json"]);
+				await selection.reload(["/repo/default.rogen.json"]);
 
-				expect(service.configs[0].resolved?.rootDirs).toEqual([
+				expect(resolved(0)?.rootDirs).toEqual([
 					"/repo/a",
 				]);
-				expect(service.configs[0].diagnostics).toHaveLength(1);
+				expect(errors(0)).toHaveLength(1);
 			});
 		});
 
@@ -1169,7 +1276,7 @@ describe("domain/config/core-config-service", () => {
 				},
 			});
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				outFile: "/repo/out/new.project.json",
 				syncDir: "/repo/dist",
 				template: { file: "/repo/base.project.json" },
@@ -1183,7 +1290,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ overrides: { tags: { mock: true, dev: false } } });
 
-			expect(service.configs[0].resolved?.tags).toEqual({
+			expect(resolved(0)?.tags).toEqual({
 				mock: true,
 				dev: false,
 				prod: false,
@@ -1224,11 +1331,11 @@ describe("domain/config/core-config-service", () => {
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(service.configs.map((c) => c.resolved?.tags)).toEqual([
+			expect(selection.entries.map((c) => buildableConfig(c)?.tags)).toEqual([
 				{ mock: true },
 				{},
 			]);
-			expect(service.configs.map((c) => c.skippedTags)).toEqual([
+			expect(selection.entries.map((c) => buildableConfig(c)?.skippedTags)).toEqual([
 				[],
 				["mock"],
 			]);
@@ -1243,9 +1350,9 @@ describe("domain/config/core-config-service", () => {
 			});
 
 			await write("/repo/match.rogen.json", "{ nope");
-			await service.reload(["/repo/match.rogen.json"]);
+			await selection.reload(["/repo/match.rogen.json"]);
 
-			expect(service.configs[1].skippedTags).toEqual(["mock"]);
+			expect(resolved(1)?.skippedTags).toEqual(["mock"]);
 		});
 
 		it("should not fail on a tag when a named config could not be read", async () => {
@@ -1275,9 +1382,9 @@ describe("domain/config/core-config-service", () => {
 				rootDirs: ["b"],
 				tags: { mock: false },
 			});
-			await service.reload(["/repo/default.rogen.json"]);
+			await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(service.configs[0].resolved).toMatchObject({
+			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/b"],
 				outFile: "/repo/out.project.json",
 				tags: { mock: true },

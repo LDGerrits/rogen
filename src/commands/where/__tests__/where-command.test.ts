@@ -1,5 +1,4 @@
 import "../where-command.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import { Result } from "../../../base/result.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
@@ -29,7 +28,6 @@ const ROUTES = {
 };
 
 describe("where command", () => {
-	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
 	let run: (
@@ -49,7 +47,6 @@ describe("where command", () => {
 			.flatMap(({ text }) => text.split("\n"));
 
 	beforeEach(async () => {
-		store = new DisposableStore();
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 		logService = new MockLogService();
@@ -61,17 +58,13 @@ describe("where command", () => {
 		const indexService = new CoreIndexService(fs);
 		services.set(IndexService, indexService);
 		services.set(BuildService, buildServiceOf(fs, indexService));
-		const configService = store.add(new CoreConfigService(fs, environment));
+		const configService = new CoreConfigService(fs, environment);
 		services.set(ConfigService, configService);
 		const commandService = new CoreCommandService(services, logService);
 		run = async ({ _ = [], ...options }) => {
 			const args = { _: ["where", ..._], ...options };
 			return commandService.executeCommand("where", args);
 		};
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {

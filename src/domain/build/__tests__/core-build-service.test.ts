@@ -5,11 +5,13 @@ import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
+	MockConfigSelection,
 	ResolvedConfigSpec,
+	brokenEntry,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { ConfigEntry, ConfigSelection } from "../../config/config-service.js";
+import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
@@ -295,33 +297,33 @@ describe("CoreBuildService", () => {
 				file
 			);
 		const check = (...entries: ConfigEntry[]) =>
-			buildServiceOfFs().requireBuildable(new ConfigSelection(entries));
+			buildServiceOfFs().requireBuildable(
+				new MockConfigSelection(entries)
+			);
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
 			if (result.isOk()) throw new Error("Expected the check to fail.");
 			return result.error.diagnostics;
 		};
 
-		it("should return each config with the entry it came from", () => {
+		it("should return each config", () => {
 			const entry = entryOf();
 
 			const result = check(entry);
 
-			expect(result.unwrap()).toEqual([
-				{ entry, config: entry.resolved },
-			]);
+			expect(result.unwrap()).toEqual([entry.config]);
 		});
 
 		it("should fail with a config's errors when it is invalid", () => {
-			const broken = mockEntry({}, abs("broken.rogen.json"), {
-				resolved: undefined,
-				diagnostics: [
+			const broken = brokenEntry(
+				[
 					errorDiagnostic(
 						"config.invalidSyntax",
 						{ resource: abs("broken.rogen.json") },
 						"not JSON"
 					),
 				],
-			});
+				abs("broken.rogen.json")
+			);
 
 			const result = check(entryOf(), broken);
 

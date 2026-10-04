@@ -1,10 +1,9 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigBuild } from "../build/build-service.js";
-import { ConfigEntry } from "../config/config-service.js";
+import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
 
 /** Why the configs were rebuilt. */
 export type WatchCause =
@@ -19,16 +18,8 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** The problems in a config's latest load, none when it loaded cleanly; with errors, the last valid version is still what builds. */
-export interface ConfigNotice {
-	readonly file: string;
-	readonly errors: readonly Diagnostic[];
-	readonly warnings: readonly Diagnostic[];
-}
-
-/** What the run did for one config in a round, with the entry its config came from; `config` is the version that was built. */
+/** What the run did for one config in a round; `config` is the version that was built. */
 export type RebuildReport = ConfigBuild & {
-	readonly entry: ConfigEntry;
 	/** Whether this round checked the sync dir; `syncWarnings` is empty when it didn't. */
 	readonly checkedSyncDir: boolean;
 };
@@ -39,6 +30,7 @@ export interface WatchUpdate {
 	readonly cause: WatchCause;
 	/** The source changes behind it. */
 	readonly changes: readonly FileChange[];
+	/** The configs whose latest reload found errors not reported before; the last valid version of each is still what builds. */
 	readonly notices: readonly ConfigNotice[];
 	readonly reports: readonly RebuildReport[];
 }
@@ -56,12 +48,12 @@ export interface WatchSession extends Disposable {
 	stop(): Promise<void>;
 }
 
-/** Watches the loaded configs and rebuilds them as their sources change. */
+/** Watches a selection's configs and rebuilds them as their sources and files change. */
 export interface WatchService {
 	readonly _serviceBrand: undefined;
 
-	/** The caller owns the session: it starts it, stops it and disposes it. */
-	watch(): WatchSession;
+	/** The session reloads `selection` as its files change. The caller owns the session: it starts it, stops it and disposes it. */
+	watch(selection: ConfigSelection): WatchSession;
 }
 
 export const WatchService =

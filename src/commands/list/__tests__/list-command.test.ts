@@ -1,5 +1,4 @@
 import "../list-command.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import { Result, ResultError } from "../../../base/result.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -20,7 +19,6 @@ import {
 import { Registry } from "../../../platform/registry/registry.js";
 
 describe("list command", () => {
-	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
 	let run: (
@@ -52,7 +50,6 @@ describe("list command", () => {
 	};
 
 	beforeEach(async () => {
-		store = new DisposableStore();
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 		logService = new MockLogService();
@@ -61,20 +58,13 @@ describe("list command", () => {
 		services.set(LogService, logService);
 		services.set(FileSystemService, fs);
 		services.set(EnvironmentService, environment);
-		services.set(
-			ConfigService,
-			store.add(new CoreConfigService(fs, environment))
-		);
+		services.set(ConfigService, new CoreConfigService(fs, environment));
 		const commandService = new CoreCommandService(services, logService);
 		run = ({ _ = [], ...options } = {}) =>
 			commandService.executeCommand("list", {
 				_: ["list", ..._],
 				...options,
 			});
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	it("should show a config's root dirs, sync dir, project file and active tags", async () => {

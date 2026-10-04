@@ -167,6 +167,10 @@ export class ResolvedTemplate {
 export interface ResolvedConfigFields {
 	/** The config file itself, the leaf of its `extends` chain. */
 	readonly file: string;
+	/** The configs it extends, the nearest first. */
+	readonly parents: readonly string[];
+	/** Tags turned on or off from the command line that this config doesn't declare. */
+	readonly skippedTags: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
@@ -182,6 +186,8 @@ export interface ResolvedConfigFields {
 /** A config with its layers merged and validated: every path is absolute and every route target is parsed. */
 export class ResolvedConfig {
 	readonly file: string;
+	readonly parents: readonly string[];
+	readonly skippedTags: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
@@ -194,6 +200,8 @@ export class ResolvedConfig {
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
+		this.parents = fields.parents;
+		this.skippedTags = fields.skippedTags;
 		this.name = fields.name;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;

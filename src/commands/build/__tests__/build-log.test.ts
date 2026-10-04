@@ -3,24 +3,27 @@ import {
 	BuildSummary,
 	ConfigBuild,
 } from "../../../domain/build/build-service.js";
-import { ConfigEntry } from "../../../domain/config/config-service.js";
+import { ResolvedConfig } from "../../../domain/config/config.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
-import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
+import {
+	ResolvedConfigSpec,
+	mockConfig,
+} from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
 
 const debugLines = (
 	dir: string,
-	entry: ConfigEntry,
+	config: ResolvedConfig,
 	summary?: BuildSummary
 ): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
 	const log = new BuildLog(logService, dir);
-	log.outcome(entry, summary ? builtOf(summary) : failed, []);
+	log.outcome({ ...(summary ? builtOf(summary) : failed), config }, []);
 	return logService.entries
 		.filter(({ kind }) => kind === "debug")
 		.map(({ text }) => text);
@@ -47,15 +50,8 @@ const builtOf = (
 	readFiles: [],
 });
 
-const entryOf = (overrides: Partial<ConfigEntry> = {}): ConfigEntry =>
-	new ConfigEntry({
-		file: path.join(cwd, "match.rogen.json"),
-		chain: [path.join(cwd, "match.rogen.json")],
-		resolved: undefined,
-		diagnostics: [],
-		skippedTags: [],
-		...overrides,
-	});
+const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
+	mockConfig({ file: path.join(cwd, "match.rogen.json"), ...spec });
 
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
@@ -67,23 +63,22 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	...overrides,
 });
 
-const describeConfig = (entry: ConfigEntry, dir: string) =>
-	debugLines(dir, entry);
+const describeConfig = (config: ResolvedConfig, dir: string) =>
+	debugLines(dir, config);
 
 const describeBuild = (summary: BuildSummary, dir: string) =>
-	debugLines(dir, entryOf(), summary);
+	debugLines(dir, configOf(), summary);
 
 describe("BuildLog config lines", () => {
 	it("should say nothing about a config with no parent and no skipped tags", () => {
-		expect(describeConfig(entryOf(), cwd)).toEqual([]);
+		expect(describeConfig(configOf(), cwd)).toEqual([]);
 	});
 
 	it("should name the extends chain relative to the working directory", () => {
 		expect(
 			describeConfig(
-				entryOf({
-					chain: [
-						path.join(cwd, "match.rogen.json"),
+				configOf({
+					parents: [
 						path.join(cwd, "default.rogen.json"),
 						path.join(cwd, "shared/base.rogen.json"),
 					],
@@ -95,7 +90,7 @@ describe("BuildLog config lines", () => {
 
 	it("should name each tag flag the config does not declare", () => {
 		expect(
-			describeConfig(entryOf({ skippedTags: ["mock", "debug"] }), cwd)
+			describeConfig(configOf({ skippedTags: ["mock", "debug"] }), cwd)
 		).toEqual([
 			"tag mock skipped: not declared in this config",
 			"tag debug skipped: not declared in this config",
@@ -185,12 +180,7 @@ describe("BuildLog.outcome", () => {
 		note?: string
 	) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).outcome(
-			entryOf(),
-			build,
-			diagnostics,
-			note
-		);
+		new BuildLog(logService, cwd).outcome(build, diagnostics, note);
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
 

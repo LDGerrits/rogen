@@ -2,11 +2,8 @@ import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService, ConfigBuild } from "../../domain/build/build-service.js";
-import {
-	ConfigService,
-	ResolvedEntry,
-	configRefsFromArgs,
-} from "../../domain/config/config-service.js";
+import { ResolvedConfig } from "../../domain/config/config.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -61,18 +58,15 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.initialize(
-				configRefsFromArgs(args, args._.slice(1))
-			);
+			const selection = await configService.select(args);
 			if (selection.isErr()) return selection;
 
 			const targets = buildService.requireBuildable(selection.value);
 			if (targets.isErr()) return targets;
 
-			const builds = await buildService.run(
-				targets.value.map(({ config }) => config),
-				{ checkSyncDir: true }
-			);
+			const builds = await buildService.run(targets.value, {
+				checkSyncDir: true,
+			});
 			const errors = builds.flatMap((build) => build.errors);
 			const { unselected } = selection.value;
 			return args.json
@@ -88,7 +82,7 @@ registerCommand(
 
 		private report(
 			log: BuildLog,
-			targets: readonly ResolvedEntry[],
+			targets: readonly ResolvedConfig[],
 			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
 			unselected: readonly string[]
@@ -97,7 +91,7 @@ registerCommand(
 
 			for (const [index, build] of builds.entries()) {
 				if (builds.length > 1) log.heading(targets[index]);
-				log.outcome(targets[index].entry, build, warningsOf(build));
+				log.outcome(build, warningsOf(build));
 			}
 			if (errors.length > 0) return err(new DiagnosticsError(errors));
 
