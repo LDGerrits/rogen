@@ -11,7 +11,7 @@ Rogen 2. The full docs are at https://rogen-playfully.vercel.app/docs/v2.
 - Rojo's own `.server` and `.client` at the end of a script name set its class (`Script`, `LocalScript`), and also route when a key of that name is declared. No other key routes through a dot: `Types.shared.luau` is named `Types.shared`; write `Types@shared.luau`.
 - `-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file falls to `*`, and `rogen where` says `route * (fallback)`.
 
-Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns about it. An `@` that matches no declared route (`Save@sever.luau`) warns once, naming the closest key.
+Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns about it. An `@` followed by a near miss of a route (`Save@sever.luau`) warns once, naming the route; other `@` names, such as packages, stay silent.
 
 The **governing route** is the first one found walking down from the root directory; every route after it is ignored whole, so a nested `Server/` folder is an ordinary folder that keeps its name and a nested suffix stays in the name. Rogen warns when that ships a server route's modules to clients (`Shared/Server/Datastore.luau`), and when a Script or LocalScript lands where it never runs.
 

@@ -134,7 +134,7 @@ lobby.rogen.json:7:3 - error: unknown field "outDir".
 
 A config file needs a name, so a file called just `.rogen.json` is an error: name it `<name>.rogen.json`.
 
-Errors stop the build. Warnings don't: the build runs and the exit code stays 0. Rogen warns about unrouted files, names with an `@` that routes nowhere, names that look like a mistyped variant, a sync directory with nothing in it, a root directory that doesn't exist and instances that clash with the template.
+Errors stop the build. Warnings don't: the build runs and the exit code stays 0. Rogen warns about unrouted files, names with an `@` that nearly spells a route, names that look like a mistyped variant, a sync directory with nothing in it, a root directory that doesn't exist and instances that clash with the template.
 
 <Callout type="info" title="Editors">
 	`rogen init` writes `$schema` into every config. The schema allows comments and trailing commas, so a `*.rogen.json` file opens without errors in editors that read it.

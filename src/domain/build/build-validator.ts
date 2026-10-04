@@ -117,9 +117,7 @@ export class BuildValidator {
 			([resource, { text, closestKey, notLast }]) => {
 				const hint = notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
-					: closestKey
-						? `did you mean "@${closestKey}"?`
-						: `"${text}" is not a declared route`;
+					: `did you mean "@${closestKey}"?`;
 				return `${resource} (${hint})`;
 			}
 		);

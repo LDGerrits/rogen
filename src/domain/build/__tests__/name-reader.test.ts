@@ -189,15 +189,16 @@ describe("NameReader stray @", () => {
 		);
 	});
 
-	it("reports an @ with no close route, with no suggestion", () => {
-		expect(matchSuffixKeys("user@example", ROUTES).strayAt).toEqual({
-			text: "example",
-			closestKey: undefined,
-			notLast: false,
-		});
+	it("reports nothing for an @ that is no near miss of a route, such as a package name", () => {
+		for (const stem of [
+			"user@example",
+			"Signal@rbxts",
+			"sleitnick_knit@1.5.1",
+		])
+			expect(matchSuffixKeys(stem, ROUTES).strayAt).toBeUndefined();
 	});
 
-	it("only suggests routes, never variants", () => {
+	it("is no near miss of a variant, only of a route", () => {
 		expect(
 			readerOf(new DeclaredKeys(ROUTES, ["mock"])).suffixes("Save@mok")
 				.strayAt?.closestKey

@@ -110,7 +110,7 @@ No other route key routes through a dot: `Types.shared.luau` is an instance name
 	`Combat@server.luau` is a `ModuleScript` in `ServerScriptService`, and `Bootstrap.server.luau` is a `Script`. An `@` suffix decides **where** a file goes, never **what class** it is, so it is how a module reaches another service without a folder. Routing folders read best when a feature has several files per side, and suffixes suit a small feature with a file or two.
 </Callout>
 
-An `@` that matches no declared route is almost always a typo, so `rogen build` warns once, naming the closest route: `Save@sever.luau` gets `did you mean "@server"?`. A name that starts with `@`, such as the folder `@sever/`, is reported only when it nearly spells a route, so package scopes like `@rbxts/` are left alone. A dot part that isn't a [variant](/docs/v2/core-concepts/variants), such as `.spec`, stays in the name silently.
+An `@` followed by a near miss of a declared route is a typo, so `rogen build` warns once, naming the route: `Save@sever.luau` and the folder `@sever/` get `did you mean "@server"?`. Any other `@` stays in the name silently, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`). A dot part that isn't a [variant](/docs/v2/core-concepts/variants), such as `.spec`, stays in the name silently.
 
 ## Matching
 

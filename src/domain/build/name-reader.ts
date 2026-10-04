@@ -27,12 +27,12 @@ export interface SuffixSpan {
 	readonly length: number;
 }
 
-/** An `@` that no declared route follows. */
+/** An `@` followed by a near miss of a declared route, or by a route that isn't at the end of the name. */
 export interface StrayAt {
 	/** The name after the `@`, up to the next dot. */
 	readonly text: string;
 	/** The declared route key closest to `text`. */
-	readonly closestKey?: string;
+	readonly closestKey: string;
 	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
 	readonly notLast: boolean;
 }
@@ -179,8 +179,8 @@ export class NameReader {
 		if (text === "") return undefined;
 		const closestKey = closestMatch(text, this.keys.routeKeys);
 		const notLast = this.keys.resolveRoute(text) !== undefined;
-		// A name that starts with `@` has no name before it, and `@rbxts` is a package scope, so only a near miss of a route is reported.
-		if (at === 0 && (closestKey === undefined || notLast)) return undefined;
+		// Package names use `@` too (`@rbxts`, `owner_name@1.5.1`), so only a near miss of a route is a typo.
+		if (closestKey === undefined || (at === 0 && notLast)) return undefined;
 		return { text, closestKey, notLast };
 	}
 }
