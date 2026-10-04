@@ -1,12 +1,9 @@
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService, ConfigBuild } from "../../domain/build/build-service.js";
-import {
-	ConfigService,
-	ResolvedEntry,
-	configRefsFromArgs,
-} from "../../domain/config/config-service.js";
+import { ConfigBuild } from "../../domain/build/build.js";
+import { BuildService } from "../../domain/build/build-service.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -61,26 +58,26 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.initialize(
-				configRefsFromArgs(args, args._.slice(1))
-			);
+			const selection = await configService.select(args);
 			if (selection.isErr()) return selection;
 
-			const targets = buildService.requireBuildable(selection.value);
-			if (targets.isErr()) return targets;
+			const builds = await buildService.build(selection.value, {
+				checkSyncDir: true,
+			});
+			if (builds.isErr()) return builds;
 
-			const builds = await buildService.run(
-				targets.value.map(({ config }) => config),
-				{ checkSyncDir: true }
-			);
-			const errors = builds.flatMap((build) => build.errors);
+			const errors = builds.value.flatMap((build) => build.errors);
 			const { unselected } = selection.value;
 			return args.json
-				? this.reportAsJson(logService, builds, errors, unselected)
+				? this.reportAsJson(
+						logService,
+						builds.value,
+						errors,
+						unselected
+					)
 				: this.report(
 						new BuildLog(logService, cwd),
-						targets.value,
-						builds,
+						builds.value,
 						errors,
 						unselected
 					);
@@ -88,16 +85,19 @@ registerCommand(
 
 		private report(
 			log: BuildLog,
-			targets: readonly ResolvedEntry[],
 			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
 			unselected: readonly string[]
 		): Result<void, Error> {
-			log.begin("build", targets, unselected);
+			log.begin(
+				"build",
+				builds.map(({ config }) => config),
+				unselected
+			);
 
-			for (const [index, build] of builds.entries()) {
-				if (builds.length > 1) log.heading(targets[index]);
-				log.outcome(targets[index].entry, build, warningsOf(build));
+			for (const build of builds) {
+				if (builds.length > 1) log.heading(build.config);
+				log.outcome(build, warningsOf(build));
 			}
 			if (errors.length > 0) return err(new DiagnosticsError(errors));
 

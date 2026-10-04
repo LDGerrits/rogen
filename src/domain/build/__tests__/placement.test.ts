@@ -74,20 +74,14 @@ describe("Placer", () => {
 				exclude: [],
 				...options,
 			};
-			const index = newIndex();
-			await index.initialize([...scanOptions.rootDirs]);
+			const index = await newIndex().list(scanOptions.rootDirs);
 			const config = configOf(scanOptions);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.isOk()
-				? {
-						roots: built.value.placement.roots,
-						warnings: built.value.warnings,
-					}
-				: {
-						roots: builder.place(config).unwrap().roots,
-						warnings: built.error,
-					};
+			return {
+				roots: builder.place(config).unwrap().roots,
+				warnings: built.isOk() ? built.value.warnings : built.error,
+			};
 		};
 
 		const files = (root: ScannedRoot) =>
@@ -727,8 +721,7 @@ describe("Placer", () => {
 		describe("indexing", () => {
 			it("should read only the index, not the file system", async () => {
 				await write("src/A.luau", "src/sub/B.luau");
-				const index = newIndex();
-				await index.initialize([abs("src")]);
+				const index = await newIndex().list([abs("src")]);
 				const readDirectory = jest.spyOn(fs, "readDirectory");
 
 				const result = scanRootDirs(index, {
@@ -742,8 +735,7 @@ describe("Placer", () => {
 
 			it("should scan one index for several configs with different excludes", async () => {
 				await write("src/A.luau", "src/B.luau");
-				const index = newIndex();
-				await index.initialize([abs("src")]);
+				const index = await newIndex().list([abs("src")]);
 				const base = { rootDirs: [abs("src")] };
 
 				const all = scanRootDirs(index, { ...base, exclude: [] });
@@ -761,10 +753,9 @@ describe("Placer", () => {
 
 			it("should see files applied to the index after the initial scan", async () => {
 				await write("src/A.luau");
-				const index = newIndex();
-				await index.initialize([abs("src")]);
+				const listed = await newIndex().list([abs("src")]);
 				await write("src/B.luau");
-				await index.applyChanges([
+				const index = await newIndex().update(listed, [
 					{
 						type: FileChangeType.ADDED,
 						path: abs("src/B.luau"),
@@ -992,14 +983,18 @@ describe("Placer", () => {
 				...overrides,
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await builderOf(fs, index).build(config);
-			return built.map(({ placement, warnings }) => ({
-				routed: placement.routed,
-				unrouted: placement.leftOut
-					.withStatus("unrouted")
-					.map(([source]) => source),
-				warnings,
-			}));
+			const builder = builderOf(fs, index);
+			const built = await builder.build(config);
+			return built.map(({ warnings }) => {
+				const placement = builder.place(config).unwrap();
+				return {
+					routed: placement.routed,
+					unrouted: placement.leftOut
+						.withStatus("unrouted")
+						.map(([source]) => source),
+					warnings,
+				};
+			});
 		};
 
 		const paths = async (
@@ -1771,14 +1766,12 @@ describe("Placer", () => {
 				rootDirs: [...rootDirs],
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await builderOf(fs, index).build(config);
-			return built.map(
-				({ placement: { files, leftOut }, warnings }): TagResult => ({
-					files,
-					leftOut,
-					warnings,
-				})
-			);
+			const builder = builderOf(fs, index);
+			const built = await builder.build(config);
+			return built.map(({ warnings }): TagResult => {
+				const { files, leftOut } = builder.place(config).unwrap();
+				return { files, leftOut, warnings };
+			});
 		};
 
 		const prunedPaths = (result: TagResult) =>

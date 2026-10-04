@@ -1,15 +1,12 @@
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-project.js";
-import { SyncTool } from "../toolchain/toolchain.js";
-import { BuildOptions, BuildSummary } from "./build-service.js";
+import { BuildSummary, SyncTool } from "./build.js";
+import { BuildOptions } from "./build-service.js";
 import { BuildValidator } from "./build-validator.js";
 import { Placement, Placer } from "./placement.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
@@ -26,21 +23,6 @@ export interface BuiltProject {
 	readonly summary: BuildSummary;
 	/** The files whose contents the build read, which a change to must rebuild it. */
 	readonly readFiles: readonly string[];
-	/** Where every file landed, which `where` reports from. */
-	readonly placement: Placement;
-}
-
-/** Nothing can be placed without a route. */
-export function missingRoutes(config: ResolvedConfig): Diagnostic[] {
-	return config.routes.size > 0
-		? []
-		: [
-				errorDiagnostic(
-					"route.noRoutes",
-					{ resource: config.file },
-					'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
-				),
-			];
 }
 
 /** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
@@ -57,9 +39,8 @@ export class ConfigBuilder {
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
 	}
 
+	/** Places `config`'s files; its caller checked that it declares routes. */
 	place(config: ResolvedConfig): Result<Placement, Diagnostic[]> {
-		const missing = missingRoutes(config);
-		if (missing.length > 0) return err(missing);
 		return new Placer(this.index, config, this.tools).place();
 	}
 
@@ -81,7 +62,6 @@ export class ConfigBuilder {
 				? await this.syncDirCheck.check(placement.value)
 				: [],
 			readFiles: assembly.value.readFiles,
-			placement: placement.value,
 		});
 	}
 }

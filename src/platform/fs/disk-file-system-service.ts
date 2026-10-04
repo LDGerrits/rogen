@@ -3,6 +3,36 @@ import * as path from "path";
 import { ErrorUtils } from "../../base/errors.js";
 import { FileType, FileSystemService } from "./file-system-service.js";
 
+const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
+
+/** Whether `target` is a link that nothing may descend into: one to nothing, or back to an ancestor, which would list the tree again forever. Synchronous, because a watcher's filter can't wait. */
+export function isUnfollowableLink(target: string): boolean {
+	try {
+		if (!fs.lstatSync(target).isSymbolicLink()) return false;
+	} catch {
+		return false;
+	}
+	let real: string;
+	try {
+		real = fs.realpathSync(target);
+	} catch (error) {
+		// Throwing from chokidar's filter would stop the watcher.
+		return ErrorUtils.hasCode(error, ...UNRESOLVED_CODES);
+	}
+	for (
+		let ancestor = path.dirname(target);
+		;
+		ancestor = path.dirname(ancestor)
+	) {
+		try {
+			if (fs.realpathSync(ancestor) === real) return true;
+		} catch {
+			// An ancestor that can't be resolved can't be the link's target.
+		}
+		if (path.dirname(ancestor) === ancestor) return false;
+	}
+}
+
 export class DiskFileSystemService implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
@@ -58,9 +88,11 @@ export class DiskFileSystemService implements FileSystemService {
 			const stat = await fs.promises.stat(linkPath);
 			if (stat.isFile()) return FileType.SymbolicLink | FileType.File;
 			if (stat.isDirectory())
-				return FileType.SymbolicLink | FileType.Directory;
+				return isUnfollowableLink(linkPath)
+					? FileType.SymbolicLink
+					: FileType.SymbolicLink | FileType.Directory;
 		} catch (error) {
-			if (!ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR", "ELOOP")) {
+			if (!ErrorUtils.hasCode(error, ...UNRESOLVED_CODES)) {
 				throw error;
 			}
 		}
@@ -72,9 +104,7 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async createDirectory(filePath: string): Promise<void> {
-		if (!(await this.exists(filePath))) {
-			await fs.promises.mkdir(filePath, { recursive: true });
-		}
+		await fs.promises.mkdir(filePath, { recursive: true });
 	}
 
 	async readFile(filePath: string): Promise<string> {
@@ -84,7 +114,7 @@ export class DiskFileSystemService implements FileSystemService {
 	async writeFile(filePath: string, content: string): Promise<void> {
 		// Automatically builds missing directories
 		const dir = path.dirname(filePath);
-		await this.createDirectory(dir);
+		if (!(await this.exists(dir))) await this.createDirectory(dir);
 
 		return fs.promises.writeFile(filePath, content, "utf-8");
 	}

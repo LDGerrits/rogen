@@ -1,153 +1,88 @@
-import { Event } from "../../base/event.js";
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import { Result } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ParsedArgs } from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
-/** A config file whose resolved value changed. */
-export interface ConfigChangeEvent {
-	/** The config file. */
-	readonly resource: string;
+/** Which configs a command line names. */
+export interface ConfigScope {
+	/** The config names; the positionals after the command unless given. */
+	readonly names?: readonly string[];
+	/** What naming none reads: the default config, or every config here. */
+	readonly unnamed?: "default" | "all";
 }
 
-/** Per-invocation values that sit above every layer of a config's chain. */
-export interface ConfigOverrides {
-	readonly outFile?: string;
-	readonly syncDir?: string;
-	readonly template?: string;
-	/** Tag name to whether it is on. */
-	readonly tags: Readonly<Record<string, boolean>>;
-}
-
-export interface ConfigRefs {
-	readonly names: readonly string[];
-	readonly paths: readonly string[];
-	/** Every config in the working directory, instead of names or paths. */
-	readonly all?: boolean;
-	readonly overrides?: ConfigOverrides;
-}
-
-/** The configs `names` and the command line's flags pick, and the overrides those flags set. */
-export function configRefsFromArgs(
-	args: ParsedArgs,
-	names: readonly string[]
-): ConfigRefs {
-	return {
-		names,
-		paths: args.config ?? [],
-		all: args.all === true,
-		overrides: {
-			outFile: args["out-file"],
-			syncDir: args["sync-dir"],
-			template: args.template,
-			tags: {
-				...Object.fromEntries(
-					(args.tag ?? []).map((tag) => [tag, true])
-				),
-				...Object.fromEntries(
-					(args["no-tag"] ?? []).map((tag) => [tag, false])
-				),
-			},
-		},
-	};
-}
-
-/** A snapshot of one config; a later reload replaces it rather than mutating it. */
-export class ConfigEntry {
+interface ConfigEntryFields {
 	readonly file: string;
-	readonly chain: readonly string[];
-	/** The last valid version, or `undefined` if the config has never been valid. */
-	readonly resolved: ResolvedConfig | undefined;
-	readonly diagnostics: readonly Diagnostic[];
-	/** Tags turned on or off from the command line that this config doesn't declare. */
-	readonly skippedTags: readonly string[];
-	readonly errors: readonly Diagnostic[];
-
-	constructor(
-		fields: Pick<
-			ConfigEntry,
-			"file" | "chain" | "resolved" | "diagnostics" | "skippedTags"
-		>
-	) {
-		this.file = fields.file;
-		this.chain = fields.chain;
-		this.resolved = fields.resolved;
-		this.diagnostics = fields.diagnostics;
-		this.skippedTags = fields.skippedTags;
-		this.errors = fields.diagnostics.filter(isError);
-	}
-
-	/** The configs it extends, the nearest first. */
-	get parents(): readonly string[] {
-		return this.chain.slice(1);
-	}
-
-	/** Whether the file is broken now, or there is no valid version of it to build. */
-	get isBroken(): boolean {
-		return this.errors.length > 0 || this.resolved === undefined;
-	}
+	/** The configs it extends, the nearest first, as far as the chain could be read. */
+	readonly parents: readonly string[];
 }
 
-/** A config that resolved, with the entry it came from. */
-export interface ResolvedEntry {
-	readonly entry: ConfigEntry;
+export interface ValidConfigEntry extends ConfigEntryFields {
+	readonly status: "valid";
 	readonly config: ResolvedConfig;
 }
 
-/** The configs one invocation picked; a snapshot, which a later reload doesn't change. */
-export class ConfigSelection {
-	constructor(
-		readonly entries: readonly ConfigEntry[],
-		/** The config files in the working dir it didn't pick, as sorted absolute paths. */
-		readonly unselected: readonly string[] = []
-	) {}
-
-	/** The entries that resolved, or every error when any entry is broken now. Warnings don't fail it. */
-	requireValid(): Result<ResolvedEntry[], DiagnosticsError> {
-		const errors = this.entries.flatMap((entry) => entry.errors);
-		return errors.length > 0
-			? err(new DiagnosticsError(errors))
-			: ok(
-					this.entries.flatMap((entry) =>
-						entry.resolved
-							? [{ entry, config: entry.resolved }]
-							: []
-					)
-				);
-	}
-
-	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
-	get brokenError(): Error | undefined {
-		const broken = this.entries.filter((entry) => entry.isBroken);
-		return broken.length > 0
-			? new Error(
-					`${broken.length} of ${this.entries.length} configs have errors.`
-				)
-			: undefined;
-	}
+export interface BrokenConfigEntry extends ConfigEntryFields {
+	readonly status: "broken";
+	/** Never empty. */
+	readonly errors: readonly Diagnostic[];
+	/** The version a watch keeps building while the file is broken; none if it was never valid. */
+	readonly lastValid: ResolvedConfig | undefined;
 }
 
-export interface ConfigService {
-	readonly _serviceBrand: undefined;
-	/** Fires once per config whose resolved value changed; `resource` is the config file. */
-	readonly onDidChangeConfig: Event<ConfigChangeEvent>;
+/** One config as it last loaded; a reload replaces it rather than mutating it. */
+export type ConfigEntry = ValidConfigEntry | BrokenConfigEntry;
 
-	readonly configs: readonly ConfigEntry[];
+/** What builds for `entry`: the config now, else its last valid version. */
+export function buildableConfig(
+	entry: ConfigEntry
+): ResolvedConfig | undefined {
+	return entry.status === "valid" ? entry.config : entry.lastValid;
+}
+
+/** The errors a config's latest load found that its previous load didn't. */
+export interface ConfigNotice {
+	readonly file: string;
+	readonly errors: readonly Diagnostic[];
+}
+
+/** What one `reload` did. */
+export interface ConfigReload {
+	/** The config files whose buildable version changed, in selection order. */
+	readonly changed: readonly string[];
+	readonly notices: readonly ConfigNotice[];
+}
+
+/** The configs one invocation picked. The caller owns it, and only `reload` changes it. */
+export interface ConfigSelection {
+	readonly entries: readonly ConfigEntry[];
+	/** The config files in the working dir it didn't pick, as sorted absolute paths. */
+	readonly unselected: readonly string[];
+	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
 
-	/** The entry for the config file `file`, if this run selected it. */
-	getConfig(file: string): ConfigEntry | undefined;
-	/** The configs that resolved, each with the entry it came from. A broken config that was valid before is still here, as its last valid version. */
-	getResolvedEntries(): ResolvedEntry[];
+	/** The configs, or every error when any entry is broken now. */
+	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
+	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
+	readonly brokenError: Error | undefined;
 
-	/** Loads the configs `refs` pick. Fails only when they cannot be found; a broken config lands on its entry. */
-	initialize(refs: ConfigRefs): Promise<Result<ConfigSelection, Error>>;
-	/** Loads one config file the way `initialize` would, without adding it to the configs. A broken config lands on the entry. */
-	readConfig(file: string): Promise<ConfigEntry>;
-	/** Reloads every config that reads one of `files`. A failed reload keeps the last valid value. */
-	reload(files: readonly string[]): Promise<void>;
+	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. */
+	reload(files: readonly string[]): Promise<ConfigReload>;
+}
+
+/** Finds, loads and resolves configs. It keeps nothing between calls: the selection it hands out does. */
+export interface ConfigService {
+	readonly _serviceBrand: undefined;
+
+	/** Loads the configs the command line picks by name, `-c` and `--all`, with its overrides. Fails only when they can't be picked; a broken config lands on its entry. */
+	select(
+		args: ParsedArgs,
+		scope?: ConfigScope
+	): Promise<Result<ConfigSelection, Error>>;
+	/** Loads one config file as `select` would, without overrides and outside any selection. */
+	read(file: string): Promise<ConfigEntry>;
 }
 
 export const ConfigService =

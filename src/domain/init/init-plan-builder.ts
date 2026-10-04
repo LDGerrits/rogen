@@ -1,10 +1,9 @@
-import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	RogenConfig,
-	SCHEMA_URL,
+	configFileContent,
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
@@ -12,12 +11,12 @@ import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
-/** One kind of thing `init` can add: it asks what it needs, then says what it writes. */
-export interface Setup {
-	/** Asks its questions; `ok(false)` when the user cancelled. Fails when a file it would write already exists. */
-	ask(): Promise<Result<boolean, Diagnostic[]>>;
-	/** Adds what it writes and says. Only once `ask` has resolved. */
-	plan(builder: InitPlanBuilder): void;
+/** One kind of thing `init` can add: it asks what it needs, then says what those answers write. */
+export interface Setup<C> {
+	/** Asks its questions; `ok(undefined)` when the user cancelled. Fails when a file it would write already exists. */
+	ask(): Promise<Result<C | undefined, Diagnostic[]>>;
+	/** Adds what `choices` write and say. */
+	plan(choices: C, builder: InitPlanBuilder): void;
 }
 
 /** Collects what the setups write and say, and checks it against the directory once. */
@@ -41,7 +40,7 @@ export class InitPlanBuilder {
 	addConfig(stem: string, config: RogenConfig): void {
 		this.configs.push({
 			fileName: configFileName(stem),
-			content: formatJsonFile({ $schema: SCHEMA_URL, ...config }),
+			content: configFileContent(config),
 		});
 	}
 

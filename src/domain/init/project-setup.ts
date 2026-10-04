@@ -1,12 +1,17 @@
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import path from "path";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
-import { Language, Mount } from "../toolchain/toolchain.js";
+import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
-import { PlaceSetup } from "./place-setup.js";
+import { PlaceChoices, PlaceSetup } from "./place-setup.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 
@@ -14,7 +19,8 @@ import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 export interface ProjectChoices {
 	readonly name: string;
 	readonly language: Language;
-	readonly darklua: boolean;
+	/** Darklua when it processes the code, else `undefined`. */
+	readonly darklua: Darklua | undefined;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
 	/** Where the compiler writes; Darklua reads it when both are used. */
@@ -26,11 +32,6 @@ export interface ProjectChoices {
 	readonly fallback: boolean;
 	/** Places set up alongside, each extending this config from `places/<name>`. */
 	readonly places: readonly string[];
-}
-
-/** Answers that are already known, so `ask` has nothing left to ask. */
-export interface KnownProject {
-	readonly choices: ProjectChoices;
 	/** The contents of the file a `copy` template choice copies. */
 	readonly copiedTemplate?: string;
 }
@@ -49,61 +50,50 @@ const joinList = (items: readonly string[], conjunction: string): string =>
 		: `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
 /** A new project: a config, its template and project file, and any places that share its code. */
-export class ProjectSetup implements Setup {
-	private choices: ProjectChoices | undefined;
-	private copiedTemplate: string | undefined;
-
+export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		known?: KnownProject
-	) {
-		this.choices = known?.choices;
-		this.copiedTemplate = known?.copiedTemplate;
-	}
+		private readonly fileSystemService: FileSystemService
+	) {}
 
-	/** What was chosen; `undefined` until `ask` has resolved. */
-	get answers(): ProjectChoices | undefined {
-		return this.choices;
-	}
-
-	async ask(): Promise<Result<boolean, Diagnostic[]>> {
-		if (this.choices) return ok(true);
+	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
 		const firstRun = !directory.hasDefaultConfig;
 
 		let layout: Layout = "one";
 		if (firstRun && directory.givenName === undefined) {
 			const answer = await questions.layout(directory);
-			if (answer === undefined) return ok(false);
+			if (answer === undefined) return ok(undefined);
 			layout = answer;
 		}
 
 		const name =
 			directory.givenName ??
 			(firstRun ? directory.name : await questions.configName(directory));
-		if (name === undefined) return ok(false);
+		if (name === undefined) return ok(undefined);
 
 		const language = await questions.language(directory);
-		if (language === undefined) return ok(false);
-		const darklua = await questions.darklua(directory);
-		if (darklua === undefined) return ok(false);
+		if (language === undefined) return ok(undefined);
+		const usesDarklua = await questions.darklua(directory);
+		if (usesDarklua === undefined) return ok(undefined);
+		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 
 		const configSet = new ConfigSet(name, language, darklua);
 		const conflicts = directory.checkFree(configSet.configFiles);
 		if (conflicts.length > 0) return err(conflicts);
 
 		const rootDirs = await questions.rootDirs(directory, language, layout);
-		if (rootDirs === undefined) return ok(false);
+		if (rootDirs === undefined) return ok(undefined);
 
 		const outputs = configSet.outputFiles;
 		const template = await questions.template(directory, outputs);
-		if (template === undefined) return ok(false);
+		if (template === undefined) return ok(undefined);
 
-		let syncDir = configSet.syncDirBy(directory.workspace.darklua);
+		let syncDir = configSet.syncDir;
 		if (darklua) {
 			const answer = await questions.syncDir(directory);
-			if (answer === undefined) return ok(false);
+			if (answer === undefined) return ok(undefined);
 			syncDir = answer;
 		}
 
@@ -111,10 +101,10 @@ export class ProjectSetup implements Setup {
 			template.kind === "use"
 				? []
 				: await questions.mounts(directory, language);
-		if (mounts === undefined) return ok(false);
+		if (mounts === undefined) return ok(undefined);
 
 		const routes = await questions.routes(language);
-		if (routes === undefined) return ok(false);
+		if (routes === undefined) return ok(undefined);
 
 		let places: readonly string[] = [];
 		if (layout === "several") {
@@ -128,18 +118,19 @@ export class ProjectSetup implements Setup {
 					TEMPLATE_FILE,
 				]),
 			});
-			if (answer === undefined) return ok(false);
+			if (answer === undefined) return ok(undefined);
 			places = answer;
 		}
 
+		let copiedTemplate: string | undefined;
 		if (template.kind === "copy") {
-			const copied = await directory.readFile(template.from);
+			const copied = await this.readTemplate(template.from);
 			if (copied.isErr()) return err(copied.error);
-			this.copiedTemplate = copied.value;
+			copiedTemplate = copied.value;
 		}
 
 		const outDir = language.compiler?.outDir;
-		this.choices = {
+		return ok({
 			name,
 			language,
 			darklua,
@@ -151,12 +142,30 @@ export class ProjectSetup implements Setup {
 			routes: routes.routes,
 			fallback: routes.fallback,
 			places,
-		};
-		return ok(true);
+			...(copiedTemplate !== undefined && { copiedTemplate }),
+		});
 	}
 
-	plan(builder: InitPlanBuilder): void {
-		const choices = this.requireChoices();
+	/** The file a `copy` template choice copies, as it is. */
+	private async readTemplate(
+		fileName: string
+	): Promise<Result<string, Diagnostic[]>> {
+		const file = path.join(this.directory.path, fileName);
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isOk()
+			? text
+			: err([
+					errorDiagnostic(
+						"init.templateUnreadable",
+						{ resource: file },
+						`couldn't read this file to copy it: ${text.error.message}`
+					),
+				]);
+	}
+
+	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
 		const { name, language, darklua, rootDirs, syncDir } = choices;
 		const configSet = new ConfigSet(name, language, darklua);
 		const template = this.planTemplate(choices, configSet);
@@ -179,21 +188,15 @@ export class ProjectSetup implements Setup {
 			);
 		}
 
-		const places = choices.places.map((place) =>
-			PlaceSetup.within(
-				this.directory,
-				{
-					language,
-					darklua,
-					base: {
-						rootDirs,
-						...(syncDir && { syncDir }),
-					},
-				},
-				{ name: place, folder: ConfigSet.placeFolderOf(place) }
-			)
-		);
-		for (const place of places) place.planFiles(builder);
+		const placeSetup = new PlaceSetup(this.directory, this.questions);
+		const places = choices.places.map((place): PlaceChoices => ({
+			name: place,
+			folder: ConfigSet.placeFolderOf(place),
+			language,
+			darklua,
+			base: { rootDirs, ...(syncDir && { syncDir }) },
+		}));
+		for (const place of places) placeSetup.planFiles(place, builder);
 
 		// The first place's commands stand for all of them.
 		const [first, ...others] = places;
@@ -211,14 +214,8 @@ export class ProjectSetup implements Setup {
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
 			ConfigSet.tagsStep(language, configFileName(name))
 		);
-		if (first) first.planSteps(builder);
+		if (first) placeSetup.planSteps(first, builder);
 		else this.planSteps(builder, choices, configSet);
-	}
-
-	private requireChoices(): ProjectChoices {
-		if (!this.choices)
-			throw new Error("A project is planned only once it was asked.");
-		return this.choices;
 	}
 
 	/** The commands that build and serve the project itself. */
@@ -236,7 +233,14 @@ export class ProjectSetup implements Setup {
 	}
 
 	private planTemplate(
-		{ template, mounts, rootDirs, syncDir, places }: ProjectChoices,
+		{
+			template,
+			mounts,
+			rootDirs,
+			syncDir,
+			places,
+			copiedTemplate,
+		}: ProjectChoices,
 		configSet: ConfigSet
 	): PlannedTemplate {
 		const { directory } = this;
@@ -258,11 +262,16 @@ export class ProjectSetup implements Setup {
 			};
 		}
 		if (template.kind === "copy") {
-			return this.copyTemplate(template.from, mounts, [
-				...rootDirs,
-				...(syncDir ? [syncDir] : []),
-				...places.map(ConfigSet.placeFolderOf),
-			]);
+			return this.copyTemplate(
+				template.from,
+				copiedTemplate ?? "",
+				mounts,
+				[
+					...rootDirs,
+					...(syncDir ? [syncDir] : []),
+					...places.map(ConfigSet.placeFolderOf),
+				]
+			);
 		}
 		if (template.kind === "use") {
 			return {
@@ -288,10 +297,10 @@ export class ProjectSetup implements Setup {
 	/** `dirs` are the folders Rogen generates nodes for now, which the copy leaves out. */
 	private copyTemplate(
 		from: string,
+		content: string,
 		mounts: readonly Mount[],
 		dirs: readonly string[]
 	): PlannedTemplate {
-		const content = this.copiedTemplate ?? "";
 		const parsed = StarterTemplate.parse(content);
 		const stripped = parsed?.withoutNodesIn(dirs);
 		const mounted = (stripped?.template ?? parsed)?.withMounts(mounts);

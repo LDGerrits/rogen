@@ -1,17 +1,14 @@
 import { jest } from "@jest/globals";
 import { ChangeBatcher } from "../change-batcher.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
-import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { FileChangeType } from "../../../platform/fs/file-changes.js";
 
 describe("ChangeBatcher", () => {
 	let batcher: ChangeBatcher;
-	let logService: NullLogService;
 
 	beforeEach(() => {
 		jest.useFakeTimers();
-		logService = new NullLogService();
-		batcher = new ChangeBatcher(logService, {
+		batcher = new ChangeBatcher({
 			burstThreshold: 5,
 			debounceMs: 100,
 		});
@@ -71,6 +68,10 @@ describe("ChangeBatcher", () => {
 
 		expect(changeListener).not.toHaveBeenCalled();
 		expect(reconListener).toHaveBeenCalledTimes(1);
+		expect(reconListener).toHaveBeenCalledWith({
+			dropped: 6,
+			threshold: 5,
+		});
 	});
 
 	it("should not crash on massive arrays", () => {

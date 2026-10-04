@@ -2,20 +2,24 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { DarkluaDetector } from "./darklua-detector.js";
 import { Luau } from "./luau.js";
 import { PackageManagerDetector } from "./package-manager-detector.js";
-import { RobloxTsCompiler, RobloxTsDetector } from "./roblox-ts.js";
-import { Darklua, DetectedWorkspace, SyncTool } from "./toolchain.js";
+import { SyncTool } from "../build/build.js";
+import { ROBLOX_TS_SYNC_TOOL, RobloxTsDetector } from "./roblox-ts.js";
+import { Darklua, DetectedWorkspace } from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
 import { WorkspaceDetector } from "./workspace-detector.js";
 
 export class CoreToolchainService implements ToolchainService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly syncTools: readonly SyncTool[];
+	/** What each tool tells a build, which the composition root hands to the build service; the build never asks the toolchain. */
+	readonly syncTools: readonly SyncTool[] = [
+		Darklua.SYNC_TOOL,
+		ROBLOX_TS_SYNC_TOOL,
+	];
 	private readonly detector: WorkspaceDetector;
 
 	constructor(fileSystemService: FileSystemService) {
 		const darklua = new Darklua();
-		this.syncTools = [darklua, new RobloxTsCompiler()];
 		this.detector = new WorkspaceDetector(
 			fileSystemService,
 			darklua,
@@ -27,9 +31,5 @@ export class CoreToolchainService implements ToolchainService {
 
 	detect(directory: string): Promise<DetectedWorkspace> {
 		return this.detector.detect(directory);
-	}
-
-	getSyncTools(): readonly SyncTool[] {
-		return this.syncTools;
 	}
 }

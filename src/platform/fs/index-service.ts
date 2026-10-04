@@ -1,33 +1,50 @@
+import { toPosix } from "../../base/path.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
 import { FileType } from "./file-system-service.js";
 
-/** What the build stages read from a listing of directories. */
+/** A listing of directories, read in memory. */
 export interface IndexReader {
-	/** `undefined` when the directory was never indexed or doesn't exist. */
+	/** `undefined` when the directory was never listed or doesn't exist. */
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
 	hasEntry(dirPath: string, name: string): boolean;
 	getEntryType(dirPath: string, name: string): FileType | undefined;
 }
 
-/**
- * An in-memory listing of the indexed directories, so later stages read
- * memory instead of the disk.
- */
-export interface IndexService extends IndexReader {
+/** The entries of every listed directory, by posix path. A listing never changes: an update makes a new one. */
+export class Listing implements IndexReader {
+	static readonly EMPTY = new Listing(new Map());
+
+	constructor(
+		readonly directories: ReadonlyMap<string, ReadonlyMap<string, FileType>>
+	) {}
+
+	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
+		return this.directories.get(toPosix(dirPath));
+	}
+
+	hasEntry(dirPath: string, name: string): boolean {
+		return this.getEntries(dirPath)?.has(name) ?? false;
+	}
+
+	getEntryType(dirPath: string, name: string): FileType | undefined {
+		return this.getEntries(dirPath)?.get(name);
+	}
+}
+
+/** Lists directories into memory, so a build reads memory instead of the disk. Holds nothing itself: each listing belongs to whoever asked for it. */
+export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	/** Runs after any earlier `initialize` or `ensureIndexed` finishes. Replaces the whole index in one step, so readers see the old listing until the new one is complete. A directory that doesn't exist isn't indexed. */
-	initialize(sourcePaths: readonly string[]): Promise<void>;
-	/** Indexes the dirs that no earlier call covers, where a dir inside a covered one counts as covered; the rest of the listing is kept. */
-	ensureIndexed(dirs: readonly string[]): Promise<void>;
+	/** Lists `dirs` and everything under them. A directory that doesn't exist isn't listed. */
+	list(dirs: readonly string[]): Promise<Listing>;
 	/**
-	 * Runs after any earlier call finishes, and leaves the index as a rescan
-	 * would: an added entry's type is read from the disk, not the change, an
-	 * added directory is indexed whole, and an entry that is gone by then is
-	 * skipped.
+	 * `base` with `changes` applied, as a fresh listing would have them: an
+	 * added entry's type is read from the disk, not the change, an added
+	 * directory is listed whole, and an entry that is gone by then is skipped.
+	 * `base` itself is left as it was.
 	 */
-	applyChanges(changes: readonly FileChange[]): Promise<void>;
+	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 
 export const IndexService =

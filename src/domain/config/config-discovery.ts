@@ -13,7 +13,14 @@ import {
 	configFileName,
 	configLabel,
 } from "./config.js";
-import { ConfigRefs } from "./config-service.js";
+
+/** Which config files one invocation names. */
+export interface ConfigRefs {
+	readonly names: readonly string[];
+	readonly paths?: readonly string[];
+	/** Every config in the working directory, instead of names or paths. */
+	readonly all?: boolean;
+}
 
 const DEFAULT_CONFIG_NAME = configFileName(DEFAULT_CONFIG_STEM);
 
@@ -29,8 +36,7 @@ export class ConfigDiscovery {
 		names,
 		paths: explicitPaths = [],
 		all,
-	}: Pick<ConfigRefs, "names" | "all"> &
-		Partial<Pick<ConfigRefs, "paths">>): Promise<Result<string[], Error>> {
+	}: ConfigRefs): Promise<Result<string[], Error>> {
 		if (all) return this.find();
 
 		const cwd = this.environmentService.cwd;

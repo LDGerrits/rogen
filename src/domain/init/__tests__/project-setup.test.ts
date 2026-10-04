@@ -8,6 +8,7 @@ import {
 	withRobloxTs,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
+import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
@@ -55,12 +56,11 @@ const defaultProjectChoices = async (
 			workspace: spec,
 			existing: [...existingFiles],
 			givenName: name === "default" ? undefined : name,
-			fileSystem,
 		}),
-		new InitQuestions(new MockPromptService([], false))
+		new InitQuestions(new MockPromptService([], false)),
+		fileSystem
 	);
-	(await setup.ask()).unwrap();
-	const choices = setup.answers as ProjectChoices;
+	const choices = (await setup.ask()).unwrap() as ProjectChoices;
 	return withPlaces ? choices : { ...choices, places: [] };
 };
 
@@ -83,11 +83,9 @@ const planProject = ({
 		new ProjectSetup(
 			target,
 			new InitQuestions(new MockPromptService([], false)),
-			{
-				choices,
-				copiedTemplate,
-			}
+			new MemoryFileSystemService()
 		),
+		{ ...choices, ...(copiedTemplate !== undefined && { copiedTemplate }) },
 		target
 	).map(legacyPlan);
 };
@@ -193,7 +191,10 @@ describe("ProjectSetup plan", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+		const darklua: WorkspaceSpec = {
+			...luau,
+			darkluaConfig: ".darklua.json",
+		};
 
 		it("should write a source-rooted default and a sync config extending it", async () => {
 			const files = await plan(darklua);
@@ -238,9 +239,7 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files, "default.rogen.json").template).toBe(
 				"template.project.json"
 			);
-			expect(
-				configOf(files, "sync.rogen.json").template
-			).toBeUndefined();
+			expect(configOf(files, "sync.rogen.json").template).toBeUndefined();
 		});
 	});
 
@@ -253,7 +252,13 @@ describe("ProjectSetup plan", () => {
 			planProject({
 				choices: await defaultProjectChoices(
 					withRobloxTs(
-						{ ...luau, language, usesDarklua: darklua },
+						{
+							...luau,
+							language,
+							darkluaConfig: darklua
+								? ".darklua.json"
+								: undefined,
+						},
 						{ outDir: "build" }
 					),
 					name,
@@ -352,13 +357,13 @@ describe("ProjectSetup plan", () => {
 				"rogen watch default sync",
 				"rojo serve sync.project.json",
 			]);
-			expect((await planFor("luau", true, "lobby")).nextSteps.run).toEqual(
-				[
-					"rogen watch lobby lobby-sync",
-					"rojo serve lobby-sync.project.json",
-					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
-				]
-			);
+			expect(
+				(await planFor("luau", true, "lobby")).nextSteps.run
+			).toEqual([
+				"rogen watch lobby lobby-sync",
+				"rojo serve lobby-sync.project.json",
+				"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
+			]);
 		});
 
 		it("should leave the sourcemap to luau-lsp for default, and say how without it", async () => {
@@ -371,7 +376,7 @@ describe("ProjectSetup plan", () => {
 			const files = planProject({
 				choices: {
 					...(await defaultProjectChoices(
-						{ ...luau, usesDarklua: true },
+						{ ...luau, darkluaConfig: ".darklua.json" },
 						"default",
 						new Set(),
 						false
@@ -1217,7 +1222,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should extend the source config without a sync dir when none was chosen", async () => {
 			const files = await planChoices({
-				darklua: true,
+				darklua: new Darklua(),
 				syncDir: undefined,
 			});
 
@@ -1271,7 +1276,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should report every darklua config that already exists", async () => {
 			const result = await planResult(
-				{ ...luau, usesDarklua: true },
+				{ ...luau, darkluaConfig: ".darklua.json" },
 				"default",
 				["default.rogen.json", "sync.rogen.json"]
 			);
@@ -1369,5 +1374,22 @@ describe("ConfigSet.parseName", () => {
 
 	it("should reject more than one name", () => {
 		expect(ConfigSet.parseName(["a", "b"]).isErr()).toBe(true);
+	});
+
+	it("should fail when the file it would copy to the template can't be read", async () => {
+		const setup = new ProjectSetup(
+			directoryOf({ existing: ["default.project.json"] }),
+			new InitQuestions(new MockPromptService([], false)),
+			new MemoryFileSystemService()
+		);
+
+		const asked = await setup.ask();
+
+		expect(asked.isErr() && asked.error).toMatchObject([
+			{
+				code: "init.templateUnreadable",
+				resource: path.join(directory, "default.project.json"),
+			},
+		]);
 	});
 });

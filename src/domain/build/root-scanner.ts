@@ -9,7 +9,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
-import { ScanLeftOut } from "./build-service.js";
+import { ScanLeftOut } from "./build.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
@@ -39,6 +39,34 @@ export interface ScannedInitFolder {
 }
 
 export type ScannedEntry = ScannedFile | ScannedInitFolder;
+
+/** The name Rojo gives an entry when it lists its directory: an init folder keeps its own name. */
+export function rojoNameOf(entry: ScannedEntry): string {
+	const name = path.posix.basename(entry.relativePath);
+	return entry.kind === "init-folder"
+		? name
+		: new RojoFile(name).instanceName;
+}
+
+/** The file whose name carries an entry's suffixes, and what Rojo makes of it: an init folder's script, or the file itself. */
+export function namingFileOf(entry: ScannedEntry): {
+	readonly fileName: string;
+	readonly kind: RojoFileKind;
+} {
+	return entry.kind === "init-folder"
+		? { fileName: entry.initFile, kind: "script" }
+		: {
+				fileName: path.posix.basename(entry.relativePath),
+				kind: entry.kind,
+			};
+}
+
+/** Every source behind an entry, each with its instance path below the entry's: an init folder's scripts, or the file itself. */
+export function membersOf(entry: ScannedEntry): readonly InitFolderMember[] {
+	return entry.kind === "init-folder"
+		? entry.members
+		: [{ source: entry.source, below: [] }];
+}
 
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */

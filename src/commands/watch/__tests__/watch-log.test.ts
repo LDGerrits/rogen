@@ -64,10 +64,18 @@ describe("WatchLog.update", () => {
 			});
 		});
 
-		it("should say a burst rebuilt everything", () => {
-			expect(logged({ cause: { kind: "burst" } })[0].text).toBe(
-				"03:04:05 · many changes · full rebuild"
-			);
+		it("should say a burst dropped the changes and rebuilt everything", () => {
+			const lines = logged({
+				cause: { kind: "burst", dropped: 250, threshold: 200 },
+			});
+
+			expect(lines.map(({ kind, text }) => [kind, text])).toEqual([
+				[
+					"warn",
+					"Threshold reached (250 > 200). Dropping the buffered changes.",
+				],
+				["step", "03:04:05 · many changes · full rebuild"],
+			]);
 		});
 
 		it("should count source files", () => {
@@ -136,8 +144,7 @@ describe("WatchLog.update", () => {
 			warnings: RebuildReport["warnings"],
 			syncWarnings?: RebuildReport["syncWarnings"]
 		): RebuildReport => ({
-			entry,
-			config: entry.resolved!,
+			config: entry.config,
 			outcome: "unchanged",
 			warnings,
 			syncWarnings: syncWarnings ?? [],
@@ -211,8 +218,7 @@ describe("WatchLog.update", () => {
 		it("should say a failed config's errors were printed before, rather than print them again", () => {
 			const { log, logService } = session();
 			const failed: RebuildReport = {
-				entry,
-				config: entry.resolved!,
+				config: entry.config,
 				outcome: "failed",
 				warnings: [],
 				syncWarnings: [],
@@ -235,21 +241,29 @@ describe("WatchLog.update", () => {
 			]);
 		});
 
-		it("should say nothing for a round whose only news is a config problem it already printed", () => {
+		it("should print a config's new errors and say its last valid version still builds", () => {
 			const { log, logService } = session();
-			const notice = {
-				file: entry.file,
-				errors: [
-					errorDiagnostic("x.err", { resource: entry.file }, "bad."),
+			const error = errorDiagnostic(
+				"x.err",
+				{ resource: entry.file },
+				"bad."
+			);
+
+			log.update(
+				updateOf({ notices: [{ file: entry.file, errors: [error] }] })
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind !== "step")
+					.map(({ kind, text }) => [kind, text])
+			).toEqual([
+				["diagnosticError", expect.stringContaining("bad.")],
+				[
+					"error",
+					"Still building from the last valid default.rogen.json.",
 				],
-				warnings: [],
-			};
-
-			log.update(updateOf({ notices: [notice] }));
-			const before = logService.entries.length;
-			log.update(updateOf({ notices: [notice] }));
-
-			expect(logService.entries).toHaveLength(before);
+			]);
 		});
 	});
 });

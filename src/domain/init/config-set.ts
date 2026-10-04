@@ -20,7 +20,8 @@ export class ConfigSet {
 	constructor(
 		readonly name: string,
 		readonly language: Language,
-		readonly darklua: boolean
+		/** Darklua when it processes the code, else `undefined`. */
+		readonly darklua: Darklua | undefined
 	) {}
 
 	/** The stem of the synced config beside `name`'s source-rooted one. */
@@ -94,15 +95,17 @@ export class ConfigSet {
 	}
 
 	/** The sync dir written for a config: Darklua's output, else the compiler's, else none. */
-	syncDirBy(darkluaTool: Darklua): string | undefined {
+	get syncDir(): string | undefined {
 		return this.darklua
-			? darkluaTool.defaultSyncDir
+			? this.darklua.defaultSyncDir
 			: this.language.compiler?.outDir;
 	}
 
 	/** Whether a synced config is written beside the named one. */
 	get sourced(): boolean {
-		return this.darklua && this.language.compiler === undefined;
+		return (
+			this.darklua !== undefined && this.language.compiler === undefined
+		);
 	}
 
 	get syncStem(): string {
@@ -166,19 +169,19 @@ export class ConfigSet {
 			readonly syncDir?: string;
 		}
 	): void {
-		const { darklua } = directory.workspace;
+		const { darklua } = this;
 		builder.addRun(
 			...(compileCommand ? [compileCommand] : []),
 			// Darklua reads the source-rooted project, so both are kept current.
 			ConfigSet.watchCommand(this.stems),
 			ConfigSet.serveCommand(this.servedStem)
 		);
-		if (this.darklua && syncDir) {
+		if (darklua && syncDir) {
 			builder.addDarkluaCommands(
 				...darklua.processCommands(directory.path, processed, syncDir)
 			);
 		}
-		if (this.sourced) {
+		if (darklua && this.sourced) {
 			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
 		}
 	}

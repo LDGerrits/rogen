@@ -7,7 +7,6 @@ import {
 	ConfigEntry,
 	ConfigSelection,
 	ConfigService,
-	configRefsFromArgs,
 } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -56,12 +55,8 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const refs = configRefsFromArgs(args, args._.slice(1));
-			const selection = await configService.initialize({
-				...refs,
-				all:
-					refs.all ||
-					(refs.names.length === 0 && refs.paths.length === 0),
+			const selection = await configService.select(args, {
+				unnamed: "all",
 			});
 			if (selection.isErr()) return selection;
 			const { entries, brokenError } = selection.value;
@@ -100,11 +95,11 @@ registerCommand(
 				);
 			}
 
-			const config = entry.resolved;
-			if (entry.isBroken || !config) {
+			if (entry.status === "broken") {
 				for (const error of entry.errors) logService.diagnostic(error);
 				return;
 			}
+			const { config } = entry;
 			logService.info(
 				[
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,

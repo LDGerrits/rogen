@@ -8,6 +8,7 @@ import { DisposableStore } from "../../../base/disposable.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	MockConfigService,
+	brokenEntry,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildService } from "../../../domain/build/build-service.js";
@@ -359,15 +360,13 @@ describe("build command", () => {
 
 	it("should refuse to build when a config is invalid", async () => {
 		const logService = new NullLogService();
-		const entry = mockEntry({}, undefined, {
-			diagnostics: [
-				errorDiagnostic(
-					"config.unknownField",
-					{ resource: "/repo/default.rogen.json" },
-					"boom."
-				),
-			],
-		});
+		const entry = brokenEntry([
+			errorDiagnostic(
+				"config.unknownField",
+				{ resource: "/repo/default.rogen.json" },
+				"boom."
+			),
+		]);
 
 		const result = await run(new MockConfigService([entry]), logService);
 
@@ -583,15 +582,13 @@ describe("build command", () => {
 		});
 
 		it("should fail without printing when a config is invalid, for the caller to report", async () => {
-			const entry = mockEntry({}, undefined, {
-				diagnostics: [
-					errorDiagnostic(
-						"config.unknownField",
-						{ resource: "/repo/default.rogen.json" },
-						"boom."
-					),
-				],
-			});
+			const entry = brokenEntry([
+				errorDiagnostic(
+					"config.unknownField",
+					{ resource: "/repo/default.rogen.json" },
+					"boom."
+				),
+			]);
 
 			const { result, logService } = await buildJson(
 				new MockConfigService([entry])

@@ -2,7 +2,6 @@ import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import {
-	ConfigNotice,
 	RebuildReport,
 	WatchCause,
 	WatchUpdate,
@@ -14,7 +13,11 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ResolvedEntry } from "../../domain/config/config-service.js";
+import {
+	ConfigNotice,
+	ConfigSelection,
+	buildableConfig,
+} from "../../domain/config/config-service.js";
 import { BuildLog } from "../build/build-log.js";
 
 /** A rebuild as this round shows it: only what wasn't printed before. */
@@ -118,11 +121,12 @@ export class WatchLog {
 	}
 
 	/** Opens the output: the configs it watches and the ones it leaves out. */
-	begin(
-		targets: readonly ResolvedEntry[],
-		unselected: readonly string[]
-	): void {
-		this.buildLog.begin("watch", targets, unselected);
+	begin({ entries, unselected }: ConfigSelection): void {
+		this.buildLog.begin(
+			"watch",
+			entries.flatMap((entry) => buildableConfig(entry) ?? []),
+			unselected
+		);
 	}
 
 	end(): void {
@@ -130,37 +134,18 @@ export class WatchLog {
 	}
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
-		const fresh = notices
-			.map((notice) => this.unseenNotice(notice))
-			.filter(
-				({ errors, warnings }) => errors.length + warnings.length > 0
-			);
 		const shown = reports.map((report) => this.unseenReport(report));
-		// A round whose only news is a config problem already printed has nothing to say.
-		if (notices.length > 0 && fresh.length === 0 && shown.length === 0)
-			return;
 
+		if (cause.kind === "burst") {
+			this.logService.warn(
+				`Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
+			);
+		}
 		this.logService.step(`${clockTime(at)} · ${titleOf(cause)}`);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
-		fresh.forEach((notice) => this.notice(notice));
+		notices.forEach((notice) => this.notice(notice));
 		shown.forEach((report) => this.report(report));
-	}
-
-	private unseenNotice({
-		file,
-		errors,
-		warnings,
-	}: ConfigNotice): ConfigNotice {
-		const fresh = this.printed.unseen(`${file}#config`, [
-			...errors,
-			...warnings,
-		]);
-		return {
-			file,
-			errors: fresh.filter(isError),
-			warnings: fresh.filter((diagnostic) => !isError(diagnostic)),
-		};
 	}
 
 	/** A report with only the diagnostics not printed for its config the last time. */
@@ -181,17 +166,14 @@ export class WatchLog {
 		};
 	}
 
-	private notice({ file, errors, warnings }: ConfigNotice): void {
+	private notice({ file, errors }: ConfigNotice): void {
 		this.buildLog.diagnostics(errors);
-		if (errors.length > 0) {
-			this.logService.error(
-				`Still building from the last valid ${path.basename(file)}.`
-			);
-		}
-		this.buildLog.diagnostics(warnings);
+		this.logService.error(
+			`Still building from the last valid ${path.basename(file)}.`
+		);
 	}
 
 	private report({ report, diagnostics, note }: ShownReport): void {
-		this.buildLog.outcome(report.entry, report, diagnostics, note);
+		this.buildLog.outcome(report, diagnostics, note);
 	}
 }

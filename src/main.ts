@@ -101,8 +101,9 @@ async function main(): Promise<void> {
 
 		const services = new ServiceCollection();
 
-		const configService = disposables.add(
-			new CoreConfigService(fileSystemService, environment)
+		const configService = new CoreConfigService(
+			fileSystemService,
+			environment
 		);
 		services.set(ConfigService, configService);
 
@@ -117,7 +118,7 @@ async function main(): Promise<void> {
 		const buildService = new CoreBuildService(
 			fileSystemService,
 			indexService,
-			toolchainService
+			toolchainService.syncTools
 		);
 		services.set(BuildService, buildService);
 		services.set(
@@ -142,13 +143,7 @@ async function main(): Promise<void> {
 		services.set(Watcher, watcher);
 		services.set(
 			WatchService,
-			new CoreWatchService(
-				watcher,
-				logService,
-				configService,
-				indexService,
-				buildService
-			)
+			new CoreWatchService(watcher, indexService, buildService)
 		);
 
 		const commandService = new CoreCommandService(services, logService);

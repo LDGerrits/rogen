@@ -1,10 +1,10 @@
+import { randomUUID } from "crypto";
 import { stableStringify } from "../../base/json.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoTree } from "../rojo/rojo-project.js";
-import { OutputFile } from "./build-service.js";
 
 /** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
@@ -16,7 +16,8 @@ export class OutputWriter {
 		tree: RojoTree
 	): Promise<Result<boolean, DiagnosticsError>> {
 		const content = `${stableStringify(tree)}\n`;
-		const temporary = new OutputFile(outFile).stagingFile();
+		// A fresh staging file per write, so concurrent writers never share one; `OutputFile.stagingPattern` matches it.
+		const temporary = `${outFile}.${randomUUID()}.tmp`;
 
 		const written = await tryWithAsync(async () => {
 			if (

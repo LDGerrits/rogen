@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import "../build-command.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -24,7 +23,6 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
 describeWithRojo("build command against Rojo", () => {
-	let store: DisposableStore;
 	let dir: string;
 
 	const write = (file: string, content: string) => {
@@ -37,9 +35,7 @@ describeWithRojo("build command against Rojo", () => {
 		const environment = new NativeEnvironmentService(args, dir);
 		const fileSystem = new DiskFileSystemService();
 		const logService = new NullLogService();
-		const configService = store.add(
-			new CoreConfigService(fileSystem, environment)
-		);
+		const configService = new CoreConfigService(fileSystem, environment);
 
 		const services = new ServiceCollection();
 		services.set(ConfigService, configService);
@@ -56,12 +52,10 @@ describeWithRojo("build command against Rojo", () => {
 	};
 
 	beforeEach(() => {
-		store = new DisposableStore();
 		dir = makeRojoDir("rogen-rojo-");
 	});
 
 	afterEach(() => {
-		store[Symbol.dispose]();
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

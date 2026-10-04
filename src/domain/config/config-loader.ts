@@ -21,7 +21,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configDefaults, configSchema } from "./config-schema.js";
-import { ConfigOverrides } from "./config-service.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
@@ -30,6 +29,17 @@ import {
 	defaultOutFileName,
 	rootDirOverlap,
 } from "./config.js";
+
+/** The fields that hold a path, which resolve against the file that sets them and the command line overrides. */
+export const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
+
+export type PathField = (typeof PATH_FIELDS)[number];
+
+/** Per-invocation values that sit above every layer of a config's chain. */
+export type ConfigOverrides = Readonly<Partial<Record<PathField, string>>> & {
+	/** Tag name to whether it is on. */
+	readonly tags: Readonly<Record<string, boolean>>;
+};
 
 /** One read of one config, with everything a reload needs to compare against. */
 export interface LoadedConfig {
@@ -95,9 +105,10 @@ export class ConfigLoader {
 			: undefined;
 		if (template?.isErr()) return { ...loaded, resolved: template };
 
-		const resolved = new ConfigValidator(layered).validate(
-			template?.isOk() ? template.value : undefined
-		);
+		const resolved = new ConfigValidator(
+			layered,
+			chain.files.slice(1)
+		).validate(template?.isOk() ? template.value : undefined);
 		return {
 			...loaded,
 			...(resolved.isOk() && { config: layered.config }),
@@ -261,7 +272,7 @@ class LayeredConfig {
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
-		for (const key of ["outFile", "syncDir", "template"] as const) {
+		for (const key of PATH_FIELDS) {
 			if (overrides[key] !== undefined) contents[key] = overrides[key];
 		}
 		if (declaredTags.length > 0) {
@@ -291,7 +302,7 @@ class LayeredConfig {
 		const absolute = (value: string) => path.resolve(dir, value);
 		const result = { ...contents };
 
-		for (const key of ["template", "syncDir", "outFile"]) {
+		for (const key of PATH_FIELDS) {
 			const value = result[key];
 			if (typeof value === "string") result[key] = absolute(value);
 		}
@@ -318,7 +329,10 @@ class ConfigValidator {
 	private readonly tags: Readonly<Record<string, boolean>>;
 	private readonly outFile: string;
 
-	constructor(private readonly layered: LayeredConfig) {
+	constructor(
+		private readonly layered: LayeredConfig,
+		private readonly parents: readonly string[]
+	) {
 		const { config } = layered;
 		this.rootDirs = config.getValue<string[]>("rootDirs");
 		this.routes = config.getValue<Record<string, string>>("routes");
@@ -346,6 +360,8 @@ class ConfigValidator {
 		return this.problems.toResult(
 			new ResolvedConfig({
 				file: this.layered.leaf.file,
+				parents: this.parents,
+				skippedTags: this.layered.skippedTags,
 				name:
 					template?.project.name ||
 					path.basename(dir) ||

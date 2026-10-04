@@ -89,28 +89,7 @@ export class BuildValidator {
 
 	/** A folder, marker or suffix that only differs from a declared key in letter case is read as an ordinary name. */
 	private caseMismatch(): Diagnostic[] {
-		const { roots, readings } = this.placement;
-		const nearMisses = new Map<string, string>();
-		const note = (resource: string, key: string | undefined) => {
-			if (key && !nearMisses.has(resource)) nearMisses.set(resource, key);
-		};
-
-		for (const root of roots) {
-			for (const marker of root.markers) {
-				const resource = joinPosix(root.rootDir, marker);
-				note(resource, readings.markers.get(resource)?.nearMissKey);
-			}
-			for (const entry of root.entries) {
-				const read = readings.entryAt(entry.source);
-				for (const folder of read.folders)
-					note(
-						joinPosix(entry.rootDir, folder.dir),
-						folder.nearMissKey
-					);
-				note(entry.source, read.match.nearMissKey);
-			}
-		}
-
+		const { nearMisses } = this.placement.readings;
 		return this.diagnosePaths([...nearMisses], (resource, key) => {
 			const kind = this.config.keys.isTag(key) ? "tag" : "route";
 			return warningDiagnostic(

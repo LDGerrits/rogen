@@ -13,10 +13,13 @@ export class ConfigReport {
 				toNative(entry.file),
 				{
 					extends: entry.parents.map((file) => toNative(file)),
-					...(!entry.isBroken && entry.resolved
-						? describeConfig(entry.resolved)
+					...(entry.status === "valid"
+						? describeConfig(entry.config)
 						: {}),
-					diagnostics: entry.diagnostics.map(diagnosticToJson),
+					diagnostics:
+						entry.status === "broken"
+							? entry.errors.map(diagnosticToJson)
+							: [],
 				},
 			])
 		);

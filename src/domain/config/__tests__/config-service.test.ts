@@ -1,213 +1,27 @@
-import { ResultError } from "../../../base/result.js";
-import {
-	DiagnosticSeverity,
-	errorDiagnostic,
-	warningDiagnostic,
-} from "../../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { ParsedArgs } from "../../../platform/environment/args.js";
-import { ConfigSelection, configRefsFromArgs } from "../config-service.js";
-import { MockConfigService, mockEntry } from "./mock-config-service.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { buildableConfig } from "../config-service.js";
+import { brokenEntry, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
-	describe("configRefsFromArgs", () => {
-		const refs = (args: Partial<ParsedArgs>, names: string[] = []) =>
-			configRefsFromArgs({ _: ["build"], ...args }, names);
-
-		it("should take the given names and the -c paths", () => {
-			const result = refs({ config: ["extra.rogen.json"] }, [
-				"lobby",
-				"match",
-			]);
-
-			expect(result.names).toEqual(["lobby", "match"]);
-			expect(result.paths).toEqual(["extra.rogen.json"]);
-		});
-
-		it("should carry the overrides, with tags as on and off", () => {
-			const result = refs({
-				"out-file": "out.project.json",
-				"sync-dir": "dist",
-				template: "base.project.json",
-				tag: ["mock", "dev"],
-				"no-tag": ["prod"],
-			});
-
-			expect(result.overrides).toEqual({
-				outFile: "out.project.json",
-				syncDir: "dist",
-				template: "base.project.json",
-				tags: { mock: true, dev: true, prod: false },
-			});
-		});
-
-		it("should carry no overrides when no flag is given", () => {
-			expect(refs({}).overrides).toEqual({ tags: {} });
-		});
-
-		it("should ask for every config with --all", () => {
-			expect(refs({ all: true })).toMatchObject({
-				names: [],
-				paths: [],
-				all: true,
-			});
-		});
-	});
-
-	describe("ConfigEntry", () => {
-		it("should list its errors and leave out its warnings", () => {
-			const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
-			const warning = warningDiagnostic(
-				"x.warn",
-				{ resource: "/a" },
-				"careful."
-			);
-			const entry = mockEntry({}, undefined, {
-				diagnostics: [warning, error],
-			});
-
-			expect(entry.errors).toEqual([error]);
-		});
-
-		it("should list the configs it extends, nearest first", () => {
-			const entry = mockEntry({}, "/repo/a.rogen.json", {
-				chain: [
-					"/repo/a.rogen.json",
-					"/repo/b.rogen.json",
-					"/repo/c.rogen.json",
-				],
-			});
-
-			expect(entry.parents).toEqual([
-				"/repo/b.rogen.json",
-				"/repo/c.rogen.json",
-			]);
-		});
-
-		it("should have no parents when it extends nothing", () => {
-			expect(mockEntry({}, "/repo/a.rogen.json").parents).toEqual([]);
-		});
-	});
-
-	describe("getConfig", () => {
-		it("should find the entry of a config file, and none for another", () => {
-			const entry = mockEntry({}, "/repo/a.rogen.json");
-			const service = new MockConfigService([entry]);
-
-			expect(service.getConfig("/repo/a.rogen.json")).toBe(entry);
-			expect(service.getConfig("/repo/b.rogen.json")).toBeUndefined();
-		});
-	});
-
-	describe("getResolvedEntries", () => {
-		const unresolved = mockEntry({}, "/repo/broken.rogen.json", {
-			resolved: undefined,
-		});
-
-		it("should pair each config that resolved with its entry and skip the rest", () => {
-			const good = mockEntry(
-				{ rootDirs: ["/repo/a"] },
-				"/repo/a.rogen.json"
-			);
-			const pairs = new MockConfigService([
-				unresolved,
-				good,
-			]).getResolvedEntries();
-
-			expect(pairs).toHaveLength(1);
-			expect(pairs[0].entry).toBe(good);
-			expect(pairs[0].config).toBe(good.resolved);
-		});
-	});
-
-	describe("ConfigSelection.brokenError", () => {
+	describe("buildableConfig", () => {
 		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
 
-		it("should count the configs with errors out of all of them", () => {
-			const selection = new ConfigSelection([
-				mockEntry({}, "/repo/a.rogen.json"),
-				mockEntry({}, "/repo/b.rogen.json", { diagnostics: [error] }),
-				mockEntry({}, "/repo/c.rogen.json", { diagnostics: [error] }),
-			]);
+		it("should be the config of a valid entry", () => {
+			const entry = mockEntry();
 
-			expect(selection.brokenError?.message).toBe(
-				"2 of 3 configs have errors."
-			);
+			expect(buildableConfig(entry)).toBe(entry.config);
 		});
 
-		it("should count a config that never resolved, even without errors", () => {
-			const selection = new ConfigSelection([
-				mockEntry({}, "/repo/a.rogen.json", { resolved: undefined }),
-			]);
+		it("should be the last valid version of a broken entry", () => {
+			const entry = brokenEntry([error], undefined, {
+				rootDirs: ["/repo/a"],
+			});
 
-			expect(selection.brokenError?.message).toBe(
-				"1 of 1 configs have errors."
-			);
+			expect(buildableConfig(entry)?.rootDirs).toEqual(["/repo/a"]);
 		});
 
-		it("should be undefined when none is broken", () => {
-			expect(
-				new ConfigSelection([mockEntry()]).brokenError
-			).toBeUndefined();
-		});
-	});
-
-	describe("ConfigSelection.requireValid", () => {
-		const problem = errorDiagnostic(
-			"config.unknownField",
-			{
-				resource: "/repo/prod.rogen.json",
-				position: { line: 2, column: 3 },
-			},
-			'unknown field "x".'
-		);
-
-		it("should return every resolved config when all are valid", () => {
-			const result = new ConfigSelection([
-				mockEntry({ rootDirs: ["/repo/a"] }, "/repo/a.rogen.json"),
-				mockEntry({ rootDirs: ["/repo/b"] }, "/repo/b.rogen.json"),
-			]).requireValid();
-
-			expect(
-				result.unwrap().map(({ config }) => config.rootDirs)
-			).toEqual([["/repo/a"], ["/repo/b"]]);
-		});
-
-		it("should fail with the errors of every invalid entry", () => {
-			const result = new ConfigSelection([
-				mockEntry({}, "/repo/a.rogen.json"),
-				mockEntry({}, "/repo/prod.rogen.json", {
-					diagnostics: [problem],
-				}),
-			]).requireValid();
-
-			const error = (result as ResultError<DiagnosticsError>).error;
-			expect(error.diagnostics).toEqual([problem]);
-			expect(error.message).toBe(
-				`/repo/prod.rogen.json:2:3 - error: unknown field "x".`
-			);
-		});
-
-		it("should fail for an entry that has a last valid config but a broken file", () => {
-			const selection = new ConfigSelection([
-				mockEntry({}, undefined, { diagnostics: [problem] }),
-			]);
-
-			expect(selection.requireValid().isErr()).toBe(true);
-		});
-
-		it("should not fail on warnings", () => {
-			const warning = warningDiagnostic(
-				"x.warn",
-				{ resource: "/repo/a.rogen.json" },
-				"careful."
-			);
-			const selection = new ConfigSelection([
-				mockEntry({}, undefined, { diagnostics: [warning] }),
-			]);
-
-			expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-			expect(selection.requireValid().isOk()).toBe(true);
+		it("should be undefined for a config that was never valid", () => {
+			expect(buildableConfig(brokenEntry([error]))).toBeUndefined();
 		});
 	});
 });

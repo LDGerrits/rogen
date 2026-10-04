@@ -1,33 +1,31 @@
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
+import { Result } from "../../../base/result.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import {
 	IndexReader,
 	IndexService,
+	Listing,
 } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import {
 	ResolvedConfigSpec,
 	mockConfig,
+	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { SyncTool } from "../../toolchain/toolchain.js";
-import { ToolchainService } from "../../toolchain/toolchain-service.js";
+import { ConfigLocations, SyncTool } from "../build.js";
+import { BuildService, LocateTargets } from "../build-service.js";
 import { ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
 import { Placer } from "../placement.js";
 
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
-export const syncTools = toolchain.getSyncTools();
-
-const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
-	_serviceBrand: undefined,
-	detect: (directory) => toolchain.detect(directory),
-	getSyncTools: () => [...syncTools, ...extraTools],
-});
+export const { syncTools } = new CoreToolchainService(
+	new MemoryFileSystemService()
+);
 
 export const placeFiles = (
 	index: IndexReader,
@@ -45,7 +43,17 @@ export const buildServiceOf = (
 	fs: FileSystemService,
 	index: IndexService,
 	extraTools: readonly SyncTool[] = []
-) => new CoreBuildService(fs, index, toolchainWith(extraTools));
+) => new CoreBuildService(fs, index, [...syncTools, ...extraTools]);
+
+/** Where `targets` land in `config` alone. */
+export async function locateIn(
+	buildService: BuildService,
+	config: ResolvedConfig,
+	targets?: LocateTargets
+): Promise<Result<ConfigLocations, DiagnosticsError>> {
+	const located = await buildService.locate(selectionOf(config), targets);
+	return located.map(({ configs: [locations] }) => locations);
+}
 
 export const abs = (...segments: string[]): string =>
 	path.resolve("/repo", ...segments);
@@ -66,12 +74,11 @@ export async function writeFiles(
 	for (const file of paths) await fs.writeFile(abs(file), "");
 }
 
-export async function indexOf(
-	store: DisposableStore,
+/** What `rootDirs` hold in `fs`, listed. */
+export function indexOf(
+	_store: DisposableStore,
 	fs: MemoryFileSystemService,
 	rootDirs: readonly string[]
-): Promise<CoreIndexService> {
-	const index = new CoreIndexService(fs);
-	await index.initialize([...rootDirs]);
-	return index;
+): Promise<Listing> {
+	return new CoreIndexService(fs).list(rootDirs);
 }

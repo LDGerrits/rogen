@@ -1,5 +1,6 @@
 import { JSONSchema } from "../../base/json-schema.js";
 import { ConfigModel } from "../../platform/config/config-models.js";
+import { RogenConfig } from "./config.js";
 
 const routesSchema: JSONSchema = {
 	type: "object",
@@ -23,59 +24,61 @@ const tagsSchema: JSONSchema = {
 	additionalProperties: { type: "boolean" },
 };
 
+/** One schema per field of a config file, so a field can't be added to one and not the other. */
+const fieldSchemas: Record<keyof RogenConfig, JSONSchema> = {
+	$schema: {
+		type: "string",
+		description: "The published JSON Schema URI for editor validation.",
+	},
+	extends: {
+		type: "string",
+		description:
+			"Another *.rogen.json to inherit from, relative to this file.",
+	},
+	rootDirs: {
+		type: "array",
+		items: { type: "string" },
+		default: ["src"],
+		description:
+			"Directories Rogen scans and watches, merged into one tree; " +
+			"the last wins on a clash.",
+	},
+	routes: routesSchema,
+	tags: tagsSchema,
+	exclude: {
+		type: "array",
+		items: { type: "string" },
+		default: [],
+		description: "Globs never built, relative to this file's directory.",
+	},
+	template: {
+		type: "string",
+		description:
+			"A Rojo project file whose tree Rogen merges its generated " +
+			"nodes into.",
+	},
+	syncDir: {
+		type: "string",
+		description:
+			"The directory Rojo syncs from, when that isn't your root " +
+			"dirs. Set it to your compiler's output directory - " +
+			'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
+			"plain Luau.",
+	},
+	outFile: {
+		type: "string",
+		description:
+			"The Rojo project file Rogen writes. Defaults to this " +
+			"config's own file name, with .rogen.json replaced by " +
+			".project.json.",
+	},
+};
+
 /** What a `*.rogen.json` may hold; a key outside it is an error. */
 export const configSchema: JSONSchema = {
 	type: "object",
 	additionalProperties: false,
-	properties: {
-		$schema: {
-			type: "string",
-			description: "The published JSON Schema URI for editor validation.",
-		},
-		extends: {
-			type: "string",
-			description:
-				"Another *.rogen.json to inherit from, relative to this file.",
-		},
-		rootDirs: {
-			type: "array",
-			items: { type: "string" },
-			default: ["src"],
-			description:
-				"Directories Rogen scans and watches, merged into one tree; " +
-				"the last wins on a clash.",
-		},
-		routes: routesSchema,
-		tags: tagsSchema,
-		exclude: {
-			type: "array",
-			items: { type: "string" },
-			default: [],
-			description:
-				"Globs never built, relative to this file's directory.",
-		},
-		template: {
-			type: "string",
-			description:
-				"A Rojo project file whose tree Rogen merges its generated " +
-				"nodes into.",
-		},
-		syncDir: {
-			type: "string",
-			description:
-				"The directory Rojo syncs from, when that isn't your root " +
-				"dirs. Set it to your compiler's output directory - " +
-				'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
-				"plain Luau.",
-		},
-		outFile: {
-			type: "string",
-			description:
-				"The Rojo project file Rogen writes. Defaults to this " +
-				"config's own file name, with .rogen.json replaced by " +
-				".project.json.",
-		},
-	},
+	properties: fieldSchemas,
 };
 
 /** The values a config has before any file or flag sets them. */

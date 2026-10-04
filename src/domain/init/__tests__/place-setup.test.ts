@@ -7,17 +7,22 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { BaseConfig } from "../init-directory.js";
-import { PlaceChoices, PlaceSetup } from "../place-setup.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { InitQuestions } from "../init-questions.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
+import { BaseConfigReader, PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
-const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+const darklua: WorkspaceSpec = { ...luau, darkluaConfig: ".darklua.json" };
 const rbxts: WorkspaceSpec = withRobloxTs(
 	{ ...luau, language: "roblox-ts" },
 	{ outDir: "out", tsconfigHasInclude: true }
 );
 
-const choices: PlaceChoices = { name: "lobby", folder: "places/lobby" };
+const choices = { name: "lobby", folder: "places/lobby" };
 
 const plan = (
 	spec: WorkspaceSpec,
@@ -27,15 +32,16 @@ const plan = (
 	const target = directoryOf({ workspace: spec, existing: existingFiles });
 	const { workspace } = target;
 	return planOf(
-		PlaceSetup.within(
+		new PlaceSetup(
 			target,
-			{
-				language: workspace.language,
-				darklua: workspace.usesDarklua,
-				base,
-			},
-			choices
+			new InitQuestions(new MockPromptService([], false))
 		),
+		{
+			...choices,
+			language: workspace.language,
+			darklua: workspace.detectedDarklua,
+			base,
+		},
 		target
 	).map(legacyPlan);
 };
@@ -197,7 +203,7 @@ describe("PlaceSetup", () => {
 			const { configs, tsconfig } = written(
 				plan(
 					withRobloxTs(
-						{ ...rbxts, usesDarklua: true },
+						{ ...rbxts, darkluaConfig: ".darklua.json" },
 						{ outDir: "build" }
 					),
 					{ rootDirs: ["src"], syncDir: "dist" }
@@ -206,6 +212,20 @@ describe("PlaceSetup", () => {
 
 			expect(tsconfig.compilerOptions.outDir).toBe("build/lobby");
 			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+		});
+
+		it("should sync from Darklua's output when Darklua processes compiled code and its config sets no sync dir", () => {
+			const { configs, nextSteps } = written(
+				plan(
+					{ ...rbxts, darkluaConfig: ".darklua.json" },
+					{ rootDirs: ["src"] }
+				)
+			);
+
+			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(nextSteps.darklua).toEqual([
+				"darklua process out/lobby dist/lobby",
+			]);
 		});
 
 		it("should say how to compile, watch and serve the place", () => {
@@ -239,7 +259,7 @@ describe("PlaceSetup", () => {
 		it("should say what Darklua must process on top", () => {
 			const { nextSteps } = written(
 				plan(
-					{ ...rbxts, usesDarklua: true },
+					{ ...rbxts, darkluaConfig: ".darklua.json" },
 					{ rootDirs: ["src"], syncDir: "dist" }
 				)
 			);
@@ -286,5 +306,72 @@ describe("PlaceSetup", () => {
 				path.join(directory, "tsconfig.lobby.json"),
 			]);
 		});
+	});
+});
+
+describe("BaseConfigReader", () => {
+	let fs: MemoryFileSystemService;
+
+	const write = (file: string, content: unknown) =>
+		fs.writeFile(path.join(directory, file), JSON.stringify(content));
+
+	const readBase = (entries: readonly string[] = ["default.rogen.json"]) =>
+		new BaseConfigReader(
+			new CoreConfigService(
+				fs,
+				new MockEnvironmentService({ _: [] }, directory)
+			),
+			directory
+		).read(new Set(entries));
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory(directory);
+	});
+
+	it("should read the root dirs of default.rogen.json relative to the directory", async () => {
+		await write("default.rogen.json", { rootDirs: ["src", "shared"] });
+
+		expect((await readBase()).unwrap()).toEqual({
+			rootDirs: ["src", "shared"],
+		});
+	});
+
+	it("should read the resolved value through extends", async () => {
+		await write("default.rogen.json", {
+			extends: "./core.rogen.json",
+			syncDir: "dist",
+		});
+		await write("core.rogen.json", { rootDirs: ["core"] });
+
+		expect((await readBase()).unwrap()).toEqual({
+			rootDirs: ["core"],
+			syncDir: "dist",
+		});
+	});
+
+	it("should take the sync dir from the synced config when default is source-rooted", async () => {
+		await write("default.rogen.json", { rootDirs: ["src"] });
+		await write("sync.rogen.json", {
+			extends: "./default.rogen.json",
+			syncDir: "dist",
+		});
+
+		expect(
+			(await readBase(["default.rogen.json", "sync.rogen.json"])).unwrap()
+		).toEqual({ rootDirs: ["src"], syncDir: "dist" });
+	});
+
+	it("should fail with diagnostics when default.rogen.json is broken", async () => {
+		await fs.writeFile(
+			path.join(directory, "default.rogen.json"),
+			"{ nope"
+		);
+
+		const result = await readBase();
+
+		expect(
+			(result as ResultError<Diagnostic[]>).error.length
+		).toBeGreaterThan(0);
 	});
 });

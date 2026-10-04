@@ -6,6 +6,7 @@ import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-ser
 import {
 	ResolvedConfigSpec,
 	mockConfig,
+	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import {
 	SourcemapNode,
@@ -114,7 +115,9 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
 		});
-		const [build] = await buildServiceOf(fileSystem, index).run([config]);
+		const build = (
+			await buildServiceOf(fileSystem, index).build(selectionOf(config))
+		).unwrap()[0];
 		expect(build.outcome).toBe("wrote");
 	};
 

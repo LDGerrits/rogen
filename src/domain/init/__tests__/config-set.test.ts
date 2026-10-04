@@ -6,6 +6,7 @@ import { directoryOf } from "./init-fixtures.js";
 
 const luau = workspaceOf().languageFor("luau");
 const robloxTs = workspaceOf().languageFor("roblox-ts");
+const darklua = new Darklua();
 
 describe("ConfigSet.syncStemOf", () => {
 	it("should call default's synced config sync", () => {
@@ -19,7 +20,7 @@ describe("ConfigSet.syncStemOf", () => {
 
 describe("ConfigSet", () => {
 	describe("without a processor", () => {
-		const set = new ConfigSet("default", luau, false);
+		const set = new ConfigSet("default", luau, undefined);
 
 		it("should write one config, and serve it", () => {
 			expect(set.sourced).toBe(false);
@@ -35,7 +36,7 @@ describe("ConfigSet", () => {
 	});
 
 	describe("with Darklua reading the root dirs", () => {
-		const set = new ConfigSet("game", luau, true);
+		const set = new ConfigSet("game", luau, darklua);
 
 		it("should write the named config first, then the synced one", () => {
 			expect(set.sourced).toBe(true);
@@ -61,7 +62,7 @@ describe("ConfigSet", () => {
 
 	describe("with a compiler", () => {
 		it("should write one config even when Darklua reads the compiler's output", () => {
-			const set = new ConfigSet("default", robloxTs, true);
+			const set = new ConfigSet("default", robloxTs, darklua);
 
 			expect(set.sourced).toBe(false);
 			expect(set.configFiles).toEqual(["default.rogen.json"]);
@@ -70,14 +71,14 @@ describe("ConfigSet", () => {
 
 	describe("placeFiles", () => {
 		it("should be the place's config and project file", () => {
-			expect(new ConfigSet("lobby", luau, false).placeFiles).toEqual([
+			expect(new ConfigSet("lobby", luau, undefined).placeFiles).toEqual([
 				"lobby.rogen.json",
 				"lobby.project.json",
 			]);
 		});
 
 		it("should add the synced config of a sourced place", () => {
-			expect(new ConfigSet("lobby", luau, true).placeFiles).toEqual([
+			expect(new ConfigSet("lobby", luau, darklua).placeFiles).toEqual([
 				"lobby.rogen.json",
 				"lobby-sync.rogen.json",
 				"lobby.project.json",
@@ -85,7 +86,9 @@ describe("ConfigSet", () => {
 		});
 
 		it("should add the compiler's own per-place files", () => {
-			expect(new ConfigSet("lobby", robloxTs, false).placeFiles).toEqual([
+			expect(
+				new ConfigSet("lobby", robloxTs, undefined).placeFiles
+			).toEqual([
 				"lobby.rogen.json",
 				"tsconfig.lobby.json",
 				"lobby.project.json",
@@ -169,24 +172,20 @@ describe("ConfigSet naming", () => {
 		});
 	});
 
-	describe("syncDirBy", () => {
-		const darklua = new Darklua();
-
+	describe("syncDir", () => {
 		it("should be Darklua's output when Darklua processes the code", () => {
-			expect(new ConfigSet("game", luau, true).syncDirBy(darklua)).toBe(
-				"dist"
-			);
+			expect(new ConfigSet("game", luau, darklua).syncDir).toBe("dist");
 		});
 
 		it("should be the compiler's output when there is one", () => {
-			expect(
-				new ConfigSet("game", robloxTs, false).syncDirBy(darklua)
-			).toBe("out");
+			expect(new ConfigSet("game", robloxTs, undefined).syncDir).toBe(
+				"out"
+			);
 		});
 
 		it("should be none for plain Luau", () => {
 			expect(
-				new ConfigSet("game", luau, false).syncDirBy(darklua)
+				new ConfigSet("game", luau, undefined).syncDir
 			).toBeUndefined();
 		});
 	});
@@ -212,7 +211,7 @@ describe("ConfigSet planning", () => {
 	describe("planConfigs", () => {
 		it("should write one config that carries the sync dir", () => {
 			const plan = planned((builder) =>
-				new ConfigSet("game", robloxTs, false).planConfigs(
+				new ConfigSet("game", robloxTs, undefined).planConfigs(
 					builder,
 					own,
 					"out"
@@ -227,7 +226,7 @@ describe("ConfigSet planning", () => {
 
 		it("should leave out the sync dir when there is none", () => {
 			const plan = planned((builder) =>
-				new ConfigSet("game", luau, false).planConfigs(builder, own)
+				new ConfigSet("game", luau, undefined).planConfigs(builder, own)
 			);
 
 			expect(configsOf(plan)["game.rogen.json"]).not.toHaveProperty(
@@ -237,7 +236,7 @@ describe("ConfigSet planning", () => {
 
 		it("should move the sync dir to the synced config beside a sourced one", () => {
 			const plan = planned((builder) =>
-				new ConfigSet("game", luau, true).planConfigs(
+				new ConfigSet("game", luau, darklua).planConfigs(
 					builder,
 					own,
 					"dist"
@@ -264,13 +263,13 @@ describe("ConfigSet planning", () => {
 				set.planSteps(builder, target, {
 					compileCommand,
 					processed: ["src"],
-					syncDir: set.syncDirBy(target.workspace.darklua),
+					syncDir: set.syncDir,
 				})
 			).nextSteps;
 
 		it("should run the compile, watch and serve commands in turn", () => {
 			expect(
-				steps(new ConfigSet("game", luau, false), "rbxtsc -w").run
+				steps(new ConfigSet("game", luau, undefined), "rbxtsc -w").run
 			).toEqual([
 				"rbxtsc -w",
 				"rogen watch game",
@@ -279,14 +278,14 @@ describe("ConfigSet planning", () => {
 		});
 
 		it("should have no compile command for plain Luau", () => {
-			expect(steps(new ConfigSet("game", luau, false)).run).toEqual([
+			expect(steps(new ConfigSet("game", luau, undefined)).run).toEqual([
 				"rogen watch game",
 				"rojo serve game.project.json",
 			]);
 		});
 
 		it("should watch both configs of a sourced set and serve the synced one", () => {
-			const { run } = steps(new ConfigSet("game", luau, true));
+			const { run } = steps(new ConfigSet("game", luau, darklua));
 
 			expect(run.slice(0, 2)).toEqual([
 				"rogen watch game game-sync",
@@ -295,9 +294,11 @@ describe("ConfigSet planning", () => {
 		});
 
 		it("should process the dirs into the sync dir when Darklua is used", () => {
-			const { darklua } = steps(new ConfigSet("game", luau, true));
+			const { darklua: commands } = steps(
+				new ConfigSet("game", luau, darklua)
+			);
 
-			expect(darklua).toEqual(
+			expect(commands).toEqual(
 				target.workspace.darklua.processCommands(
 					target.path,
 					["src"],
@@ -307,7 +308,7 @@ describe("ConfigSet planning", () => {
 		});
 
 		it("should keep a sourced set's sourcemap current", () => {
-			const { run } = steps(new ConfigSet("game", luau, true));
+			const { run } = steps(new ConfigSet("game", luau, darklua));
 
 			expect(run).toContain(
 				target.workspace.darklua.sourcemapCommand("game.project.json")
@@ -315,9 +316,9 @@ describe("ConfigSet planning", () => {
 		});
 
 		it("should have no Darklua commands without Darklua", () => {
-			expect(steps(new ConfigSet("game", luau, false)).darklua).toEqual(
-				[]
-			);
+			expect(
+				steps(new ConfigSet("game", luau, undefined)).darklua
+			).toEqual([]);
 		});
 	});
 });

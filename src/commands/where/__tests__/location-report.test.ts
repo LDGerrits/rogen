@@ -1,12 +1,28 @@
-import { FileLocation } from "../../../domain/build/build-service.js";
+import { FileLocation, InstanceLocation } from "../../../domain/build/build.js";
+import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import { LocationReport } from "../location-report.js";
 
-const describe1 = (location: FileLocation) => {
-	const report = new LocationReport("/repo");
-	report.add("default", [location]);
-	return report.lines()[0];
-};
+/** A report of what each labelled config said; `everyFile` when no path was asked about. */
+const reportOf = (
+	configs: [
+		label: string,
+		files: FileLocation[],
+		instances?: InstanceLocation[],
+	][],
+	everyFile = false
+) =>
+	new LocationReport("/repo", {
+		everyFile,
+		configs: configs.map(([label, files, instances = []]) => ({
+			config: mockConfig({ file: `/repo/${label}.rogen.json` }),
+			files,
+			instances,
+		})),
+	});
+
+const describe1 = (location: FileLocation) =>
+	reportOf([["default", [location]]]).lines()[0];
 
 describe("LocationReport", () => {
 	describe("a location", () => {
@@ -130,14 +146,7 @@ describe("LocationReport", () => {
 			status: "missing",
 			source: `/repo/${name}`,
 		});
-		const report = (
-			configs: [label: string, locations: FileLocation[]][]
-		) => {
-			const built = new LocationReport("/repo");
-			for (const [label, locations] of configs)
-				built.add(label, locations);
-			return built;
-		};
+		const report = reportOf;
 
 		it("should print one config's lines as they are", () => {
 			expect(report([["default", [outside("a")]]]).lines()).toEqual([
@@ -184,12 +193,15 @@ describe("LocationReport", () => {
 			).toEqual(["b -> does not exist", "a -> does not exist"]);
 		});
 
-		it("should sort the paths when asked to", () => {
+		it("should sort the paths when every file was asked about", () => {
 			expect(
-				report([
-					["default", [missing("b")]],
-					["lobby", [outside("a")]],
-				]).lines(true)
+				report(
+					[
+						["default", [missing("b")]],
+						["lobby", [outside("a")]],
+					],
+					true
+				).lines()
 			).toEqual([
 				"lobby: a -> outside the root dirs",
 				"default: b -> does not exist",
@@ -199,9 +211,7 @@ describe("LocationReport", () => {
 
 	describe("json", () => {
 		const jsonOf = (location: FileLocation) => {
-			const report = new LocationReport("/repo");
-			report.add("default", [location]);
-			return report.json();
+			return reportOf([["default", [location]]]).json();
 		};
 
 		it("should give the config, the source, the instance path, the route and how it matched", () => {
@@ -286,7 +296,6 @@ describe("LocationReport", () => {
 		});
 
 		it("should say when no file places an instance, and list the files that do", () => {
-			const report = new LocationReport("/repo");
 			const placed: FileLocation = {
 				status: "placed",
 				source: "/repo/src/Save.luau",
@@ -295,24 +304,26 @@ describe("LocationReport", () => {
 				routeMatch: "folder",
 				tags: [],
 			};
-			report.add(
-				"default",
-				[],
+			const report = reportOf([
 				[
-					{
-						reference: InstanceReference.parse(
-							"ServerScriptService.Save"
-						)!,
-						files: [placed],
-					},
-					{
-						reference: InstanceReference.parse(
-							"ServerScriptService.Gone"
-						)!,
-						files: [],
-					},
-				]
-			);
+					"default",
+					[],
+					[
+						{
+							reference: InstanceReference.parse(
+								"ServerScriptService.Save"
+							)!,
+							files: [placed],
+						},
+						{
+							reference: InstanceReference.parse(
+								"ServerScriptService.Gone"
+							)!,
+							files: [],
+						},
+					],
+				],
+			]);
 
 			expect(
 				report.json().map(({ config: _config, ...rest }) => rest)
@@ -326,9 +337,12 @@ describe("LocationReport", () => {
 		});
 
 		it("should give each config its own entry however many agree", () => {
-			const report = new LocationReport("/repo");
-			for (const label of ["default", "lobby"])
-				report.add(label, [{ status: "outside", source: "/repo/a" }]);
+			const report = reportOf(
+				["default", "lobby"].map((label) => [
+					label,
+					[{ status: "outside", source: "/repo/a" }],
+				])
+			);
 
 			expect(report.json().map(({ config }) => config)).toEqual([
 				"default",
@@ -336,21 +350,22 @@ describe("LocationReport", () => {
 			]);
 		});
 
-		it("should sort the sources when asked to, and keep the order given otherwise", () => {
-			const report = new LocationReport("/repo");
-			report.add("default", [
+		it("should sort the sources when every file was asked about, and keep the order given otherwise", () => {
+			const files: FileLocation[] = [
 				{ status: "missing", source: "/repo/b" },
 				{ status: "missing", source: "/repo/a" },
-			]);
+			];
 
-			expect(report.json().map(({ source }) => source)).toEqual([
-				"/repo/b",
-				"/repo/a",
-			]);
-			expect(report.json(true).map(({ source }) => source)).toEqual([
-				"/repo/a",
-				"/repo/b",
-			]);
+			expect(
+				reportOf([["default", files]])
+					.json()
+					.map(({ source }) => source)
+			).toEqual(["/repo/b", "/repo/a"]);
+			expect(
+				reportOf([["default", files]], true)
+					.json()
+					.map(({ source }) => source)
+			).toEqual(["/repo/a", "/repo/b"]);
 		});
 	});
 });

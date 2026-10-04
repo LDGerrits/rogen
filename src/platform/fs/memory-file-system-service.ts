@@ -189,17 +189,37 @@ export class MemoryFileSystemService
 			);
 		}
 		return Array.from((node as DirectoryNode).entries.entries()).map(
-			([name, child]) => [name, this._typeOf(child)]
+			([name, child]): [string, FileType] => [
+				name,
+				this._leadsBack(filePath, child)
+					? FileType.SymbolicLink
+					: this._typeOf(child),
+			]
 		);
 	}
 
+	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */
+	private _leadsBack(dirPath: string, child: Node): boolean {
+		if (child.type !== FileType.SymbolicLink) return false;
+		if (this._lookup(child.target)?.type !== FileType.Directory)
+			return false;
+		const real = this._walk(child.target, true).realParts.join("/");
+		const parts = splitPath(dirPath);
+		for (let length = parts.length; length >= 0; length--) {
+			const ancestor = this._walk(parts.slice(0, length).join("/"), true);
+			if (ancestor.realParts.join("/") === real) return true;
+		}
+		return false;
+	}
+
 	async createDirectory(filePath: string): Promise<void> {
-		const parts = toPosix(filePath).split("/").filter(Boolean);
+		const parts = splitPath(filePath);
+		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
 		let current: Node = this.root;
 		let currentPath = "";
 
 		for (const part of parts) {
-			currentPath += (currentPath ? "/" : "") + part;
+			currentPath += (currentPath ? "/" : leading) + part;
 
 			let child: Node | undefined = (
 				current as DirectoryNode
@@ -219,10 +239,13 @@ export class MemoryFileSystemService
 					? this._lookup(child.target)
 					: child;
 			if (resolved?.type !== FileType.Directory) {
-				throw mockFsError(
-					"EEXIST",
-					`EEXIST: file already exists, mkdir '${currentPath}'`
-				);
+				const last = part === parts[parts.length - 1];
+				throw last
+					? mockFsError(
+							"EEXIST",
+							`EEXIST: file already exists, mkdir '${currentPath}'`
+						)
+					: walkError("ENOTDIR", "mkdir", currentPath);
 			}
 			current = resolved;
 		}
@@ -240,8 +263,12 @@ export class MemoryFileSystemService
 	}
 
 	async writeFile(filePath: string, content: string): Promise<void> {
-		const parent = this._lookupParent(filePath, true);
-		const name = toPosix(filePath).split("/").pop()!;
+		const parts = splitPath(filePath);
+		const name = parts.pop()!;
+		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
+		const dir = leading + parts.join("/");
+		if (!(await this.exists(dir))) await this.createDirectory(dir);
+		const parent = this._lookupParent(filePath);
 
 		const node = parent.entries.get(name);
 		if (node?.type === FileType.SymbolicLink) {
@@ -265,10 +292,11 @@ export class MemoryFileSystemService
 	}
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
-		const parent = this._lookupParent(filePath);
-		const name = toPosix(filePath).split("/").pop()!;
+		const parts = splitPath(filePath);
+		const name = parts.pop();
+		const parent = this._lookup(parts.join("/"));
+		if (!name || parent?.type !== FileType.Directory) return;
 		const target = parent.entries.get(name);
-
 		if (!target) return;
 
 		if (target.type === FileType.Directory && !recursive) {

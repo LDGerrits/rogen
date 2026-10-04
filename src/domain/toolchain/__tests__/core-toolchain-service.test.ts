@@ -38,7 +38,7 @@ describe("CoreToolchainService.detect", () => {
 				"roblox-ts",
 			]);
 			expect(workspace).toMatchObject({
-				usesDarklua: false,
+				darkluaConfig: undefined,
 				codeFolders: [],
 				hasSrc: false,
 				packageDirs: new Set(),
@@ -53,20 +53,29 @@ describe("CoreToolchainService.detect", () => {
 			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language.id).toBe("roblox-ts");
-			expect(workspace.usesDarklua).toBe(false);
+			expect(workspace.darkluaConfig).toBeUndefined();
 		});
 
 		it.each([".darklua.json", ".darklua.json5"])(
-			"should detect darklua from %s",
+			"should detect darklua from %s, and name the file",
 			async (file) => {
 				await write(file);
 
 				const workspace = await toolchain().detect(cwd);
 
 				expect(workspace.language.id).toBe("luau");
-				expect(workspace.usesDarklua).toBe(true);
+				expect(workspace.darkluaConfig).toBe(file);
 			}
 		);
+
+		it("should name .darklua.json when both configs exist, as Darklua reads it first", async () => {
+			await write(".darklua.json5");
+			await write(".darklua.json");
+
+			const workspace = await toolchain().detect(cwd);
+
+			expect(workspace.darkluaConfig).toBe(".darklua.json");
+		});
 
 		it("should report roblox-ts and darklua together", async () => {
 			await write("tsconfig.json", "{}");
@@ -75,7 +84,7 @@ describe("CoreToolchainService.detect", () => {
 			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language.id).toBe("roblox-ts");
-			expect(workspace.usesDarklua).toBe(true);
+			expect(workspace.darkluaConfig).toBe(".darklua.json");
 		});
 	});
 
@@ -335,9 +344,9 @@ describe("CoreToolchainService.detect", () => {
 describe("CoreToolchainService", () => {
 	const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
-	describe("getSyncTools", () => {
+	describe("syncTools", () => {
 		it("should list Darklua and roblox-ts", () => {
-			expect(toolchain.getSyncTools().map(({ id }) => id)).toEqual([
+			expect(toolchain.syncTools.map(({ id }) => id)).toEqual([
 				"darklua",
 				"roblox-ts",
 			]);

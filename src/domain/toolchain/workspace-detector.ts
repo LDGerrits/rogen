@@ -32,7 +32,7 @@ export class WorkspaceDetector {
 	) {}
 
 	async detect(cwd: string): Promise<DetectedWorkspace> {
-		const [languages, usesDarklua, packages, hasSrc, places] =
+		const [languages, darkluaConfig, packages, hasSrc, places] =
 			await Promise.all([
 				Promise.all(
 					this.languages.map((detector) => detector.detect(cwd))
@@ -51,7 +51,7 @@ export class WorkspaceDetector {
 		return new DetectedWorkspace({
 			darklua: this.darklua,
 			languages,
-			usesDarklua,
+			darkluaConfig,
 			codeFolders,
 			hasSrc,
 			packageManager: packages.packageManager,

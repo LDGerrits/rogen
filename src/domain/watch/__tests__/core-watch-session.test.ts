@@ -6,8 +6,12 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
+import {
+	ConfigSelection,
+	buildableConfig,
+} from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { OutputFile } from "../../build/build-service.js";
+import { OutputFile } from "../../build/build.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
@@ -19,6 +23,7 @@ describe("CoreWatchSession", () => {
 	let fs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
+	let selection: ConfigSelection;
 	let store: DisposableStore;
 	let updates: WatchUpdate[];
 	let errors: Error[];
@@ -63,13 +68,14 @@ describe("CoreWatchSession", () => {
 		updates.filter(({ cause }) => cause.kind === "change");
 
 	const start = async (names: string[] = []) => {
-		await configService.initialize({ names, paths: [] });
+		selection = (
+			await configService.select({ _: ["watch", ...names] })
+		).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
+				selection,
 				watcher,
-				new NullLogService(),
-				configService,
 				indexService,
 				buildServiceOf(fs, indexService)
 			)
@@ -100,7 +106,6 @@ describe("CoreWatchSession", () => {
 		jest.restoreAllMocks();
 		await watcher.stop();
 		store[Symbol.dispose]();
-		configService[Symbol.dispose]();
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();
 	});
@@ -158,7 +163,7 @@ describe("CoreWatchSession", () => {
 			new Set(["config.invalidSyntax"])
 		);
 		expect(updates[1].reports).toEqual([]);
-		expect(configService.configs[0].resolved).toBeDefined();
+		expect(buildableConfig(selection.entries[0])).toBeDefined();
 	});
 
 	it("should report every diagnostic of a rebuild, new or not", async () => {
@@ -251,16 +256,31 @@ describe("CoreWatchSession", () => {
 		expect(updates[1].reports[0].outcome).toBe("wrote");
 	});
 
-	it("should report a config with no problems, so a fixed one is forgotten", async () => {
+	it("should report a config's errors again once it breaks again after a fix", async () => {
 		await start();
 		await fs.writeFile("/repo/default.rogen.json", "{ broken");
 		await settle();
 		await writeConfig("/repo/default.rogen.json", {});
 		await settle();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
 
-		const notice = updates[updates.length - 1].notices[0];
-		expect(notice.file).toBe("/repo/default.rogen.json");
-		expect(notice.errors).toEqual([]);
+		const notices = updates.flatMap((update) => update.notices);
+		expect(notices.map(({ file }) => file)).toEqual([
+			"/repo/default.rogen.json",
+			"/repo/default.rogen.json",
+		]);
+		expect(notices[1].errors).toEqual(notices[0].errors);
+	});
+
+	it("should not report a config's errors again while it stays broken the same way", async () => {
+		await start();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
+
+		expect(updates.flatMap((update) => update.notices)).toHaveLength(1);
 	});
 
 	describe("a reload that makes two configs write one file", () => {
@@ -699,7 +719,7 @@ describe("CoreWatchSession", () => {
 	describe("hot reload", () => {
 		it("should reload when a config changes", async () => {
 			await start();
-			const reload = jest.spyOn(configService, "reload");
+			const reload = jest.spyOn(selection, "reload");
 
 			await write(
 				"/repo/default.rogen.json",
@@ -720,7 +740,7 @@ describe("CoreWatchSession", () => {
 				config({ template: "template.project.json" })
 			);
 			await start();
-			const reload = jest.spyOn(configService, "reload");
+			const reload = jest.spyOn(selection, "reload");
 
 			await write("/repo/template.project.json", {
 				name: "two",
@@ -739,7 +759,7 @@ describe("CoreWatchSession", () => {
 		it("should not reload when an unrelated config changes", async () => {
 			await write("/repo/other.rogen.json", config());
 			await start();
-			const reload = jest.spyOn(configService, "reload");
+			const reload = jest.spyOn(selection, "reload");
 
 			await write("/repo/other.rogen.json", config({ exclude: ["x"] }));
 			await settle();

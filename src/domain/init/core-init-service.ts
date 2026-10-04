@@ -4,15 +4,15 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { configFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { Addition, InitQuestions } from "./init-questions.js";
+import { InitQuestions } from "./init-questions.js";
 import { InitPlan, InitService } from "./init-service.js";
-import { PlaceSetup } from "./place-setup.js";
+import { BaseConfigReader, PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
 import { VariantSetup } from "./variant-setup.js";
 
@@ -58,6 +58,11 @@ export class CoreInitService implements InitService {
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
+		const base = entries.has(configFileName(DEFAULT_CONFIG_STEM))
+			? await new BaseConfigReader(this.configService, directory).read(
+					entries
+				)
+			: undefined;
 
 		return ok(
 			new InitDirectory(
@@ -66,8 +71,7 @@ export class CoreInitService implements InitService {
 				await this.toolchainService.detect(directory),
 				names.length > 0 ? name.value : undefined,
 				name.value,
-				this.fileSystemService,
-				this.configService
+				base
 			)
 		);
 	}
@@ -88,14 +92,46 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
-		const setup = await this.chooseSetup(directory);
-		if (!setup) return ok(undefined);
+		// A new project when there is no `default.rogen.json` yet, otherwise what the user says to add beside it.
+		const project = () =>
+			this.planWith(
+				new ProjectSetup(
+					directory,
+					this.questions,
+					this.fileSystemService
+				),
+				directory
+			);
+		if (!directory.hasDefaultConfig) return project();
+		switch (await this.questions.whatToAdd()) {
+			case undefined:
+				return ok(undefined);
+			case "place":
+				return this.planWith(
+					new PlaceSetup(directory, this.questions),
+					directory
+				);
+			case "variant":
+				return this.planWith(
+					new VariantSetup(directory, this.questions),
+					directory
+				);
+			case "separate":
+				return project();
+		}
+	}
+
+	/** Asks `setup` its questions, then plans what the answers write. */
+	private async planWith<C>(
+		setup: Setup<C>,
+		directory: InitDirectory
+	): Promise<Result<InitPlan | undefined, Error>> {
 		const asked = await setup.ask();
 		if (asked.isErr()) return err(new DiagnosticsError(asked.error));
-		if (!asked.value) return ok(undefined);
+		if (asked.value === undefined) return ok(undefined);
 
 		const builder = new InitPlanBuilder(directory);
-		setup.plan(builder);
+		setup.plan(asked.value, builder);
 		const plan = builder.build();
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
@@ -122,22 +158,5 @@ export class CoreInitService implements InitService {
 			onWritten(fileName);
 		}
 		return ok(undefined);
-	}
-
-	/** A new project when there is no `default.rogen.json` yet, otherwise what the user says to add beside it. */
-	private async chooseSetup(
-		directory: InitDirectory
-	): Promise<Setup | undefined> {
-		const project = () => new ProjectSetup(directory, this.questions);
-		if (!directory.hasDefaultConfig) return project();
-
-		const addition = await this.questions.whatToAdd();
-		if (addition === undefined) return undefined;
-		const setups: Record<Addition, () => Setup> = {
-			place: () => PlaceSetup.standalone(directory, this.questions),
-			variant: () => new VariantSetup(directory, this.questions),
-			separate: project,
-		};
-		return setups[addition]();
 	}
 }

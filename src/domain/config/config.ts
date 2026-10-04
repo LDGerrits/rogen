@@ -1,5 +1,5 @@
 import path from "path";
-import { safeStringify } from "../../base/json.js";
+import { formatJsonFile, safeStringify } from "../../base/json.js";
 import { commonAncestor, isInside } from "../../base/path.js";
 import { Target } from "../roblox/roblox.js";
 import {
@@ -50,6 +50,11 @@ export const SCHEMA_URL = schemaUrlFor("2.0.0");
 export function schemaUrlFor(version: string): string {
 	const channel = version.includes("-") ? version : version.split(".")[0];
 	return `${SCHEMA_BASE_URL}/${channel}/rogen.json`;
+}
+
+/** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */
+export function configFileContent(config: RogenConfig): string {
+	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 
 /** How a root dir overlaps another of `rootDirs`; a file under both would belong to both. */
@@ -167,6 +172,10 @@ export class ResolvedTemplate {
 export interface ResolvedConfigFields {
 	/** The config file itself, the leaf of its `extends` chain. */
 	readonly file: string;
+	/** The configs it extends, the nearest first. */
+	readonly parents: readonly string[];
+	/** Tags turned on or off from the command line that this config doesn't declare. */
+	readonly skippedTags: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
@@ -182,6 +191,8 @@ export interface ResolvedConfigFields {
 /** A config with its layers merged and validated: every path is absolute and every route target is parsed. */
 export class ResolvedConfig {
 	readonly file: string;
+	readonly parents: readonly string[];
+	readonly skippedTags: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
@@ -194,6 +205,8 @@ export class ResolvedConfig {
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
+		this.parents = fields.parents;
+		this.skippedTags = fields.skippedTags;
 		this.name = fields.name;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;

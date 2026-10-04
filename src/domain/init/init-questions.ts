@@ -28,40 +28,6 @@ export interface PlacesQuestion {
 	readonly reserved: ReadonlySet<string>;
 }
 
-/** The wording of the questions for one language. */
-interface LanguageCopy {
-	readonly label: string;
-	/** The language question's hint when the workspace uses this language. */
-	readonly detectedHint?: string;
-	/** Added to the packages question's description. */
-	readonly packagesNote?: string;
-	/** Only for a language whose compiler reads a single root dir. */
-	readonly rootDir?: {
-		readonly description: string;
-		readonly severalProblem: string;
-	};
-}
-
-const LANGUAGE_COPY: Readonly<Record<string, LanguageCopy>> = {
-	luau: { label: "Luau" },
-	"roblox-ts": {
-		label: "roblox-ts",
-		detectedHint: "found tsconfig.json",
-		packagesNote: "include and @rbxts are always mounted.",
-		rootDir: {
-			description:
-				"The folder roblox-ts compiles (rootDir in tsconfig.json).",
-			severalProblem:
-				"roblox-ts compiles one folder. For code per place, set up several places.",
-		},
-	},
-};
-
-const copyOf = ({ id }: Language): LanguageCopy =>
-	LANGUAGE_COPY[id] ?? { label: id };
-
-const DARKLUA_DETECTED_HINT = "found .darklua.json";
-
 const required = (what: string) => (value: string) =>
 	value.trim() === "" ? `Enter ${what}.` : undefined;
 
@@ -169,10 +135,10 @@ export class InitQuestions {
 			message: "Language",
 			choices: workspace.languages.map((language) => ({
 				value: language.id,
-				label: copyOf(language).label,
+				label: language.copy.label,
 				hint:
 					language.id === workspace.language.id
-						? copyOf(language).detectedHint
+						? language.copy.detectedHint
 						: undefined,
 			})),
 			initialValue: workspace.language.id,
@@ -182,13 +148,14 @@ export class InitQuestions {
 
 	/** Whether Darklua processes the code, as it does when the workspace has a config for it. */
 	darklua({ workspace }: InitDirectory): Promise<boolean | undefined> {
-		if (!this.interactive) return Promise.resolve(workspace.usesDarklua);
+		const found = workspace.darkluaConfig !== undefined;
+		if (!this.interactive) return Promise.resolve(found);
 		return this.promptService.confirm({
 			message: "Does Darklua process your code before Rojo syncs it?",
 			description:
 				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: workspace.usesDarklua ? DARKLUA_DETECTED_HINT : undefined,
-			initialValue: workspace.usesDarklua,
+			hint: found ? `found ${workspace.darkluaConfig}` : undefined,
+			initialValue: found,
 		});
 	}
 
@@ -201,7 +168,7 @@ export class InitQuestions {
 		if (!this.interactive) return [placeholder];
 
 		const { compiler } = language;
-		const copy = copyOf(language).rootDir;
+		const copy = language.copy.rootDir;
 		const answer = await this.promptService.text({
 			message: compiler ? "Root dir" : "Root dirs",
 			description: compiler
@@ -347,7 +314,7 @@ export class InitQuestions {
 			message: "Packages",
 			description: [
 				"Folders placed in the game as they are. Rogen doesn't scan or route them.",
-				copyOf(language).packagesNote,
+				language.copy.packagesNote,
 			]
 				.filter(Boolean)
 				.join(" "),

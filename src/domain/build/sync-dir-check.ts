@@ -10,9 +10,9 @@ import {
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
-import { MetaReplacement } from "../toolchain/toolchain.js";
 import { Placement } from "./placement.js";
 import { SyncLayout } from "./sync-layout.js";
+import { MetaReplacement } from "./build.js";
 
 const LISTED_PATHS = 3;
 
