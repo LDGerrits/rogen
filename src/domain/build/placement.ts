@@ -1,6 +1,10 @@
 import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { contains } from "../../base/path.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -159,6 +163,8 @@ export class Placer {
 
 	place(): Result<Placement, Diagnostic[]> {
 		const { keys } = this.config;
+		const mountsRootDir = this.mountsRootDir();
+		if (mountsRootDir.length > 0) return err(mountsRootDir);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
 		const { routed, unrouted } = new Router(
@@ -196,8 +202,30 @@ export class Placer {
 
 	/** Reads the root dirs from the index, in `rootDirs` order, which decides clashes between them. */
 	private scan(): ScannedRoot[] {
-		const scanner = new RootScanner(this.index, this.config.exclude);
+		const scanner = new RootScanner(
+			this.index,
+			this.config.exclude,
+			this.template.mounts
+		);
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
+	}
+
+	/** A template `$path` at a root dir or above one would hand the whole root dir to Rojo, leaving Rogen nothing to place there. */
+	private mountsRootDir(): Diagnostic[] {
+		const { template, rootDirs } = this.config;
+		if (!template) return [];
+		return this.template.mounts.flatMap(({ path: mounted, node }) => {
+			const rootDir = rootDirs.find((dir) => contains(mounted, dir));
+			return rootDir === undefined
+				? []
+				: [
+						errorDiagnostic(
+							"template.mountsRootDir",
+							{ resource: template.file },
+							`"${instanceKey(node)}" mounts ${mounted === rootDir ? `the root dir ${rootDir}` : `${mounted}, which holds the root dir ${rootDir}`}, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the root dir, or remove the root dir from "rootDirs".`
+						),
+					];
+		});
 	}
 
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */

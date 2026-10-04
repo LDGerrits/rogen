@@ -34,7 +34,7 @@ A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `ext
 - `extends` merges `routes` and `variants` key by key, and the child replaces lists and strings. `outFile` and `$schema` are never inherited. A child can't remove anything, so invert the chain instead.
 - Several `rootDirs` merge into one tree, and the later one wins a clash. A place is a config that extends `default` and adds its own directory: `"rootDirs": ["src", "places/lobby"]`. Add one with `rogen init <name> --json`.
 - `exclude` lists globs that are never built, such as `**/*.spec.luau`.
-- `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash.
+- `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash. A template `$path` into a root dir is Rojo's: Rogen skips that folder, so mount vendored code there to sync it as it is.
 - `syncDir` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
 - With Darklua in a Luau project, `source.rogen.json` has paths into `src` for Darklua's sourcemap, and `default.rogen.json` extends it with `"syncDir": "dist"` for `rojo serve`. Build both.
 

@@ -10,6 +10,7 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
 import { ScanLeftOut } from "./build.js";
+import { TemplateMount } from "./build-template.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
@@ -182,11 +183,12 @@ interface Walk {
 	readonly leftOut: Map<string, ScanLeftOut>;
 }
 
-/** Walks root dirs in the index, leaving out what `exclude` matches. */
+/** Walks root dirs in the index, leaving out what `exclude` matches and what the template mounts. */
 export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
-		private readonly exclude: readonly string[]
+		private readonly exclude: readonly string[],
+		private readonly mounts: readonly TemplateMount[] = []
 	) {}
 
 	scan(rootDir: string): ScannedRoot {
@@ -213,12 +215,17 @@ export class RootScanner {
 		);
 	}
 
+	private mountAt(absolutePath: string): TemplateMount | undefined {
+		const resolved = path.resolve(absolutePath);
+		return this.mounts.find((mount) => mount.path === resolved);
+	}
+
 	private excludingGlob(absolutePath: string): string | undefined {
 		const posixPath = toPosix(absolutePath);
 		return this.exclude.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that `exclude` doesn't match; the rest are recorded as excluded. */
+	/** The entries of `dir` that the template doesn't mount and `exclude` doesn't match; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,
@@ -226,8 +233,14 @@ export class RootScanner {
 	): [string, FileType][] {
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
+			const mount = this.mountAt(path.join(dir, name));
 			const glob = this.excludingGlob(path.join(dir, name));
-			if (glob)
+			if (mount)
+				walk.leftOut.set(joinPosix(dir, name), {
+					status: "mounted",
+					node: mount.node,
+				});
+			else if (glob)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "excluded",
 					pattern: glob,

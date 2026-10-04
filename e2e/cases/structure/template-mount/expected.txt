@@ -1,0 +1,26 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen where src/Vendor/Lib/Server/Thing.luau
+exit 0
+stdout:
+  src/Vendor/Lib/Server/Thing.luau -> mounted · the template mounts it at ReplicatedStorage/Vendor
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        Save: ModuleScript  <- src/Inventory/Save.luau
+    Vendor: Folder
+      Lib: ModuleScript  <- src/Vendor/Lib/init.luau
+        Server: Folder
+          Thing: ModuleScript  <- src/Vendor/Lib/Server/Thing.luau
+      Signal@1.2.0: ModuleScript  <- src/Vendor/Signal@1.2.0.luau

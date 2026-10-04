@@ -51,6 +51,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 			return `displaced · the template defines ${instanceKey(location.node)}`;
 		case "unrouted":
 			return "unrouted · no route matches it";
+		case "mounted":
+			return `mounted · the template mounts it at ${instanceKey(location.node)}`;
 		case "excluded":
 			// A glob keeps its slashes, which path.relative would turn into backslashes on Windows.
 			return `excluded · matches ${path.posix.relative(toPosix(cwd), location.pattern) || "."}`;
@@ -90,6 +92,8 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "replaced":
 			return { by: toNative(location.by) };
 		case "displaced":
+			return { node: location.node };
+		case "mounted":
 			return { node: location.node };
 		case "excluded":
 			return { pattern: location.pattern };

@@ -81,6 +81,18 @@ describe("LocationReport", () => {
 			);
 		});
 
+		it("should name the template node that mounts a path", () => {
+			expect(
+				describe1({
+					status: "mounted",
+					source: "/repo/src/Vendor/Lib.luau",
+					node: ["ReplicatedStorage", "Vendor"],
+				})
+			).toBe(
+				"src/Vendor/Lib.luau -> mounted · the template mounts it at ReplicatedStorage/Vendor"
+			);
+		});
+
 		it("should name the glob that excluded a path, relative to the working directory", () => {
 			expect(
 				describe1({

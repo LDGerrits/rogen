@@ -155,6 +155,33 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
+	it("should say the template mounts a file inside a folder it mounts", async () => {
+		await write("src/Vendor/Lib/Init.luau", "src/Save.luau");
+
+		expect(
+			await locate(["src/Vendor/Lib/Init.luau"], {
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Vendor: { $path: "src/Vendor" },
+							},
+						},
+					},
+				},
+			})
+		).toEqual([
+			{
+				status: "mounted",
+				source: abs("src/Vendor/Lib/Init.luau"),
+				node: ["ReplicatedStorage", "Vendor"],
+			},
+		]);
+	});
+
 	it("should name the file that replaced another at the same instance", async () => {
 		await write("src/Types.lua", "src/Types.luau");
 

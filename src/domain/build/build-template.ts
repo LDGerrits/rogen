@@ -1,10 +1,21 @@
 import path from "path";
 import { ResolvedConfig } from "../config/config.js";
 import { containerClassName } from "../roblox/roblox.js";
-import { RojoNode, RojoProject, RojoTree } from "../rojo/rojo-project.js";
+import {
+	RojoNode,
+	RojoProject,
+	RojoTree,
+	rojoPathTarget,
+} from "../rojo/rojo-project.js";
 import { SyncLayout } from "./sync-layout.js";
 
 const NO_TEMPLATE = new RojoProject({ tree: {} });
+
+/** A path on disk that the template mounts at `node`. */
+export interface TemplateMount {
+	readonly path: string;
+	readonly node: readonly string[];
+}
 
 /** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */
 function generatedContainer(instancePath: readonly string[]): RojoNode {
@@ -42,6 +53,16 @@ export class BuildTemplate {
 	/** Whether the template disables legacy scripts, which leaves scripts under the player containers without a run context. */
 	get disablesLegacyScripts(): boolean {
 		return this.config.template?.project.emitLegacyScripts === false;
+	}
+
+	/** Every path the template's own `$path`s mount, absolute, with the node that mounts it. Rojo reads these, not Rogen. */
+	get mounts(): TemplateMount[] {
+		const project = this.config.template?.project;
+		if (!project) return [];
+		return project.getPaths().map(({ path: rojoPath, instancePath }) => ({
+			path: path.resolve(this.templateDir, rojoPathTarget(rojoPath)),
+			node: instancePath,
+		}));
 	}
 
 	/** The template's `globIgnorePaths`, relative to the project dir. */

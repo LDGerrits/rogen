@@ -74,7 +74,7 @@ With a `syncDir`, Rojo reads the metadata files in your compiler's output. roblo
 <Step>
 ### Excluding Files
 
-The `exclude` field lists globs that are never built, relative to the config's directory. An **excluded** file is left out of the output.
+The `exclude` field lists globs that are never built, relative to the config's directory. An **excluded** file is left out of the output, and Rogen never routes it or warns about it. To sync a vendored library exactly as it is, mount it in the [template](/docs/v2/core-concepts/output#template) instead: a folder the template mounts is left alone without an `exclude`.
 
 ```json
 { "exclude": ["**/*.spec.luau", "**/*.story.luau"] }

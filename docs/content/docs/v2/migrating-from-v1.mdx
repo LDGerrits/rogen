@@ -121,7 +121,7 @@ v1's `.structure` turned routing off below a folder. In v2, put the marker file 
 
 ### `.sync`
 
-v1 synced a `.sync` folder as it was, with no routing or tags. In v2, add it to the [template](/docs/v2/core-concepts/output#template) as a plain `$path` node, and `exclude` it so Rogen doesn't route it too:
+v1 synced a `.sync` folder as it was, with no routing or tags. In v2, mount it in the [template](/docs/v2/core-concepts/output#template) as a plain `$path` node. Rojo then reads it as it is, and Rogen leaves it alone:
 
 ```json title="template.project.json"
 {
@@ -132,13 +132,6 @@ v1 synced a `.sync` folder as it was, with no routing or tags. In v2, add it to 
 			"Roact": { "$path": "src/Vendor/Roact" }
 		}
 	}
-}
-```
-
-```json title="default.rogen.json"
-{
-	"template": "template.project.json",
-	"exclude": ["src/Vendor/**"]
 }
 ```
 

@@ -22,6 +22,8 @@ export interface VariantMatch {
 /** Why the scan left a path out; the path is the key it is stored under. */
 export type ScanLeftOut =
 	| { readonly status: "excluded"; readonly pattern: string }
+	/** The template mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
+	| { readonly status: "mounted"; readonly node: readonly string[] }
 	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
 	| { readonly status: "skipped" };
 

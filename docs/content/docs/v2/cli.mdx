@@ -68,7 +68,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 An instance no file places says `no file places it`; the template's own nodes, such as package mounts, are among those. When the working directory holds a folder named after the service, the argument is read as that path instead.
 
-A placed file shows its instance path, the governing route and how it matched (`folder`, `marker`, `suffix` or `fallback`), and any active variants. A file that isn't placed says why: `pruned` by a dormant variant, `replaced by` the file that took its name, `displaced` by a template node, `unrouted`, `excluded` with the glob that matched, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
+A placed file shows its instance path, the governing route and how it matched (`folder`, `marker`, `suffix` or `fallback`), and any active variants. A file that isn't placed says why: `pruned` by a dormant variant, `replaced by` the file that took its name, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` with the glob that matched, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
 
 An init folder is one instance, so its init script is the folder's line and every other script below it is a child of it.
 
@@ -199,6 +199,7 @@ An array with one entry per config and path, in the order the text form prints t
 | `pruned` | `variants`, the dormant ones |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
+| `mounted` | `node`, the template node whose `$path` mounts it |
 | `excluded` | `pattern`, the glob that matched |
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` in place of `source`: no file places an instance that was asked for |

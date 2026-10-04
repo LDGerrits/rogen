@@ -989,6 +989,7 @@ describe("Placer", () => {
 				const placement = builder.place(config).unwrap();
 				return {
 					routed: placement.routed,
+					leftOut: placement.leftOut,
 					unrouted: placement.leftOut
 						.withStatus("unrouted")
 						.map(([source]) => source),
@@ -1489,6 +1490,101 @@ describe("Placer", () => {
 				await write("src/server/Net/Save@client.luau");
 
 				expect(await strayWarnings()).toEqual([]);
+			});
+		});
+
+		describe("paths the template mounts", () => {
+			const mounting = (...mounts: [string, string][]) => ({
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: Object.fromEntries(
+								mounts.map(([name, target]) => [
+									name,
+									{ $path: target },
+								])
+							),
+						},
+					},
+				},
+			});
+
+			it("should leave a mounted folder out of the scan, saying which node mounts it", async () => {
+				await write(
+					"src/Vendor/Lib/Server/Thing.luau",
+					"src/Vendor/Lib@sever.luau",
+					"src/Inventory/Save.luau"
+				);
+
+				const result = (
+					await route(mounting(["Vendor", "src/Vendor"]))
+				).unwrap();
+
+				expect(
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual(["ReplicatedStorage/shared/Inventory/Save"]);
+				expect(result.leftOut.get(abs("src/Vendor"))).toEqual({
+					status: "mounted",
+					node: ["ReplicatedStorage", "Vendor"],
+				});
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should leave out a single mounted file", async () => {
+				await write("src/Config.json", "src/Save.luau");
+
+				const result = (
+					await route(mounting(["Config", "src/Config.json"]))
+				).unwrap();
+
+				expect(
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual(["ReplicatedStorage/shared/Save"]);
+			});
+
+			it("should take a mounted path relative to the template's directory", async () => {
+				await write("src/Vendor/Lib.luau", "src/Save.luau");
+				const config = mounting(["Vendor", "../src/Vendor"]);
+
+				const result = (
+					await route({
+						template: {
+							...config.template,
+							file: abs("templates/template.project.json"),
+						},
+					})
+				).unwrap();
+
+				expect(result.leftOut.get(abs("src/Vendor"))).toMatchObject({
+					status: "mounted",
+				});
+			});
+
+			it("should leave a mount outside every root dir alone", async () => {
+				await write("src/Save.luau");
+
+				const result = (
+					await route(mounting(["Packages", "Packages"]))
+				).unwrap();
+
+				expect(result.routed).toHaveLength(1);
+			});
+
+			it("should fail when the template mounts a root dir or a folder above one", async () => {
+				await write("src/Save.luau");
+
+				for (const target of ["src", "."]) {
+					const result = await route(mounting(["All", target]));
+
+					expect(result.isErr()).toBe(true);
+					expect(
+						result.isErr() &&
+							result.error.diagnostics.map(({ code }) => code)
+					).toEqual(["template.mountsRootDir"]);
+				}
 			});
 		});
 

@@ -1,0 +1,9 @@
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"All": { "$path": "src" }
+		}
+	}
+}

@@ -844,6 +844,32 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
+			it("should never list a path the template mounts, which Rojo has to read", async () => {
+				await write(
+					"src/Vendor/Lib.luau",
+					"src/Save.luau",
+					"src/Save.spec.luau"
+				);
+
+				const { tree: value } = await assemble({
+					exclude: [abs("**/*.spec.luau")],
+					template: {
+						file: abs("template.project.json"),
+						project: {
+							name: "game",
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Vendor: { $path: "src/Vendor" },
+								},
+							},
+						},
+					},
+				});
+
+				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
+			});
+
 			it("should list excluded and pruned files in path order, translated to sync paths", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",

@@ -166,11 +166,13 @@ export class TreeAssembler {
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
-		// A replaced file may share the winner's emitted path, and the template may mount a displaced one.
+		// A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one.
 		const ignored = leftOut
 			.filter(
 				([, why]) =>
-					why.status !== "replaced" && why.status !== "displaced"
+					why.status !== "replaced" &&
+					why.status !== "displaced" &&
+					why.status !== "mounted"
 			)
 			.map(([source]) => source)
 			.sort(compareStrings);
