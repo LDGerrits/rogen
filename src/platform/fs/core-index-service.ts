@@ -5,16 +5,9 @@ import {
 	isDirectoryType,
 } from "./file-system-service.js";
 import { ErrorUtils } from "../../base/errors.js";
-import {
-	ancestors,
-	joinPosix,
-	outermostDirs,
-	toPosix,
-} from "../../base/path.js";
+import { joinPosix, outermostDirs, toPosix } from "../../base/path.js";
 import { FileChange, FileChangeType } from "./file-changes.js";
 import { IndexService, Listing } from "./index-service.js";
-
-const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
 
 type Directories = Map<string, ReadonlyMap<string, FileType>>;
 
@@ -79,11 +72,10 @@ export class CoreIndexService implements IndexService {
 		into.set(toPosix(currentDir), children);
 		const subdirs: string[] = [];
 
-		for (const [name, listed] of entries) {
-			const entryPath = path.join(currentDir, name);
-			const type = await this.classify(entryPath, listed);
+		for (const [name, type] of entries) {
 			children.set(name, type);
-			if (isDirectoryType(type)) subdirs.push(entryPath);
+			if (isDirectoryType(type))
+				subdirs.push(path.join(currentDir, name));
 		}
 
 		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
@@ -102,41 +94,6 @@ export class CoreIndexService implements IndexService {
 				return undefined;
 			throw error;
 		}
-	}
-
-	/** A linked directory that leads back to an ancestor is recorded as only a link, so nothing descends into it. */
-	private async classify(
-		entryPath: string,
-		listed: FileType
-	): Promise<FileType> {
-		return listed & FileType.SymbolicLink &&
-			isDirectoryType(listed) &&
-			(await this.linksToAncestor(entryPath))
-			? FileType.SymbolicLink
-			: listed;
-	}
-
-	private async linksToAncestor(linkPath: string): Promise<boolean> {
-		let target: string;
-		try {
-			target = await this.fileSystemService.realPath(linkPath);
-		} catch (error) {
-			if (ErrorUtils.hasCode(error, ...UNRESOLVED_CODES)) return true;
-			throw error;
-		}
-
-		for (const ancestor of ancestors(linkPath)) {
-			try {
-				if (
-					(await this.fileSystemService.realPath(ancestor)) === target
-				)
-					return true;
-			} catch (error) {
-				if (!ErrorUtils.hasCode(error, ...UNRESOLVED_CODES))
-					throw error;
-			}
-		}
-		return false;
 	}
 
 	async update(
@@ -162,12 +119,7 @@ export class CoreIndexService implements IndexService {
 				if (liesUnderLink(draft, posixPath)) continue;
 				const listed = (await listingOf(dir))?.get(name);
 				if (listed === undefined) continue;
-				await this.addEntry(
-					draft,
-					dir,
-					name,
-					await this.classify(posixPath, listed)
-				);
+				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
 				deleteEntry(draft, dir, name);
 			}

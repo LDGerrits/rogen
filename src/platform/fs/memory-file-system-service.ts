@@ -189,8 +189,27 @@ export class MemoryFileSystemService
 			);
 		}
 		return Array.from((node as DirectoryNode).entries.entries()).map(
-			([name, child]) => [name, this._typeOf(child)]
+			([name, child]): [string, FileType] => [
+				name,
+				this._leadsBack(filePath, child)
+					? FileType.SymbolicLink
+					: this._typeOf(child),
+			]
 		);
+	}
+
+	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */
+	private _leadsBack(dirPath: string, child: Node): boolean {
+		if (child.type !== FileType.SymbolicLink) return false;
+		if (this._lookup(child.target)?.type !== FileType.Directory)
+			return false;
+		const real = this._walk(child.target, true).realParts.join("/");
+		const parts = splitPath(dirPath);
+		for (let length = parts.length; length >= 0; length--) {
+			const ancestor = this._walk(parts.slice(0, length).join("/"), true);
+			if (ancestor.realParts.join("/") === real) return true;
+		}
+		return false;
 	}
 
 	async createDirectory(filePath: string): Promise<void> {

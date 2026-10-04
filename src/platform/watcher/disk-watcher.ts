@@ -1,8 +1,7 @@
 import chokidar from "chokidar";
 import * as fs from "fs";
-import * as path from "path";
+import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
-import { ErrorUtils } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
@@ -109,31 +108,5 @@ function isSymbolicLink(target: string): boolean {
 		return fs.lstatSync(target).isSymbolicLink();
 	} catch {
 		return false;
-	}
-}
-
-const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
-
-/** The index's rule, synchronously: a link to nothing, or one that leads back to an ancestor, would report the tree again forever or not at all. */
-function isUnfollowableLink(target: string): boolean {
-	if (!isSymbolicLink(target)) return false;
-	let real: string;
-	try {
-		real = fs.realpathSync(target);
-	} catch (error) {
-		// Throwing from chokidar's filter would stop the watcher.
-		return ErrorUtils.hasCode(error, ...UNRESOLVED_CODES);
-	}
-	for (
-		let ancestor = path.dirname(target);
-		;
-		ancestor = path.dirname(ancestor)
-	) {
-		try {
-			if (fs.realpathSync(ancestor) === real) return true;
-		} catch {
-			// An ancestor that can't be resolved can't be the link's target.
-		}
-		if (path.dirname(ancestor) === ancestor) return false;
 	}
 }

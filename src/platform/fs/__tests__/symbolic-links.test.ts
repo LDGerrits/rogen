@@ -106,6 +106,17 @@ describe.each(fixtures)("%s: symbolic links", (_name, create) => {
 			});
 		});
 
+		it("should report a link back to an ancestor as only a link", async () => {
+			await fixture.fileSystem.createDirectory(at("src/inner"));
+			await fixture.link(at("src"), at("src/inner/Loop"));
+			await fixture.link(at("src/inner"), at("src/inner/Self"));
+
+			expect(await types(at("src/inner"))).toEqual({
+				Loop: FileType.SymbolicLink,
+				Self: FileType.SymbolicLink,
+			});
+		});
+
 		it("should list a linked directory's own entries", async () => {
 			await fixture.fileSystem.writeFile(at("shared/a.luau"), "");
 			await fixture.link(at("shared"), at("src/Shared"));
