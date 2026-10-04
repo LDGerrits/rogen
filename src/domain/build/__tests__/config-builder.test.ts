@@ -50,6 +50,17 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
+		it("should also report the meta of a Script, which may set its run context", async () => {
+			await fs.writeFile(abs("src/Save.server.luau"), "");
+			await fs.writeFile(abs("src/Save.meta.json"), "{}");
+
+			const result = await buildOf(configOf());
+
+			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Save.meta.json"),
+			]);
+		});
+
 		it("should return a tree with no warnings when every root dir exists", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();

@@ -5,7 +5,8 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.rogen.json - warning: 3 names have an "@" that routes nowhere, so they are read as ordinary names:
+  default.rogen.json - warning: 4 names have an "@" that routes nowhere, so they are read as ordinary names:
+    src/@sever (did you mean "@server"?)
     src/Inventory/Report@server.bak.luau ("@server" must end the name, or be followed only by a variant)
     src/Inventory/Save@sever.luau (did you mean "@server"?)
     src/Queue@clent (did you mean "@client"?)
@@ -17,6 +18,10 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      @rbxts: Folder
+        B: ModuleScript  <- src/@rbxts/B.luau
+      @sever: Folder
+        A: ModuleScript  <- src/@sever/A.luau
       Inventory: Folder
         Plain: ModuleScript  <- src/Inventory/Plain.luau
         Report@server.bak: ModuleScript  <- src/Inventory/Report@server.bak.luau

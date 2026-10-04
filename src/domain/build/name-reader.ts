@@ -174,14 +174,14 @@ export class NameReader {
 
 	private strayAt(name: string): StrayAt | undefined {
 		const at = name.lastIndexOf("@");
-		if (at <= 0) return undefined;
+		if (at < 0) return undefined;
 		const text = name.slice(at + 1).split(".")[0];
 		if (text === "") return undefined;
-		return {
-			text,
-			closestKey: closestMatch(text, this.keys.routeKeys),
-			notLast: this.keys.resolveRoute(text) !== undefined,
-		};
+		const closestKey = closestMatch(text, this.keys.routeKeys);
+		const notLast = this.keys.resolveRoute(text) !== undefined;
+		// A name that starts with `@` has no name before it, and `@rbxts` is a package scope, so only a near miss of a route is reported.
+		if (at === 0 && (closestKey === undefined || notLast)) return undefined;
+		return { text, closestKey, notLast };
 	}
 }
 

@@ -1528,6 +1528,43 @@ describe("Placer", () => {
 				);
 			});
 
+			const metaWith = (runContext: string) =>
+				JSON.stringify({ properties: { RunContext: runContext } });
+
+			it("should not warn about a Script whose meta sets a run context, which runs by that", async () => {
+				await write("src/shared/Hud.server.luau");
+				await fs.writeFile(
+					abs("src/shared/Hud.meta.json"),
+					metaWith("Client")
+				);
+
+				expect(await dead()).toEqual([]);
+			});
+
+			it("should not warn about an init folder's Script whose meta sets a run context", async () => {
+				await write("src/shared/Net/init.server.luau");
+				await fs.writeFile(
+					abs("src/shared/Net/init.meta.json"),
+					metaWith("Server")
+				);
+
+				expect(await dead()).toEqual([]);
+			});
+
+			it("should still warn when the meta sets the Legacy run context or is invalid", async () => {
+				await write(
+					"src/shared/A.server.luau",
+					"src/shared/B.server.luau"
+				);
+				await fs.writeFile(
+					abs("src/shared/A.meta.json"),
+					metaWith("Legacy")
+				);
+				await fs.writeFile(abs("src/shared/B.meta.json"), "{ nope");
+
+				expect((await dead())[0].message).toContain("2 scripts");
+			});
+
 			it("should warn about an init folder's script", async () => {
 				await write("src/shared/Net/init.server.luau");
 

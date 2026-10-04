@@ -209,8 +209,16 @@ describe("NameReader stray @", () => {
 		expect(matchSuffixKeys("Save@server", ROUTES).strayAt).toBeUndefined();
 	});
 
-	it("reports nothing for a bare @ or a trailing one", () => {
-		expect(matchSuffixKeys("@sever", ROUTES).strayAt).toBeUndefined();
+	it("reports a leading @ only when it nearly spells a route", () => {
+		expect(matchSuffixKeys("@sever", ROUTES).strayAt).toMatchObject({
+			text: "sever",
+			closestKey: "server",
+		});
+		expect(matchSuffixKeys("@rbxts", ROUTES).strayAt).toBeUndefined();
+		expect(matchSuffixKeys("@server", ROUTES).strayAt).toBeUndefined();
+	});
+
+	it("reports nothing for a trailing @", () => {
 		expect(matchSuffixKeys("Save@", ROUTES).strayAt).toBeUndefined();
 	});
 });
@@ -297,8 +305,11 @@ describe("NameReader folder", () => {
 		expect(
 			new NameReader(ALL_KEYS).folderStrayAt("Queue@sever")
 		).toMatchObject({ text: "sever", closestKey: "server" });
+		expect(new NameReader(ALL_KEYS).folderStrayAt("@sever")).toMatchObject({
+			closestKey: "server",
+		});
 		expect(
-			new NameReader(ALL_KEYS).folderStrayAt("@sever")
+			new NameReader(ALL_KEYS).folderStrayAt("@rbxts")
 		).toBeUndefined();
 	});
 

@@ -225,7 +225,11 @@ export class BuildValidator {
 			);
 			const suffix =
 				kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
+			// A script whose meta sets a run context runs by that, and not by where it lands.
 			return (suffix === "server" || suffix === "client") &&
+				!this.assembly.scriptRunContexts.contexts.has(
+					file.entry.source
+				) &&
 				!scriptRunsAt(suffix, file.instancePath)
 				? [{ file, suffix }]
 				: [];
