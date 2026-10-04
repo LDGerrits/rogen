@@ -117,8 +117,7 @@ export class CoreBuildService implements BuildService {
 				builds[index] = failedBuild(
 					configs[index],
 					written.error.diagnostics,
-					project.warnings,
-					project.syncWarnings
+					project
 				);
 				break;
 			}

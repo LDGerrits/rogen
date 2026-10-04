@@ -223,11 +223,14 @@ describe("BuildLog.outcome", () => {
 		]);
 	});
 
-	it("should add a note to the line of a config it wrote, or didn't", () => {
+	it("should end the line of a written config with the note", () => {
 		expect(lines(builtOf(summaryOf()), [], "first build")[0]).toEqual([
 			"success",
 			"default.project.json · wrote · first build",
 		]);
+	});
+
+	it("should end the line of a config it didn't write with the note", () => {
 		expect(
 			lines({ ...failed, errors: [error] }, [], "see above")[0]
 		).toEqual(["error", "default.project.json · not written · see above"]);

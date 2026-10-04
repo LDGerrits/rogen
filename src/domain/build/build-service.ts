@@ -99,13 +99,16 @@ export type ConfigBuild = ConfigBuildFields &
 		  }
 	);
 
-/** A config whose build, write or set check went wrong; `warnings` are what its build said before that. */
+/** A config whose build, write or set check went wrong; `said` is what its build warned about before that. */
 export function failedBuild(
 	config: ResolvedConfig,
 	errors: readonly Diagnostic[],
-	warnings: readonly Diagnostic[] = [],
-	syncWarnings: readonly Diagnostic[] = []
+	said: Pick<ConfigBuild, "warnings" | "syncWarnings"> = {
+		warnings: [],
+		syncWarnings: [],
+	}
 ): ConfigBuild {
+	const { warnings, syncWarnings } = said;
 	return { config, outcome: "failed", warnings, syncWarnings, errors };
 }
 
