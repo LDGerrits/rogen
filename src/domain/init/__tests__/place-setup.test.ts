@@ -214,6 +214,20 @@ describe("PlaceSetup", () => {
 			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
 		});
 
+		it("should sync from Darklua's output when Darklua processes compiled code and its config sets no sync dir", () => {
+			const { configs, nextSteps } = written(
+				plan(
+					{ ...rbxts, darkluaConfig: ".darklua.json" },
+					{ rootDirs: ["src"] }
+				)
+			);
+
+			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(nextSteps.darklua).toEqual([
+				"darklua process out/lobby dist/lobby",
+			]);
+		});
+
 		it("should say how to compile, watch and serve the place", () => {
 			expect(written(plan(rbxts, base)).nextSteps).toEqual({
 				setup: [],

@@ -68,6 +68,15 @@ describe("CoreToolchainService.detect", () => {
 			}
 		);
 
+		it("should name .darklua.json when both configs exist, as Darklua reads it first", async () => {
+			await write(".darklua.json5");
+			await write(".darklua.json");
+
+			const workspace = await toolchain().detect(cwd);
+
+			expect(workspace.darkluaConfig).toBe(".darklua.json");
+		});
+
 		it("should report roblox-ts and darklua together", async () => {
 			await write("tsconfig.json", "{}");
 			await write(".darklua.json");

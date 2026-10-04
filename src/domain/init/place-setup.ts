@@ -143,9 +143,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 
 		const outDir = compiler && `${compiler.outDir}/${name}`;
 		const syncBase =
-			compiler || darklua
-				? (base.syncDir ?? compiler?.outDir ?? darklua?.defaultSyncDir)
-				: undefined;
+			configSet.syncDir && (base.syncDir ?? configSet.syncDir);
 		return {
 			configSet,
 			rootDirs,
