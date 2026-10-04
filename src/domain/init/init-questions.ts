@@ -148,15 +148,14 @@ export class InitQuestions {
 
 	/** Whether Darklua processes the code, as it does when the workspace has a config for it. */
 	darklua({ workspace }: InitDirectory): Promise<boolean | undefined> {
-		if (!this.interactive) return Promise.resolve(workspace.usesDarklua);
+		const found = workspace.darkluaConfig !== undefined;
+		if (!this.interactive) return Promise.resolve(found);
 		return this.promptService.confirm({
 			message: "Does Darklua process your code before Rojo syncs it?",
 			description:
 				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: workspace.usesDarklua
-				? `found ${workspace.darklua.configFiles[0]}`
-				: undefined,
-			initialValue: workspace.usesDarklua,
+			hint: found ? `found ${workspace.darkluaConfig}` : undefined,
+			initialValue: found,
 		});
 	}
 

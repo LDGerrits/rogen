@@ -6,7 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
-import { Language, Mount } from "../toolchain/toolchain.js";
+import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
@@ -19,7 +19,8 @@ import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 export interface ProjectChoices {
 	readonly name: string;
 	readonly language: Language;
-	readonly darklua: boolean;
+	/** Darklua when it processes the code, else `undefined`. */
+	readonly darklua: Darklua | undefined;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
 	/** Where the compiler writes; Darklua reads it when both are used. */
@@ -74,8 +75,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const language = await questions.language(directory);
 		if (language === undefined) return ok(undefined);
-		const darklua = await questions.darklua(directory);
-		if (darklua === undefined) return ok(undefined);
+		const usesDarklua = await questions.darklua(directory);
+		if (usesDarklua === undefined) return ok(undefined);
+		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 
 		const configSet = new ConfigSet(name, language, darklua);
 		const conflicts = directory.checkFree(configSet.configFiles);
@@ -88,7 +90,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const template = await questions.template(directory, outputs);
 		if (template === undefined) return ok(undefined);
 
-		let syncDir = configSet.syncDirBy(directory.workspace.darklua);
+		let syncDir = configSet.syncDir;
 		if (darklua) {
 			const answer = await questions.syncDir(directory);
 			if (answer === undefined) return ok(undefined);

@@ -11,7 +11,7 @@ import {
 	defaultOutFileName,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
-import { CompiledPlace, Language } from "../toolchain/toolchain.js";
+import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
@@ -22,7 +22,7 @@ export interface PlaceChoices {
 	readonly name: string;
 	readonly folder: string;
 	readonly language: Language;
-	readonly darklua: boolean;
+	readonly darklua: Darklua | undefined;
 	readonly base: BaseConfig;
 }
 
@@ -46,8 +46,11 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		if (base.isErr()) return err(base.error);
 
 		const filesFor = (candidate: string) =>
-			new ConfigSet(candidate, workspace.language, workspace.usesDarklua)
-				.placeFiles;
+			new ConfigSet(
+				candidate,
+				workspace.language,
+				workspace.detectedDarklua
+			).placeFiles;
 		const given = directory.givenName;
 		if (given) {
 			const conflicts = directory.checkFree(filesFor(given));
@@ -83,7 +86,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			name,
 			folder,
 			language: workspace.language,
-			darklua: workspace.usesDarklua,
+			darklua: workspace.detectedDarklua,
 			base: base.value,
 		});
 	}
@@ -141,9 +144,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		const outDir = compiler && `${compiler.outDir}/${name}`;
 		const syncBase =
 			compiler || darklua
-				? (base.syncDir ??
-					compiler?.outDir ??
-					this.directory.workspace.darklua.defaultSyncDir)
+				? (base.syncDir ?? compiler?.outDir ?? darklua?.defaultSyncDir)
 				: undefined;
 		return {
 			configSet,

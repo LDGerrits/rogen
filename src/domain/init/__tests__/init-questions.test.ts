@@ -11,6 +11,7 @@ import {
 	WorkspaceSpec,
 	withRobloxTs,
 } from "../../toolchain/__tests__/workspaces.js";
+import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
@@ -90,7 +91,7 @@ const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
 describe("InitQuestions askProject", () => {
 	it("should give an unattended run the choices a user accepting every default gets", async () => {
-		const darklua = { ...luau, usesDarklua: true };
+		const darklua = { ...luau, darkluaConfig: ".darklua.json" };
 		for (const workspace of [
 			rbxts,
 			luau,
@@ -218,12 +219,27 @@ describe("InitQuestions askProject", () => {
 	describe("darklua", () => {
 		it("should be preselected when found", async () => {
 			const choices = await asked(
-				{ ...luau, usesDarklua: true },
+				{ ...luau, darkluaConfig: ".darklua.json" },
 				acceptAll(9)
 			);
 
-			expect(choices.darklua).toBe(true);
+			expect(choices.darklua).toBeInstanceOf(Darklua);
 			expect(choices.syncDir).toBe("dist");
+		});
+
+		it("should hint at the Darklua config that was found", async () => {
+			const prompts = new MockPromptService(acceptAll(9));
+
+			await askInitChoices(
+				prompts,
+				contextOf({ ...luau, darkluaConfig: ".darklua.json5" })
+			);
+
+			expect(
+				prompts.prompts.find(({ message }) =>
+					message.startsWith("Does Darklua")
+				)?.hint
+			).toBe("found .darklua.json5");
 		});
 
 		it("should take the answer that was given", async () => {
@@ -234,10 +250,8 @@ describe("InitQuestions askProject", () => {
 				...acceptAll(6),
 			]);
 
-			expect(choices).toMatchObject({
-				darklua: true,
-				syncDir: "dist",
-			});
+			expect(choices.darklua).toBeInstanceOf(Darklua);
+			expect(choices.syncDir).toBe("dist");
 		});
 
 		it("should fail before the remaining questions when a file it would write exists", async () => {
@@ -288,7 +302,7 @@ describe("InitQuestions askProject", () => {
 
 			await askInitChoices(
 				prompts,
-				contextOf({ ...luau, usesDarklua: true })
+				contextOf({ ...luau, darkluaConfig: ".darklua.json" })
 			);
 
 			expect(syncDirPrompt(prompts)?.placeholder).toBe("dist");
@@ -732,7 +746,7 @@ describe("InitQuestions askProject", () => {
 
 		await askInitChoices(
 			prompts,
-			contextOf({ ...rbxts, usesDarklua: true })
+			contextOf({ ...rbxts, darkluaConfig: ".darklua.json" })
 		);
 
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);

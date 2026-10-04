@@ -8,6 +8,7 @@ import {
 	withRobloxTs,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
+import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
@@ -190,7 +191,10 @@ describe("ProjectSetup plan", () => {
 	});
 
 	describe("darklua", () => {
-		const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+		const darklua: WorkspaceSpec = {
+			...luau,
+			darkluaConfig: ".darklua.json",
+		};
 
 		it("should write a source-rooted default and a sync config extending it", async () => {
 			const files = await plan(darklua);
@@ -248,7 +252,13 @@ describe("ProjectSetup plan", () => {
 			planProject({
 				choices: await defaultProjectChoices(
 					withRobloxTs(
-						{ ...luau, language, usesDarklua: darklua },
+						{
+							...luau,
+							language,
+							darkluaConfig: darklua
+								? ".darklua.json"
+								: undefined,
+						},
 						{ outDir: "build" }
 					),
 					name,
@@ -366,7 +376,7 @@ describe("ProjectSetup plan", () => {
 			const files = planProject({
 				choices: {
 					...(await defaultProjectChoices(
-						{ ...luau, usesDarklua: true },
+						{ ...luau, darkluaConfig: ".darklua.json" },
 						"default",
 						new Set(),
 						false
@@ -1212,7 +1222,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should extend the source config without a sync dir when none was chosen", async () => {
 			const files = await planChoices({
-				darklua: true,
+				darklua: new Darklua(),
 				syncDir: undefined,
 			});
 
@@ -1266,7 +1276,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should report every darklua config that already exists", async () => {
 			const result = await planResult(
-				{ ...luau, usesDarklua: true },
+				{ ...luau, darkluaConfig: ".darklua.json" },
 				"default",
 				["default.rogen.json", "sync.rogen.json"]
 			);

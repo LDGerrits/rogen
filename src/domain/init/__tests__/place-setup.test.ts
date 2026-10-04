@@ -16,7 +16,7 @@ import { BaseConfigReader, PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
-const darklua: WorkspaceSpec = { ...luau, usesDarklua: true };
+const darklua: WorkspaceSpec = { ...luau, darkluaConfig: ".darklua.json" };
 const rbxts: WorkspaceSpec = withRobloxTs(
 	{ ...luau, language: "roblox-ts" },
 	{ outDir: "out", tsconfigHasInclude: true }
@@ -39,7 +39,7 @@ const plan = (
 		{
 			...choices,
 			language: workspace.language,
-			darklua: workspace.usesDarklua,
+			darklua: workspace.detectedDarklua,
 			base,
 		},
 		target
@@ -203,7 +203,7 @@ describe("PlaceSetup", () => {
 			const { configs, tsconfig } = written(
 				plan(
 					withRobloxTs(
-						{ ...rbxts, usesDarklua: true },
+						{ ...rbxts, darkluaConfig: ".darklua.json" },
 						{ outDir: "build" }
 					),
 					{ rootDirs: ["src"], syncDir: "dist" }
@@ -245,7 +245,7 @@ describe("PlaceSetup", () => {
 		it("should say what Darklua must process on top", () => {
 			const { nextSteps } = written(
 				plan(
-					{ ...rbxts, usesDarklua: true },
+					{ ...rbxts, darkluaConfig: ".darklua.json" },
 					{ rootDirs: ["src"], syncDir: "dist" }
 				)
 			);

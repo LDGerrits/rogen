@@ -38,7 +38,7 @@ describe("CoreToolchainService.detect", () => {
 				"roblox-ts",
 			]);
 			expect(workspace).toMatchObject({
-				usesDarklua: false,
+				darkluaConfig: undefined,
 				codeFolders: [],
 				hasSrc: false,
 				packageDirs: new Set(),
@@ -53,18 +53,18 @@ describe("CoreToolchainService.detect", () => {
 			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language.id).toBe("roblox-ts");
-			expect(workspace.usesDarklua).toBe(false);
+			expect(workspace.darkluaConfig).toBeUndefined();
 		});
 
 		it.each([".darklua.json", ".darklua.json5"])(
-			"should detect darklua from %s",
+			"should detect darklua from %s, and name the file",
 			async (file) => {
 				await write(file);
 
 				const workspace = await toolchain().detect(cwd);
 
 				expect(workspace.language.id).toBe("luau");
-				expect(workspace.usesDarklua).toBe(true);
+				expect(workspace.darkluaConfig).toBe(file);
 			}
 		);
 
@@ -75,7 +75,7 @@ describe("CoreToolchainService.detect", () => {
 			const workspace = await toolchain().detect(cwd);
 
 			expect(workspace.language.id).toBe("roblox-ts");
-			expect(workspace.usesDarklua).toBe(true);
+			expect(workspace.darkluaConfig).toBe(".darklua.json");
 		});
 	});
 

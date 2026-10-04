@@ -121,7 +121,6 @@ describe("DetectedWorkspace", () => {
 				new DetectedWorkspace({
 					darklua: darklua,
 					languages: [],
-					usesDarklua: false,
 					packageDirs: new Set(),
 					codeFolders: [],
 					hasSrc: false,

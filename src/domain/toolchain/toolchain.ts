@@ -168,8 +168,8 @@ export interface DetectedWorkspaceFields {
 	readonly darklua: Darklua;
 	/** Every language, as the language question lists them. The first is the one assumed when none is present. */
 	readonly languages: readonly Language[];
-	/** Whether the workspace has a Darklua config. */
-	readonly usesDarklua: boolean;
+	/** The Darklua config file the workspace has, if any. */
+	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	/** The installed package directories, of any manager. */
 	readonly packageDirs: ReadonlySet<string>;
@@ -185,7 +185,7 @@ export class DetectedWorkspace {
 	/** Darklua as this workspace can be set up for it. */
 	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
-	readonly usesDarklua: boolean;
+	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
 	readonly codeFolders: readonly string[];
@@ -198,12 +198,17 @@ export class DetectedWorkspace {
 		}
 		this.darklua = fields.darklua;
 		this.languages = fields.languages;
-		this.usesDarklua = fields.usesDarklua;
+		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
 		this.codeFolders = fields.codeFolders;
 		this.hasSrc = fields.hasSrc;
 		this.places = fields.places;
+	}
+
+	/** Darklua, when the workspace has a config for it. */
+	get detectedDarklua(): Darklua | undefined {
+		return this.darkluaConfig === undefined ? undefined : this.darklua;
 	}
 
 	/** The language the workspace uses, or the first one when it uses none. */
