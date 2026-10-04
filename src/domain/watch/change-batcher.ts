@@ -4,7 +4,13 @@ import {
 	FileChange,
 	normalizeFileChanges,
 } from "../../platform/fs/file-changes.js";
-import { LogService } from "../../platform/log/log-service.js";
+
+/** Changes that came too fast to follow, so the batcher dropped them. */
+export interface ChangeBurst {
+	readonly dropped: number;
+	/** How many it follows before it gives up. */
+	readonly threshold: number;
+}
 
 export interface ChangeBatcherOptions {
 	readonly burstThreshold: number;
@@ -28,11 +34,12 @@ export class ChangeBatcher extends AbstractDisposable {
 		this._onDidEmitChanges.event;
 
 	/** Too many changes to follow one by one; the buffer was dropped. */
-	private readonly _onDidOverflow = this._register(new Emitter<void>());
-	readonly onDidOverflow: Event<void> = this._onDidOverflow.event;
+	private readonly _onDidOverflow = this._register(
+		new Emitter<ChangeBurst>()
+	);
+	readonly onDidOverflow: Event<ChangeBurst> = this._onDidOverflow.event;
 
 	constructor(
-		private readonly logService: LogService,
 		private readonly options: ChangeBatcherOptions = DEFAULT_OPTIONS
 	) {
 		super();
@@ -43,11 +50,12 @@ export class ChangeBatcher extends AbstractDisposable {
 		for (const change of changes) this.buffer.push(change);
 
 		if (this.buffer.length > this.options.burstThreshold) {
-			this.logService.warn(
-				`Threshold reached (${this.buffer.length} > ${this.options.burstThreshold}). Dropping the buffered changes.`
-			);
+			const dropped = this.buffer.length;
 			this.clearBuffer();
-			this._onDidOverflow.fire();
+			this._onDidOverflow.fire({
+				dropped,
+				threshold: this.options.burstThreshold,
+			});
 			return;
 		}
 

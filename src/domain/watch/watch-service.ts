@@ -10,8 +10,12 @@ import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
 /** Why the configs were rebuilt. */
 export type WatchCause =
 	| { readonly kind: "initial" }
-	/** Too many changes at once to follow, so everything was rebuilt. */
-	| { readonly kind: "burst" }
+	/** Too many changes at once to follow, so they were dropped and everything was rebuilt. */
+	| {
+			readonly kind: "burst";
+			readonly dropped: number;
+			readonly threshold: number;
+	  }
 	| {
 			readonly kind: "change";
 			readonly sourceFiles: number;

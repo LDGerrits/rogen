@@ -76,7 +76,6 @@ describe("CoreWatchSession", () => {
 			new CoreWatchSession(
 				selection,
 				watcher,
-				new NullLogService(),
 				indexService,
 				buildServiceOf(fs, indexService)
 			)

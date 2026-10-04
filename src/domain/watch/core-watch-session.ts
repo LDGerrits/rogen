@@ -4,9 +4,8 @@ import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
-import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildBlockers, failedBuild } from "../build/build.js";
+import { BuildBlockers, ConfigBuild, failedBuild } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -14,7 +13,7 @@ import {
 	ConfigSelection,
 	buildableConfig,
 } from "../config/config-service.js";
-import { ChangeBatcher } from "./change-batcher.js";
+import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
 	RebuildReport,
@@ -22,6 +21,31 @@ import {
 	WatchSession,
 	WatchUpdate,
 } from "./watch-service.js";
+
+/** What the session knows of one config: its rebuilds, and what the latest of them said. */
+class WatchedConfig {
+	readonly rebuilds = new Sequencer();
+	/** Rebuilds queued that haven't finished. */
+	pending = 0;
+	/** The latest finished rebuild; `undefined` before the first. */
+	latest: ConfigBuild | undefined;
+	/** The files the latest successful build read, whose updates must rebuild it. */
+	readFiles: ReadonlySet<string> = new Set();
+
+	get failing(): boolean {
+		return this.latest?.outcome === "failed";
+	}
+
+	/** Whether what it reads is known: no rebuild is under way and the latest didn't fail. */
+	get settled(): boolean {
+		return this.pending === 0 && !this.failing;
+	}
+
+	finished(build: ConfigBuild): void {
+		this.latest = build;
+		if (build.readFiles) this.readFiles = new Set(build.readFiles);
+	}
+}
 
 /** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
 export class CoreWatchSession
@@ -38,15 +62,11 @@ export class CoreWatchSession
 	private readonly batcher: ChangeBatcher;
 	private readonly intake = new Sequencer();
 	private readonly updates = new Sequencer();
-	private readonly rebuilds = new Map<string, Sequencer>();
+	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
-	/** The files each config's latest build read, beyond the config files themselves. */
-	private readonly readFiles = new Map<string, ReadonlySet<string>>();
-	private readonly failing = new Set<string>();
 	/** Why configs can't be built beside the others, from the latest load. */
 	private blocked = new BuildBlockers([]);
-	private rebuilding = 0;
-	private settled = false;
+	private started = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
 	/** What the root dirs held after the latest change; only the intake replaces it, and a rebuild reads the one it started with. */
@@ -57,12 +77,11 @@ export class CoreWatchSession
 	constructor(
 		private readonly selection: ConfigSelection,
 		private readonly watcher: Watcher,
-		logService: LogService,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService
 	) {
 		super();
-		this.batcher = this._register(new ChangeBatcher(logService));
+		this.batcher = this._register(new ChangeBatcher());
 		this.plan = new WatchPlan(this.currentConfigs);
 	}
 
@@ -88,7 +107,9 @@ export class CoreWatchSession
 			)
 		);
 		this._register(
-			this.batcher.onDidOverflow(() => this.enqueue(() => this.onBurst()))
+			this.batcher.onDidOverflow((burst) =>
+				this.enqueue(() => this.onBurst(burst))
+			)
 		);
 
 		this.refreshBlocked();
@@ -97,7 +118,7 @@ export class CoreWatchSession
 			{ kind: "initial" },
 			this.currentConfigs.map(({ file }) => this.queueRebuild(file, true))
 		);
-		this.settled = true;
+		this.started = true;
 	}
 
 	/** Lets the work already started finish, drops anything queued after, and stops the watcher. Safe to call twice. */
@@ -117,7 +138,8 @@ export class CoreWatchSession
 
 	/** An update to a file no build read changes nothing; while what a build read is unknown, every update counts. */
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
-		if (!this.settled || this.rebuilding > 0 || this.failing.size > 0) {
+		const watched = [...this.watched.values()];
+		if (!this.started || watched.some((config) => !config.settled)) {
 			return [...changes];
 		}
 		const contentFiles = this.selection.files;
@@ -125,14 +147,13 @@ export class CoreWatchSession
 			(change) =>
 				change.type !== FileChangeType.UPDATED ||
 				contentFiles.has(change.path) ||
-				[...this.readFiles.values()].some((files) =>
-					files.has(change.path)
-				)
+				watched.some(({ readFiles }) => readFiles.has(change.path))
 		);
 	}
 
 	/** `load` also checks the sync dir, which only changes when the config or its compiler does. */
 	private async rebuild(
+		watched: WatchedConfig,
 		file: string,
 		load: boolean
 	): Promise<RebuildReport | undefined> {
@@ -142,20 +163,14 @@ export class CoreWatchSession
 		const config = entry && buildableConfig(entry);
 		if (!config) return undefined;
 		const blocked = this.blocked.blocking(file);
-		if (blocked.length > 0) {
-			this.failing.add(file);
-			return { ...failedBuild(config, blocked), checkedSyncDir: false };
-		}
-
-		const build = await this.buildService.rebuild(config, this.listing, {
-			checkSyncDir: load,
-		});
-		if (build.outcome === "failed") this.failing.add(file);
-		else {
-			this.failing.delete(file);
-			this.readFiles.set(file, new Set(build.readFiles));
-		}
-		return { ...build, checkedSyncDir: load };
+		const build =
+			blocked.length > 0
+				? failedBuild(config, blocked)
+				: await this.buildService.rebuild(config, this.listing, {
+						checkSyncDir: load,
+					});
+		watched.finished(build);
+		return { ...build, checkedSyncDir: load && blocked.length === 0 };
 	}
 
 	/** Runs `task`, turning a throw into `onDidError`; queued work is dropped once the session stops. */
@@ -184,18 +199,19 @@ export class CoreWatchSession
 		file: string,
 		load: boolean
 	): Promise<RebuildReport | undefined> {
-		let sequencer = this.rebuilds.get(file);
-		if (!sequencer) {
-			sequencer = new Sequencer();
-			this.rebuilds.set(file, sequencer);
+		let watched = this.watched.get(file);
+		if (!watched) {
+			watched = new WatchedConfig();
+			this.watched.set(file, watched);
 		}
-		this.rebuilding++;
-		const queued = sequencer.queue(
-			this.guarded(() => this.rebuild(file, load))
+		const config = watched;
+		config.pending++;
+		const queued = config.rebuilds.queue(
+			this.guarded(() => this.rebuild(config, file, load))
 		);
 		void queued.then(
-			() => this.rebuilding--,
-			() => this.rebuilding--
+			() => config.pending--,
+			() => config.pending--
 		);
 		this.track(queued);
 		return queued;
@@ -360,14 +376,14 @@ export class CoreWatchSession
 		);
 	}
 
-	private async onBurst(): Promise<void> {
+	private async onBurst(burst: ChangeBurst): Promise<void> {
 		const { reloaded, reindexed } = await this.applyConfigChanges([
 			...this.selection.files,
 		]);
 		if (!reindexed)
 			this.listing = await this.indexService.list(this.plan.roots);
 		this.announce(
-			{ kind: "burst" },
+			{ kind: "burst", ...burst },
 			this.currentConfigs.map(({ file }) =>
 				this.queueRebuild(file, reloaded.includes(file))
 			)

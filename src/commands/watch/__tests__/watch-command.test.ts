@@ -69,7 +69,6 @@ describe("watch command", () => {
 		services.set(BuildService, buildService);
 		const watchService = new CoreWatchService(
 			watcher,
-			logService,
 			indexService,
 			buildService
 		);

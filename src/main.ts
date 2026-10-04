@@ -143,12 +143,7 @@ async function main(): Promise<void> {
 		services.set(Watcher, watcher);
 		services.set(
 			WatchService,
-			new CoreWatchService(
-				watcher,
-				logService,
-				indexService,
-				buildService
-			)
+			new CoreWatchService(watcher, indexService, buildService)
 		);
 
 		const commandService = new CoreCommandService(services, logService);

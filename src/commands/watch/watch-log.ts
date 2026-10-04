@@ -136,6 +136,11 @@ export class WatchLog {
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
 		const shown = reports.map((report) => this.unseenReport(report));
 
+		if (cause.kind === "burst") {
+			this.logService.warn(
+				`Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
+			);
+		}
 		this.logService.step(`${clockTime(at)} · ${titleOf(cause)}`);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
