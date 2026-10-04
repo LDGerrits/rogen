@@ -1,5 +1,10 @@
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import path from "path";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
@@ -47,7 +52,8 @@ const joinList = (items: readonly string[], conjunction: string): string =>
 export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
-		private readonly questions: InitQuestions
+		private readonly questions: InitQuestions,
+		private readonly fileSystemService: FileSystemService
 	) {}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
@@ -116,7 +122,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		let copiedTemplate: string | undefined;
 		if (template.kind === "copy") {
-			const copied = await directory.readFile(template.from);
+			const copied = await this.readTemplate(template.from);
 			if (copied.isErr()) return err(copied.error);
 			copiedTemplate = copied.value;
 		}
@@ -136,6 +142,25 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			places,
 			...(copiedTemplate !== undefined && { copiedTemplate }),
 		});
+	}
+
+	/** The file a `copy` template choice copies, as it is. */
+	private async readTemplate(
+		fileName: string
+	): Promise<Result<string, Diagnostic[]>> {
+		const file = path.join(this.directory.path, fileName);
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isOk()
+			? text
+			: err([
+					errorDiagnostic(
+						"init.templateUnreadable",
+						{ resource: file },
+						`couldn't read this file to copy it: ${text.error.message}`
+					),
+				]);
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {

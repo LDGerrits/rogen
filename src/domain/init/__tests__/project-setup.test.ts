@@ -55,9 +55,9 @@ const defaultProjectChoices = async (
 			workspace: spec,
 			existing: [...existingFiles],
 			givenName: name === "default" ? undefined : name,
-			fileSystem,
 		}),
-		new InitQuestions(new MockPromptService([], false))
+		new InitQuestions(new MockPromptService([], false)),
+		fileSystem
 	);
 	const choices = (await setup.ask()).unwrap() as ProjectChoices;
 	return withPlaces ? choices : { ...choices, places: [] };
@@ -81,7 +81,8 @@ const planProject = ({
 	return planOf(
 		new ProjectSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false))
+			new InitQuestions(new MockPromptService([], false)),
+			new MemoryFileSystemService()
 		),
 		{ ...choices, ...(copiedTemplate !== undefined && { copiedTemplate }) },
 		target
@@ -1363,5 +1364,22 @@ describe("ConfigSet.parseName", () => {
 
 	it("should reject more than one name", () => {
 		expect(ConfigSet.parseName(["a", "b"]).isErr()).toBe(true);
+	});
+
+	it("should fail when the file it would copy to the template can't be read", async () => {
+		const setup = new ProjectSetup(
+			directoryOf({ existing: ["default.project.json"] }),
+			new InitQuestions(new MockPromptService([], false)),
+			new MemoryFileSystemService()
+		);
+
+		const asked = await setup.ask();
+
+		expect(asked.isErr() && asked.error).toMatchObject([
+			{
+				code: "init.templateUnreadable",
+				resource: path.join(directory, "default.project.json"),
+			},
+		]);
 	});
 });

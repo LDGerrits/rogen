@@ -1,18 +1,13 @@
 import path from "path";
 import { Result } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import {
-	MockConfigService,
-	mockEntry,
-} from "../../config/__tests__/mock-config-service.js";
 import {
 	WorkspaceSpec,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "../config-set.js";
-import { InitDirectory } from "../init-directory.js";
+import { BaseConfig, InitDirectory } from "../init-directory.js";
 import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";
 
@@ -22,39 +17,19 @@ export interface DirectorySpec {
 	readonly workspace?: WorkspaceSpec;
 	readonly existing?: readonly string[];
 	readonly givenName?: string;
-	readonly defaultConfig?: {
-		readonly rootDirs: readonly string[];
-		readonly syncDir?: string;
-		readonly parent?: string;
-	};
-	readonly fileSystem?: MemoryFileSystemService;
+	/** What a place inherits from `default.rogen.json`. */
+	readonly base?: Result<BaseConfig, Diagnostic[]>;
 	readonly path?: string;
 }
 
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
-	const dir = spec.path ?? directory;
-	const file = path.join(dir, "default.rogen.json");
-	const absolute = (relative: string) => path.resolve(dir, relative);
-	const config = spec.defaultConfig;
-	const entry = mockEntry(
-		{
-			rootDirs: config?.rootDirs.map(absolute) ?? [],
-			syncDir: config?.syncDir && absolute(config.syncDir),
-		},
-		file
-	);
-	const withParent = {
-		...entry,
-		parents: config?.parent ? [absolute(config.parent)] : [],
-	};
 	return new InitDirectory(
-		dir,
+		spec.path ?? directory,
 		new Set(spec.existing ?? []),
 		workspaceOf(spec.workspace),
 		spec.givenName,
 		spec.givenName ?? "default",
-		spec.fileSystem ?? new MemoryFileSystemService(),
-		new MockConfigService([withParent])
+		spec.base
 	);
 }
 

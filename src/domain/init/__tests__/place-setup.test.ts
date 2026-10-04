@@ -9,7 +9,10 @@ import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { BaseConfig } from "../init-directory.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
-import { PlaceSetup } from "../place-setup.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
+import { BaseConfigReader, PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
@@ -289,5 +292,72 @@ describe("PlaceSetup", () => {
 				path.join(directory, "tsconfig.lobby.json"),
 			]);
 		});
+	});
+});
+
+describe("BaseConfigReader", () => {
+	let fs: MemoryFileSystemService;
+
+	const write = (file: string, content: unknown) =>
+		fs.writeFile(path.join(directory, file), JSON.stringify(content));
+
+	const readBase = (entries: readonly string[] = ["default.rogen.json"]) =>
+		new BaseConfigReader(
+			new CoreConfigService(
+				fs,
+				new MockEnvironmentService({ _: [] }, directory)
+			),
+			directory
+		).read(new Set(entries));
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory(directory);
+	});
+
+	it("should read the root dirs of default.rogen.json relative to the directory", async () => {
+		await write("default.rogen.json", { rootDirs: ["src", "shared"] });
+
+		expect((await readBase()).unwrap()).toEqual({
+			rootDirs: ["src", "shared"],
+		});
+	});
+
+	it("should read the resolved value through extends", async () => {
+		await write("default.rogen.json", {
+			extends: "./core.rogen.json",
+			syncDir: "dist",
+		});
+		await write("core.rogen.json", { rootDirs: ["core"] });
+
+		expect((await readBase()).unwrap()).toEqual({
+			rootDirs: ["core"],
+			syncDir: "dist",
+		});
+	});
+
+	it("should take the sync dir from the synced config when default is source-rooted", async () => {
+		await write("default.rogen.json", { rootDirs: ["src"] });
+		await write("sync.rogen.json", {
+			extends: "./default.rogen.json",
+			syncDir: "dist",
+		});
+
+		expect(
+			(await readBase(["default.rogen.json", "sync.rogen.json"])).unwrap()
+		).toEqual({ rootDirs: ["src"], syncDir: "dist" });
+	});
+
+	it("should fail with diagnostics when default.rogen.json is broken", async () => {
+		await fs.writeFile(
+			path.join(directory, "default.rogen.json"),
+			"{ nope"
+		);
+
+		const result = await readBase();
+
+		expect(
+			(result as ResultError<Diagnostic[]>).error.length
+		).toBeGreaterThan(0);
 	});
 });

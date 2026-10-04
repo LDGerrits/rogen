@@ -4,7 +4,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { configFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
@@ -12,7 +12,7 @@ import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitPlan, InitService } from "./init-service.js";
-import { PlaceSetup } from "./place-setup.js";
+import { BaseConfigReader, PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
 import { VariantSetup } from "./variant-setup.js";
 
@@ -58,6 +58,11 @@ export class CoreInitService implements InitService {
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
+		const base = entries.has(configFileName(DEFAULT_CONFIG_STEM))
+			? await new BaseConfigReader(this.configService, directory).read(
+					entries
+				)
+			: undefined;
 
 		return ok(
 			new InitDirectory(
@@ -66,8 +71,7 @@ export class CoreInitService implements InitService {
 				await this.toolchainService.detect(directory),
 				names.length > 0 ? name.value : undefined,
 				name.value,
-				this.fileSystemService,
-				this.configService
+				base
 			)
 		);
 	}
@@ -91,7 +95,11 @@ export class CoreInitService implements InitService {
 		// A new project when there is no `default.rogen.json` yet, otherwise what the user says to add beside it.
 		const project = () =>
 			this.planWith(
-				new ProjectSetup(directory, this.questions),
+				new ProjectSetup(
+					directory,
+					this.questions,
+					this.fileSystemService
+				),
 				directory
 			);
 		if (!directory.hasDefaultConfig) return project();

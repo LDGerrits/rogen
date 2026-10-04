@@ -1,108 +1,9 @@
 import path from "path";
-import { ResultError } from "../../../base/result.js";
-import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { InitDirectory } from "../init-directory.js";
 import { directory, directoryOf } from "./init-fixtures.js";
 
 describe("domain/init/init-directory", () => {
 	describe("InitDirectory", () => {
-		describe("defaultConfig", () => {
-			let fs: MemoryFileSystemService;
-
-			const write = (file: string, content: unknown) =>
-				fs.writeFile(
-					path.join(directory, file),
-					JSON.stringify(content)
-				);
-
-			const withTarget = async <T>(
-				read: (target: InitDirectory) => Promise<T>
-			): Promise<T> => {
-				const configService = new CoreConfigService(
-					fs,
-					new MockEnvironmentService({ _: [] }, directory)
-				);
-				const target = new InitDirectory(
-					directory,
-					new Set(["default.rogen.json"]),
-					workspaceOf(),
-					undefined,
-					"default",
-					fs,
-					configService
-				);
-				return read(target);
-			};
-
-			const readBase = () =>
-				withTarget((target) => target.defaultConfig());
-
-			beforeEach(async () => {
-				fs = new MemoryFileSystemService();
-				await fs.createDirectory(directory);
-			});
-
-			it("should read the root dirs of default.rogen.json relative to the directory", async () => {
-				await write("default.rogen.json", {
-					rootDirs: ["src", "shared"],
-				});
-
-				const base = (await readBase()).unwrap();
-
-				expect(base).toEqual({ rootDirs: ["src", "shared"] });
-			});
-
-			it("should read the resolved value through extends", async () => {
-				await write("default.rogen.json", {
-					extends: "./core.rogen.json",
-					syncDir: "dist",
-				});
-				await write("core.rogen.json", { rootDirs: ["core"] });
-
-				const base = (await readBase()).unwrap();
-
-				expect(base).toEqual({ rootDirs: ["core"], syncDir: "dist" });
-			});
-
-			it("should read another config's sync dir through extends", async () => {
-				await write("default.rogen.json", { rootDirs: ["src"] });
-				await write("sync.rogen.json", {
-					extends: "./default.rogen.json",
-					syncDir: "dist",
-				});
-
-				expect(
-					await withTarget((target) =>
-						target.syncDirOf("sync.rogen.json")
-					)
-				).toBe("dist");
-			});
-
-			it("should fail with diagnostics when default.rogen.json is broken", async () => {
-				await fs.writeFile(
-					path.join(directory, "default.rogen.json"),
-					"{ nope"
-				);
-
-				const result = await readBase();
-
-				expect(result.isErr()).toBe(true);
-				expect(
-					(result as ResultError<Diagnostic[]>).error.length
-				).toBeGreaterThan(0);
-			});
-
-			it("should read it once", async () => {
-				const target = directoryOf();
-
-				expect(target.defaultConfig()).toBe(target.defaultConfig());
-			});
-		});
-
 		describe("checkFree", () => {
 			const target = directoryOf({ existing: ["a.rogen.json"] });
 
@@ -135,31 +36,6 @@ describe("domain/init/init-directory", () => {
 
 				expect(target.projectFilesWithoutConfig).toEqual([
 					"game.project.json",
-				]);
-			});
-		});
-
-		describe("readFile", () => {
-			it("should read a file here", async () => {
-				const fs = new MemoryFileSystemService();
-				await fs.createDirectory(directory);
-				await fs.writeFile(path.join(directory, "a.json"), "{}");
-
-				const read = await directoryOf({ fileSystem: fs }).readFile(
-					"a.json"
-				);
-
-				expect(read.unwrap()).toBe("{}");
-			});
-
-			it("should say which file it couldn't read", async () => {
-				const read = await directoryOf().readFile("missing.json");
-
-				expect(read.isErr() && read.error).toMatchObject([
-					{
-						code: "init.templateUnreadable",
-						resource: path.join(directory, "missing.json"),
-					},
 				]);
 			});
 		});

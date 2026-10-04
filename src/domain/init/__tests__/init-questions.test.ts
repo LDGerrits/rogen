@@ -28,8 +28,9 @@ const askInitChoices = async (
 	for (const file of context.existing ?? [])
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
-		directoryOf({ ...context, givenName: name, fileSystem }),
-		new InitQuestions(prompts)
+		directoryOf({ ...context, givenName: name }),
+		new InitQuestions(prompts),
+		fileSystem
 	);
 	return setup.ask();
 };
