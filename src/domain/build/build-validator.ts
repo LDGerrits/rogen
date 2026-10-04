@@ -7,7 +7,12 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
-import { isServerOnlyService, scriptRunsAt } from "../roblox/roblox.js";
+import {
+	SCRIPT_STORAGE_SERVICE,
+	ScriptRun,
+	isServerOnlyService,
+	scriptRunsAt,
+} from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
@@ -214,30 +219,22 @@ export class BuildValidator {
 		];
 	}
 
-	/** A Script or LocalScript that its class and its service rule out running. Without legacy scripts, Rojo gives them run contexts, and `runContextTarget` speaks instead. */
+	/** A script that its class or run context and its service rule out running. ServerStorage holds scripts that code clones out, so it never counts. */
 	private deadScript(): Diagnostic[] {
-		if (this.placement.template.disablesLegacyScripts) return [];
 		const dead = this.placement.files.flatMap((file) => {
-			const { kind, stem } = this.placement.readings.entryAt(
-				file.entry.source
-			);
-			const suffix =
-				kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
-			// A script whose meta sets a run context runs by that, and not by where it lands.
-			return (suffix === "server" || suffix === "client") &&
-				!this.assembly.scriptRunContexts.contexts.has(
-					file.entry.source
-				) &&
-				!scriptRunsAt(suffix, file.instancePath)
-				? [{ file, suffix }]
+			const run = this.scriptRunOf(file);
+			return run !== undefined &&
+				file.instancePath[0] !== SCRIPT_STORAGE_SERVICE &&
+				!scriptRunsAt(run, file.instancePath)
+				? [{ file, run }]
 				: [];
 		});
 		if (dead.length === 0) return [];
 
 		const listed = this.listed(
 			dead,
-			({ file, suffix }) =>
-				`${file.entry.source} -> ${instanceKey(file.instancePath)} (a ${suffix === "server" ? "Script" : "LocalScript"}, placed by the "${file.route}" route)`
+			({ file, run }) =>
+				`${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
 		);
 		const many = dead.length > 1;
 		return [
@@ -245,12 +242,44 @@ export class BuildValidator {
 				"tree.deadScript",
 				{ resource: this.config.file },
 				[
-					`${dead.length} ${many ? "scripts" : "script"} will never run, because ${many ? "their" : "its"} class doesn't run where ${many ? "they land" : "it lands"}:`,
+					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
 					...listed,
-					"A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.",
+					"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.",
 				].join("\n")
 			),
 		];
+	}
+
+	/** How Rojo makes a `.server` or `.client` script run: by class with legacy scripts, else by run context, and a run context in the script's meta wins. */
+	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
+		const { kind, stem } = this.placement.readings.entryAt(
+			file.entry.source
+		);
+		const suffix =
+			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
+		if (suffix !== "server" && suffix !== "client") return undefined;
+		const legacy = !this.placement.template.disablesLegacyScripts;
+		if (suffix === "client" && legacy) return "LocalScript";
+		switch (
+			this.assembly.scriptRunContexts.contexts.get(file.entry.source)
+		) {
+			case "Legacy":
+				return "Script";
+			case "Server":
+				return "Server";
+			case "Client":
+				return "Client";
+			case "Plugin":
+				return "Plugin";
+		}
+		if (legacy) return "Script";
+		return suffix === "server" ? "Server" : "Client";
+	}
+
+	private static describeRun(run: ScriptRun): string {
+		return run === "Script" || run === "LocalScript"
+			? `a ${run}`
+			: `a Script with RunContext ${run}`;
 	}
 
 	private buriedScriptSuffix(): Diagnostic[] {

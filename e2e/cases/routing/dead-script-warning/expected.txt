@@ -5,10 +5,10 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.rogen.json - warning: 2 scripts will never run, because their class doesn't run where they land:
+  default.rogen.json - warning: 2 scripts will never run where they land:
     src/Inventory/Server/Hud.client.luau -> ServerScriptService/Inventory/Hud (a LocalScript, placed by the "server" route)
     src/Shared/Secret.server.luau -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)
-  A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 written:
   default.project.json

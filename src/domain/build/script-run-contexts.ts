@@ -8,13 +8,13 @@ import { Placement } from "./placement.js";
 
 /** What reading the scripts' meta found. */
 export interface ScriptRunContextsRead {
-	/** The run context a script's meta sets, by the script's source, for each that isn't Legacy. */
+	/** The `RunContext` a script's meta sets, by the script's source. */
 	readonly contexts: ReadonlyMap<string, string>;
 	/** The meta files whose contents were read. */
 	readonly files: readonly string[];
 }
 
-/** Reads the `RunContext` that a `.server` script's own meta sets, since it decides where the script runs. */
+/** Reads the `RunContext` that a script's own meta sets, since it decides where the script runs. */
 export class ScriptRunContexts {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
@@ -33,7 +33,10 @@ export class ScriptRunContexts {
 
 		for (const { entry } of placement.files) {
 			const { kind, stem } = placement.readings.entryAt(entry.source);
-			if (kind !== "script" || RojoFile.scriptSuffixOf(stem) !== "server")
+			if (
+				kind !== "script" ||
+				RojoFile.scriptSuffixOf(stem) === undefined
+			)
 				continue;
 
 			let runContext: unknown;
@@ -52,7 +55,7 @@ export class ScriptRunContexts {
 				files.push(file);
 				runContext = await this.runContextOf(file);
 			}
-			if (typeof runContext === "string" && runContext !== "Legacy")
+			if (typeof runContext === "string")
 				contexts.set(entry.source, runContext);
 		}
 		return { contexts, files };

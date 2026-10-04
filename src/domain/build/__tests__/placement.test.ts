@@ -1693,6 +1693,61 @@ describe("Placer", () => {
 				expect((await dead())[0].message).toContain("2 scripts");
 			});
 
+			const legacyOff = {
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						emitLegacyScripts: false,
+						tree: { $className: "DataModel" },
+					},
+				},
+			};
+
+			it("should warn without legacy scripts about a Client script in ServerScriptService", async () => {
+				await write(
+					"src/server/Hud.client.luau",
+					"src/server/Boot.server.luau",
+					"src/shared/Load.client.luau",
+					"src/shared/Rules.server.luau"
+				);
+
+				const [warning, ...others] = await dead(legacyOff);
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("1 script will never run");
+				expect(warning.message).toContain(
+					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a Script with RunContext Client, placed by the "server" route)`
+				);
+			});
+
+			it("should warn about a Script in ServerScriptService whose meta sets RunContext Client", async () => {
+				await write("src/server/Hud.server.luau");
+				await fs.writeFile(
+					abs("src/server/Hud.meta.json"),
+					metaWith("Client")
+				);
+
+				expect((await dead())[0].message).toContain(
+					"a Script with RunContext Client"
+				);
+			});
+
+			it("should never warn about a script in ServerStorage, where scripts wait to be cloned", async () => {
+				await write(
+					"src/storage/Npc.server.luau",
+					"src/storage/Hud.client.luau"
+				);
+				const routes = {
+					...ROUTES,
+					shared: "ReplicatedStorage/shared",
+					storage: "ServerStorage",
+				};
+
+				expect(await dead({ routes })).toEqual([]);
+				expect(await dead({ routes, ...legacyOff })).toEqual([]);
+			});
+
 			it("should warn about an init folder's script", async () => {
 				await write("src/shared/Net/init.server.luau");
 

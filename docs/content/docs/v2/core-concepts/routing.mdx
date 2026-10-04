@@ -164,7 +164,11 @@ src/Inventory/Server/Hud.client.luau  ->  a LocalScript in ServerScriptService
 src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 ```
 
-A `Script` whose `.meta.json` sets a `RunContext` other than `Legacy` (`"properties": { "RunContext": "Client" }`) runs by that context, so Rogen reads the meta and doesn't warn about it. With `emitLegacyScripts: false` in the template, Rojo gives scripts a run context instead, so a script runs by its context and not by where it lands. Rogen then skips this warning, and warns only about routes that target `StarterPlayerScripts` or `StarterCharacterScripts`.
+With `emitLegacyScripts: false` in the template, Rojo makes every script a `Script` with a `RunContext` instead: `Server` for `.server`, `Client` for `.client`. A `Server` script also runs in `ReplicatedStorage`, and a `Client` script runs wherever clients can see it, so Rogen only warns about a `Client` script in `ServerScriptService`. Routes that target `StarterPlayerScripts` or `StarterCharacterScripts` get their own warning, since a `Client` script there runs twice.
+
+A `RunContext` set in the script's own `.meta.json` (`"properties": { "RunContext": "Client" }`) wins over both, and Rogen reads it.
+
+Rogen never warns about a script in `ServerStorage`. Nothing runs there, but that's where scripts are kept for code to clone out, into a character or a tool.
 
 ### Names That Route by Accident
 
