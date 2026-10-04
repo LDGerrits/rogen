@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -6,9 +7,13 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { OutputFile } from "../../build/build-service.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
+
+const isDefaultStaging = (file: string): boolean =>
+	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
 
 describe("CoreWatchSession", () => {
 	let fs: MemoryFileSystemService;
@@ -32,6 +37,30 @@ describe("CoreWatchSession", () => {
 				...body,
 			})
 		);
+
+	const write = (file: string, body: Record<string, unknown> | string) =>
+		fs.writeFile(
+			file,
+			typeof body === "string" ? body : JSON.stringify(body)
+		);
+
+	const config = (extra: Record<string, unknown> = {}) => ({
+		rootDirs: ["src"],
+		routes: { "*": "ReplicatedStorage" },
+		...extra,
+	});
+
+	const built = async (name: string): Promise<string[]> => {
+		const project = JSON.parse(
+			await fs.readFile(`/repo/${name}.project.json`)
+		);
+		return Object.keys(project.tree.ReplicatedStorage ?? {}).filter(
+			(key) => !key.startsWith("$")
+		);
+	};
+
+	const changeUpdates = () =>
+		updates.filter(({ cause }) => cause.kind === "change");
 
 	const start = async (names: string[] = []) => {
 		await configService.initialize({ names, paths: [] });
@@ -68,6 +97,7 @@ describe("CoreWatchSession", () => {
 	});
 
 	afterEach(async () => {
+		jest.restoreAllMocks();
 		await watcher.stop();
 		store[Symbol.dispose]();
 		configService[Symbol.dispose]();
@@ -351,5 +381,461 @@ describe("CoreWatchSession", () => {
 		expect(stop).toHaveBeenCalledTimes(1);
 		expect(updates).toHaveLength(1);
 		expect(errors).toEqual([]);
+	});
+	describe("watching", () => {
+		it("should watch two configs that share a root through one watcher call and one directory", async () => {
+			await write("/repo/source.rogen.json", config());
+			const watch = jest.spyOn(watcher, "watch");
+
+			await start(["default", "source"]);
+
+			expect(watch).toHaveBeenCalledTimes(1);
+			const [requests] = watch.mock.calls[0];
+			expect(requests.filter((r) => r.recursive)).toEqual([
+				{ path: "/repo/src", recursive: true },
+			]);
+		});
+
+		it("should drop a root that lies inside another", async () => {
+			await write(
+				"/repo/lobby.rogen.json",
+				config({ rootDirs: ["src/shared"] })
+			);
+			const watch = jest.spyOn(watcher, "watch");
+
+			await start(["default", "lobby"]);
+
+			const [requests] = watch.mock.calls[0];
+			expect(requests.filter((r) => r.recursive)).toEqual([
+				{ path: "/repo/src", recursive: true },
+			]);
+		});
+
+		it("should not watch the parent that two roots share", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["places/a", "places/b"] })
+			);
+			const watch = jest.spyOn(watcher, "watch");
+
+			await start();
+
+			const [requests] = watch.mock.calls[0];
+			expect(requests.filter((r) => r.recursive)).toEqual([
+				{ path: "/repo/places/a", recursive: true },
+				{ path: "/repo/places/b", recursive: true },
+			]);
+		});
+
+		it("should tell the watcher to skip each output file and sync directory", async () => {
+			await write("/repo/default.rogen.json", config({ syncDir: "out" }));
+			const watch = jest.spyOn(watcher, "watch");
+
+			await start();
+
+			const [, options] = watch.mock.calls[0];
+			expect(options?.ignored).toEqual([
+				"/repo/default.project.json",
+				"/repo/out",
+				new OutputFile("/repo/default.project.json").stagingPattern,
+			]);
+		});
+
+		it("should emit one batch for one change to a root shared by two configs", async () => {
+			await write("/repo/source.rogen.json", config());
+			await start(["default", "source"]);
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(changeUpdates()).toHaveLength(1);
+		});
+
+		it("should not rebuild off its own write to a watched root", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ outFile: "src/out.project.json" })
+			);
+			await start();
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(changeUpdates()).toHaveLength(1);
+			expect(changeUpdates()[0].changes.map((c) => c.path)).toEqual([
+				"/repo/src/A.luau",
+			]);
+		});
+	});
+
+	describe("source changes", () => {
+		it("should add a new source file to the project file", async () => {
+			await start();
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(await built("default")).toEqual(["A"]);
+		});
+
+		it("should drop the removal of a source file from the project file", async () => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await start();
+
+			await fs.delete("/repo/src/A.luau");
+			await settle();
+
+			expect(await built("default")).toEqual([]);
+		});
+
+		it("should not queue an update to a source file", async () => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await start();
+
+			await fs.writeFile("/repo/src/A.luau", "-- edited");
+			await settle();
+
+			expect(changeUpdates()).toEqual([]);
+		});
+
+		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ routes: { server: "ServerScriptService" } })
+			);
+			await fs.writeFile("/repo/src/Combat/server/Hit.luau", "");
+			await write("/repo/src/Combat/init.meta.json", {
+				className: "Actor",
+			});
+			const combatClass = async () =>
+				JSON.parse(await fs.readFile("/repo/default.project.json")).tree
+					.ServerScriptService.Combat.$className;
+			await start();
+			expect(await combatClass()).toBe("Actor");
+
+			await write("/repo/src/Combat/init.meta.json", {
+				className: "Configuration",
+			});
+			await settle();
+			expect(await combatClass()).toBe("Configuration");
+
+			await write("/repo/src/Combat/init.meta.json", "{ broken");
+			await settle();
+			expect(await combatClass()).toBe("Configuration");
+			expect(updates.at(-1)?.reports[0].outcome).toBe("failed");
+		});
+
+		it("should reach every config that claims the path, each once", async () => {
+			await write("/repo/source.rogen.json", config());
+			await start(["default", "source"]);
+			const rename = jest.spyOn(fs, "rename");
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(await built("default")).toEqual(["A"]);
+			expect(await built("source")).toEqual(["A"]);
+			expect(rename.mock.calls.map(([, to]) => to).sort()).toEqual([
+				"/repo/default.project.json",
+				"/repo/source.project.json",
+			]);
+		});
+
+		it("should reach only the configs whose roots contain the path", async () => {
+			await fs.createDirectory("/repo/lib");
+			await write(
+				"/repo/lobby.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await start(["default", "lobby"]);
+			const rename = jest.spyOn(fs, "rename");
+
+			await fs.writeFile("/repo/lib/B.luau", "");
+			await settle();
+
+			expect(rename.mock.calls.map(([, to]) => to)).toEqual([
+				"/repo/lobby.project.json",
+			]);
+		});
+
+		it("should not rewrite a project file whose bytes would not change", async () => {
+			await start();
+			const rename = jest.spyOn(fs, "rename");
+			const readFile = jest.spyOn(fs, "readFile");
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ tags: { mock: false } })
+			);
+			await settle();
+
+			expect(readFile).toHaveBeenCalledWith("/repo/default.project.json");
+			expect(rename).not.toHaveBeenCalled();
+		});
+
+		it("should rebuild one config while another is still writing", async () => {
+			await write("/repo/source.rogen.json", config());
+			await start(["default", "source"]);
+			const gate = new DeferredPromise<void>();
+			const writeFile = fs.writeFile.bind(fs);
+			jest.spyOn(fs, "writeFile").mockImplementation(
+				async (file, content) => {
+					if (isDefaultStaging(file)) await gate.p;
+					return writeFile(file, content);
+				}
+			);
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(await built("source")).toEqual(["A"]);
+			expect(await built("default")).toEqual([]);
+
+			gate.complete();
+			await settle();
+
+			expect(await built("default")).toEqual(["A"]);
+		});
+
+		it("should not overlap two rebuilds of one config", async () => {
+			await start();
+			const gate = new DeferredPromise<void>();
+			const writeFile = fs.writeFile.bind(fs);
+			const staged = jest.fn();
+			jest.spyOn(fs, "writeFile").mockImplementation(
+				async (file, content) => {
+					if (isDefaultStaging(file)) {
+						staged();
+						await gate.p;
+					}
+					return writeFile(file, content);
+				}
+			);
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			await fs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(staged).toHaveBeenCalledTimes(1);
+
+			gate.complete();
+			await settle();
+
+			expect(staged).toHaveBeenCalledTimes(2);
+			expect(await built("default")).toEqual(["A", "B"]);
+		});
+	});
+
+	describe("linked directories", () => {
+		const outFile = () => fs.readFile("/repo/default.project.json");
+
+		it("should add a linked directory to the project file", async () => {
+			await fs.writeFile("/shared/Util.luau", "");
+			await start();
+
+			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await settle();
+
+			expect(await built("default")).toEqual(["Shared"]);
+		});
+
+		it("should drop a removed link from the project file", async () => {
+			await fs.writeFile("/shared/Util.luau", "");
+			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await start();
+			expect(await built("default")).toEqual(["Shared"]);
+
+			await fs.delete("/repo/src/Shared", true);
+			await settle();
+
+			expect(await built("default")).toEqual([]);
+			expect(await fs.exists("/shared/Util.luau")).toBe(true);
+		});
+
+		it("should rebuild when a file is added inside a target outside every root dir", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await fs.writeFile("/shared/Util.luau", "");
+			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await start();
+			expect(await outFile()).not.toContain("ServerScriptService");
+
+			await fs.writeFile("/shared/Save.server.luau", "");
+			await settle();
+
+			expect(await outFile()).toContain("ServerScriptService");
+		});
+
+		it("should rebuild when a file is removed inside a target outside every root dir", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await fs.writeFile("/shared/Save.server.luau", "");
+			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
+			await start();
+			expect(await outFile()).toContain("ServerScriptService");
+
+			await fs.delete("/shared/Save.server.luau");
+			await settle();
+
+			expect(await outFile()).not.toContain("ServerScriptService");
+		});
+	});
+
+	describe("hot reload", () => {
+		it("should reload when a config changes", async () => {
+			await start();
+			const reload = jest.spyOn(configService, "reload");
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["src"], exclude: [] })
+			);
+			await settle();
+
+			expect(reload).toHaveBeenCalledWith(["/repo/default.rogen.json"]);
+		});
+
+		it("should reload when a template changes", async () => {
+			await write("/repo/template.project.json", {
+				name: "one",
+				tree: {},
+			});
+			await write(
+				"/repo/default.rogen.json",
+				config({ template: "template.project.json" })
+			);
+			await start();
+			const reload = jest.spyOn(configService, "reload");
+
+			await write("/repo/template.project.json", {
+				name: "two",
+				tree: {},
+			});
+			await settle();
+
+			expect(reload).toHaveBeenCalledWith([
+				"/repo/template.project.json",
+			]);
+			expect(
+				JSON.parse(await fs.readFile("/repo/default.project.json")).name
+			).toBe("two");
+		});
+
+		it("should not reload when an unrelated config changes", async () => {
+			await write("/repo/other.rogen.json", config());
+			await start();
+			const reload = jest.spyOn(configService, "reload");
+
+			await write("/repo/other.rogen.json", config({ exclude: ["x"] }));
+			await settle();
+
+			expect(reload).not.toHaveBeenCalled();
+		});
+
+		it("should reload every config that extends an edited parent", async () => {
+			await write("/repo/base.rogen.json", config());
+			await write("/repo/default.rogen.json", {
+				extends: "base.rogen.json",
+			});
+			await write("/repo/source.rogen.json", {
+				extends: "base.rogen.json",
+				outFile: "source.project.json",
+			});
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/L.luau", "");
+			await start(["default", "source"]);
+
+			await write("/repo/base.rogen.json", config({ rootDirs: ["lib"] }));
+			await settle();
+
+			expect(await built("default")).toEqual(["L"]);
+			expect(await built("source")).toEqual(["L"]);
+		});
+
+		it("should watch again when a reload adds a root", async () => {
+			await fs.createDirectory("/repo/lib");
+			await start();
+			const watch = jest.spyOn(watcher, "watch");
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await settle();
+			await fs.writeFile("/repo/lib/L.luau", "");
+			await settle();
+
+			expect(watch).toHaveBeenCalledTimes(1);
+			expect(await built("default")).toEqual(["L"]);
+		});
+
+		it("should pick up a config edited while the watcher restarted", async () => {
+			await fs.createDirectory("/repo/lib");
+			await fs.createDirectory("/repo/lib2");
+			await fs.writeFile("/repo/lib2/L2.luau", "");
+			await start();
+			const watch = watcher.watch.bind(watcher);
+			jest.spyOn(watcher, "watch").mockImplementationOnce(
+				async (requests, options) => {
+					await write(
+						"/repo/default.rogen.json",
+						config({ rootDirs: ["lib2"] })
+					);
+					return watch(requests, options);
+				}
+			);
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await settle();
+
+			expect(await built("default")).toEqual(["L2"]);
+		});
+
+		it("should keep building from the last valid config when one goes invalid", async () => {
+			await write("/repo/prod.rogen.json", config());
+			await start(["default", "prod"]);
+
+			await write("/repo/prod.rogen.json", "{ broken");
+			await settle();
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(await built("default")).toEqual(["A"]);
+			expect(await built("prod")).toEqual(["A"]);
+		});
+
+		it("should build from a config again once it is valid", async () => {
+			await start();
+			await write("/repo/default.rogen.json", "{ broken");
+			await settle();
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ rootDirs: ["lib"] })
+			);
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/L.luau", "");
+			await settle();
+
+			expect(await built("default")).toEqual(["L"]);
+		});
 	});
 });
