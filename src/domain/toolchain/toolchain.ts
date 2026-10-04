@@ -119,9 +119,25 @@ export interface Compiler {
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
 }
 
+/** How `init`'s questions word one language. */
+export interface LanguageCopy {
+	/** Its name in the language question. */
+	readonly label: string;
+	/** The language question's hint when the workspace uses this language. */
+	readonly detectedHint?: string;
+	/** Added to the packages question's description. */
+	readonly packagesNote?: string;
+	/** Only for a language whose compiler reads a single root dir. */
+	readonly rootDir?: {
+		readonly description: string;
+		readonly severalProblem: string;
+	};
+}
+
 /** A language `init` can set up, as this workspace uses it; what differs between languages is answered here. */
 export interface Language {
 	readonly id: string;
+	readonly copy: LanguageCopy;
 	/** The script extension written in examples, such as `Analytics.mock.luau`. */
 	readonly extension: string;
 	/** The package manager offered when the workspace has none. */

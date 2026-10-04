@@ -9,6 +9,7 @@ import {
 	Compiler,
 	CompilerPlaceRequest,
 	Language,
+	LanguageCopy,
 	LanguageDetector,
 	MountCandidate,
 } from "./toolchain.js";
@@ -126,6 +127,17 @@ export class RobloxTsCompiler implements Compiler {
 /** roblox-ts: TypeScript compiled to Luau before Rojo syncs it. */
 export class RobloxTs implements Language {
 	readonly id = "roblox-ts";
+	readonly copy: LanguageCopy = {
+		label: "roblox-ts",
+		detectedHint: "found tsconfig.json",
+		packagesNote: "include and @rbxts are always mounted.",
+		rootDir: {
+			description:
+				"The folder roblox-ts compiles (rootDir in tsconfig.json).",
+			severalProblem:
+				"roblox-ts compiles one folder. For code per place, set up several places.",
+		},
+	};
 	readonly extension = "ts";
 	readonly compiler: RobloxTsCompiler;
 	readonly reservedFolders: readonly string[];
