@@ -1,5 +1,6 @@
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
@@ -26,9 +27,10 @@ export interface BuildService {
 		options?: BuildOptions
 	): Promise<Result<ConfigBuild[], DiagnosticsError>>;
 
-	/** Builds and writes one config of a watch, whose caller checked it can be built beside the others. */
+	/** Builds one config of a watch from the listing the watch holds, and writes it; the caller checked it can be built beside the others. */
 	rebuild(
 		config: ResolvedConfig,
+		listing: IndexReader,
 		options?: BuildOptions
 	): Promise<ConfigBuild>;
 

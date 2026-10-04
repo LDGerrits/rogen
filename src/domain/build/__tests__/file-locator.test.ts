@@ -3,10 +3,11 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
+import { PlannedFilesIndex } from "../file-locator.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
 	abs,
 	buildServiceOf,
@@ -32,17 +33,15 @@ describe("CoreBuildService.locate", () => {
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const indexOfConfig = (config: ResolvedConfig) =>
-		indexOf(store, fs, config.rootDirs);
+	const buildService = () => buildServiceOf(fs, new CoreIndexService(fs));
 
 	const locate = async (
 		paths?: readonly string[],
 		overrides: ResolvedConfigSpec = {}
 	) => {
 		const config = configOf(overrides);
-		const index = await indexOfConfig(config);
 		return (
-			await locateIn(buildServiceOf(fs, index), config, {
+			await locateIn(buildService(), config, {
 				args: paths?.map((p) => abs(p)) ?? [],
 				cwd: abs(),
 			})
@@ -316,17 +315,18 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should never be written to the index", async () => {
+		it("should never be written to the listing it sits on", async () => {
 			await write("src/Other.luau");
-			const config = configOf();
-			const index = await indexOfConfig(config);
+			const listing = await indexOf(store, fs, [abs("src")]);
 
-			await locateIn(buildServiceOf(fs, index), config, {
-				args: [abs("src/Combat/Server/Hit.luau")],
-				cwd: abs(),
-			});
+			const planned = new PlannedFilesIndex(
+				listing,
+				[abs("src")],
+				[abs("src/Combat/Server/Hit.luau")]
+			);
 
-			expect(index.getEntries(abs("src/Combat"))).toBeUndefined();
+			expect(planned.getEntries(abs("src/Combat"))).toBeDefined();
+			expect(listing.getEntries(abs("src/Combat"))).toBeUndefined();
 		});
 
 		it("should sit beside the files that exist", async () => {
@@ -391,17 +391,15 @@ describe("CoreBuildService.locate", () => {
 						: type,
 				])
 			);
-			const config = configOf();
-			const index = await indexOfConfig(config);
-			return { config, index };
+			return configOf();
 		};
 
 		it("should be reported as not an instance rather than missing", async () => {
-			const { config, index } = await unknownEntry("src/Pipe.md");
+			const config = await unknownEntry("src/Pipe.md");
 
 			expect(
 				(
-					await locateIn(buildServiceOf(fs, index), config, {
+					await locateIn(buildService(), config, {
 						args: [abs("src/Pipe.md")],
 						cwd: abs(),
 					})
@@ -410,14 +408,14 @@ describe("CoreBuildService.locate", () => {
 		});
 
 		it("should not be replaced by a planned file", async () => {
-			const { config, index } = await unknownEntry("src/Pipe.luau");
-			const buildService = buildServiceOf(fs, index);
+			const config = await unknownEntry("src/Pipe.luau");
+			const service = buildService();
 
-			const named = await locateIn(buildService, config, {
+			const named = await locateIn(service, config, {
 				args: [abs("src/Pipe.luau")],
 				cwd: abs(),
 			});
-			const all = await locateIn(buildService, config);
+			const all = await locateIn(service, config);
 
 			expect(named.unwrap().files).toEqual(
 				all
@@ -551,9 +549,8 @@ describe("CoreBuildService.locate", () => {
 	it("should fail with the build's errors", async () => {
 		await write("src/A.luau");
 		const config = configOf({ routes: {} });
-		const index = await indexOfConfig(config);
 
-		const result = await locateIn(buildServiceOf(fs, index), config);
+		const result = await locateIn(buildService(), config);
 
 		expect(
 			result.isErr() && result.error.diagnostics.map(({ code }) => code)

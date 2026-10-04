@@ -13,13 +13,7 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { ConfigEntry } from "../../config/config-service.js";
-import {
-	abs,
-	buildServiceOf,
-	configOf,
-	indexOf,
-	locateIn,
-} from "./fixtures.js";
+import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
 	let fs: MemoryFileSystemService;
@@ -49,16 +43,8 @@ describe("CoreBuildService", () => {
 			configs: readonly ResolvedConfig[],
 			options?: { checkSyncDir?: boolean }
 		) => {
-			const index = await indexOf(
-				store,
-				fs,
-				configs.flatMap(({ rootDirs }) => rootDirs)
-			);
 			return (
-				await buildServiceOf(fs, index).build(
-					selectionOf(...configs),
-					options
-				)
+				await buildServiceOfFs().build(selectionOf(...configs), options)
 			).unwrap();
 		};
 

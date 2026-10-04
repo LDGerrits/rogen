@@ -3,70 +3,72 @@ import { FileType } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { CoreIndexService } from "../core-index-service.js";
 import { FileChangeType } from "../file-changes.js";
+import { Listing } from "../index-service.js";
 
 describe("CoreIndexService", () => {
 	let memoryFs: MemoryFileSystemService;
 	let indexService: CoreIndexService;
+	let listing: Listing;
 
 	beforeEach(() => {
 		memoryFs = new MemoryFileSystemService();
 		indexService = new CoreIndexService(memoryFs);
 	});
 
-	describe("Initialization", () => {
+	describe("list", () => {
 		it("should recursively map the directory structure into memory", async () => {
 			await memoryFs.writeFile("src/main.ts", "");
 			await memoryFs.writeFile("src/systems/combat/.server", "");
 			await memoryFs.createDirectory("src/empty_folder");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.hasEntry("src", "main.ts")).toBe(true);
-			expect(indexService.hasEntry("src", "systems")).toBe(true);
-			expect(indexService.hasEntry("src/systems", "combat")).toBe(true);
-			expect(indexService.hasEntry("src/systems/combat", ".server")).toBe(
+			expect(listing.hasEntry("src", "main.ts")).toBe(true);
+			expect(listing.hasEntry("src", "systems")).toBe(true);
+			expect(listing.hasEntry("src/systems", "combat")).toBe(true);
+			expect(listing.hasEntry("src/systems/combat", ".server")).toBe(
 				true
 			);
-			expect(indexService.hasEntry("src", "empty_folder")).toBe(true);
+			expect(listing.hasEntry("src", "empty_folder")).toBe(true);
 
-			expect(indexService.hasEntry("src", "missing.ts")).toBe(false);
+			expect(listing.hasEntry("src", "missing.ts")).toBe(false);
 		});
 
-		it("should keep serving the old listing until the new one is complete", async () => {
+		it("should leave a listing as it was while another is listed", async () => {
 			await memoryFs.writeFile("old/a.ts", "");
 			await memoryFs.writeFile("new/b.ts", "");
-			await indexService.initialize(["old"]);
-			const readDirectory = memoryFs.readDirectory.bind(memoryFs);
-			const seen: boolean[] = [];
-			jest.spyOn(memoryFs, "readDirectory").mockImplementation(
-				async (dir) => {
-					seen.push(indexService.hasEntry("old", "a.ts"));
-					return readDirectory(dir);
-				}
-			);
+			const old = await indexService.list(["old"]);
+			await memoryFs.delete("old/a.ts");
 
-			await indexService.initialize(["new"]);
+			listing = await indexService.list(["new"]);
 
-			expect(seen.length).toBeGreaterThan(0);
-			expect(seen.every(Boolean)).toBe(true);
-			expect(indexService.hasEntry("old", "a.ts")).toBe(false);
-			expect(indexService.hasEntry("new", "b.ts")).toBe(true);
+			expect(old.hasEntry("old", "a.ts")).toBe(true);
+			expect(listing.hasEntry("old", "a.ts")).toBe(false);
+			expect(listing.hasEntry("new", "b.ts")).toBe(true);
+		});
+
+		it("should list a directory inside another only once", async () => {
+			await memoryFs.writeFile("src/shared/a.ts", "");
+			const readDirectory = jest.spyOn(memoryFs, "readDirectory");
+
+			listing = await indexService.list(["src", "src/shared"]);
+
+			expect(
+				readDirectory.mock.calls.filter(([dir]) => dir === "src/shared")
+			).toHaveLength(1);
+			expect(listing.hasEntry("src/shared", "a.ts")).toBe(true);
 		});
 
 		it("should silently ignore directories that throw ENOENT during traversal", async () => {
-			await expect(
-				indexService.initialize(["missing-root"])
-			).resolves.not.toThrow();
+			listing = await indexService.list(["missing-root"]);
 
-			expect(indexService.hasEntry("missing-root", "anything")).toBe(
-				false
-			);
+			expect(listing.hasEntry("missing-root", "anything")).toBe(false);
 		});
 
 		it("should not index a directory that does not exist", async () => {
-			await indexService.initialize(["missing-root"]);
+			listing = await indexService.list(["missing-root"]);
 
-			expect(indexService.getEntries("missing-root")).toBeUndefined();
+			expect(listing.getEntries("missing-root")).toBeUndefined();
 		});
 
 		it("should list a directory's entries with their types", async () => {
@@ -74,24 +76,24 @@ describe("CoreIndexService", () => {
 			await memoryFs.createDirectory("src/components");
 			await memoryFs.createDirectory("src/empty");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntries("src")).toEqual(
+			expect(listing.getEntries("src")).toEqual(
 				new Map([
 					["app.ts", FileType.File],
 					["components", FileType.Directory],
 					["empty", FileType.Directory],
 				])
 			);
-			expect(indexService.getEntries("src/empty")).toEqual(new Map());
+			expect(listing.getEntries("src/empty")).toEqual(new Map());
 		});
 
 		it("should reflect applied changes in a directory's entries", async () => {
 			await memoryFs.createDirectory("src");
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 			await memoryFs.writeFile("src/new.luau", "");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.ADDED,
 					path: "src/new.luau",
@@ -99,7 +101,7 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.getEntries("src")?.get("new.luau")).toBe(
+			expect(listing.getEntries("src")?.get("new.luau")).toBe(
 				FileType.File
 			);
 		});
@@ -108,17 +110,13 @@ describe("CoreIndexService", () => {
 			await memoryFs.writeFile("src/app.ts", "");
 			await memoryFs.createDirectory("src/components");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntryType("src", "app.ts")).toBe(
-				FileType.File
-			);
-			expect(indexService.getEntryType("src", "components")).toBe(
+			expect(listing.getEntryType("src", "app.ts")).toBe(FileType.File);
+			expect(listing.getEntryType("src", "components")).toBe(
 				FileType.Directory
 			);
-			expect(
-				indexService.getEntryType("src", "missing.ts")
-			).toBeUndefined();
+			expect(listing.getEntryType("src", "missing.ts")).toBeUndefined();
 		});
 	});
 
@@ -127,15 +125,15 @@ describe("CoreIndexService", () => {
 			await memoryFs.writeFile("shared/a.luau", "");
 			await memoryFs.createSymbolicLink("shared", "src/Shared");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntryType("src", "Shared")).toBe(
+			expect(listing.getEntryType("src", "Shared")).toBe(
 				FileType.Directory | FileType.SymbolicLink
 			);
-			expect(indexService.getEntries("src/Shared")).toEqual(
+			expect(listing.getEntries("src/Shared")).toEqual(
 				new Map([["a.luau", FileType.File]])
 			);
-			expect(indexService.getEntries("shared")).toBeUndefined();
+			expect(listing.getEntries("shared")).toBeUndefined();
 		});
 
 		it("should index each of two links to one target separately", async () => {
@@ -143,19 +141,19 @@ describe("CoreIndexService", () => {
 			await memoryFs.createSymbolicLink("shared", "src/One");
 			await memoryFs.createSymbolicLink("shared", "src/Two");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.hasEntry("src/One", "a.luau")).toBe(true);
-			expect(indexService.hasEntry("src/Two", "a.luau")).toBe(true);
+			expect(listing.hasEntry("src/One", "a.luau")).toBe(true);
+			expect(listing.hasEntry("src/Two", "a.luau")).toBe(true);
 		});
 
 		it("should record a linked file as a file that is a link", async () => {
 			await memoryFs.writeFile("shared/a.luau", "");
 			await memoryFs.createSymbolicLink("shared/a.luau", "src/A.luau");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntryType("src", "A.luau")).toBe(
+			expect(listing.getEntryType("src", "A.luau")).toBe(
 				FileType.File | FileType.SymbolicLink
 			);
 		});
@@ -163,9 +161,9 @@ describe("CoreIndexService", () => {
 		it("should record a link to nothing as only a link", async () => {
 			await memoryFs.createSymbolicLink("missing", "src/Broken");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntryType("src", "Broken")).toBe(
+			expect(listing.getEntryType("src", "Broken")).toBe(
 				FileType.SymbolicLink
 			);
 		});
@@ -174,24 +172,24 @@ describe("CoreIndexService", () => {
 			await memoryFs.writeFile("src/a.luau", "");
 			await memoryFs.createSymbolicLink("src", "src/Loop");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.getEntryType("src", "Loop")).toBe(
+			expect(listing.getEntryType("src", "Loop")).toBe(
 				FileType.SymbolicLink
 			);
-			expect(indexService.getEntries("src/Loop")).toBeUndefined();
+			expect(listing.getEntries("src/Loop")).toBeUndefined();
 		});
 
 		it("should not descend into a link that points above the root", async () => {
 			await memoryFs.writeFile("repo/src/a.luau", "");
 			await memoryFs.createSymbolicLink("repo", "repo/src/Up");
 
-			await indexService.initialize(["repo/src"]);
+			listing = await indexService.list(["repo/src"]);
 
-			expect(indexService.getEntryType("repo/src", "Up")).toBe(
+			expect(listing.getEntryType("repo/src", "Up")).toBe(
 				FileType.SymbolicLink
 			);
-			expect(indexService.getEntries("repo/src/Up")).toBeUndefined();
+			expect(listing.getEntries("repo/src/Up")).toBeUndefined();
 		});
 
 		it("should not descend into a link that loops back through another link", async () => {
@@ -199,21 +197,21 @@ describe("CoreIndexService", () => {
 			await memoryFs.createSymbolicLink("shared", "src/Shared");
 			await memoryFs.createSymbolicLink("src", "shared/Back");
 
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			expect(indexService.hasEntry("src/Shared", "a.luau")).toBe(true);
-			expect(indexService.getEntryType("src/Shared", "Back")).toBe(
+			expect(listing.hasEntry("src/Shared", "a.luau")).toBe(true);
+			expect(listing.getEntryType("src/Shared", "Back")).toBe(
 				FileType.SymbolicLink
 			);
-			expect(indexService.getEntries("src/Shared/Back")).toBeUndefined();
+			expect(listing.getEntries("src/Shared/Back")).toBeUndefined();
 		});
 
 		it("should drop a removed link and everything indexed under it", async () => {
 			await memoryFs.writeFile("shared/a.luau", "");
 			await memoryFs.createSymbolicLink("shared", "src/Shared");
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.DELETED,
 					path: "src/Shared",
@@ -221,19 +219,18 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.hasEntry("src", "Shared")).toBe(false);
-			expect(indexService.getEntries("src/Shared")).toBeUndefined();
+			expect(listing.hasEntry("src", "Shared")).toBe(false);
+			expect(listing.getEntries("src/Shared")).toBeUndefined();
 		});
 	});
 
-	describe("applyChanges", () => {
+	describe("update", () => {
 		const rescanOf = async (dirs: string[]) => {
-			const fresh = new CoreIndexService(memoryFs);
-			await fresh.initialize(["src"]);
+			const fresh = await new CoreIndexService(memoryFs).list(["src"]);
 			return dirs.map((dir) => fresh.getEntries(dir));
 		};
 		const listingOf = (dirs: string[]) =>
-			dirs.map((dir) => indexService.getEntries(dir));
+			dirs.map((dir) => listing.getEntries(dir));
 		const added = (path: string, fileType: FileType) => ({
 			type: FileChangeType.ADDED,
 			path,
@@ -243,13 +240,13 @@ describe("CoreIndexService", () => {
 		beforeEach(async () => {
 			await memoryFs.writeFile("src/a.luau", "");
 			await memoryFs.writeFile("shared/b.luau", "");
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 		});
 
 		it("should record an added link to its own parent as only a link, as a rescan does", async () => {
 			await memoryFs.createSymbolicLink("src", "src/Loop");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				added("src/Loop", FileType.Directory),
 				added("src/Loop/a.luau", FileType.File),
 			]);
@@ -257,7 +254,7 @@ describe("CoreIndexService", () => {
 			expect(listingOf(["src", "src/Loop"])).toEqual(
 				await rescanOf(["src", "src/Loop"])
 			);
-			expect(indexService.getEntryType("src", "Loop")).toBe(
+			expect(listing.getEntryType("src", "Loop")).toBe(
 				FileType.SymbolicLink
 			);
 		});
@@ -265,11 +262,11 @@ describe("CoreIndexService", () => {
 		it("should record an added link to nothing as only a link, as a rescan does", async () => {
 			await memoryFs.createSymbolicLink("missing", "src/Broken");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				added("src/Broken", FileType.File),
 			]);
 
-			expect(indexService.getEntryType("src", "Broken")).toBe(
+			expect(listing.getEntryType("src", "Broken")).toBe(
 				FileType.SymbolicLink
 			);
 		});
@@ -277,7 +274,7 @@ describe("CoreIndexService", () => {
 		it("should index an added linked directory whole, as a rescan does", async () => {
 			await memoryFs.createSymbolicLink("shared", "src/Shared");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				added("src/Shared", FileType.Directory),
 			]);
 
@@ -289,51 +286,54 @@ describe("CoreIndexService", () => {
 		it("should record an added linked file as a file that is a link", async () => {
 			await memoryFs.createSymbolicLink("shared/b.luau", "src/B.luau");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				added("src/B.luau", FileType.File),
 			]);
 
-			expect(indexService.getEntryType("src", "B.luau")).toBe(
+			expect(listing.getEntryType("src", "B.luau")).toBe(
 				FileType.File | FileType.SymbolicLink
 			);
 		});
 
 		it("should skip an added entry that is gone by the time it applies", async () => {
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				added("src/gone.luau", FileType.File),
 			]);
 
-			expect(indexService.hasEntry("src", "gone.luau")).toBe(false);
+			expect(listing.hasEntry("src", "gone.luau")).toBe(false);
 		});
 
-		it("should wait for a scan in progress before applying", async () => {
+		it("should leave the listing it updates as it was", async () => {
 			await memoryFs.writeFile("src/new.luau", "");
+			const before = listing;
 
-			const scanning = indexService.initialize(["src"]);
-			const applying = indexService.applyChanges([
+			listing = await indexService.update(listing, [
+				added("src/new.luau", FileType.File),
 				{
 					type: FileChangeType.DELETED,
-					path: "src/new.luau",
+					path: "src/a.luau",
 					fileType: FileType.File,
 				},
 			]);
-			await Promise.all([scanning, applying]);
 
-			expect(indexService.hasEntry("src", "new.luau")).toBe(false);
+			expect(before.hasEntry("src", "new.luau")).toBe(false);
+			expect(before.hasEntry("src", "a.luau")).toBe(true);
+			expect(listing.hasEntry("src", "new.luau")).toBe(true);
+			expect(listing.hasEntry("src", "a.luau")).toBe(false);
 		});
 	});
 
 	describe("File Changes & State Mutations", () => {
 		beforeEach(async () => {
 			await memoryFs.writeFile("src/core/math.ts", "");
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 		});
 
 		it("should insert added files into the topology", async () => {
 			await memoryFs.writeFile("src/core/physics.ts", "");
 			await memoryFs.writeFile("src/core/.server", "");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.ADDED,
 					path: "src/core/physics.ts",
@@ -346,9 +346,9 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.hasEntry("src/core", "physics.ts")).toBe(true);
-			expect(indexService.hasEntry("src/core", ".server")).toBe(true);
-			expect(indexService.getEntryType("src/core", ".server")).toBe(
+			expect(listing.hasEntry("src/core", "physics.ts")).toBe(true);
+			expect(listing.hasEntry("src/core", ".server")).toBe(true);
+			expect(listing.getEntryType("src/core", ".server")).toBe(
 				FileType.File
 			);
 		});
@@ -356,7 +356,7 @@ describe("CoreIndexService", () => {
 		it("should implicitly create parent folders if an added file introduces a new path", async () => {
 			await memoryFs.writeFile("src/new_feature/data.ts", "");
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.ADDED,
 					path: "src/new_feature/data.ts",
@@ -364,15 +364,13 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.hasEntry("src/new_feature", "data.ts")).toBe(
-				true
-			);
+			expect(listing.hasEntry("src/new_feature", "data.ts")).toBe(true);
 		});
 
 		it("should remove deleted files from the topology", async () => {
-			expect(indexService.hasEntry("src/core", "math.ts")).toBe(true);
+			expect(listing.hasEntry("src/core", "math.ts")).toBe(true);
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.DELETED,
 					path: "src/core/math.ts",
@@ -380,18 +378,18 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.hasEntry("src/core", "math.ts")).toBe(false);
+			expect(listing.hasEntry("src/core", "math.ts")).toBe(false);
 		});
 
 		it("should cascade delete all nested children when a directory is removed to prevent memory leaks", async () => {
 			await memoryFs.writeFile("src/features/inventory/client/ui.ts", "");
-			await indexService.initialize(["src"]);
+			listing = await indexService.list(["src"]);
 
 			expect(
-				indexService.hasEntry("src/features/inventory/client", "ui.ts")
+				listing.hasEntry("src/features/inventory/client", "ui.ts")
 			).toBe(true);
 
-			await indexService.applyChanges([
+			listing = await indexService.update(listing, [
 				{
 					type: FileChangeType.DELETED,
 					path: "src/features",
@@ -399,88 +397,17 @@ describe("CoreIndexService", () => {
 				},
 			]);
 
-			expect(indexService.hasEntry("src", "features")).toBe(false);
+			expect(listing.hasEntry("src", "features")).toBe(false);
 
 			expect(
-				indexService.getEntryType("src/features", "inventory")
+				listing.getEntryType("src/features", "inventory")
 			).toBeUndefined();
 			expect(
-				indexService.getEntryType("src/features/inventory", "client")
+				listing.getEntryType("src/features/inventory", "client")
 			).toBeUndefined();
 			expect(
-				indexService.getEntryType(
-					"src/features/inventory/client",
-					"ui.ts"
-				)
+				listing.getEntryType("src/features/inventory/client", "ui.ts")
 			).toBeUndefined();
-		});
-	});
-
-	describe("ensureIndexed", () => {
-		it("should index a dir that isn't indexed yet and keep the others", async () => {
-			await memoryFs.writeFile("a/one.ts", "");
-			await memoryFs.writeFile("b/two.ts", "");
-			await indexService.initialize(["a"]);
-
-			await indexService.ensureIndexed(["b"]);
-
-			expect(indexService.hasEntry("a", "one.ts")).toBe(true);
-			expect(indexService.hasEntry("b", "two.ts")).toBe(true);
-		});
-
-		it("should not rescan a dir that is already indexed, or one inside it", async () => {
-			await memoryFs.writeFile("src/shared/a.ts", "");
-			await indexService.ensureIndexed(["src"]);
-			await memoryFs.writeFile("src/b.ts", "");
-			await memoryFs.writeFile("src/shared/c.ts", "");
-
-			await indexService.ensureIndexed(["src", "src/shared"]);
-
-			expect(indexService.hasEntry("src", "b.ts")).toBe(false);
-			expect(indexService.hasEntry("src/shared", "c.ts")).toBe(false);
-		});
-
-		it("should index a dir around one already indexed", async () => {
-			await memoryFs.writeFile("src/shared/a.ts", "");
-			await memoryFs.writeFile("src/b.ts", "");
-			await indexService.ensureIndexed(["src/shared"]);
-
-			await indexService.ensureIndexed(["src"]);
-
-			expect(indexService.hasEntry("src", "b.ts")).toBe(true);
-			expect(indexService.hasEntry("src/shared", "a.ts")).toBe(true);
-		});
-
-		it("should scan once when asked for one dir twice at the same time", async () => {
-			await memoryFs.writeFile("src/a.ts", "");
-			const readDirectory = jest.spyOn(memoryFs, "readDirectory");
-
-			await Promise.all([
-				indexService.ensureIndexed(["src"]),
-				indexService.ensureIndexed(["src"]),
-			]);
-
-			expect(readDirectory).toHaveBeenCalledTimes(1);
-		});
-
-		it("should count a dir that doesn't exist as indexed", async () => {
-			await indexService.ensureIndexed(["src"]);
-			await memoryFs.writeFile("src/a.ts", "");
-
-			await indexService.ensureIndexed(["src"]);
-
-			expect(indexService.getEntries("src")).toBeUndefined();
-		});
-
-		it("should forget the dirs a later initialize leaves out", async () => {
-			await memoryFs.writeFile("a/one.ts", "");
-			await indexService.ensureIndexed(["a"]);
-			await indexService.initialize(["b"]);
-			await memoryFs.writeFile("a/two.ts", "");
-
-			await indexService.ensureIndexed(["a"]);
-
-			expect(indexService.hasEntry("a", "two.ts")).toBe(true);
 		});
 	});
 });

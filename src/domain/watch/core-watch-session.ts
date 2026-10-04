@@ -3,7 +3,7 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
-import { IndexService } from "../../platform/fs/index-service.js";
+import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
 import { BuildBlockers, failedBuild } from "../build/build.js";
@@ -49,6 +49,8 @@ export class CoreWatchSession
 	private settled = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
+	/** What the root dirs held after the latest change; only the intake replaces it, and a rebuild reads the one it started with. */
+	private listing = Listing.EMPTY;
 	private activeWatch = "";
 	private stopping: Promise<void> | undefined;
 
@@ -145,7 +147,7 @@ export class CoreWatchSession
 			return { ...failedBuild(config, blocked), checkedSyncDir: false };
 		}
 
-		const build = await this.buildService.rebuild(config, {
+		const build = await this.buildService.rebuild(config, this.listing, {
 			checkSyncDir: load,
 		});
 		if (build.outcome === "failed") this.failing.add(file);
@@ -256,7 +258,7 @@ export class CoreWatchSession
 		await this.watcher.watch(this.watchRequests(), {
 			ignored: [...this.plan.ignored],
 		});
-		await this.indexService.initialize(this.plan.roots);
+		this.listing = await this.indexService.list(this.plan.roots);
 	}
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
@@ -327,7 +329,10 @@ export class CoreWatchSession
 			this.plan.watches(change.path)
 		);
 		if (sourceChanges.length > 0) {
-			await this.indexService.applyChanges(sourceChanges);
+			this.listing = await this.indexService.update(
+				this.listing,
+				sourceChanges
+			);
 		}
 
 		const affected = new Set([
@@ -359,7 +364,8 @@ export class CoreWatchSession
 		const { reloaded, reindexed } = await this.applyConfigChanges([
 			...this.selection.files,
 		]);
-		if (!reindexed) await this.indexService.initialize(this.plan.roots);
+		if (!reindexed)
+			this.listing = await this.indexService.list(this.plan.roots);
 		this.announce(
 			{ kind: "burst" },
 			this.currentConfigs.map(({ file }) =>

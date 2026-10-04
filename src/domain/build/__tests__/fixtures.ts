@@ -8,6 +8,7 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import {
 	IndexReader,
 	IndexService,
+	Listing,
 } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import {
@@ -81,12 +82,11 @@ export async function writeFiles(
 	for (const file of paths) await fs.writeFile(abs(file), "");
 }
 
-export async function indexOf(
-	store: DisposableStore,
+/** What `rootDirs` hold in `fs`, listed. */
+export function indexOf(
+	_store: DisposableStore,
 	fs: MemoryFileSystemService,
 	rootDirs: readonly string[]
-): Promise<CoreIndexService> {
-	const index = new CoreIndexService(fs);
-	await index.initialize([...rootDirs]);
-	return index;
+): Promise<Listing> {
+	return new CoreIndexService(fs).list(rootDirs);
 }
