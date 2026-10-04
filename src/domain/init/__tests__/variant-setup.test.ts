@@ -15,9 +15,11 @@ describe("VariantSetup", () => {
 	};
 
 	it("should write a config that only extends default", async () => {
-		const { setup, target } = await variant();
+		const { asked, setup, target } = await variant();
 
-		const plan = legacyPlan(planOf(setup, target).unwrap());
+		const plan = legacyPlan(
+			planOf(setup, asked.unwrap()!, target).unwrap()
+		);
 
 		expect(plan.configs.map(({ fileName }) => fileName)).toEqual([
 			"prod.rogen.json",

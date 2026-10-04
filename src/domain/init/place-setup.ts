@@ -15,51 +15,25 @@ import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 
+/** A place's name and folder, and what it joins: the project's language, whether Darklua processes it, and what it inherits from its config. */
 export interface PlaceChoices {
 	readonly name: string;
 	readonly folder: string;
-}
-
-/** What a place joins: the project's language, whether Darklua processes it, and what it inherits from its config. */
-export interface PlaceJoin {
 	readonly language: Language;
 	readonly darklua: boolean;
 	readonly base: BaseConfig;
 }
 
 /** A place extends `default.rogen.json` with its own root dir, syncing from its own subfolder when code is compiled or processed. */
-export class PlaceSetup implements Setup {
-	private constructor(
+export class PlaceSetup implements Setup<PlaceChoices> {
+	constructor(
 		private readonly directory: InitDirectory,
-		private readonly questions: InitQuestions | undefined,
-		private join: PlaceJoin | undefined,
-		private choices: PlaceChoices | undefined
+		private readonly questions: InitQuestions
 	) {}
 
-	/** A place added beside an existing `default.rogen.json`, which asks for its name and folder. */
-	static standalone(
-		directory: InitDirectory,
-		questions: InitQuestions
-	): PlaceSetup {
-		return new PlaceSetup(directory, questions, undefined, undefined);
-	}
-
-	/** A place a new project sets up alongside itself, which has nothing left to ask. */
-	static within(
-		directory: InitDirectory,
-		join: PlaceJoin,
-		choices: PlaceChoices
-	): PlaceSetup {
-		return new PlaceSetup(directory, undefined, join, choices);
-	}
-
-	get name(): string {
-		return this.requireChoices().name;
-	}
-
-	async ask(): Promise<Result<boolean, Diagnostic[]>> {
+	/** Asks for the name and folder of a place added beside an existing `default.rogen.json`. */
+	async ask(): Promise<Result<PlaceChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
-		if (!questions) return ok(true);
 
 		const { workspace } = directory;
 		const base = await directory.defaultConfig();
@@ -80,10 +54,10 @@ export class PlaceSetup implements Setup {
 				description: "Writes <name>.rogen.json.",
 				filesFor,
 			}));
-		if (name === undefined) return ok(false);
+		if (name === undefined) return ok(undefined);
 
 		const folder = await questions.placeFolder(directory, base.value, name);
-		if (folder === undefined) return ok(false);
+		if (folder === undefined) return ok(undefined);
 		// A run that can't ask takes the default folder unchecked.
 		const problem = directory.placeFolderProblem(
 			base.value.rootDirs,
@@ -108,19 +82,19 @@ export class PlaceSetup implements Setup {
 			(directory.has(syncFile)
 				? await directory.syncDirOf(syncFile)
 				: undefined);
-		this.join = {
+		return ok({
+			name,
+			folder,
 			language: workspace.language,
 			darklua: workspace.usesDarklua,
 			base: { ...base.value, ...(syncDir && { syncDir }) },
-		};
-		this.choices = { name, folder };
-		return ok(true);
+		});
 	}
 
-	plan(builder: InitPlanBuilder): void {
-		this.planFiles(builder);
-		this.planSteps(builder);
-		const { configSet } = this.layout();
+	plan(choices: PlaceChoices, builder: InitPlanBuilder): void {
+		this.planFiles(choices, builder);
+		this.planSteps(choices, builder);
+		const { configSet } = this.layout(choices);
 		builder.addEdit(
 			ConfigSet.tagsStep(
 				configSet.language,
@@ -130,8 +104,8 @@ export class PlaceSetup implements Setup {
 	}
 
 	/** The configs, the compiler's own files and the one-time edits, which a project sets up for every place. */
-	planFiles(builder: InitPlanBuilder): void {
-		const { configSet, rootDirs, syncDir, compiled } = this.layout();
+	planFiles(choices: PlaceChoices, builder: InitPlanBuilder): void {
+		const { configSet, rootDirs, syncDir, compiled } = this.layout(choices);
 		configSet.planConfigs(
 			builder,
 			{
@@ -145,9 +119,9 @@ export class PlaceSetup implements Setup {
 	}
 
 	/** The commands that build and serve the place; a project gives them for its first place only. */
-	planSteps(builder: InitPlanBuilder): void {
+	planSteps(choices: PlaceChoices, builder: InitPlanBuilder): void {
 		const { configSet, rootDirs, syncDir, compiled, outDir } =
-			this.layout();
+			this.layout(choices);
 		configSet.planSteps(builder, this.directory, {
 			compileCommand: compiled?.compileCommand,
 			processed: outDir ? [outDir] : rootDirs,
@@ -156,15 +130,13 @@ export class PlaceSetup implements Setup {
 	}
 
 	/** What the place's own folder, its language and where its code is compiled or processed to come to. */
-	private layout(): {
+	private layout({ name, folder, language, darklua, base }: PlaceChoices): {
 		readonly configSet: ConfigSet;
 		readonly rootDirs: string[];
 		readonly outDir: string | undefined;
 		readonly syncDir: string | undefined;
 		readonly compiled: CompiledPlace | undefined;
 	} {
-		const { language, darklua, base } = this.requireJoin();
-		const { name, folder } = this.requireChoices();
 		const configSet = new ConfigSet(name, language, darklua);
 		const { compiler } = language;
 		const rootDirs = [...base.rootDirs, folder];
@@ -192,19 +164,5 @@ export class PlaceSetup implements Setup {
 						})
 					: undefined,
 		};
-	}
-
-	private requireJoin(): PlaceJoin {
-		if (!this.join) {
-			throw new Error("A place is planned only once it was asked.");
-		}
-		return this.join;
-	}
-
-	private requireChoices(): PlaceChoices {
-		if (!this.choices) {
-			throw new Error("A place is planned only once it was asked.");
-		}
-		return this.choices;
 	}
 }

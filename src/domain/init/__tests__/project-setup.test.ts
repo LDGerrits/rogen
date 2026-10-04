@@ -59,8 +59,7 @@ const defaultProjectChoices = async (
 		}),
 		new InitQuestions(new MockPromptService([], false))
 	);
-	(await setup.ask()).unwrap();
-	const choices = setup.answers as ProjectChoices;
+	const choices = (await setup.ask()).unwrap() as ProjectChoices;
 	return withPlaces ? choices : { ...choices, places: [] };
 };
 
@@ -82,12 +81,9 @@ const planProject = ({
 	return planOf(
 		new ProjectSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false)),
-			{
-				choices,
-				copiedTemplate,
-			}
+			new InitQuestions(new MockPromptService([], false))
 		),
+		{ ...choices, ...(copiedTemplate !== undefined && { copiedTemplate }) },
 		target
 	).map(legacyPlan);
 };
@@ -238,9 +234,7 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files, "default.rogen.json").template).toBe(
 				"template.project.json"
 			);
-			expect(
-				configOf(files, "sync.rogen.json").template
-			).toBeUndefined();
+			expect(configOf(files, "sync.rogen.json").template).toBeUndefined();
 		});
 	});
 
@@ -352,13 +346,13 @@ describe("ProjectSetup plan", () => {
 				"rogen watch default sync",
 				"rojo serve sync.project.json",
 			]);
-			expect((await planFor("luau", true, "lobby")).nextSteps.run).toEqual(
-				[
-					"rogen watch lobby lobby-sync",
-					"rojo serve lobby-sync.project.json",
-					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
-				]
-			);
+			expect(
+				(await planFor("luau", true, "lobby")).nextSteps.run
+			).toEqual([
+				"rogen watch lobby lobby-sync",
+				"rojo serve lobby-sync.project.json",
+				"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
+			]);
 		});
 
 		it("should leave the sourcemap to luau-lsp for default, and say how without it", async () => {

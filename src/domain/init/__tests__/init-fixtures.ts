@@ -81,11 +81,13 @@ export const legacyPlan = ({
 	nextSteps,
 });
 
-export function planOf(
-	setup: Setup,
+/** What `setup` plans for `choices` in `target`. */
+export function planOf<C>(
+	setup: Setup<C>,
+	choices: C,
 	target: InitDirectory
 ): Result<InitPlan, Diagnostic[]> {
 	const builder = new InitPlanBuilder(target);
-	setup.plan(builder);
+	setup.plan(choices, builder);
 	return builder.build();
 }

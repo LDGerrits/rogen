@@ -7,7 +7,9 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { BaseConfig } from "../init-directory.js";
-import { PlaceChoices, PlaceSetup } from "../place-setup.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { InitQuestions } from "../init-questions.js";
+import { PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
@@ -17,7 +19,7 @@ const rbxts: WorkspaceSpec = withRobloxTs(
 	{ outDir: "out", tsconfigHasInclude: true }
 );
 
-const choices: PlaceChoices = { name: "lobby", folder: "places/lobby" };
+const choices = { name: "lobby", folder: "places/lobby" };
 
 const plan = (
 	spec: WorkspaceSpec,
@@ -27,15 +29,16 @@ const plan = (
 	const target = directoryOf({ workspace: spec, existing: existingFiles });
 	const { workspace } = target;
 	return planOf(
-		PlaceSetup.within(
+		new PlaceSetup(
 			target,
-			{
-				language: workspace.language,
-				darklua: workspace.usesDarklua,
-				base,
-			},
-			choices
+			new InitQuestions(new MockPromptService([], false))
 		),
+		{
+			...choices,
+			language: workspace.language,
+			darklua: workspace.usesDarklua,
+			base,
+		},
 		target
 	).map(legacyPlan);
 };

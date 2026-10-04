@@ -1,4 +1,4 @@
-import { Result, ResultError, ok } from "../../../base/result.js";
+import { Result, ResultError } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
@@ -31,8 +31,7 @@ const askInitChoices = async (
 		directoryOf({ ...context, givenName: name, fileSystem }),
 		new InitQuestions(prompts)
 	);
-	const asked = await setup.ask();
-	return asked.isErr() ? asked : ok(asked.value ? setup.answers : undefined);
+	return setup.ask();
 };
 
 const defaultInitChoices = async (
