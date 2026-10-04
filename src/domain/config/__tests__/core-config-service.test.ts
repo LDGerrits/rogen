@@ -398,12 +398,10 @@ describe("domain/config/core-config-service", () => {
 
 			const entry = await service.read("/repo/a.rogen.json");
 
-			expect(entry.status).toBe("broken");
-			if (entry.status === "broken")
-				expect(entry.errors.map(({ code }) => code)).toEqual([
-					"config.unknownField",
-					"test.hint",
-				]);
+			expect(
+				entry.status === "broken" &&
+					entry.errors.map(({ code }) => code)
+			).toEqual(["config.unknownField", "test.hint"]);
 		});
 
 		it("should hand the check what the file holds, or nothing when it doesn't parse", async () => {
