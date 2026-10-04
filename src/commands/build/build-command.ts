@@ -97,7 +97,7 @@ registerCommand(
 
 			for (const [index, build] of builds.entries()) {
 				if (builds.length > 1) log.heading(targets[index]);
-				log.outcome(targets[index], build, warningsOf(build));
+				log.outcome(targets[index].entry, build, warningsOf(build));
 			}
 			if (errors.length > 0) return err(new DiagnosticsError(errors));
 

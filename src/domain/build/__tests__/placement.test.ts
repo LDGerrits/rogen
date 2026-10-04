@@ -79,7 +79,6 @@ describe("Placer", () => {
 			const config = configOf(scanOptions);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			// A meta file written empty fails the build, but not the scan.
 			return built.isOk()
 				? {
 						roots: built.value.placement.roots,

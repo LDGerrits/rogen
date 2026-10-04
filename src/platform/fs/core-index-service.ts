@@ -9,6 +9,7 @@ import { ErrorUtils } from "../../base/errors.js";
 import {
 	ancestors,
 	contains,
+	joinPosix,
 	outermostDirs,
 	toPosix,
 } from "../../base/path.js";
@@ -77,16 +78,16 @@ export class CoreIndexService implements IndexService {
 		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
 	}
 
-	/** `undefined` when the directory doesn't exist, or is no longer a directory when `replaced` allows that. */
+	/** `undefined` when the directory doesn't exist, or, with `mayBeReplaced`, is no longer a directory. */
 	private async readDirectory(
 		dir: string,
-		replaced = false
+		mayBeReplaced = false
 	): Promise<[string, FileType][] | undefined> {
 		try {
 			return await this.fileSystemService.readDirectory(dir);
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
-			if (replaced && ErrorUtils.hasCode(error, "ENOTDIR"))
+			if (mayBeReplaced && ErrorUtils.hasCode(error, "ENOTDIR"))
 				return undefined;
 			throw error;
 		}
@@ -199,7 +200,7 @@ export class CoreIndexService implements IndexService {
 		this.tree.get(posixDir)!.set(name, type);
 
 		// A directory already indexed is kept; the changes under it arrive on their own.
-		const fullPosixPath = posixDir === "." ? name : `${posixDir}/${name}`;
+		const fullPosixPath = joinPosix(posixDir, name);
 		if (previous === type && this.tree.has(fullPosixPath)) return;
 		if (previous !== undefined && isDirectoryType(previous))
 			this.removeDirectory(fullPosixPath);
@@ -212,11 +213,8 @@ export class CoreIndexService implements IndexService {
 		if (!parentMap) return;
 		const type = parentMap.get(name);
 		parentMap.delete(name);
-		if (type !== undefined && isDirectoryType(type)) {
-			this.removeDirectory(
-				posixDir === "." ? name : `${posixDir}/${name}`
-			);
-		}
+		if (type !== undefined && isDirectoryType(type))
+			this.removeDirectory(joinPosix(posixDir, name));
 	}
 
 	private removeDirectory(dirPath: string): void {

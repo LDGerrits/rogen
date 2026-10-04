@@ -88,12 +88,12 @@ export class BuildLog {
 
 	/** One config's line for what the run did to its project file, then `diagnostics`; `repeated` says its errors were printed before. */
 	outcome(
-		{ entry, config }: ResolvedEntry,
+		entry: ConfigEntry,
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
 		repeated = false
 	): void {
-		const outFile = relativeTo(this.cwd, config.outFile);
+		const outFile = relativeTo(this.cwd, build.config.outFile);
 		switch (build.outcome) {
 			case "wrote":
 			case "unchanged":

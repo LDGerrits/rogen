@@ -19,9 +19,8 @@ const debugLines = (
 ): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	const resolved = { entry, config: mockConfig() };
 	const log = new BuildLog(logService, dir);
-	log.outcome(resolved, summary ? builtOf(summary) : failed, []);
+	log.outcome(entry, summary ? builtOf(summary) : failed, []);
 	return logService.entries
 		.filter(({ kind }) => kind === "debug")
 		.map(({ text }) => text);
@@ -187,7 +186,7 @@ describe("BuildLog.outcome", () => {
 	) => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).outcome(
-			{ entry: entryOf(), config: mockConfig() },
+			entryOf(),
 			build,
 			diagnostics,
 			repeated

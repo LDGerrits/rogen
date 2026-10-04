@@ -192,11 +192,6 @@ export class WatchLog {
 	}
 
 	private report({ report, diagnostics, repeated }: ShownReport): void {
-		this.buildLog.outcome(
-			{ entry: report.entry, config: report.config },
-			report,
-			diagnostics,
-			repeated
-		);
+		this.buildLog.outcome(report.entry, report, diagnostics, repeated);
 	}
 }
