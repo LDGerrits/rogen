@@ -152,6 +152,12 @@ export interface MetaReplacement {
 	readonly note: string;
 }
 
+/** What a sync tool does to a data file: it writes a Lua module in its place, which Rojo syncs as a ModuleScript. */
+export interface DataReplacement {
+	/** Says which data files, in the warning about the file Rojo no longer finds. */
+	readonly note: string;
+}
+
 /** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place; the build asks it, and never names one. */
 export interface SyncTool {
 	readonly id: string;
@@ -161,6 +167,8 @@ export interface SyncTool {
 	readsOnly?(source: string): boolean;
 	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
 	readonly metaReplacement?: MetaReplacement;
+	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */
+	readonly dataReplacement?: DataReplacement;
 }
 
 /** What `locate` found, config by config. */

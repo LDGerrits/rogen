@@ -2,7 +2,7 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
-import { MetaReplacement, SyncTool } from "./build.js";
+import { DataReplacement, MetaReplacement, SyncTool } from "./build.js";
 
 /** Where a build's files are synced from: the root dirs themselves, or the `syncDir` that tools write them into. */
 export class SyncLayout {
@@ -24,6 +24,13 @@ export class SyncLayout {
 	get metaReplacements(): MetaReplacement[] {
 		return this.tools.flatMap(
 			({ metaReplacement }) => metaReplacement ?? []
+		);
+	}
+
+	/** What the tools write instead of a data file. */
+	get dataReplacements(): DataReplacement[] {
+		return this.tools.flatMap(
+			({ dataReplacement }) => dataReplacement ?? []
 		);
 	}
 
