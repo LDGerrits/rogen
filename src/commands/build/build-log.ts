@@ -21,10 +21,11 @@ function describeConfig(config: ResolvedConfig, cwd: string): string[] {
 /** One line per root dir, route and variant. */
 function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
-		({ rootDir, files, excluded, skippedLinks }) =>
+		({ rootDir, files, excluded, mounted, skippedLinks }) =>
 			[
 				`${relativeTo(cwd, rootDir)}: ${plural(files, "file")}`,
 				...(excluded > 0 ? [`${excluded} excluded`] : []),
+				...(mounted > 0 ? [`${mounted} mounted`] : []),
 				...(skippedLinks > 0
 					? [plural(skippedLinks, "skipped link")]
 					: []),

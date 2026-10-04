@@ -43,6 +43,8 @@ export interface RootSummary {
 	readonly rootDir: string;
 	readonly files: number;
 	readonly excluded: number;
+	/** Paths the template mounts, which Rojo reads instead. */
+	readonly mounted: number;
 	readonly skippedLinks: number;
 }
 

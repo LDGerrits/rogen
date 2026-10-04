@@ -98,6 +98,21 @@ export class ScannedRoot {
 		return this.countLeftOut("excluded");
 	}
 
+	/** The template nodes that mount a path that exists under this root dir; a node counts once, whatever case its path is spelt in. */
+	get mountedCount(): number {
+		const nodes = new Set<string>();
+		for (const [mounted, why] of this.leftOut)
+			if (
+				why.status === "mounted" &&
+				this.index.hasEntry(
+					path.dirname(mounted),
+					path.basename(mounted)
+				)
+			)
+				nodes.add(why.node.join("/"));
+		return nodes.size;
+	}
+
 	get skippedCount(): number {
 		return this.countLeftOut("skipped");
 	}

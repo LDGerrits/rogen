@@ -108,19 +108,24 @@ describe("BuildLog build lines", () => {
 							rootDir: path.join(cwd, "src"),
 							files: 3,
 							excluded: 0,
+							mounted: 0,
 							skippedLinks: 0,
 						},
 						{
 							rootDir: path.join(cwd, "lib"),
 							files: 1,
 							excluded: 2,
+							mounted: 1,
 							skippedLinks: 1,
 						},
 					],
 				}),
 				cwd
 			)
-		).toEqual(["src: 3 files", "lib: 1 file, 2 excluded, 1 skipped link"]);
+		).toEqual([
+			"src: 3 files",
+			"lib: 1 file, 2 excluded, 1 mounted, 1 skipped link",
+		]);
 	});
 
 	it("should give each route its target and file count", () => {

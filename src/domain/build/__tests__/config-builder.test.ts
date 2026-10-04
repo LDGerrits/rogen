@@ -356,12 +356,47 @@ describe("ConfigBuilder", () => {
 						rootDir: abs("src"),
 						files: 2,
 						excluded: 1,
+						mounted: 0,
 						skippedLinks: 0,
 					},
 					{
 						rootDir: abs("lib"),
 						files: 1,
 						excluded: 0,
+						mounted: 0,
+						skippedLinks: 0,
+					},
+				]);
+			});
+
+			it("should count each path the template mounts that exists, once", async () => {
+				await fs.writeFile(abs("src/Vendor/Lib.luau"), "");
+				await fs.writeFile(abs("src/Save.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						template: {
+							file: abs("template.project.json"),
+							project: {
+								name: "game",
+								tree: {
+									$className: "DataModel",
+									ReplicatedStorage: {
+										Vendor: { $path: "src/Vendor" },
+										Gone: { $path: "src/Gone" },
+									},
+								},
+							},
+						},
+					})
+				);
+
+				expect(result.unwrap().summary.roots).toEqual([
+					{
+						rootDir: abs("src"),
+						files: 1,
+						excluded: 0,
+						mounted: 1,
 						skippedLinks: 0,
 					},
 				]);

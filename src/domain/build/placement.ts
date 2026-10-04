@@ -116,6 +116,7 @@ export class Placement {
 				rootDir: root.rootDir,
 				files: root.entries.length,
 				excluded: root.excludedCount,
+				mounted: root.mountedCount,
 				skippedLinks: root.skippedCount,
 			})),
 			routes: [...this.config.routes].map(([key, target]) => ({
