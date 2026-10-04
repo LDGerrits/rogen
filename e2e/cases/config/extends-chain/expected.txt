@@ -5,6 +5,10 @@ stdout:
   Not building: a.rogen.json, b.rogen.json.
   c.project.json · wrote
   Built 1 config.
+stderr:
+  c.rogen.json - warning: 1 script will never run, because its class doesn't run where it lands:
+    one/Save.server.luau -> ServerStorage/Save (a Script, placed by the "server" route)
+  A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.
 
 written:
   c.project.json

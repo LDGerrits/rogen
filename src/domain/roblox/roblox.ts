@@ -27,6 +27,34 @@ export function isServerOnlyService(service: string): boolean {
 	return SERVER_ONLY_SERVICES.includes(service);
 }
 
+/** The services where a legacy Script runs. */
+const SERVER_SCRIPT_SERVICES: readonly string[] = [
+	"ServerScriptService",
+	"Workspace",
+];
+
+/** The containers whose LocalScripts run: the player's own, which clone from the Starter containers, and ReplicatedFirst. */
+const CLIENT_SCRIPT_SERVICES: readonly string[] = [
+	"StarterGui",
+	"StarterPack",
+	"ReplicatedFirst",
+];
+
+/** Whether a legacy Script (`server`) or LocalScript (`client`) at `instancePath` ever runs. */
+export function scriptRunsAt(
+	scriptClass: "server" | "client",
+	instancePath: readonly string[]
+): boolean {
+	const [service, child] = instancePath;
+	if (scriptClass === "server")
+		return SERVER_SCRIPT_SERVICES.includes(service);
+	return (
+		CLIENT_SCRIPT_SERVICES.includes(service) ||
+		(service === "StarterPlayer" &&
+			PLAYER_SCRIPT_CONTAINERS.includes(child))
+	);
+}
+
 /** Where a route puts files: a service Rojo can write to, and the folders below it. */
 export class Target {
 	constructor(

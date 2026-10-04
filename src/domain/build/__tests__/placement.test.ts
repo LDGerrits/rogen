@@ -1486,6 +1486,69 @@ describe("Placer", () => {
 			});
 		});
 
+		describe("scripts that never run", () => {
+			const dead = async (overrides: ResolvedConfigSpec = {}) =>
+				(
+					await route({
+						routes: {
+							...ROUTES,
+							shared: "ReplicatedStorage/shared",
+						},
+						...overrides,
+					})
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "tree.deadScript");
+
+			it("should warn once for a LocalScript in a server service and a Script in a replicating one", async () => {
+				await write(
+					"src/server/Hud.client.luau",
+					"src/shared/Secret.server.luau",
+					"src/server/Boot.server.luau",
+					"src/client/Main.client.luau",
+					"src/ReplicatedFirst/Load.client.luau",
+					"src/Types.luau"
+				);
+
+				const [warning, ...others] = await dead();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("2 scripts will never run");
+				expect(warning.message).toContain(
+					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a LocalScript, placed by the "server" route)`
+				);
+				expect(warning.message).toContain(
+					`${abs("src/shared/Secret.server.luau")} -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)`
+				);
+			});
+
+			it("should warn about an init folder's script", async () => {
+				await write("src/shared/Net/init.server.luau");
+
+				expect((await dead())[0].message).toContain("1 script will");
+			});
+
+			it("should not warn about a ModuleScript or a script that is pruned", async () => {
+				await write(
+					"src/server/Hud.client.mock.luau",
+					"src/server/Save@client.luau"
+				);
+
+				expect(await dead({ tags: { mock: false } })).toEqual([]);
+			});
+
+			it("should list the first few and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/shared/Save${index}.server.luau`
+					)
+				);
+
+				expect((await dead())[0].message).toContain("2 more like it");
+			});
+		});
+
 		describe("server code that ships to clients", () => {
 			const shipped = async () =>
 				(await route())

@@ -1,0 +1,28 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 2 scripts will never run, because their class doesn't run where they land:
+    src/Inventory/Server/Hud.client.luau -> ServerScriptService/Inventory/Hud (a LocalScript, placed by the "server" route)
+    src/Shared/Secret.server.luau -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)
+  A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Secret: Script  <- src/Shared/Secret.server.luau
+  ServerScriptService: ServerScriptService
+    Bootstrap: Script  <- src/server/Bootstrap.server.luau
+    Inventory: Folder
+      Hud: LocalScript  <- src/Inventory/Server/Hud.client.luau
+      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Main: LocalScript  <- src/client/Main.client.luau

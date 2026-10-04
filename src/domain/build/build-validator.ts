@@ -7,7 +7,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
-import { isServerOnlyService } from "../roblox/roblox.js";
+import { isServerOnlyService, scriptRunsAt } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
@@ -40,6 +40,7 @@ export class BuildValidator {
 			...this.strayAt(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
+			...this.deadScript(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
@@ -192,6 +193,46 @@ export class BuildValidator {
 						? [`  ${unlisted} more like it aren't listed.`]
 						: []),
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code.`,
+				].join("\n")
+			),
+		];
+	}
+
+	/** A Script or LocalScript that its class and its service rule out running. Without legacy scripts, Rojo gives them run contexts, and `runContextTarget` speaks instead. */
+	private deadScript(): Diagnostic[] {
+		if (this.placement.template.disablesLegacyScripts) return [];
+		const dead = this.placement.files.flatMap((file) => {
+			const { kind, stem } = this.placement.readings.entryAt(
+				file.entry.source
+			);
+			const suffix =
+				kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
+			return (suffix === "server" || suffix === "client") &&
+				!scriptRunsAt(suffix, file.instancePath)
+				? [{ file, suffix }]
+				: [];
+		});
+		if (dead.length === 0) return [];
+
+		const listed = dead
+			.slice(0, DIAGNOSED_PATHS)
+			.map(
+				({ file, suffix }) =>
+					`  ${file.entry.source} -> ${instanceKey(file.instancePath)} (a ${suffix === "server" ? "Script" : "LocalScript"}, placed by the "${file.route}" route)`
+			);
+		const unlisted = dead.length - listed.length;
+		const many = dead.length > 1;
+		return [
+			warningDiagnostic(
+				"tree.deadScript",
+				{ resource: this.config.file },
+				[
+					`${dead.length} ${many ? "scripts" : "script"} will never run, because ${many ? "their" : "its"} class doesn't run where ${many ? "they land" : "it lands"}:`,
+					...listed,
+					...(unlisted > 0
+						? [`  ${unlisted} more like it aren't listed.`]
+						: []),
+					"A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.",
 				].join("\n")
 			),
 		];

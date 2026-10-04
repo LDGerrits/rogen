@@ -8,6 +8,9 @@ stderr:
   default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it:
     src/client/Inventory/server/Save.luau -> StarterPlayer/StarterPlayerScripts/Inventory/server/Save
   Move it out of the "client" route's files if it's server code.
+  default.rogen.json - warning: 1 script will never run, because its class doesn't run where it lands:
+    src/server/Inventory/Hud.client.luau -> ServerScriptService/Inventory/Hud (a LocalScript, placed by the "server" route)
+  A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.
 
 written:
   default.project.json
