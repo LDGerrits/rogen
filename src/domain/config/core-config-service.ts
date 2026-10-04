@@ -3,7 +3,7 @@ import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
-import { ConfigLoader, ConfigOverrides } from "./config-loader.js";
+import { ConfigLoader, ConfigOverrides, PathField } from "./config-loader.js";
 import {
 	ConfigEntry,
 	ConfigScope,
@@ -12,12 +12,12 @@ import {
 } from "./config-service.js";
 import { CoreConfigSelection, ManagedConfig } from "./core-config-selection.js";
 
-/** Overrides that name one value, which several configs can't share, by the flag that sets each. */
-const SINGLE_CONFIG_OVERRIDES = {
+/** The flag that overrides each path field; each names one value, which several configs can't share. */
+const PATH_FLAGS: Record<PathField, string> = {
 	outFile: "out-file",
 	syncDir: "sync-dir",
 	template: "template",
-} as const;
+};
 
 /** The flag as a user types it, taken from the option table so the two can't drift. */
 function flagOf(name: string): string {
@@ -51,8 +51,8 @@ function selectionProblem(
 		);
 	}
 	if (!all && names.length + paths.length <= 1) return undefined;
-	const override = Object.entries(SINGLE_CONFIG_OVERRIDES).find(
-		([field]) => overrides[field as keyof ConfigOverrides] !== undefined
+	const override = (Object.entries(PATH_FLAGS) as [PathField, string][]).find(
+		([field]) => overrides[field] !== undefined
 	);
 	return override
 		? new Error(

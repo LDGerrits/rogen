@@ -1,10 +1,9 @@
-import { formatJsonFile } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	RogenConfig,
-	SCHEMA_URL,
+	configFileContent,
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
@@ -41,7 +40,7 @@ export class InitPlanBuilder {
 	addConfig(stem: string, config: RogenConfig): void {
 		this.configs.push({
 			fileName: configFileName(stem),
-			content: formatJsonFile({ $schema: SCHEMA_URL, ...config }),
+			content: configFileContent(config),
 		});
 	}
 

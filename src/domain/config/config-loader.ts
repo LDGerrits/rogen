@@ -30,14 +30,16 @@ import {
 	rootDirOverlap,
 } from "./config.js";
 
+/** The fields that hold a path, which resolve against the file that sets them and the command line overrides. */
+export const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
+
+export type PathField = (typeof PATH_FIELDS)[number];
+
 /** Per-invocation values that sit above every layer of a config's chain. */
-export interface ConfigOverrides {
-	readonly outFile?: string;
-	readonly syncDir?: string;
-	readonly template?: string;
+export type ConfigOverrides = Readonly<Partial<Record<PathField, string>>> & {
 	/** Tag name to whether it is on. */
 	readonly tags: Readonly<Record<string, boolean>>;
-}
+};
 
 /** One read of one config, with everything a reload needs to compare against. */
 export interface LoadedConfig {
@@ -270,7 +272,7 @@ class LayeredConfig {
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
-		for (const key of ["outFile", "syncDir", "template"] as const) {
+		for (const key of PATH_FIELDS) {
 			if (overrides[key] !== undefined) contents[key] = overrides[key];
 		}
 		if (declaredTags.length > 0) {
@@ -300,7 +302,7 @@ class LayeredConfig {
 		const absolute = (value: string) => path.resolve(dir, value);
 		const result = { ...contents };
 
-		for (const key of ["template", "syncDir", "outFile"]) {
+		for (const key of PATH_FIELDS) {
 			const value = result[key];
 			if (typeof value === "string") result[key] = absolute(value);
 		}

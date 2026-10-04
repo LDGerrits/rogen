@@ -1,5 +1,5 @@
 import path from "path";
-import { safeStringify } from "../../base/json.js";
+import { formatJsonFile, safeStringify } from "../../base/json.js";
 import { commonAncestor, isInside } from "../../base/path.js";
 import { Target } from "../roblox/roblox.js";
 import {
@@ -50,6 +50,11 @@ export const SCHEMA_URL = schemaUrlFor("2.0.0");
 export function schemaUrlFor(version: string): string {
 	const channel = version.includes("-") ? version : version.split(".")[0];
 	return `${SCHEMA_BASE_URL}/${channel}/rogen.json`;
+}
+
+/** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */
+export function configFileContent(config: RogenConfig): string {
+	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 
 /** How a root dir overlaps another of `rootDirs`; a file under both would belong to both. */
