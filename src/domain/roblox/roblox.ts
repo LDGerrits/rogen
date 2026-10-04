@@ -16,6 +16,17 @@ const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterCharacterScripts",
 ];
 
+/** The services whose contents never replicate to clients. */
+const SERVER_ONLY_SERVICES: readonly string[] = [
+	"ServerScriptService",
+	"ServerStorage",
+];
+
+/** Whether everything in the service stays on the server. */
+export function isServerOnlyService(service: string): boolean {
+	return SERVER_ONLY_SERVICES.includes(service);
+}
+
 /** Where a route puts files: a service Rojo can write to, and the folders below it. */
 export class Target {
 	constructor(

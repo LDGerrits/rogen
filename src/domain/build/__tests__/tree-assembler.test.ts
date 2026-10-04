@@ -1423,6 +1423,29 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
+			it("should collapse a routing folder an outer route outranks and a Name@key folder, so Rojo applies their meta", async () => {
+				await write(
+					"src/server/client/A.luau",
+					"src/Queue@server/B.luau"
+				);
+				for (const dir of ["src/server/client", "src/Queue@server"])
+					await writeMeta(`${dir}/init.meta.json`, {
+						className: "Actor",
+					});
+
+				const { warnings, tree: value } = await assemble({
+					routes: SPLIT,
+				});
+
+				expect(warnings).toEqual([]);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "client")
+				).toEqual({ $path: optional("src/server/client") });
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Queue")
+				).toEqual({ $path: optional("src/Queue@server") });
+			});
+
 			it("should not warn about meta in a folder whose files were all pruned", async () => {
 				await write("src/Mocks/Http.mock.luau");
 				await writeMeta("src/Mocks/init.meta.json", {

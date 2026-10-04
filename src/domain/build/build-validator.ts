@@ -1,12 +1,13 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
-import { capitalized } from "../../base/strings.js";
+import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import { isServerOnlyService } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
@@ -38,6 +39,7 @@ export class BuildValidator {
 			...this.caseMismatch(),
 			...this.strayAt(),
 			...this.unrouted(),
+			...this.serverCodeShipped(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
@@ -142,6 +144,57 @@ export class BuildValidator {
 					'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
 				)
 		);
+	}
+
+	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
+	private serverCodeShipped(): Diagnostic[] {
+		const { routes } = this.config;
+		const shipped = this.placement.files.flatMap((file) => {
+			const ignored = [...new Set(file.ignoredRoutes)].filter((key) => {
+				const service = routes.get(key)?.service;
+				return service !== undefined && isServerOnlyService(service);
+			});
+			const { kind, stem } = this.placement.readings.entryAt(
+				file.entry.source
+			);
+			// A Script's source stays on the server, and a LocalScript is client code to begin with.
+			const isScript =
+				kind === "script" &&
+				RojoFile.scriptSuffixOf(stem) !== undefined;
+			return ignored.length > 0 &&
+				!isScript &&
+				!isServerOnlyService(file.instancePath[0])
+				? [{ file, ignored }]
+				: [];
+		});
+		if (shipped.length === 0) return [];
+
+		const quoted = (keys: Iterable<string>) =>
+			joinedWithAnd([...new Set(keys)].map((key) => `"${key}"`));
+		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
+		const governing = quoted(shipped.map(({ file }) => file.route));
+		const listed = shipped
+			.slice(0, DIAGNOSED_PATHS)
+			.map(
+				({ file }) =>
+					`  ${file.entry.source} -> ${instanceKey(file.instancePath)}`
+			);
+		const unlisted = shipped.length - listed.length;
+		const many = shipped.length > 1;
+		return [
+			warningDiagnostic(
+				"route.serverCodeShipped",
+				{ resource: this.config.file },
+				[
+					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
+					...listed,
+					...(unlisted > 0
+						? [`  ${unlisted} more like it aren't listed.`]
+						: []),
+					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code.`,
+				].join("\n")
+			),
+		];
 	}
 
 	private buriedScriptSuffix(): Diagnostic[] {
@@ -293,15 +346,22 @@ export class BuildValidator {
 		});
 	}
 
-	/** Meta in folders that never become an instance, decided by the folder's name. */
+	/** Meta in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
 	private metaAppliesToNothing(): Diagnostic[] {
-		const { readings } = this.placement;
+		const { readings, routed } = this.placement;
+		const named = new Set(
+			routed.flatMap(({ entry, folderNodes }) =>
+				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
+			)
+		);
 		const instanceless = ({
 			rootDir,
 			dir,
 		}: FolderMeta): InstancelessFolder | undefined => {
 			if (dir === "") return "a root dir";
-			const folder = readings.folders.get(joinPosix(rootDir, dir));
+			const key = joinPosix(rootDir, dir);
+			if (named.has(key)) return undefined;
+			const folder = readings.folders.get(key);
 			if (folder?.kind === "route") return "a routing folder";
 			if (folder?.kind === "tag") return "a tag folder";
 			return folder?.invisible ? "an invisible folder" : undefined;

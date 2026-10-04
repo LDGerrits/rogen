@@ -19,8 +19,10 @@ export interface RoutedFile {
 	readonly routeMatch: RouteMatch;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
-	/** Routing, tag and invisible folders name no node, so they have none. */
+	/** Routing, tag and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
 	readonly folderNodes: readonly FolderNode[];
+	/** The route keys that name the file but sit under the governing route, so they changed nothing. */
+	readonly ignoredRoutes: readonly string[];
 	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
 	readonly tags: readonly TagMatch[];
 	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
@@ -30,10 +32,17 @@ export interface RoutedFile {
 /** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
 class Claims {
 	route: { readonly key: string; readonly match: MatchForm } | undefined;
+	readonly ignoredRoutes: string[] = [];
 	readonly tags: TagMatch[] = [];
 
-	claimRoute(key: string, match: MatchForm): void {
-		this.route ??= { key, match };
+	/** Whether the route governs; a later one is ignored whole. */
+	claimRoute(key: string, match: MatchForm): boolean {
+		if (this.route) {
+			this.ignoredRoutes.push(key);
+			return false;
+		}
+		this.route = { key, match };
+		return true;
 	}
 
 	claimTag(tag: TagMatch): void {
@@ -96,12 +105,13 @@ export class Router {
 			routeMatch: claims.route?.match ?? "fallback",
 			instancePath: [...parent, name],
 			folderNodes,
+			ignoredRoutes: claims.ignoredRoutes,
 			tags: claims.tags,
 			buriedScriptSuffix,
 		};
 	}
 
-	/** Routing, tag and invisible folders and markers claim the file; every other folder, and a `Name@key` routing folder, becomes a node. */
+	/** Routing, tag and invisible folders and markers claim the file; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
 	private readFolders(
 		entry: ScannedEntry,
 		read: EntryRead,
@@ -124,9 +134,14 @@ export class Router {
 		const folders: { name: string; dir: string }[] = [];
 		for (const folder of read.folders) {
 			if (folder.kind === "route") {
-				claims.claimRoute(folder.key, "folder");
-				if (folder.keptName !== undefined && !folder.invisible)
-					folders.push({ name: folder.keptName, dir: folder.dir });
+				if (claims.claimRoute(folder.key, "folder")) {
+					if (folder.keptName !== undefined && !folder.invisible)
+						folders.push({
+							name: folder.keptName,
+							dir: folder.dir,
+						});
+				} else if (!folder.invisible)
+					folders.push({ name: folder.segment, dir: folder.dir });
 			} else if (folder.kind === "tag")
 				claims.claimTag({ tag: folder.key, form: "folder" });
 			else if (!folder.invisible)
@@ -146,10 +161,13 @@ export class Router {
 			this.keys.isTag(span.key)
 		);
 		for (const span of tagSpans) claims.claimTag(this.asTagMatch(span));
-		const routeSpan = claims.route
-			? undefined
-			: match.spans.find((span) => this.keys.routeKeys.has(span.key));
-		if (routeSpan) claims.claimRoute(routeSpan.key, "suffix");
+		let routeSpan: SuffixSpan | undefined;
+		for (const span of match.spans)
+			if (
+				this.keys.routeKeys.has(span.key) &&
+				claims.claimRoute(span.key, "suffix")
+			)
+				routeSpan = span;
 
 		// Rojo names an init folder after the folder, so its script's suffixes only route.
 		if (entry.kind === "init-folder") {

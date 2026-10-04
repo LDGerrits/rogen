@@ -1171,10 +1171,33 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should ignore a nested route folder's target but still remove the folder", async () => {
+			it("should keep a nested route folder as an ordinary folder", async () => {
 				await write("src/ReplicatedFirst/client/main.luau");
 
+				expect(await paths()).toEqual(["ReplicatedFirst/client/main"]);
+			});
+
+			it("should keep a nested Name@key folder under its written name", async () => {
+				await write("src/ReplicatedFirst/Queue@client/main.luau");
+
+				expect(await paths()).toEqual([
+					"ReplicatedFirst/Queue@client/main",
+				]);
+			});
+
+			it("should still hide a nested invisible routing folder", async () => {
+				await write("src/ReplicatedFirst/(server)/main.luau");
+
 				expect(await paths()).toEqual(["ReplicatedFirst/main"]);
+			});
+
+			it("should let only the governing marker act", async () => {
+				await write(
+					"src/ReplicatedFirst/Net/.server",
+					"src/ReplicatedFirst/Net/main.luau"
+				);
+
+				expect(await paths()).toEqual(["ReplicatedFirst/Net/main"]);
 			});
 
 			it("should ignore a suffix under an outer routing folder", async () => {
@@ -1460,6 +1483,92 @@ describe("Placer", () => {
 				await write("src/server/Net/Save@client.luau");
 
 				expect(await strayWarnings()).toEqual([]);
+			});
+		});
+
+		describe("server code that ships to clients", () => {
+			const shipped = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.serverCodeShipped"
+					);
+
+			it("should warn once, naming each file, the route it sits under and the one that governs it", async () => {
+				await write(
+					"src/ReplicatedFirst/server/Datastore.luau",
+					"src/ReplicatedFirst/Other@server/Save.luau",
+					"src/server/Net/Fine.luau"
+				);
+
+				const [warning, ...others] = await shipped();
+
+				expect(others).toEqual([]);
+				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
+				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.message).toBe(
+					[
+						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',
+						`  ${abs("src/ReplicatedFirst/Other@server/Save.luau")} -> ReplicatedFirst/Other@server/Save`,
+						`  ${abs("src/ReplicatedFirst/server/Datastore.luau")} -> ReplicatedFirst/server/Datastore`,
+						"Move them out of the \"ReplicatedFirst\" route's files if they're server code.",
+					].join("\n")
+				);
+			});
+
+			it("should warn for a data file and a suffix that an outer route ignores", async () => {
+				await write(
+					"src/ReplicatedFirst/Config@server.json",
+					"src/ReplicatedFirst/Rules@server.luau"
+				);
+
+				expect((await shipped())[0].message).toContain("2 files");
+			});
+
+			it("should not warn when the governing route is server-only too", async () => {
+				await write("src/server/Net/client/Save.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should not warn about a Script, whose source stays on the server", async () => {
+				await write("src/ReplicatedFirst/server/Boot.server.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should not warn about a route that targets a replicating service", async () => {
+				await write("src/ReplicatedFirst/client/Hud.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should list the first few files and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) =>
+							`src/ReplicatedFirst/server/Save${index}.luau`
+					)
+				);
+
+				const [warning] = await shipped();
+
+				expect(warning.message).toContain("12 files");
+				expect(warning.message).toContain("2 more like it");
+			});
+
+			it("should not warn about a file a dormant variant prunes", async () => {
+				await write("src/ReplicatedFirst/server/Save.mock.luau");
+
+				const [warning] = await (async () =>
+					(await route({ tags: { mock: false } }))
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "route.serverCodeShipped"
+						))();
+
+				expect(warning).toBeUndefined();
 			});
 		});
 

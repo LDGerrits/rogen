@@ -4,6 +4,10 @@ stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it:
+    src/client/Inventory/server/Save.luau -> StarterPlayer/StarterPlayerScripts/Inventory/server/Save
+  Move it out of the "client" route's files if it's server code.
 
 written:
   default.project.json
@@ -13,9 +17,11 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Hud: LocalScript  <- src/server/Inventory/Hud.client.luau
-      Menu: ModuleScript  <- src/server/Inventory/client/Menu.luau
+      client: Folder
+        Menu: ModuleScript  <- src/server/Inventory/client/Menu.luau
       main-client: ModuleScript  <- src/server/Inventory/main-client.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder
-        Save: ModuleScript  <- src/client/Inventory/server/Save.luau
+        server: Folder
+          Save: ModuleScript  <- src/client/Inventory/server/Save.luau

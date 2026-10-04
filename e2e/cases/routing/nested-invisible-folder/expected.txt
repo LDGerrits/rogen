@@ -1,0 +1,19 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "shared" governs it:
+    src/Shared/(Server)/Datastore.luau -> ReplicatedStorage/shared/Datastore
+  Move it out of the "shared" route's files if it's server code.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Datastore: ModuleScript  <- src/Shared/(Server)/Datastore.luau
