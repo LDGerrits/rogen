@@ -28,8 +28,6 @@ export interface PlacesQuestion {
 	readonly reserved: ReadonlySet<string>;
 }
 
-const DARKLUA_DETECTED_HINT = "found .darklua.json";
-
 const required = (what: string) => (value: string) =>
 	value.trim() === "" ? `Enter ${what}.` : undefined;
 
@@ -155,7 +153,9 @@ export class InitQuestions {
 			message: "Does Darklua process your code before Rojo syncs it?",
 			description:
 				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: workspace.usesDarklua ? DARKLUA_DETECTED_HINT : undefined,
+			hint: workspace.usesDarklua
+				? `found ${workspace.darklua.configFiles[0]}`
+				: undefined,
 			initialValue: workspace.usesDarklua,
 		});
 	}
