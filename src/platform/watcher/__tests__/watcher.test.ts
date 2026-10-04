@@ -36,6 +36,7 @@ describe("MemoryWatcher", () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
+		await memoryFs.createDirectory("src");
 		await watcher.watch([{ path: "src", recursive: true }]);
 
 		await memoryFs.writeFile("src/init.lua", "-- added");
@@ -114,6 +115,8 @@ describe("MemoryWatcher", () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
+		await memoryFs.createDirectory("src");
+		await memoryFs.createDirectory("tests");
 		await watcher.watch([
 			{ path: "src", recursive: true },
 			{ path: "tests", recursive: true },
@@ -142,6 +145,7 @@ describe("MemoryWatcher", () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
+		await memoryFs.createDirectory("src");
 		await watcher.watch([{ path: "src", recursive: true }], {
 			ignored: ["src/out", "src/a.project.json"],
 		});
@@ -157,6 +161,7 @@ describe("MemoryWatcher", () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
+		await memoryFs.createDirectory("src");
 		await watcher.watch([{ path: "src", recursive: true }], {
 			ignored: [/^src\/a\.project\.json\.[^/]+\.tmp$/],
 		});

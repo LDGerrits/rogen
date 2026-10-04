@@ -104,9 +104,7 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async createDirectory(filePath: string): Promise<void> {
-		if (!(await this.exists(filePath))) {
-			await fs.promises.mkdir(filePath, { recursive: true });
-		}
+		await fs.promises.mkdir(filePath, { recursive: true });
 	}
 
 	async readFile(filePath: string): Promise<string> {
@@ -116,7 +114,7 @@ export class DiskFileSystemService implements FileSystemService {
 	async writeFile(filePath: string, content: string): Promise<void> {
 		// Automatically builds missing directories
 		const dir = path.dirname(filePath);
-		await this.createDirectory(dir);
+		if (!(await this.exists(dir))) await this.createDirectory(dir);
 
 		return fs.promises.writeFile(filePath, content, "utf-8");
 	}
