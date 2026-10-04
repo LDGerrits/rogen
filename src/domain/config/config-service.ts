@@ -85,7 +85,7 @@ export type ConfigFileCheck = (
 	failed: FailedConfigFile
 ) => readonly Diagnostic[];
 
-/** Finds, loads and resolves configs. It keeps nothing between calls: the selection it hands out does. */
+/** Finds, loads and resolves configs. It keeps no loaded configs between calls, only the file checks registered on it: the selection it hands out holds the configs. */
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 

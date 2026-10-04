@@ -112,17 +112,17 @@ export class BuildValidator {
 	private strayAt(): Diagnostic[] {
 		const { strayAts } = this.placement.readings;
 		if (strayAts.size === 0) return [];
-		const listed = [...strayAts]
-			.slice(0, DIAGNOSED_PATHS)
-			.map(([resource, { text, closestKey, notLast }]) => {
+		const listed = this.listed(
+			[...strayAts],
+			([resource, { text, closestKey, notLast }]) => {
 				const hint = notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
 					: closestKey
 						? `did you mean "@${closestKey}"?`
 						: `"${text}" is not a declared route`;
-				return `  ${resource} (${hint})`;
-			});
-		const unlisted = strayAts.size - listed.length;
+				return `${resource} (${hint})`;
+			}
+		);
 		const count = strayAts.size === 1 ? "name has" : "names have";
 		return [
 			warningDiagnostic(
@@ -131,9 +131,6 @@ export class BuildValidator {
 				[
 					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
 					...listed,
-					...(unlisted > 0
-						? [`  ${unlisted} more like it aren't listed.`]
-						: []),
 				].join("\n")
 			),
 		];
@@ -143,13 +140,11 @@ export class BuildValidator {
 	private variantTypo(): Diagnostic[] {
 		const { variantTypos } = this.placement.readings;
 		if (variantTypos.size === 0) return [];
-		const listed = [...variantTypos]
-			.slice(0, DIAGNOSED_PATHS)
-			.map(
-				([resource, { text, variant }]) =>
-					`  ${resource} (did you mean ".${variant}" for ".${text}"?)`
-			);
-		const unlisted = variantTypos.size - listed.length;
+		const listed = this.listed(
+			[...variantTypos],
+			([resource, { text, variant }]) =>
+				`${resource} (did you mean ".${variant}" for ".${text}"?)`
+		);
 		const many = variantTypos.size > 1;
 		return [
 			warningDiagnostic(
@@ -158,9 +153,6 @@ export class BuildValidator {
 				[
 					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
 					...listed,
-					...(unlisted > 0
-						? [`  ${unlisted} more like it aren't listed.`]
-						: []),
 				].join("\n")
 			),
 		];
@@ -205,13 +197,11 @@ export class BuildValidator {
 			joinedWithAnd([...new Set(keys)].map((key) => `"${key}"`));
 		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
 		const governing = quoted(shipped.map(({ file }) => file.route));
-		const listed = shipped
-			.slice(0, DIAGNOSED_PATHS)
-			.map(
-				({ file }) =>
-					`  ${file.entry.source} -> ${instanceKey(file.instancePath)}`
-			);
-		const unlisted = shipped.length - listed.length;
+		const listed = this.listed(
+			shipped,
+			({ file }) =>
+				`${file.entry.source} -> ${instanceKey(file.instancePath)}`
+		);
 		const many = shipped.length > 1;
 		return [
 			warningDiagnostic(
@@ -220,9 +210,6 @@ export class BuildValidator {
 				[
 					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
 					...listed,
-					...(unlisted > 0
-						? [`  ${unlisted} more like it aren't listed.`]
-						: []),
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code.`,
 				].join("\n")
 			),
@@ -245,13 +232,11 @@ export class BuildValidator {
 		});
 		if (dead.length === 0) return [];
 
-		const listed = dead
-			.slice(0, DIAGNOSED_PATHS)
-			.map(
-				({ file, suffix }) =>
-					`  ${file.entry.source} -> ${instanceKey(file.instancePath)} (a ${suffix === "server" ? "Script" : "LocalScript"}, placed by the "${file.route}" route)`
-			);
-		const unlisted = dead.length - listed.length;
+		const listed = this.listed(
+			dead,
+			({ file, suffix }) =>
+				`${file.entry.source} -> ${instanceKey(file.instancePath)} (a ${suffix === "server" ? "Script" : "LocalScript"}, placed by the "${file.route}" route)`
+		);
 		const many = dead.length > 1;
 		return [
 			warningDiagnostic(
@@ -260,9 +245,6 @@ export class BuildValidator {
 				[
 					`${dead.length} ${many ? "scripts" : "script"} will never run, because ${many ? "their" : "its"} class doesn't run where ${many ? "they land" : "it lands"}:`,
 					...listed,
-					...(unlisted > 0
-						? [`  ${unlisted} more like it aren't listed.`]
-						: []),
 					"A Script runs in ServerScriptService or Workspace. A LocalScript runs in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst.",
 				].join("\n")
 			),
@@ -449,6 +431,20 @@ export class BuildValidator {
 				`applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`
 			)
 		);
+	}
+
+	/** The first few items as indented lines, then how many more went unlisted. */
+	private listed<T>(
+		items: readonly T[],
+		line: (item: T) => string
+	): string[] {
+		const lines = items
+			.slice(0, DIAGNOSED_PATHS)
+			.map((item) => `  ${line(item)}`);
+		const unlisted = items.length - lines.length;
+		return unlisted > 0
+			? [...lines, `  ${unlisted} more like it aren't listed.`]
+			: lines;
 	}
 
 	/** One diagnostic per path, up to a cap; the last one says how many more went unlisted. */
