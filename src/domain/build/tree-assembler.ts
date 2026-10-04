@@ -24,7 +24,7 @@ import {
 } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
-import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
+import { ScannedRoot, rojoNameOf } from "./root-scanner.js";
 
 /** A placed build with its tree; what the rules report on. */
 export class Assembly {
@@ -276,15 +276,7 @@ export class TreeAssembler {
 		return {
 			file,
 			source: file.entry.source,
-			rojoName: this.rojoNameOf(file.entry),
+			rojoName: rojoNameOf(file.entry),
 		};
-	}
-
-	/** The name Rojo gives the entry when it enumerates the directory itself. */
-	private rojoNameOf(entry: ScannedEntry): string {
-		const name = path.posix.basename(entry.relativePath);
-		return entry.kind === "init-folder"
-			? name
-			: new RojoFile(name).instanceName;
 	}
 }

@@ -1,4 +1,3 @@
-import path from "path";
 import { joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
@@ -10,7 +9,7 @@ import {
 	NameReadings,
 	SuffixSpan,
 } from "./name-reader.js";
-import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
+import { ScannedEntry, ScannedRoot, rojoNameOf } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */
 export interface FolderNode {
@@ -154,11 +153,9 @@ export class Router {
 			: match.spans.find((span) => this.keys.routeKeys.has(span.key));
 		if (routeSpan) claims.claimRoute(routeSpan.key, routeSpan.form);
 
+		// Rojo names an init folder after the folder, so its script's suffixes only route.
 		if (entry.kind === "init-folder") {
-			return {
-				name: path.posix.basename(entry.relativePath),
-				buriedScriptSuffix: undefined,
-			};
+			return { name: rojoNameOf(entry), buriedScriptSuffix: undefined };
 		}
 
 		const buriedScriptSuffix =

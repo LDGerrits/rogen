@@ -3,7 +3,7 @@ import { joinPosix, stemOf } from "../../base/path.js";
 import { capitalized } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
-import { ScannedEntry, ScannedRoot } from "./root-scanner.js";
+import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
 
 /** Whether a folder routes, carries a tag or is ordinary. */
 export type FolderReading =
@@ -211,6 +211,8 @@ export class NameReadings {
 	readonly markers = new Map<string, MarkerRead>();
 	/** By the entry's source. */
 	readonly entries = new Map<string, EntryRead>();
+	/** Each marker, folder above an entry, or entry whose name only differs from a declared key in letter case, with that key; first found first. */
+	readonly nearMisses = new Map<string, string>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -220,26 +222,34 @@ export class NameReadings {
 		for (const root of roots) {
 			for (const marker of root.markers) {
 				this.readFoldersAbove(root.rootDir, marker);
-				this.markers.set(
-					joinPosix(root.rootDir, marker),
-					this.reader.marker(path.posix.basename(marker))
-				);
+				const resource = joinPosix(root.rootDir, marker);
+				const read = this.reader.marker(path.posix.basename(marker));
+				this.markers.set(resource, read);
+				this.noteNearMiss(resource, read.nearMissKey);
 			}
 			for (const metaFile of root.metaFiles)
 				this.readFoldersAbove(root.rootDir, metaFile);
 			for (const entry of root.entries) {
 				const { fileName, kind, stem } =
 					NameReadings.suffixedNameOf(entry);
+				const folders = this.readFoldersAbove(
+					root.rootDir,
+					entry.relativePath
+				);
+				const match = this.reader.suffixes(stem);
 				this.entries.set(entry.source, {
-					folders: this.readFoldersAbove(
-						root.rootDir,
-						entry.relativePath
-					),
+					folders,
 					fileName,
 					kind,
 					stem,
-					match: this.reader.suffixes(stem),
+					match,
 				});
+				for (const folder of folders)
+					this.noteNearMiss(
+						joinPosix(root.rootDir, folder.dir),
+						folder.nearMissKey
+					);
+				this.noteNearMiss(entry.source, match.nearMissKey);
 			}
 		}
 	}
@@ -249,6 +259,11 @@ export class NameReadings {
 		const read = this.entries.get(source);
 		if (!read) throw new Error(`${source} was not scanned.`);
 		return read;
+	}
+
+	private noteNearMiss(resource: string, key: string | undefined): void {
+		if (key && !this.nearMisses.has(resource))
+			this.nearMisses.set(resource, key);
 	}
 
 	private folderAt(rootDir: string, dir: string): FolderRead {
@@ -289,11 +304,7 @@ export class NameReadings {
 		readonly kind: RojoFileKind;
 		readonly stem: string;
 	} {
-		const isInitFolder = entry.kind === "init-folder";
-		const fileName = isInitFolder
-			? entry.initFile
-			: path.posix.basename(entry.relativePath);
-		const kind: RojoFileKind = isInitFolder ? "script" : entry.kind;
+		const { fileName, kind } = namingFileOf(entry);
 		const stem = stemOf(fileName);
 		return {
 			fileName,

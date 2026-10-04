@@ -7,6 +7,7 @@ import { RojoFile } from "../rojo/rojo-file.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { FileLocation, PlacedLocation } from "./build.js";
 import { Placement } from "./placement.js";
+import { membersOf } from "./root-scanner.js";
 
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
 export class FileLocator {
@@ -50,12 +51,7 @@ export class FileLocator {
 		for (const [source, why] of leftOut) add({ ...why, source });
 
 		for (const file of files) {
-			const { entry } = file;
-			const members =
-				entry.kind === "init-folder"
-					? entry.members
-					: [{ source: entry.source, below: [] }];
-			for (const { source, below } of members)
+			for (const { source, below } of membersOf(file.entry))
 				add({
 					status: "placed",
 					source,

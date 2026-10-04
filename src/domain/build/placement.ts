@@ -73,10 +73,18 @@ export class Placement {
 		readonly files: readonly RoutedFile[],
 		/** Every path the build leaves out of the tree. */
 		readonly leftOut: LeftOutPaths,
-		readonly clashes: readonly InstanceClash[],
-		/** In scan order. */
-		readonly displaced: readonly DisplacedFile[]
+		readonly clashes: readonly InstanceClash[]
 	) {}
+
+	/** The routed files the template displaced, in scan order. */
+	get displaced(): DisplacedFile[] {
+		return this.routed.flatMap((file) => {
+			const why = this.leftOut.get(file.entry.source);
+			return why?.status === "displaced"
+				? [{ file, node: why.node }]
+				: [];
+		});
+	}
 
 	/** Meta no file claims, across every root dir; computed once. */
 	unclaimedMeta(): UnclaimedMeta[] {
@@ -175,13 +183,7 @@ export class Placer {
 				routed,
 				templating.files,
 				leftOut,
-				tagging.value.clashes,
-				routed.flatMap((file) => {
-					const why = leftOut.get(file.entry.source);
-					return why?.status === "displaced"
-						? [{ file, node: why.node }]
-						: [];
-				})
+				tagging.value.clashes
 			)
 		);
 	}
