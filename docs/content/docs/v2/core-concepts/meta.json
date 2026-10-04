@@ -1,4 +1,4 @@
 {
 	"title": "Core Concepts",
-	"pages": ["routing", "tags", "project-layout", "requires", "output"]
+	"pages": ["routing", "variants", "project-layout", "requires", "output"]
 }

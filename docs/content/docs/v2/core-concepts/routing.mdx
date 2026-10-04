@@ -66,9 +66,20 @@ Luau projects usually capitalize the folder (`Server/`) and roblox-ts projects d
 
 Files can also go through the `*` route, or be routed one by one with the other two methods below.
 
+### Keeping the Folder's Name
+
+Write the folder as `Name@key` to route it **and keep its name**. A bare `@key` routes and leaves no folder, which is what a plain `Server/` does.
+
+```
+src/Matchmaking@server/Queue.luau  ->  ServerScriptService/Matchmaking/Queue
+src/Inventory/@server/Save.luau    ->  ServerScriptService/Inventory/Save
+```
+
+Use `Name@key` when a folder is both a feature and a route, and a flat layout reads better than `Matchmaking/Server/`.
+
 ## Marker Files
 
-An empty dot-file named after a route key (`.server`) routes its directory and every directory below it. Unlike a routing folder, the marked folder **keeps its name**.
+An empty dot-file named after a route key (`.server`) routes its directory and every directory below it. Unlike a routing folder, the marked folder **keeps its name**, like `Name@key`.
 
 ```
 src/Anti-cheat/.server
@@ -77,24 +88,29 @@ src/Anti-cheat/Check.luau  ->  ServerScriptService/Anti-cheat/Check
 
 ## Suffixes
 
-A route key at the end of a file name routes that file. Set the key off with a separator (`+`, `-`, `_`, `.` or `@`) or with a capital letter that follows a lower-case letter or digit:
+`@key` at the end of a file name routes that file. Whatever stands before the `@` is the name, and the suffix is stripped from the instance name:
 
 ```
-Combat-server.luau  ->  ServerScriptService/.../Combat
 Combat@server.luau  ->  ServerScriptService/.../Combat
-Combat_Server.luau  ->  ServerScriptService/.../Combat
-CombatServer.luau   ->  ServerScriptService/.../Combat
-Level2Server.luau   ->  ServerScriptService/.../Level2
-HTTPServer.luau        (not a match: the capital must follow a lower-case letter or digit)
+Hud@client.luau     ->  StarterPlayer/StarterPlayerScripts/.../Hud
 ```
 
-The matching suffix is stripped from the instance name. Prefixes don't route. A name can end in a route key by accident, so check [Escaping an Accidental Route](#escaping-an-accidental-route).
+`@` is the only sign Rogen adds, and it reads like an email address: this name, at that place. Nothing else in a name routes a file. Rogen doesn't read `Combat-server.luau`, `Combat_server.luau`, `Combat+server.luau` or `CombatServer.luau` as routes, so `HttpClient.luau` stays `HttpClient`.
+
+Rojo's own suffixes still work. Rojo reads `.server` and `.client` at the end of a script name as the script's class, and a file has to land where it runs, so Rogen routes on them when a route key of that name is declared:
+
+```
+Bootstrap.server.luau  ->  ServerScriptService/.../Bootstrap   (a Script)
+Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/.../Hud   (a LocalScript)
+```
+
+No other route key routes through a dot: `Types.shared.luau` is an instance named `Types.shared`, and `Types@shared.luau` is the route.
 
 <Callout type="info" title="A suffix sets where a script goes, not its class">
-	Rojo reads `.server` and `.client` at the end of a script name as the script's class: `Hud.client.luau` becomes a `LocalScript`. A route suffix decides **where** a script goes, never **what class** it is. So routing a *module* by suffix needs a capital (`CombatServer.luau`) or another separator (`Combat-server.luau`), which lands in `ServerScriptService` as a `ModuleScript`. Routing folders read best when a feature has several files per side, and suffixes suit a small feature with a file or two.
+	`Combat@server.luau` is a `ModuleScript` in `ServerScriptService`, and `Bootstrap.server.luau` is a `Script`. An `@` suffix decides **where** a file goes, never **what class** it is, so it is how a module reaches another service without a folder. Routing folders read best when a feature has several files per side, and suffixes suit a small feature with a file or two.
 </Callout>
 
-Tag suffixes are different: `Analytics.mock.luau` means nothing to Rojo. See [Tags](/docs/v2/core-concepts/tags).
+An `@` that matches no declared route is almost always a typo, so `rogen build` warns once, naming the closest route: `Save@sever.luau` gets `did you mean "@server"?`. A dot part that isn't a [variant](/docs/v2/core-concepts/variants), such as `.spec`, stays in the name silently.
 
 ## Matching
 
@@ -102,41 +118,61 @@ A folder, marker file or suffix matches a route key when it spells the key **exa
 
 | Matches | Doesn't match |
 |---|---|
-| `server/`, `Server/` | `SERVER/`, `sErver/` |
+| `server/`, `Server/`, `Queue@server/` | `SERVER/`, `sErver/` |
 | `.server`, `.Server` | `.SERVER` |
-| `Combat.server.luau`, `Combat.Server.luau`, `CombatServer.luau` | `Combat.SERVER.luau` |
+| `Combat@server.luau`, `Combat@Server.luau` | `Combat@SERVER.luau` |
 
-A name that differs from a key only in letter case beyond the first letter isn't routed, and `rogen build` warns about it, naming the key it resembles. Nothing is guessed.
+A folder or marker that differs from a key only in letter case beyond the first letter isn't routed, and `rogen build` warns about it, naming the key it resembles. Nothing is guessed.
 
 Route keys (other than `*`) use letters and digits and start with a letter, and two keys that differ only in the case of their first letter (`server` and `Server`) are an error.
 
 ## The Governing Route
 
-Several rules can apply to one path. Rogen walks from the root directory down to the file and takes the **first** route it finds: the **governing route**. Routes nested inside it are ignored, and Rogen doesn't warn about them.
+Several rules can apply to one path. Rogen walks from the root directory down to the file and takes the **first** route it finds: the **governing route**. Every route after it is **ignored whole**: an ignored routing folder is an ordinary folder that keeps its name, and an ignored suffix stays in the name as Rojo reads it.
 
 With routes `ReplicatedFirst`, `server` and `client`:
 
 ```
 src/ReplicatedFirst/main.client.luau     ->  ReplicatedFirst/main
-src/ReplicatedFirst/client/main.luau     ->  ReplicatedFirst/main
+src/ReplicatedFirst/client/main.luau     ->  ReplicatedFirst/client/main
 src/server/Inventory/Hud.client.luau     ->  ServerScriptService/Inventory/Hud
 src/Inventory/Hud.client.luau            ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud
 ```
 
-- A routing folder is always removed from the tree, even when an outer route governs.
-- The **governing** suffix is stripped from the instance name.
-- An **ignored** suffix isn't touched. The name is whatever Rojo makes of the file: `main.client.luau` is a `LocalScript` named `main`, while `main-client.luau` stays `main-client`.
+- The **governing** folder is removed from the tree (or keeps its name, as `Name@key`), and the **governing** suffix is stripped from the instance name.
+- An **ignored** routing folder (`client/` under `ReplicatedFirst/`) is an ordinary folder. It can collapse, and its `init.meta.json` applies. Wrap it as `(client)/` to hide it.
+- An **ignored** suffix isn't touched. The name is whatever Rojo makes of the file: `main.client.luau` is a `LocalScript` named `main`, while `Save@server.luau` stays `Save@server`.
 
-### Escaping an Accidental Route
+### Server Code Under a Replicating Route
 
-Suffix matching is flexible, so a name can route by accident: with a `client` route, `HttpClient.luau` goes to `client` and loses its `Client` suffix, becoming `Http`. `rogen where` shows where a file lands and which suffix routed it. To keep such a name, put the file under an outer route, and that route governs instead:
+An ignored route can put server code where clients can read it. `src/Shared/Server/Datastore.luau` lands in `ReplicatedStorage/Shared/Server/Datastore`, because `Shared` governs and `Server` is ignored. Rogen warns once when an ignored route targets a server-only service (`ServerScriptService`, `ServerStorage`) while the file lands in a service that replicates:
 
 ```
-src/Net/HttpClient.luau         ->  StarterPlayer/StarterPlayerScripts/Net/Http
-src/Shared/Net/HttpClient.luau  ->  ReplicatedStorage/Shared/Net/HttpClient
+warning: 2 files under a "server" route ship to clients, because "shared" governs them:
+  src/Shared/Server/Datastore.luau -> ReplicatedStorage/Shared/Server/Datastore
+Move them out of the "shared" route's files if they're server code.
 ```
 
-The outer `Shared/` folder governs, so the `Client` suffix is ignored and stays in the name. A `.shared` marker file in `Net/` does the same without adding a folder to the path.
+The warning covers modules, models and data files. A script's source doesn't replicate, so scripts have their own warning below. Rogen doesn't warn about other nested routes it ignores.
+
+### Scripts That Never Run
+
+A `Script` runs only in `ServerScriptService` or `Workspace`, and a `LocalScript` only in `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui`, `StarterPack` or `ReplicatedFirst`. Rogen knows each script's class and where it lands, and warns once about the ones that will never run:
+
+```
+src/Inventory/Server/Hud.client.luau  ->  a LocalScript in ServerScriptService
+src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
+```
+
+With `emitLegacyScripts: false` in the template, Rojo gives scripts a run context instead, so a script runs by its context and not by where it lands. Rogen then skips this warning, and warns only about routes that target `StarterPlayerScripts` or `StarterCharacterScripts`.
+
+### Names That Route by Accident
+
+Only `@` and Rojo's `.server` and `.client` route, so a name seldom routes by accident. `rogen where` shows where a file lands and which suffix routed it. A file that used another form lands in the `*` route:
+
+```
+src/Net/HttpClient.luau  ->  ReplicatedStorage/Shared/Net/HttpClient · route * (fallback)
+```
 
 ## Files That Match No Route
 
@@ -151,7 +187,7 @@ Without `*`, those files are **unrouted**: they're left out of the output, and R
 A config that declares no routes at all can't build. That's an error, not an empty project.
 
 <Callout type="info" title="Why declare both shared and *">
-	`*` catches unmatched files. The `shared` key is what makes `Types.shared.luau` and a `shared/` folder *declared* routes, so the suffix is stripped and the folder is removed from the tree. Without the key, `Types.shared.luau` would ship as an instance literally named `Types.shared`.
+	`*` catches unmatched files. The `shared` key is what makes `Types@shared.luau` and a `shared/` folder *declared* routes, so the suffix is stripped and the folder is removed from the tree. Without the key, `Types@shared.luau` would ship as an instance literally named `Types@shared`.
 </Callout>
 
 ## Targets

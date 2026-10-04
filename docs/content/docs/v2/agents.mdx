@@ -12,9 +12,9 @@ A coding agent works best when the context it needs is in one place, and when yo
 3. **Boundaries a linter can check.** "Features don't require each other." "`platform` doesn't require `features`." "`Shared` requires only `Shared`." Each is a rule about paths, and feature folders put the layer, the feature and the side in every path. State the rules in `AGENTS.md` and enforce them with a linter: the agent runs it, sees the boundary it crossed, and fixes it before you review. Grouping by `Controllers/` and `Services/` can't express these rules at all. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 4. **Placement is declared.** Where a file ends up in Studio is decided by a short `routes` map in the config, not by conventions the agent has to guess from the tree.
 5. **No generated file to break.** The `*.project.json` is output. Rogen replaces it on every build, so there's no hand-maintained project file for an agent to corrupt.
-6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` prints diagnostics for files that match no route, names that look like a route but aren't, and instances that clash. The agent runs both after moving files and fixes what they report.
+6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` prints diagnostics for files that match no route, `@` names that route nowhere, scripts that will never run, server code that ships to clients, and instances that clash. The agent runs both after moving files and fixes what they report.
 
-An agent that doesn't know Rogen reads the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or names a file `HttpClient.luau` without noticing that the `Client` suffix sends it to the client. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install it as a skill, or paste it into your `AGENTS.md`.
+An agent that doesn't know Rogen reads the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or leaves a Rojo `.client` suffix on a file that is meant to be a server module. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install it as a skill, or paste it into your `AGENTS.md`.
 
 ## Install the skill
 
@@ -24,7 +24,7 @@ The skill lives at `skills/rogen` in the [Rogen repository](https://github.com/L
 npx skills add LDGerrits/rogen
 ```
 
-The skill keeps its tag, config and CLI reference in a second file that the agent reads only when it needs it.
+The skill keeps its variant, config and CLI reference in a second file that the agent reads only when it needs it.
 
 ## Or add it to `AGENTS.md`
 
@@ -45,12 +45,13 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 
 - Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
 - A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
-- Inside a routing folder, a route key at the end of a name is ignored: `Shared/HttpClient.luau` stays `HttpClient`.
+- Only the outermost route acts. Inside a routing folder, another route is ignored whole: `Shared/Server/Datastore.luau` stays in `ReplicatedStorage`, so never put server code under `Shared/`.
+- To route one file without a folder, write `@key` before the extension (`InventoryService@server.luau`). It never changes the script class. Only `.server` and `.client` route through a dot.
 - `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`rogen where ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
 ### After a batch of changes
 
-- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant tag, replaced by another file, excluded by a glob, or displaced by a template node.
+- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, or displaced by a template node.
 - Then run `rogen build --all` once and fix every warning that names your files.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
@@ -67,7 +68,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
 - Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For tags and variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
+For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
 ````
 
 The snippet covers the mistakes an agent makes on its own. The rest it can look up when a build prints a diagnostic, since every diagnostic names what to change.

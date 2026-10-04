@@ -3,7 +3,7 @@ import {
 	FaFolder,
 	FaMapSigns,
 	FaFolderPlus,
-	FaTags,
+	FaExchangeAlt,
 	FaSyncAlt,
 	FaLayerGroup,
 	FaSitemap,
@@ -37,9 +37,9 @@ export function Features() {
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
-							title: "Tags",
+							title: "Variants",
 							desc: "Swap in a mock or dev variant of a file at build time, without changing a require",
-							icon: <FaTags className="text-white" />,
+							icon: <FaExchangeAlt className="text-white" />,
 						},
 						{
 							title: "Several Places",

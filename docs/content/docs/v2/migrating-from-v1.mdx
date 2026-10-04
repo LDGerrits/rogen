@@ -57,13 +57,32 @@ Go through the [removed features](#removed-features) below. Each one lists what 
 rogen build
 ```
 
-Read the warnings. Files that match no route, names that look like a route key but aren't, and two files becoming one instance are all reported. To check a file that landed somewhere unexpected, run `rogen where <path>`: it prints the route that placed the file, and why. Then open the project in Studio and compare it with the v1 build. Once they match, delete the old `.rogen.json`.
+Read the warnings. Files that match no route, names with an `@` that routes nowhere, and two files becoming one instance are all reported. To check a file that landed somewhere unexpected, run `rogen where <path>`: it prints the route that placed the file, and why. Then open the project in Studio and compare it with the v1 build. Once they match, delete the old `.rogen.json`.
 
 </Step>
 
 </Steps>
 
 ## Removed Features
+
+### Old Suffix Forms
+
+v1 read a route or tag after `+`, `-`, `_`, `.` or `@`, and after a capital letter (`Combat-server.luau`, `Combat_server.luau`, `Combat+server.luau`, `CombatServer.luau`). v2 adds one sign of its own, `@`, and Rojo keeps the dot. Nothing else routes, so `HttpClient.luau` no longer goes to the client.
+
+| v1 | v2 |
+|---|---|
+| `Combat-server.luau`, `Combat_server.luau`, `Combat+server.luau`, `CombatServer.luau` | `Combat@server.luau`, or a [routing folder](/docs/v2/core-concepts/routing#routing-folders) |
+| `Types.shared.luau` | `Types@shared.luau`. A dot routes only for `.server` and `.client`, which Rojo reads as the script class |
+| `Analytics-mock.luau`, `Analytics_mock.luau`, `AnalyticsMock.luau` | `Analytics.mock.luau` |
+
+Files that used an old form aren't an error. They fall through to the `*` route, so find them with `rogen where`: each one prints `route * (fallback)`.
+
+```
+$ rogen where
+src/Combat/Combat-server.luau -> ReplicatedStorage/Shared/Combat/Combat-server · route * (fallback)
+```
+
+If a name you meant to route shows up there, rename it or move it into a routing folder. With no `*` route, such files are reported as unrouted instead.
 
 ### Prefixes
 
@@ -76,7 +95,7 @@ v2: src/Combat/Server/Combat.luau
 
 ### The Deepest Rule Wins
 
-In v1 the deepest rule won, so a file's suffix beat its folder. In v2 the **outermost** route governs, and routes nested inside it are ignored. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+In v1 the deepest rule won, so a file's suffix beat its folder. In v2 the **outermost** route governs, and routes nested inside it are ignored whole: an ignored routing folder is an ordinary folder that keeps its name. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
 
 That fixes v1's best-known surprise:
 
@@ -94,18 +113,11 @@ Route targets are paths, so the wrapper folder is whatever the target says, or n
 
 ### `.verbatim` and `verbatim`
 
-v1 used them to keep a keyword in a name (`HttpClient` losing `Client`). In v2, put the file under an outer route. It governs, so the suffix is ignored and stays in the name:
-
-```
-src/Net/HttpClient.luau         ->  StarterPlayer/StarterPlayerScripts/Net/Http
-src/Shared/Net/HttpClient.luau  ->  ReplicatedStorage/Shared/Net/HttpClient
-```
-
-A `.shared` marker file in `Net/` does the same without adding a folder. See [Escaping an Accidental Route](/docs/v2/core-concepts/routing#escaping-an-accidental-route).
+v1 used them to keep a keyword in a name (`HttpClient` losing `Client`). v2 has nothing to escape: only `@` and Rojo's `.server` and `.client` route, so `HttpClient.luau` keeps its name. A name that a route's suffix does claim stays whole when an outer route governs. See [Names That Route by Accident](/docs/v2/core-concepts/routing#names-that-route-by-accident).
 
 ### `.structure`
 
-v1's `.structure` turned routing off below a folder. In v2, put the marker file of the route you want in that folder, such as `.shared`. It's the outer route, so it governs everything below, and nested suffixes stay in the names. Routing folders below it are still removed from the tree.
+v1's `.structure` turned routing off below a folder. In v2, put the marker file of the route you want in that folder, such as `.shared`. It's the outer route, so it governs everything below, and nested suffixes stay in the names. Routing folders below it are ordinary folders that keep their names.
 
 ### `.sync`
 
@@ -147,16 +159,20 @@ v1 sent a file that matched no rule to `ReplicatedStorage`, which could ship ser
 
 ### Modes and Profiles
 
-v1 put several modes (`luau`, `ts`, `darklua` and custom ones) in one file, each with its own `output`, `build` and `tags`. In v2, one config file is one tree and one output. A second mode is a second config, a [variant](/docs/v2/configuration#extending-configs) that `extends` the first:
+v1 put several modes (`luau`, `ts`, `darklua` and custom ones) in one file, each with its own `output`, `build` and `tags`. In v2, one config file is one tree and one output. A second mode is a second config that [`extends`](/docs/v2/configuration#extending-configs) the first:
 
 ```json title="prod.rogen.json"
 {
 	"extends": "./default.rogen.json",
-	"tags": { "dev": false }
+	"variants": { "dev": false }
 }
 ```
 
 Build it by name: `rogen build prod`. `rogen list` shows every config the repo can build.
+
+### Tags
+
+v1's tags are [variants](/docs/v2/core-concepts/variants) in v2, since Roblox instances already have Tags. The field is `variants`, the flags are `--variant` and `--no-variant`, and a variant is written with a dot (`Analytics.mock.luau`), a `mock/` folder or a `.mock` marker file. `AnalyticsMock.luau` and `Analytics-mock.luau` don't carry a variant any more.
 
 ### Built-in Service Keywords
 
@@ -168,10 +184,10 @@ v1 routed any folder named after a service (`ReplicatedFirst/`, `StarterGui/`). 
 |---|---|
 | `.rogen.json`, or the first `*.rogen.json` | `default.rogen.json`, or the only `*.rogen.json`. Every config is `<name>.rogen.json` |
 | `source` | `rootDirs` |
-| modes (`luau`, `ts`, `darklua`, custom) | one config per tree; variants are `<name>.rogen.json` |
+| modes (`luau`, `ts`, `darklua`, custom) | one config per tree: `<name>.rogen.json` |
 | a mode's `build` | `syncDir` |
 | a mode's `output` | `outFile`, one per config |
-| `tags` at the root and in modes | `tags`, root only. A variant sets its own |
+| `tags` at the root and in modes | `variants`, root only. A config that extends another sets its own |
 | `globIgnorePaths` | `exclude` |
 | `aliases` and built-in service keywords | `routes`. Only declared keys route |
 | `casing`, `unwrap` | route targets as paths |
@@ -195,13 +211,15 @@ v1 routed any folder named after a service (`ReplicatedFirst/`, `StarterGui/`). 
 |---|---|
 | `-m, --mode <mode>` | a config name: `rogen build prod` |
 | `-b, --build <path>` | `-s, --sync-dir <path>` |
-| `-s, --source <path>` | removed. Set `rootDirs` in a variant |
+| `-s, --source <path>` | removed. Set `rootDirs` in a config |
 | `-o, --output <path>` | `-o, --out-file <path>` |
 | `-p, --project <path>` | `--template <path>` |
-| `-t, --tag <tag>` | `-t, --tag <name>`, plus `-T, --no-tag <name>` |
+| `-t, --tag <tag>` | `--variant <name>`, plus `--no-variant <name>`. They have no short flags |
 
 <Callout type="warn" title="-s changed meaning">
 	In v1, `-s` set the source directory. In v2 it sets the sync directory. Check scripts that call Rogen.
 </Callout>
+
+If you run v2 in a v1 project, the v1 `.rogen.json` fails to load, because a config file needs a name. Rogen then adds a hint that points at this page.
 
 v2 also adds `extends`, `rogen list`, `rogen where`, `init [name]`, `--json`, JSONC configs, several configs in one command (`rogen build default lobby`, or `--all`) and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.

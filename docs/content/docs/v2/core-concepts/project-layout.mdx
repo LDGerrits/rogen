@@ -13,7 +13,7 @@ Rogen scans the **root directories** listed in `rootDirs` and turns what it find
 <Step>
 ### Invisible Folders
 
-A folder written as `(name)` groups files on disk but is left out of the generated tree. The parentheses come off before route keys and tags are matched, so `(mock)` is a tag folder and `(server)` a routing folder.
+A folder written as `(name)` groups files on disk but is left out of the generated tree. The parentheses come off before route keys and tags are matched, so `(mock)` is a variant folder and `(server)` a routing folder.
 
 ```
 src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
@@ -31,7 +31,7 @@ A directory that contains an `init` or `index` script is one instance in Rojo. R
 <Step>
 ### Data Files
 
-Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the way Rojo reads them. Route and tag suffixes are read before the extension. TypeScript declaration files (`.d.ts`) are never scanned.
+Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the way Rojo reads them. Route and variant suffixes are read before the extension. TypeScript declaration files (`.d.ts`) are never scanned.
 
 </Step>
 
@@ -58,7 +58,7 @@ When several folders become the same node:
 
 Some `init.meta.json` files apply to nothing, and Rogen warns about them:
 
-- One in a routing folder, tag folder or invisible folder, or at the top of a root directory. None of these ever becomes an instance, so put the meta in the feature folder instead.
+- One in a routing folder that governs, a variant folder or an invisible folder, or at the top of a root directory. None of these ever becomes an instance, so put the meta in the feature folder instead.
 - One in a folder that shares its instance with a script, such as `Combat/` beside `Combat.server.luau`. Rojo reads the script there, so put the meta in `Combat.meta.json` beside it, or turn the folder into an init folder.
 
 An invalid `init.meta.json` stops the build, with the file and position of the problem.

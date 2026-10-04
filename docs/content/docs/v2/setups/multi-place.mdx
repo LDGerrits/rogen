@@ -146,5 +146,5 @@ luau-lsp regenerates `sourcemap.json` from `default.project.json`, which holds o
 A merged source config for every place wouldn't work: Darklua rewrites requires against the sourcemap, so the sourcemap must be the place's own tree, and places that override each other's files would collapse into one.
 
 <Callout type="info">
-	Shared `routes`, `tags` and `template` live in the config that every place extends, so a place only states what differs.
+	Shared `routes`, `variants` and `template` live in the config that every place extends, so a place only states what differs.
 </Callout>

@@ -19,12 +19,13 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 
 - Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
 - A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
-- Inside a routing folder, a route key at the end of a name is ignored: `Shared/HttpClient.luau` stays `HttpClient`.
+- Only the outermost route acts. Inside a routing folder, another route is ignored whole: `Shared/Server/Datastore.luau` stays in `ReplicatedStorage`, so never put server code under `Shared/`.
+- To route one file without a folder, write `@key` before the extension (`InventoryService@server.luau`). It never changes the script class. Only `.server` and `.client` route through a dot.
 - `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`rogen where ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
 ## After a batch of changes
 
-- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant tag, replaced by another file, excluded by a glob, or displaced by a template node.
+- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, or displaced by a template node.
 - Then run `rogen build --all` once and fix every warning that names your files.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
@@ -41,4 +42,4 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
 - Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For tags and variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read [REFERENCE.md](REFERENCE.md).
+For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read [REFERENCE.md](REFERENCE.md).

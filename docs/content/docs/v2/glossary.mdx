@@ -43,11 +43,11 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Fallback route**: The `*` route, for files that no route matched. See [Routing](/docs/v2/core-concepts/routing#files-that-match-no-route).
 
-- **Routing folder**: A folder named after a route key. It never appears in the generated tree. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+- **Routing folder**: A folder named after a route key, or `Name@key`. A plain one never appears in the generated tree; `Name@key` keeps its name. A routing folder that an outer route outranks is an ordinary folder. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Suffix**: A route key or tag at the end of a script name. See [Routing](/docs/v2/core-concepts/routing#suffixes).
+- **Suffix**: A route key after an `@`, or a variant after a dot, at the end of a file name. See [Routing](/docs/v2/core-concepts/routing#suffixes).
 
-- **Declared key**: A route key or a tag. Both are recognised as a folder, a marker file or a suffix. See [Tags](/docs/v2/core-concepts/tags#marking-files).
+- **Declared key**: A route key or a variant. Both are recognised as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
 
 - **Marker file**: An empty dot-file naming a declared key, which applies it to its directory and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
 
@@ -57,24 +57,22 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Init folder**: A directory containing an `init` or `index` script, which Rojo treats as one instance. See [Project Layout](/docs/v2/core-concepts/project-layout).
 
-## Tags and Filtering
+## Variants and Filtering
 
-- **Tag**: A name declared in `tags` that marks a colocated variant of a file. See [Tags](/docs/v2/core-concepts/tags).
+- **Variant**: A name declared in `variants` that marks a colocated alternative to a file, such as `Analytics.mock.luau`. Not a Roblox instance Tag. See [Variants](/docs/v2/core-concepts/variants).
 
-- **Active tag**: A tag switched on for the current build. Its suffix is stripped and its file replaces an untagged one. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+- **Active variant**: A variant switched on for the current build. Its suffix is stripped and its file replaces a plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
-- **Tag folder**: A folder named after a declared tag. It never appears in the tree. See [Tags](/docs/v2/core-concepts/tags#tag-folders).
+- **Variant folder**: A folder named after a declared variant. It never appears in the tree. See [Variants](/docs/v2/core-concepts/variants#variant-folders).
 
-- **Dormant tag**: A declared tag that isn't active in the current build. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+- **Dormant variant**: A declared variant that isn't active in the current build. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
-- **Pruned**: Left out of the output because the file carries a dormant tag. See [Tags](/docs/v2/core-concepts/tags#declaring-tags).
+- **Pruned**: Left out of the output because the file carries a dormant variant. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
 - **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout).
 
 ## Configuration
 
 - **Config**: A `<name>.rogen.json` file. See [Configuration](/docs/v2/configuration).
-
-- **Variant**: A config that differs from another, selected by name and usually extending it. See [Configuration](/docs/v2/configuration#extending-configs).
 
 - **Override**: A CLI flag that replaces a config value for one invocation. See [CLI](/docs/v2/cli#options).

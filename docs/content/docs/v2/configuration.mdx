@@ -6,7 +6,7 @@ description: The complete guide to the *.rogen.json configuration file.
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **config** is a `<name>.rogen.json` file. It defines the root directories, routes, tags, excludes, template and project file for **one tree** and its one output. `default.rogen.json` is the one a bare command finds, and the one a bare `rogen init` writes.
+A **config** is a `<name>.rogen.json` file. It defines the root directories, routes, variants, excludes, template and project file for **one tree** and its one output. `default.rogen.json` is the one a bare command finds, and the one a bare `rogen init` writes.
 
 Configs are parsed as JSONC, so comments and trailing commas are allowed. Rogen writes strict JSON.
 
@@ -22,7 +22,7 @@ Configs are parsed as JSONC, so comments and trailing commas are allowed. Rogen 
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
     	},
-    	"tags": { "mock": false },
+    	"variants": { "mock": false },
     	"exclude": ["**/*.spec.luau"]
     }
     ```
@@ -38,7 +38,7 @@ Configs are parsed as JSONC, so comments and trailing commas are allowed. Rogen 
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"tags": { "mock": false },
+    	"variants": { "mock": false },
     	"exclude": ["**/*.spec.ts"],
     	"template": "template.project.json",
     	"syncDir": "out"
@@ -69,9 +69,9 @@ _(Default: `["src"]`)_ A list of directories Rogen scans and watches, relative t
 
 _(No default)_ A map from a route key to a target: `"Service"` or `"Service/Folder/…"`. Only declared routes exist, and a config with no routes at all can't build. See [Routing](/docs/v2/core-concepts/routing).
 
-### `tags`
+### `variants`
 
-_(Default: `{}`)_ A map from a tag name to a boolean, declaring every tag the project uses and whether it is on in this config. See [Tags](/docs/v2/core-concepts/tags).
+_(Default: `{}`)_ A map from a variant name to a boolean, declaring every variant the project uses and whether it is on in this config. See [Variants](/docs/v2/core-concepts/variants).
 
 ### `exclude`
 
@@ -93,7 +93,7 @@ _(Default: `<name>.project.json`)_ A string. The project file Rogen writes. Neve
 
 ## Extending Configs
 
-`extends` builds a **variant**: a config that differs from another. A variant can be another place, the same place with other tags, or the same tree rooted at a different directory. There are no profiles. One config file is one tree and one output.
+`extends` builds a second config from a first. It can be another place, the same place with other variants turned on, or the same tree rooted at a different directory. There are no profiles. One config file is one tree and one output.
 
 ```json title="lobby.rogen.json"
 {
@@ -106,7 +106,7 @@ One rule set applies across the whole chain:
 
 | Kind | Fields | Behavior |
 |---|---|---|
-| Map | `routes`, `tags` | merges key by key, the child wins |
+| Map | `routes`, `variants` | merges key by key, the child wins |
 | List | `rootDirs`, `exclude` | the child replaces |
 | String | `syncDir`, `template` | the child replaces |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
@@ -122,7 +122,7 @@ Relative paths inside an extended config resolve against **that** file's directo
 
 ## Finding Configs
 
-`rogen build lobby` reads `lobby.rogen.json` in the working directory. With no name, Rogen uses `default.rogen.json`, or the single `*.rogen.json` present, or fails listing the candidates. `-c <path>` takes an explicit path. `rogen list` shows every config in the directory, with its root directories, sync directory, project file and active tags.
+`rogen build lobby` reads `lobby.rogen.json` in the working directory. With no name, Rogen uses `default.rogen.json`, or the single `*.rogen.json` present, or fails listing the candidates. `-c <path>` takes an explicit path. `rogen list` shows every config in the directory, with its root directories, sync directory, project file and active variants.
 
 ## Diagnostics
 
@@ -132,7 +132,9 @@ Diagnostics carry a location:
 lobby.rogen.json:7:3 - error: unknown field "outDir".
 ```
 
-Errors stop the build. Warnings don't: the build runs and the exit code stays 0. Rogen warns about unrouted files, unrelated names that look like a route or tag, a sync directory with nothing in it, a root directory that doesn't exist and instances that clash with the template.
+A config file needs a name, so a file called just `.rogen.json` is an error: name it `<name>.rogen.json`.
+
+Errors stop the build. Warnings don't: the build runs and the exit code stays 0. Rogen warns about unrouted files, names with an `@` that routes nowhere, names that look like a mistyped variant, a sync directory with nothing in it, a root directory that doesn't exist and instances that clash with the template.
 
 <Callout type="info" title="Editors">
 	`rogen init` writes `$schema` into every config. The schema allows comments and trailing commas, so a `*.rogen.json` file opens without errors in editors that read it.

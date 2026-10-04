@@ -67,7 +67,7 @@ The [component pattern](https://gameprogrammingpatterns.com/component.html) exis
 - `DoorClient` animates the door and plays its sound.
 - `DoorConfig` holds the tag name and timings both sides read.
 
-`DoorServer` ends in `Server`, which is also a route key. The `Server/` folder around it is the outer route, so it governs and the suffix is ignored: the module keeps its full name. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+`DoorServer` ends in `Server`, which is also a route key, but only `@` and Rojo's dots route in a file name. The `Server/` folder is what routes the module, and it keeps its full name.
 
 ### UI With a View Model: `Shop`
 
@@ -145,5 +145,5 @@ Each feature folder appears once in every service it has code in. The routing fo
 - **Big features need sub-folders.** A feature can hold folders of its own, and routing folders can sit at any depth inside them.
 
 <Callout type="info">
-	Routing folders are the recommended way to route here. Suffixes such as `Door-server.luau` work too, but read confusingly next to Rojo's `.server.luau`. See [Suffixes](/docs/v2/core-concepts/routing#suffixes).
+	Routing folders are the recommended way to route here. A suffix such as `Door@server.luau` works too, and the `@` keeps it from reading like Rojo's `.server.luau`. See [Suffixes](/docs/v2/core-concepts/routing#suffixes).
 </Callout>
