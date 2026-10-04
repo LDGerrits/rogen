@@ -2,6 +2,25 @@ import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js"
 import { CoreProductService } from "../core-product-service.js";
 
 describe("CoreProductService", () => {
+	it("should prefer the version a build baked in, as a binary has no package.json", async () => {
+		const fs = new MemoryFileSystemService();
+		await fs.writeFile(
+			"/app/package.json",
+			JSON.stringify({ version: "1.2.3" })
+		);
+
+		expect(
+			await new CoreProductService(fs, "/app", "2.0.0").getVersion()
+		).toBe("2.0.0");
+		expect(
+			await new CoreProductService(
+				new MemoryFileSystemService(),
+				"/app",
+				"2.0.0"
+			).getVersion()
+		).toBe("2.0.0");
+	});
+
 	it("should read the version from package.json in the starting directory", async () => {
 		const fs = new MemoryFileSystemService();
 		await fs.writeFile(

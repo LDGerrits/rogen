@@ -46,6 +46,9 @@ import "./commands/version/version-command.js";
 import "./commands/watch/watch-command.js";
 import "./commands/where/where-command.js";
 
+/** The version `scripts/bundle.ts` bakes into a bundle; undefined in a run from source. */
+declare const ROGEN_VERSION: string | undefined;
+
 export default function run(): void {
 	main().catch((error) => {
 		console.error("Fatal Error:", error);
@@ -135,7 +138,11 @@ async function main(): Promise<void> {
 		);
 		services.set(
 			ProductService,
-			new CoreProductService(fileSystemService, import.meta.dirname)
+			new CoreProductService(
+				fileSystemService,
+				import.meta.dirname,
+				typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
+			)
 		);
 		services.set(
 			LifecycleService,

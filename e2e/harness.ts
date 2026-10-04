@@ -47,7 +47,19 @@ export function discoverCases(root = CASES_DIR): string[] {
 	return found.sort();
 }
 
+/** A compiled `rogen` to test in place of the bundle, which runs on whatever Node the tests run on. */
+const BINARY = process.env.ROGEN_E2E_BINARY;
+
+/** The command and arguments that run `cli` with `args`: the binary itself, or the bundle on this Node. */
+function invocation(
+	cli: string,
+	args: readonly string[]
+): readonly [string, readonly string[]] {
+	return BINARY ? [cli, args] : [process.execPath, [cli, ...args]];
+}
+
 export function bundleCli(): { readonly cli: string; dispose(): void } {
+	if (BINARY) return { cli: path.resolve(BINARY), dispose: () => {} };
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cli-"));
 	const cli = path.join(dir, "rogen.cjs");
 	buildSync({
@@ -88,7 +100,7 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		const before = snapshot(dir);
 		const sections: string[] = [];
 		for (const args of spec.steps ?? [["build"]]) {
-			const result = await run(process.execPath, [cli, ...args], dir);
+			const result = await run(...invocation(cli, args), dir);
 			sections.push(formatStep(["rogen", ...args], result));
 		}
 
@@ -296,7 +308,8 @@ export class WatchSession {
 	private _output = "";
 
 	constructor(cli: string, dir: string, args: readonly string[] = []) {
-		this.child = spawn(process.execPath, [cli, "watch", ...args], {
+		const [command, commandArgs] = invocation(cli, ["watch", ...args]);
+		this.child = spawn(command, [...commandArgs], {
 			cwd: dir,
 			stdio: ["ignore", "pipe", "pipe"],
 			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
