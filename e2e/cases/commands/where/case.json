@@ -2,7 +2,7 @@
 	"steps": [
 		["where"],
 		["where", "src/Net", "src/Combat/Server/Moves/Sweep.luau", "src/Empty", "README.md"],
-		["where", "src/Net/Http.mock.luau", "-t", "mock"],
+		["where", "src/Net/Http.mock.luau", "--variant", "mock"],
 		["where", "ServerScriptService.Combat.Moves:4: attempt to index nil", "ReplicatedStorage/Shared/Nope"]
 	],
 	"rojo": false

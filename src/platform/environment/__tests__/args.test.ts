@@ -14,7 +14,7 @@ const globals: OptionDescriptor[] = [
 
 const buildOptions: OptionDescriptor[] = [
 	{
-		name: "tag",
+		name: "variant",
 		short: "t",
 		type: "string",
 		multiple: true,
@@ -36,9 +36,16 @@ const values = (argv: string[]) =>
 
 describe("parseArgs", () => {
 	it("should parse a command's own options alongside the global ones", () => {
-		const parsed = values(["build", "-t", "a", "--tag", "b", "--quiet"]);
+		const parsed = values([
+			"build",
+			"--variant",
+			"a",
+			"--variant",
+			"b",
+			"--quiet",
+		]);
 
-		expect(parsed.tag).toEqual(["a", "b"]);
+		expect(parsed.variant).toEqual(["a", "b"]);
 		expect(parsed.quiet).toBe(true);
 	});
 
@@ -51,7 +58,7 @@ describe("parseArgs", () => {
 
 	it("should default to build, and let --help and --version win", () => {
 		expect(parse([]).unwrap().command).toBe("build");
-		expect(parse(["-t", "a"]).unwrap().command).toBe("build");
+		expect(parse(["--variant", "a"]).unwrap().command).toBe("build");
 		expect(parse(["--help"]).unwrap().command).toBe("help");
 		expect(parse(["build", "-v"]).unwrap().command).toBe("version");
 	});
@@ -90,23 +97,23 @@ describe("parseArgs", () => {
 	});
 
 	it("should say an option belongs to another command", () => {
-		const result = parse(["watch", "--tag", "a"]);
+		const result = parse(["watch", "--variant", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"watch doesn't take '--tag'. build does."
+			"watch doesn't take '--variant'. build does."
 		);
 	});
 
 	it("should name every command that takes an option the command doesn't", () => {
 		const result = parseArgs(
-			["watch", "--tag", "a"],
+			["watch", "--variant", "a"],
 			(command) =>
 				command === "watch" ? globals : [...globals, ...buildOptions],
 			commands
 		);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"watch doesn't take '--tag'. build, help and version do."
+			"watch doesn't take '--variant'. build, help and version do."
 		);
 	});
 
@@ -127,14 +134,13 @@ describe("parseArgs", () => {
 	});
 
 	it("should leave an unknown command to the command service", () => {
-		const parsed = parse(["deploy", "--tag", "x"]).unwrap();
+		const parsed = parse(["deploy", "--variant", "x"]).unwrap();
 
 		expect(parsed.command).toBe("deploy");
 	});
 
 	it.each([
-		[["build", "--tag"], "Option '--tag' needs a value."],
-		[["build", "-t", "--quiet"], "Option '-t' needs a value."],
+		[["build", "--variant"], "Option '--variant' needs a value."],
 		[
 			["build", "--quiet=yes"],
 			"Option '--quiet' is a flag and takes no value.",

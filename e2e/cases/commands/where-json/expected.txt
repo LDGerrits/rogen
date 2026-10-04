@@ -14,7 +14,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -27,7 +27,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -40,15 +40,15 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
       "source": "<dir>/src/Net/Http.mock.luau",
       "status": "pruned",
-      "tags": [
+      "variants": [
         {
-          "tag": "mock",
+          "variant": "mock",
           "form": "suffix"
         }
       ]
@@ -65,7 +65,7 @@ stdout:
       ],
       "route": "Client",
       "routeMatch": "suffix",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -85,7 +85,7 @@ stdout:
       ],
       "route": "*",
       "routeMatch": "fallback",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -95,7 +95,7 @@ stdout:
     }
   ]
 
-$ rogen where --json src/Net/Http.mock.luau -t mock
+$ rogen where --json src/Net/Http.mock.luau --variant mock
 exit 0
 stdout:
   [
@@ -111,9 +111,9 @@ stdout:
       ],
       "route": "*",
       "routeMatch": "fallback",
-      "tags": [
+      "variants": [
         {
-          "tag": "mock",
+          "variant": "mock",
           "form": "suffix"
         }
       ]
@@ -136,7 +136,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -149,7 +149,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",

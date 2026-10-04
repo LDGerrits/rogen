@@ -6,7 +6,7 @@ stdout:
   Built 1 config.
 stderr:
   src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written.
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as ordinary names:
+  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
     src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 
 written:

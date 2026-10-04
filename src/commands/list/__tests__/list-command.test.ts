@@ -67,11 +67,11 @@ describe("list command", () => {
 			});
 	});
 
-	it("should show a config's root dirs, sync dir, project file and active tags", async () => {
+	it("should show a config's root dirs, sync dir, project file and active variants", async () => {
 		await write("default.rogen.json", {
 			rootDirs: ["src", "lobby"],
 			syncDir: "out",
-			tags: { mock: true, dev: false, prod: true },
+			variants: { mock: true, dev: false, prod: true },
 		});
 
 		const result = await run();
@@ -83,19 +83,19 @@ describe("list command", () => {
 				"root dirs: src, lobby",
 				"sync dir: out",
 				"project file: default.project.json",
-				"tags: mock, prod",
+				"variants: mock, prod",
 			].join("\n"),
 		]);
 	});
 
-	it("should say so when there is no sync dir and no active tag", async () => {
+	it("should say so when there is no sync dir and no active variant", async () => {
 		await write("default.rogen.json", {});
 
 		await run();
 
 		const [details] = under("default.rogen.json");
 		expect(details).toContain("sync dir: (none)");
-		expect(details).toContain("tags: (none)");
+		expect(details).toContain("variants: (none)");
 	});
 
 	it("should show the extends chain of a config", async () => {
@@ -176,13 +176,15 @@ describe("list command", () => {
 		expect(steps()).toEqual(["places/lobby.rogen.json"]);
 	});
 
-	it("should show the tags that are on once tag flags are applied", async () => {
-		await write("default.rogen.json", { tags: { mock: true, dev: false } });
+	it("should show the variants that are on once variant flags are applied", async () => {
+		await write("default.rogen.json", {
+			variants: { mock: true, dev: false },
+		});
 
-		await run({ tag: ["dev"], "no-tag": ["mock"] });
+		await run({ variant: ["dev"], "no-variant": ["mock"] });
 
 		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("tags: dev"),
+			expect.stringContaining("variants: dev"),
 		]);
 	});
 
@@ -203,7 +205,7 @@ describe("list command", () => {
 				extends: "base.rogen.json",
 				rootDirs: ["src", "lobby"],
 				routes: { "*": "ReplicatedStorage/Shared" },
-				tags: { mock: true },
+				variants: { mock: true },
 				exclude: ["**/*.spec.luau"],
 				syncDir: "out",
 			});
@@ -221,7 +223,7 @@ describe("list command", () => {
 						Server: "ServerScriptService",
 						"*": "ReplicatedStorage/Shared",
 					},
-					tags: { mock: true },
+					variants: { mock: true },
 					exclude: ["/repo/**/*.spec.luau"],
 					template: null,
 					syncDir: "/repo/out",
@@ -243,12 +245,12 @@ describe("list command", () => {
 			]);
 		});
 
-		it("should apply tag flags to the printed tags", async () => {
-			await write("default.rogen.json", { tags: { mock: false } });
+		it("should apply variant flags to the printed variants", async () => {
+			await write("default.rogen.json", { variants: { mock: false } });
 
-			await run({ json: true, tag: ["mock"] });
+			await run({ json: true, variant: ["mock"] });
 
-			expect(document()["/repo/default.rogen.json"].tags).toEqual({
+			expect(document()["/repo/default.rogen.json"].variants).toEqual({
 				mock: true,
 			});
 		});
@@ -310,9 +312,9 @@ describe("list command", () => {
 					"--all",
 					"-c",
 					"a.rogen.json",
-					"-t",
+					"--variant",
 					"mock",
-					"-T",
+					"--no-variant",
 					"dev",
 					"--json"
 				).isOk()

@@ -142,7 +142,7 @@ describe("init command", () => {
 					],
 					darklua: [],
 					edits: [
-						'Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
+						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.',
 					],
 				},
 			});
@@ -207,7 +207,7 @@ describe("init command", () => {
 				"info:   rogen watch",
 				"info:   rojo serve default.project.json",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				'info: Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.',
+				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.',
 				"outro: Wrote 1 file.",
 			]);
 		});
@@ -914,7 +914,7 @@ describe("init command", () => {
 				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
 				"info:   rogen watch lobby",
 				"info:   rojo serve lobby.project.json",
-				'info: Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.ts.',
+				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.',
 				"outro: Wrote 2 files.",
 			]);
 		});
@@ -1031,7 +1031,7 @@ describe("init command", () => {
 		});
 	});
 
-	describe("variants", () => {
+	describe("extending configs", () => {
 		beforeEach(async () => {
 			await write(
 				"default.rogen.json",
@@ -1042,7 +1042,7 @@ describe("init command", () => {
 		it("should write a config that extends default", async () => {
 			const result = await runInit(
 				[],
-				new MockPromptService(["variant", "prod"])
+				new MockPromptService(["extending", "prod"])
 			);
 
 			expect(result.isOk()).toBe(true);
@@ -1052,8 +1052,8 @@ describe("init command", () => {
 			});
 		});
 
-		it("should not ask for a variant name that was given", async () => {
-			const prompts = new MockPromptService(["variant"]);
+		it("should not ask for a config name that was given", async () => {
+			const prompts = new MockPromptService(["extending"]);
 
 			const result = await runInit(["prod"], prompts);
 
@@ -1064,12 +1064,12 @@ describe("init command", () => {
 			expect(await exists("prod.rogen.json")).toBe(true);
 		});
 
-		it("should say how to run the variant and where its tags go", async () => {
+		it("should say how to run the extending config and where its variants go", async () => {
 			const logService = new MockLogService();
 
 			await runInit(
 				[],
-				new MockPromptService(["variant", "prod"]),
+				new MockPromptService(["extending", "prod"]),
 				logService
 			);
 
@@ -1081,14 +1081,14 @@ describe("init command", () => {
 				"info: Run each in its own terminal:",
 				"info:   rogen watch prod",
 				"info:   rojo serve prod.project.json",
-				'info: Turn tags on or off under "tags", or add "exclude", in prod.rogen.json.',
+				'info: Turn variants on or off under "variants", or add "exclude", in prod.rogen.json.',
 				"outro: Wrote 1 file.",
 			]);
 		});
 
-		it("should fail before asking more when a given variant name would replace a project file", async () => {
+		it("should fail before asking more when a given config name would replace a project file", async () => {
 			await write("prod.project.json", "{}");
-			const prompts = new MockPromptService(["variant"]);
+			const prompts = new MockPromptService(["extending"]);
 
 			const result = await runInit(["prod"], prompts);
 
@@ -1212,7 +1212,7 @@ describe("init command", () => {
 			]);
 
 		it("should not accept the override flags", () => {
-			expect(parse("init", "-t", "mock").isErr()).toBe(true);
+			expect(parse("init", "--variant", "mock").isErr()).toBe(true);
 		});
 	});
 });

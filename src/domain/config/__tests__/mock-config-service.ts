@@ -17,11 +17,11 @@ import {
 export interface ResolvedConfigSpec {
 	readonly file?: string;
 	readonly parents?: readonly string[];
-	readonly skippedTags?: readonly string[];
+	readonly skippedVariants?: readonly string[];
 	readonly name?: string;
 	readonly rootDirs?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
-	readonly tags?: Readonly<Record<string, boolean>>;
+	readonly variants?: Readonly<Record<string, boolean>>;
 	readonly exclude?: readonly string[];
 	readonly template?: {
 		readonly file: string;
@@ -36,7 +36,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	return new ResolvedConfig({
 		file,
 		parents: spec.parents ?? [],
-		skippedTags: spec.skippedTags ?? [],
+		skippedVariants: spec.skippedVariants ?? [],
 		name: spec.name ?? "repo",
 		rootDirs: spec.rootDirs ?? [],
 		routes: new Map(
@@ -45,7 +45,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		tags: spec.tags ?? {},
+		variants: spec.variants ?? {},
 		exclude: spec.exclude ?? [],
 		template:
 			spec.template &&

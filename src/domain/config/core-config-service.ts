@@ -25,16 +25,18 @@ function flagOf(name: string): string {
 	return short ? `-${short}` : `--${name}`;
 }
 
-/** The overrides the command line's flags set; `-T` beats `-t` for one tag. */
+/** The overrides the command line's flags set; `-T` beats `-t` for one variant. */
 function overridesOf(args: ParsedArgs): ConfigOverrides {
 	return {
 		outFile: args["out-file"],
 		syncDir: args["sync-dir"],
 		template: args.template,
-		tags: {
-			...Object.fromEntries((args.tag ?? []).map((tag) => [tag, true])),
+		variants: {
 			...Object.fromEntries(
-				(args["no-tag"] ?? []).map((tag) => [tag, false])
+				(args.variant ?? []).map((variant) => [variant, true])
+			),
+			...Object.fromEntries(
+				(args["no-variant"] ?? []).map((variant) => [variant, false])
 			),
 		},
 	};
@@ -106,7 +108,7 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async read(file: string): Promise<ConfigEntry> {
-		const config = new ManagedConfig(file, this.loader, { tags: {} });
+		const config = new ManagedConfig(file, this.loader, { variants: {} });
 		await config.load();
 		return config.entry;
 	}

@@ -3,5 +3,5 @@
 	"routes": {
 		"server": "ServerScriptService"
 	},
-	"tags": { "mock": true }
+	"variants": { "mock": true }
 }

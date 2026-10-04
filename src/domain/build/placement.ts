@@ -67,7 +67,7 @@ export class Placement {
 		readonly template: BuildTemplate,
 		readonly roots: readonly ScannedRoot[],
 		readonly readings: NameReadings,
-		/** Every file a route governs, in scan order, before tags decide which are placed. */
+		/** Every file a route governs, in scan order, before variants decide which are placed. */
 		readonly routed: readonly RoutedFile[],
 		/** Every instance path appears once; the last root dir wins across roots. */
 		readonly files: readonly RoutedFile[],
@@ -95,16 +95,17 @@ export class Placement {
 	/** What the build did, counted for the summary. */
 	summary(): BuildSummary {
 		const carrying = (
-			tag: string,
-			tagSets: readonly (readonly { readonly tag: string }[])[]
+			variant: string,
+			variantSets: readonly (readonly { readonly variant: string }[])[]
 		) =>
-			tagSets.filter((tags) => tags.some((match) => match.tag === tag))
-				.length;
-		const placedTags = this.files.map((file) => file.tags);
-		// Every routed file with an off tag was pruned, so off tags count those.
-		const prunedTags = this.leftOut
+			variantSets.filter((variants) =>
+				variants.some((match) => match.variant === variant)
+			).length;
+		const placedVariants = this.files.map((file) => file.variants);
+		// Every routed file with an off variant was pruned, so off variants count those.
+		const prunedVariants = this.leftOut
 			.withStatus("pruned")
-			.map(([, why]) => why.tags);
+			.map(([, why]) => why.variants);
 		return {
 			roots: this.roots.map((root) => ({
 				rootDir: root.rootDir,
@@ -117,11 +118,16 @@ export class Placement {
 				target: target.toString(),
 				files: this.files.filter((file) => file.route === key).length,
 			})),
-			tags: Object.entries(this.config.tags).map(([tag, on]) => ({
-				tag,
-				on,
-				files: carrying(tag, on ? placedTags : prunedTags),
-			})),
+			variants: Object.entries(this.config.variants).map(
+				([variant, on]) => ({
+					variant,
+					on,
+					files: carrying(
+						variant,
+						on ? placedVariants : prunedVariants
+					),
+				})
+			),
 			unrouted: this.leftOut.count("unrouted"),
 			superseded: this.leftOut.count("replaced"),
 			displaced: this.leftOut.count("displaced"),
@@ -129,15 +135,15 @@ export class Placement {
 	}
 }
 
-interface Tagging {
+interface VariantOutcome {
 	/** Every instance path appears once per build; the last root dir wins across roots. */
 	readonly files: readonly RoutedFile[];
-	/** The files pruned by a dormant tag and those another file replaced. */
+	/** The files pruned by a dormant variant and those another file replaced. */
 	readonly leftOut: [string, LeftOut][];
 	readonly clashes: InstanceClash[];
 }
 
-/** Finds where every file of a config lands: scans the root dirs, routes each file, applies tags and lets the template win. */
+/** Finds where every file of a config lands: scans the root dirs, routes each file, applies variants and lets the template win. */
 export class Placer {
 	private readonly layout: SyncLayout;
 	private readonly template: BuildTemplate;
@@ -160,16 +166,16 @@ export class Placer {
 			this.config.routes,
 			readings
 		).route(roots);
-		const tagging = this.applyTags(routed);
-		if (tagging.isErr()) return tagging;
-		const templating = this.yieldToTemplate(tagging.value.files);
+		const applied = this.applyVariants(routed);
+		if (applied.isErr()) return applied;
+		const templating = this.yieldToTemplate(applied.value.files);
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
 			unrouted.map((source): [string, LeftOut] => [
 				source,
 				{ status: "unrouted" },
 			]),
-			tagging.value.leftOut,
+			applied.value.leftOut,
 			templating.leftOut
 		);
 
@@ -183,7 +189,7 @@ export class Placer {
 				routed,
 				templating.files,
 				leftOut,
-				tagging.value.clashes
+				applied.value.clashes
 			)
 		);
 	}
@@ -194,21 +200,21 @@ export class Placer {
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
 	}
 
-	/** Prunes what dormant tags remove, then resolves files that share an instance path. */
-	private applyTags(
+	/** Prunes what dormant variants remove, then resolves files that share an instance path. */
+	private applyVariants(
 		routed: readonly RoutedFile[]
-	): Result<Tagging, Diagnostic[]> {
+	): Result<VariantOutcome, Diagnostic[]> {
 		const leftOut: [string, LeftOut][] = [];
 		const kept: RoutedFile[] = [];
 		for (const file of routed) {
-			const dormant = file.tags.filter(
-				({ tag }) => !this.config.tags[tag]
+			const dormant = file.variants.filter(
+				({ variant }) => !this.config.variants[variant]
 			);
 			if (dormant.length === 0) kept.push(file);
 			else
 				leftOut.push([
 					file.entry.source,
-					{ status: "pruned", tags: dormant },
+					{ status: "pruned", variants: dormant },
 				]);
 		}
 
@@ -222,19 +228,21 @@ export class Placer {
 			for (const [instance, claimants] of groupBy(root, (file) =>
 				instanceKey(file.instancePath)
 			)) {
-				const tagged = claimants.filter((file) => file.tags.length > 0);
-				const untagged = claimants.filter(
-					(file) => file.tags.length === 0
+				const variantFiles = claimants.filter(
+					(file) => file.variants.length > 0
 				);
-				if (tagged.length > 1) {
-					for (const { entry } of tagged) {
-						const others = tagged
+				const plain = claimants.filter(
+					(file) => file.variants.length === 0
+				);
+				if (variantFiles.length > 1) {
+					for (const { entry } of variantFiles) {
+						const others = variantFiles
 							.filter((other) => other.entry !== entry)
 							.map((other) => other.entry.source);
 						problems.error(
-							"tag.activeClash",
+							"variant.activeClash",
 							{ resource: entry.source },
-							`becomes "${instance}" with an active tag, and so ${others.length === 1 ? "does" : "do"} ${others.join(", ")}. Only one can apply: turn a tag off or rename a file.`
+							`becomes "${instance}" with an active variant, and so ${others.length === 1 ? "does" : "do"} ${others.join(", ")}. Only one can apply: turn a variant off or rename a file.`
 						);
 					}
 				} else if (claimants.length > 1) {
@@ -242,7 +250,7 @@ export class Placer {
 				}
 				winners.set(
 					claimants[0].instancePath,
-					tagged[0] ?? untagged[untagged.length - 1]
+					variantFiles[0] ?? plain[plain.length - 1]
 				);
 			}
 		}

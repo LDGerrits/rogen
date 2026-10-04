@@ -1,0 +1,12 @@
+{
+	"steps": [
+		[
+			"build",
+			"lobby",
+			"match",
+			"--variant",
+			"mock",
+			"--verbose"
+		]
+	]
+}

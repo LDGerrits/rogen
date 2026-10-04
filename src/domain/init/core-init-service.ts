@@ -14,7 +14,7 @@ import { InitQuestions } from "./init-questions.js";
 import { InitPlan, InitService } from "./init-service.js";
 import { BaseConfigReader, PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
-import { VariantSetup } from "./variant-setup.js";
+import { ExtendingConfigSetup } from "./extending-config-setup.js";
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -111,9 +111,9 @@ export class CoreInitService implements InitService {
 					new PlaceSetup(directory, this.questions),
 					directory
 				);
-			case "variant":
+			case "extending":
 				return this.planWith(
-					new VariantSetup(directory, this.questions),
+					new ExtendingConfigSetup(directory, this.questions),
 					directory
 				);
 			case "separate":

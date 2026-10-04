@@ -622,11 +622,11 @@ describe("build command", () => {
 				"dist",
 				"--template",
 				"base.project.json",
-				"-t",
+				"--variant",
 				"mock",
-				"--tag",
+				"--variant",
 				"dev",
-				"--no-tag",
+				"--no-variant",
 				"prod",
 				"--json"
 			).unwrap();
@@ -638,27 +638,32 @@ describe("build command", () => {
 				"out-file": "out.project.json",
 				"sync-dir": "dist",
 				template: "base.project.json",
-				tag: ["mock", "dev"],
-				"no-tag": ["prod"],
+				variant: ["mock", "dev"],
+				"no-variant": ["prod"],
 				json: true,
 			});
 		});
 
-		it("should parse -T as --no-tag, alongside -t", () => {
+		it("should repeat --variant and --no-variant", () => {
 			const { options } = parse(
 				"build",
-				"-t",
+				"--variant",
 				"mock",
-				"-T",
+				"--no-variant",
 				"dev",
-				"--no-tag",
+				"--no-variant",
 				"prod"
 			).unwrap();
 
 			expect(options).toMatchObject({
-				tag: ["mock"],
-				"no-tag": ["dev", "prod"],
+				variant: ["mock"],
+				"no-variant": ["dev", "prod"],
 			});
+		});
+
+		it("should have no short flags for the variant options", () => {
+			expect(parse("build", "-t", "mock").isErr()).toBe(true);
+			expect(parse("build", "-T", "mock").isErr()).toBe(true);
 		});
 
 		it("should accept --all", () => {

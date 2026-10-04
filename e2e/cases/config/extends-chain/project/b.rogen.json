@@ -1,6 +1,6 @@
 {
 	"extends": "./a.rogen.json",
-	"tags": {
+	"variants": {
 		"x": true
 	},
 	"rootDirs": [

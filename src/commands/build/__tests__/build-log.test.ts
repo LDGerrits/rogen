@@ -53,7 +53,7 @@ const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
 	routes: [],
-	tags: [],
+	variants: [],
 	unrouted: 0,
 	superseded: 0,
 	displaced: 0,
@@ -67,7 +67,7 @@ const describeBuild = (summary: BuildSummary, dir: string) =>
 	debugLines(dir, configOf(), summary);
 
 describe("BuildLog config lines", () => {
-	it("should say nothing about a config with no parent and no skipped tags", () => {
+	it("should say nothing about a config with no parent and no skipped variants", () => {
 		expect(describeConfig(configOf(), cwd)).toEqual([]);
 	});
 
@@ -85,12 +85,15 @@ describe("BuildLog config lines", () => {
 		).toEqual(["extends: default.rogen.json -> shared/base.rogen.json"]);
 	});
 
-	it("should name each tag flag the config does not declare", () => {
+	it("should name each variant flag the config does not declare", () => {
 		expect(
-			describeConfig(configOf({ skippedTags: ["mock", "debug"] }), cwd)
+			describeConfig(
+				configOf({ skippedVariants: ["mock", "debug"] }),
+				cwd
+			)
 		).toEqual([
-			"tag mock skipped: not declared in this config",
-			"tag debug skipped: not declared in this config",
+			"variant mock skipped: not declared in this config",
+			"variant debug skipped: not declared in this config",
 		]);
 	});
 });
@@ -141,18 +144,21 @@ describe("BuildLog build lines", () => {
 		]);
 	});
 
-	it("should say which tags are on and which left files out", () => {
+	it("should say which variants are on and which left files out", () => {
 		expect(
 			describeBuild(
 				summaryOf({
-					tags: [
-						{ tag: "mock", on: true, files: 2 },
-						{ tag: "debug", on: false, files: 1 },
+					variants: [
+						{ variant: "mock", on: true, files: 2 },
+						{ variant: "debug", on: false, files: 1 },
 					],
 				}),
 				cwd
 			)
-		).toEqual(["tag mock on: 2 files", "tag debug off: 1 file left out"]);
+		).toEqual([
+			"variant mock on: 2 files",
+			"variant debug off: 1 file left out",
+		]);
 	});
 
 	it("should count what was left out only when something was", () => {

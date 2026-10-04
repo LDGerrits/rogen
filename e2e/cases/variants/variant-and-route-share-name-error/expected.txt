@@ -1,0 +1,4 @@
+$ rogen build
+exit 1
+stderr:
+  default.rogen.json:12:13 - error: variant "server" has the same name as a route key; rename one of them.

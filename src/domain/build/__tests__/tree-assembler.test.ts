@@ -472,10 +472,10 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse an active tag folder into its parent's node", async () => {
+			it("should not collapse an active variant folder into its parent's node", async () => {
 				await write("src/Combat/dev/Cheats.luau");
 
-				const storage = await storageOf({ tags: { dev: true } });
+				const storage = await storageOf({ variants: { dev: true } });
 
 				expect(storage.Combat).toEqual({
 					...FOLDER,
@@ -505,13 +505,13 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should not collapse a directory with a dormant-tag file", async () => {
+			it("should not collapse a directory with a dormant-variant file", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Analytics.mock.luau"
 				);
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
@@ -602,7 +602,7 @@ describe("TreeAssembler", () => {
 				await write("src/Save/Save.mock@server.luau");
 
 				const { tree: value } = await assemble({
-					tags: { mock: true },
+					variants: { mock: true },
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -617,13 +617,13 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a directory holding the file an active tag replaced", async () => {
+			it("should not collapse a directory holding the file an active variant replaced", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Analytics.mock.luau"
 				);
 
-				const storage = await storageOf({ tags: { mock: true } });
+				const storage = await storageOf({ variants: { mock: true } });
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
@@ -836,7 +836,7 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({
 					syncDir: abs("dist"),
-					tags: { mock: false },
+					variants: { mock: false },
 				});
 
 				expect(value.globIgnorePaths).toEqual([
@@ -853,7 +853,7 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({
 					syncDir: abs("dist"),
-					tags: { mock: false },
+					variants: { mock: false },
 					exclude: [abs("**/*.spec.ts")],
 				});
 
@@ -1009,7 +1009,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Bots).toEqual({
 					$className: "Actor",
@@ -1117,7 +1117,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Mocks).toBeUndefined();
 			});
@@ -1389,7 +1389,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should warn at each meta in a routing, tag or invisible folder or a root dir", async () => {
+			it("should warn at each meta in a routing, variant or invisible folder or a root dir", async () => {
 				await write(
 					"src/Combat/server/A.luau",
 					"src/Combat/dev/B.luau",
@@ -1407,7 +1407,7 @@ describe("TreeAssembler", () => {
 
 				const { warnings } = await assemble({
 					routes: SPLIT,
-					tags: { dev: true },
+					variants: { dev: true },
 				});
 
 				const nothing = (dir: string, kind: string) => ({
@@ -1417,7 +1417,7 @@ describe("TreeAssembler", () => {
 				});
 				expect(warnings).toMatchObject([
 					nothing("src/Combat/(group)", "an invisible folder"),
-					nothing("src/Combat/dev", "a tag folder"),
+					nothing("src/Combat/dev", "a variant folder"),
 					nothing("src/Combat/server", "a routing folder"),
 					nothing("src", "a root dir"),
 				]);
@@ -1452,7 +1452,9 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { warnings } = await assemble({ tags: { mock: false } });
+				const { warnings } = await assemble({
+					variants: { mock: false },
+				});
 
 				expect(warnings).toEqual([]);
 			});

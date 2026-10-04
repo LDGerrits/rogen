@@ -1,6 +1,6 @@
 {
 	"extends": "./b.rogen.json",
-	"tags": {
+	"variants": {
 		"y": true
 	},
 	"routes": {

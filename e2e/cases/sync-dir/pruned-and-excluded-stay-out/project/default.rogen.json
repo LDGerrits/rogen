@@ -9,7 +9,7 @@
 		"*": "ReplicatedStorage/shared"
 	},
 	"syncDir": "out",
-	"tags": {
+	"variants": {
 		"mock": false
 	},
 	"exclude": [

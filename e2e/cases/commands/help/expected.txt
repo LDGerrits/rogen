@@ -10,7 +10,7 @@ stdout:
     build [name...]  Writes each named config's project file.
     help [command]   Prints usage, or details for one command.
     init [name]      Writes a starting config, detecting the workspace and asking in a terminal.
-    list [name...]   Lists every config here with its root dirs, sync dir, project file and tags.
+    list [name...]   Lists every config here with its root dirs, sync dir, project file and variants.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]  Prints where each file lands in the game, and why.
@@ -36,7 +36,7 @@ stdout:
     build [name...]  Writes each named config's project file.
     help [command]   Prints usage, or details for one command.
     init [name]      Writes a starting config, detecting the workspace and asking in a terminal.
-    list [name...]   Lists every config here with its root dirs, sync dir, project file and tags.
+    list [name...]   Lists every config here with its root dirs, sync dir, project file and variants.
     version          Prints the installed version.
     watch [name...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]  Prints where each file lands in the game, and why.

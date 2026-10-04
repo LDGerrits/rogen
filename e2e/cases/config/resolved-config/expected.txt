@@ -17,7 +17,7 @@ stdout:
         "shared": "ReplicatedStorage/shared",
         "*": "ReplicatedStorage/shared"
       },
-      "tags": {
+      "variants": {
         "mock": true
       },
       "exclude": [

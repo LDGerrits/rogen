@@ -108,8 +108,8 @@ describe("ConfigSet naming", () => {
 		expect(ConfigSet.placeFolderOf("lobby")).toBe("places/lobby");
 	});
 
-	it("should write a variant's config and project file", () => {
-		expect(ConfigSet.variantFilesOf("prod")).toEqual([
+	it("should write an extending config's config and project file", () => {
+		expect(ConfigSet.extendingFilesOf("prod")).toEqual([
 			"prod.rogen.json",
 			"prod.project.json",
 		]);
@@ -124,8 +124,8 @@ describe("ConfigSet naming", () => {
 	});
 
 	it("should point at where variants of a script are swapped in", () => {
-		expect(ConfigSet.tagsStep(luau, "default.rogen.json")).toBe(
-			'Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.'
+		expect(ConfigSet.variantsStep(luau, "default.rogen.json")).toBe(
+			'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.'
 		);
 	});
 

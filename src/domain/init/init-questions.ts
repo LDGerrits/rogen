@@ -11,7 +11,7 @@ import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
-export type Addition = "place" | "variant" | "separate";
+export type Addition = "place" | "extending" | "separate";
 
 export interface NameQuestion {
 	readonly message: string;
@@ -57,9 +57,9 @@ export class InitQuestions {
 					hint: "another Roblox place that shares default's code",
 				},
 				{
-					value: "variant",
-					label: "A variant of default",
-					hint: "the same game with other tags or excludes",
+					value: "extending",
+					label: "A config that extends default",
+					hint: "the same game with other variants or excludes",
 				},
 				{
 					value: "separate",

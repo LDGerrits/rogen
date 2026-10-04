@@ -70,7 +70,7 @@ describe("where command", () => {
 	it("should print where each path lands and why, relative to the working directory", async () => {
 		await writeConfig("default.rogen.json", {
 			routes: ROUTES,
-			tags: { mock: false },
+			variants: { mock: false },
 		});
 		await write(
 			"src/Net/Http@client.luau",
@@ -90,7 +90,7 @@ describe("where command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
-			"src/Net/Http.mock.luau -> pruned · tag mock is off (suffix)",
+			"src/Net/Http.mock.luau -> pruned · variant mock is off (suffix)",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);
@@ -144,22 +144,22 @@ describe("where command", () => {
 		]);
 	});
 
-	it("should read the config -c names, with tag flags applied", async () => {
+	it("should read the config -c names, with variant flags applied", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await writeConfig("mocked.rogen.json", {
 			routes: ROUTES,
-			tags: { mock: false },
+			variants: { mock: false },
 		});
 		await write("src/Http.mock.luau");
 
 		await run({
 			_: ["src/Http.mock.luau"],
 			config: ["mocked.rogen.json"],
-			tag: ["mock"],
+			variant: ["mock"],
 		});
 
 		expect(printed()).toEqual([
-			"src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · tag mock (suffix)",
+			"src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · variant mock (suffix)",
 		]);
 	});
 
@@ -233,7 +233,7 @@ describe("where command", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
-				tags: { mock: false },
+				variants: { mock: false },
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",
@@ -261,13 +261,13 @@ describe("where command", () => {
 					instancePath: ["ServerScriptService", "Inventory", "Save"],
 					route: "Server",
 					routeMatch: "folder",
-					tags: [],
+					variants: [],
 				},
 				{
 					config: "default",
 					source: "/repo/src/Net/Http.mock.luau",
 					status: "pruned",
-					tags: [{ tag: "mock", form: "suffix" }],
+					variants: [{ variant: "mock", form: "suffix" }],
 				},
 				{
 					config: "default",
@@ -276,7 +276,7 @@ describe("where command", () => {
 					instancePath: ["ReplicatedStorage", "Shared", "Nowhere"],
 					route: "*",
 					routeMatch: "fallback",
-					tags: [],
+					variants: [],
 				},
 			]);
 		});
@@ -363,9 +363,9 @@ describe("where command", () => {
 					"--all",
 					"-c",
 					"a.rogen.json",
-					"-t",
+					"--variant",
 					"mock",
-					"-T",
+					"--no-variant",
 					"dev"
 				).isOk()
 			).toBe(true);

@@ -16,7 +16,7 @@ interface Refs {
 		readonly outFile?: string;
 		readonly syncDir?: string;
 		readonly template?: string;
-		readonly tags: Record<string, boolean>;
+		readonly variants: Record<string, boolean>;
 	};
 }
 
@@ -39,7 +39,7 @@ describe("domain/config/core-config-service", () => {
 			routes: Object.fromEntries(
 				[...config.routes].map(([key, target]) => [key, String(target)])
 			),
-			tags: config.tags,
+			variants: config.variants,
 			exclude: config.exclude,
 			syncDir: config.syncDir,
 			outFile: config.outFile,
@@ -54,7 +54,7 @@ describe("domain/config/core-config-service", () => {
 		{ names = [], paths, all, overrides }: Refs = {},
 		cwd = "/repo"
 	) => {
-		const tags = Object.entries(overrides?.tags ?? {});
+		const variants = Object.entries(overrides?.variants ?? {});
 		service = new CoreConfigService(
 			fs,
 			new MockEnvironmentService({ _: [] }, cwd)
@@ -66,8 +66,12 @@ describe("domain/config/core-config-service", () => {
 			"out-file": overrides?.outFile,
 			"sync-dir": overrides?.syncDir,
 			template: overrides?.template,
-			tag: tags.filter(([, on]) => on).map(([tag]) => tag),
-			"no-tag": tags.filter(([, on]) => !on).map(([tag]) => tag),
+			variant: variants
+				.filter(([, on]) => on)
+				.map(([variant]) => variant),
+			"no-variant": variants
+				.filter(([, on]) => !on)
+				.map(([variant]) => variant),
 		});
 		if (result.isOk()) selection = result.value;
 		return result;
@@ -133,7 +137,7 @@ describe("domain/config/core-config-service", () => {
 			expect(
 				await refusal({
 					names: ["lobby", "match"],
-					overrides: { ...override, tags: {} },
+					overrides: { ...override, variants: {} },
 				})
 			).toBe(
 				`${flag} targets a single config, but several were named. Name one config, or set it in the file.`
@@ -145,7 +149,7 @@ describe("domain/config/core-config-service", () => {
 				await refusal({
 					names: ["lobby"],
 					paths: ["match.rogen.json"],
-					overrides: { outFile: "a.json", tags: {} },
+					overrides: { outFile: "a.json", variants: {} },
 				})
 			).toMatch(/^-o targets a single config/);
 		});
@@ -154,7 +158,7 @@ describe("domain/config/core-config-service", () => {
 			expect(
 				await refusal({
 					all: true,
-					overrides: { outFile: "a.json", tags: {} },
+					overrides: { outFile: "a.json", variants: {} },
 				})
 			).toMatch(/^-o targets a single config/);
 		});
@@ -164,7 +168,7 @@ describe("domain/config/core-config-service", () => {
 
 			const result = await start({
 				names: ["lobby"],
-				overrides: { outFile: "a.json", tags: {} },
+				overrides: { outFile: "a.json", variants: {} },
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -190,7 +194,7 @@ describe("domain/config/core-config-service", () => {
 			expect(plain(resolved(0))).toMatchObject({
 				rootDirs: ["/repo/src"],
 				routes: {},
-				tags: {},
+				variants: {},
 				exclude: [],
 				outFile: "/repo/default.project.json",
 			});
@@ -363,7 +367,7 @@ describe("domain/config/core-config-service", () => {
 		it("should merge maps key by key with the child winning", async () => {
 			await write("/repo/base.rogen.json", {
 				routes: { server: "ServerScriptService", "*": "ServerStorage" },
-				tags: { mock: false, debug: true },
+				variants: { mock: false, debug: true },
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
@@ -371,7 +375,7 @@ describe("domain/config/core-config-service", () => {
 					"*": "ReplicatedStorage/shared",
 					client: "StarterGui",
 				},
-				tags: { mock: true },
+				variants: { mock: true },
 			});
 
 			await start();
@@ -382,7 +386,7 @@ describe("domain/config/core-config-service", () => {
 					"*": "ReplicatedStorage/shared",
 					client: "StarterGui",
 				},
-				tags: { mock: true, debug: true },
+				variants: { mock: true, debug: true },
 			});
 		});
 
@@ -481,7 +485,7 @@ describe("domain/config/core-config-service", () => {
 			await write("/repo/core.rogen.json", {
 				rootDirs: ["core"],
 				routes: { server: "ServerScriptService", client: "StarterGui" },
-				tags: { mock: false },
+				variants: { mock: false },
 			});
 			await write("/repo/lobby-source.rogen.json", {
 				extends: "./core.rogen.json",
@@ -491,7 +495,7 @@ describe("domain/config/core-config-service", () => {
 			await write("/repo/lobby.rogen.json", {
 				extends: "./lobby-source.rogen.json",
 				syncDir: "dist/lobby",
-				tags: { mock: true },
+				variants: { mock: true },
 			});
 
 			await start({ names: ["lobby"] });
@@ -508,7 +512,7 @@ describe("domain/config/core-config-service", () => {
 					server: "ServerScriptService",
 					client: "StarterPlayer/StarterPlayerScripts",
 				},
-				tags: { mock: true },
+				variants: { mock: true },
 				exclude: [],
 				syncDir: "/repo/dist/lobby",
 				outFile: "/repo/lobby.project.json",
@@ -617,10 +621,10 @@ describe("domain/config/core-config-service", () => {
 			expect(selection.files).toContain("/repo/base.rogen.json");
 		});
 
-		it("should reject null in an ancestor's routes and tags", async () => {
+		it("should reject null in an ancestor's routes and variants", async () => {
 			await write("/repo/base.rogen.json", {
 				routes: { server: null },
-				tags: { mock: null },
+				variants: { mock: null },
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
@@ -635,7 +639,7 @@ describe("domain/config/core-config-service", () => {
 				],
 				[
 					"/repo/base.rogen.json",
-					'"tags.mock": expected a boolean, found null.',
+					'"variants.mock": expected a boolean, found null.',
 				],
 			]);
 		});
@@ -819,7 +823,7 @@ describe("domain/config/core-config-service", () => {
 				exclude: ["/repo/**/*.spec.luau"],
 				rootDirs: ["/repo/core"],
 				routes: {},
-				tags: {},
+				variants: {},
 			});
 		});
 
@@ -1017,33 +1021,33 @@ describe("domain/config/core-config-service", () => {
 				).toEqual([]);
 			});
 
-			it("should reject a tag name that starts with a digit", async () => {
+			it("should reject a variant name that starts with a digit", async () => {
 				const problems = await diagnosticsFor(`{
-	"tags": { "1st": true }
+	"variants": { "1st": true }
 }`);
 
 				expect(problems).toEqual([
 					[
-						'tag "1st" is invalid: use letters and digits only, starting with a letter.',
+						'variant "1st" is invalid: use letters and digits only, starting with a letter.',
 						"/repo/default.rogen.json",
 						2,
-						19,
+						23,
 					],
 				]);
 			});
 
-			it("should reject a tag that shares a name with a route key", async () => {
+			it("should reject a variant that shares a name with a route key", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService" },
-	"tags": { "server": true }
+	"variants": { "server": true }
 }`);
 
 				expect(problems).toEqual([
 					[
-						'tag "server" has the same name as a route key; rename one of them.',
+						'variant "server" has the same name as a route key; rename one of them.',
 						"/repo/default.rogen.json",
 						3,
-						22,
+						26,
 					],
 				]);
 			});
@@ -1063,19 +1067,19 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
-			it("should reject two tags that differ only in the case of their first letter", async () => {
+			it("should reject two variants that differ only in the case of their first letter", async () => {
 				const problems = await diagnosticsFor(`{
-	"tags": { "mock": true, "Mock": false }
+	"variants": { "mock": true, "Mock": false }
 }`);
 
 				expect(problems).toHaveLength(1);
 				expect(problems[0][0]).toContain('"Mock" and "mock"');
 			});
 
-			it("should reject a tag that differs from a route key only in the case of its first letter", async () => {
+			it("should reject a variant that differs from a route key only in the case of its first letter", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService" },
-	"tags": { "Server": true }
+	"variants": { "Server": true }
 }`);
 
 				expect(problems).toHaveLength(1);
@@ -1086,7 +1090,7 @@ describe("domain/config/core-config-service", () => {
 				expect(
 					await diagnosticsFor({
 						routes: { server: "ServerScriptService" },
-						tags: { SERVER: true },
+						variants: { SERVER: true },
 					})
 				).toEqual([]);
 			});
@@ -1212,7 +1216,7 @@ describe("domain/config/core-config-service", () => {
 			it("should report every problem at once", async () => {
 				const problems = await diagnosticsFor({
 					routes: { "a-b": "Nowhere" },
-					tags: { "c-d": true },
+					variants: { "c-d": true },
 					rootDirs: ["src", "src/x"],
 				});
 
@@ -1259,7 +1263,7 @@ describe("domain/config/core-config-service", () => {
 					outFile: "out/new.project.json",
 					syncDir: "dist",
 					template: "base.project.json",
-					tags: {},
+					variants: {},
 				},
 			});
 
@@ -1270,27 +1274,31 @@ describe("domain/config/core-config-service", () => {
 			});
 		});
 
-		it("should turn a declared tag on or off and leave the others", async () => {
+		it("should turn a declared variant on or off and leave the others", async () => {
 			await write("/repo/default.rogen.json", {
-				tags: { mock: false, dev: true, prod: false },
+				variants: { mock: false, dev: true, prod: false },
 			});
 
-			await start({ overrides: { tags: { mock: true, dev: false } } });
+			await start({
+				overrides: { variants: { mock: true, dev: false } },
+			});
 
-			expect(resolved(0)?.tags).toEqual({
+			expect(resolved(0)?.variants).toEqual({
 				mock: true,
 				dev: false,
 				prod: false,
 			});
 		});
 
-		it("should fail when no named config declares the tag", async () => {
-			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+		it("should fail when no named config declares the variant", async () => {
+			await write("/repo/lobby.rogen.json", {
+				variants: { mock: false },
+			});
 			await write("/repo/match.rogen.json", {});
 
 			const result = await start({
 				names: ["lobby", "match"],
-				overrides: { tags: { ghost: true } },
+				overrides: { variants: { ghost: true } },
 			});
 
 			expect((result as ResultError<Error>).error.message).toContain(
@@ -1298,54 +1306,64 @@ describe("domain/config/core-config-service", () => {
 			);
 		});
 
-		it("should suggest the declared tag a misspelled one is closest to", async () => {
-			await write("/repo/default.rogen.json", { tags: { mock: false } });
+		it("should suggest the declared variant a misspelled one is closest to", async () => {
+			await write("/repo/default.rogen.json", {
+				variants: { mock: false },
+			});
 
-			const result = await start({ overrides: { tags: { mokc: true } } });
+			const result = await start({
+				overrides: { variants: { mokc: true } },
+			});
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				'Tag "mokc" is not declared by any config being built. Did you mean "mock"?'
+				'Variant "mokc" is not declared by any config being built. Did you mean "mock"?'
 			);
 		});
 
-		it("should apply a tag where it is declared and say where it was skipped", async () => {
-			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+		it("should apply a variant where it is declared and say where it was skipped", async () => {
+			await write("/repo/lobby.rogen.json", {
+				variants: { mock: false },
+			});
 			await write("/repo/match.rogen.json", {});
 
 			const result = await start({
 				names: ["lobby", "match"],
-				overrides: { tags: { mock: true } },
+				overrides: { variants: { mock: true } },
 			});
 
 			expect(result.isOk()).toBe(true);
 			expect(
-				selection.entries.map((c) => buildableConfig(c)?.tags)
+				selection.entries.map((c) => buildableConfig(c)?.variants)
 			).toEqual([{ mock: true }, {}]);
 			expect(
-				selection.entries.map((c) => buildableConfig(c)?.skippedTags)
+				selection.entries.map(
+					(c) => buildableConfig(c)?.skippedVariants
+				)
 			).toEqual([[], ["mock"]]);
 		});
 
-		it("should keep the skipped tags of the last valid config when a reload breaks it", async () => {
-			await write("/repo/lobby.rogen.json", { tags: { mock: false } });
+		it("should keep the skipped variants of the last valid config when a reload breaks it", async () => {
+			await write("/repo/lobby.rogen.json", {
+				variants: { mock: false },
+			});
 			await write("/repo/match.rogen.json", {});
 			await start({
 				names: ["lobby", "match"],
-				overrides: { tags: { mock: true } },
+				overrides: { variants: { mock: true } },
 			});
 
 			await write("/repo/match.rogen.json", "{ nope");
 			await selection.reload(["/repo/match.rogen.json"]);
 
-			expect(resolved(1)?.skippedTags).toEqual(["mock"]);
+			expect(resolved(1)?.skippedVariants).toEqual(["mock"]);
 		});
 
-		it("should not fail on a tag when a named config could not be read", async () => {
+		it("should not fail on a variant when a named config could not be read", async () => {
 			await write("/repo/lobby.rogen.json", "{ nope");
 
 			const result = await start({
 				names: ["lobby"],
-				overrides: { tags: { mock: true } },
+				overrides: { variants: { mock: true } },
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -1354,25 +1372,25 @@ describe("domain/config/core-config-service", () => {
 		it("should keep the overrides across a reload", async () => {
 			await write("/repo/default.rogen.json", {
 				rootDirs: ["a"],
-				tags: { mock: false },
+				variants: { mock: false },
 			});
 			await start({
 				overrides: {
 					outFile: "out.project.json",
-					tags: { mock: true },
+					variants: { mock: true },
 				},
 			});
 
 			await write("/repo/default.rogen.json", {
 				rootDirs: ["b"],
-				tags: { mock: false },
+				variants: { mock: false },
 			});
 			await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/b"],
 				outFile: "/repo/out.project.json",
-				tags: { mock: true },
+				variants: { mock: true },
 			});
 		});
 	});

@@ -14,7 +14,7 @@ export interface RogenConfig {
 	readonly extends?: string;
 	readonly rootDirs?: string[];
 	readonly routes?: Record<string, string>;
-	readonly tags?: Record<string, boolean>;
+	readonly variants?: Record<string, boolean>;
 	readonly exclude?: string[];
 	readonly template?: string;
 	readonly syncDir?: string;
@@ -77,7 +77,7 @@ export function rootDirOverlap(
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
-/** The route and tag keys a config declares; a name spells a key exactly or with its first letter flipped. */
+/** The route and variant keys a config declares; a name spells a key exactly or with its first letter flipped. */
 export class DeclaredKeys {
 	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";
@@ -86,15 +86,15 @@ export class DeclaredKeys {
 
 	/** Every route key but the fallback, which no name can spell. */
 	readonly routeKeys: ReadonlySet<string>;
-	readonly tagKeys: ReadonlySet<string>;
+	readonly variantKeys: ReadonlySet<string>;
 	readonly all: ReadonlySet<string>;
 
-	constructor(routeKeys: Iterable<string>, tagKeys: Iterable<string>) {
+	constructor(routeKeys: Iterable<string>, variantKeys: Iterable<string>) {
 		this.routeKeys = new Set(
 			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
 		);
-		this.tagKeys = new Set(tagKeys);
-		this.all = new Set([...this.routeKeys, ...this.tagKeys]);
+		this.variantKeys = new Set(variantKeys);
+		this.all = new Set([...this.routeKeys, ...this.variantKeys]);
 	}
 
 	/** Whether `text` can be a key: letters and digits, starting with a letter. */
@@ -117,8 +117,8 @@ export class DeclaredKeys {
 		return flipped + name.slice(1);
 	}
 
-	isTag(key: string): boolean {
-		return this.tagKeys.has(key);
+	isVariant(key: string): boolean {
+		return this.variantKeys.has(key);
 	}
 
 	/** The key `name` spells, exactly or with the first letter in the other case. */
@@ -130,8 +130,8 @@ export class DeclaredKeys {
 		return this.resolveIn(name, this.routeKeys);
 	}
 
-	resolveTag(name: string): string | undefined {
-		return this.resolveIn(name, this.tagKeys);
+	resolveVariant(name: string): string | undefined {
+		return this.resolveIn(name, this.variantKeys);
 	}
 
 	/** The key `name` only differs from beyond the first letter's case, when `name` doesn't spell a key. */
@@ -174,14 +174,14 @@ export interface ResolvedConfigFields {
 	readonly file: string;
 	/** The configs it extends, the nearest first. */
 	readonly parents: readonly string[];
-	/** Tags turned on or off from the command line that this config doesn't declare. */
-	readonly skippedTags: readonly string[];
+	/** Variants turned on or off from the command line that this config doesn't declare. */
+	readonly skippedVariants: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** Tag name to whether it is on. */
-	readonly tags: Readonly<Record<string, boolean>>;
+	/** Variant name to whether it is on. */
+	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
@@ -192,11 +192,11 @@ export interface ResolvedConfigFields {
 export class ResolvedConfig {
 	readonly file: string;
 	readonly parents: readonly string[];
-	readonly skippedTags: readonly string[];
+	readonly skippedVariants: readonly string[];
 	readonly name: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
-	readonly tags: Readonly<Record<string, boolean>>;
+	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
@@ -206,18 +206,18 @@ export class ResolvedConfig {
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
 		this.parents = fields.parents;
-		this.skippedTags = fields.skippedTags;
+		this.skippedVariants = fields.skippedVariants;
 		this.name = fields.name;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;
-		this.tags = fields.tags;
+		this.variants = fields.variants;
 		this.exclude = fields.exclude;
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
 		this.keys = new DeclaredKeys(
 			fields.routes.keys(),
-			Object.keys(fields.tags)
+			Object.keys(fields.variants)
 		);
 	}
 
@@ -238,8 +238,10 @@ export class ResolvedConfig {
 			: undefined;
 	}
 
-	/** The tags that are on. */
-	get enabledTags(): string[] {
-		return Object.keys(this.tags).filter((tag) => this.tags[tag]);
+	/** The variants that are on. */
+	get enabledVariants(): string[] {
+		return Object.keys(this.variants).filter(
+			(variant) => this.variants[variant]
+		);
 	}
 }

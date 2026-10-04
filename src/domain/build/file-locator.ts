@@ -58,7 +58,7 @@ export class FileLocator {
 					instancePath: [...file.instancePath, ...below],
 					route: file.route,
 					routeMatch: file.routeMatch,
-					tags: file.tags,
+					variants: file.variants,
 				});
 		}
 		return all;

@@ -1,6 +1,6 @@
 {
 	"extends": "./base.rogen.json",
-	"tags": {
+	"variants": {
 		"mock": true
 	},
 	"syncDir": "dist"

@@ -1,6 +1,0 @@
-{
-	"steps": [
-		["build", "-o", "prod.project.json"],
-		["build", "-o", "mocked.project.json", "--tag", "mock", "--no-tag", "prod"]
-	]
-}

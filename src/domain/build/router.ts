@@ -2,7 +2,7 @@ import { joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo-file.js";
-import { MatchForm, RouteMatch, TagMatch } from "./build.js";
+import { MatchForm, RouteMatch, VariantMatch } from "./build.js";
 import { EntryRead, NameReadings, SuffixSpan } from "./name-reader.js";
 import { ScannedEntry, ScannedRoot, rojoNameOf } from "./root-scanner.js";
 
@@ -19,13 +19,13 @@ export interface RoutedFile {
 	readonly routeMatch: RouteMatch;
 	/** The service, the target's folders, the file's own folders, then the instance name. */
 	readonly instancePath: readonly string[];
-	/** Routing, tag and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
+	/** Routing, variant and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
 	readonly folderNodes: readonly FolderNode[];
 	/** The route keys that name the file but sit under the governing route, so they changed nothing. */
 	readonly ignoredRoutes: readonly string[];
-	/** Tag folders and suffixes are already out of `instancePath`; the tag stage decides what they mean. */
-	readonly tags: readonly TagMatch[];
-	/** A `.server`/`.client` that a tag suffix follows, which Rojo won't read as a script class. */
+	/** Variant folders and suffixes are already out of `instancePath`; the variant stage decides what they mean. */
+	readonly variants: readonly VariantMatch[];
+	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
 }
 
@@ -33,7 +33,7 @@ export interface RoutedFile {
 class Claims {
 	route: { readonly key: string; readonly match: MatchForm } | undefined;
 	readonly ignoredRoutes: string[] = [];
-	readonly tags: TagMatch[] = [];
+	readonly variants: VariantMatch[] = [];
 
 	/** Whether the route governs; a later one is ignored whole. */
 	claimRoute(key: string, match: MatchForm): boolean {
@@ -45,8 +45,8 @@ class Claims {
 		return true;
 	}
 
-	claimTag(tag: TagMatch): void {
-		this.tags.push(tag);
+	claimVariant(variant: VariantMatch): void {
+		this.variants.push(variant);
 	}
 }
 
@@ -106,12 +106,12 @@ export class Router {
 			instancePath: [...parent, name],
 			folderNodes,
 			ignoredRoutes: claims.ignoredRoutes,
-			tags: claims.tags,
+			variants: claims.variants,
 			buriedScriptSuffix,
 		};
 	}
 
-	/** Routing, tag and invisible folders and markers claim the file; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
+	/** Routing, variant and invisible folders and markers claim the file; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
 	private readFolders(
 		entry: ScannedEntry,
 		read: EntryRead,
@@ -124,8 +124,8 @@ export class Router {
 					joinPosix(entry.rootDir, dir, fileName)
 				)?.key;
 				if (key === undefined) continue;
-				if (this.keys.isTag(key))
-					claims.claimTag({ tag: key, form: "marker" });
+				if (this.keys.isVariant(key))
+					claims.claimVariant({ variant: key, form: "marker" });
 				else claims.claimRoute(key, "marker");
 			}
 		};
@@ -142,8 +142,8 @@ export class Router {
 						});
 				} else if (!folder.invisible)
 					folders.push({ name: folder.segment, dir: folder.dir });
-			} else if (folder.kind === "tag")
-				claims.claimTag({ tag: folder.key, form: "folder" });
+			} else if (folder.kind === "variant")
+				claims.claimVariant({ variant: folder.key, form: "folder" });
 			else if (!folder.invisible)
 				folders.push({ name: folder.segment, dir: folder.dir });
 			applyMarkers(folder.dir);
@@ -157,10 +157,11 @@ export class Router {
 		{ kind, stem, match }: EntryRead,
 		claims: Claims
 	): LeafReading {
-		const tagSpans = match.spans.filter((span) =>
-			this.keys.isTag(span.key)
+		const variantSpans = match.spans.filter((span) =>
+			this.keys.isVariant(span.key)
 		);
-		for (const span of tagSpans) claims.claimTag(this.asTagMatch(span));
+		for (const span of variantSpans)
+			claims.claimVariant(this.asVariantMatch(span));
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans)
 			if (
@@ -176,13 +177,13 @@ export class Router {
 
 		const buriedScriptSuffix =
 			kind === "script" &&
-			tagSpans.length > 0 &&
+			variantSpans.length > 0 &&
 			!RojoFile.scriptSuffixOf(stem)
-				? RojoFile.scriptSuffixOf(this.stripSpans(stem, tagSpans))
+				? RojoFile.scriptSuffixOf(this.stripSpans(stem, variantSpans))
 				: undefined;
 		const stripped = this.stripSpans(
 			stem,
-			routeSpan ? [...tagSpans, routeSpan] : tagSpans
+			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
 		return {
 			name:
@@ -191,8 +192,8 @@ export class Router {
 		};
 	}
 
-	private asTagMatch(span: SuffixSpan): TagMatch {
-		return { tag: span.key, form: "suffix" };
+	private asVariantMatch(span: SuffixSpan): VariantMatch {
+		return { variant: span.key, form: "suffix" };
 	}
 
 	/** Keeps the stem whole rather than return an empty name. */

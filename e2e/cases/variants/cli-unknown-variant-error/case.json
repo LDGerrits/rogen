@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["build", "--variant", "nope"],
+		["build", "--no-variant", "nope"],
+		["build", "--variant", "mokc"]
+	]
+}

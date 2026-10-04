@@ -34,17 +34,17 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const tags = location.tags.map(
-				({ tag, form }) => `${tag} (${MATCH_LABELS[form]})`
+			const matches = location.variants.map(
+				({ variant, form }) => `${variant} (${MATCH_LABELS[form]})`
 			);
-			const tagged =
-				tags.length === 0
+			const variants =
+				matches.length === 0
 					? ""
-					: ` · ${tags.length === 1 ? "tag" : "tags"} ${tags.join(", ")}`;
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${tagged}`;
+					: ` · ${matches.length === 1 ? "variant" : "variants"} ${matches.join(", ")}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${variants}`;
 		}
 		case "pruned":
-			return `pruned · tag ${location.tags[0].tag} is off (${MATCH_LABELS[location.tags[0].form]})`;
+			return `pruned · variant ${location.variants[0].variant} is off (${MATCH_LABELS[location.variants[0].form]})`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
@@ -75,11 +75,17 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 				instancePath: location.instancePath,
 				route: location.route,
 				routeMatch: location.routeMatch,
-				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+				variants: location.variants.map(({ variant, form }) => ({
+					variant,
+					form,
+				})),
 			};
 		case "pruned":
 			return {
-				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+				variants: location.variants.map(({ variant, form }) => ({
+					variant,
+					form,
+				})),
 			};
 		case "replaced":
 			return { by: toNative(location.by) };

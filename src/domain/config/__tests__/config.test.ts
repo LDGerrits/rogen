@@ -88,7 +88,7 @@ describe("domain/config/config", () => {
 
 	describe("DeclaredKeys", () => {
 		const routes = new DeclaredKeys(["server", "client", "shared"], []);
-		const withTags = new DeclaredKeys(
+		const withVariants = new DeclaredKeys(
 			["server", "client", "shared"],
 			["mock", "debug"]
 		);
@@ -97,7 +97,7 @@ describe("domain/config/config", () => {
 			const keys = new DeclaredKeys(["*", "server"], ["mock"]);
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.tagKeys]).toEqual(["mock"]);
+			expect([...keys.variantKeys]).toEqual(["mock"]);
 			expect([...keys.all]).toEqual(["server", "mock"]);
 		});
 
@@ -123,12 +123,12 @@ describe("domain/config/config", () => {
 				expect(routes.resolve("")).toBeUndefined();
 			});
 
-			it("should tell a route from a tag", () => {
-				expect(withTags.resolveRoute("mock")).toBeUndefined();
-				expect(withTags.resolveTag("mock")).toBe("mock");
-				expect(withTags.resolveRoute("Server")).toBe("server");
-				expect(withTags.resolveTag("server")).toBeUndefined();
-				expect(withTags.resolve("Mock")).toBe("mock");
+			it("should tell a route from a variant", () => {
+				expect(withVariants.resolveRoute("mock")).toBeUndefined();
+				expect(withVariants.resolveVariant("mock")).toBe("mock");
+				expect(withVariants.resolveRoute("Server")).toBe("server");
+				expect(withVariants.resolveVariant("server")).toBeUndefined();
+				expect(withVariants.resolve("Mock")).toBe("mock");
 			});
 		});
 
@@ -148,9 +148,9 @@ describe("domain/config/config", () => {
 			});
 		});
 
-		it("should say which keys are tags", () => {
-			expect(withTags.isTag("mock")).toBe(true);
-			expect(withTags.isTag("server")).toBe(false);
+		it("should say which keys are variants", () => {
+			expect(withVariants.isVariant("mock")).toBe(true);
+			expect(withVariants.isVariant("server")).toBe(false);
 		});
 
 		it("should share an identity between keys that differ only in the first letter", () => {
@@ -203,23 +203,24 @@ describe("domain/config/config", () => {
 			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
 		});
 
-		it("should list the tags that are on", () => {
+		it("should list the variants that are on", () => {
 			expect(
-				mockConfig({ tags: { mock: true, debug: false } }).enabledTags
+				mockConfig({ variants: { mock: true, debug: false } })
+					.enabledVariants
 			).toEqual(["mock"]);
 		});
 
-		it("should know its declared keys from its routes and tags", () => {
+		it("should know its declared keys from its routes and variants", () => {
 			const { keys } = mockConfig({
 				routes: {
 					"*": "ReplicatedStorage",
 					server: "ServerScriptService",
 				},
-				tags: { mock: true },
+				variants: { mock: true },
 			});
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.tagKeys]).toEqual(["mock"]);
+			expect([...keys.variantKeys]).toEqual(["mock"]);
 		});
 	});
 

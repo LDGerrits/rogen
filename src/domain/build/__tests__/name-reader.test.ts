@@ -19,7 +19,7 @@ describe("NameReader marker", () => {
 		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
 	});
 
-	it("matches a tag marker", () => {
+	it("matches a variant marker", () => {
 		expect(matchMarkerKey(".mock", ALL_KEYS)).toBe("mock");
 	});
 
@@ -138,6 +138,42 @@ describe("NameReader suffixes", () => {
 	});
 });
 
+describe("NameReader variant typo", () => {
+	const typoOf = (stem: string) =>
+		readerOf(ALL_KEYS).suffixes(stem).variantTypo;
+
+	it("names the declared variant a trailing dot part is one edit from", () => {
+		expect(typoOf("Analytics.mok")).toEqual({
+			text: "mok",
+			variant: "mock",
+		});
+		expect(typoOf("Analytics.mcok")).toEqual({
+			text: "mcok",
+			variant: "mock",
+		});
+		expect(typoOf("Analytics.MOCK")).toEqual({
+			text: "MOCK",
+			variant: "mock",
+		});
+	});
+
+	it("reports a typo that sits before a matched suffix", () => {
+		expect(typoOf("Analytics.mok@server")?.variant).toBe("mock");
+	});
+
+	it("leaves .spec, .story and other ordinary dot parts alone", () => {
+		expect(typoOf("Save.spec")).toBeUndefined();
+		expect(typoOf("Hud.story")).toBeUndefined();
+		expect(typoOf("Foo.beta")).toBeUndefined();
+	});
+
+	it("reports nothing for a matched variant, a name without a dot or a Rojo suffix", () => {
+		expect(typoOf("Analytics.mock")).toBeUndefined();
+		expect(typoOf("Analytics")).toBeUndefined();
+		expect(typoOf("Main.client")).toBeUndefined();
+	});
+});
+
 describe("NameReader stray @", () => {
 	it("names the closest declared route for an @ that matches none", () => {
 		expect(matchSuffixKeys("Save@sever", ROUTES).strayAt).toEqual({
@@ -212,9 +248,9 @@ describe("NameReader folder", () => {
 		});
 	});
 
-	it("should read a folder named after a tag as that tag", () => {
+	it("should read a folder named after a variant as that variant", () => {
 		expect(readFolderName("mock", ALL_KEYS)).toEqual({
-			kind: "tag",
+			kind: "variant",
 			key: "mock",
 			invisible: false,
 		});

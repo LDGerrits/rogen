@@ -101,7 +101,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Pick<ResolvedConfigSpec, "routes" | "tags"> = {}
+		overrides: Pick<ResolvedConfigSpec, "routes" | "variants"> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
@@ -110,7 +110,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			name: "t",
 			rootDirs: [path.join(dir, "src")],
 			routes: { "*": "ReplicatedStorage" },
-			tags: {},
+			variants: {},
 			exclude: [],
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
@@ -161,7 +161,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		});
 		await rogenTree({
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-			tags: { mock: true },
+			variants: { mock: true },
 		});
 
 		expect(metaApplied(sourcemap(dir, "ours.project.json"))).toEqual([

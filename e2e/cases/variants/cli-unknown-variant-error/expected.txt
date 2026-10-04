@@ -1,0 +1,14 @@
+$ rogen build --variant nope
+exit 1
+stderr:
+  error: Variant "nope" is not declared by any config being built. Add it under "variants" in a config, or drop the flag.
+
+$ rogen build --no-variant nope
+exit 1
+stderr:
+  error: Variant "nope" is not declared by any config being built. Add it under "variants" in a config, or drop the flag.
+
+$ rogen build --variant mokc
+exit 1
+stderr:
+  error: Variant "mokc" is not declared by any config being built. Did you mean "mock"?

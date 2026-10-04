@@ -154,7 +154,7 @@ describe("WatchLog.update", () => {
 			summary: {
 				roots: [],
 				routes: [],
-				tags: [],
+				variants: [],
 				unrouted: 0,
 				superseded: 0,
 				displaced: 0,

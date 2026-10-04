@@ -8,14 +8,14 @@ import {
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
-/** How a route or tag key matched a file by its name. */
+/** How a route or variant key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
 
 /** How the governing route matched the file; `fallback` is the `*` route. */
 export type RouteMatch = MatchForm | "fallback";
 
-export interface TagMatch {
-	readonly tag: string;
+export interface VariantMatch {
+	readonly variant: string;
 	readonly form: MatchForm;
 }
 
@@ -30,8 +30,8 @@ export type LeftOut =
 	| ScanLeftOut
 	/** No route governs it. */
 	| { readonly status: "unrouted" }
-	/** Every dormant tag it carries, the first first. */
-	| { readonly status: "pruned"; readonly tags: readonly TagMatch[] }
+	/** Every dormant variant it carries, the first first. */
+	| { readonly status: "pruned"; readonly variants: readonly VariantMatch[] }
 	/** Another file took its instance path. */
 	| { readonly status: "replaced"; readonly by: string }
 	/** The template defines the node it would be, or a `$path` above it. */
@@ -50,10 +50,10 @@ export interface RouteSummary {
 	readonly files: number;
 }
 
-export interface TagSummary {
-	readonly tag: string;
+export interface VariantSummary {
+	readonly variant: string;
 	readonly on: boolean;
-	/** Files placed with the tag when it's on, or left out by it when it's off. */
+	/** Files placed with the variant when it's on, or left out by it when it's off. */
 	readonly files: number;
 }
 
@@ -61,7 +61,7 @@ export interface BuildSummary {
 	readonly roots: readonly RootSummary[];
 	/** In the order the config declares them. */
 	readonly routes: readonly RouteSummary[];
-	readonly tags: readonly TagSummary[];
+	readonly variants: readonly VariantSummary[];
 	readonly unrouted: number;
 	readonly superseded: number;
 	/** Left out because the template defines their node. */
@@ -117,8 +117,8 @@ export interface PlacedLocation extends Located {
 	readonly instancePath: readonly string[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The active tags the file carries. */
-	readonly tags: readonly TagMatch[];
+	/** The active variants the file carries. */
+	readonly variants: readonly VariantMatch[];
 }
 
 export interface UnplacedLocation extends Located {

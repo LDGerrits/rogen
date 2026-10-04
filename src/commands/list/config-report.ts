@@ -34,7 +34,7 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
-		tags: config.tags,
+		variants: config.variants,
 		exclude: config.exclude,
 		template: config.template ? toNative(config.template.file) : null,
 		syncDir: config.syncDir ? toNative(config.syncDir) : null,

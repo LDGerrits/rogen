@@ -38,14 +38,14 @@ describe("LocationReport", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					tags: [],
+					variants: [],
 				})
 			).toBe(
 				"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Http · route Client (suffix)"
 			);
 		});
 
-		it("should name each active tag with how it matched", () => {
+		it("should name each active variant with how it matched", () => {
 			expect(
 				describe1({
 					status: "placed",
@@ -53,30 +53,32 @@ describe("LocationReport", () => {
 					instancePath: ["ReplicatedStorage", "A"],
 					route: "*",
 					routeMatch: "fallback",
-					tags: [
-						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "suffix" },
-						{ tag: "test", form: "marker" },
+					variants: [
+						{ variant: "dev", form: "folder" },
+						{ variant: "mock", form: "suffix" },
+						{ variant: "test", form: "marker" },
 					],
 				})
 			).toBe(
-				"src/A.luau -> ReplicatedStorage/A · route * (fallback) · tags dev (folder), mock (suffix), test (marker)"
+				"src/A.luau -> ReplicatedStorage/A · route * (fallback) · variants dev (folder), mock (suffix), test (marker)"
 			);
 		});
 
-		it("should say how a dormant tag matched a pruned file", () => {
+		it("should say how a dormant variant matched a pruned file", () => {
 			expect(
 				describe1({
 					status: "pruned",
 					source: "/repo/src/Http.mock.luau",
-					tags: [
+					variants: [
 						{
-							tag: "mock",
+							variant: "mock",
 							form: "suffix",
 						},
 					],
 				})
-			).toBe("src/Http.mock.luau -> pruned · tag mock is off (suffix)");
+			).toBe(
+				"src/Http.mock.luau -> pruned · variant mock is off (suffix)"
+			);
 		});
 
 		it("should name the glob that excluded a path, relative to the working directory", () => {
@@ -224,7 +226,7 @@ describe("LocationReport", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					tags: [{ tag: "mock", form: "suffix" }],
+					variants: [{ variant: "mock", form: "suffix" }],
 				})
 			).toEqual([
 				{
@@ -238,7 +240,7 @@ describe("LocationReport", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					tags: [{ tag: "mock", form: "suffix" }],
+					variants: [{ variant: "mock", form: "suffix" }],
 				},
 			]);
 		});
@@ -248,9 +250,9 @@ describe("LocationReport", () => {
 				{
 					status: "pruned",
 					source: "/repo/src/Http.mock.luau",
-					tags: [{ tag: "mock", form: "suffix" }],
+					variants: [{ variant: "mock", form: "suffix" }],
 				},
-				{ tags: [{ tag: "mock", form: "suffix" }] },
+				{ variants: [{ variant: "mock", form: "suffix" }] },
 			],
 			[
 				{
@@ -300,7 +302,7 @@ describe("LocationReport", () => {
 				instancePath: ["ServerScriptService", "Save"],
 				route: "Server",
 				routeMatch: "folder",
-				tags: [],
+				variants: [],
 			};
 			const report = reportOf([
 				[

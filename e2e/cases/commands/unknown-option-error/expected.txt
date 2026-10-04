@@ -13,10 +13,10 @@ exit 1
 stderr:
   error: Unknown option '-w'. Run 'rogen help watch' to see what watch accepts.
 
-$ rogen build --tag
+$ rogen build --variant
 exit 1
 stderr:
-  error: Option '--tag' needs a value.
+  error: Option '--variant' needs a value.
 
 $ rogen build --json=yes
 exit 1
@@ -28,7 +28,7 @@ exit 1
 stderr:
   error: Unknown option '--jsno'. Did you mean '--json'?
 
-$ rogen init --tag x
+$ rogen init --variant x
 exit 1
 stderr:
-  error: init doesn't take '--tag'. build, list, watch and where do.
+  error: init doesn't take '--variant'. build, list, watch and where do.

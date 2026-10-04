@@ -134,12 +134,12 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				tags: { mock: false },
+				variants: { mock: false },
 			})
 		);
 		writeProjectFile(project.dir, "src/Analytics.luau");
 		writeProjectFile(project.dir, "src/Analytics.mock.luau");
-		start(["--tag", "mock"]);
+		start(["--variant", "mock"]);
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/Analytics.mock.luau");
 		});
@@ -150,7 +150,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				tags: { mock: false, dev: false },
+				variants: { mock: false, dev: false },
 			})
 		);
 

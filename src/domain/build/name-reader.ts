@@ -1,14 +1,14 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
-import { closestMatch } from "../../base/strings.js";
+import { closestMatch, editDistance } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
 import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
 
-/** Whether a folder routes, carries a tag or is ordinary. */
+/** Whether a folder routes, carries a variant or is ordinary. */
 export type FolderReading =
 	| {
-			readonly kind: "route" | "tag";
+			readonly kind: "route" | "variant";
 			readonly key: string;
 			readonly invisible: boolean;
 			/** What a route folder written `Name@key` keeps as its name; a plain or bare `@key` folder keeps none. */
@@ -37,6 +37,12 @@ export interface StrayAt {
 	readonly notLast: boolean;
 }
 
+/** A trailing dot part that is one edit from a declared variant. */
+export interface VariantTypo {
+	readonly text: string;
+	readonly variant: string;
+}
+
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
@@ -44,6 +50,8 @@ export interface SuffixMatch {
 	readonly spans: readonly SuffixSpan[];
 	/** An `@` left in the base name that doesn't route. */
 	readonly strayAt?: StrayAt;
+	/** An undeclared dot part left at the end of the base name that looks like a mistyped variant. */
+	readonly variantTypo?: VariantTypo;
 }
 
 /** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
@@ -66,14 +74,14 @@ export class NameReader {
 			: { name: inner, invisible: true };
 	}
 
-	/** Whether a folder routes, carries a tag or is ordinary; parentheses come off first. */
+	/** Whether a folder routes, carries a variant or is ordinary; parentheses come off first. */
 	folder(folderName: string): FolderReading {
 		const { name, invisible } =
 			NameReader.unwrapInvisibleFolder(folderName);
 		const route = this.keys.resolveRoute(name);
 		if (route) return { kind: "route", key: route, invisible };
-		const tag = this.keys.resolveTag(name);
-		if (tag) return { kind: "tag", key: tag, invisible };
+		const variant = this.keys.resolveVariant(name);
+		if (variant) return { kind: "variant", key: variant, invisible };
 		const at = name.lastIndexOf("@");
 		const atKey =
 			at >= 0 ? this.keys.resolveRoute(name.slice(at + 1)) : undefined;
@@ -127,6 +135,7 @@ export class NameReader {
 			matchedKeys: matched,
 			spans,
 			strayAt: this.strayAt(remaining),
+			variantTypo: this.variantTypo(remaining),
 		};
 	}
 
@@ -137,7 +146,7 @@ export class NameReader {
 		if (dot > at) {
 			const part = remaining.slice(dot + 1);
 			const key =
-				this.keys.resolveTag(part) ??
+				this.keys.resolveVariant(part) ??
 				(DOT_ROUTE_KEYS.has(part)
 					? this.keys.resolveRoute(part)
 					: undefined);
@@ -149,6 +158,18 @@ export class NameReader {
 		return at > 0 && key
 			? { key, start: at, length: remaining.length - at }
 			: undefined;
+	}
+
+	/** `.spec` and `.story` are ordinary names, so only a part one edit from a declared variant is reported. */
+	private variantTypo(remaining: string): VariantTypo | undefined {
+		const dot = remaining.lastIndexOf(".");
+		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
+		const text = remaining.slice(dot + 1);
+		if (DOT_ROUTE_KEYS.has(text)) return undefined;
+		const variant = [...this.keys.variantKeys].find(
+			(key) => editDistance(text.toLowerCase(), key.toLowerCase()) <= 1
+		);
+		return variant ? { text, variant } : undefined;
 	}
 
 	private strayAt(name: string): StrayAt | undefined {
@@ -174,7 +195,7 @@ export type FolderRead = FolderReading & {
 };
 
 export interface MarkerRead {
-	/** The declared route or tag key the marker spells. */
+	/** The declared route or variant key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;
 }
@@ -202,6 +223,8 @@ export class NameReadings {
 	readonly nearMisses = new Map<string, string>();
 	/** Each folder above an entry, or entry, with an `@` that doesn't route; first found first. */
 	readonly strayAts = new Map<string, StrayAt>();
+	/** Each entry whose name ends in a dot part one edit from a declared variant; first found first. */
+	readonly variantTypos = new Map<string, VariantTypo>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -239,6 +262,8 @@ export class NameReadings {
 					this.noteStrayAt(resource, folder.strayAt);
 				}
 				this.noteStrayAt(entry.source, match.strayAt);
+				if (match.variantTypo && !this.variantTypos.has(entry.source))
+					this.variantTypos.set(entry.source, match.variantTypo);
 			}
 		}
 	}

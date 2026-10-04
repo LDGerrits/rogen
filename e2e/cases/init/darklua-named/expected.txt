@@ -12,7 +12,7 @@ stdout:
     Have Darklua process your code into the sync dir:
       darklua process src dist
     Add your own routes under "routes" in lobby.rogen.json.
-    Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
   Wrote 2 files.
 
 written:

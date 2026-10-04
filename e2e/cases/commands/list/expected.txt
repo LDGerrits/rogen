@@ -7,15 +7,15 @@ stdout:
     root dirs: src
     sync dir: dist
     project file: default.project.json
-    tags: dev
+    variants: dev
   lobby.rogen.json
     root dirs: core, places/lobby
     sync dir: (none)
     project file: out/lobby.project.json
-    tags: (none)
+    variants: (none)
   source.rogen.json
     root dirs: src
     sync dir: (none)
     project file: source.project.json
-    tags: dev
+    variants: dev
   3 configs.

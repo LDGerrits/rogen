@@ -16,7 +16,10 @@ import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 type InstancelessFolder =
-	"a root dir" | "a routing folder" | "a tag folder" | "an invisible folder";
+	| "a root dir"
+	| "a routing folder"
+	| "a variant folder"
+	| "an invisible folder";
 
 const DIAGNOSED_PATHS = 10;
 
@@ -38,6 +41,7 @@ export class BuildValidator {
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
+			...this.variantTypo(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.deadScript(),
@@ -95,7 +99,7 @@ export class BuildValidator {
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
 		return this.diagnosePaths([...nearMisses], (resource, key) => {
-			const kind = this.config.keys.isTag(key) ? "tag" : "route";
+			const kind = this.config.keys.isVariant(key) ? "variant" : "route";
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
@@ -125,7 +129,34 @@ export class BuildValidator {
 				"route.strayAt",
 				{ resource: this.config.file },
 				[
-					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is" : "they are"} read as ordinary names:`,
+					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
+					...listed,
+					...(unlisted > 0
+						? [`  ${unlisted} more like it aren't listed.`]
+						: []),
+				].join("\n")
+			),
+		];
+	}
+
+	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
+	private variantTypo(): Diagnostic[] {
+		const { variantTypos } = this.placement.readings;
+		if (variantTypos.size === 0) return [];
+		const listed = [...variantTypos]
+			.slice(0, DIAGNOSED_PATHS)
+			.map(
+				([resource, { text, variant }]) =>
+					`  ${resource} (did you mean ".${variant}" for ".${text}"?)`
+			);
+		const unlisted = variantTypos.size - listed.length;
+		const many = variantTypos.size > 1;
+		return [
+			warningDiagnostic(
+				"variant.typo",
+				{ resource: this.config.file },
+				[
+					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
 					...listed,
 					...(unlisted > 0
 						? [`  ${unlisted} more like it aren't listed.`]
@@ -245,7 +276,7 @@ export class BuildValidator {
 			leftOut.get(file.entry.source)?.status !== "pruned"
 				? [
 						warningDiagnostic(
-							"tag.buriedScriptSuffix",
+							"variant.buriedScriptSuffix",
 							{ resource: file.entry.source },
 							`".${file.buriedScriptSuffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${file.buriedScriptSuffix}.luau.`
 						),
@@ -254,11 +285,11 @@ export class BuildValidator {
 		);
 	}
 
-	/** Only one untagged file can become an instance; a tagged one replacing it is the point of tags. */
+	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
 	private instanceClash(): Diagnostic[] {
 		return this.placement.clashes
 			.filter(({ claimants }) =>
-				claimants.every((file) => file.tags.length === 0)
+				claimants.every((file) => file.variants.length === 0)
 			)
 			.flatMap(({ instance, claimants }) => {
 				const winner = claimants[claimants.length - 1].entry.source;
@@ -404,7 +435,7 @@ export class BuildValidator {
 			if (named.has(key)) return undefined;
 			const folder = readings.folders.get(key);
 			if (folder?.kind === "route") return "a routing folder";
-			if (folder?.kind === "tag") return "a tag folder";
+			if (folder?.kind === "variant") return "a variant folder";
 			return folder?.invisible ? "an invisible folder" : undefined;
 		};
 		const metas = this.assembly.folderMeta.flatMap((meta) => {

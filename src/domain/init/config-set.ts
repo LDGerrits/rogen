@@ -46,8 +46,8 @@ export class ConfigSet {
 		return `${PLACES_DIR}/${name}`;
 	}
 
-	/** The files a variant named `name` writes, plus its project file. */
-	static variantFilesOf(name: string): string[] {
+	/** The files an extending config named `name` writes, plus its project file. */
+	static extendingFilesOf(name: string): string[] {
 		return [configFileName(name), defaultOutFileName(name)];
 	}
 
@@ -64,8 +64,8 @@ export class ConfigSet {
 	}
 
 	/** Says where variants of a script are swapped in, in the words the next steps use. */
-	static tagsStep(language: Language, configFile: string): string {
-		return `Add tags under "tags" in ${configFile} to swap in variants like Analytics.mock.${language.extension}.`;
+	static variantsStep(language: Language, configFile: string): string {
+		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}.`;
 	}
 
 	/** `names` are the positionals after `init`. */
