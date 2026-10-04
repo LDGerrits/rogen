@@ -1,5 +1,5 @@
 import { toNative } from "../../base/path.js";
-import { ConfigBuild } from "../../domain/build/build-service.js";
+import { ConfigBuild } from "../../domain/build/build.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 
 type BuildOutcome = "wrote" | "unchanged" | "notWritten";

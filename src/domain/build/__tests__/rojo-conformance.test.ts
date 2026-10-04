@@ -114,7 +114,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
 		});
-		const [build] = await buildServiceOf(fileSystem, index).run([config]);
+		const build = await buildServiceOf(fileSystem, index).rebuild(config);
 		expect(build.outcome).toBe("wrote");
 	};
 

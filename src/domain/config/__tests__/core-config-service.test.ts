@@ -5,10 +5,7 @@ import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js"
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../config.js";
-import {
-	ConfigSelection,
-	buildableConfig,
-} from "../config-service.js";
+import { ConfigSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 interface Refs {
@@ -205,10 +202,9 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["default", "source"] });
 
-			expect(selection.entries.map((c) => buildableConfig(c)?.rootDirs)).toEqual([
-				["/repo/a"],
-				["/repo/b"],
-			]);
+			expect(
+				selection.entries.map((c) => buildableConfig(c)?.rootDirs)
+			).toEqual([["/repo/a"], ["/repo/b"]]);
 		});
 
 		it("should fail when discovery fails", async () => {
@@ -253,7 +249,10 @@ describe("domain/config/core-config-service", () => {
 			const result = await start({ names: ["a", "b"] });
 
 			expect(result.isOk()).toBe(true);
-			expect(selection.entries.map((_, index) => errors(index))).toEqual([[], []]);
+			expect(selection.entries.map((_, index) => errors(index))).toEqual([
+				[],
+				[],
+			]);
 		});
 
 		it("should list every file of every chain", async () => {
@@ -353,7 +352,10 @@ describe("domain/config/core-config-service", () => {
 
 			const entry = await service.read("/repo/other.rogen.json");
 
-			expect(entry).toMatchObject({ status: "broken", lastValid: undefined });
+			expect(entry).toMatchObject({
+				status: "broken",
+				lastValid: undefined,
+			});
 		});
 	});
 
@@ -458,9 +460,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(resolved(0)?.outFile).toBe(
-				"/repo/default.project.json"
-			);
+			expect(resolved(0)?.outFile).toBe("/repo/default.project.json");
 		});
 
 		it("should keep the leaf's own outFile", async () => {
@@ -474,9 +474,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(resolved(0)?.outFile).toBe(
-				"/repo/build/game.project.json"
-			);
+			expect(resolved(0)?.outFile).toBe("/repo/build/game.project.json");
 		});
 
 		it("should resolve a three-deep chain from the outermost ancestor inwards", async () => {
@@ -630,12 +628,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(
-				errors(0).map((d) => [
-					d.resource,
-					d.message,
-				])
-			).toEqual([
+			expect(errors(0).map((d) => [d.resource, d.message])).toEqual([
 				[
 					"/repo/base.rogen.json",
 					'"routes.server": expected a string, found null.',
@@ -652,9 +645,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start();
 
-			expect(resolved(0)?.exclude).toEqual([
-				"/repo/dist/",
-			]);
+			expect(resolved(0)?.exclude).toEqual(["/repo/dist/"]);
 		});
 	});
 
@@ -845,9 +836,7 @@ describe("domain/config/core-config-service", () => {
 
 			await start({ names: ["lobby"] });
 
-			expect(resolved(0)?.outFile).toBe(
-				"/repo/lobby.project.json"
-			);
+			expect(resolved(0)?.outFile).toBe("/repo/lobby.project.json");
 		});
 
 		describe("project name", () => {
@@ -1239,9 +1228,7 @@ describe("domain/config/core-config-service", () => {
 				});
 				await selection.reload(["/repo/default.rogen.json"]);
 
-				expect(resolved(0)?.rootDirs).toEqual([
-					"/repo/a",
-				]);
+				expect(resolved(0)?.rootDirs).toEqual(["/repo/a"]);
 				expect(errors(0)).toHaveLength(1);
 			});
 		});
@@ -1331,14 +1318,12 @@ describe("domain/config/core-config-service", () => {
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(selection.entries.map((c) => buildableConfig(c)?.tags)).toEqual([
-				{ mock: true },
-				{},
-			]);
-			expect(selection.entries.map((c) => buildableConfig(c)?.skippedTags)).toEqual([
-				[],
-				["mock"],
-			]);
+			expect(
+				selection.entries.map((c) => buildableConfig(c)?.tags)
+			).toEqual([{ mock: true }, {}]);
+			expect(
+				selection.entries.map((c) => buildableConfig(c)?.skippedTags)
+			).toEqual([[], ["mock"]]);
 		});
 
 		it("should keep the skipped tags of the last valid config when a reload breaks it", async () => {

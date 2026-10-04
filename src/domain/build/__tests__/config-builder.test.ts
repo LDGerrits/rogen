@@ -4,7 +4,6 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
@@ -30,20 +29,6 @@ describe("ConfigBuilder", () => {
 	});
 
 	describe("build", () => {
-		it("should fail when the config declares no routes, without reading the index", async () => {
-			const config = configOf({ routes: {} });
-
-			const result = await builderOf(fs, new CoreIndexService(fs)).build(
-				config
-			);
-
-			expect(
-				result.isErr() ? result.error.diagnostics : []
-			).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
-			]);
-		});
-
 		it("should name the file it would write", async () => {
 			const result = await buildOf(
 				configOf({ outFile: abs("out/game.project.json") })
@@ -478,17 +463,6 @@ describe("ConfigBuilder", () => {
 
 				expect(result.unwrap().summary.superseded).toBe(1);
 			});
-		});
-
-		it("should refuse a config that declares no routes before scanning", async () => {
-			const result = await builderOf(
-				fs,
-				await indexOf(store, fs, [])
-			).build(configOf({ routes: {} }));
-
-			expect(result.isErr() && result.error.diagnostics).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("default.rogen.json") },
-			]);
 		});
 
 		it("should fail on an invalid folder meta file", async () => {

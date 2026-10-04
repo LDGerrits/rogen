@@ -36,7 +36,9 @@ export interface BrokenConfigEntry extends ConfigEntryFields {
 export type ConfigEntry = ValidConfigEntry | BrokenConfigEntry;
 
 /** What builds for `entry`: the config now, else its last valid version. */
-export function buildableConfig(entry: ConfigEntry): ResolvedConfig | undefined {
+export function buildableConfig(
+	entry: ConfigEntry
+): ResolvedConfig | undefined {
 	return entry.status === "valid" ? entry.config : entry.lastValid;
 }
 

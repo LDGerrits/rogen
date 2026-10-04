@@ -13,8 +13,11 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ResolvedConfig } from "../../domain/config/config.js";
-import { ConfigNotice } from "../../domain/config/config-service.js";
+import {
+	ConfigNotice,
+	ConfigSelection,
+	buildableConfig,
+} from "../../domain/config/config-service.js";
 import { BuildLog } from "../build/build-log.js";
 
 /** A rebuild as this round shows it: only what wasn't printed before. */
@@ -118,11 +121,12 @@ export class WatchLog {
 	}
 
 	/** Opens the output: the configs it watches and the ones it leaves out. */
-	begin(
-		configs: readonly ResolvedConfig[],
-		unselected: readonly string[]
-	): void {
-		this.buildLog.begin("watch", configs, unselected);
+	begin({ entries, unselected }: ConfigSelection): void {
+		this.buildLog.begin(
+			"watch",
+			entries.flatMap((entry) => buildableConfig(entry) ?? []),
+			unselected
+		);
 	}
 
 	end(): void {

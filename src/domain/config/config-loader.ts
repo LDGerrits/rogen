@@ -106,9 +106,7 @@ export class ConfigLoader {
 		const resolved = new ConfigValidator(
 			layered,
 			chain.files.slice(1)
-		).validate(
-			template?.isOk() ? template.value : undefined
-		);
+		).validate(template?.isOk() ? template.value : undefined);
 		return {
 			...loaded,
 			...(resolved.isOk() && { config: layered.config }),

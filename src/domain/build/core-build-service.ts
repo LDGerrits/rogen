@@ -1,10 +1,5 @@
 import path from "path";
-import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
@@ -13,26 +8,18 @@ import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
-	BuildOptions,
-	BuildService,
+	BuildBlockers,
 	ConfigBuild,
 	ConfigLocations,
 	FileLocation,
-	LocateTargets,
+	Locations,
 	failedBuild,
-} from "./build-service.js";
-import {
-	BuiltProject,
-	ConfigBuilder,
 	missingRoutes,
-} from "./config-builder.js";
+} from "./build.js";
+import { BuildOptions, BuildService, LocateTargets } from "./build-service.js";
+import { BuiltProject, ConfigBuilder } from "./config-builder.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 import { OutputWriter } from "./output-writer.js";
-
-interface Blocker {
-	readonly diagnostic: Diagnostic;
-	readonly files: readonly string[];
-}
 
 function builtAs(
 	config: ResolvedConfig,
@@ -63,33 +50,50 @@ export class CoreBuildService implements BuildService {
 		this.writer = new OutputWriter(fileSystemService);
 	}
 
-	requireBuildable(
-		selection: ConfigSelection
-	): Result<ResolvedConfig[], DiagnosticsError> {
-		const valid = selection.requireValid();
-		if (valid.isErr()) return valid;
+	async build(
+		selection: ConfigSelection,
+		options: BuildOptions = {}
+	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+		const configs = selection.requireValid();
+		if (configs.isErr()) return configs;
 
-		const blockers = this.blockers(valid.value);
-		return blockers.length > 0
-			? err(
-					new DiagnosticsError(
-						blockers.map(({ diagnostic }) => diagnostic)
-					)
-				)
-			: valid;
+		const blockers = new BuildBlockers(configs.value);
+		if (blockers.diagnostics.length > 0)
+			return err(new DiagnosticsError([...blockers.diagnostics]));
+		return ok(await this.run(configs.value, options));
 	}
 
-	blockedConfigs(
-		configs: readonly ResolvedConfig[]
-	): ReadonlyMap<string, readonly Diagnostic[]> {
-		const blocked = new Map<string, Diagnostic[]>();
-		for (const { diagnostic, files } of this.blockers(configs))
-			for (const file of files)
-				blocked.set(file, [...(blocked.get(file) ?? []), diagnostic]);
-		return blocked;
+	async rebuild(
+		config: ResolvedConfig,
+		options: BuildOptions = {}
+	): Promise<ConfigBuild> {
+		const [build] = await this.run([config], options);
+		return build;
 	}
 
-	async run(
+	async locate(
+		selection: ConfigSelection,
+		targets?: LocateTargets
+	): Promise<Result<Locations, DiagnosticsError>> {
+		const configs = selection.requireValid();
+		if (configs.isErr()) return configs;
+
+		const located: ConfigLocations[] = [];
+		for (const config of configs.value) {
+			const routes = missingRoutes(config);
+			if (routes.length > 0) return err(new DiagnosticsError(routes));
+			const locations = await this.locateIn(config, targets);
+			if (locations.isErr()) return locations;
+			located.push(locations.value);
+		}
+		return ok({
+			everyFile: (targets?.args.length ?? 0) === 0,
+			configs: located,
+		});
+	}
+
+	/** Builds every config, then writes them in order. */
+	private async run(
 		configs: readonly ResolvedConfig[],
 		options: BuildOptions = {}
 	): Promise<ConfigBuild[]> {
@@ -130,7 +134,7 @@ export class CoreBuildService implements BuildService {
 		return builds;
 	}
 
-	async locate(
+	private async locateIn(
 		config: ResolvedConfig,
 		targets?: LocateTargets
 	): Promise<Result<ConfigLocations, DiagnosticsError>> {
@@ -149,13 +153,15 @@ export class CoreBuildService implements BuildService {
 			);
 			if (planned.isErr()) return err(planned.error);
 			files = planned.value.locate(paths);
-			if (instances.length === 0) return ok({ files, instances: [] });
+			if (instances.length === 0)
+				return ok({ config, files, instances: [] });
 		}
 
 		// A planned file can move the files that exist, and an instance is only ever made by those.
 		const existing = this.locatorOf(this.indexService, config);
 		if (existing.isErr()) return err(existing.error);
 		return ok({
+			config,
 			files:
 				paths.length > 0 || instances.length > 0
 					? files
@@ -203,32 +209,5 @@ export class CoreBuildService implements BuildService {
 			else paths.push(path.resolve(targets.cwd, arg));
 		}
 		return { paths, instances };
-	}
-
-	/** Each problem across `configs`, with the config files it blocks. */
-	private blockers(configs: readonly ResolvedConfig[]): Blocker[] {
-		const byOutFile = groupBy(
-			configs,
-			({ outFile }) => path.resolve(outFile),
-			({ file }) => file
-		);
-		return [
-			...configs.flatMap((config) =>
-				missingRoutes(config).map((diagnostic) => ({
-					diagnostic,
-					files: [config.file],
-				}))
-			),
-			...[...byOutFile]
-				.filter(([, files]) => files.length > 1)
-				.map(([outFile, files]) => ({
-					diagnostic: errorDiagnostic(
-						"output.sameOutFile",
-						{ resource: outFile },
-						`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
-					),
-					files,
-				})),
-		];
 	}
 }

@@ -1,8 +1,5 @@
 import path from "path";
-import {
-	BuildSummary,
-	ConfigBuild,
-} from "../../../domain/build/build-service.js";
+import { BuildSummary, ConfigBuild } from "../../../domain/build/build.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";

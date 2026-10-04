@@ -9,7 +9,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
-import { ScanLeftOut } from "./build-service.js";
+import { ScanLeftOut } from "./build.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;

@@ -79,15 +79,10 @@ describe("Placer", () => {
 			const config = configOf(scanOptions);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.isOk()
-				? {
-						roots: built.value.placement.roots,
-						warnings: built.value.warnings,
-					}
-				: {
-						roots: builder.place(config).unwrap().roots,
-						warnings: built.error,
-					};
+			return {
+				roots: builder.place(config).unwrap().roots,
+				warnings: built.isOk() ? built.value.warnings : built.error,
+			};
 		};
 
 		const files = (root: ScannedRoot) =>
@@ -992,14 +987,18 @@ describe("Placer", () => {
 				...overrides,
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await builderOf(fs, index).build(config);
-			return built.map(({ placement, warnings }) => ({
-				routed: placement.routed,
-				unrouted: placement.leftOut
-					.withStatus("unrouted")
-					.map(([source]) => source),
-				warnings,
-			}));
+			const builder = builderOf(fs, index);
+			const built = await builder.build(config);
+			return built.map(({ warnings }) => {
+				const placement = builder.place(config).unwrap();
+				return {
+					routed: placement.routed,
+					unrouted: placement.leftOut
+						.withStatus("unrouted")
+						.map(([source]) => source),
+					warnings,
+				};
+			});
 		};
 
 		const paths = async (
@@ -1771,14 +1770,12 @@ describe("Placer", () => {
 				rootDirs: [...rootDirs],
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await builderOf(fs, index).build(config);
-			return built.map(
-				({ placement: { files, leftOut }, warnings }): TagResult => ({
-					files,
-					leftOut,
-					warnings,
-				})
-			);
+			const builder = builderOf(fs, index);
+			const built = await builder.build(config);
+			return built.map(({ warnings }): TagResult => {
+				const { files, leftOut } = builder.place(config).unwrap();
+				return { files, leftOut, warnings };
+			});
 		};
 
 		const prunedPaths = (result: TagResult) =>

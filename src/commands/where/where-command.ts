@@ -50,31 +50,18 @@ registerCommand(
 			// The positionals are paths, so only the flags pick configs.
 			const selection = await configService.select(args, { names: [] });
 			if (selection.isErr()) return selection;
-			const targets = selection.value.requireValid();
-			if (targets.isErr()) return targets;
+			const located = await buildService.locate(selection.value, {
+				args: args._.slice(1),
+				cwd,
+			});
+			if (located.isErr()) return located;
 
-			const given = args._.slice(1);
-			const report = new LocationReport(cwd);
-			for (const config of targets.value) {
-				const located = await buildService.locate(config, {
-					args: given,
-					cwd,
-				});
-				if (located.isErr()) return located;
-				report.add(
-					config.label,
-					located.value.files,
-					located.value.instances
-				);
-			}
-
+			const report = new LocationReport(cwd, located.value);
 			if (args.json) {
-				logService.print(
-					formatJsonDocument(report.json(given.length === 0))
-				);
+				logService.print(formatJsonDocument(report.json()));
 				return ok(undefined);
 			}
-			const lines = report.lines(given.length === 0);
+			const lines = report.lines();
 			if (lines.length > 0) logService.print(lines.join("\n"));
 			return ok(undefined);
 		}

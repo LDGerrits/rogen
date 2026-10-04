@@ -1,8 +1,10 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
+import { Result } from "../../base/result.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ConfigBuild } from "../build/build-service.js";
+import { ConfigBuild } from "../build/build.js";
 import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
 
 /** Why the configs were rebuilt. */
@@ -52,8 +54,8 @@ export interface WatchSession extends Disposable {
 export interface WatchService {
 	readonly _serviceBrand: undefined;
 
-	/** The session reloads `selection` as its files change. The caller owns the session: it starts it, stops it and disposes it. */
-	watch(selection: ConfigSelection): WatchSession;
+	/** Fails as a build would when a config is broken or the configs can't be built together. The session reloads `selection` as its files change; the caller starts it, stops it and disposes it. */
+	watch(selection: ConfigSelection): Result<WatchSession, DiagnosticsError>;
 }
 
 export const WatchService =

@@ -83,6 +83,20 @@ export function brokenEntry(
 	};
 }
 
+/** A selection of valid `configs`. */
+export function selectionOf(
+	...configs: readonly ResolvedConfig[]
+): MockConfigSelection {
+	return new MockConfigSelection(
+		configs.map((config) => ({
+			status: "valid",
+			file: config.file,
+			parents: config.parents,
+			config,
+		}))
+	);
+}
+
 /** A selection of fixed entries; a reload changes nothing. */
 export class MockConfigSelection implements ConfigSelection {
 	readonly files: ReadonlySet<string>;
@@ -108,7 +122,9 @@ export class MockConfigSelection implements ConfigSelection {
 			(entry) => entry.status === "broken"
 		).length;
 		return broken > 0
-			? new Error(`${broken} of ${this.entries.length} configs have errors.`)
+			? new Error(
+					`${broken} of ${this.entries.length} configs have errors.`
+				)
 			: undefined;
 	}
 

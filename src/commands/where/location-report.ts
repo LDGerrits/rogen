@@ -2,10 +2,11 @@ import { groupBy } from "../../base/collections.js";
 import path from "path";
 import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import {
+	ConfigLocations,
 	FileLocation,
-	InstanceLocation,
+	Locations,
 	RouteMatch,
-} from "../../domain/build/build-service.js";
+} from "../../domain/build/build.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 
 /** What one config says: where a path lands, or that no file places an instance. */
@@ -99,35 +100,44 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 
 /** Where files land, one line per path however many configs answered. */
 export class LocationReport {
-	private readonly answers: Answer[] = [];
-	private configs = 0;
+	private readonly answers: Answer[];
+	private readonly configs: number;
+	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
+	private readonly sorted: boolean;
 
-	constructor(private readonly cwd: string) {}
+	constructor(
+		private readonly cwd: string,
+		{ everyFile, configs }: Locations
+	) {
+		this.configs = configs.length;
+		this.sorted = everyFile;
+		this.answers = configs.flatMap((located) => this.answersOf(located));
+	}
 
-	/** What `label`'s config says about each location, then about the files behind each instance. */
-	add(
-		label: string,
-		locations: readonly FileLocation[],
-		instances: readonly InstanceLocation[] = []
-	): void {
-		this.configs++;
+	/** What one config says about each location, then about the files behind each instance. */
+	private answersOf({
+		config,
+		files: locations,
+		instances,
+	}: ConfigLocations): Answer[] {
+		const { label } = config;
 		const answer = (location: FileLocation): Answer => ({
 			label,
 			location,
 		});
-		this.answers.push(
+		return [
 			...locations.map(answer),
 			...instances.flatMap(({ reference, files }) =>
 				files.length > 0
 					? files.map(answer)
 					: [{ label, instance: reference.text }]
-			)
-		);
+			),
+		];
 	}
 
 	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Paths keep the order they were first given in, or are sorted. */
-	lines(sorted = false): string[] {
-		return this.bySource(sorted).flatMap((answers) => {
+	lines(): string[] {
+		return this.bySource().flatMap((answers) => {
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
 				answers.length === this.configs &&
@@ -141,8 +151,8 @@ export class LocationReport {
 	}
 
 	/** One entry per config and path, in the order `lines` puts the paths. */
-	json(sorted = false): Record<string, unknown>[] {
-		return this.bySource(sorted)
+	json(): Record<string, unknown>[] {
+		return this.bySource()
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
@@ -156,10 +166,10 @@ export class LocationReport {
 			}));
 	}
 
-	private bySource(sorted: boolean): Answer[][] {
+	private bySource(): Answer[][] {
 		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
-		if (sorted) sources.sort();
+		if (this.sorted) sources.sort();
 		return sources.map((source) => bySource.get(source) ?? []);
 	}
 

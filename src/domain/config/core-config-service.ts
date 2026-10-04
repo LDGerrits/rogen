@@ -1,8 +1,5 @@
 import { Result, err } from "../../base/result.js";
-import {
-	ConfigOptions,
-	ParsedArgs,
-} from "../../platform/environment/args.js";
+import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
@@ -91,9 +88,7 @@ export class CoreConfigService implements ConfigService {
 			paths,
 			all:
 				args.all === true ||
-				(unnamed === "all" &&
-					names.length === 0 &&
-					paths.length === 0),
+				(unnamed === "all" && names.length === 0 && paths.length === 0),
 		};
 		const overrides = overridesOf(args);
 		const problem = selectionProblem(refs, overrides);

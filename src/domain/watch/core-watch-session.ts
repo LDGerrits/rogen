@@ -2,12 +2,12 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildService, failedBuild } from "../build/build-service.js";
+import { BuildBlockers, failedBuild } from "../build/build.js";
+import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
 	ConfigNotice,
@@ -43,8 +43,8 @@ export class CoreWatchSession
 	/** The files each config's latest build read, beyond the config files themselves. */
 	private readonly readFiles = new Map<string, ReadonlySet<string>>();
 	private readonly failing = new Set<string>();
-	/** The configs that can't be built beside the others, by config file, from the latest load. */
-	private blocked: ReadonlyMap<string, readonly Diagnostic[]> = new Map();
+	/** Why configs can't be built beside the others, from the latest load. */
+	private blocked = new BuildBlockers([]);
 	private rebuilding = 0;
 	private settled = false;
 	private notices: ConfigNotice[] = [];
@@ -139,13 +139,13 @@ export class CoreWatchSession
 		);
 		const config = entry && buildableConfig(entry);
 		if (!config) return undefined;
-		const blocked = this.blocked.get(file);
-		if (blocked) {
+		const blocked = this.blocked.blocking(file);
+		if (blocked.length > 0) {
 			this.failing.add(file);
 			return { ...failedBuild(config, blocked), checkedSyncDir: false };
 		}
 
-		const [build] = await this.buildService.run([config], {
+		const build = await this.buildService.rebuild(config, {
 			checkSyncDir: load,
 		});
 		if (build.outcome === "failed") this.failing.add(file);
@@ -269,10 +269,11 @@ export class CoreWatchSession
 
 	/** Re-checks the configs as a set, and returns the config files whose block was lifted or put on. */
 	private refreshBlocked(): string[] {
-		const before = this.blocked;
-		this.blocked = this.buildService.blockedConfigs(this.currentConfigs);
-		return [...new Set([...before.keys(), ...this.blocked.keys()])].filter(
-			(file) => before.has(file) !== this.blocked.has(file)
+		const before = this.blocked.files;
+		this.blocked = new BuildBlockers(this.currentConfigs);
+		const after = this.blocked.files;
+		return [...new Set([...before, ...after])].filter(
+			(file) => before.has(file) !== after.has(file)
 		);
 	}
 

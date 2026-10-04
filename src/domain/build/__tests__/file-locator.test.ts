@@ -12,6 +12,7 @@ import {
 	buildServiceOf,
 	configOf as baseConfigOf,
 	indexOf,
+	locateIn,
 	writeFiles,
 } from "./fixtures.js";
 
@@ -41,7 +42,7 @@ describe("CoreBuildService.locate", () => {
 		const config = configOf(overrides);
 		const index = await indexOfConfig(config);
 		return (
-			await buildServiceOf(fs, index).locate(config, {
+			await locateIn(buildServiceOf(fs, index), config, {
 				args: paths?.map((p) => abs(p)) ?? [],
 				cwd: abs(),
 			})
@@ -320,7 +321,7 @@ describe("CoreBuildService.locate", () => {
 			const config = configOf();
 			const index = await indexOfConfig(config);
 
-			await buildServiceOf(fs, index).locate(config, {
+			await locateIn(buildServiceOf(fs, index), config, {
 				args: [abs("src/Combat/Server/Hit.luau")],
 				cwd: abs(),
 			});
@@ -400,7 +401,7 @@ describe("CoreBuildService.locate", () => {
 
 			expect(
 				(
-					await buildServiceOf(fs, index).locate(config, {
+					await locateIn(buildServiceOf(fs, index), config, {
 						args: [abs("src/Pipe.md")],
 						cwd: abs(),
 					})
@@ -412,11 +413,11 @@ describe("CoreBuildService.locate", () => {
 			const { config, index } = await unknownEntry("src/Pipe.luau");
 			const buildService = buildServiceOf(fs, index);
 
-			const named = await buildService.locate(config, {
+			const named = await locateIn(buildService, config, {
 				args: [abs("src/Pipe.luau")],
 				cwd: abs(),
 			});
-			const all = await buildService.locate(config);
+			const all = await locateIn(buildService, config);
 
 			expect(named.unwrap().files).toEqual(
 				all
@@ -537,10 +538,10 @@ describe("CoreBuildService.locate", () => {
 	it("should index the root dirs it reads itself", async () => {
 		await write("src/A.luau");
 
-		const located = await buildServiceOf(
-			fs,
-			new CoreIndexService(fs)
-		).locate(configOf());
+		const located = await locateIn(
+			buildServiceOf(fs, new CoreIndexService(fs)),
+			configOf()
+		);
 
 		expect(located.unwrap().files).toMatchObject([
 			{ status: "placed", source: abs("src/A.luau") },
@@ -552,7 +553,7 @@ describe("CoreBuildService.locate", () => {
 		const config = configOf({ routes: {} });
 		const index = await indexOfConfig(config);
 
-		const result = await buildServiceOf(fs, index).locate(config);
+		const result = await locateIn(buildServiceOf(fs, index), config);
 
 		expect(
 			result.isErr() && result.error.diagnostics.map(({ code }) => code)

@@ -11,7 +11,7 @@ import {
 	buildableConfig,
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { OutputFile } from "../../build/build-service.js";
+import { OutputFile } from "../../build/build.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";

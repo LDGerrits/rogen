@@ -3,7 +3,7 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
-import { OutputFile } from "../build-service.js";
+import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;

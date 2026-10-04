@@ -1,0 +1,233 @@
+import path from "path";
+import { groupBy } from "../../base/collections.js";
+import { toPosix } from "../../base/path.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
+import { ResolvedConfig } from "../config/config.js";
+import { InstanceReference } from "../roblox/roblox.js";
+
+/** How a route or tag key matched a file by its name. */
+export type MatchForm = "folder" | "marker" | "separator" | "capital";
+
+/** How the governing route matched the file; `fallback` is the `*` route. */
+export type RouteMatch = MatchForm | "fallback";
+
+export interface TagMatch {
+	readonly tag: string;
+	readonly form: MatchForm;
+}
+
+/** Why the scan left a path out; the path is the key it is stored under. */
+export type ScanLeftOut =
+	| { readonly status: "excluded"; readonly pattern: string }
+	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
+	| { readonly status: "skipped" };
+
+/** Why the build leaves a path out of the tree, in the words `where` reports it. */
+export type LeftOut =
+	| ScanLeftOut
+	/** No route governs it. */
+	| { readonly status: "unrouted" }
+	/** Every dormant tag it carries, the first first. */
+	| { readonly status: "pruned"; readonly tags: readonly TagMatch[] }
+	/** Another file took its instance path. */
+	| { readonly status: "replaced"; readonly by: string }
+	/** The template defines the node it would be, or a `$path` above it. */
+	| { readonly status: "displaced"; readonly node: readonly string[] };
+
+export interface RootSummary {
+	readonly rootDir: string;
+	readonly files: number;
+	readonly excluded: number;
+	readonly skippedLinks: number;
+}
+
+export interface RouteSummary {
+	readonly key: string;
+	readonly target: string;
+	readonly files: number;
+}
+
+export interface TagSummary {
+	readonly tag: string;
+	readonly on: boolean;
+	/** Files placed with the tag when it's on, or left out by it when it's off. */
+	readonly files: number;
+}
+
+export interface BuildSummary {
+	readonly roots: readonly RootSummary[];
+	/** In the order the config declares them. */
+	readonly routes: readonly RouteSummary[];
+	readonly tags: readonly TagSummary[];
+	readonly unrouted: number;
+	readonly superseded: number;
+	/** Left out because the template defines their node. */
+	readonly displaced: number;
+}
+
+/** What a run did for one config. */
+interface ConfigBuildFields {
+	readonly config: ResolvedConfig;
+	readonly warnings: readonly Diagnostic[];
+	/** What `checkSyncDir` found; empty when it wasn't asked for. */
+	readonly syncWarnings: readonly Diagnostic[];
+	/** Why the config failed, none for any other outcome. */
+	readonly errors: readonly Diagnostic[];
+}
+
+/** `failed` is a config whose build or write went wrong; `notWritten` built, but another config's failure stopped the run first. */
+export type ConfigBuild = ConfigBuildFields &
+	(
+		| {
+				readonly outcome: "wrote" | "unchanged" | "notWritten";
+				readonly summary: BuildSummary;
+				/** The files whose contents the build read, which a change to must rebuild it. */
+				readonly readFiles: readonly string[];
+		  }
+		| {
+				readonly outcome: "failed";
+				readonly summary?: undefined;
+				readonly readFiles?: undefined;
+		  }
+	);
+
+/** A config whose build, write or set check went wrong; `said` is what its build warned about before that. */
+export function failedBuild(
+	config: ResolvedConfig,
+	errors: readonly Diagnostic[],
+	said: Pick<ConfigBuild, "warnings" | "syncWarnings"> = {
+		warnings: [],
+		syncWarnings: [],
+	}
+): ConfigBuild {
+	const { warnings, syncWarnings } = said;
+	return { config, outcome: "failed", warnings, syncWarnings, errors };
+}
+
+interface Located {
+	/** An absolute POSIX path. */
+	readonly source: string;
+}
+
+export interface PlacedLocation extends Located {
+	readonly status: "placed";
+	readonly instancePath: readonly string[];
+	readonly route: string;
+	readonly routeMatch: RouteMatch;
+	/** The active tags the file carries. */
+	readonly tags: readonly TagMatch[];
+}
+
+export interface UnplacedLocation extends Located {
+	/** `ignored` exists but isn't an instance. */
+	readonly status: "outside" | "ignored" | "missing" | "empty";
+}
+
+/** Where a path lands in the tree, or why it lands nowhere. */
+export type FileLocation =
+	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
+
+/** The files placed at an instance or inside it; none when no file places it. */
+export interface InstanceLocation {
+	readonly reference: InstanceReference;
+	readonly files: readonly PlacedLocation[];
+}
+
+/** Where `locate` found things in one config. */
+export interface ConfigLocations {
+	readonly config: ResolvedConfig;
+	/** One per path argument; every file when no argument was given. */
+	readonly files: readonly FileLocation[];
+	/** One per instance argument. */
+	readonly instances: readonly InstanceLocation[];
+}
+
+/** What `locate` found, config by config. */
+export interface Locations {
+	/** No path or instance was asked about, so `files` holds every file. */
+	readonly everyFile: boolean;
+	readonly configs: readonly ConfigLocations[];
+}
+
+/** The project file a config writes, and the staging files its writes go through. */
+export class OutputFile {
+	constructor(readonly path: string) {}
+
+	/** Matches the staging file of any writer, in posix form. */
+	get stagingPattern(): RegExp {
+		const escaped = toPosix(this.path).replace(
+			/[.*+?^${}()|[\]\\]/g,
+			"\\$&"
+		);
+		return new RegExp(`^${escaped}\\.[^/]+\\.tmp$`);
+	}
+}
+
+/** Nothing can be placed without a route. */
+export function missingRoutes(config: ResolvedConfig): Diagnostic[] {
+	return config.routes.size > 0
+		? []
+		: [
+				errorDiagnostic(
+					"route.noRoutes",
+					{ resource: config.file },
+					'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
+				),
+			];
+}
+
+interface Blocker {
+	readonly diagnostic: Diagnostic;
+	readonly files: readonly string[];
+}
+
+/** Why a set of configs can't be built together: one that declares no routes, or several that write one file. */
+export class BuildBlockers {
+	private readonly blockers: readonly Blocker[];
+
+	constructor(configs: readonly ResolvedConfig[]) {
+		const byOutFile = groupBy(
+			configs,
+			({ outFile }) => path.resolve(outFile),
+			({ file }) => file
+		);
+		this.blockers = [
+			...configs.flatMap((config) =>
+				missingRoutes(config).map((diagnostic) => ({
+					diagnostic,
+					files: [config.file],
+				}))
+			),
+			...[...byOutFile]
+				.filter(([, files]) => files.length > 1)
+				.map(([outFile, files]) => ({
+					diagnostic: errorDiagnostic(
+						"output.sameOutFile",
+						{ resource: outFile },
+						`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
+					),
+					files,
+				})),
+		];
+	}
+
+	/** Each problem once, in the order it is reported. */
+	get diagnostics(): readonly Diagnostic[] {
+		return this.blockers.map(({ diagnostic }) => diagnostic);
+	}
+
+	/** The config files some problem blocks. */
+	get files(): ReadonlySet<string> {
+		return new Set(this.blockers.flatMap(({ files }) => files));
+	}
+
+	/** The problems that block the config file `file`; none when it can be built. */
+	blocking(file: string): readonly Diagnostic[] {
+		return this.blockers
+			.filter(({ files }) => files.includes(file))
+			.map(({ diagnostic }) => diagnostic);
+	}
+}

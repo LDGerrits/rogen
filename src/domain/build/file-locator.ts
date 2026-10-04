@@ -5,7 +5,7 @@ import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { InstanceReference } from "../roblox/roblox.js";
-import { FileLocation, PlacedLocation } from "./build-service.js";
+import { FileLocation, PlacedLocation } from "./build.js";
 import { Placement } from "./placement.js";
 
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */

@@ -4,10 +4,8 @@ import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import {
-	BuildService,
-	OutputFile,
-} from "../../../domain/build/build-service.js";
+import { OutputFile } from "../../../domain/build/build.js";
+import { BuildService } from "../../../domain/build/build-service.js";
 import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
 import { WatchService } from "../../../domain/watch/watch-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";

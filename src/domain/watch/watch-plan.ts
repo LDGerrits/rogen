@@ -1,7 +1,7 @@
 import path from "path";
 import { contains, outermostDirs } from "../../base/path.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
-import { OutputFile } from "../build/build-service.js";
+import { OutputFile } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 
 /** `file` names the config in `configsFor`. */

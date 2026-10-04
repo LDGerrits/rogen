@@ -3,7 +3,7 @@ import { joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo-file.js";
-import { MatchForm, RouteMatch, TagMatch } from "./build-service.js";
+import { MatchForm, RouteMatch, TagMatch } from "./build.js";
 import {
 	EntryRead,
 	FolderRead,
@@ -148,8 +148,7 @@ export class Router {
 		const tagSpans = match.spans.filter((span) =>
 			this.keys.isTag(span.key)
 		);
-		for (const span of tagSpans)
-			claims.claimTag(this.asTagMatch(span));
+		for (const span of tagSpans) claims.claimTag(this.asTagMatch(span));
 		const routeSpan = claims.route
 			? undefined
 			: match.spans.find((span) => this.keys.routeKeys.has(span.key));

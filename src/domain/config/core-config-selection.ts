@@ -79,7 +79,10 @@ export class ManagedConfig {
 
 	/** Whether the reload changed the version that builds. */
 	async reload(): Promise<boolean> {
-		const before = { config: this.config, built: buildableConfig(this.entry) };
+		const before = {
+			config: this.config,
+			built: buildableConfig(this.entry),
+		};
 		await this.load();
 		const built = buildableConfig(this.entry);
 		if (!this.config || !built) return false;
@@ -173,7 +176,10 @@ export class CoreConfigSelection implements ConfigSelection {
 					.map(({ file }) => file),
 				notices: reloaded
 					.filter(({ errors }) => errors.length > 0)
-					.map(({ file, errors }): ConfigNotice => ({ file, errors })),
+					.map(({ file, errors }): ConfigNotice => ({
+						file,
+						errors,
+					})),
 			};
 		});
 	}
