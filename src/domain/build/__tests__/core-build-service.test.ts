@@ -9,7 +9,7 @@ import {
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { ConfigEntry } from "../../config/config-service.js";
+import { ConfigEntry, ConfigSelection } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, indexOf } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
@@ -295,7 +295,7 @@ describe("CoreBuildService", () => {
 				file
 			);
 		const check = (...entries: ConfigEntry[]) =>
-			buildServiceOfFs().requireBuildable(entries);
+			buildServiceOfFs().requireBuildable(new ConfigSelection(entries));
 		const diagnosticsOf = (result: ReturnType<typeof check>) => {
 			if (result.isOk()) throw new Error("Expected the check to fail.");
 			return result.error.diagnostics;

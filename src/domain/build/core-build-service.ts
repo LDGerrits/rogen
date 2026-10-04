@@ -9,11 +9,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigEntry,
-	ResolvedEntry,
-	requireValidEntries,
-} from "../config/config-service.js";
+import { ConfigSelection, ResolvedEntry } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -81,9 +77,9 @@ export class CoreBuildService implements BuildService {
 	}
 
 	requireBuildable(
-		entries: readonly ConfigEntry[]
+		selection: ConfigSelection
 	): Result<ResolvedEntry[], DiagnosticsError> {
-		const valid = requireValidEntries(entries);
+		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
 
 		const blockers = this.blockers(valid.value.map(({ config }) => config));

@@ -96,18 +96,37 @@ export interface ResolvedEntry {
 	readonly config: ResolvedConfig;
 }
 
-/** The entries that resolved, or every error when any entry is broken now. Warnings don't fail it. */
-export function requireValidEntries(
-	entries: readonly ConfigEntry[]
-): Result<ResolvedEntry[], DiagnosticsError> {
-	const errors = entries.flatMap((entry) => entry.errors);
-	return errors.length > 0
-		? err(new DiagnosticsError(errors))
-		: ok(
-				entries.flatMap((entry) =>
-					entry.resolved ? [{ entry, config: entry.resolved }] : []
+/** The configs one invocation picked; a snapshot, which a later reload doesn't change. */
+export class ConfigSelection {
+	constructor(
+		readonly entries: readonly ConfigEntry[],
+		/** The config files in the working dir it didn't pick, as sorted absolute paths. */
+		readonly unselected: readonly string[] = []
+	) {}
+
+	/** The entries that resolved, or every error when any entry is broken now. Warnings don't fail it. */
+	requireValid(): Result<ResolvedEntry[], DiagnosticsError> {
+		const errors = this.entries.flatMap((entry) => entry.errors);
+		return errors.length > 0
+			? err(new DiagnosticsError(errors))
+			: ok(
+					this.entries.flatMap((entry) =>
+						entry.resolved
+							? [{ entry, config: entry.resolved }]
+							: []
+					)
+				);
+	}
+
+	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
+	get brokenError(): Error | undefined {
+		const broken = this.entries.filter((entry) => entry.isBroken);
+		return broken.length > 0
+			? new Error(
+					`${broken.length} of ${this.entries.length} configs have errors.`
 				)
-			);
+			: undefined;
+	}
 }
 
 export interface ConfigService {
@@ -122,15 +141,9 @@ export interface ConfigService {
 	getConfig(file: string): ConfigEntry | undefined;
 	/** The configs that resolved, each with the entry it came from. A broken config that was valid before is still here, as its last valid version. */
 	getResolvedEntries(): ResolvedEntry[];
-	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
-	getBrokenError(): Error | undefined;
 
-	/** Fails only when the configs cannot be found; a broken config lands on its entry. */
-	initialize(refs: ConfigRefs): Promise<Result<void, Error>>;
-	/** Every `*.rogen.json` directly in the working dir, loaded or not, as sorted absolute paths; none when it can't be read. */
-	listConfigFiles(): Promise<string[]>;
-	/** The config files `listConfigFiles` finds that this run didn't select, as sorted absolute paths. */
-	listUnselectedConfigFiles(): Promise<string[]>;
+	/** Loads the configs `refs` pick. Fails only when they cannot be found; a broken config lands on its entry. */
+	initialize(refs: ConfigRefs): Promise<Result<ConfigSelection, Error>>;
 	/** Loads one config file the way `initialize` would, without adding it to the configs. A broken config lands on the entry. */
 	readConfig(file: string): Promise<ConfigEntry>;
 	/** Reloads every config that reads one of `files`. A failed reload keeps the last valid value. */

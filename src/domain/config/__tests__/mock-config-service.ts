@@ -5,7 +5,11 @@ import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
 import { AbstractConfigService } from "../abstract-config-service.js";
 import { ResolvedConfig, ResolvedTemplate } from "../config.js";
-import { ConfigEntry, ConfigService } from "../config-service.js";
+import {
+	ConfigEntry,
+	ConfigSelection,
+	ConfigService,
+} from "../config-service.js";
 
 export interface ResolvedConfigSpec {
 	readonly file?: string;
@@ -91,17 +95,14 @@ export class MockConfigService
 		return new Set(this.configs.flatMap((entry) => entry.chain));
 	}
 
-	async initialize(): Promise<Result<void, Error>> {
-		return ok(undefined);
-	}
-
-	async listConfigFiles(): Promise<string[]> {
-		return [...this.configFiles];
-	}
-
-	async listUnselectedConfigFiles(): Promise<string[]> {
+	async initialize(): Promise<Result<ConfigSelection, Error>> {
 		const selected = new Set(this.configs.map(({ file }) => file));
-		return this.configFiles.filter((file) => !selected.has(file));
+		return ok(
+			new ConfigSelection(
+				this.configs,
+				this.configFiles.filter((file) => !selected.has(file))
+			)
+		);
 	}
 
 	async readConfig(file: string): Promise<ConfigEntry> {
