@@ -5,8 +5,7 @@ import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-colle
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
-import { SyncTool } from "../toolchain/toolchain.js";
-import { BuildSummary, LeftOut } from "./build.js";
+import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader, NameReadings } from "./name-reader.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";

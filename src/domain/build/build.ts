@@ -145,6 +145,24 @@ export interface ConfigLocations {
 	readonly instances: readonly InstanceLocation[];
 }
 
+/** What a sync tool writes in place of a `.meta.json`. */
+export interface MetaReplacement {
+	readonly suffix: string;
+	/** Says why, in the warning about the meta Rojo no longer applies. */
+	readonly note: string;
+}
+
+/** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place; the build asks it, and never names one. */
+export interface SyncTool {
+	readonly id: string;
+	/** The path the tool writes for a source path, when it renames it. */
+	emittedPath?(source: string): string;
+	/** Whether the tool reads a source but never writes anything for it. */
+	readsOnly?(source: string): boolean;
+	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
+	readonly metaReplacement?: MetaReplacement;
+}
+
 /** What `locate` found, config by config. */
 export interface Locations {
 	/** No path or instance was asked about, so `files` holds every file. */

@@ -1,5 +1,6 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
+import { SyncTool } from "../build/build.js";
 
 /** A package manager: where it keeps its manifest and installed packages, and how they mount. */
 export class PackageManager {
@@ -217,37 +218,23 @@ export class DetectedWorkspace {
 	}
 }
 
-/** What a tool writes in place of a `.meta.json`. */
-export interface MetaReplacement {
-	readonly suffix: string;
-	/** Says why, in the warning about the meta Rojo no longer applies. */
-	readonly note: string;
-}
-
-/** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place. */
-export interface SyncTool {
-	readonly id: string;
-	/** The path the tool writes for a source path, when it renames it. */
-	emittedPath?(source: string): string;
-	/** Whether the tool reads a source but never writes anything for it. */
-	readsOnly?(source: string): boolean;
-	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
-	readonly metaReplacement?: MetaReplacement;
-}
-
 /** Darklua, the one processor `init` sets up: it writes processed code into the sync dir, which Rojo syncs instead. */
-export class Darklua implements SyncTool {
-	readonly id = "darklua";
+export class Darklua {
+	/** What a build needs to know of Darklua: it writes a `.meta.lua` for each `.meta.json`. */
+	static readonly SYNC_TOOL: SyncTool = {
+		id: "darklua",
+		metaReplacement: {
+			suffix: ".meta.lua",
+			note: "Darklua converts every .meta.json this way.",
+		},
+	};
+
 	/** Where Darklua writes unless told otherwise. */
 	readonly defaultSyncDir = "dist";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
 	];
-	readonly metaReplacement: MetaReplacement = {
-		suffix: ".meta.lua",
-		note: "Darklua converts every .meta.json this way.",
-	};
 
 	/** Keeps the sourcemap that `convert_require` reads current, from the source-rooted project. */
 	sourcemapCommand(projectFile: string): string {

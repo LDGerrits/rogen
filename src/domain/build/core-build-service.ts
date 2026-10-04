@@ -6,13 +6,13 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildBlockers,
 	ConfigBuild,
 	ConfigLocations,
 	FileLocation,
 	Locations,
+	SyncTool,
 	failedBuild,
 	missingRoutes,
 } from "./build.js";
@@ -45,7 +45,8 @@ export class CoreBuildService implements BuildService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly toolchainService: ToolchainService
+		/** What each tool that writes the sync dir tells a build; the build names none of them. */
+		private readonly syncTools: readonly SyncTool[]
 	) {
 		this.writer = new OutputWriter(fileSystemService);
 	}
@@ -176,11 +177,7 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private builderOf(index: IndexReader): ConfigBuilder {
-		return new ConfigBuilder(
-			this.fileSystemService,
-			index,
-			this.toolchainService.getSyncTools()
-		);
+		return new ConfigBuilder(this.fileSystemService, index, this.syncTools);
 	}
 
 	private locatorOf(

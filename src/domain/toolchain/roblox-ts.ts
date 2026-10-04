@@ -11,8 +11,8 @@ import {
 	Language,
 	LanguageDetector,
 	MountCandidate,
-	SyncTool,
 } from "./toolchain.js";
+import { SyncTool } from "../build/build.js";
 
 const TSCONFIG = "tsconfig.json";
 const DEFAULT_OUT_DIR = "out";
@@ -64,26 +64,23 @@ const firstSegment = (dir: string): string =>
 const COMPILED_EXTENSION = /\.tsx?$/i;
 const DECLARATION_FILE = /\.d\.ts$/i;
 
-/** The roblox-ts compiler, which is also a sync tool: it writes `.luau` for each `.ts` and only reads declaration files. */
-export class RobloxTsCompiler implements Compiler, SyncTool {
-	readonly id = "roblox-ts";
+/** What a build needs to know of roblox-ts: it writes `.luau` for each `.ts` and only reads declaration files. */
+export const ROBLOX_TS_SYNC_TOOL: SyncTool = {
+	id: "roblox-ts",
+	emittedPath: (source) => source.replace(COMPILED_EXTENSION, ".luau"),
+	readsOnly: (source) => DECLARATION_FILE.test(source),
+};
+
+/** The roblox-ts compiler as this workspace configures it. */
+export class RobloxTsCompiler implements Compiler {
 	readonly name = "roblox-ts";
 	readonly defaultOutDir = DEFAULT_OUT_DIR;
 	readonly compileCommand = "rbxtsc -w";
 
-	/** `facts` are what the workspace holds; a compiler with none is enough to tell what it emits. */
-	constructor(private readonly facts: RobloxTsFacts = {}) {}
+	constructor(private readonly facts: RobloxTsFacts) {}
 
 	get outDir(): string {
 		return this.facts.outDir ?? DEFAULT_OUT_DIR;
-	}
-
-	emittedPath(source: string): string {
-		return source.replace(COMPILED_EXTENSION, ".luau");
-	}
-
-	readsOnly(source: string): boolean {
-		return DECLARATION_FILE.test(source);
 	}
 
 	placeFileNames(name: string): readonly string[] {

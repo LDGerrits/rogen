@@ -6,7 +6,7 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
-import { SyncTool } from "../../toolchain/toolchain.js";
+import { SyncTool } from "../build.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,

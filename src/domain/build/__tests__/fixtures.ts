@@ -17,23 +17,15 @@ import {
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { SyncTool } from "../../toolchain/toolchain.js";
-import { ToolchainService } from "../../toolchain/toolchain-service.js";
-import { ConfigLocations } from "../build.js";
+import { ConfigLocations, SyncTool } from "../build.js";
 import { BuildService, LocateTargets } from "../build-service.js";
 import { ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
 import { Placer } from "../placement.js";
 
-const toolchain = new CoreToolchainService(new MemoryFileSystemService());
-
-export const syncTools = toolchain.getSyncTools();
-
-const toolchainWith = (extraTools: readonly SyncTool[]): ToolchainService => ({
-	_serviceBrand: undefined,
-	detect: (directory) => toolchain.detect(directory),
-	getSyncTools: () => [...syncTools, ...extraTools],
-});
+export const { syncTools } = new CoreToolchainService(
+	new MemoryFileSystemService()
+);
 
 export const placeFiles = (
 	index: IndexReader,
@@ -51,7 +43,7 @@ export const buildServiceOf = (
 	fs: FileSystemService,
 	index: IndexService,
 	extraTools: readonly SyncTool[] = []
-) => new CoreBuildService(fs, index, toolchainWith(extraTools));
+) => new CoreBuildService(fs, index, [...syncTools, ...extraTools]);
 
 /** Where `targets` land in `config` alone. */
 export async function locateIn(

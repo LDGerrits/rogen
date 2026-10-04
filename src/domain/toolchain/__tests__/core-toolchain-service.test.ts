@@ -335,9 +335,9 @@ describe("CoreToolchainService.detect", () => {
 describe("CoreToolchainService", () => {
 	const toolchain = new CoreToolchainService(new MemoryFileSystemService());
 
-	describe("getSyncTools", () => {
+	describe("syncTools", () => {
 		it("should list Darklua and roblox-ts", () => {
-			expect(toolchain.getSyncTools().map(({ id }) => id)).toEqual([
+			expect(toolchain.syncTools.map(({ id }) => id)).toEqual([
 				"darklua",
 				"roblox-ts",
 			]);

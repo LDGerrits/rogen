@@ -118,7 +118,7 @@ async function main(): Promise<void> {
 		const buildService = new CoreBuildService(
 			fileSystemService,
 			indexService,
-			toolchainService
+			toolchainService.syncTools
 		);
 		services.set(BuildService, buildService);
 		services.set(
