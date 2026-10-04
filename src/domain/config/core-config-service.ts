@@ -1,3 +1,4 @@
+import { Disposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
 import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -6,6 +7,7 @@ import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
 import { ConfigLoader, ConfigOverrides, PathField } from "./config-loader.js";
 import {
 	ConfigEntry,
+	ConfigFileCheck,
 	ConfigScope,
 	ConfigSelection,
 	ConfigService,
@@ -111,6 +113,10 @@ export class CoreConfigService implements ConfigService {
 		const config = new ManagedConfig(file, this.loader, { variants: {} });
 		await config.load();
 		return config.entry;
+	}
+
+	registerFileCheck(check: ConfigFileCheck): Disposable {
+		return this.loader.registerFileCheck(check);
 	}
 
 	/** The config files in the working dir that aren't `selected`; none when it can't be read. */

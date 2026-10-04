@@ -1,3 +1,4 @@
+import { Disposable } from "../../../base/disposable.js";
 import { Result, err, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
@@ -7,6 +8,7 @@ import { ResolvedConfig, ResolvedTemplate } from "../config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,
+	ConfigFileCheck,
 	ConfigReload,
 	ConfigSelection,
 	ConfigService,
@@ -158,5 +160,9 @@ export class MockConfigService implements ConfigService {
 			this.entries.find((entry) => entry.file === file) ??
 			mockEntry({}, file)
 		);
+	}
+
+	registerFileCheck(_check: ConfigFileCheck): Disposable {
+		return { [Symbol.dispose]: () => {} };
 	}
 }

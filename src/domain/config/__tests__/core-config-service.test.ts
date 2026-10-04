@@ -363,6 +363,99 @@ describe("domain/config/core-config-service", () => {
 		});
 	});
 
+	describe("unnamed config", () => {
+		it("should fail a config file with no name before .rogen.json", async () => {
+			await write("/repo/.rogen.json", { rootDirs: ["src"] });
+
+			const entry = await service.read("/repo/.rogen.json");
+
+			expect(entry).toMatchObject({
+				status: "broken",
+				errors: [
+					{
+						code: "config.unnamed",
+						resource: "/repo/.rogen.json",
+						message: expect.stringContaining(
+							"Rename it to <name>.rogen.json"
+						),
+					},
+				],
+			});
+		});
+	});
+
+	describe("registerFileCheck", () => {
+		const hint = (file: string) => ({
+			severity: DiagnosticSeverity.Warning,
+			code: "test.hint",
+			resource: file,
+			message: "a hint",
+		});
+
+		it("should add a check's hints to the errors of a file that fails to load", async () => {
+			await write("/repo/a.rogen.json", { nope: true });
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			const entry = await service.read("/repo/a.rogen.json");
+
+			expect(entry.status).toBe("broken");
+			if (entry.status === "broken")
+				expect(entry.errors.map(({ code }) => code)).toEqual([
+					"config.unknownField",
+					"test.hint",
+				]);
+		});
+
+		it("should hand the check what the file holds, or nothing when it doesn't parse", async () => {
+			await write("/repo/a.rogen.json", { nope: true });
+			await write("/repo/b.rogen.json", "{ nope");
+			const seen: unknown[] = [];
+			service.registerFileCheck(({ value }) => {
+				seen.push(value);
+				return [];
+			});
+
+			await service.read("/repo/a.rogen.json");
+			await service.read("/repo/b.rogen.json");
+
+			expect(seen).toEqual([{ nope: true }, undefined]);
+		});
+
+		it("should never run on a config that loads", async () => {
+			await write("/repo/a.rogen.json", { rootDirs: ["src"] });
+			const check = jest.fn(() => []);
+			service.registerFileCheck(check);
+
+			const entry = await service.read("/repo/a.rogen.json");
+
+			expect(entry.status).toBe("valid");
+			expect(check).not.toHaveBeenCalled();
+		});
+
+		it("should run on an unnamed config", async () => {
+			await write("/repo/.rogen.json", { source: ["src"] });
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			const entry = await service.read("/repo/.rogen.json");
+
+			expect(
+				entry.status === "broken" &&
+					entry.errors.map(({ code }) => code)
+			).toEqual(["config.unnamed", "test.hint"]);
+		});
+
+		it("should stop running once the registration is disposed", async () => {
+			await write("/repo/a.rogen.json", { nope: true });
+			const check = jest.fn(() => []);
+			const registration = service.registerFileCheck(check);
+
+			registration[Symbol.dispose]();
+			await service.read("/repo/a.rogen.json");
+
+			expect(check).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("extends", () => {
 		it("should merge maps key by key with the child winning", async () => {
 			await write("/repo/base.rogen.json", {

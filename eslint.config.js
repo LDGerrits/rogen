@@ -18,6 +18,7 @@ const modules = {
 		build: ["build", "build-service"],
 		config: ["config", "config-service"],
 		init: ["init-service"],
+		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
 		rojo: ["rojo-file", "rojo-project"],
 		toolchain: ["toolchain", "toolchain-service"],
@@ -55,6 +56,9 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 	}
 }
 
+// Modules that only the composition root imports, so that dropping one is deleting its folder and a line of main.ts.
+const MAIN_ONLY_MODULES = ["legacy"];
+
 const up = (count) => `^(\\.\\./){${count}}`;
 const publicFiles = (files) => `(?!(${files.join("|")})\\.js$)`;
 
@@ -75,18 +79,25 @@ const layerPatterns = (layer, depth) => [
 ];
 
 // From a file `depth` folders below its layer: other modules of the layer, and domain modules from commands, only through their public files.
+const importRule = (prefix, name, files) =>
+	MAIN_ONLY_MODULES.includes(name)
+		? {
+				regex: `${prefix}${name}/`,
+				message: `Only the composition root imports ${name}.`,
+			}
+		: {
+				regex: `${prefix}${name}/${publicFiles(files)}`,
+				message: `Import ${name} through its public files.`,
+			};
+
 const internalsPatterns = (layer, module, depth) => [
 	...Object.entries(modules[layer])
 		.filter(([name]) => name !== module)
-		.map(([name, files]) => ({
-			regex: `${up(depth)}${name}/${publicFiles(files)}`,
-			message: `Import ${name} through its public files.`,
-		})),
+		.map(([name, files]) => importRule(up(depth), name, files)),
 	...(layer === "commands"
-		? Object.entries(modules.domain).map(([name, files]) => ({
-				regex: `${up(depth + 1)}domain/${name}/${publicFiles(files)}`,
-				message: `Import ${name} through its public files.`,
-			}))
+		? Object.entries(modules.domain).map(([name, files]) =>
+				importRule(`${up(depth + 1)}domain/`, name, files)
+			)
 		: []),
 ];
 

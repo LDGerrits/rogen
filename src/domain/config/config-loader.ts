@@ -1,4 +1,6 @@
 import path from "path";
+import { Disposable } from "../../base/disposable.js";
+import { parse } from "../../base/jsonc.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -21,7 +23,9 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configDefaults, configSchema } from "./config-schema.js";
+import { ConfigFileCheck } from "./config-service.js";
 import {
+	CONFIG_SUFFIX,
 	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
@@ -64,6 +68,7 @@ interface ConfigChain {
 /** Reads a config file, its `extends` chain and its template, then resolves and validates them. */
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
+	private readonly fileChecks = new Set<ConfigFileCheck>();
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -72,11 +77,30 @@ export class ConfigLoader {
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
 	}
 
+	registerFileCheck(check: ConfigFileCheck): Disposable {
+		this.fileChecks.add(check);
+		return { [Symbol.dispose]: () => this.fileChecks.delete(check) };
+	}
+
 	/** Never throws for a problem the user can cause. */
 	async load(
 		file: string,
 		overrides: ConfigOverrides
 	): Promise<LoadedConfig> {
+		if (path.basename(file) === CONFIG_SUFFIX) {
+			return {
+				chain: [file],
+				files: [file],
+				resolved: err([
+					errorDiagnostic(
+						"config.unnamed",
+						{ resource: file },
+						`a config file needs a name before "${CONFIG_SUFFIX}". Rename it to <name>${CONFIG_SUFFIX}, such as default${CONFIG_SUFFIX}.`
+					),
+					...(await this.hintsFor(file)),
+				]),
+			};
+		}
 		const chain = await this.readChain(file);
 		if (chain.diagnostics.length > 0) {
 			return {
@@ -155,7 +179,12 @@ export class ConfigLoader {
 										`"extends" target "${current}": ${diagnostics[0].message}`
 									),
 								]
-							: diagnostics,
+							: kind === "invalid"
+								? [
+										...diagnostics,
+										...(await this.hintsFor(current)),
+									]
+								: diagnostics,
 				};
 			}
 
@@ -170,6 +199,19 @@ export class ConfigLoader {
 			};
 			current = path.resolve(path.dirname(current), parent);
 		}
+	}
+
+	/** What the registered checks add to a file that failed to load. */
+	private async hintsFor(file: string): Promise<Diagnostic[]> {
+		if (this.fileChecks.size === 0) return [];
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		const parsed = text.isOk() ? parse(text.value) : undefined;
+		const value = parsed?.isOk() ? parsed.value : undefined;
+		return [...this.fileChecks].flatMap((check) => [
+			...check({ file, value }),
+		]);
 	}
 
 	/** `location` is where the config named the template, for the diagnostic. */

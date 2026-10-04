@@ -32,6 +32,7 @@ import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
+import { LegacyConfig } from "./domain/legacy/legacy-config.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
@@ -106,6 +107,7 @@ async function main(): Promise<void> {
 			environment
 		);
 		services.set(ConfigService, configService);
+		disposables.add(configService.registerFileCheck(LegacyConfig.check));
 
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
