@@ -14,4 +14,4 @@ project: DataModel
     shared: Folder
       Inventory: Folder
         Config: ModuleScript  <- src/Inventory/shared/Config.luau
-        Types: ModuleScript  <- src/Inventory/Types.shared.luau
+        Types: ModuleScript  <- src/Inventory/Types@shared.luau

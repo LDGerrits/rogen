@@ -18,4 +18,3 @@ project: DataModel
     Inventory: Folder
       Combat: ModuleScript  <- src/Inventory/Combat@server.luau, src/Inventory/Combat@server.meta.json
       Foo: Script  <- src/Inventory/Foo.mock.meta.json, src/Inventory/Foo.mock.server.luau
-      Hit: ModuleScript  <- src/Inventory/HitServer.luau, src/Inventory/HitServer.meta.json

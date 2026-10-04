@@ -66,8 +66,8 @@ describe("CoreBuildService.locate", () => {
 	it("should place a file with its route and how the route matched", async () => {
 		await write(
 			"src/Inventory/Server/Save.luau",
-			"src/Net/HttpClient.luau",
-			"src/Net/Socket-Client.luau",
+			"src/Net/Http@client.luau",
+			"src/Net/Socket.client.luau",
 			"src/Anti/.server",
 			"src/Anti/Check.luau",
 			"src/Util.luau"
@@ -75,8 +75,8 @@ describe("CoreBuildService.locate", () => {
 
 		const located = await locate([
 			"src/Inventory/Server/Save.luau",
-			"src/Net/HttpClient.luau",
-			"src/Net/Socket-Client.luau",
+			"src/Net/Http@client.luau",
+			"src/Net/Socket.client.luau",
 			"src/Anti/Check.luau",
 			"src/Util.luau",
 		]);
@@ -92,7 +92,7 @@ describe("CoreBuildService.locate", () => {
 			},
 			{
 				status: "placed",
-				source: abs("src/Net/HttpClient.luau"),
+				source: abs("src/Net/Http@client.luau"),
 				instancePath: [
 					"StarterPlayer",
 					"StarterPlayerScripts",
@@ -100,12 +100,12 @@ describe("CoreBuildService.locate", () => {
 					"Http",
 				],
 				route: "Client",
-				routeMatch: "capital",
+				routeMatch: "suffix",
 				tags: [],
 			},
 			expect.objectContaining({
-				source: abs("src/Net/Socket-Client.luau"),
-				routeMatch: "separator",
+				source: abs("src/Net/Socket.client.luau"),
+				routeMatch: "suffix",
 			}),
 			{
 				status: "placed",
@@ -138,25 +138,19 @@ describe("CoreBuildService.locate", () => {
 		});
 
 		expect(located).toEqual([
-			{
-				status: "pruned",
+			expect.objectContaining({
 				source: abs("src/Net/DataMock.luau"),
-				tags: [
-					{
-						tag: "mock",
-						form: "capital",
-					},
-				],
-			},
+				status: "placed",
+			}),
 			{
 				status: "pruned",
 				source: abs("src/Net/Http.mock.luau"),
-				tags: [{ tag: "mock", form: "separator" }],
+				tags: [{ tag: "mock", form: "suffix" }],
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Store.dev.luau"),
 				instancePath: ["ReplicatedStorage", "Shared", "Net", "Store"],
-				tags: [{ tag: "dev", form: "separator" }],
+				tags: [{ tag: "dev", form: "suffix" }],
 			}),
 		]);
 	});

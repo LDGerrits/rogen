@@ -938,14 +938,14 @@ describe("Placer", () => {
 				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
 			});
 
-			it("should note a suffix that only differs from a key in case", async () => {
-				await write("src/Save.SERVER.luau");
+			it("should note an @ that matches no route, with the closest one", async () => {
+				await write("src/Save@sever.luau");
 
 				const { entries } = await read();
 
 				expect(
-					entries.get(at("src/Save.SERVER.luau"))?.match.nearMissKey
-				).toBe("server");
+					entries.get(at("src/Save@sever.luau"))?.match.strayAt
+				).toMatchObject({ text: "sever", closestKey: "server" });
 			});
 
 			it("should read a data file without its .json suffix", async () => {
@@ -1076,43 +1076,68 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should strip the governing suffix in every separator and capital form", async () => {
+			it("should strip an @key suffix, and leave a ModuleScript a ModuleScript", async () => {
 				await write(
-					"src/Inventory/Combat-server.luau",
 					"src/Inventory/Save@server.luau",
-					"src/Inventory/Load_server.luau",
-					"src/Inventory/PlayerServer.luau"
+					"src/Inventory/Load@client.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Combat",
-					"ServerScriptService/Inventory/Load",
-					"ServerScriptService/Inventory/Player",
+					"StarterPlayer/StarterPlayerScripts/Inventory/Load",
 					"ServerScriptService/Inventory/Save",
 				]);
 			});
 
+			it("should not route by -, _, + or a capital letter", async () => {
+				await write(
+					"src/Inventory/Combat-server.luau",
+					"src/Inventory/Load_server.luau",
+					"src/Inventory/Save+server.luau",
+					"src/Inventory/PlayerServer.luau",
+					"src/Net/HttpClient.luau"
+				);
+
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Inventory/Combat-server",
+					"ReplicatedStorage/shared/Inventory/Load_server",
+					"ReplicatedStorage/shared/Inventory/PlayerServer",
+					"ReplicatedStorage/shared/Inventory/Save+server",
+					"ReplicatedStorage/shared/Net/HttpClient",
+				]);
+			});
+
+			it("should not route .shared, which belongs to Rojo", async () => {
+				await write("src/Types.shared.luau");
+
+				expect(
+					await paths({
+						routes: {
+							shared: "ReplicatedStorage",
+							"*": "Workspace",
+						},
+					})
+				).toEqual(["Workspace/Types.shared"]);
+			});
+
 			it("should not strip a suffix whose letter case differs beyond the first letter", async () => {
 				await write(
-					"src/Inventory/Load_SERVER.luau",
+					"src/Inventory/Load@SERVER.luau",
 					"src/Inventory/Saveserver.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Load_SERVER",
+					"ReplicatedStorage/shared/Inventory/Load@SERVER",
 					"ReplicatedStorage/shared/Inventory/Saveserver",
 				]);
 			});
 
 			it("should match a suffix with the first letter of the key in either case", async () => {
 				await write(
-					"src/Inventory/Load_Server.luau",
-					"src/Inventory/Level2Server.luau",
-					"src/Inventory/Save.Client.luau"
+					"src/Inventory/Load@Server.luau",
+					"src/Inventory/Save@Client.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Level2",
 					"ServerScriptService/Inventory/Load",
 					"StarterPlayer/StarterPlayerScripts/Inventory/Save",
 				]);
@@ -1320,24 +1345,6 @@ describe("Placer", () => {
 				expect(warning.message).toContain('route "server"');
 			});
 
-			it("should warn about a separator suffix in different case", async () => {
-				await write("src/Inventory/Load.SERVER.luau");
-
-				const [warning] = await caseWarnings();
-
-				expect(warning.resource).toBe(
-					abs("src/Inventory/Load.SERVER.luau")
-				);
-			});
-
-			it("should warn about a separator suffix on an init script", async () => {
-				await write("src/Inventory/init.SERVER.luau");
-
-				const [warning] = await caseWarnings();
-
-				expect(warning.resource).toBe(abs("src/Inventory"));
-			});
-
 			it("should warn once for a folder however many files it holds", async () => {
 				await write("src/SERVER/A.luau", "src/SERVER/B.luau");
 
@@ -1348,15 +1355,15 @@ describe("Placer", () => {
 				await write(
 					"src/SERVER/A.luau",
 					"src/Inventory/.CLIENT",
-					"src/Inventory/B.SERVER.luau"
+					"src/CLIENT/B.luau"
 				);
 
 				const warnings = await caseWarnings();
 
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
 					[
+						abs("src/CLIENT"),
 						abs("src/Inventory/.CLIENT"),
-						abs("src/Inventory/B.SERVER.luau"),
 						abs("src/SERVER"),
 					]
 				);
@@ -1366,7 +1373,7 @@ describe("Placer", () => {
 				await write(
 					"src/Server/Save.luau",
 					"src/Inventory/.Client",
-					"src/Inventory/Load.Server.luau"
+					"src/Inventory/Load@Server.luau"
 				);
 
 				expect(await caseWarnings()).toEqual([]);
@@ -1397,22 +1404,62 @@ describe("Placer", () => {
 			});
 		});
 
-		describe("capital route suffixes", () => {
-			it("should route and rename a file by its capital suffix without a warning", async () => {
-				await write("src/Net/HttpClient.luau");
+		describe("@ that routes nowhere", () => {
+			const strayWarnings = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.strayAt");
 
-				expect(await paths()).toEqual([
-					"StarterPlayer/StarterPlayerScripts/Net/Http",
-				]);
-				expect((await route()).unwrap().warnings).toEqual([]);
+			it("should warn once for every file and folder, naming the closest route", async () => {
+				await write(
+					"src/Inventory/Save@sever.luau",
+					"src/Queue@clent/Load.luau",
+					"src/Inventory/Fine@server.luau"
+				);
+
+				const [warning, ...others] = await strayWarnings();
+
+				expect(others).toEqual([]);
+				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
+				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.message).toContain("2 names have");
+				expect(warning.message).toContain(
+					`${abs("src/Inventory/Save@sever.luau")} (did you mean "@server"?)`
+				);
+				expect(warning.message).toContain(
+					`${abs("src/Queue@clent")} (did you mean "@client"?)`
+				);
+				expect(warning.message).not.toContain("Fine@server");
 			});
 
-			it("should leave a capital suffix alone when an outer route governs", async () => {
-				await write("src/server/Net/HttpClient.luau");
+			it("should say when a declared route isn't at the end of the name", async () => {
+				await write("src/Save@server.bak.luau");
 
-				expect(await paths()).toEqual([
-					"ServerScriptService/Net/HttpClient",
-				]);
+				const [warning] = await strayWarnings();
+
+				expect(warning.message).toContain(
+					'"@server" must end the name'
+				);
+			});
+
+			it("should list the first few and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/Save${index}@sever.luau`
+					)
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.message).toContain("12 names have");
+				expect(warning.message).toContain("2 more like it");
+			});
+
+			it("should not warn for a route that an outer route ignores", async () => {
+				await write("src/server/Net/Save@client.luau");
+
+				expect(await strayWarnings()).toEqual([]);
 			});
 		});
 
@@ -1575,13 +1622,8 @@ describe("Placer", () => {
 				await write("src/Analytics.mock.luau", "src/HttpMock.luau");
 
 				expect(await tagsOf()).toEqual([
-					[{ tag: "mock", form: "separator" }],
-					[
-						{
-							tag: "mock",
-							form: "capital",
-						},
-					],
+					[{ tag: "mock", form: "suffix" }],
+					[],
 				]);
 			});
 
@@ -1589,7 +1631,7 @@ describe("Placer", () => {
 				await write("src/Combat/init.mock.luau");
 
 				expect(await tagsOf()).toEqual([
-					[{ tag: "mock", form: "separator" }],
+					[{ tag: "mock", form: "suffix" }],
 				]);
 			});
 
@@ -1601,7 +1643,7 @@ describe("Placer", () => {
 				).toEqual([
 					[
 						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "separator" },
+						{ tag: "mock", form: "suffix" },
 					],
 				]);
 			});
@@ -1887,7 +1929,7 @@ describe("Placer", () => {
 							abs("src/Analytics.mock.luau"),
 							{
 								status: "pruned",
-								tags: [{ tag: "mock", form: "separator" }],
+								tags: [{ tag: "mock", form: "suffix" }],
 							},
 						],
 						[
@@ -1914,7 +1956,7 @@ describe("Placer", () => {
 					status: "pruned",
 					tags: [
 						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "separator" },
+						{ tag: "mock", form: "suffix" },
 					],
 				});
 			});
@@ -1970,29 +2012,17 @@ describe("Placer", () => {
 		});
 
 		describe("capital suffix on a dormant tag", () => {
-			it("should prune the files without a warning", async () => {
-				await write(
-					"src/HttpMock.luau",
-					"src/DataMock.luau",
-					"src/Analytics.mock.luau"
-				);
+			it("should neither prune nor warn: a capital letter no longer carries a tag", async () => {
+				await write("src/HttpMock.luau", "src/DataMock.luau");
 
 				const result = (await apply({ mock: false })).unwrap();
 
-				expect(result.files).toEqual([]);
-				expect(prunedPaths(result)).toHaveLength(3);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should not warn or prune when the tag is active", async () => {
-				await write("src/HttpMock.luau");
-
-				const result = (await apply({ mock: true })).unwrap();
-
-				expect(result.warnings).toEqual([]);
 				expect(result.files.map((file) => file.instancePath)).toEqual([
-					["ReplicatedStorage", "Http"],
+					["ReplicatedStorage", "DataMock"],
+					["ReplicatedStorage", "HttpMock"],
 				]);
+				expect(prunedPaths(result)).toEqual([]);
+				expect(result.warnings).toEqual([]);
 			});
 		});
 

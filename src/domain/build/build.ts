@@ -9,7 +9,7 @@ import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
 /** How a route or tag key matched a file by its name. */
-export type MatchForm = "folder" | "marker" | "separator" | "capital";
+export type MatchForm = "folder" | "marker" | "suffix";
 
 /** How the governing route matched the file; `fallback` is the `*` route. */
 export type RouteMatch = MatchForm | "fallback";

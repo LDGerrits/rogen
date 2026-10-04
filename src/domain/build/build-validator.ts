@@ -36,6 +36,7 @@ export class BuildValidator {
 			...this.unresolvedLink(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
+			...this.strayAt(),
 			...this.unrouted(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
@@ -87,7 +88,7 @@ export class BuildValidator {
 		);
 	}
 
-	/** A folder, marker or suffix that only differs from a declared key in letter case is read as an ordinary name. */
+	/** A folder or marker that only differs from a declared key in letter case is read as an ordinary name. */
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
 		return this.diagnosePaths([...nearMisses], (resource, key) => {
@@ -98,6 +99,37 @@ export class BuildValidator {
 				`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
 			);
 		});
+	}
+
+	/** An `@` means nothing else, so one that routes nowhere is a typo or a misplaced suffix. */
+	private strayAt(): Diagnostic[] {
+		const { strayAts } = this.placement.readings;
+		if (strayAts.size === 0) return [];
+		const listed = [...strayAts]
+			.slice(0, DIAGNOSED_PATHS)
+			.map(([resource, { text, closestKey, notLast }]) => {
+				const hint = notLast
+					? `"@${text}" must end the name, or be followed only by a variant`
+					: closestKey
+						? `did you mean "@${closestKey}"?`
+						: `"${text}" is not a declared route`;
+				return `  ${resource} (${hint})`;
+			});
+		const unlisted = strayAts.size - listed.length;
+		const count = strayAts.size === 1 ? "name has" : "names have";
+		return [
+			warningDiagnostic(
+				"route.strayAt",
+				{ resource: this.config.file },
+				[
+					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is" : "they are"} read as ordinary names:`,
+					...listed,
+					...(unlisted > 0
+						? [`  ${unlisted} more like it aren't listed.`]
+						: []),
+				].join("\n")
+			),
+		];
 	}
 
 	private unrouted(): Diagnostic[] {

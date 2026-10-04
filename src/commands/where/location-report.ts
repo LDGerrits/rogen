@@ -20,8 +20,7 @@ const sourceOf = (answer: Answer): string =>
 const MATCH_LABELS: Record<RouteMatch, string> = {
 	folder: "folder",
 	marker: "marker",
-	separator: "suffix",
-	capital: "capital suffix",
+	suffix: "suffix",
 	fallback: "fallback",
 };
 

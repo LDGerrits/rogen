@@ -1,6 +1,6 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
-import { capitalized } from "../../base/strings.js";
+import { closestMatch } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
 import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
@@ -11,6 +11,8 @@ export type FolderReading =
 			readonly kind: "route" | "tag";
 			readonly key: string;
 			readonly invisible: boolean;
+			/** What a route folder written `Name@key` keeps as its name; a plain or bare `@key` folder keeps none. */
+			readonly keptName?: string;
 	  }
 	| {
 			readonly kind: "plain";
@@ -18,14 +20,21 @@ export type FolderReading =
 			readonly invisible: boolean;
 	  };
 
-export type SuffixForm = "separator" | "capital";
-
 export interface SuffixSpan {
 	readonly key: string;
-	/** Where the key and its separator begin in the stem. */
+	/** Where the key and its sign begin in the stem. */
 	readonly start: number;
 	readonly length: number;
-	readonly form: SuffixForm;
+}
+
+/** An `@` that no declared route follows. */
+export interface StrayAt {
+	/** The name after the `@`, up to the next dot. */
+	readonly text: string;
+	/** The declared route key closest to `text`. */
+	readonly closestKey?: string;
+	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
+	readonly notLast: boolean;
 }
 
 export interface SuffixMatch {
@@ -33,18 +42,15 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	/** A declared key that the base name still ends with after a separator, in different letter case. */
-	readonly nearMissKey?: string;
+	/** An `@` left in the base name that doesn't route. */
+	readonly strayAt?: StrayAt;
 }
 
-interface SuffixCandidate {
-	readonly strippedLength: number;
-	readonly form: SuffixForm;
-}
+/** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
+const DOT_ROUTE_KEYS: ReadonlySet<string> = new Set(["server", "client"]);
 
 /** Finds the config's declared keys in folder names, marker files and file suffixes. */
 export class NameReader {
-	private static readonly SEPARATOR_CHARS = "+._@-";
 	private static readonly INVISIBLE_FOLDER = /^\((.+)\)$/;
 
 	constructor(private readonly keys: DeclaredKeys) {}
@@ -68,7 +74,25 @@ export class NameReader {
 		if (route) return { kind: "route", key: route, invisible };
 		const tag = this.keys.resolveTag(name);
 		if (tag) return { kind: "tag", key: tag, invisible };
+		const at = name.lastIndexOf("@");
+		const atKey =
+			at >= 0 ? this.keys.resolveRoute(name.slice(at + 1)) : undefined;
+		if (atKey) {
+			const keptName = name.slice(0, at);
+			return {
+				kind: "route",
+				key: atKey,
+				invisible,
+				...(keptName !== "" && { keptName }),
+			};
+		}
 		return { kind: "plain", name, invisible };
+	}
+
+	/** The `@` in a folder name that no declared route follows. */
+	folderStrayAt(folderName: string): StrayAt | undefined {
+		const { name } = NameReader.unwrapInvisibleFolder(folderName);
+		return this.strayAt(name);
 	}
 
 	/** The declared key a marker file spells, `.server` for `server`. */
@@ -82,99 +106,61 @@ export class NameReader {
 		};
 	}
 
-	// Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`.
+	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. */
 	suffixes(stem: string): SuffixMatch {
 		let remaining = stem;
 		const matched = new Set<string>();
 		const spans: SuffixSpan[] = [];
 
-		while (remaining.length > 0) {
-			let bestKey: string | undefined;
-			let best: SuffixCandidate | undefined;
-
-			for (const key of this.keys.all) {
-				const found = this.findSuffix(remaining, key);
-				if (
-					found &&
-					found.strippedLength > (best?.strippedLength ?? 0)
-				) {
-					best = found;
-					bestKey = key;
-				}
-			}
-
-			if (!bestKey || !best) break;
-
-			matched.add(bestKey);
-			remaining = remaining.slice(
-				0,
-				remaining.length - best.strippedLength
-			);
-			spans.push({
-				key: bestKey,
-				start: remaining.length,
-				length: best.strippedLength,
-				form: best.form,
-			});
+		for (
+			let span = this.trailingSpan(remaining);
+			span;
+			span = this.trailingSpan(remaining)
+		) {
+			matched.add(span.key);
+			remaining = remaining.slice(0, span.start);
+			spans.push(span);
 		}
 
 		return {
 			baseName: remaining,
 			matchedKeys: matched,
 			spans,
-			nearMissKey: this.findSeparatorNearMiss(remaining),
+			strayAt: this.strayAt(remaining),
 		};
 	}
 
-	private findSuffix(
-		remaining: string,
-		key: string
-	): SuffixCandidate | undefined {
-		const separator = this.findSeparator(remaining, key);
-		const capital = this.findCapital(remaining, key);
-		if (!separator || !capital) return separator ?? capital;
-		return capital.strippedLength > separator.strippedLength
-			? capital
-			: separator;
-	}
-
-	private findSeparator(
-		remaining: string,
-		key: string
-	): SuffixCandidate | undefined {
-		for (const sep of NameReader.SEPARATOR_CHARS) {
-			for (const spelling of [key, DeclaredKeys.flipFirstLetter(key)]) {
-				if (remaining.endsWith(sep + spelling)) {
-					return {
-						strippedLength: sep.length + spelling.length,
-						form: "separator",
-					};
-				}
-			}
+	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */
+	private trailingSpan(remaining: string): SuffixSpan | undefined {
+		const dot = remaining.lastIndexOf(".");
+		const at = remaining.lastIndexOf("@");
+		if (dot > at) {
+			const part = remaining.slice(dot + 1);
+			const key =
+				this.keys.resolveTag(part) ??
+				(DOT_ROUTE_KEYS.has(part)
+					? this.keys.resolveRoute(part)
+					: undefined);
+			return key && dot > 0
+				? { key, start: dot, length: remaining.length - dot }
+				: undefined;
 		}
-		return undefined;
+		const key = this.keys.resolveRoute(remaining.slice(at + 1));
+		return at > 0 && key
+			? { key, start: at, length: remaining.length - at }
+			: undefined;
 	}
 
-	private findCapital(
-		remaining: string,
-		key: string
-	): SuffixCandidate | undefined {
-		const word = capitalized(key);
-		if (!remaining.endsWith(word)) return undefined;
-
-		// A bare `Server` has no base name, so it isn't a suffix.
-		const before = remaining[remaining.length - word.length - 1];
-		if (before === undefined || !/[a-z0-9]/.test(before)) return undefined;
-
-		return { strippedLength: word.length, form: "capital" };
-	}
-
-	private findSeparatorNearMiss(remaining: string): string | undefined {
-		const lower = remaining.toLowerCase();
-		for (const key of this.keys.all)
-			for (const sep of NameReader.SEPARATOR_CHARS)
-				if (lower.endsWith(sep + key.toLowerCase())) return key;
-		return undefined;
+	private strayAt(name: string): StrayAt | undefined {
+		const at = name.lastIndexOf("@");
+		if (at <= 0) return undefined;
+		const text = name.slice(at + 1).split(".")[0];
+		if (text === "") return undefined;
+		return {
+			text,
+			closestKey: closestMatch(text, this.keys.routeKeys),
+			notLast: this.keys.resolveRoute(text) !== undefined,
+		};
 	}
 }
 
@@ -184,6 +170,7 @@ export type FolderRead = FolderReading & {
 	/** The folder relative to the root dir. */
 	readonly dir: string;
 	readonly nearMissKey?: string;
+	readonly strayAt?: StrayAt;
 };
 
 export interface MarkerRead {
@@ -211,8 +198,10 @@ export class NameReadings {
 	readonly markers = new Map<string, MarkerRead>();
 	/** By the entry's source. */
 	readonly entries = new Map<string, EntryRead>();
-	/** Each marker, folder above an entry, or entry whose name only differs from a declared key in letter case, with that key; first found first. */
+	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
 	readonly nearMisses = new Map<string, string>();
+	/** Each folder above an entry, or entry, with an `@` that doesn't route; first found first. */
+	readonly strayAts = new Map<string, StrayAt>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -244,12 +233,12 @@ export class NameReadings {
 					stem,
 					match,
 				});
-				for (const folder of folders)
-					this.noteNearMiss(
-						joinPosix(root.rootDir, folder.dir),
-						folder.nearMissKey
-					);
-				this.noteNearMiss(entry.source, match.nearMissKey);
+				for (const folder of folders) {
+					const resource = joinPosix(root.rootDir, folder.dir);
+					this.noteNearMiss(resource, folder.nearMissKey);
+					this.noteStrayAt(resource, folder.strayAt);
+				}
+				this.noteStrayAt(entry.source, match.strayAt);
 			}
 		}
 	}
@@ -266,6 +255,11 @@ export class NameReadings {
 			this.nearMisses.set(resource, key);
 	}
 
+	private noteStrayAt(resource: string, strayAt: StrayAt | undefined): void {
+		if (strayAt && !this.strayAts.has(resource))
+			this.strayAts.set(resource, strayAt);
+	}
+
 	private folderAt(rootDir: string, dir: string): FolderRead {
 		const key = joinPosix(rootDir, dir);
 		let read = this.folders.get(key);
@@ -279,6 +273,10 @@ export class NameReadings {
 				nearMissKey:
 					reading.kind === "plain"
 						? this.keys.nearMiss(reading.name)
+						: undefined,
+				strayAt:
+					reading.kind === "plain"
+						? this.reader.folderStrayAt(segment)
 						: undefined,
 			};
 			this.folders.set(key, read);

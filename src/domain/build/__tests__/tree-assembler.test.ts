@@ -599,7 +599,7 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should not collapse a directory holding a file Rojo would name differently, and emit it under its instance name", async () => {
-				await write("src/Save/Save+mock.server.luau");
+				await write("src/Save/Save.mock@server.luau");
 
 				const { tree: value } = await assemble({
 					tags: { mock: true },
@@ -611,7 +611,7 @@ describe("TreeAssembler", () => {
 					Save: {
 						...FOLDER,
 						Save: {
-							$path: optional("src/Save/Save+mock.server.luau"),
+							$path: optional("src/Save/Save.mock@server.luau"),
 						},
 					},
 				});
@@ -633,8 +633,8 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a directory whose file has a route suffix other than .server or .client", async () => {
-				await write("src/Types/Types.shared.luau");
+			it("should not collapse a directory whose file has an @ route suffix", async () => {
+				await write("src/Types/Types@shared.luau");
 
 				const storage = await storageOf({
 					routes: { shared: "ReplicatedStorage" },
@@ -642,7 +642,7 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Types).toEqual({
 					...FOLDER,
-					Types: { $path: optional("src/Types/Types.shared.luau") },
+					Types: { $path: optional("src/Types/Types@shared.luau") },
 				});
 			});
 

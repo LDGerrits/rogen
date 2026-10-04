@@ -30,18 +30,18 @@ describe("LocationReport", () => {
 			expect(
 				describe1({
 					status: "placed",
-					source: "/repo/src/Net/HttpClient.luau",
+					source: "/repo/src/Net/Http@client.luau",
 					instancePath: [
 						"StarterPlayer",
 						"StarterPlayerScripts",
 						"Http",
 					],
 					route: "Client",
-					routeMatch: "capital",
+					routeMatch: "suffix",
 					tags: [],
 				})
 			).toBe(
-				"src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Http · route Client (capital suffix)"
+				"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Http · route Client (suffix)"
 			);
 		});
 
@@ -55,7 +55,7 @@ describe("LocationReport", () => {
 					routeMatch: "fallback",
 					tags: [
 						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "separator" },
+						{ tag: "mock", form: "suffix" },
 						{ tag: "test", form: "marker" },
 					],
 				})
@@ -68,17 +68,15 @@ describe("LocationReport", () => {
 			expect(
 				describe1({
 					status: "pruned",
-					source: "/repo/src/HttpMock.luau",
+					source: "/repo/src/Http.mock.luau",
 					tags: [
 						{
 							tag: "mock",
-							form: "capital",
+							form: "suffix",
 						},
 					],
 				})
-			).toBe(
-				"src/HttpMock.luau -> pruned · tag mock is off (capital suffix)"
-			);
+			).toBe("src/Http.mock.luau -> pruned · tag mock is off (suffix)");
 		});
 
 		it("should name the glob that excluded a path, relative to the working directory", () => {
@@ -218,20 +216,20 @@ describe("LocationReport", () => {
 			expect(
 				jsonOf({
 					status: "placed",
-					source: "/repo/src/Net/HttpClient.luau",
+					source: "/repo/src/Net/Http@client.luau",
 					instancePath: [
 						"StarterPlayer",
 						"StarterPlayerScripts",
 						"Http",
 					],
 					route: "Client",
-					routeMatch: "capital",
-					tags: [{ tag: "mock", form: "separator" }],
+					routeMatch: "suffix",
+					tags: [{ tag: "mock", form: "suffix" }],
 				})
 			).toEqual([
 				{
 					config: "default",
-					source: "/repo/src/Net/HttpClient.luau",
+					source: "/repo/src/Net/Http@client.luau",
 					status: "placed",
 					instancePath: [
 						"StarterPlayer",
@@ -239,8 +237,8 @@ describe("LocationReport", () => {
 						"Http",
 					],
 					route: "Client",
-					routeMatch: "capital",
-					tags: [{ tag: "mock", form: "separator" }],
+					routeMatch: "suffix",
+					tags: [{ tag: "mock", form: "suffix" }],
 				},
 			]);
 		});
@@ -249,10 +247,10 @@ describe("LocationReport", () => {
 			[
 				{
 					status: "pruned",
-					source: "/repo/src/HttpMock.luau",
-					tags: [{ tag: "mock", form: "capital" }],
+					source: "/repo/src/Http.mock.luau",
+					tags: [{ tag: "mock", form: "suffix" }],
 				},
-				{ tags: [{ tag: "mock", form: "capital" }] },
+				{ tags: [{ tag: "mock", form: "suffix" }] },
 			],
 			[
 				{

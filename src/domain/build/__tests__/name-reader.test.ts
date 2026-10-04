@@ -2,13 +2,6 @@ import { DeclaredKeys } from "../../config/config.js";
 import { NameReader } from "../name-reader.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
-const ROUTES_AND_TAGS = new Set([
-	"server",
-	"client",
-	"shared",
-	"mock",
-	"debug",
-]);
 const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
 const ALL_KEYS = new DeclaredKeys(ROUTES, ["mock", "debug"]);
 
@@ -48,130 +41,141 @@ describe("NameReader marker", () => {
 });
 
 describe("NameReader suffixes", () => {
-	it("strips a separator suffix for each of + - _ . @", () => {
-		for (const sep of ["+", "-", "_", ".", "@"]) {
-			const result = matchSuffixKeys(`Combat${sep}server`, ROUTES);
+	it("strips @key and names what stands before the @", () => {
+		const result = matchSuffixKeys("Combat@server", ROUTES);
+		expect(result.baseName).toBe("Combat");
+		expect(result.matchedKeys).toEqual(new Set(["server"]));
+		expect(result.spans).toEqual([{ key: "server", start: 6, length: 7 }]);
+	});
+
+	it("routes through a dot only for .server and .client", () => {
+		for (const key of ["server", "client"]) {
+			const result = matchSuffixKeys(`Combat.${key}`, ROUTES);
 			expect(result.baseName).toBe("Combat");
-			expect(result.matchedKeys).toEqual(new Set(["server"]));
+			expect(result.matchedKeys).toEqual(new Set([key]));
+		}
+		const shared = matchSuffixKeys("Types.shared", ROUTES);
+		expect(shared.baseName).toBe("Types.shared");
+		expect(shared.matchedKeys.size).toBe(0);
+	});
+
+	it("leaves .server alone when no route of that name is declared", () => {
+		const result = matchSuffixKeys("Combat.server", new Set(["shared"]));
+		expect(result.matchedKeys.size).toBe(0);
+	});
+
+	it("does not route through -, _, + or a capital letter", () => {
+		for (const stem of [
+			"Combat-server",
+			"Combat_server",
+			"Combat+server",
+			"CombatServer",
+			"HttpClient",
+		]) {
+			const result = matchSuffixKeys(stem, ROUTES);
+			expect(result.baseName).toBe(stem);
+			expect(result.matchedKeys.size).toBe(0);
 		}
 	});
 
-	it("matches a PascalCase suffix (CombatServer)", () => {
-		const result = matchSuffixKeys("CombatServer", ROUTES);
-		expect(result.baseName).toBe("Combat");
-		expect(result.matchedKeys).toEqual(new Set(["server"]));
-	});
-
-	it("does not match HTTPServer: the preceding letter is capitalised", () => {
-		const result = matchSuffixKeys("HTTPServer", ROUTES);
-		expect(result.baseName).toBe("HTTPServer");
+	it("does not treat a bare @key with nothing before it as a suffix", () => {
+		const result = matchSuffixKeys("@server", ROUTES);
+		expect(result.baseName).toBe("@server");
 		expect(result.matchedKeys.size).toBe(0);
 	});
 
-	it("accepts the accidental match HttpClient", () => {
-		const result = matchSuffixKeys("HttpClient", ROUTES);
-		expect(result.baseName).toBe("Http");
-		expect(result.matchedKeys).toEqual(new Set(["client"]));
+	it("matches @key with the first letter in the other case", () => {
+		expect(matchSuffixKeys("Foo@Server", ROUTES).matchedKeys).toEqual(
+			new Set(["server"])
+		);
+		expect(
+			matchSuffixKeys("Foo@server", new Set(["Server"])).matchedKeys
+		).toEqual(new Set(["Server"]));
 	});
 
-	it("does not treat a bare key with nothing before it as a suffix", () => {
-		const result = matchSuffixKeys("Server", ROUTES);
-		expect(result.baseName).toBe("Server");
-		expect(result.matchedKeys.size).toBe(0);
+	it("does not match @key that differs beyond the first letter", () => {
+		expect(matchSuffixKeys("Foo@SERVER", ROUTES).matchedKeys.size).toBe(0);
 	});
 
-	it("stacks suffixes in either order", () => {
-		const forward = matchSuffixKeys("Foo.mock.server", ROUTES_AND_TAGS);
+	it("stacks a variant and a route in either order", () => {
+		const forward = readerOf(ALL_KEYS).suffixes("Foo.mock@server");
 		expect(forward.baseName).toBe("Foo");
 		expect(forward.matchedKeys).toEqual(new Set(["mock", "server"]));
 
-		const backward = matchSuffixKeys("Foo.server.mock", ROUTES_AND_TAGS);
+		const backward = readerOf(ALL_KEYS).suffixes("Foo@server.mock");
 		expect(backward.baseName).toBe("Foo");
 		expect(backward.matchedKeys).toEqual(new Set(["mock", "server"]));
 	});
 
-	it("records where each matched key sits in the stem", () => {
-		const result = matchSuffixKeys("Foo.server.mock", ROUTES_AND_TAGS);
+	it("records where each matched key sits in the stem, the trailing one first", () => {
+		const result = readerOf(ALL_KEYS).suffixes("Foo@server.mock");
 		expect(result.spans).toEqual([
-			{ key: "mock", start: 10, length: 5, form: "separator" },
-			{ key: "server", start: 3, length: 7, form: "separator" },
-		]);
-	});
-
-	it("reports whether a key matched after a separator or as a capital word", () => {
-		expect(matchSuffixKeys("HttpMock", ROUTES_AND_TAGS).spans).toEqual([
-			{ key: "mock", start: 4, length: 4, form: "capital" },
+			{ key: "mock", start: 10, length: 5 },
+			{ key: "server", start: 3, length: 7 },
 		]);
 	});
 
 	it("stops the run at the first non-declared part: Foo.mock.Bar yields no keys", () => {
-		const result = matchSuffixKeys("Foo.mock.Bar", ROUTES_AND_TAGS);
+		const result = readerOf(ALL_KEYS).suffixes("Foo.mock.Bar");
 		expect(result.matchedKeys.size).toBe(0);
 		expect(result.baseName).toBe("Foo.mock.Bar");
 	});
 
-	it("does not recognise an undeclared key even if it looks like a suffix", () => {
-		const result = matchSuffixKeys("Analytics.beta", ROUTES_AND_TAGS);
+	it("does not recognise an undeclared dot part", () => {
+		const result = readerOf(ALL_KEYS).suffixes("Analytics.beta");
 		expect(result.matchedKeys.size).toBe(0);
 		expect(result.baseName).toBe("Analytics.beta");
 	});
 
-	it("matches a separator suffix with the first letter in the other case", () => {
-		const result = matchSuffixKeys("Foo.Server", ROUTES);
-		expect(result.baseName).toBe("Foo");
-		expect(result.matchedKeys).toEqual(new Set(["server"]));
-	});
-
-	it("does not match a separator suffix that differs beyond the first letter", () => {
-		const result = matchSuffixKeys("Foo.SERVER", ROUTES);
-		expect(result.baseName).toBe("Foo.SERVER");
+	it("does not route @key when a dot part that isn't a variant follows it", () => {
+		const result = readerOf(ALL_KEYS).suffixes("Foo@server.bak");
 		expect(result.matchedKeys.size).toBe(0);
+		expect(result.strayAt).toEqual({
+			text: "server",
+			closestKey: "server",
+			notLast: true,
+		});
+	});
+});
+
+describe("NameReader stray @", () => {
+	it("names the closest declared route for an @ that matches none", () => {
+		expect(matchSuffixKeys("Save@sever", ROUTES).strayAt).toEqual({
+			text: "sever",
+			closestKey: "server",
+			notLast: false,
+		});
 	});
 
-	it("does not match a capital suffix after an upper-case letter or the start", () => {
-		expect(matchSuffixKeys("HTTPServer", ROUTES).matchedKeys.size).toBe(0);
-		expect(matchSuffixKeys("Server", ROUTES).matchedKeys.size).toBe(0);
-	});
-
-	it("matches a capital suffix after a digit", () => {
-		const result = matchSuffixKeys("Level2Server", ROUTES);
-		expect(result.baseName).toBe("Level2");
-	});
-
-	it("matches a key declared with a capital in every form", () => {
-		const keys = new Set(["Server"]);
-		expect(matchSuffixKeys("Foo.Server", keys).baseName).toBe("Foo");
-		expect(matchSuffixKeys("Foo.server", keys).baseName).toBe("Foo");
-		expect(matchSuffixKeys("FooServer", keys).baseName).toBe("Foo");
-		expect(matchSuffixKeys("Foo.SERVER", keys).matchedKeys.size).toBe(0);
-	});
-
-	it("names the declared key that a separator suffix only differs from beyond the first letter", () => {
-		expect(matchSuffixKeys("Foo.SERVER", ROUTES).nearMissKey).toBe(
+	it("suggests the route for an @ that only differs in case", () => {
+		expect(matchSuffixKeys("Save@SERVER", ROUTES).strayAt?.closestKey).toBe(
 			"server"
 		);
-		expect(matchSuffixKeys("Foo-sHARED", ROUTES).nearMissKey).toBe(
-			"shared"
-		);
 	});
 
-	it("names a near miss that sits before matched suffixes", () => {
-		const result = matchSuffixKeys("Foo.SERVER.mock", ROUTES_AND_TAGS);
-		expect(result.matchedKeys).toEqual(new Set(["mock"]));
-		expect(result.nearMissKey).toBe("server");
+	it("reports an @ with no close route, with no suggestion", () => {
+		expect(matchSuffixKeys("user@example", ROUTES).strayAt).toEqual({
+			text: "example",
+			closestKey: undefined,
+			notLast: false,
+		});
 	});
 
-	it("has no near miss for a first-letter match", () => {
+	it("only suggests routes, never variants", () => {
 		expect(
-			matchSuffixKeys("Foo.Server", ROUTES).nearMissKey
+			readerOf(new DeclaredKeys(ROUTES, ["mock"])).suffixes("Save@mok")
+				.strayAt?.closestKey
 		).toBeUndefined();
 	});
 
-	it("has no near miss for an exact match or an unrelated name", () => {
-		expect(
-			matchSuffixKeys("Foo.server", ROUTES).nearMissKey
-		).toBeUndefined();
-		expect(matchSuffixKeys("Foo.beta", ROUTES).nearMissKey).toBeUndefined();
+	it("reports nothing for a name without an @, or a matched one", () => {
+		expect(matchSuffixKeys("Save", ROUTES).strayAt).toBeUndefined();
+		expect(matchSuffixKeys("Save@server", ROUTES).strayAt).toBeUndefined();
+	});
+
+	it("reports nothing for a bare @ or a trailing one", () => {
+		expect(matchSuffixKeys("@sever", ROUTES).strayAt).toBeUndefined();
+		expect(matchSuffixKeys("Save@", ROUTES).strayAt).toBeUndefined();
 	});
 });
 
@@ -222,6 +226,44 @@ describe("NameReader folder", () => {
 			key: "server",
 			invisible: true,
 		});
+	});
+
+	it("should read Name@key as a route folder that keeps Name", () => {
+		expect(readFolderName("Matchmaking@server", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: false,
+			keptName: "Matchmaking",
+		});
+	});
+
+	it("should read a bare @key as a route folder that keeps no name", () => {
+		expect(readFolderName("@server", ALL_KEYS)).toEqual({
+			kind: "route",
+			key: "server",
+			invisible: false,
+		});
+	});
+
+	it("should read @key with the first letter in the other case", () => {
+		expect(readFolderName("Queue@Server", ALL_KEYS)).toMatchObject({
+			key: "server",
+			keptName: "Queue",
+		});
+	});
+
+	it("should read -server and .server as ordinary folders", () => {
+		for (const name of ["Queue-server", "Queue.server", "QueueServer"])
+			expect(readFolderName(name, ALL_KEYS).kind).toBe("plain");
+	});
+
+	it("should report the @ of a folder that matches no route", () => {
+		expect(
+			new NameReader(ALL_KEYS).folderStrayAt("Queue@sever")
+		).toMatchObject({ text: "sever", closestKey: "server" });
+		expect(
+			new NameReader(ALL_KEYS).folderStrayAt("@sever")
+		).toBeUndefined();
 	});
 
 	it("should read any other folder as plain", () => {

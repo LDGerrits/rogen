@@ -3,12 +3,7 @@ import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo-file.js";
 import { MatchForm, RouteMatch, TagMatch } from "./build.js";
-import {
-	EntryRead,
-	FolderRead,
-	NameReadings,
-	SuffixSpan,
-} from "./name-reader.js";
+import { EntryRead, NameReadings, SuffixSpan } from "./name-reader.js";
 import { ScannedEntry, ScannedRoot, rojoNameOf } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */
@@ -92,9 +87,9 @@ export class Router {
 
 		const folderNodes: FolderNode[] = [];
 		let parent: readonly string[] = target.instancePath;
-		for (const folder of folders) {
-			parent = [...parent, folder.segment];
-			folderNodes.push({ instancePath: parent, dir: folder.dir });
+		for (const { name: folderName, dir } of folders) {
+			parent = [...parent, folderName];
+			folderNodes.push({ instancePath: parent, dir });
 		}
 		return {
 			route,
@@ -106,13 +101,13 @@ export class Router {
 		};
 	}
 
-	/** Routing, tag and invisible folders and markers claim the file; every other folder becomes a node. */
+	/** Routing, tag and invisible folders and markers claim the file; every other folder, and a `Name@key` routing folder, becomes a node. */
 	private readFolders(
 		entry: ScannedEntry,
 		read: EntryRead,
 		markers: ReadonlyMap<string, string[]>,
 		claims: Claims
-	): FolderRead[] {
+	): { readonly name: string; readonly dir: string }[] {
 		const applyMarkers = (dir: string) => {
 			for (const fileName of markers.get(dir) ?? []) {
 				const key = this.readings.markers.get(
@@ -126,13 +121,16 @@ export class Router {
 		};
 
 		applyMarkers("");
-		const folders: FolderRead[] = [];
+		const folders: { name: string; dir: string }[] = [];
 		for (const folder of read.folders) {
-			if (folder.kind === "route")
+			if (folder.kind === "route") {
 				claims.claimRoute(folder.key, "folder");
-			else if (folder.kind === "tag")
+				if (folder.keptName !== undefined && !folder.invisible)
+					folders.push({ name: folder.keptName, dir: folder.dir });
+			} else if (folder.kind === "tag")
 				claims.claimTag({ tag: folder.key, form: "folder" });
-			else if (!folder.invisible) folders.push(folder);
+			else if (!folder.invisible)
+				folders.push({ name: folder.segment, dir: folder.dir });
 			applyMarkers(folder.dir);
 		}
 		return folders;
@@ -151,7 +149,7 @@ export class Router {
 		const routeSpan = claims.route
 			? undefined
 			: match.spans.find((span) => this.keys.routeKeys.has(span.key));
-		if (routeSpan) claims.claimRoute(routeSpan.key, routeSpan.form);
+		if (routeSpan) claims.claimRoute(routeSpan.key, "suffix");
 
 		// Rojo names an init folder after the folder, so its script's suffixes only route.
 		if (entry.kind === "init-folder") {
@@ -176,7 +174,7 @@ export class Router {
 	}
 
 	private asTagMatch(span: SuffixSpan): TagMatch {
-		return { tag: span.key, form: span.form };
+		return { tag: span.key, form: "suffix" };
 	}
 
 	/** Keeps the stem whole rather than return an empty name. */

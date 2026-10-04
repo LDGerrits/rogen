@@ -73,15 +73,15 @@ describe("where command", () => {
 			tags: { mock: false },
 		});
 		await write(
-			"src/Net/HttpClient.luau",
-			"src/Net/HttpMock.luau",
+			"src/Net/Http@client.luau",
+			"src/Net/Http.mock.luau",
 			"src/Util.luau"
 		);
 
 		const result = await run({
 			_: [
-				"src/Net/HttpClient.luau",
-				"src/Net/HttpMock.luau",
+				"src/Net/Http@client.luau",
+				"src/Net/Http.mock.luau",
 				"src/Util.luau",
 				"src/Combat/Server/Hit.luau",
 			],
@@ -89,8 +89,8 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
-			"src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)",
-			"src/Net/HttpMock.luau -> pruned · tag mock is off (capital suffix)",
+			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
+			"src/Net/Http.mock.luau -> pruned · tag mock is off (suffix)",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);
@@ -237,7 +237,7 @@ describe("where command", () => {
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",
-				"src/Net/HttpMock.luau"
+				"src/Net/Http.mock.luau"
 			);
 		});
 
@@ -245,7 +245,7 @@ describe("where command", () => {
 			const result = await run({
 				_: [
 					"src/Inventory/Server/Save.luau",
-					"src/Net/HttpMock.luau",
+					"src/Net/Http.mock.luau",
 					"src/Nowhere.luau",
 				],
 				json: true,
@@ -265,9 +265,9 @@ describe("where command", () => {
 				},
 				{
 					config: "default",
-					source: "/repo/src/Net/HttpMock.luau",
+					source: "/repo/src/Net/Http.mock.luau",
 					status: "pruned",
-					tags: [{ tag: "mock", form: "capital" }],
+					tags: [{ tag: "mock", form: "suffix" }],
 				},
 				{
 					config: "default",
@@ -313,7 +313,7 @@ describe("where command", () => {
 
 		it("should print an empty array when nothing is placed", async () => {
 			await fs.delete("/repo/src/Inventory/Server/Save.luau");
-			await fs.delete("/repo/src/Net/HttpMock.luau");
+			await fs.delete("/repo/src/Net/Http.mock.luau");
 
 			await run({ json: true });
 

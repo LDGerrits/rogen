@@ -148,8 +148,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"Inv/Foo.mock.meta.json": meta,
 			"Inv/Combat@server.luau": "",
 			"Inv/Combat@server.meta.json": meta,
-			"Inv/HitServer.luau": "",
-			"Inv/HitServer.meta.json": meta,
 			"Inv/Analytics.mock.luau": "",
 			"Inv/Analytics.mock.meta.json": meta,
 			"Inv/Tool.plugin.luau": "",
@@ -174,7 +172,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ReplicatedStorage/Inv/Tool <- src/Inv/Tool.meta.json",
 			"ServerScriptService/Inv/Combat <- src/Inv/Combat@server.meta.json",
 			"ServerScriptService/Inv/Foo <- src/Inv/Foo.mock.meta.json",
-			"ServerScriptService/Inv/Hit <- src/Inv/HitServer.meta.json",
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
 			"ServerScriptService/Inv/Stats <- src/Inv/Stats.server.meta.json",
 		]);

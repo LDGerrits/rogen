@@ -44,7 +44,18 @@ stdout:
     },
     {
       "config": "default",
-      "source": "<dir>/src/Net/HttpClient.luau",
+      "source": "<dir>/src/Net/Http.mock.luau",
+      "status": "pruned",
+      "tags": [
+        {
+          "tag": "mock",
+          "form": "suffix"
+        }
+      ]
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/Http@client.luau",
       "status": "placed",
       "instancePath": [
         "StarterPlayer",
@@ -53,19 +64,8 @@ stdout:
         "Http"
       ],
       "route": "Client",
-      "routeMatch": "capital",
+      "routeMatch": "suffix",
       "tags": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/HttpMock.luau",
-      "status": "pruned",
-      "tags": [
-        {
-          "tag": "mock",
-          "form": "capital"
-        }
-      ]
     },
     {
       "config": "default",
@@ -95,13 +95,13 @@ stdout:
     }
   ]
 
-$ rogen where --json src/Net/HttpMock.luau -t mock
+$ rogen where --json src/Net/Http.mock.luau -t mock
 exit 0
 stdout:
   [
     {
       "config": "default",
-      "source": "<dir>/src/Net/HttpMock.luau",
+      "source": "<dir>/src/Net/Http.mock.luau",
       "status": "placed",
       "instancePath": [
         "ReplicatedStorage",
@@ -114,7 +114,7 @@ stdout:
       "tags": [
         {
           "tag": "mock",
-          "form": "capital"
+          "form": "suffix"
         }
       ]
     }
