@@ -96,18 +96,8 @@ registerCommand(
 			log.begin("build", targets, unselected);
 
 			for (const [index, build] of builds.entries()) {
-				if (
-					build.outcome === "wrote" ||
-					build.outcome === "unchanged"
-				) {
-					if (builds.length > 1) log.heading(targets[index]);
-					log.written(
-						targets[index],
-						build.outcome === "wrote",
-						build.summary,
-						warningsOf(build)
-					);
-				} else log.diagnostics(warningsOf(build));
+				if (builds.length > 1) log.heading(targets[index]);
+				log.outcome(targets[index], build, warningsOf(build));
 			}
 			if (errors.length > 0) return err(new DiagnosticsError(errors));
 

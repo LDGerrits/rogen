@@ -277,6 +277,33 @@ describe("build command", () => {
 		]);
 	});
 
+	it("should name each config it didn't write, as watch does", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		await fs.writeFile(abs("bad/Combat/A.luau"), "");
+		await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
+		const logService = new NullLogService();
+		const error = jest.spyOn(logService, "error");
+
+		await run(
+			new MockConfigService([
+				buildable({}, "/repo/default.rogen.json"),
+				buildable(
+					{
+						rootDirs: [abs("bad")],
+						outFile: abs("bad.project.json"),
+					},
+					"/repo/bad.rogen.json"
+				),
+			]),
+			logService
+		);
+
+		expect(error.mock.calls).toEqual([
+			["default.project.json · not written"],
+			["bad.project.json · not written"],
+		]);
+	});
+
 	it("should warn about unrouted files without failing", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new NullLogService();

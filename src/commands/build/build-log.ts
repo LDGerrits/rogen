@@ -1,7 +1,7 @@
 import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildSummary } from "../../domain/build/build-service.js";
+import { BuildSummary, ConfigBuild } from "../../domain/build/build-service.js";
 import {
 	ConfigEntry,
 	ResolvedEntry,
@@ -86,30 +86,28 @@ export class BuildLog {
 		this.logService.step(config.label);
 	}
 
-	/** One config written, or left alone because its bytes wouldn't change, then what its build warned about. */
-	written(
+	/** One config's line for what the run did to its project file, then `diagnostics`; `repeated` says its errors were printed before. */
+	outcome(
 		{ entry, config }: ResolvedEntry,
-		written: boolean,
-		summary: BuildSummary,
-		diagnostics: readonly Diagnostic[]
+		build: ConfigBuild,
+		diagnostics: readonly Diagnostic[],
+		repeated = false
 	): void {
-		this.logService.success(
-			`${relativeTo(this.cwd, config.outFile)} · ${written ? "wrote" : "unchanged"}`
-		);
-		this.details(entry, summary);
-		this.diagnostics(diagnostics);
-	}
-
-	/** One config that wasn't written, then why; no diagnostics means they were all reported before. */
-	notWritten(
-		{ entry, config }: ResolvedEntry,
-		diagnostics: readonly Diagnostic[]
-	): void {
-		const repeated = diagnostics.length === 0;
-		this.logService.error(
-			`${relativeTo(this.cwd, config.outFile)} · not written${repeated ? " · same errors as before" : ""}`
-		);
-		this.details(entry);
+		const outFile = relativeTo(this.cwd, config.outFile);
+		switch (build.outcome) {
+			case "wrote":
+			case "unchanged":
+				this.logService.success(`${outFile} · ${build.outcome}`);
+				this.details(entry, build.summary);
+				break;
+			case "notWritten":
+			case "failed":
+				this.logService.error(
+					`${outFile} · not written${repeated ? " · same errors as before" : ""}`
+				);
+				this.details(entry);
+				break;
+		}
 		this.diagnostics(diagnostics);
 	}
 

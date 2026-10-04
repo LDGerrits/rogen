@@ -17,6 +17,14 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ResolvedEntry } from "../../domain/config/config-service.js";
 import { BuildLog } from "../build/build-log.js";
 
+/** A rebuild as this round shows it: only what wasn't printed before. */
+interface ShownReport {
+	readonly report: RebuildReport;
+	readonly diagnostics: readonly Diagnostic[];
+	/** Its errors were all printed before. */
+	readonly repeated: boolean;
+}
+
 interface WatchChange {
 	readonly sourceFiles: number;
 	readonly configFiles: readonly string[];
@@ -156,20 +164,20 @@ export class WatchLog {
 		};
 	}
 
-	/** A report whose diagnostics are only those not printed for its config the last time. */
-	private unseenReport(report: RebuildReport): RebuildReport {
+	/** A report with only the diagnostics not printed for its config the last time. */
+	private unseenReport(report: RebuildReport): ShownReport {
 		const { file } = report.config;
+		const build = this.printed.unseen(`${file}#build`, [
+			...report.warnings,
+			...report.errors,
+		]);
+		const sync = report.checkedSyncDir
+			? this.printed.unseen(`${file}#sync`, report.syncWarnings)
+			: [];
 		return {
-			...report,
-			diagnostics: [
-				...this.printed.unseen(`${file}#build`, report.diagnostics),
-				...(report.syncDiagnostics
-					? this.printed.unseen(
-							`${file}#sync`,
-							report.syncDiagnostics
-						)
-					: []),
-			],
+			report,
+			diagnostics: [...build, ...sync],
+			repeated: report.errors.length > 0 && !build.some(isError),
 		};
 	}
 
@@ -183,17 +191,12 @@ export class WatchLog {
 		this.buildLog.diagnostics(warnings);
 	}
 
-	private report(report: RebuildReport): void {
-		const { entry, config, diagnostics } = report;
-		if (report.outcome === "failed") {
-			this.buildLog.notWritten({ entry, config }, diagnostics);
-		} else {
-			this.buildLog.written(
-				{ entry, config },
-				report.outcome === "wrote",
-				report.summary,
-				diagnostics
-			);
-		}
+	private report({ report, diagnostics, repeated }: ShownReport): void {
+		this.buildLog.outcome(
+			{ entry: report.entry, config: report.config },
+			report,
+			diagnostics,
+			repeated
+		);
 	}
 }

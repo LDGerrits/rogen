@@ -3,8 +3,7 @@ import { Event } from "../../base/event.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { BuildSummary } from "../build/build-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ConfigBuild } from "../build/build-service.js";
 import { ConfigEntry } from "../config/config-service.js";
 
 /** Why the configs were rebuilt. */
@@ -27,24 +26,12 @@ export interface ConfigNotice {
 	readonly warnings: readonly Diagnostic[];
 }
 
-interface RebuildFields {
+/** What the run did for one config in a round, with the entry its config came from; `config` is the version that was built. */
+export type RebuildReport = ConfigBuild & {
 	readonly entry: ConfigEntry;
-	/** The version of the config that was built. */
-	readonly config: ResolvedConfig;
-	/** The build's warnings, or why it failed. */
-	readonly diagnostics: readonly Diagnostic[];
-	/** What the sync dir check found; `undefined` when this round didn't check it. */
-	readonly syncDiagnostics?: readonly Diagnostic[];
-}
-
-export type RebuildReport = RebuildFields &
-	(
-		| {
-				readonly outcome: "wrote" | "unchanged";
-				readonly summary: BuildSummary;
-		  }
-		| { readonly outcome: "failed"; readonly summary?: undefined }
-	);
+	/** Whether this round checked the sync dir; `syncWarnings` is empty when it didn't. */
+	readonly checkedSyncDir: boolean;
+};
 
 /** One round of rebuilds, fired once every rebuild in it has finished. */
 export interface WatchUpdate {

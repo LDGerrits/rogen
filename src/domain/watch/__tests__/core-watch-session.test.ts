@@ -139,7 +139,7 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		for (const update of updates.slice(0, 2)) {
-			expect(update.reports[0].diagnostics).toMatchObject([
+			expect(update.reports[0].warnings).toMatchObject([
 				{ code: "meta.unclaimed" },
 			]);
 		}
@@ -152,7 +152,7 @@ describe("CoreWatchSession", () => {
 		await fs.createSymbolicLink("/repo/src", "/repo/src/Loop");
 		await settle();
 
-		expect(updates.at(-1)?.reports[0].diagnostics).toMatchObject([
+		expect(updates.at(-1)?.reports[0].warnings).toMatchObject([
 			{ code: "scan.unresolvedLink" },
 		]);
 		expect(updates.at(-1)?.reports[0].summary?.roots[0].files).toBe(1);
@@ -164,8 +164,8 @@ describe("CoreWatchSession", () => {
 		await fs.writeFile("/repo/src/A.luau", "");
 		await settle();
 
-		expect(updates[0].reports[0].syncDiagnostics).toEqual([]);
-		expect(updates[1].reports[0].syncDiagnostics).toBeUndefined();
+		expect(updates[0].reports[0].checkedSyncDir).toBe(true);
+		expect(updates[1].reports[0].checkedSyncDir).toBe(false);
 	});
 
 	it("should not rebuild for an update to a meta file the build never read", async () => {
@@ -267,7 +267,7 @@ describe("CoreWatchSession", () => {
 				"/repo/lobby.rogen.json",
 			]) {
 				expect(reports[file].outcome).toBe("failed");
-				expect(reports[file].diagnostics).toMatchObject([
+				expect(reports[file].errors).toMatchObject([
 					{ code: "output.sameOutFile" },
 				]);
 			}
@@ -312,7 +312,7 @@ describe("CoreWatchSession", () => {
 			await settle();
 
 			expect(
-				lastReports()["/repo/default.rogen.json"].syncDiagnostics
+				lastReports()["/repo/default.rogen.json"].syncWarnings
 			).toMatchObject([{ code: "output.nothingEmitted" }]);
 		});
 

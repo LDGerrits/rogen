@@ -154,34 +154,26 @@ export class CoreWatchSession
 		const blocked = this.blocked.get(file);
 		if (blocked) {
 			this.failing.add(file);
-			return { entry, config, outcome: "failed", diagnostics: blocked };
+			return {
+				entry,
+				config,
+				outcome: "failed",
+				warnings: [],
+				syncWarnings: [],
+				errors: blocked,
+				checkedSyncDir: false,
+			};
 		}
 
 		const [build] = await this.buildService.run([config], {
 			checkSyncDir: load,
 		});
-		if (build.outcome === "notWritten")
-			throw new Error("A run of one config can't leave it unwritten.");
-		if (build.outcome === "failed") {
-			this.failing.add(file);
-			return {
-				entry,
-				config,
-				outcome: "failed",
-				diagnostics: build.errors,
-			};
+		if (build.outcome === "failed") this.failing.add(file);
+		else {
+			this.failing.delete(file);
+			this.readFiles.set(file, new Set(build.readFiles));
 		}
-		this.failing.delete(file);
-		this.readFiles.set(file, new Set(build.readFiles));
-
-		return {
-			entry,
-			config,
-			outcome: build.outcome,
-			diagnostics: build.warnings,
-			...(load && { syncDiagnostics: build.syncWarnings }),
-			summary: build.summary,
-		};
+		return { ...build, entry, checkedSyncDir: load };
 	}
 
 	/** Runs `task`, turning a throw into `onDidError`; queued work is dropped once the session stops. */
