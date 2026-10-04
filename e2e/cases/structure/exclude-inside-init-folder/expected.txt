@@ -1,0 +1,28 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen where src/Combat/Moves
+exit 0
+stdout:
+  src/Combat/Moves/Heavy/Slam.luau -> ReplicatedStorage/shared/Combat/Moves/Heavy/Slam · route * (fallback)
+  src/Combat/Moves/Heavy/Slam.spec.luau -> excluded · matches **/*.spec.luau
+  src/Combat/Moves/Punch.luau -> ReplicatedStorage/shared/Combat/Moves/Punch · route * (fallback)
+  src/Combat/Moves/Punch.spec.luau -> excluded · matches **/*.spec.luau
+  src/Combat/Moves/init.luau -> ReplicatedStorage/shared/Combat/Moves · route * (fallback)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: Folder
+        Moves: ModuleScript  <- src/Combat/Moves/init.luau
+          Heavy: Folder
+            Slam: ModuleScript  <- src/Combat/Moves/Heavy/Slam.luau
+          Punch: ModuleScript  <- src/Combat/Moves/Punch.luau

@@ -2,11 +2,9 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
-import { BuiltProject, OutputFile } from "../build-service.js";
-import { CoreBuildService } from "../core-build-service.js";
-import { buildServiceOf } from "./fixtures.js";
+import { OutputFile } from "../build-service.js";
+import { OutputWriter } from "../output-writer.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
@@ -20,32 +18,17 @@ const treeOf = (): RojoTree => ({
 	name: "repo",
 });
 
-describe("CoreBuildService.write", () => {
+describe("OutputWriter", () => {
 	let fs: MemoryFileSystemService;
-	let service: CoreBuildService;
+	let writer: OutputWriter;
 	let store: DisposableStore;
 
-	const projectOf = (tree: RojoTree): BuiltProject => ({
-		outFile,
-		tree,
-		warnings: [],
-		syncWarnings: [],
-		readFiles: [],
-		summary: {
-			roots: [],
-			routes: [],
-			tags: [],
-			unrouted: 0,
-			superseded: 0,
-			displaced: 0,
-		},
-	});
-	const write = (tree: RojoTree) => service.write(projectOf(tree));
+	const write = (tree: RojoTree) => writer.write(outFile, tree);
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		store = new DisposableStore();
-		service = buildServiceOf(fs, new CoreIndexService(fs));
+		writer = new OutputWriter(fs);
 	});
 
 	afterEach(() => {
@@ -56,7 +39,7 @@ describe("CoreBuildService.write", () => {
 		it("should write the tree as JSON with sorted keys", async () => {
 			const result = await write(treeOf());
 
-			expect(result.unwrap().written).toBe(true);
+			expect(result.unwrap()).toBe(true);
 			const content = await fs.readFile(outFile);
 			expect(JSON.parse(content)).toEqual(treeOf());
 			expect(Object.keys(JSON.parse(content))).toEqual(["name", "tree"]);
@@ -116,7 +99,7 @@ describe("CoreBuildService.write", () => {
 
 			const result = await write(treeOf());
 
-			expect(result.unwrap().written).toBe(false);
+			expect(result.unwrap()).toBe(false);
 			expect(listener).not.toHaveBeenCalled();
 		});
 
@@ -128,7 +111,7 @@ describe("CoreBuildService.write", () => {
 				name: "other",
 			});
 
-			expect(result.unwrap().written).toBe(true);
+			expect(result.unwrap()).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile)).name).toBe("other");
 		});
 
@@ -137,7 +120,7 @@ describe("CoreBuildService.write", () => {
 
 			const result = await write(treeOf());
 
-			expect(result.unwrap().written).toBe(true);
+			expect(result.unwrap()).toBe(true);
 			expect(JSON.parse(await fs.readFile(outFile))).toEqual(treeOf());
 		});
 

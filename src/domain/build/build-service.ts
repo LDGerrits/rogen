@@ -7,7 +7,6 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ResolvedEntry } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
-import { RojoTree } from "../rojo/rojo-project.js";
 
 /** How a route or tag key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "separator" | "capital";
@@ -72,24 +71,6 @@ export interface BuildSummary {
 export interface BuildOptions {
 	/** Also checks the sync dir holds the compiler's output; that only changes when the compiler runs, so a watch does it on load. */
 	readonly checkSyncDir?: boolean;
-}
-
-/** One config built in memory, which `run` goes on to write. */
-export interface BuiltProject {
-	/** Where `write` puts it. */
-	readonly outFile: string;
-	readonly tree: RojoTree;
-	readonly warnings: readonly Diagnostic[];
-	/** What `checkSyncDir` found; empty when it wasn't asked for. */
-	readonly syncWarnings: readonly Diagnostic[];
-	readonly summary: BuildSummary;
-	/** The files whose contents the build read, which a change to must rebuild it. */
-	readonly readFiles: readonly string[];
-}
-
-export interface WrittenProject {
-	/** Whether the file changed; unchanged bytes are left alone. */
-	readonly written: boolean;
 }
 
 /** What a run did for one config. */

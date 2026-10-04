@@ -1,27 +1,21 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
-import {
-	FileType,
-	isDirectoryType,
-	isFileType,
-} from "../../platform/fs/file-system-service.js";
+import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { FileLocation, PlacedLocation } from "./build-service.js";
 import { Placement } from "./placement.js";
 
-interface Member {
-	readonly source: string;
-	readonly instancePath: readonly string[];
-}
-
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
 export class FileLocator {
 	private readonly scanned: Map<string, FileLocation>;
 
-	constructor(private readonly placement: Placement) {
+	constructor(
+		private readonly placement: Placement,
+		private readonly index: IndexReader
+	) {
 		this.scanned = this.locateScanned();
 	}
 
@@ -48,7 +42,7 @@ export class FileLocator {
 	}
 
 	private locateScanned(): Map<string, FileLocation> {
-		const { index, files, leftOut } = this.placement;
+		const { files, leftOut } = this.placement;
 		const all = new Map<string, FileLocation>();
 		const add = (location: FileLocation) =>
 			all.set(location.source, location);
@@ -56,16 +50,16 @@ export class FileLocator {
 		for (const [source, why] of leftOut) add({ ...why, source });
 
 		for (const file of files) {
-			const folder = file.entry.source;
-			const members: Member[] =
-				file.entry.kind === "init-folder"
-					? this.membersOfInitFolder(index, folder, file.instancePath)
-					: [{ source: folder, instancePath: file.instancePath }];
-			for (const { source, instancePath } of members)
+			const { entry } = file;
+			const members =
+				entry.kind === "init-folder"
+					? entry.members
+					: [{ source: entry.source, below: [] }];
+			for (const { source, below } of members)
 				add({
 					status: "placed",
 					source,
-					instancePath,
+					instancePath: [...file.instancePath, ...below],
 					route: file.route,
 					routeMatch: file.routeMatch,
 					tags: file.tags,
@@ -74,40 +68,9 @@ export class FileLocator {
 		return all;
 	}
 
-	/** Rojo reads everything in an init folder as children of the folder's instance, and its init script as the folder itself. */
-	private membersOfInitFolder(
-		index: IndexReader,
-		folder: string,
-		folderInstance: readonly string[]
-	): Member[] {
-		const members: Member[] = [];
-		const visit = (dir: string, below: readonly string[]) => {
-			const listing = [...(index.getEntries(dir) ?? [])].sort(
-				([a], [b]) => compareStrings(a, b)
-			);
-			for (const [name, type] of listing) {
-				if (isDirectoryType(type)) {
-					visit(`${dir}/${name}`, [...below, name]);
-					continue;
-				}
-				const file = new RojoFile(name);
-				if (!isFileType(type) || !file.kind) continue;
-				members.push({
-					source: `${dir}/${name}`,
-					instancePath: [
-						...folderInstance,
-						...below,
-						...(file.isInitScript ? [] : [file.instanceName]),
-					],
-				});
-			}
-		};
-		visit(folder, []);
-		return members;
-	}
-
 	private locatePath(target: string): FileLocation[] {
-		const { index, roots } = this.placement;
+		const { index } = this;
+		const { roots } = this.placement;
 		const below = [...this.scanned.values()]
 			.filter(({ source }) => source.startsWith(`${target}/`))
 			.sort(this.bySource);

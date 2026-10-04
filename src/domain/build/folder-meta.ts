@@ -184,18 +184,15 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { config, template, files, routed, leftOut } = this.placement;
+		const { config, template, files, displaced } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
 		for (const file of files) sharedWithFile.set(file.instancePath, file);
-		const displaced = routed.filter(
-			(file) => leftOut.get(file.entry.source)?.status === "displaced"
-		);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
 		for (const [nodePath, node] of this.reachedNodes([
 			...files,
-			...displaced,
+			...displaced.map(({ file }) => file),
 		])) {
 			const instance = instanceKey(nodePath);
 			const metas = [...node.dirs]

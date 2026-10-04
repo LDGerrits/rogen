@@ -52,13 +52,18 @@ export interface InstanceClash {
 	readonly claimants: readonly RoutedFile[];
 }
 
+/** A routed file the template displaced, with the node that displaced it. */
+export interface DisplacedFile {
+	readonly file: RoutedFile;
+	readonly node: readonly string[];
+}
+
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
 	private unclaimed: UnclaimedMeta[] | undefined;
 
 	constructor(
 		readonly config: ResolvedConfig,
-		readonly index: IndexReader,
 		readonly layout: SyncLayout,
 		readonly template: BuildTemplate,
 		readonly roots: readonly ScannedRoot[],
@@ -69,7 +74,9 @@ export class Placement {
 		readonly files: readonly RoutedFile[],
 		/** Every path the build leaves out of the tree. */
 		readonly leftOut: LeftOutPaths,
-		readonly clashes: readonly InstanceClash[]
+		readonly clashes: readonly InstanceClash[],
+		/** In scan order. */
+		readonly displaced: readonly DisplacedFile[]
 	) {}
 
 	/** Meta no file claims, across every root dir; computed once. */
@@ -149,27 +156,33 @@ export class Placer {
 		const tagging = this.applyTags(routed);
 		if (tagging.isErr()) return tagging;
 		const templating = this.yieldToTemplate(tagging.value.files);
+		const leftOut = new LeftOutPaths(
+			roots.flatMap((root) => [...root.leftOut]),
+			unrouted.map((source): [string, LeftOut] => [
+				source,
+				{ status: "unrouted" },
+			]),
+			tagging.value.leftOut,
+			templating.leftOut
+		);
 
 		return ok(
 			new Placement(
 				this.config,
-				this.index,
 				this.layout,
 				this.template,
 				roots,
 				readings,
 				routed,
 				templating.files,
-				new LeftOutPaths(
-					roots.flatMap((root) => [...root.leftOut]),
-					unrouted.map((source): [string, LeftOut] => [
-						source,
-						{ status: "unrouted" },
-					]),
-					tagging.value.leftOut,
-					templating.leftOut
-				),
-				tagging.value.clashes
+				leftOut,
+				tagging.value.clashes,
+				routed.flatMap((file) => {
+					const why = leftOut.get(file.entry.source);
+					return why?.status === "displaced"
+						? [{ file, node: why.node }]
+						: [];
+				})
 			)
 		);
 	}

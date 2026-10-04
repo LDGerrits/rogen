@@ -188,17 +188,14 @@ export class BuildValidator {
 
 	/** One warning per file or folder the template displaced. */
 	private templateClash(): Diagnostic[] {
-		const { routed, leftOut } = this.placement;
 		const clashes = new Map<
 			string,
 			{ instance: string; kind: "file" | "folder" }
 		>();
-		for (const file of routed) {
-			const why = leftOut.get(file.entry.source);
-			if (why?.status !== "displaced") continue;
-			const source = this.namingSource(file, why.node);
+		for (const { file, node } of this.placement.displaced) {
+			const source = this.namingSource(file, node);
 			clashes.set(source, {
-				instance: instanceKey(why.node),
+				instance: instanceKey(node),
 				kind: source === file.entry.source ? "file" : "folder",
 			});
 		}

@@ -480,6 +480,39 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
+		it("should report a file excluded inside it as excluded, as the build leaves it out", async () => {
+			await write(...files);
+			const exclude = [abs("**/Punch.luau"), abs("**/Heavy")];
+
+			const asked = await locate(
+				[
+					"src/Combat/Server/Moves/Punch.luau",
+					"src/Combat/Server/Moves/Heavy/Slam.luau",
+				],
+				{ exclude }
+			);
+			const everything = await locate(undefined, { exclude });
+
+			expect(asked).toEqual([
+				{
+					status: "excluded",
+					pattern: abs("**/Punch.luau"),
+					source: abs("src/Combat/Server/Moves/Punch.luau"),
+				},
+				{
+					status: "excluded",
+					pattern: abs("**/Heavy"),
+					source: abs("src/Combat/Server/Moves/Heavy/Slam.luau"),
+				},
+			]);
+			expect(instancePaths(everything)).toEqual([
+				false,
+				"ServerScriptService/Combat/Moves/Kick",
+				false,
+				"ServerScriptService/Combat/Moves",
+			]);
+		});
+
 		it("should share the fate of the folder when a dormant tag prunes it", async () => {
 			await write(
 				"src/Combat/Server/Moves/init.mock.luau",

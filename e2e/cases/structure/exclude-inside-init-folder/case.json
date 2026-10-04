@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["build"],
+		["where", "src/Combat/Moves"]
+	]
+}
