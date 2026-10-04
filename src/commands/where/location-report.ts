@@ -92,7 +92,6 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "replaced":
 			return { by: toNative(location.by) };
 		case "displaced":
-			return { node: location.node };
 		case "mounted":
 			return { node: location.node };
 		case "excluded":

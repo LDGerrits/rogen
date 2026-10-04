@@ -985,11 +985,12 @@ describe("Placer", () => {
 			const index = await indexOf(store, fs, rootDirs);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.map(({ warnings }) => {
+			return built.map(({ warnings, tree }) => {
 				const placement = builder.place(config).unwrap();
 				return {
 					routed: placement.routed,
 					leftOut: placement.leftOut,
+					globIgnorePaths: tree.globIgnorePaths,
 					unrouted: placement.leftOut
 						.withStatus("unrouted")
 						.map(([source]) => source),
@@ -1571,6 +1572,37 @@ describe("Placer", () => {
 				).unwrap();
 
 				expect(result.routed).toHaveLength(1);
+			});
+
+			it("should fail when the template mounts a folder inside an init folder, which Rojo reads whole", async () => {
+				await write("src/Net/init.luau", "src/Net/Vendor/Lib.luau");
+
+				const result = await route(
+					mounting(["Vendor", "src/Net/Vendor"])
+				);
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code }) => code)
+				).toEqual(["template.mountsInsideInitFolder"]);
+			});
+
+			it("should report a mount inside an excluded folder as mounted, and keep the folder out of globIgnorePaths", async () => {
+				await write("src/Third/Vendor/Lib.luau", "src/Save.luau");
+
+				const result = (
+					await route({
+						...mounting(["Vendor", "src/Third/Vendor"]),
+						exclude: [abs("src/Third")],
+					})
+				).unwrap();
+
+				expect(
+					result.leftOut.get(abs("src/Third/Vendor"))
+				).toMatchObject({
+					status: "mounted",
+				});
+				expect(result.globIgnorePaths ?? []).toEqual([]);
 			});
 
 			it("should fail when the template mounts a root dir or a folder above one", async () => {

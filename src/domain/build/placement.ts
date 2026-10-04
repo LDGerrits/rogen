@@ -1,6 +1,7 @@
 import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
-import { contains } from "../../base/path.js";
+import path from "path";
+import { contains, isInside } from "../../base/path.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -163,9 +164,11 @@ export class Placer {
 
 	place(): Result<Placement, Diagnostic[]> {
 		const { keys } = this.config;
-		const mountsRootDir = this.mountsRootDir();
-		if (mountsRootDir.length > 0) return err(mountsRootDir);
+		const rootDirMounts = this.rootDirMountErrors();
+		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
+		const initFolderMounts = this.initFolderMountErrors(roots);
+		if (initFolderMounts.length > 0) return err(initFolderMounts);
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
 		const { routed, unrouted } = new Router(
 			keys,
@@ -211,7 +214,7 @@ export class Placer {
 	}
 
 	/** A template `$path` at a root dir or above one would hand the whole root dir to Rojo, leaving Rogen nothing to place there. */
-	private mountsRootDir(): Diagnostic[] {
+	private rootDirMountErrors(): Diagnostic[] {
 		const { template, rootDirs } = this.config;
 		if (!template) return [];
 		return this.template.mounts.flatMap(({ path: mounted, node }) => {
@@ -226,6 +229,27 @@ export class Placer {
 						),
 					];
 		});
+	}
+
+	/** Rojo reads an init folder whole, so a template `$path` inside one would sync that path twice. */
+	private initFolderMountErrors(roots: readonly ScannedRoot[]): Diagnostic[] {
+		const { template } = this.config;
+		if (!template) return [];
+		return roots.flatMap((root) =>
+			root.entries.flatMap((entry) => {
+				if (entry.kind !== "init-folder") return [];
+				const folder = path.join(entry.rootDir, entry.relativePath);
+				return this.template.mounts
+					.filter((mount) => isInside(mount.path, folder))
+					.map(({ path: mounted, node }) =>
+						errorDiagnostic(
+							"template.mountsInsideInitFolder",
+							{ resource: template.file },
+							`"${instanceKey(node)}" mounts ${mounted}, inside the init folder ${folder}, which Rojo reads whole, so it would be synced twice. Mount the init folder itself, or move the mounted folder out of it.`
+						)
+					);
+			})
+		);
 	}
 
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */

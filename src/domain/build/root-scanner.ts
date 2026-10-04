@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { joinPosix, stemOf, toPosix } from "../../base/path.js";
+import { isInside, joinPosix, stemOf, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -188,7 +188,7 @@ export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
 		private readonly exclude: readonly string[],
-		private readonly mounts: readonly TemplateMount[] = []
+		private readonly mounts: readonly TemplateMount[]
 	) {}
 
 	scan(rootDir: string): ScannedRoot {
@@ -197,7 +197,14 @@ export class RootScanner {
 			entries: [],
 			markers: [],
 			metaFiles: [],
-			leftOut: new Map(),
+			leftOut: new Map(
+				this.mounts
+					.filter((mount) => isInside(mount.path, rootDir))
+					.map(({ path: mounted, node }): [string, ScanLeftOut] => [
+						toPosix(mounted),
+						{ status: "mounted", node },
+					])
+			),
 		};
 		if (!this.visit(walk, rootDir)) {
 			return ScannedRoot.missing(rootDir, this.index);
@@ -215,9 +222,11 @@ export class RootScanner {
 		);
 	}
 
+	/** Compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
 	private mountAt(absolutePath: string): TemplateMount | undefined {
-		const resolved = path.resolve(absolutePath);
-		return this.mounts.find((mount) => mount.path === resolved);
+		return this.mounts.find(
+			(mount) => path.relative(mount.path, absolutePath) === ""
+		);
 	}
 
 	private excludingGlob(absolutePath: string): string | undefined {

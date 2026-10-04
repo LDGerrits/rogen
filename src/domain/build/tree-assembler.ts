@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { ancestors, isInside, toPosix } from "../../base/path.js";
+import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -167,9 +167,12 @@ export class TreeAssembler {
 			([source]) => !layout.isReadOnly(source)
 		);
 		// A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one.
+		const mounts = template.mounts.map((mount) => toPosix(mount.path));
+		// Rojo must read a mount, so a left-out folder that holds one can't be ignored either; it is never collapsed, so nothing else reads it.
 		const ignored = leftOut
 			.filter(
-				([, why]) =>
+				([source, why]) =>
+					!mounts.some((mount) => contains(source, mount)) &&
 					why.status !== "replaced" &&
 					why.status !== "displaced" &&
 					why.status !== "mounted"
