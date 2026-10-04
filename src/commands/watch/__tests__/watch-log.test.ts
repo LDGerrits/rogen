@@ -133,14 +133,17 @@ describe("WatchLog.update", () => {
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			diagnostics: RebuildReport["diagnostics"],
-			syncDiagnostics?: RebuildReport["syncDiagnostics"]
+			warnings: RebuildReport["warnings"],
+			syncWarnings?: RebuildReport["syncWarnings"]
 		): RebuildReport => ({
 			entry,
 			config: entry.resolved!,
 			outcome: "unchanged",
-			diagnostics,
-			syncDiagnostics,
+			warnings,
+			syncWarnings: syncWarnings ?? [],
+			checkedSyncDir: syncWarnings !== undefined,
+			errors: [],
+			readFiles: [],
 			summary: {
 				roots: [],
 				routes: [],
@@ -203,6 +206,33 @@ describe("WatchLog.update", () => {
 			expect(texts().filter((text) => text.includes(": s"))).toHaveLength(
 				1
 			);
+		});
+
+		it("should say a failed config's errors were printed before, rather than print them again", () => {
+			const { log, logService } = session();
+			const failed: RebuildReport = {
+				entry,
+				config: entry.resolved!,
+				outcome: "failed",
+				warnings: [],
+				syncWarnings: [],
+				errors: [
+					errorDiagnostic("x.err", { resource: entry.file }, "bad."),
+				],
+				checkedSyncDir: false,
+			};
+
+			log.update(updateOf({ reports: [failed] }));
+			log.update(updateOf({ reports: [failed] }));
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind === "error")
+					.map(({ text }) => text)
+			).toEqual([
+				"default.project.json · not written",
+				"default.project.json · not written · same errors as before",
+			]);
 		});
 
 		it("should say nothing for a round whose only news is a config problem it already printed", () => {

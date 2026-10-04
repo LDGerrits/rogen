@@ -1,0 +1,11 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	},
+	"exclude": [
+		"**/*.spec.luau"
+	]
+}

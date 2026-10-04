@@ -4,7 +4,6 @@ import { BuildService } from "../../domain/build/build-service.js";
 import {
 	ConfigService,
 	configRefsFromArgs,
-	requireValidEntries,
 } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -52,11 +51,11 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			// The positionals are paths, so only the flags pick configs.
-			const loaded = await configService.initialize(
+			const selection = await configService.initialize(
 				configRefsFromArgs(args, [])
 			);
-			if (loaded.isErr()) return loaded;
-			const targets = requireValidEntries(configService.configs);
+			if (selection.isErr()) return selection;
+			const targets = selection.value.requireValid();
 			if (targets.isErr()) return targets;
 
 			const given = args._.slice(1);

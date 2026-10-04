@@ -55,18 +55,13 @@ registerCommand(
 				accessor.get(EnvironmentService).cwd
 			);
 
-			const loaded = await configService.initialize(
+			const selection = await configService.initialize(
 				configRefsFromArgs(args, args._.slice(1))
 			);
-			if (loaded.isErr()) return loaded;
-			const targets = buildService.requireBuildable(
-				configService.configs
-			);
+			if (selection.isErr()) return selection;
+			const targets = buildService.requireBuildable(selection.value);
 			if (targets.isErr()) return targets;
-			log.begin(
-				targets.value,
-				await configService.listUnselectedConfigFiles()
-			);
+			log.begin(targets.value, selection.value.unselected);
 
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();

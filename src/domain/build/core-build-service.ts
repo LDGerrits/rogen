@@ -1,7 +1,6 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
-import { stableStringify } from "../../base/json.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -10,47 +9,29 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigEntry,
-	ResolvedEntry,
-	requireValidEntries,
-} from "../config/config-service.js";
+import { ConfigSelection, ResolvedEntry } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	BuildOptions,
 	BuildService,
-	BuiltProject,
 	ConfigBuild,
 	ConfigLocations,
 	FileLocation,
 	LocateTargets,
-	OutputFile,
-	WrittenProject,
+	failedBuild,
 } from "./build-service.js";
-import { BuildValidator } from "./build-validator.js";
+import {
+	BuiltProject,
+	ConfigBuilder,
+	missingRoutes,
+} from "./config-builder.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
-import { Placement, Placer } from "./placement.js";
-import { SyncDirCheck } from "./sync-dir-check.js";
-import { TreeAssembler } from "./tree-assembler.js";
+import { OutputWriter } from "./output-writer.js";
 
 interface Blocker {
 	readonly diagnostic: Diagnostic;
 	readonly files: readonly string[];
-}
-
-function failedBuild(
-	config: ResolvedConfig,
-	errors: readonly Diagnostic[],
-	built?: BuiltProject
-): ConfigBuild {
-	return {
-		config,
-		outcome: "failed",
-		warnings: built?.warnings ?? [],
-		syncWarnings: built?.syncWarnings ?? [],
-		errors,
-	};
 }
 
 function builtAs(
@@ -72,22 +53,20 @@ function builtAs(
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly assembler: TreeAssembler;
-	private readonly syncDirCheck: SyncDirCheck;
+	private readonly writer: OutputWriter;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
 		private readonly toolchainService: ToolchainService
 	) {
-		this.assembler = new TreeAssembler(fileSystemService);
-		this.syncDirCheck = new SyncDirCheck(fileSystemService);
+		this.writer = new OutputWriter(fileSystemService);
 	}
 
 	requireBuildable(
-		entries: readonly ConfigEntry[]
+		selection: ConfigSelection
 	): Result<ResolvedEntry[], DiagnosticsError> {
-		const valid = requireValidEntries(entries);
+		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
 
 		const blockers = this.blockers(valid.value.map(({ config }) => config));
@@ -110,68 +89,16 @@ export class CoreBuildService implements BuildService {
 		return blocked;
 	}
 
-	async build(
-		config: ResolvedConfig,
-		options: BuildOptions = {}
-	): Promise<Result<BuiltProject, DiagnosticsError>> {
-		await this.indexService.ensureIndexed(config.rootDirs);
-		const placement = this.place(this.indexService, config);
-		if (placement.isErr())
-			return err(new DiagnosticsError(placement.error));
-		const assembly = await this.assembler.assemble(placement.value);
-		if (assembly.isErr()) return err(new DiagnosticsError(assembly.error));
-		return ok({
-			outFile: config.outFile,
-			tree: assembly.value.tree,
-			summary: placement.value.summary(),
-			warnings: new BuildValidator(assembly.value).validate(),
-			syncWarnings: options.checkSyncDir
-				? await this.syncDirCheck.check(placement.value)
-				: [],
-			readFiles: assembly.value.readFiles,
-		});
-	}
-
-	/** Writes `project` to its out file, leaving it untouched when its bytes wouldn't change. */
-	async write(
-		project: BuiltProject
-	): Promise<Result<WrittenProject, DiagnosticsError>> {
-		const { outFile } = project;
-		const content = `${stableStringify(project.tree)}\n`;
-		const temporary = new OutputFile(outFile).stagingFile();
-
-		const written = await tryWithAsync(async () => {
-			if (
-				(await this.fileSystemService.isFile(outFile)) &&
-				(await this.fileSystemService.readFile(outFile)) === content
-			) {
-				return false;
-			}
-			await this.fileSystemService.writeFile(temporary, content);
-			await this.fileSystemService.rename(temporary, outFile, true);
-			return true;
-		});
-		if (written.isOk()) return ok({ written: written.value });
-
-		await this.fileSystemService.delete(temporary).catch(() => undefined);
-		return err(
-			new DiagnosticsError([
-				errorDiagnostic(
-					"output.writeFailed",
-					{ resource: outFile },
-					`the project file could not be written: ${written.error.message}`
-				),
-			])
-		);
-	}
-
 	async run(
 		configs: readonly ResolvedConfig[],
 		options: BuildOptions = {}
 	): Promise<ConfigBuild[]> {
+		const builder = this.builderOf(this.indexService);
 		const built: Result<BuiltProject, DiagnosticsError>[] = [];
-		for (const config of configs)
-			built.push(await this.build(config, options));
+		for (const config of configs) {
+			await this.indexService.ensureIndexed(config.rootDirs);
+			built.push(await builder.build(config, options));
+		}
 
 		const builds = built.map((result, index) =>
 			result.isErr()
@@ -182,7 +109,10 @@ export class CoreBuildService implements BuildService {
 
 		for (const [index, result] of built.entries()) {
 			const project = result.unwrap();
-			const written = await this.write(project);
+			const written = await this.writer.write(
+				project.outFile,
+				project.tree
+			);
 			if (written.isErr()) {
 				builds[index] = failedBuild(
 					configs[index],
@@ -194,7 +124,7 @@ export class CoreBuildService implements BuildService {
 			builds[index] = builtAs(
 				configs[index],
 				project,
-				written.value.written ? "wrote" : "unchanged"
+				written.value ? "wrote" : "unchanged"
 			);
 		}
 		return builds;
@@ -237,14 +167,22 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
+	private builderOf(index: IndexReader): ConfigBuilder {
+		return new ConfigBuilder(
+			this.fileSystemService,
+			index,
+			this.toolchainService.getSyncTools()
+		);
+	}
+
 	private locatorOf(
 		index: IndexReader,
 		config: ResolvedConfig
 	): Result<FileLocator, DiagnosticsError> {
-		const placement = this.place(index, config);
+		const placement = this.builderOf(index).place(config);
 		return placement.isErr()
 			? err(new DiagnosticsError(placement.error))
-			: ok(new FileLocator(placement.value));
+			: ok(new FileLocator(placement.value, index));
 	}
 
 	private async classify(
@@ -267,32 +205,6 @@ export class CoreBuildService implements BuildService {
 		return { paths, instances };
 	}
 
-	private place(
-		index: IndexReader,
-		config: ResolvedConfig
-	): Result<Placement, Diagnostic[]> {
-		const missing = this.missingRoutes(config);
-		if (missing.length > 0) return err(missing);
-		return new Placer(
-			index,
-			config,
-			this.toolchainService.getSyncTools()
-		).place();
-	}
-
-	/** Nothing can be placed without a route. */
-	private missingRoutes(config: ResolvedConfig): Diagnostic[] {
-		return config.routes.size > 0
-			? []
-			: [
-					errorDiagnostic(
-						"route.noRoutes",
-						{ resource: config.file },
-						'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
-					),
-				];
-	}
-
 	/** Each problem across `configs`, with the config files it blocks. */
 	private blockers(configs: readonly ResolvedConfig[]): Blocker[] {
 		const byOutFile = groupBy(
@@ -302,7 +214,7 @@ export class CoreBuildService implements BuildService {
 		);
 		return [
 			...configs.flatMap((config) =>
-				this.missingRoutes(config).map((diagnostic) => ({
+				missingRoutes(config).map((diagnostic) => ({
 					diagnostic,
 					files: [config.file],
 				}))

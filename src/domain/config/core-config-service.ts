@@ -14,6 +14,7 @@ import {
 	ConfigEntry,
 	ConfigOverrides,
 	ConfigRefs,
+	ConfigSelection,
 	ConfigService,
 } from "./config-service.js";
 
@@ -167,7 +168,9 @@ export class CoreConfigService
 		this.loader = new ConfigLoader(fileSystemService, environmentService);
 	}
 
-	async initialize(refs: ConfigRefs): Promise<Result<void, Error>> {
+	async initialize(
+		refs: ConfigRefs
+	): Promise<Result<ConfigSelection, Error>> {
 		const problem = selectionProblem(refs);
 		if (problem) return err(problem);
 
@@ -178,19 +181,18 @@ export class CoreConfigService
 		this.managed = await Promise.all(
 			discovered.value.map((file) => this.load(file))
 		);
-		return this.checkTagOverrides();
+		const tags = this.checkTagOverrides();
+		if (tags.isErr()) return tags;
+		return ok(new ConfigSelection(this.configs, await this.unselected()));
 	}
 
-	async listConfigFiles(): Promise<string[]> {
+	/** The config files in the working dir that aren't loaded; none when it can't be read. */
+	private async unselected(): Promise<string[]> {
 		const found = await this.discovery.find();
-		return found.isOk() ? found.value : [];
-	}
-
-	async listUnselectedConfigFiles(): Promise<string[]> {
-		const selected = new Set(this.configs.map(({ file }) => file));
-		return (await this.listConfigFiles()).filter(
-			(file) => !selected.has(file)
-		);
+		const selected = new Set(this.managed.map(({ file }) => file));
+		return found.isOk()
+			? found.value.filter((file) => !selected.has(file))
+			: [];
 	}
 
 	async readConfig(file: string): Promise<ConfigEntry> {

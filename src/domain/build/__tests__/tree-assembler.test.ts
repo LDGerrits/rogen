@@ -10,7 +10,7 @@ import { SyncTool } from "../../toolchain/toolchain.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,
-	buildServiceOf,
+	builderOf,
 	configOf,
 	indexOf,
 	placeFiles,
@@ -35,7 +35,7 @@ describe("TreeAssembler", () => {
 		) => {
 			const config = configOf(overrides);
 			const index = await indexOf(store, fs, config.rootDirs);
-			return buildServiceOf(fs, index, extraTools).build(config);
+			return builderOf(fs, index, extraTools).build(config);
 		};
 
 		const assemble = async (
@@ -860,6 +860,24 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual([
 					"dist/Inventory/Analytics.mock.luau",
 					"dist/Inventory/Save.spec.luau",
+				]);
+			});
+
+			it("should list a file excluded anywhere inside an init folder", async () => {
+				await write(
+					"src/Moves/init.ts",
+					"src/Moves/Punch.spec.ts",
+					"src/Moves/Heavy/Slam.spec.ts"
+				);
+
+				const { tree: value } = await assemble({
+					syncDir: abs("dist"),
+					exclude: [abs("**/*.spec.ts")],
+				});
+
+				expect(value.globIgnorePaths).toEqual([
+					"dist/Moves/Heavy/Slam.spec.luau",
+					"dist/Moves/Punch.spec.luau",
 				]);
 			});
 

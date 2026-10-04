@@ -16,7 +16,7 @@ import { Placement } from "../placement.js";
 import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,
-	buildServiceOf,
+	builderOf,
 	configOf,
 	indexOf,
 	placeFiles,
@@ -77,11 +77,17 @@ describe("Placer", () => {
 			const index = newIndex();
 			await index.initialize([...scanOptions.rootDirs]);
 			const config = configOf(scanOptions);
-			const built = await buildServiceOf(fs, index).build(config);
-			return {
-				roots: placeFiles(index, config, syncTools).unwrap().roots,
-				warnings: built.isOk() ? built.value.warnings : built.error,
-			};
+			const builder = builderOf(fs, index);
+			const built = await builder.build(config);
+			return built.isOk()
+				? {
+						roots: built.value.placement.roots,
+						warnings: built.value.warnings,
+					}
+				: {
+						roots: builder.place(config).unwrap().roots,
+						warnings: built.error,
+					};
 		};
 
 		const files = (root: ScannedRoot) =>
@@ -258,6 +264,16 @@ describe("Placer", () => {
 						relativePath: "Inventory",
 						source: abs("src/Inventory"),
 						initFile: "init.luau",
+						members: [
+							{
+								source: abs("src/Inventory/Helper.luau"),
+								below: ["Helper"],
+							},
+							{
+								source: abs("src/Inventory/init.luau"),
+								below: [],
+							},
+						],
 					},
 				]);
 			});
@@ -554,6 +570,9 @@ describe("Placer", () => {
 						relativePath: "Pkg",
 						source: abs("src/Pkg"),
 						initFile: "init.luau",
+						members: [
+							{ source: abs("src/Pkg/init.luau"), below: [] },
+						],
 					},
 				]);
 			});
@@ -744,7 +763,8 @@ describe("Placer", () => {
 				await write("src/A.luau");
 				const index = newIndex();
 				await index.initialize([abs("src")]);
-				index.applyChanges([
+				await write("src/B.luau");
+				await index.applyChanges([
 					{
 						type: FileChangeType.ADDED,
 						path: abs("src/B.luau"),
@@ -972,13 +992,13 @@ describe("Placer", () => {
 				...overrides,
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await buildServiceOf(fs, index).build(config);
-			return placeFiles(index, config, syncTools).map((build) => ({
-				routed: build.routed,
-				unrouted: [...build.leftOut]
-					.filter(([, why]) => why.status === "unrouted")
+			const built = await builderOf(fs, index).build(config);
+			return built.map(({ placement, warnings }) => ({
+				routed: placement.routed,
+				unrouted: placement.leftOut
+					.withStatus("unrouted")
 					.map(([source]) => source),
-				warnings: built.isOk() ? built.value.warnings : [],
+				warnings,
 			}));
 		};
 
@@ -1751,12 +1771,12 @@ describe("Placer", () => {
 				rootDirs: [...rootDirs],
 			});
 			const index = await indexOf(store, fs, rootDirs);
-			const built = await buildServiceOf(fs, index).build(config);
-			return placeFiles(index, config, syncTools).map(
-				({ files, leftOut }): TagResult => ({
+			const built = await builderOf(fs, index).build(config);
+			return built.map(
+				({ placement: { files, leftOut }, warnings }): TagResult => ({
 					files,
 					leftOut,
-					warnings: built.isOk() ? built.value.warnings : [],
+					warnings,
 				})
 			);
 		};
@@ -2033,7 +2053,9 @@ describe("Placer", () => {
 
 				const result = await apply({ mock: true, dev: true });
 
-				expect(result.isErr() ? result.error : []).toMatchObject([
+				expect(
+					result.isErr() ? result.error.diagnostics : []
+				).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Error,
 						code: "tag.activeClash",
@@ -2052,9 +2074,9 @@ describe("Placer", () => {
 
 				const result = await apply({ mock: true });
 
-				expect(result.isErr() ? result.error[0].code : "").toBe(
-					"tag.activeClash"
-				);
+				expect(
+					result.isErr() ? result.error.diagnostics[0].code : ""
+				).toBe("tag.activeClash");
 			});
 
 			it("should warn at the untagged file left out, naming the one used", async () => {

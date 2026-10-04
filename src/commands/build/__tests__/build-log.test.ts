@@ -1,6 +1,10 @@
 import path from "path";
-import { BuildSummary } from "../../../domain/build/build-service.js";
+import {
+	BuildSummary,
+	ConfigBuild,
+} from "../../../domain/build/build-service.js";
 import { ConfigEntry } from "../../../domain/config/config-service.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
@@ -15,14 +19,33 @@ const debugLines = (
 ): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	const resolved = { entry, config: mockConfig() };
 	const log = new BuildLog(logService, dir);
-	if (summary) log.written(resolved, true, summary, []);
-	else log.notWritten(resolved, []);
+	log.outcome(entry, summary ? builtOf(summary) : failed, []);
 	return logService.entries
 		.filter(({ kind }) => kind === "debug")
 		.map(({ text }) => text);
 };
+
+const failed: ConfigBuild = {
+	config: mockConfig(),
+	outcome: "failed",
+	warnings: [],
+	syncWarnings: [],
+	errors: [],
+};
+
+const builtOf = (
+	summary: BuildSummary,
+	outcome: "wrote" | "unchanged" | "notWritten" = "wrote"
+): ConfigBuild => ({
+	config: mockConfig(),
+	outcome,
+	warnings: [],
+	syncWarnings: [],
+	errors: [],
+	summary,
+	readFiles: [],
+});
 
 const entryOf = (overrides: Partial<ConfigEntry> = {}): ConfigEntry =>
 	new ConfigEntry({
@@ -150,5 +173,66 @@ describe("BuildLog build lines", () => {
 		).toEqual([
 			"left out: 2 unrouted, 1 replaced by a file with the same name, 3 displaced by the template",
 		]);
+	});
+});
+
+describe("BuildLog.outcome", () => {
+	const error = errorDiagnostic("x.err", { resource: "/repo/a" }, "bad.");
+
+	const lines = (
+		build: ConfigBuild,
+		diagnostics: ConfigBuild["errors"] = [],
+		note?: string
+	) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).outcome(
+			entryOf(),
+			build,
+			diagnostics,
+			note
+		);
+		return logService.entries.map(({ kind, text }) => [kind, text]);
+	};
+
+	it("should say a written config wrote or was unchanged", () => {
+		expect(lines(builtOf(summaryOf()))[0]).toEqual([
+			"success",
+			"default.project.json · wrote",
+		]);
+		expect(lines(builtOf(summaryOf(), "unchanged"))[0]).toEqual([
+			"success",
+			"default.project.json · unchanged",
+		]);
+	});
+
+	it("should say a failed config, and one another config stopped, were not written", () => {
+		expect(lines(failed)[0]).toEqual([
+			"error",
+			"default.project.json · not written",
+		]);
+		expect(lines(builtOf(summaryOf(), "notWritten"))[0]).toEqual([
+			"error",
+			"default.project.json · not written",
+		]);
+	});
+
+	it("should print the diagnostics it is given after the line", () => {
+		expect(lines({ ...failed, errors: [error] }, [error])).toEqual([
+			["error", "default.project.json · not written"],
+			["diagnosticError", expect.stringContaining("bad.")],
+		]);
+	});
+
+	it("should end the line of a written config with the note", () => {
+		expect(lines(builtOf(summaryOf()), [], "first build")[0]).toEqual([
+			"success",
+			"default.project.json · wrote · first build",
+		]);
+	});
+
+	it("should end the line of a config it didn't write with the note", () => {
+		expect(
+			lines({ ...failed, errors: [error] }, [], "see above")[0]
+		).toEqual(["error", "default.project.json · not written · see above"]);
 	});
 });

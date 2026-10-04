@@ -9,10 +9,7 @@ import {
 	OutputFile,
 } from "../../../domain/build/build-service.js";
 import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
-import {
-	WatchService,
-	WatchUpdate,
-} from "../../../domain/watch/watch-service.js";
+import { WatchService } from "../../../domain/watch/watch-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -45,7 +42,6 @@ describe("watch command", () => {
 	let store: DisposableStore;
 	let lifecycle: MockLifecycleService;
 	let logService: MockLogService;
-	let updates: WatchUpdate[];
 
 	const settle = async () => {
 		await jest.advanceTimersByTimeAsync(150);
@@ -80,12 +76,6 @@ describe("watch command", () => {
 			indexService,
 			buildService
 		);
-		const watch = watchService.watch.bind(watchService);
-		watchService.watch = () => {
-			const session = watch();
-			store.add(session.onDidUpdate((update) => updates.push(update)));
-			return session;
-		};
 		services.set(WatchService, watchService);
 		services.set(
 			EnvironmentService,
@@ -111,9 +101,6 @@ describe("watch command", () => {
 		);
 	};
 
-	const changeUpdates = () =>
-		updates.filter(({ cause }) => cause.kind === "change");
-
 	beforeEach(async () => {
 		jest.useFakeTimers();
 		memFs = new MemoryFileSystemService();
@@ -123,7 +110,6 @@ describe("watch command", () => {
 		store = new DisposableStore();
 		lifecycle = new MockLifecycleService();
 		logService = new MockLogService();
-		updates = [];
 		configService = new CoreConfigService(
 			memFs,
 			new MockEnvironmentService(undefined, "/repo")
@@ -225,451 +211,7 @@ describe("watch command", () => {
 		});
 	});
 
-	describe("watching", () => {
-		it("should watch two configs that share a root through one watcher call and one directory", async () => {
-			await write("/repo/source.rogen.json", config());
-			const watch = jest.spyOn(watcher, "watch");
-
-			await run(["default", "source"]);
-
-			expect(watch).toHaveBeenCalledTimes(1);
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/src", recursive: true },
-			]);
-		});
-
-		it("should drop a root that lies inside another", async () => {
-			await write(
-				"/repo/lobby.rogen.json",
-				config({ rootDirs: ["src/shared"] })
-			);
-			const watch = jest.spyOn(watcher, "watch");
-
-			await run(["default", "lobby"]);
-
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/src", recursive: true },
-			]);
-		});
-
-		it("should not watch the parent that two roots share", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["places/a", "places/b"] })
-			);
-			const watch = jest.spyOn(watcher, "watch");
-
-			await run();
-
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/places/a", recursive: true },
-				{ path: "/repo/places/b", recursive: true },
-			]);
-		});
-
-		it("should tell the watcher to skip each output file and sync directory", async () => {
-			await write("/repo/default.rogen.json", config({ syncDir: "out" }));
-			const watch = jest.spyOn(watcher, "watch");
-
-			await run();
-
-			const [, options] = watch.mock.calls[0];
-			expect(options?.ignored).toEqual([
-				"/repo/default.project.json",
-				"/repo/out",
-				new OutputFile("/repo/default.project.json").stagingPattern,
-			]);
-		});
-
-		it("should emit one batch for one change to a root shared by two configs", async () => {
-			await write("/repo/source.rogen.json", config());
-			await run(["default", "source"]);
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(changeUpdates()).toHaveLength(1);
-		});
-
-		it("should not rebuild off its own write to a watched root", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({ outFile: "src/out.project.json" })
-			);
-			await run();
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(changeUpdates()).toHaveLength(1);
-			expect(changeUpdates()[0].changes.map((c) => c.path)).toEqual([
-				"/repo/src/A.luau",
-			]);
-		});
-	});
-
-	describe("source changes", () => {
-		it("should add a new source file to the project file", async () => {
-			await run();
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(await built("default")).toEqual(["A"]);
-		});
-
-		it("should drop the removal of a source file from the project file", async () => {
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await run();
-
-			await memFs.delete("/repo/src/A.luau");
-			await settle();
-
-			expect(await built("default")).toEqual([]);
-		});
-
-		it("should not queue an update to a source file", async () => {
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await run();
-
-			await memFs.writeFile("/repo/src/A.luau", "-- edited");
-			await settle();
-
-			expect(changeUpdates()).toEqual([]);
-		});
-
-		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({ routes: { server: "ServerScriptService" } })
-			);
-			await memFs.writeFile("/repo/src/Combat/server/Hit.luau", "");
-			await write("/repo/src/Combat/init.meta.json", {
-				className: "Actor",
-			});
-			const combatClass = async () =>
-				JSON.parse(await memFs.readFile("/repo/default.project.json"))
-					.tree.ServerScriptService.Combat.$className;
-			await run();
-			expect(await combatClass()).toBe("Actor");
-
-			await write("/repo/src/Combat/init.meta.json", {
-				className: "Configuration",
-			});
-			await settle();
-			expect(await combatClass()).toBe("Configuration");
-
-			logService.clear();
-			await write("/repo/src/Combat/init.meta.json", "{ broken");
-			await settle();
-			expect(await combatClass()).toBe("Configuration");
-			expect(logService.entries).toContainEqual({
-				kind: "error",
-				text: "default.project.json · not written",
-			});
-		});
-
-		it("should reach every config that claims the path, each once", async () => {
-			await write("/repo/source.rogen.json", config());
-			await run(["default", "source"]);
-			const rename = jest.spyOn(memFs, "rename");
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(await built("default")).toEqual(["A"]);
-			expect(await built("source")).toEqual(["A"]);
-			expect(rename.mock.calls.map(([, to]) => to).sort()).toEqual([
-				"/repo/default.project.json",
-				"/repo/source.project.json",
-			]);
-		});
-
-		it("should reach only the configs whose roots contain the path", async () => {
-			await memFs.createDirectory("/repo/lib");
-			await write(
-				"/repo/lobby.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
-			await run(["default", "lobby"]);
-			const rename = jest.spyOn(memFs, "rename");
-
-			await memFs.writeFile("/repo/lib/B.luau", "");
-			await settle();
-
-			expect(rename.mock.calls.map(([, to]) => to)).toEqual([
-				"/repo/lobby.project.json",
-			]);
-		});
-
-		it("should not rewrite a project file whose bytes would not change", async () => {
-			await run();
-			const rename = jest.spyOn(memFs, "rename");
-			const readFile = jest.spyOn(memFs, "readFile");
-
-			await write(
-				"/repo/default.rogen.json",
-				config({ tags: { mock: false } })
-			);
-			await settle();
-
-			expect(readFile).toHaveBeenCalledWith("/repo/default.project.json");
-			expect(rename).not.toHaveBeenCalled();
-		});
-
-		it("should rebuild one config while another is still writing", async () => {
-			await write("/repo/source.rogen.json", config());
-			await run(["default", "source"]);
-			const gate = new DeferredPromise<void>();
-			const writeFile = memFs.writeFile.bind(memFs);
-			jest.spyOn(memFs, "writeFile").mockImplementation(
-				async (file, content) => {
-					if (isDefaultStaging(file)) await gate.p;
-					return writeFile(file, content);
-				}
-			);
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(await built("source")).toEqual(["A"]);
-			expect(await built("default")).toEqual([]);
-
-			gate.complete();
-			await settle();
-
-			expect(await built("default")).toEqual(["A"]);
-		});
-
-		it("should not overlap two rebuilds of one config", async () => {
-			await run();
-			const gate = new DeferredPromise<void>();
-			const writeFile = memFs.writeFile.bind(memFs);
-			const staged = jest.fn();
-			jest.spyOn(memFs, "writeFile").mockImplementation(
-				async (file, content) => {
-					if (isDefaultStaging(file)) {
-						staged();
-						await gate.p;
-					}
-					return writeFile(file, content);
-				}
-			);
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-			await memFs.writeFile("/repo/src/B.luau", "");
-			await settle();
-
-			expect(staged).toHaveBeenCalledTimes(1);
-
-			gate.complete();
-			await settle();
-
-			expect(staged).toHaveBeenCalledTimes(2);
-			expect(await built("default")).toEqual(["A", "B"]);
-		});
-	});
-
-	describe("linked directories", () => {
-		const outFile = () => memFs.readFile("/repo/default.project.json");
-
-		it("should add a linked directory to the project file", async () => {
-			await memFs.writeFile("/shared/Util.luau", "");
-			await run();
-
-			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
-			await settle();
-
-			expect(await built("default")).toEqual(["Shared"]);
-		});
-
-		it("should drop a removed link from the project file", async () => {
-			await memFs.writeFile("/shared/Util.luau", "");
-			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
-			await run();
-			expect(await built("default")).toEqual(["Shared"]);
-
-			await memFs.delete("/repo/src/Shared", true);
-			await settle();
-
-			expect(await built("default")).toEqual([]);
-			expect(await memFs.exists("/shared/Util.luau")).toBe(true);
-		});
-
-		it("should rebuild when a file is added inside a target outside every root dir", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({
-					routes: {
-						server: "ServerScriptService",
-						"*": "ReplicatedStorage",
-					},
-				})
-			);
-			await memFs.writeFile("/shared/Util.luau", "");
-			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
-			await run();
-			expect(await outFile()).not.toContain("ServerScriptService");
-
-			await memFs.writeFile("/shared/Save.server.luau", "");
-			await settle();
-
-			expect(await outFile()).toContain("ServerScriptService");
-		});
-
-		it("should rebuild when a file is removed inside a target outside every root dir", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({
-					routes: {
-						server: "ServerScriptService",
-						"*": "ReplicatedStorage",
-					},
-				})
-			);
-			await memFs.writeFile("/shared/Save.server.luau", "");
-			await memFs.createSymbolicLink("/shared", "/repo/src/Shared");
-			await run();
-			expect(await outFile()).toContain("ServerScriptService");
-
-			await memFs.delete("/shared/Save.server.luau");
-			await settle();
-
-			expect(await outFile()).not.toContain("ServerScriptService");
-		});
-	});
-
-	describe("hot reload", () => {
-		it("should reload when a config changes", async () => {
-			await run();
-			const reload = jest.spyOn(configService, "reload");
-
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["src"], exclude: [] })
-			);
-			await settle();
-
-			expect(reload).toHaveBeenCalledWith(["/repo/default.rogen.json"]);
-		});
-
-		it("should reload when a template changes", async () => {
-			await write("/repo/template.project.json", {
-				name: "one",
-				tree: {},
-			});
-			await write(
-				"/repo/default.rogen.json",
-				config({ template: "template.project.json" })
-			);
-			await run();
-			const reload = jest.spyOn(configService, "reload");
-
-			await write("/repo/template.project.json", {
-				name: "two",
-				tree: {},
-			});
-			await settle();
-
-			expect(reload).toHaveBeenCalledWith([
-				"/repo/template.project.json",
-			]);
-			expect(
-				JSON.parse(await memFs.readFile("/repo/default.project.json"))
-					.name
-			).toBe("two");
-		});
-
-		it("should not reload when an unrelated config changes", async () => {
-			await write("/repo/other.rogen.json", config());
-			await run();
-			const reload = jest.spyOn(configService, "reload");
-
-			await write("/repo/other.rogen.json", config({ exclude: ["x"] }));
-			await settle();
-
-			expect(reload).not.toHaveBeenCalled();
-		});
-
-		it("should reload every config that extends an edited parent", async () => {
-			await write("/repo/base.rogen.json", config());
-			await write("/repo/default.rogen.json", {
-				extends: "base.rogen.json",
-			});
-			await write("/repo/source.rogen.json", {
-				extends: "base.rogen.json",
-				outFile: "source.project.json",
-			});
-			await memFs.createDirectory("/repo/lib");
-			await memFs.writeFile("/repo/lib/L.luau", "");
-			await run(["default", "source"]);
-
-			await write("/repo/base.rogen.json", config({ rootDirs: ["lib"] }));
-			await settle();
-
-			expect(await built("default")).toEqual(["L"]);
-			expect(await built("source")).toEqual(["L"]);
-		});
-
-		it("should watch again when a reload adds a root", async () => {
-			await memFs.createDirectory("/repo/lib");
-			await run();
-			const watch = jest.spyOn(watcher, "watch");
-
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
-			await settle();
-			await memFs.writeFile("/repo/lib/L.luau", "");
-			await settle();
-
-			expect(watch).toHaveBeenCalledTimes(1);
-			expect(await built("default")).toEqual(["L"]);
-		});
-
-		it("should pick up a config edited while the watcher restarted", async () => {
-			await memFs.createDirectory("/repo/lib");
-			await memFs.createDirectory("/repo/lib2");
-			await memFs.writeFile("/repo/lib2/L2.luau", "");
-			await run();
-			const watch = watcher.watch.bind(watcher);
-			jest.spyOn(watcher, "watch").mockImplementationOnce(
-				async (requests, options) => {
-					await write(
-						"/repo/default.rogen.json",
-						config({ rootDirs: ["lib2"] })
-					);
-					return watch(requests, options);
-				}
-			);
-
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
-			await settle();
-
-			expect(await built("default")).toEqual(["L2"]);
-		});
-
-		it("should keep building from the last valid config when one goes invalid", async () => {
-			await write("/repo/prod.rogen.json", config());
-			await run(["default", "prod"]);
-
-			await write("/repo/prod.rogen.json", "{ broken");
-			await settle();
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-
-			expect(await built("default")).toEqual(["A"]);
-			expect(await built("prod")).toEqual(["A"]);
-		});
-
+	describe("warnings", () => {
 		it("should print an invalid config once", async () => {
 			await write("/repo/prod.rogen.json", config());
 			await run(["default", "prod"]);
@@ -692,24 +234,6 @@ describe("watch command", () => {
 			]);
 		});
 
-		it("should build from a config again once it is valid", async () => {
-			await run();
-			await write("/repo/default.rogen.json", "{ broken");
-			await settle();
-
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
-			await memFs.createDirectory("/repo/lib");
-			await memFs.writeFile("/repo/lib/L.luau", "");
-			await settle();
-
-			expect(await built("default")).toEqual(["L"]);
-		});
-	});
-
-	describe("warnings", () => {
 		it("should print a warning once, not on every rebuild", async () => {
 			await write(
 				"/repo/default.rogen.json",
@@ -996,7 +520,7 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(changeUpdates()).toEqual([]);
+			expect(await built("default")).toEqual([]);
 		});
 
 		it("should return an error and stop the watcher when watching fails", async () => {

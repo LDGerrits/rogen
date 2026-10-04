@@ -15,6 +15,7 @@ import {
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { ToolchainService } from "../../toolchain/toolchain-service.js";
+import { ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
 import { Placer } from "../placement.js";
 
@@ -33,6 +34,12 @@ export const placeFiles = (
 	config: ResolvedConfig,
 	tools: readonly SyncTool[]
 ) => new Placer(index, config, tools).place();
+
+export const builderOf = (
+	fs: FileSystemService,
+	index: IndexReader,
+	extraTools: readonly SyncTool[] = []
+) => new ConfigBuilder(fs, index, [...syncTools, ...extraTools]);
 
 export const buildServiceOf = (
 	fs: FileSystemService,

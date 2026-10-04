@@ -14,13 +14,4 @@ export abstract class AbstractConfigService extends AbstractDisposable {
 			entry.resolved ? [{ entry, config: entry.resolved }] : []
 		);
 	}
-
-	getBrokenError(): Error | undefined {
-		const broken = this.configs.filter((entry) => entry.isBroken);
-		return broken.length > 0
-			? new Error(
-					`${broken.length} of ${this.configs.length} configs have errors.`
-				)
-			: undefined;
-	}
 }

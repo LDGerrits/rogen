@@ -9,6 +9,7 @@ import { ErrorUtils } from "../../base/errors.js";
 import {
 	ancestors,
 	contains,
+	joinPosix,
 	outermostDirs,
 	toPosix,
 } from "../../base/path.js";
@@ -52,43 +53,56 @@ export class CoreIndexService implements IndexService {
 		dirs: readonly string[]
 	): Promise<Map<string, Map<string, FileType>>> {
 		const next = new Map<string, Map<string, FileType>>();
-
-		const traverse = async (currentDir: string): Promise<void> => {
-			const posixDir = toPosix(currentDir);
-
-			let entries: [string, FileType][];
-			try {
-				entries =
-					await this.fileSystemService.readDirectory(currentDir);
-			} catch (error) {
-				if (ErrorUtils.hasCode(error, "ENOENT")) return;
-				throw error;
-			}
-
-			const children = new Map<string, FileType>();
-			next.set(posixDir, children);
-			const subdirs: string[] = [];
-
-			for (const [name, type] of entries) {
-				const entryPath = path.join(currentDir, name);
-				if (
-					type & FileType.SymbolicLink &&
-					isDirectoryType(type) &&
-					(await this.linksToAncestor(entryPath))
-				) {
-					children.set(name, FileType.SymbolicLink);
-					continue;
-				}
-
-				children.set(name, type);
-				if (isDirectoryType(type)) subdirs.push(entryPath);
-			}
-
-			await Promise.all(subdirs.map((subdir) => traverse(subdir)));
-		};
-
-		await Promise.all(dirs.map((root) => traverse(root)));
+		await Promise.all(dirs.map((root) => this.traverse(root, next)));
 		return next;
+	}
+
+	private async traverse(
+		currentDir: string,
+		into: Map<string, Map<string, FileType>>
+	): Promise<void> {
+		const entries = await this.readDirectory(currentDir);
+		if (!entries) return;
+
+		const children = new Map<string, FileType>();
+		into.set(toPosix(currentDir), children);
+		const subdirs: string[] = [];
+
+		for (const [name, listed] of entries) {
+			const entryPath = path.join(currentDir, name);
+			const type = await this.classify(entryPath, listed);
+			children.set(name, type);
+			if (isDirectoryType(type)) subdirs.push(entryPath);
+		}
+
+		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
+	}
+
+	/** `undefined` when the directory doesn't exist, or, with `mayBeReplaced`, is no longer a directory. */
+	private async readDirectory(
+		dir: string,
+		mayBeReplaced = false
+	): Promise<[string, FileType][] | undefined> {
+		try {
+			return await this.fileSystemService.readDirectory(dir);
+		} catch (error) {
+			if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
+			if (mayBeReplaced && ErrorUtils.hasCode(error, "ENOTDIR"))
+				return undefined;
+			throw error;
+		}
+	}
+
+	/** A linked directory that leads back to an ancestor is recorded as only a link, so nothing descends into it. */
+	private async classify(
+		entryPath: string,
+		listed: FileType
+	): Promise<FileType> {
+		return listed & FileType.SymbolicLink &&
+			isDirectoryType(listed) &&
+			(await this.linksToAncestor(entryPath))
+			? FileType.SymbolicLink
+			: listed;
 	}
 
 	private async linksToAncestor(linkPath: string): Promise<boolean> {
@@ -128,39 +142,79 @@ export class CoreIndexService implements IndexService {
 		return this.tree.get(posixDir)?.get(name);
 	}
 
-	applyChanges(changes: FileChange[]): void {
-		for (const change of changes) {
-			const posixPath = toPosix(change.path);
-			const dir = toPosix(path.dirname(posixPath));
-			const name = path.basename(posixPath);
+	applyChanges(changes: readonly FileChange[]): Promise<void> {
+		return this.indexing.queue(async () => {
+			const listings = new Map<
+				string,
+				Map<string, FileType> | undefined
+			>();
+			const listingOf = async (dir: string) => {
+				if (!listings.has(dir)) {
+					const entries = await this.readDirectory(dir, true);
+					listings.set(dir, entries && new Map(entries));
+				}
+				return listings.get(dir);
+			};
 
-			if (change.type === FileChangeType.ADDED) {
-				this.addEntry(dir, name, change.fileType);
-			} else if (change.type === FileChangeType.DELETED) {
-				const parentMap = this.tree.get(dir);
-				if (parentMap) {
-					const type = parentMap.get(name);
-					parentMap.delete(name);
+			for (const change of changes) {
+				const posixPath = toPosix(change.path);
+				const dir = toPosix(path.dirname(posixPath));
+				const name = path.basename(posixPath);
 
-					if (type !== undefined && isDirectoryType(type)) {
-						this.removeDirectory(posixPath);
-					}
+				if (change.type === FileChangeType.ADDED) {
+					if (this.liesUnderLink(posixPath)) continue;
+					const listed = (await listingOf(dir))?.get(name);
+					if (listed === undefined) continue;
+					await this.addEntry(
+						dir,
+						name,
+						await this.classify(posixPath, listed)
+					);
+				} else if (change.type === FileChangeType.DELETED) {
+					this.deleteEntry(dir, name);
 				}
 			}
+		});
+	}
+
+	/** Whether an ancestor of `posixPath` is recorded as something other than a directory, such as a link nothing descends into. */
+	private liesUnderLink(posixPath: string): boolean {
+		for (let child = path.posix.dirname(posixPath); ;) {
+			const parent = path.posix.dirname(child);
+			if (parent === child) return false;
+			const type = this.tree.get(parent)?.get(path.posix.basename(child));
+			if (type !== undefined && !isDirectoryType(type)) return true;
+			child = parent;
 		}
 	}
 
-	private addEntry(posixDir: string, name: string, type: FileType): void {
+	private async addEntry(
+		posixDir: string,
+		name: string,
+		type: FileType
+	): Promise<void> {
 		if (!this.tree.has(posixDir)) {
 			this.tree.set(posixDir, new Map());
 		}
-
+		const previous = this.tree.get(posixDir)!.get(name);
 		this.tree.get(posixDir)!.set(name, type);
 
-		const fullPosixPath = posixDir === "." ? name : `${posixDir}/${name}`;
-		if (isDirectoryType(type) && !this.tree.has(fullPosixPath)) {
-			this.tree.set(fullPosixPath, new Map());
-		}
+		// A directory already indexed is kept; the changes under it arrive on their own.
+		const fullPosixPath = joinPosix(posixDir, name);
+		if (previous === type && this.tree.has(fullPosixPath)) return;
+		if (previous !== undefined && isDirectoryType(previous))
+			this.removeDirectory(fullPosixPath);
+		if (isDirectoryType(type))
+			await this.traverse(fullPosixPath, this.tree);
+	}
+
+	private deleteEntry(posixDir: string, name: string): void {
+		const parentMap = this.tree.get(posixDir);
+		if (!parentMap) return;
+		const type = parentMap.get(name);
+		parentMap.delete(name);
+		if (type !== undefined && isDirectoryType(type))
+			this.removeDirectory(joinPosix(posixDir, name));
 	}
 
 	private removeDirectory(dirPath: string): void {

@@ -7,7 +7,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildService } from "../build/build-service.js";
+import { BuildService, failedBuild } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { ChangeBatcher } from "./change-batcher.js";
@@ -154,34 +154,22 @@ export class CoreWatchSession
 		const blocked = this.blocked.get(file);
 		if (blocked) {
 			this.failing.add(file);
-			return { entry, config, outcome: "failed", diagnostics: blocked };
+			return {
+				...failedBuild(config, blocked),
+				entry,
+				checkedSyncDir: false,
+			};
 		}
 
 		const [build] = await this.buildService.run([config], {
 			checkSyncDir: load,
 		});
-		if (build.outcome === "notWritten")
-			throw new Error("A run of one config can't leave it unwritten.");
-		if (build.outcome === "failed") {
-			this.failing.add(file);
-			return {
-				entry,
-				config,
-				outcome: "failed",
-				diagnostics: build.errors,
-			};
+		if (build.outcome === "failed") this.failing.add(file);
+		else {
+			this.failing.delete(file);
+			this.readFiles.set(file, new Set(build.readFiles));
 		}
-		this.failing.delete(file);
-		this.readFiles.set(file, new Set(build.readFiles));
-
-		return {
-			entry,
-			config,
-			outcome: build.outcome,
-			diagnostics: build.warnings,
-			...(load && { syncDiagnostics: build.syncWarnings }),
-			summary: build.summary,
-		};
+		return { ...build, entry, checkedSyncDir: load };
 	}
 
 	/** Runs `task`, turning a throw into `onDidError`; queued work is dropped once the session stops. */
@@ -354,7 +342,7 @@ export class CoreWatchSession
 			this.plan.watches(change.path)
 		);
 		if (sourceChanges.length > 0) {
-			this.indexService.applyChanges(sourceChanges);
+			await this.indexService.applyChanges(sourceChanges);
 		}
 
 		const affected = new Set([

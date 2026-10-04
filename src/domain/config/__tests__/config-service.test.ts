@@ -6,7 +6,7 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { ParsedArgs } from "../../../platform/environment/args.js";
-import { configRefsFromArgs, requireValidEntries } from "../config-service.js";
+import { ConfigSelection, configRefsFromArgs } from "../config-service.js";
 import { MockConfigService, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
@@ -89,38 +89,6 @@ describe("domain/config/config-service", () => {
 		});
 	});
 
-	describe("getBrokenError", () => {
-		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
-
-		it("should count the configs with errors out of all of them", () => {
-			const service = new MockConfigService([
-				mockEntry({}, "/repo/a.rogen.json"),
-				mockEntry({}, "/repo/b.rogen.json", { diagnostics: [error] }),
-				mockEntry({}, "/repo/c.rogen.json", { diagnostics: [error] }),
-			]);
-
-			expect(service.getBrokenError()?.message).toBe(
-				"2 of 3 configs have errors."
-			);
-		});
-
-		it("should count a config that never resolved, even without errors", () => {
-			const service = new MockConfigService([
-				mockEntry({}, "/repo/a.rogen.json", { resolved: undefined }),
-			]);
-
-			expect(service.getBrokenError()?.message).toBe(
-				"1 of 1 configs have errors."
-			);
-		});
-
-		it("should be undefined when none is broken", () => {
-			expect(
-				new MockConfigService([mockEntry()]).getBrokenError()
-			).toBeUndefined();
-		});
-	});
-
 	describe("getConfig", () => {
 		it("should find the entry of a config file, and none for another", () => {
 			const entry = mockEntry({}, "/repo/a.rogen.json");
@@ -152,7 +120,39 @@ describe("domain/config/config-service", () => {
 		});
 	});
 
-	describe("requireValidEntries", () => {
+	describe("ConfigSelection.brokenError", () => {
+		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
+
+		it("should count the configs with errors out of all of them", () => {
+			const selection = new ConfigSelection([
+				mockEntry({}, "/repo/a.rogen.json"),
+				mockEntry({}, "/repo/b.rogen.json", { diagnostics: [error] }),
+				mockEntry({}, "/repo/c.rogen.json", { diagnostics: [error] }),
+			]);
+
+			expect(selection.brokenError?.message).toBe(
+				"2 of 3 configs have errors."
+			);
+		});
+
+		it("should count a config that never resolved, even without errors", () => {
+			const selection = new ConfigSelection([
+				mockEntry({}, "/repo/a.rogen.json", { resolved: undefined }),
+			]);
+
+			expect(selection.brokenError?.message).toBe(
+				"1 of 1 configs have errors."
+			);
+		});
+
+		it("should be undefined when none is broken", () => {
+			expect(
+				new ConfigSelection([mockEntry()]).brokenError
+			).toBeUndefined();
+		});
+	});
+
+	describe("ConfigSelection.requireValid", () => {
 		const problem = errorDiagnostic(
 			"config.unknownField",
 			{
@@ -163,12 +163,10 @@ describe("domain/config/config-service", () => {
 		);
 
 		it("should return every resolved config when all are valid", () => {
-			const service = new MockConfigService([
+			const result = new ConfigSelection([
 				mockEntry({ rootDirs: ["/repo/a"] }, "/repo/a.rogen.json"),
 				mockEntry({ rootDirs: ["/repo/b"] }, "/repo/b.rogen.json"),
-			]);
-
-			const result = requireValidEntries(service.configs);
+			]).requireValid();
 
 			expect(
 				result.unwrap().map(({ config }) => config.rootDirs)
@@ -176,14 +174,12 @@ describe("domain/config/config-service", () => {
 		});
 
 		it("should fail with the errors of every invalid entry", () => {
-			const service = new MockConfigService([
+			const result = new ConfigSelection([
 				mockEntry({}, "/repo/a.rogen.json"),
 				mockEntry({}, "/repo/prod.rogen.json", {
 					diagnostics: [problem],
 				}),
-			]);
-
-			const result = requireValidEntries(service.configs);
+			]).requireValid();
 
 			const error = (result as ResultError<DiagnosticsError>).error;
 			expect(error.diagnostics).toEqual([problem]);
@@ -193,11 +189,11 @@ describe("domain/config/config-service", () => {
 		});
 
 		it("should fail for an entry that has a last valid config but a broken file", () => {
-			const service = new MockConfigService([
+			const selection = new ConfigSelection([
 				mockEntry({}, undefined, { diagnostics: [problem] }),
 			]);
 
-			expect(requireValidEntries(service.configs).isErr()).toBe(true);
+			expect(selection.requireValid().isErr()).toBe(true);
 		});
 
 		it("should not fail on warnings", () => {
@@ -206,12 +202,12 @@ describe("domain/config/config-service", () => {
 				{ resource: "/repo/a.rogen.json" },
 				"careful."
 			);
-			const service = new MockConfigService([
+			const selection = new ConfigSelection([
 				mockEntry({}, undefined, { diagnostics: [warning] }),
 			]);
 
 			expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-			expect(requireValidEntries(service.configs).isOk()).toBe(true);
+			expect(selection.requireValid().isOk()).toBe(true);
 		});
 	});
 });

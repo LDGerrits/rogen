@@ -59,6 +59,34 @@ describe("domain/config/core-config-service", () => {
 	});
 
 	describe("initialize", () => {
+		it("should select the configs it loaded, and name the config files here it left out, sorted", async () => {
+			await write("/repo/match.rogen.json", {});
+			await write("/repo/default.rogen.json", {});
+			await write("/repo/lobby.rogen.json", {});
+			await fs.writeFile("/repo/README.md", "");
+			await fs.createDirectory("/repo/dir.rogen.json");
+			await write("/repo/nested/other.rogen.json", {});
+
+			const selection = (await start({ names: ["lobby"] })).unwrap();
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/lobby.rogen.json",
+			]);
+			expect(selection.unselected).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/match.rogen.json",
+			]);
+		});
+
+		it("should leave out nothing when it loads every config", async () => {
+			await write("/repo/default.rogen.json", {});
+			await write("/repo/lobby.rogen.json", {});
+
+			const selection = (await start({ all: true })).unwrap();
+
+			expect(selection.unselected).toEqual([]);
+		});
+
 		const refusal = async (refs: Partial<ConfigRefs>) => {
 			await write("/repo/lobby.rogen.json", {});
 			await write("/repo/match.rogen.json", {});
@@ -205,39 +233,6 @@ describe("domain/config/core-config-service", () => {
 			expect(service.files).toEqual(
 				new Set(["/repo/default.rogen.json", "/repo/base.rogen.json"])
 			);
-		});
-	});
-
-	describe("listConfigFiles", () => {
-		it("should list every config file in the working dir, sorted", async () => {
-			await write("/repo/lobby.rogen.json", {});
-			await write("/repo/default.rogen.json", {});
-			await fs.writeFile("/repo/README.md", "");
-			await fs.createDirectory("/repo/dir.rogen.json");
-			await write("/repo/nested/match.rogen.json", {});
-
-			expect(await service.listConfigFiles()).toEqual([
-				"/repo/default.rogen.json",
-				"/repo/lobby.rogen.json",
-			]);
-		});
-
-		it("should list nothing when there is no config file", async () => {
-			expect(await service.listConfigFiles()).toEqual([]);
-		});
-	});
-
-	describe("listUnselectedConfigFiles", () => {
-		it("should list the config files this run didn't select", async () => {
-			await write("/repo/default.rogen.json", {});
-			await write("/repo/lobby.rogen.json", {});
-			await write("/repo/match.rogen.json", {});
-			await service.initialize({ names: ["lobby"], paths: [] });
-
-			expect(await service.listUnselectedConfigFiles()).toEqual([
-				"/repo/default.rogen.json",
-				"/repo/match.rogen.json",
-			]);
 		});
 	});
 

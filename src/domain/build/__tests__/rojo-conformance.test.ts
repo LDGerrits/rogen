@@ -114,9 +114,8 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
 		});
-		const buildService = buildServiceOf(fileSystem, index);
-		const built = (await buildService.build(config)).unwrap();
-		(await buildService.write(built)).unwrap();
+		const [build] = await buildServiceOf(fileSystem, index).run([config]);
+		expect(build.outcome).toBe("wrote");
 	};
 
 	it("should place every Rojo-native file as Rojo would", async () => {

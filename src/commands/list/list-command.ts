@@ -5,6 +5,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import {
 	ConfigEntry,
+	ConfigSelection,
 	ConfigService,
 	configRefsFromArgs,
 } from "../../domain/config/config-service.js";
@@ -56,36 +57,33 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const refs = configRefsFromArgs(args, args._.slice(1));
-			const loaded = await configService.initialize({
+			const selection = await configService.initialize({
 				...refs,
 				all:
 					refs.all ||
 					(refs.names.length === 0 && refs.paths.length === 0),
 			});
-			if (loaded.isErr()) return loaded;
+			if (selection.isErr()) return selection;
+			const { entries, brokenError } = selection.value;
 
-			if (args.json) return this.listAsJson(configService, logService);
+			if (args.json) return this.listAsJson(selection.value, logService);
 
 			logService.intro("rogen list");
-			for (const entry of configService.configs)
-				this.describe(logService, entry, cwd);
+			for (const entry of entries) this.describe(logService, entry, cwd);
 
-			const broken = configService.getBrokenError();
-			if (broken) return err(broken);
-			logService.outro(
-				`${plural(configService.configs.length, "config")}.`
-			);
+			if (brokenError) return err(brokenError);
+			logService.outro(`${plural(entries.length, "config")}.`);
 			return ok(undefined);
 		}
 
 		private listAsJson(
-			configService: ConfigService,
+			selection: ConfigSelection,
 			logService: LogService
 		): Result<void, Error> {
-			const report = new ConfigReport(configService.configs);
+			const report = new ConfigReport(selection.entries);
 			logService.print(formatJsonDocument(report.json()));
 
-			const broken = configService.getBrokenError();
+			const broken = selection.brokenError;
 			return broken ? err(new ReportedError(broken)) : ok(undefined);
 		}
 

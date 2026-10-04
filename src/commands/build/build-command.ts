@@ -61,14 +61,12 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const loaded = await configService.initialize(
+			const selection = await configService.initialize(
 				configRefsFromArgs(args, args._.slice(1))
 			);
-			if (loaded.isErr()) return loaded;
+			if (selection.isErr()) return selection;
 
-			const targets = buildService.requireBuildable(
-				configService.configs
-			);
+			const targets = buildService.requireBuildable(selection.value);
 			if (targets.isErr()) return targets;
 
 			const builds = await buildService.run(
@@ -76,7 +74,7 @@ registerCommand(
 				{ checkSyncDir: true }
 			);
 			const errors = builds.flatMap((build) => build.errors);
-			const unselected = await configService.listUnselectedConfigFiles();
+			const { unselected } = selection.value;
 			return args.json
 				? this.reportAsJson(logService, builds, errors, unselected)
 				: this.report(
@@ -98,18 +96,8 @@ registerCommand(
 			log.begin("build", targets, unselected);
 
 			for (const [index, build] of builds.entries()) {
-				if (
-					build.outcome === "wrote" ||
-					build.outcome === "unchanged"
-				) {
-					if (builds.length > 1) log.heading(targets[index]);
-					log.written(
-						targets[index],
-						build.outcome === "wrote",
-						build.summary,
-						warningsOf(build)
-					);
-				} else log.diagnostics(warningsOf(build));
+				if (builds.length > 1) log.heading(targets[index]);
+				log.outcome(targets[index].entry, build, warningsOf(build));
 			}
 			if (errors.length > 0) return err(new DiagnosticsError(errors));
 

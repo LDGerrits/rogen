@@ -5,9 +5,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/config.js";
-import { ConfigEntry, ResolvedEntry } from "../config/config-service.js";
+import { ConfigSelection, ResolvedEntry } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
-import { RojoTree } from "../rojo/rojo-project.js";
 
 /** How a route or tag key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "separator" | "capital";
@@ -74,24 +73,6 @@ export interface BuildOptions {
 	readonly checkSyncDir?: boolean;
 }
 
-/** One config built in memory, which `run` goes on to write. */
-export interface BuiltProject {
-	/** Where `write` puts it. */
-	readonly outFile: string;
-	readonly tree: RojoTree;
-	readonly warnings: readonly Diagnostic[];
-	/** What `checkSyncDir` found; empty when it wasn't asked for. */
-	readonly syncWarnings: readonly Diagnostic[];
-	readonly summary: BuildSummary;
-	/** The files whose contents the build read, which a change to must rebuild it. */
-	readonly readFiles: readonly string[];
-}
-
-export interface WrittenProject {
-	/** Whether the file changed; unchanged bytes are left alone. */
-	readonly written: boolean;
-}
-
 /** What a run did for one config. */
 interface ConfigBuildFields {
 	readonly config: ResolvedConfig;
@@ -117,6 +98,19 @@ export type ConfigBuild = ConfigBuildFields &
 				readonly readFiles?: undefined;
 		  }
 	);
+
+/** A config whose build, write or set check went wrong; `said` is what its build warned about before that. */
+export function failedBuild(
+	config: ResolvedConfig,
+	errors: readonly Diagnostic[],
+	said: Pick<ConfigBuild, "warnings" | "syncWarnings"> = {
+		warnings: [],
+		syncWarnings: [],
+	}
+): ConfigBuild {
+	const { warnings, syncWarnings } = said;
+	return { config, outcome: "failed", warnings, syncWarnings, errors };
+}
 
 interface Located {
 	/** An absolute POSIX path. */
@@ -183,9 +177,9 @@ export class OutputFile {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** The resolved configs of `entries` when every entry is valid and they can be built together, else every error. */
+	/** The resolved configs of `selection` when every one is valid and they can be built together, else every error. */
 	requireBuildable(
-		entries: readonly ConfigEntry[]
+		selection: ConfigSelection
 	): Result<ResolvedEntry[], DiagnosticsError>;
 
 	/** The configs that declare no routes or share an out file, by config file, each with why. */
