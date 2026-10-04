@@ -7,7 +7,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildService } from "../build/build-service.js";
+import { BuildService, failedBuild } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { ChangeBatcher } from "./change-batcher.js";
@@ -155,12 +155,8 @@ export class CoreWatchSession
 		if (blocked) {
 			this.failing.add(file);
 			return {
+				...failedBuild(config, blocked),
 				entry,
-				config,
-				outcome: "failed",
-				warnings: [],
-				syncWarnings: [],
-				errors: blocked,
 				checkedSyncDir: false,
 			};
 		}

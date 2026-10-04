@@ -21,8 +21,7 @@ import { BuildLog } from "../build/build-log.js";
 interface ShownReport {
 	readonly report: RebuildReport;
 	readonly diagnostics: readonly Diagnostic[];
-	/** Its errors were all printed before. */
-	readonly repeated: boolean;
+	readonly note?: string;
 }
 
 interface WatchChange {
@@ -174,10 +173,11 @@ export class WatchLog {
 		const sync = report.checkedSyncDir
 			? this.printed.unseen(`${file}#sync`, report.syncWarnings)
 			: [];
+		const repeated = report.errors.length > 0 && !build.some(isError);
 		return {
 			report,
 			diagnostics: [...build, ...sync],
-			repeated: report.errors.length > 0 && !build.some(isError),
+			...(repeated && { note: "same errors as before" }),
 		};
 	}
 
@@ -191,7 +191,7 @@ export class WatchLog {
 		this.buildLog.diagnostics(warnings);
 	}
 
-	private report({ report, diagnostics, repeated }: ShownReport): void {
-		this.buildLog.outcome(report.entry, report, diagnostics, repeated);
+	private report({ report, diagnostics, note }: ShownReport): void {
+		this.buildLog.outcome(report.entry, report, diagnostics, note);
 	}
 }

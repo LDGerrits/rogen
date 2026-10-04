@@ -19,6 +19,7 @@ import {
 	ConfigLocations,
 	FileLocation,
 	LocateTargets,
+	failedBuild,
 } from "./build-service.js";
 import {
 	BuiltProject,
@@ -31,20 +32,6 @@ import { OutputWriter } from "./output-writer.js";
 interface Blocker {
 	readonly diagnostic: Diagnostic;
 	readonly files: readonly string[];
-}
-
-function failedBuild(
-	config: ResolvedConfig,
-	errors: readonly Diagnostic[],
-	built?: BuiltProject
-): ConfigBuild {
-	return {
-		config,
-		outcome: "failed",
-		warnings: built?.warnings ?? [],
-		syncWarnings: built?.syncWarnings ?? [],
-		errors,
-	};
 }
 
 function builtAs(
@@ -130,7 +117,8 @@ export class CoreBuildService implements BuildService {
 				builds[index] = failedBuild(
 					configs[index],
 					written.error.diagnostics,
-					project
+					project.warnings,
+					project.syncWarnings
 				);
 				break;
 			}

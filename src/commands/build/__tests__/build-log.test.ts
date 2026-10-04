@@ -182,14 +182,14 @@ describe("BuildLog.outcome", () => {
 	const lines = (
 		build: ConfigBuild,
 		diagnostics: ConfigBuild["errors"] = [],
-		repeated = false
+		note?: string
 	) => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).outcome(
 			entryOf(),
 			build,
 			diagnostics,
-			repeated
+			note
 		);
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
@@ -223,10 +223,13 @@ describe("BuildLog.outcome", () => {
 		]);
 	});
 
-	it("should say when a config's errors were printed before", () => {
-		expect(lines({ ...failed, errors: [error] }, [], true)[0]).toEqual([
-			"error",
-			"default.project.json · not written · same errors as before",
+	it("should add a note to the line of a config it wrote, or didn't", () => {
+		expect(lines(builtOf(summaryOf()), [], "first build")[0]).toEqual([
+			"success",
+			"default.project.json · wrote · first build",
 		]);
+		expect(
+			lines({ ...failed, errors: [error] }, [], "see above")[0]
+		).toEqual(["error", "default.project.json · not written · see above"]);
 	});
 });

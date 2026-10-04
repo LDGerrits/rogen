@@ -99,6 +99,16 @@ export type ConfigBuild = ConfigBuildFields &
 		  }
 	);
 
+/** A config whose build, write or set check went wrong; `warnings` are what its build said before that. */
+export function failedBuild(
+	config: ResolvedConfig,
+	errors: readonly Diagnostic[],
+	warnings: readonly Diagnostic[] = [],
+	syncWarnings: readonly Diagnostic[] = []
+): ConfigBuild {
+	return { config, outcome: "failed", warnings, syncWarnings, errors };
+}
+
 interface Located {
 	/** An absolute POSIX path. */
 	readonly source: string;

@@ -86,25 +86,26 @@ export class BuildLog {
 		this.logService.step(config.label);
 	}
 
-	/** One config's line for what the run did to its project file, then `diagnostics`; `repeated` says its errors were printed before. */
+	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
 	outcome(
 		entry: ConfigEntry,
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
-		repeated = false
+		note?: string
 	): void {
-		const outFile = relativeTo(this.cwd, build.config.outFile);
+		const line = (outcome: string) =>
+			[relativeTo(this.cwd, build.config.outFile), outcome, note]
+				.filter((part) => part !== undefined)
+				.join(" · ");
 		switch (build.outcome) {
 			case "wrote":
 			case "unchanged":
-				this.logService.success(`${outFile} · ${build.outcome}`);
+				this.logService.success(line(build.outcome));
 				this.details(entry, build.summary);
 				break;
 			case "notWritten":
 			case "failed":
-				this.logService.error(
-					`${outFile} · not written${repeated ? " · same errors as before" : ""}`
-				);
+				this.logService.error(line("not written"));
 				this.details(entry);
 				break;
 		}
