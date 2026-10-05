@@ -6,14 +6,14 @@ description: How code in one feature folder reaches code that runs somewhere els
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A feature folder keeps its files side by side on disk, but in the game they're spread across services:
+Files that sit side by side in a feature folder can end up in different services:
 
 ```
 src/Inventory/Server/InventoryService.luau  ->  ServerScriptService/Inventory/InventoryService
 src/Inventory/Shared/InventoryTypes.luau    ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
 ```
 
-A `require` runs in the game, so it resolves against the **instance tree**, not your folders. `InventoryService` can't reach `InventoryTypes` as a sibling, because in the game it isn't one. How you write the require instead depends on your setup.
+A `require` runs in the game, so it resolves against the instance tree, not your folders. In the game, `InventoryTypes` isn't a sibling of `InventoryService`. How you reach it depends on your setup.
 
 <Tabs items={["Luau", "Luau with Darklua", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -24,9 +24,7 @@ A `require` runs in the game, so it resolves against the **instance tree**, not 
     local InventoryTypes = require(ReplicatedStorage.Shared.Inventory.InventoryTypes)
     ```
 
-    luau-lsp resolves these through the sourcemap it generates from `default.project.json`, so types, completion and go-to-definition all lead to the right file.
-
-    Relative string requires resolve against the instance tree as well, so `./` only reaches files that end up in the same folder in the game. `require("./InventoryData")` from `Server/InventoryService.luau` works if `InventoryData.luau` is also in `Server/`, but a require that crosses into another service won't.
+    luau-lsp resolves these through the sourcemap it builds from `default.project.json`, so types and go-to-definition still lead to the right file. Relative string requires like `require("./InventoryData")` also resolve in the game, so they only reach files routed into the same folder.
   </Tab>
   <Tab value="Luau with Darklua">
     Write requires as paths on disk and let Darklua's `convert_require` rule turn them into instance requires:
@@ -51,7 +49,7 @@ A `require` runs in the game, so it resolves against the **instance tree**, not 
     }
     ```
 
-    Darklua looks each file up in `sourcemap.json` to find the instance it becomes. That's why `default.project.json` points at your source, and why the sourcemap needs to stay up to date as files move. See the [Darklua guide](/docs/v2/setups/darklua).
+    Darklua uses `sourcemap.json` to find each file's instance, so keep it up to date as files move. See the [Darklua guide](/docs/v2/setups/darklua).
   </Tab>
   <Tab value="roblox-ts">
     Import by file path:
@@ -60,16 +58,16 @@ A `require` runs in the game, so it resolves against the **instance tree**, not 
     import { InventoryTypes } from "../shared/InventoryTypes";
     ```
 
-    `rbxtsc` reads the project file to turn each import into an instance require, so the compiled code finds the right module wherever the file sits on disk. Keep `rogen watch` running next to `rbxtsc -w` so the project file is current before each compile.
+    `rbxtsc` reads the project file to turn imports into instance requires, so keep `rogen watch` running next to `rbxtsc -w`.
   </Tab>
 </Tabs>
 
-A file routed with `@` keeps the `@` on disk but loses it in the game. An instance require uses the in-game name, `InventoryService`, while a path (with Darklua or roblox-ts) uses the file name, `@` and all: `require("./InventoryService@server")`.
+The `@` in a routed file name only exists on disk. Instance requires use the game name (`InventoryService`), and path requires use the file name (`./InventoryService@server`).
 
 ## What Each Side Can See
 
-Where a file lands decides who can require it. Shared code in `ReplicatedStorage` runs on both sides, so it can't require anything only the server can see, such as `ServerScriptService` or `ServerStorage`. Two files in the same feature folder can easily end up on sides that can't see each other, so check where a file lands before you require it.
+Shared code runs on both sides, so it can't require anything only the server can see, like `ServerScriptService` or `ServerStorage`. Files in the same feature folder can land on sides that can't see each other, so check where a file lands before you require it.
 
 <Callout type="info" title="Find the instance path of a file">
-	`rogen where <file>` prints the instance path a file lands at, even if you haven't created the file yet. It works in reverse too: `rogen where ServerScriptService.Inventory.Save` prints the file behind an instance.
+	`rogen where <file>` prints a file's instance path, even before the file exists. It works in reverse too: `rogen where ServerScriptService.Inventory.Save` prints the file behind an instance.
 </Callout>

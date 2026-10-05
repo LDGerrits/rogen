@@ -11,12 +11,7 @@ A bad folder structure slows you down. You spend your time remembering where the
 
 ## The Problem: Technical Grouping
 
-Most Roblox codebases group files by what kind of code they are, not by what they're about. This is called **technical grouping**, and it usually comes in two flavors:
-
-1. **By type:** a folder per technical role, like `Controllers`, `Services` and `Utils`. You'll find this in every industry, and it's a well-known anti-pattern.
-2. **By runtime:** `server`, `client` and `shared` at the top of the tree. Rojo maps folders one-to-one onto instances, so Roblox tooling nudges you into this one. This is the one Rogen gets rid of.
-
-Either way, a single feature ends up scattered across the tree. Changing the **Inventory** system means searching three folders for its pieces, and deleting it means finding every last one of them.
+Most Roblox codebases group files by what kind of code they are, not what they're about: `Controllers`, `Services` and `Utils`, under `server`, `client` and `shared`. Rojo maps folders straight onto instances, so Roblox tooling nudges you toward that runtime split. The result is that one feature is scattered across the tree, and changing the **Inventory** system means hunting through three folders for its pieces.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -43,9 +38,7 @@ On Roblox, _where code runs_ is one of those steps. A feature has server, client
 
 ## The Solution: Package by Feature
 
-Put all the code for one feature (client, server and shared) in a single **feature folder**, named after what it does in your game. This is known as **package by feature**, and domain-driven design gives the same advice: name modules after the concepts in your game (`Trading`, `Quests`), not after technical roles.
-
-Rogen reads your folder and file names and generates a Rojo **project file** that puts every script in the Roblox **service** where it needs to run. It doesn't sync anything itself; Rojo or Argon reads the project file and syncs your code into Studio.
+Put all the code for one feature in a single **feature folder**, named after what it does in your game. Rogen reads your folder and file names and writes a Rojo **project file** that puts every script in the **service** where it runs. Rojo or Argon then syncs it into Studio as usual.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -79,7 +72,7 @@ Rogen reads your folder and file names and generates a Rojo **project file** tha
 
 </PreviewGroup>
 
-The **routes** in your [config](/docs/v2/configuration) tell Rogen where each kind of code goes:
+Your [config](/docs/v2/configuration) maps each kind of folder to a service:
 
 ```json title="default.rogen.json"
 {
@@ -97,7 +90,7 @@ The **routes** in your [config](/docs/v2/configuration) tell Rogen where each ki
 	gets every script in the right place.
 </Callout>
 
-Feature folders are a good place to start, but they're not your only option. Layers work too, as long as dependencies point one way and each layer is split by feature. [Architectures](/docs/v2/architectures) compares the layouts that work well with Rogen.
+Feature folders are a good place to start, but [Architectures](/docs/v2/architectures) covers other layouts that work well with Rogen, like layers and ECS.
 
 ## Where to Go Next
 

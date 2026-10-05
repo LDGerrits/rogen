@@ -162,17 +162,17 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 
 ## Why It Fits a Game
 
-- **The server/client problem is VS Code's problem.** VS Code splits by runtime so code for one environment never calls another's APIs. That's the same rule you want between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
-- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about other features, because no feature requires another. A pull request that stays inside `features/Trading` can't break the rest of the game.
-- **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` you can require, test or disable on its own.
-- **Live games keep changing.** New modes and events are just new folders in `features/`, sitting on a core that changes less often.
+- **Server and client is VS Code's problem too.** VS Code splits by runtime so code for one environment never calls another's APIs, the same rule you want between `Server` and `Client`.
+- **It scales with the team.** No feature requires another, so work in `features/Trading` can't break the rest of the game.
+- **One entry point per side.** Scripts only start in `app/`, as Roblox recommends, so everything else is a module you can require, test or disable.
+- **Live games keep changing.** New modes and events are new folders in `features/`, on a core that changes less often.
 
 ## Trade-offs
 
-- **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers once utilities and infrastructure start piling up.
-- **Every module needs a layer.** Choosing between `core` and `features`, or between `platform` and `base`, is a judgment call, so write down what each layer means for your game.
-- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table; in Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
-- **Longer paths in Studio**, unless you make the layers invisible, which trades long paths for possible name clashes.
+- **More folders.** Small games don't need five layers; start with [feature folders](/docs/v2/architectures/feature-folders) and add layers as things pile up.
+- **Every module needs a layer.** `core` or `features`? `platform` or `base`? Write down what each layer means for your game.
+- **The rules need a linter.** ESLint can enforce them in roblox-ts; Luau has no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **Longer paths in Studio,** unless you make the layers invisible and accept possible name clashes.
 
 ## Feature-Sliced Design
 

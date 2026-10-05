@@ -6,16 +6,11 @@ description: Folder layouts that work well with Rogen, and when to pick each.
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-[Core Concepts](/docs/v2/core-concepts/routing) explains how Rogen reads a tree. These pages help you decide which tree to write. Each one describes a layout that works well for a Roblox game, where the idea comes from, and what it costs you.
+[Core Concepts](/docs/v2/core-concepts/routing) explains how Rogen reads a tree. These pages are about which tree to write: layouts that work well for Roblox games, where they come from, and what they cost.
 
 ## Two Axes
 
-A Roblox codebase can be split along two axes:
-
-- **Where code runs:** server, client or both. Roblox requires this split at runtime.
-- **What code is about:** inventory, combat, trading.
-
-Rojo maps folders one-to-one onto instances, so without Rogen the first axis has to be your top-level split. Rogen flips that around: every layout here puts features (or layers, then features) at the top, with `Server/`, `Client/` and `Shared/` inside them.
+You can split a Roblox codebase by **where code runs** (server, client, both) or by **what it's about** (inventory, combat, trading). Without Rogen, Rojo forces the first split onto your top-level folders. Every layout here flips that: features (or layers, then features) at the top, with `Server/`, `Client/` and `Shared/` inside.
 
 ## Comparison
 
@@ -29,19 +24,17 @@ Rojo maps folders one-to-one onto instances, so without Rogen the first axis has
 
 ## Pick This If…
 
-- **Feature folders** if you're just starting out or moving away from `server/client/shared`. It's the smallest change to how you already write code, and the other two build on it.
-- **Layered** if your codebase has grown to the point where utilities, infrastructure and gameplay start to blur together, and you want a clear rule for which module may require which.
-- **ECS by feature** if you already use Jecs or Matter, or your game has lots of entities that share behavior, like mobs, projectiles and vehicles.
+- **Feature folders** if you're starting out or moving away from `server/client/shared`. It's the smallest change, and the other two build on it.
+- **Layered** once utilities, infrastructure and gameplay start to blur together and you want a rule for what may require what.
+- **ECS by feature** if you use Jecs or Matter, or have lots of entities that share behavior.
 
-The layouts also mix well. A layered codebase has feature folders in `core/` and `features/`, and ECS can live inside `features/`.
+They mix well, too: a layered codebase has feature folders inside it, and ECS can live in `features/`.
 
 ## Enforcing the Rules
 
-Every rule on these pages is a rule about paths: `platform` doesn't require `features`, one feature doesn't require another, `Shared` doesn't require `Server`. Feature folders put the layer, the feature and the side in every file's path, so a linter can check each rule just by comparing two paths.
+Every rule on these pages is a rule about paths: `platform` doesn't require `features`, features don't require each other, `Shared` doesn't require `Server`. Because the layer, feature and side are in every path, a linter can check each rule by comparing two paths. With `client/Controllers/InventoryController`, you couldn't even write "inventory doesn't require trading" down.
 
-With technical grouping, you can't even write these rules down. `InventoryController` sits in `client/Controllers/` next to every other controller, and nothing in its path says it belongs to the inventory, so there's no way to express "the inventory doesn't require trading", let alone check it.
-
-Rogen only routes files; it doesn't read your `require` calls, so checking them is up to your tools. Roblox does enforce one rule for you: `ServerScriptService` isn't replicated, so a client can't require server code at all. But a shared module that requires server code only fails once a client loads it, and a feature that reaches into another's internals works fine right up until someone changes them.
+Rogen doesn't read your `require` calls, so checking them is up to your tools. Roblox catches a client requiring server code, but a shared module that does so only fails once a client loads it, and a feature poking at another's internals works fine until someone changes them.
 
 ### roblox-ts
 
@@ -91,11 +84,11 @@ Luau doesn't have a common linter for requires yet, but the check is the same co
 
 ### Why It Pays Off
 
-- **A smaller blast radius.** When features can't require each other, a change inside `features/Shop` can only break the shop, and a pull request's file list tells you what it can affect.
-- **Safe deletes.** Nothing outside a feature requires it, so removing its folder can't break anything else.
-- **Teams can work in parallel.** Two people on two features touch different folders, and a crossed boundary fails in CI instead of turning up in review weeks later.
-- **Agents stay inside the lines.** An agent can run the linter, see which boundary it crossed, and fix it before you review. See [Working with agents](/docs/v2/agents).
-- **The architecture holds up.** Rules that only live in people's heads get broken one shortcut at a time. Rules in a lint config don't.
+- **A smaller blast radius.** A change inside `features/Shop` can only break the shop.
+- **Safe deletes.** Nothing outside a feature requires it, so removing it can't break anything else.
+- **Parallel work.** Crossed boundaries fail in CI, not in review weeks later.
+- **Agents stay inside the lines.** They can run the linter and fix what they crossed. See [Working with agents](/docs/v2/agents).
+- **The architecture holds up.** Rules in people's heads erode one shortcut at a time; rules in a lint config don't.
 
 <Callout type="info" title="About the examples">
 	The trees use the routes `rogen init` writes for Luau. In a roblox-ts project, the routing folders are lowercase (`server/`, `client/`, `shared/`) and the files end in `.ts`. Client modules go to `StarterPlayerScripts` because that's where `init` sends them; point the `Client` route at a folder in `ReplicatedStorage` if you'd rather keep them there.

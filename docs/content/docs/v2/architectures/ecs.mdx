@@ -127,14 +127,15 @@ Server systems stay in `ServerScriptService` where clients can't see them, while
 
 ## Why It Fits a Game
 
-- **Many entities, shared behavior.** Mobs, projectiles and vehicles are combinations of the same components, so a system you write once applies to every entity that has them.
-- **Each system picks its side.** As with Unity's worlds, a system runs on the server, the client or both, and its folder says which. A feature with authority on the server and effects on the client stays in one place.
-- **Components are the contract.** The server and client agree on data, not on each other's code. `Shared/Components.luau` is everything the two sides have in common.
-- **Performance.** Jecs advertises cache-friendly archetype storage, and ECS keeps hot loops running over plain data.
+- **Many entities, shared behavior.** Mobs, projectiles and vehicles are combinations of the same components, so one system covers them all.
+- **Each system picks its side.** Its folder says whether it runs on the server, the client or both, while the feature stays in one place.
+- **Components are the contract.** Server and client agree on data, not on each other's code.
+- **Performance.** ECS keeps hot loops running over plain data, and Jecs uses cache-friendly archetype storage.
 
 ## Trade-offs
 
-- **A different way of thinking.** ECS asks you to think in data and queries instead of objects. UI and one-off logic are often simpler as plain modules alongside it, and a feature folder has room for both.
-- **Systems are spread across folders.** Matter's getting-started guide loads every system from one folder. With systems in every feature, collecting them becomes your entry point's job.
-- **Ordering is global.** Systems from different features still run in one schedule, so the order lives in the scheduler, not in the folders.
-- **Rogen doesn't check the rules.** A system that requires another system still works, so hold the line in review or lint it. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **A different way of thinking.** UI and one-off logic are often simpler as plain modules, and a feature folder has room for both.
+- **Systems are spread out,** so collecting them is your entry point's job.
+- **Ordering is global.** The schedule lives in the scheduler, not the folders.
+- **Rogen doesn't check the rules.** Lint them or hold the line in review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+

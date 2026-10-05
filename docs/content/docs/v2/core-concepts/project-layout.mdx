@@ -4,91 +4,63 @@ description: Shape the tree with invisible folders, init folders, metadata and e
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
-import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen scans the **root directories** listed in `rootDirs` and turns what it finds into a tree. Routes and variants do most of the shaping, but a few other rules matter too.
+Rogen scans the **root directories** in `rootDirs` and turns them into a tree. Routes and variants do most of the shaping, but a few more rules apply.
 
-<Steps>
+## Invisible Folders
 
-<Step>
-### Invisible Folders
-
-Wrap a folder name in parentheses, like `(Internals)`, to group files on disk without the folder showing up in the generated tree. Parentheses are stripped before names are matched, so `(mock)` still counts as a variant folder and `(server)` as a routing folder.
+Wrap a folder name in parentheses, like `(Internals)`, to group files on disk without the folder appearing in the game. Parentheses are stripped before matching, so `(mock)` is still a variant folder and `(server)` a routing folder.
 
 ```
 src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 ```
 
-</Step>
+## Init Folders
 
-<Step>
-### Init Folders
+Rojo treats a folder with an `init` or `index` script as a single instance, so Rogen routes it as a whole and leaves its contents alone.
 
-Rojo treats a folder with an `init` or `index` script as a single instance, so Rogen routes the folder as a whole and leaves what's inside alone.
+## Data Files
 
-</Step>
+Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route and variant suffixes go before the extension. `.d.ts` files are skipped.
 
-<Step>
-### Data Files
+## Metadata Files
 
-Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the same way Rojo reads them. Route and variant suffixes go before the extension. TypeScript declaration files (`.d.ts`) are skipped.
+A `*.meta.json` file sets a class, properties or attributes that a file or folder can't express on its own.
 
-</Step>
+For a file, name the meta after the instance name Rojo gives it, without `.server`, `.client` or `.plugin`: `Save.server.luau` takes `Save.meta.json`. A variant file keeps its full name, so `Analytics.mock.luau` takes `Analytics.mock.meta.json` even when it's renamed in the game.
 
-<Step>
-### Metadata Files
-
-A `*.meta.json` file sets the things a file or folder can't express on its own: a class, properties or attributes. It never becomes an instance itself.
-
-- **For a file**, name the metadata after the name Rojo gives that file, which is the file name without its extension and any final `.server`, `.client` or `.plugin`. So `Save.server.luau` takes `Save.meta.json` (Rojo ignores `Save.server.meta.json`). `Analytics.mock.luau` takes `Analytics.mock.meta.json`, even when an active variant renames it to `Analytics`, because Rojo looks metadata up by the file's own name. Models (`.rbxm`, `.rbxmx`, `*.model.json`) and `*.project.json` files can't have any.
-- **For a folder**, `init.meta.json` applies to every node the folder turns into. For example, this makes a feature folder an `Actor`:
+For a folder, `init.meta.json` applies to every node the folder becomes. This makes a feature folder an `Actor` in every service it lands in:
 
 ```json title="src/Combat/init.meta.json"
 { "className": "Actor" }
 ```
 
-With `Combat/Server/` and `Combat/Client/`, `Combat` becomes one node in each service, and both of them are `Actor`s. Where Rojo reads a folder directly, as with init folders, it applies the meta itself; everywhere else Rogen copies `className`, `properties`, `attributes`, `ignoreUnknownInstances` and `id` onto the node for you.
+When several folders become the same node, the last root directory with a meta wins. Two metas reaching the same node within one root directory are an error, as is an `id` that would end up on two nodes. If the template defines the node too, the template wins.
 
-When several folders turn into the same node:
+Rogen warns about metadata with nothing to apply to, such as an `init.meta.json` in a routing, variant or invisible folder, or a `*.meta.json` no file claims.
 
-- Across root directories, the last one with an `init.meta.json` wins outright. A later folder without one leaves the earlier meta in place.
-- Within one root directory, two metas that reach the same node are an error (for example `src/Server/Combat/` next to `src/Combat/`).
-- An `id` that would end up on more than one node is an error, since refs have to be unique.
-- If the template defines the same node, the template wins. Its `$properties` are merged over the meta's key by key, its `$attributes` replace the meta's, and its `$className` is kept, with a warning if the two disagree.
-
-Rogen warns about metadata that has nothing to apply to: an `init.meta.json` in a folder that never becomes an instance (a routing, variant or invisible folder), one in a folder that shares its instance with a script (like `Combat/` beside `Combat.server.luau`, which needs `Combat.meta.json` instead), and a `*.meta.json` that no file beside it claims.
-
-<Callout type="warn">
-With a `syncDir`, Rojo reads the metadata files from your compiler's output. roblox-ts copies them over unchanged, but Darklua turns each one into a `.meta.lua` module, so the metadata is lost and Rojo syncs a stray `Save.meta` ModuleScript instead. The folder meta Rogen copies itself is read from your source, so it survives. For everything else, Rogen warns when a `*.meta.json` has no copy under the `syncDir`.
+<Callout type="warn" title="Darklua drops metadata">
+	With a `syncDir`, Rojo reads metadata from your compiler's output. roblox-ts copies it over, but Darklua turns each file into a stray `.meta.lua` module. Folder meta survives because Rogen reads it from your source, and Rogen warns about any other `*.meta.json` missing from the sync directory.
 </Callout>
 
-</Step>
+## Excluding Files
 
-<Step>
-### Excluding Files
-
-`exclude` lists globs, relative to the config's folder, for files that should never be built. An **excluded** file is left out of the output, and Rogen won't route it or warn about it.
+`exclude` lists globs, relative to the config, for files that should never be built. Rogen doesn't route or warn about excluded files.
 
 ```json
 { "exclude": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-To sync a vendored library exactly as it is, mount it in the [template](/docs/v2/core-concepts/output#template) instead. Rogen leaves mounted folders alone, so they don't need an `exclude`.
-
-</Step>
-
-</Steps>
+To sync a vendored library exactly as it is, [mount it in the template](/docs/v2/core-concepts/output#template) instead.
 
 ## Linked Directories
 
-A symlink or Windows junction inside a root directory is read as the directory it points to, which is handy for pulling code shared between repos into one tree. Rogen only ever writes the link's own path, so the project file stays portable. A link that loops back to a parent or points at nothing is skipped with a warning.
+Symlinks and Windows junctions inside a root directory are followed, which is handy for sharing code between repos. The project file keeps the link's own path, so it stays portable. Broken or looping links are skipped with a warning.
 
 ## Several Root Directories
 
-With several root directories, their feature folders merge into one tree. When two of them produce the same instance, the **later root directory wins**, which is how one codebase can serve several places (see the [multi-place guide](/docs/v2/setups/multi-place)).
-
-Root directories can't contain one another. One that doesn't exist yet only gets a warning, and `watch` picks it up as soon as it appears.
+Several root directories merge into one tree, and the later one wins any clash. That's how one codebase serves several places; see the [multi-place guide](/docs/v2/setups/multi-place). Root directories can't nest, and one that doesn't exist yet only gets a warning until it appears.
 
 <Callout type="info" title="Rogen only reads names">
-	The tree depends only on file and folder names, so editing the contents of a script never changes the output.
+	The tree depends only on file and folder names, so editing a script's contents never changes the output.
 </Callout>

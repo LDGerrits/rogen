@@ -5,26 +5,24 @@ description: Why a Rogen layout suits coding agents, and how to tell an agent ab
 
 ## Why
 
-Coding agents do their best work when the context they need is in one place and you can easily check what they did. A Rogen layout gives you both.
+Coding agents work best when the context they need is in one place and their changes are easy to check. A Rogen layout gives you both.
 
-1. **One folder, one feature.** Everything about the shop lives in `Shop/`. Point the agent at that folder and it has the context it needs, without digging through three trees to find the pieces.
-2. **A small blast radius.** An agent's change shows up as files in the folders it touched. If a diff stays inside `Shop/` and features don't require each other, it can only break the shop, and you can tell that from the file list before reading a line of code.
-3. **Boundaries a linter can check.** Rules like "features don't require each other" or "`Shared` only requires `Shared`" are rules about paths, and feature folders put the layer, the feature and the side in every path. Enforce them with a linter, and the agent can see which boundary it crossed and fix it before you review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
-4. **Placement is declared.** Where a file ends up in Studio comes from a short `routes` map in the config, not from conventions the agent has to infer from the tree.
-5. **No generated file to break.** Rogen replaces the `*.project.json` on every build, so there's no hand-maintained project file for an agent to corrupt.
-6. **It checks its own work.** `rogen where` prints where a file lands and why, whether or not it exists yet. `rogen build` warns about files that match no route, an `@` that routes nowhere, scripts that will never run, server code that ends up on the client, and clashing instances. The agent runs both after moving files and fixes whatever comes up.
+1. **One folder, one feature.** Point the agent at `Shop/` and it has everything about the shop.
+2. **A small blast radius.** If features don't require each other, a diff that stays inside `Shop/` can only break the shop, and the file list tells you that before you read any code.
+3. **Boundaries a linter can check.** Rules like "features don't require each other" are rules about paths, so a linter can catch a crossed boundary before you review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+4. **Placement is declared.** Where a file ends up comes from a short `routes` map, not from conventions the agent has to infer.
+5. **No generated file to break.** Rogen rewrites the project file on every build, so there's nothing hand-maintained for an agent to corrupt.
+6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen build` warns about anything misplaced.
 
-An agent that doesn't know about Rogen assumes the path on disk is the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or tucks a `Server/` folder inside `Shared/` and ships server code to every client. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. You can install them as a skill or paste them into your `AGENTS.md`.
+Left to itself, an agent assumes the path on disk is the instance path. It edits the generated project file, requires server code from shared code, or puts a `Server/` folder inside `Shared/` and ships it to every client. A few rules prevent all of that, and you can install them as a skill or paste them into `AGENTS.md`.
 
 ## Install the skill
 
-The skill lives at `skills/rogen` in the [Rogen repository](https://github.com/LDGerrits/rogen) and uses the open [Agent Skills](https://agentskills.io) format, which Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents understand. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to set it up for:
+The skill lives in [`skills/rogen`](https://github.com/LDGerrits/rogen) and uses the open [Agent Skills](https://agentskills.io) format, which most coding agents understand. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
 npx skills add LDGerrits/rogen
 ```
-
-The skill keeps its reference material on variants, configs and the CLI in a second file, which the agent only reads when it needs to.
 
 ## Or add it to `AGENTS.md`
 
@@ -71,6 +69,4 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
 ````
 
-The snippet covers the mistakes an agent tends to make on its own. For everything else, it can rely on the diagnostics, since each one says what to change.
-
-If you're writing a tool that drives Rogen, use `--json` on `build`, `where`, `list` and `init` instead of parsing text. See [JSON output](/docs/v2/cli#json-output).
+The snippet covers the mistakes agents tend to make. For everything else, Rogen's diagnostics say what to change. Tools that drive Rogen can use [`--json`](/docs/v2/cli#json-output) instead of parsing text.
