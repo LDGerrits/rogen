@@ -1,25 +1,25 @@
 ---
 title: Multi-Place
-description: Step-by-step setup guide for sharing code across multiple places.
+description: Share code across several places in one repo.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Combine multiple directories into one project. Seamlessly share core code across places.
+Give each place its own config that combines the shared code with the place's own folder.
 
 <Steps>
 
 <Step>
 ### Structure the Repository
 
-Create separate directories for shared and place-specific code.
+Keep shared code and each place's code in separate folders:
 
 <SystemWindow>
 	<TreeFolder name="src" open />
-	<TreeFolder level="{1}" name="core" />
-	<TreeFolder level="{1}" name="lobby" />
-	<TreeFolder level="{1}" name="match" />
+	<TreeFolder level={1} name="core" />
+	<TreeFolder level={1} name="lobby" />
+	<TreeFolder level={1} name="match" />
 </SystemWindow>
 
 </Step>
@@ -27,7 +27,7 @@ Create separate directories for shared and place-specific code.
 <Step>
 ### Configure the Lobby Place
 
-Create a configuration file for the Lobby place. Use the `source` array to supply multiple inputs.
+Create a config for the lobby, and list both folders in `source`:
 
 ```json title="lobby.rogen.json"
 {
@@ -45,14 +45,14 @@ Create a configuration file for the Lobby place. Use the `source` array to suppl
 }
 ```
 
-Rogen reads all listed directories and merges files cleanly into `ReplicatedStorage` and `ServerScriptService`.
+Rogen reads every listed folder and merges them into one tree.
 
 </Step>
 
 <Step>
 ### Configure the Match Place
 
-Create a second configuration file for the Match place.
+Do the same for the match:
 
 ```json title="match.rogen.json"
 {
@@ -75,7 +75,7 @@ Create a second configuration file for the Match place.
 <Step>
 ### Start Watching
 
-Specify the configuration file to build using the `-c` or `--config` flag.
+Pick the config to build with `-c` or `--config`:
 
 ```bash
 rogen watch --config lobby.rogen.json
@@ -86,6 +86,6 @@ rogen watch --config lobby.rogen.json
 </Steps>
 
 <Callout type="info">
-	If Rogen finds identical file names at the exact same path, the directory
-	listed last in the `source` array overwrites previous files.
+	If two folders have a file at the same path, the one listed last in
+	`source` wins.
 </Callout>

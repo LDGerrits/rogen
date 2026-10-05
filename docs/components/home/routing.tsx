@@ -11,7 +11,7 @@ export function Routing() {
 						How routing works
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Your config declares the routes. A file follows one in
+						Your config names the routes. A file picks one up in
 						three ways
 					</p>
 				</div>
@@ -26,14 +26,14 @@ export function Routing() {
 						},
 						{
 							title: "Marker Files",
-							desc: "Put an empty file named after a route in a folder. The folder keeps its name",
+							desc: "Drop an empty file named after a route into a folder. The whole folder follows it and keeps its name",
 							example: "AntiCheat/.server",
 							result: "ServerScriptService/AntiCheat/…",
 						},
 						{
-							title: "Suffixes",
-							desc: "End a file name with a route to send just that file",
-							example: "Combat/CombatServiceServer.luau",
+							title: "The @ Sign",
+							desc: "End a name with @ and a route to send just that file. A module stays a module",
+							example: "Combat/CombatService@server.luau",
 							result: "ServerScriptService/Combat/CombatService",
 						},
 					].map((rule, i) => (

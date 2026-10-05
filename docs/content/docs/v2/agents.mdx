@@ -5,26 +5,26 @@ description: Why a Rogen layout suits coding agents, and how to tell an agent ab
 
 ## Why
 
-A coding agent works best when the context it needs is in one place, and when you can check what it did. A Rogen layout gives it both.
+A coding agent does its best work when the context it needs is in one place, and when you can easily check what it did. A Rogen layout gives you both.
 
 1. **One folder, one feature.** Everything about the shop is in `Shop/`. Point the agent at that folder and it has the right context, without reading three trees to find the pieces.
-2. **A small blast radius.** An agent's change shows up as files in the folders it touched. A diff confined to `Shop/` touched the shop and nothing else, and when features don't require each other, it can only break the shop. You can see that from the file list before reading a line.
-3. **Boundaries a linter can check.** "Features don't require each other." "`platform` doesn't require `features`." "`Shared` requires only `Shared`." Each is a rule about paths, and feature folders put the layer, the feature and the side in every path. State the rules in `AGENTS.md` and enforce them with a linter: the agent runs it, sees the boundary it crossed, and fixes it before you review. Grouping by `Controllers/` and `Services/` can't express these rules at all. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
-4. **Placement is declared.** Where a file ends up in Studio is decided by a short `routes` map in the config, not by conventions the agent has to guess from the tree.
+2. **A small blast radius.** An agent's change shows up as files in the folders it touched. A diff that stays inside `Shop/` only touched the shop, and if features don't require each other, it can only break the shop. You can see that from the file list before reading a line.
+3. **Boundaries a linter can check.** "Features don't require each other." "`platform` doesn't require `features`." "`Shared` only requires `Shared`." Each of these is a rule about paths, and feature folders put the layer, the feature and the side in every path. Write the rules in `AGENTS.md` and enforce them with a linter: the agent runs it, sees which boundary it crossed, and fixes it before you review. With `Controllers/` and `Services/` folders, you can't even express these rules. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+4. **Placement is declared.** Where a file ends up in Studio comes from a short `routes` map in the config, not from conventions the agent has to guess from the tree.
 5. **No generated file to break.** The `*.project.json` is output. Rogen replaces it on every build, so there's no hand-maintained project file for an agent to corrupt.
-6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` prints diagnostics for files that match no route, `@` names that route nowhere, scripts that will never run, server code that ships to clients, and instances that clash. The agent runs both after moving files and fixes what they report.
+6. **It checks its own work.** `rogen where` prints where a file lands and why, before or after it exists. `rogen build` warns about files that match no route, an `@` that routes nowhere, scripts that will never run, server code that ends up on the client, and clashing instances. The agent runs both after moving files and fixes whatever they report.
 
-An agent that doesn't know Rogen reads the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or leaves a Rojo `.client` suffix on a file that is meant to be a server module. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install it as a skill, or paste it into your `AGENTS.md`.
+An agent that doesn't know Rogen treats the disk path as the instance path. It edits the generated `*.project.json`, requires a server module from shared code because the two sit side by side on disk, or tucks a `Server/` folder inside `Shared/` and ships server code to every client. A short set of rules prevents all three: route every file with a folder, build once after a batch of changes, and require by instance path. Install them as a skill, or paste them into your `AGENTS.md`.
 
 ## Install the skill
 
-The skill lives at `skills/rogen` in the [Rogen repository](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format. Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents read it. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to install it for:
+The skill lives at `skills/rogen` in the [Rogen repository](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format. Claude Code, Codex, Cursor, Gemini CLI, Copilot and most other coding agents can read it. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI, which asks which agents to install it for:
 
 ```bash
 npx skills add LDGerrits/rogen
 ```
 
-The skill keeps its variant, config and CLI reference in a second file that the agent reads only when it needs it.
+The skill keeps its variant, config and CLI reference in a second file that the agent only reads when it needs to.
 
 ## Or add it to `AGENTS.md`
 
@@ -43,34 +43,34 @@ src/Inventory/Client/InventoryController.luau  ->  StarterPlayer/StarterPlayerSc
 src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
 ```
 
-- Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
-- A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
-- Only the outermost route acts. Inside a routing folder, another route is ignored whole: `Shared/Server/Datastore.luau` stays in `ReplicatedStorage`, so never put server code under `Shared/`.
-- To route one file without a folder, write `@key` before the extension (`InventoryService@server.luau`). It never changes the script class. Only `.server` and `.client` route through a dot.
+- Read the keys and their targets from the config's `routes`, since a repo can rename or add them. `rogen list --json` resolves an `extends` chain.
+- A file's instance path is its route's target, then its folders minus the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
+- Only the outermost route counts. A routing folder inside another is an ordinary folder: `Shared/Server/Datastore.luau` ships to clients as `Shared/Server/Datastore`. Never nest them.
+- To route a single file without a folder, end its name with `@` and the key: `Save@server.luau` is a ModuleScript named `Save` in the server's target.
 - `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`rogen where ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
 ### After a batch of changes
 
-- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, or displaced by a template node.
+- Run `rogen where` on the paths you added, moved or renamed, and check that each one lands where you meant. It also shows files that were left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, mounted by the template, or displaced by a template node.
 - Then run `rogen build --all` once and fix every warning that names your files.
-- Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
+- Leave `rogen watch` and `rojo serve` to the user. They never exit, and `rogen build` is safe to run beside them.
 
 ### Requires and imports
 
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see `ServerScriptService`.
-- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`); string requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
-- roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
-- Keep the import boundaries the repo states, in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
+- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`). String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
+- roblox-ts: import by relative file path. `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+- Respect the import boundaries the repo states in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place, so move it instead of adding an exception.
 
 ### Ownership
 
-- `rogen build` overwrites the `*.project.json` each config writes: put changes in the config, or in the `template` it merges into.
-- The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
-- Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
+- `rogen build` overwrites the `*.project.json` each config writes. Put changes in the config, or in the `template` it merges into.
+- The `syncDir` (`out`, `dist`) is compiler output. Edit the sources in the root directories.
+- Add a place with `rogen init <name> --json` rather than by hand. It writes the place's config and any extra files Darklua or roblox-ts need, then make every edit listed in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
+For variants (`Foo.mock.luau`), marker files, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
 ````
 
-The snippet covers the mistakes an agent makes on its own. The rest it can look up when a build prints a diagnostic, since every diagnostic names what to change.
+The snippet covers the mistakes an agent makes on its own. Everything else it can look up when a build prints a diagnostic, since each diagnostic says what to change.
 
-A tool that drives Rogen can read `--json` from `build`, `where`, `list` and `init` instead of parsing text: see [JSON output](/docs/v2/cli#json-output).
+A tool that drives Rogen can read `--json` from `build`, `where`, `list` and `init` instead of parsing text. See [JSON output](/docs/v2/cli#json-output).

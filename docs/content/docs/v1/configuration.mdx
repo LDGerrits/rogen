@@ -1,13 +1,13 @@
 ---
 title: Configuration
-description: The complete guide to the .rogen.json configuration file.
+description: Every field of the .rogen.json configuration file.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-The `.rogen.json` file controls the project. Store the file in the root directory to define source folders, routing preferences, and the base project tree.
+`.rogen.json` configures your project: the source folders, how routing behaves, and the base project tree. Keep it in the project root.
 
-Below is an verbose example configuration that demonstrates some top-level options and mode-specific overrides:
+Here's a fuller example with some top-level options and a mode that overrides them:
 
 ```json title=".rogen.json"
 {
@@ -48,57 +48,57 @@ Below is an verbose example configuration that demonstrates some top-level optio
 
 ### `source`
 
-_(Required)_ A string or an array of strings. Defines the directories containing uncompiled code. Rogen scans these folders to generate the map. Passing an array merges multiple folders.
+_(Required)_ A string or an array of strings. The folders with your uncompiled code, which Rogen scans to build the tree. With an array, the folders are merged.
 
 ### `tags`
 
-_(Optional)_ A key-value object mapping tag names to booleans. Assign `true` to keep associated files, or `false` to drop associated files.
+_(Optional)_ An object mapping tag names to booleans. `true` keeps the tagged files, and `false` drops them.
 
 ### `casing`
 
-_(Optional)_ Defines the capitalization of generated wrapper folders (like `server` or `client`). Accepts `"camelCase"` (default) or `"PascalCase"`.
+_(Optional)_ How the generated wrapper folders (like `server` or `client`) are capitalized: `"camelCase"` (the default) or `"PascalCase"`.
 
 ### `verbatim`
 
-_(Optional)_ A boolean flag. Set to `true` to keep routing affixes in the final script names instead of removing them. Defaults to `false`.
+_(Optional)_ A boolean. Set it to `true` to keep routing keywords in script names instead of stripping them. Defaults to `false`.
 
 ### `unwrap`
 
-_(Optional)_ A boolean flag. Set to `true` to not have global wrapper folders like `server`, `client`, or `shared` at the root of each service in Roblox Studio.
+_(Optional)_ A boolean. Set it to `true` to leave out the wrapper folders (`server`, `client` and `shared`) at the root of each service in Studio.
 
 ### `aliases`
 
-_(Optional)_ An object defining custom routing maps. Register new affixes or overwrite default service routing.
+_(Optional)_ An object of custom routing keywords. Use it to add your own keywords or change where the built-in ones go.
 
 ### `globIgnorePaths`
 
-_(Optional)_ An array of glob string patterns. Matches file or directory paths to ignore entirely.
+_(Optional)_ An array of glob patterns. Matching files and folders are ignored completely.
 
 ### `project`
 
-_(Optional)_ Defines the base Rojo tree. Accepts an inline JSON object or a string path to an external JSON file. Rogen merges generated paths directly into this object.
+_(Optional)_ The base Rojo tree, either inline or as a path to a JSON file. Rogen merges the paths it generates into it.
 
 ---
 
 ## Modes
 
-Define mode-specific pipelines for different workflows, such as `luau`, `ts`, or `darklua`. It is possible to define custom modes as well!
+A mode is a pipeline for one workflow, such as `luau`, `ts` or `darklua`. You can define your own modes too.
 
 ### `output`
 
-_(Required)_ A string path defining the Rojo project file location.
+_(Required)_ The path of the Rojo project file to write.
 
 ### `build`
 
-_(Required)_ A string path defining the directory containing the code that is synced to Roblox Studio.
+_(Required)_ The folder whose code gets synced to Studio.
 
 ### `tags`
 
-_(Optional)_ A key-value object mapping tag names to booleans. Assign `true` to keep associated files, or `false` to drop associated files.
+_(Optional)_ An object mapping tag names to booleans, overriding the top-level `tags` for this mode.
 
 ### `globIgnorePaths`
 
-_(Optional)_ An array of glob string patterns. Matches file or directory paths to ignore entirely.
+_(Optional)_ An array of glob patterns to ignore in this mode.
 
 ```json title=".rogen.json"
 {

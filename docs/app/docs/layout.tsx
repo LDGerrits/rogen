@@ -10,12 +10,12 @@ export default function Layout({ children }: LayoutProps<"/docs">) {
 			tabs={[
 				{
 					title: "v2",
-					description: "Next release",
+					description: "The latest release",
 					url: "/docs/v2",
 				},
 				{
 					title: "v1",
-					description: "The latest release",
+					description: "The previous release",
 					url: "/docs/v1",
 				},
 			]}

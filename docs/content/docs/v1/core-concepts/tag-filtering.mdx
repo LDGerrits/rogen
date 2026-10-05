@@ -1,22 +1,21 @@
 ---
 title: Tag Filtering
-description: Filter test and development scripts from production builds.
+description: Keep test and development scripts out of production builds.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Projects often contain code meant only for testing, mock data, or development tools. Rogen can filter these files using tags.
+Most projects have code that's only for testing, mock data or development tools. Tags let you keep those files out of a build.
 
 <Steps>
 
 <Step>
 ### Using Tags
 
-Define tags inside the `.rogen.json` file or via the CLI. Add these tags to file names, folder names, or marker files.
+Define tags in `.rogen.json` or on the command line, then use them in file names, folder names or marker files.
 
-Tag entire folders by naming the folder after the tag (e.g., `dev`), or by placing an empty marker file (like `.dev`) inside the directory.
-It is also possible to append tags to file names just like the routing keywords:
+To tag a whole folder, name it after the tag (`dev`), or put an empty marker file like `.dev` inside it. You can also add a tag to a file name, the same way as a routing keyword:
 
 - `InventoryService.spec.luau`
 - `TeleportDev.luau`
@@ -26,33 +25,31 @@ It is also possible to append tags to file names just like the routing keywords:
 <Step>
 ### Build Rules
 
-When a tag has been found in the folder or file name, it follows these rules:
+When a folder or file name contains a tag:
 
-1. **Inactive Tags:** Rogen drops the item from the build entirely.
-2. **Active Tags:** Rogen keeps the file and strips the tag from the name.
+1. **Inactive tag:** Rogen leaves it out of the build.
+2. **Active tag:** Rogen keeps it and strips the tag from the name.
 
 </Step>
 
 <Step>
 ### Build-Time Dependency Injection
 
-When a folder has an active tag, the folder becomes invisible in Roblox Studio, but the contents remain.
-This behavior allows developers to swap scripts based on the tag without altering `require` paths.
+A folder named after an active tag disappears in Studio, but its contents stay. That lets you swap scripts by tag without changing any `require` paths.
 
-To showcase this, create a folder named `prod` and a folder named `dev`. Place an `AnalyticsService.luau` inside both folders.
+For example, create a `prod` folder and a `dev` folder, each with its own `AnalyticsService.luau`:
 
 - `src/core/prod/AnalyticsService.luau`
 - `src/core/dev/AnalyticsService.luau`
 
-Build the project with the `dev` tag active. Rogen will drop the `prod` folder entirely.
-Rogen strips the `dev` folder name, placing the mock `AnalyticsService` directly at `core/AnalyticsService`.
+Build with the `dev` tag active, and Rogen drops the `prod` folder entirely. It removes the `dev` folder from the path, so the development `AnalyticsService` lands at `core/AnalyticsService`.
 
 </Step>
 
 </Steps>
 
 <Callout type="info" title="Configuration">
-	Configure tags inside the `.rogen.json` file using a key-value object of
-	booleans. Assign `true` to activate a tag, or `false` to deactivate the tag.
-	Set tags globally, or override tags per build mode (like `luau` or `ts`).
+	Tags are an object of booleans in `.rogen.json`: `true` turns a tag on and
+	`false` turns it off. Set them at the top level, or override them per mode
+	(like `luau` or `ts`).
 </Callout>

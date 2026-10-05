@@ -1,31 +1,32 @@
 ---
 title: Luau
-description: Step-by-step setup guide for a Luau project.
+description: Set up Rogen in a Luau project.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen builds Luau projects directly. There's no compiler, so Rojo syncs the root directories themselves and no sync directory is needed.
+Luau is the simplest setup. There's no compiler, so Rojo syncs straight from your root directories and you don't need a sync directory.
 
 <Steps>
 
 <Step>
 ### Create the Config
 
-Run the initialization command in the project root:
+In the project root, run:
 
 ```bash
 rogen init
 ```
 
-It writes `default.rogen.json` and prints what to do next:
+It writes `default.rogen.json` and tells you what to do next:
 
 ```
 Created default.rogen.json.
 Next steps
-  rogen watch
-  rojo serve default.project.json
+  Run each in its own terminal:
+    rogen watch
+    rojo serve default.project.json
   Add your own routes under "routes" in default.rogen.json.
   Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
 ```
@@ -43,14 +44,14 @@ Next steps
 }
 ```
 
-In a terminal, `init` asks about the root directories, the routes and where files that match no route go. Pressing Enter at every question writes the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional ones until you install) and writes a `template.project.json` for them. If a hand-written `default.project.json` is already there, it copies it to `template.project.json` instead, so nothing in it is lost.
+In a terminal, `init` asks about the root directories, the routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, until you install) and writes a `template.project.json` for them. If you already have a hand-written `default.project.json`, it copies that to `template.project.json` instead, so you don't lose anything.
 
 </Step>
 
 <Step>
 ### Lay Out a Feature
 
-Put each feature in a folder under `src`, with a routing folder per side:
+Give each feature a folder under `src`, with a routing folder per side:
 
 ```
 src/Inventory/Server/InventoryService.luau
@@ -58,14 +59,14 @@ src/Inventory/Client/InventoryController.luau
 src/Inventory/Shared/InventoryTypes.luau
 ```
 
-Rogen sends them to `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. See [Routing](/docs/v2/core-concepts/routing).
+Rogen puts them in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. See [Routing](/docs/v2/core-concepts/routing).
 
 </Step>
 
 <Step>
 ### Start Watching
 
-Run Rogen in watch mode. Rogen builds `default.project.json` and updates it when files change.
+Start Rogen in watch mode. It builds `default.project.json` and keeps it up to date as files change.
 
 ```bash
 rogen watch
@@ -76,7 +77,7 @@ rogen watch
 <Step>
 ### Sync with Rojo
 
-Open a separate terminal window and start Rojo with the generated project file.
+In a second terminal, start Rojo:
 
 ```bash
 rojo serve
@@ -87,5 +88,5 @@ rojo serve
 </Steps>
 
 <Callout type="info">
-	`rojo serve` with no argument picks up `default.project.json`, which is the file `rogen watch` writes.
+	With no argument, `rojo serve` picks up `default.project.json`, which is exactly the file `rogen watch` writes.
 </Callout>

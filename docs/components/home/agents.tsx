@@ -11,7 +11,7 @@ export function Agents() {
 						Built for you and your agents
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						A layout that people and coding agents can both read
+						A layout that people and coding agents read the same way
 					</p>
 				</div>
 
@@ -23,7 +23,7 @@ export function Agents() {
 						},
 						{
 							title: "A small blast radius",
-							desc: "A change inside one feature can only break that feature, and the file list shows which one",
+							desc: "A change inside one feature can only break that feature, and the file list tells you which",
 						},
 						{
 							title: "Boundaries a linter checks",
@@ -31,11 +31,11 @@ export function Agents() {
 						},
 						{
 							title: "Placement is declared",
-							desc: "Where a file ends up is a short routes map to read, not a convention to guess",
+							desc: "Where a file ends up comes from a short routes map, not a convention to guess",
 						},
 						{
 							title: "No generated file to break",
-							desc: "The project file is output. Rogen rewrites it, so nobody edits it by hand",
+							desc: "The project file is output. Rogen rewrites it every build, so nobody edits it by hand",
 						},
 						{
 							title: "It checks its own work",

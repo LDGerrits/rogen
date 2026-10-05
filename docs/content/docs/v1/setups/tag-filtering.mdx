@@ -1,19 +1,19 @@
 ---
 title: Tag Filtering
-description: Step-by-step setup guide to tag filtering.
+description: Set up separate development and production builds with tags.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Tags filter test files, mock data, and development scripts from production builds. Rogen drops inactive files and strips active tags from file names.
+Tags keep test files, mock data and development scripts out of production builds. Rogen drops files with an inactive tag and strips active tags from file names.
 
 <Steps>
 
 <Step>
 ### Configure Modes
 
-Open the `.rogen.json` configuration file. Create separate build modes for development and production. Add a `tags` object inside each mode. Assign `true` to active tags. Assign `false` to inactive tags.
+In `.rogen.json`, add one mode for development and one for production. Give each a `tags` object, with `true` for the tags it keeps and `false` for the ones it drops.
 
 ```json title=".rogen.json"
 {
@@ -43,19 +43,19 @@ Open the `.rogen.json` configuration file. Create separate build modes for devel
 
 ### Build the Project
 
-Run Rogen via the CLI. Specify the target mode using the `-m` or `--mode` flag.
+Pick the mode with `-m` or `--mode`:
 
 ```bash
 rogen watch -m luau-dev
 ```
 
-Because the `luau-dev` mode is used, any item containing `prod` will be completely dropped.
+In the `luau-dev` mode, anything tagged `prod` is left out.
 
 </Step>
 
 </Steps>
 
 <Callout title="CLI Overrides" type="info">
-	Override configured tags via the CLI using the `-t` or `--tag` flag (e.g.
-	`rogen watch -m luau-prod -t debug`)
+	Turn on extra tags from the command line with `-t` or `--tag`, as in
+	`rogen watch -m luau-prod -t debug`.
 </Callout>

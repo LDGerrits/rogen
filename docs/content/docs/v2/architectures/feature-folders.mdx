@@ -5,11 +5,11 @@ description: One folder per feature, with its server, client and shared code ins
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-The baseline, and the reason Rogen exists. Also known as **package by feature**, or **vertical slices**.
+The baseline layout, and the reason Rogen exists. It's also known as **package by feature**, or **vertical slices**.
 
 ## The Rule
 
-Everything one feature needs goes in one folder, and nothing else does. Inside the feature folder, a routing folder per side says where each piece runs:
+Everything one feature needs goes in one folder, and nothing else does. Inside it, a routing folder per side says where each piece runs:
 
 - `Server/` for code only the server runs,
 - `Client/` for code only clients run,
@@ -57,23 +57,22 @@ A small game with three features:
 	<TreeFile name="ShopCatalog.luau" level={3} />
 </SystemWindow>
 
-`Inventory` is the plain case: a service on the server, a controller on the client and the types both sides share. The other two show that common game patterns fit inside a feature folder.
+`Inventory` is the plain case: a service on the server, a controller on the client and the types both sides share. The other two show how common game patterns fit inside a feature folder.
 
 ### A Component: `Door`
 
-The [component pattern](https://gameprogrammingpatterns.com/component.html) exists to "allow a single entity to span multiple domains without coupling the domains to each other". On Roblox, a component is usually bound to every instance with a [tag](https://create.roblox.com/docs/studio/properties#instance-tags), and tags replicate from the server to the client, so both sides find the same doors.
+The [component pattern](https://gameprogrammingpatterns.com/component.html) exists to "allow a single entity to span multiple domains without coupling the domains to each other". On Roblox, a component is usually bound to every instance with a given [tag](https://create.roblox.com/docs/studio/properties#instance-tags). Tags replicate from the server to the client, so both sides find the same doors.
 
-- `DoorServer` owns the state: it checks who may open a door, and opens it.
+- `DoorServer` owns the state: it checks who can open a door, and opens it.
 - `DoorClient` animates the door and plays its sound.
 - `DoorConfig` holds the tag name and timings both sides read.
 
-`DoorServer` ends in `Server`, which is also a route key, but only `@` and Rojo's dots route in a file name. The `Server/` folder is what routes the module, and it keeps its full name.
 
 ### UI With a View Model: `Shop`
 
-In [MVVM](https://learn.microsoft.com/en-us/archive/blogs/johngossman/introduction-to-modelviewviewmodel-pattern-for-building-wpf-apps), a view model holds the state of a view, and the view only draws it. The split maps onto the sides of a game:
+In [MVVM](https://learn.microsoft.com/en-us/archive/blogs/johngossman/introduction-to-modelviewviewmodel-pattern-for-building-wpf-apps), a view model holds the state of a view, and the view just draws it. The split maps neatly onto the sides of a game:
 
-- **Model:** `ShopCatalog` (the items and prices, shared) and `ShopService` (the purchase, which only the server may decide).
+- **Model:** `ShopCatalog` (the items and prices, shared) and `ShopService` (the purchase, which only the server gets to decide).
 - **View model:** `ShopState`, the client-side state of the window: whether it's open, which item is selected.
 - **View:** `ShopWindow` and `ShopItemCard`, written with a UI library such as [Fusion](https://elttob.uk/Fusion/0.3/) or [react-lua](https://github.com/jsdotlua/react-lua).
 
@@ -81,7 +80,7 @@ In [MVVM](https://learn.microsoft.com/en-us/archive/blogs/johngossman/introducti
 
 ## The Config
 
-The routes `rogen init` writes are all this layout needs. The invisible folder needs no config.
+The routes `rogen init` writes are all this layout needs, and the invisible folder needs no config at all.
 
 ```json title="default.rogen.json"
 {
@@ -132,18 +131,18 @@ Each feature folder appears once in every service it has code in. The routing fo
 
 ## Why It Fits a Game
 
-- **A gameplay feature spans every side.** Input on the client, validation on the server, types in between. A feature folder keeps all three in one place, so a change to the shop is a change to `Shop/`.
-- **Removing a feature is one delete.** `Shop/` goes, and so does every script it placed in Studio. That's O'Hanley's test for modularity.
-- **Server code stays on the server.** `Server/` routes to `ServerScriptService`, which isn't replicated, so exploiters can't read it. Keeping the split inside the feature makes it visible in every folder, not just at the root.
+- **A gameplay feature spans every side.** Input on the client, validation on the server, types in between. A feature folder keeps all three together, so a change to the shop is a change to `Shop/`.
+- **Removing a feature is one delete.** Delete `Shop/`, and every script it placed in Studio goes with it. That's O'Hanley's test for modularity.
+- **Server code stays on the server.** `Server/` routes to `ServerScriptService`, which isn't replicated, so exploiters can't read it. With the split inside each feature, you see it in every folder, not just at the root.
 - **The tree tells you what the game is.** The top level reads `Door`, `Inventory`, `Shop`, not `server`, `client`, `shared`.
 
 ## Trade-offs
 
-- **Code used everywhere needs a home.** A `Signal` class or a remote wrapper belongs to no single feature. Give it a feature folder of its own, named after what it does. When there are many of these, the [layered](/docs/v2/architectures/layered) layout gives them a place.
-- **Rogen doesn't stop a feature from reaching into another.** It doesn't read requires. Because the feature is in every path, a linter can: see [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **Code used everywhere needs a home.** A `Signal` class or a remote wrapper doesn't belong to any one feature. Give it a feature folder of its own, named after what it does. Once there are many of these, the [layered](/docs/v2/architectures/layered) layout gives them a place.
+- **Rogen doesn't stop one feature from reaching into another.** It doesn't read requires. But because the feature is in every path, a linter can. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 - **Paths get one level deeper.** Requires read `ReplicatedStorage.Shared.Shop.ShopCatalog` instead of `ReplicatedStorage.Shared.ShopCatalog`.
-- **Big features need sub-folders.** A feature can hold folders of its own, and routing folders can sit at any depth inside them.
+- **Big features need subfolders.** A feature can have folders of its own, with routing folders at any depth inside them. Just don't nest one routing folder inside another: only the outer one counts.
 
 <Callout type="info">
-	Routing folders are the recommended way to route here. A suffix such as `Door@server.luau` works too, and the `@` keeps it from reading like Rojo's `.server.luau`. See [Suffixes](/docs/v2/core-concepts/routing#suffixes).
+	Routing folders are the recommended way to route in this layout. For a feature with only a file or two, `Door@server.luau` works too and keeps the feature flat. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
 </Callout>

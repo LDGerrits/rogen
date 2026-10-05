@@ -1,25 +1,24 @@
 ---
 title: Routing Rules
-description: Learn how Rogen routes files using File Names, Marker Files, and Folder Names.
+description: How Rogen routes files by folder name, file name and marker file.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen uses naming rules to send files into correct Roblox service containers like `ServerScriptService` or `StarterPlayerScripts`.
-There are 3 primary ways to route code: **Folder Names**, **File Names**, and **Marker Files**.
+Rogen uses names to decide which Roblox service each file goes to, such as `ServerScriptService` or `StarterPlayerScripts`. There are three ways to route code: **folder names**, **file names** and **marker files**.
 
 <Steps>
 
 <Step>
 ### Folder Names
 
-Name a folder after a routing keyword (`server`, `client`, `shared`) or a specific Roblox service, and all files inside it inherit that destination.
+Name a folder after a routing keyword (`server`, `client`, `shared`) or a Roblox service, and everything inside it goes there.
 
-- Naming a folder `client` sends files to `StarterPlayerScripts`.
-- Naming a folder `ReplicatedFirst` maps exactly to that service.
+- A folder named `client` sends its files to `StarterPlayerScripts`.
+- A folder named `ReplicatedFirst` sends its files to that service.
 
-Rogen will consume these folders and strip them from the final path but not its contents.
+The folder itself is removed from the path, but its contents are kept.
 
 </Step>
 
@@ -27,40 +26,33 @@ Rogen will consume these folders and strip them from the final path but not its 
 
 ### File Names (Affixes)
 
-To route a specific file differently than its parent folder, use a routing prefix or suffix like so:
+To send one file somewhere other than its folder, add a keyword to the start or end of its name:
 
-- `CombatClient.luau` routes to `StarterPlayerScripts`.
-- `Combat_Server.luau` routes to `ServerScriptService`.
-- `Combat-ReplicatedFirst.ts` routes to `ReplicatedFirst`.
+- `CombatClient.luau` goes to `StarterPlayerScripts`.
+- `Combat_Server.luau` goes to `ServerScriptService`.
+- `Combat-ReplicatedFirst.ts` goes to `ReplicatedFirst`.
 
-The formatting is as follows:
-
-- Use separators like dots, hyphens, underscores or plusses (`.`, `-`, `_`, `+`).
-- Prepend or append keywords using CamelCase or PascalCase.
-
-Moreover, the routing keywords are stripped from the final script name.
+Set the keyword off with a separator (`.`, `-`, `_` or `+`), or attach it in camelCase or PascalCase. Rogen strips the keyword from the script's name.
 
 </Step>
 
 <Step>
 
-## Marker Files
+### Marker Files
 
-Place an empty file named after a service (like `.server` or `.client`) inside a directory.
-This routes the entire folder to that service.
-Unlike folder names, marker files preserve the original folder name in the final tree.
+Put an empty file named after a keyword, like `.server` or `.client`, in a folder to route the whole folder there. Unlike a routing folder, the folder keeps its name in the final tree.
 
 </Step>
 
 </Steps>
 
 <Callout type="info" title="The Deepest Rule Wins">
-	When multiple rules apply to a single path, Rogen always prioritizes the
-	deepest specific routing rule. File names represent the final level in any
-	path. Because of this, file name routing always overrides folder routing.
+	When several rules apply to one path, the deepest one wins. A file name is
+	always the deepest part of a path, so routing by file name always beats
+	routing by folder.
 </Callout>
 
 <Callout type="info" title="Default Fallback">
-	If no routing rule is applied anywhere in a file's path, Rogen automatically
-	places it in `ReplicatedStorage`.
+	If no rule applies anywhere in a file's path, Rogen puts it in
+	`ReplicatedStorage`.
 </Callout>
