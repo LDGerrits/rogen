@@ -43,32 +43,32 @@ src/Inventory/Client/InventoryController.luau  ->  StarterPlayer/StarterPlayerSc
 src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
 ```
 
-- Read the keys and their targets from the config's `routes`, since a repo can rename or add them. `rogen list --json` resolves an `extends` chain.
-- A file's instance path is its route's target, then its folders minus the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
-- Only the outermost route counts. A routing folder inside another is an ordinary folder: `Shared/Server/Datastore.luau` ships to clients as `Shared/Server/Datastore`. Never nest them.
-- To route a single file without a folder, end its name with `@` and the key: `Save@server.luau` is a ModuleScript named `Save` in the server's target.
+- Read the keys and their targets once from the config's `routes`, since a repo can rename or add them; `rogen list --json` resolves an `extends` chain.
+- A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`).
+- Only the outermost route acts. Inside a routing folder, another route is ignored whole: `Shared/Server/Datastore.luau` stays in `ReplicatedStorage`, so never put server code under `Shared/`.
+- To route one file without a folder, write `@key` before the extension (`InventoryService@server.luau`). It never changes the script class. Only `.server` and `.client` route through a dot.
 - `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`rogen where ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
 ### After a batch of changes
 
-- Run `rogen where` on the paths you added, moved or renamed, and check that each one lands where you meant. It also shows files that were left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, mounted by the template, or displaced by a template node.
+- Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, or displaced by a template node.
 - Then run `rogen build --all` once and fix every warning that names your files.
-- Leave `rogen watch` and `rojo serve` to the user. They never exit, and `rogen build` is safe to run beside them.
+- Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
 ### Requires and imports
 
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see `ServerScriptService`.
-- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`). String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
-- roblox-ts: import by relative file path. `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
-- Respect the import boundaries the repo states in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place, so move it instead of adding an exception.
+- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`); string requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
+- roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+- Keep the import boundaries the repo states, in `AGENTS.md` or its lint config. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 
 ### Ownership
 
-- `rogen build` overwrites the `*.project.json` each config writes. Put changes in the config, or in the `template` it merges into.
-- The `syncDir` (`out`, `dist`) is compiler output. Edit the sources in the root directories.
-- Add a place with `rogen init <name> --json` rather than by hand. It writes the place's config and any extra files Darklua or roblox-ts need, then make every edit listed in its `nextSteps.setup`, such as roblox-ts's `include`.
+- `rogen build` overwrites the `*.project.json` each config writes: put changes in the config, or in the `template` it merges into.
+- The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
+- Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For variants (`Foo.mock.luau`), marker files, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
+For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
 ````
 
 The snippet covers the mistakes an agent makes on its own. Everything else it can look up when a build prints a diagnostic, since each diagnostic says what to change.
