@@ -472,10 +472,10 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse an active tag folder into its parent's node", async () => {
+			it("should not collapse an active variant folder into its parent's node", async () => {
 				await write("src/Combat/dev/Cheats.luau");
 
-				const storage = await storageOf({ tags: { dev: true } });
+				const storage = await storageOf({ variants: { dev: true } });
 
 				expect(storage.Combat).toEqual({
 					...FOLDER,
@@ -505,13 +505,13 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should not collapse a directory with a dormant-tag file", async () => {
+			it("should not collapse a directory with a dormant-variant file", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Analytics.mock.luau"
 				);
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
@@ -599,10 +599,10 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should not collapse a directory holding a file Rojo would name differently, and emit it under its instance name", async () => {
-				await write("src/Save/Save+mock.server.luau");
+				await write("src/Save/Save.mock@server.luau");
 
 				const { tree: value } = await assemble({
-					tags: { mock: true },
+					variants: { mock: true },
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -611,19 +611,19 @@ describe("TreeAssembler", () => {
 					Save: {
 						...FOLDER,
 						Save: {
-							$path: optional("src/Save/Save+mock.server.luau"),
+							$path: optional("src/Save/Save.mock@server.luau"),
 						},
 					},
 				});
 			});
 
-			it("should not collapse a directory holding the file an active tag replaced", async () => {
+			it("should not collapse a directory holding the file an active variant replaced", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Analytics.mock.luau"
 				);
 
-				const storage = await storageOf({ tags: { mock: true } });
+				const storage = await storageOf({ variants: { mock: true } });
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
@@ -633,8 +633,8 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a directory whose file has a route suffix other than .server or .client", async () => {
-				await write("src/Types/Types.shared.luau");
+			it("should not collapse a directory whose file has an @ route suffix", async () => {
+				await write("src/Types/Types@shared.luau");
 
 				const storage = await storageOf({
 					routes: { shared: "ReplicatedStorage" },
@@ -642,7 +642,7 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Types).toEqual({
 					...FOLDER,
-					Types: { $path: optional("src/Types/Types.shared.luau") },
+					Types: { $path: optional("src/Types/Types@shared.luau") },
 				});
 			});
 
@@ -836,12 +836,38 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({
 					syncDir: abs("dist"),
-					tags: { mock: false },
+					variants: { mock: false },
 				});
 
 				expect(value.globIgnorePaths).toEqual([
 					"dist/Inventory/Analytics.mock.luau",
 				]);
+			});
+
+			it("should never list a path the template mounts, which Rojo has to read", async () => {
+				await write(
+					"src/Vendor/Lib.luau",
+					"src/Save.luau",
+					"src/Save.spec.luau"
+				);
+
+				const { tree: value } = await assemble({
+					exclude: [abs("**/*.spec.luau")],
+					template: {
+						file: abs("template.project.json"),
+						project: {
+							name: "game",
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Vendor: { $path: "src/Vendor" },
+								},
+							},
+						},
+					},
+				});
+
+				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
 			});
 
 			it("should list excluded and pruned files in path order, translated to sync paths", async () => {
@@ -853,7 +879,7 @@ describe("TreeAssembler", () => {
 
 				const { tree: value } = await assemble({
 					syncDir: abs("dist"),
-					tags: { mock: false },
+					variants: { mock: false },
 					exclude: [abs("**/*.spec.ts")],
 				});
 
@@ -1009,7 +1035,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Bots).toEqual({
 					$className: "Actor",
@@ -1117,7 +1143,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ tags: { mock: false } });
+				const storage = await storageOf({ variants: { mock: false } });
 
 				expect(storage.Mocks).toBeUndefined();
 			});
@@ -1389,7 +1415,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should warn at each meta in a routing, tag or invisible folder or a root dir", async () => {
+			it("should warn at each meta in a routing, variant or invisible folder or a root dir", async () => {
 				await write(
 					"src/Combat/server/A.luau",
 					"src/Combat/dev/B.luau",
@@ -1407,7 +1433,7 @@ describe("TreeAssembler", () => {
 
 				const { warnings } = await assemble({
 					routes: SPLIT,
-					tags: { dev: true },
+					variants: { dev: true },
 				});
 
 				const nothing = (dir: string, kind: string) => ({
@@ -1417,10 +1443,33 @@ describe("TreeAssembler", () => {
 				});
 				expect(warnings).toMatchObject([
 					nothing("src/Combat/(group)", "an invisible folder"),
-					nothing("src/Combat/dev", "a tag folder"),
+					nothing("src/Combat/dev", "a variant folder"),
 					nothing("src/Combat/server", "a routing folder"),
 					nothing("src", "a root dir"),
 				]);
+			});
+
+			it("should collapse a routing folder an outer route outranks and a Name@key folder, so Rojo applies their meta", async () => {
+				await write(
+					"src/server/client/A.luau",
+					"src/Queue@server/B.luau"
+				);
+				for (const dir of ["src/server/client", "src/Queue@server"])
+					await writeMeta(`${dir}/init.meta.json`, {
+						className: "Actor",
+					});
+
+				const { warnings, tree: value } = await assemble({
+					routes: SPLIT,
+				});
+
+				expect(warnings).toEqual([]);
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "client")
+				).toEqual({ $path: optional("src/server/client") });
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Queue")
+				).toEqual({ $path: optional("src/Queue@server") });
 			});
 
 			it("should not warn about meta in a folder whose files were all pruned", async () => {
@@ -1429,7 +1478,9 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { warnings } = await assemble({ tags: { mock: false } });
+				const { warnings } = await assemble({
+					variants: { mock: false },
+				});
 
 				expect(warnings).toEqual([]);
 			});

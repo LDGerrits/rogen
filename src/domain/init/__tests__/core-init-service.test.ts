@@ -198,21 +198,24 @@ describe("CoreInitService", () => {
 				).rejects.toThrow("arena.project.json already exists.");
 			});
 
-			it("should add a variant by name", async () => {
-				const { prompts, result } = await planWith(["variant", "prod"]);
+			it("should add an extending config by name", async () => {
+				const { prompts, result } = await planWith([
+					"extending",
+					"prod",
+				]);
 
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual(["prod.rogen.json"]);
 				expect(prompts.asked).toEqual([
 					"default.rogen.json exists. What do you want to add?",
-					"Variant name",
+					"Config name",
 				]);
 			});
 
-			it("should reject a variant whose project file exists", async () => {
+			it("should reject an extending config whose project file exists", async () => {
 				await expect(
-					planWith(["variant", "prod"], [], ["prod.project.json"])
+					planWith(["extending", "prod"], [], ["prod.project.json"])
 				).rejects.toThrow("prod.project.json already exists.");
 			});
 

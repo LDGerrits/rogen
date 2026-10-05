@@ -6,24 +6,26 @@ import { ResolvedConfig } from "../../domain/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 
-/** The `extends` chain and skipped tag flags of a config. */
+/** The `extends` chain and skipped variant flags of a config. */
 function describeConfig(config: ResolvedConfig, cwd: string): string[] {
 	const parents = config.parents.map((file) => relativeTo(cwd, file));
 	return [
 		...(parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : []),
-		...config.skippedTags.map(
-			(tag) => `tag ${tag} skipped: not declared in this config`
+		...config.skippedVariants.map(
+			(variant) =>
+				`variant ${variant} skipped: not declared in this config`
 		),
 	];
 }
 
-/** One line per root dir, route and tag. */
+/** One line per root dir, route and variant. */
 function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
-		({ rootDir, files, excluded, skippedLinks }) =>
+		({ rootDir, files, excluded, mounted, skippedLinks }) =>
 			[
 				`${relativeTo(cwd, rootDir)}: ${plural(files, "file")}`,
 				...(excluded > 0 ? [`${excluded} excluded`] : []),
+				...(mounted > 0 ? [`${mounted} mounted`] : []),
 				...(skippedLinks > 0
 					? [plural(skippedLinks, "skipped link")]
 					: []),
@@ -33,10 +35,10 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		({ key, target, files }) =>
 			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
-	const tags = summary.tags.map(({ tag, on, files }) =>
+	const variants = summary.variants.map(({ variant, on, files }) =>
 		on
-			? `tag ${tag} on: ${plural(files, "file")}`
-			: `tag ${tag} off: ${plural(files, "file")} left out`
+			? `variant ${variant} on: ${plural(files, "file")}`
+			: `variant ${variant} off: ${plural(files, "file")} left out`
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
@@ -50,7 +52,7 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	return [
 		...roots,
 		...routes,
-		...tags,
+		...variants,
 		...(leftOut.length > 0 ? [`left out: ${leftOut.join(", ")}`] : []),
 	];
 }

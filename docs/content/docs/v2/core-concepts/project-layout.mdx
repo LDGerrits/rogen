@@ -13,7 +13,7 @@ Rogen scans the **root directories** listed in `rootDirs` and turns what it find
 <Step>
 ### Invisible Folders
 
-A folder written as `(name)` groups files on disk but is left out of the generated tree. The parentheses come off before route keys and tags are matched, so `(mock)` is a tag folder and `(server)` a routing folder.
+A folder written as `(name)` groups files on disk but is left out of the generated tree. The parentheses come off before route keys and variants are matched, so `(mock)` is a variant folder and `(server)` a routing folder.
 
 ```
 src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
@@ -31,7 +31,7 @@ A directory that contains an `init` or `index` script is one instance in Rojo. R
 <Step>
 ### Data Files
 
-Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the way Rojo reads them. Route and tag suffixes are read before the extension. TypeScript declaration files (`.d.ts`) are never scanned.
+Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, the way Rojo reads them. Route and variant suffixes are read before the extension. TypeScript declaration files (`.d.ts`) are never scanned.
 
 </Step>
 
@@ -40,7 +40,7 @@ Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data fi
 
 A `*.meta.json` file sets what a file or folder can't express itself: a class, properties or attributes. It is never placed as an instance.
 
-- A **file's** metadata file is named after the name Rojo gives the file: its name without the extension and without a final `.server`, `.client` or `.plugin`. `Save.server.luau` takes `Save.meta.json`, and Rojo ignores a `Save.server.meta.json`. `Analytics.mock.luau` takes `Analytics.mock.meta.json`, even when an active tag renames it to `Analytics`: Rojo finds the metadata from the file, not from the name Rogen gives it. Models (`.rbxm`, `.rbxmx`, `*.model.json`) and `*.project.json` files take none.
+- A **file's** metadata file is named after the name Rojo gives the file: its name without the extension and without a final `.server`, `.client` or `.plugin`. `Save.server.luau` takes `Save.meta.json`, and Rojo ignores a `Save.server.meta.json`. `Analytics.mock.luau` takes `Analytics.mock.meta.json`, even when an active variant renames it to `Analytics`: Rojo finds the metadata from the file, not from the name Rogen gives it. Models (`.rbxm`, `.rbxmx`, `*.model.json`) and `*.project.json` files take none.
 - A **folder's** `init.meta.json` applies to every node that folder becomes, which is how a feature folder becomes an `Actor`:
 
 ```json title="src/Combat/init.meta.json"
@@ -58,7 +58,7 @@ When several folders become the same node:
 
 Some `init.meta.json` files apply to nothing, and Rogen warns about them:
 
-- One in a routing folder, tag folder or invisible folder, or at the top of a root directory. None of these ever becomes an instance, so put the meta in the feature folder instead.
+- One in a routing folder that governs, a variant folder or an invisible folder, or at the top of a root directory. None of these ever becomes an instance, so put the meta in the feature folder instead.
 - One in a folder that shares its instance with a script, such as `Combat/` beside `Combat.server.luau`. Rojo reads the script there, so put the meta in `Combat.meta.json` beside it, or turn the folder into an init folder.
 
 An invalid `init.meta.json` stops the build, with the file and position of the problem.
@@ -74,7 +74,7 @@ With a `syncDir`, Rojo reads the metadata files in your compiler's output. roblo
 <Step>
 ### Excluding Files
 
-The `exclude` field lists globs that are never built, relative to the config's directory. An **excluded** file is left out of the output.
+The `exclude` field lists globs that are never built, relative to the config's directory. An **excluded** file is left out of the output, and Rogen never routes it or warns about it. To sync a vendored library exactly as it is, mount it in the [template](/docs/v2/core-concepts/output#template) instead: a folder the template mounts is left alone without an `exclude`.
 
 ```json
 { "exclude": ["**/*.spec.luau", "**/*.story.luau"] }

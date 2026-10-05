@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { ancestors, isInside, toPosix } from "../../base/path.js";
+import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -24,6 +24,10 @@ import {
 } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import {
+	ScriptRunContexts,
+	ScriptRunContextsRead,
+} from "./script-run-contexts.js";
 import { ScannedRoot, rojoNameOf } from "./root-scanner.js";
 
 /** A placed build with its tree; what the rules report on. */
@@ -32,12 +36,16 @@ export class Assembly {
 		readonly placement: Placement,
 		readonly tree: RojoTree,
 		readonly folderMeta: readonly FolderMeta[],
-		readonly metaOutcomes: readonly FolderMetaOutcome[]
+		readonly metaOutcomes: readonly FolderMetaOutcome[],
+		readonly scriptRunContexts: ScriptRunContextsRead
 	) {}
 
-	/** The files whose contents the build read: every folder meta it parsed. */
+	/** The files whose contents the build read: every folder meta it parsed, and the meta of each script that might set a run context. */
 	get readFiles(): string[] {
-		return this.folderMeta.map(({ file }) => file);
+		return [
+			...this.folderMeta.map(({ file }) => file),
+			...this.scriptRunContexts.files,
+		];
 	}
 }
 
@@ -66,7 +74,7 @@ interface PlacedEntry {
 	readonly rojoName: string;
 }
 
-/** Turns a placed build into its Rojo tree; the only reads it makes are the folder meta files. */
+/** Turns a placed build into its Rojo tree; the only reads it makes are the folder meta files and the meta of `.server` scripts. */
 export class TreeAssembler {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
@@ -93,7 +101,11 @@ export class TreeAssembler {
 					globIgnorePaths
 				),
 				folderMeta.value,
-				applied.value
+				applied.value,
+				await new ScriptRunContexts(this.fileSystemService).read(
+					placement,
+					folderMeta.value
+				)
 			)
 		);
 	}
@@ -154,11 +166,16 @@ export class TreeAssembler {
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
-		// A replaced file may share the winner's emitted path, and the template may mount a displaced one.
+		// A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one.
+		const mounts = template.mounts.map((mount) => toPosix(mount.path));
+		// Rojo must read a mount, so a left-out folder that holds one can't be ignored either; it is never collapsed, so nothing else reads it.
 		const ignored = leftOut
 			.filter(
-				([, why]) =>
-					why.status !== "replaced" && why.status !== "displaced"
+				([source, why]) =>
+					!mounts.some((mount) => contains(source, mount)) &&
+					why.status !== "replaced" &&
+					why.status !== "displaced" &&
+					why.status !== "mounted"
 			)
 			.map(([source]) => source)
 			.sort(compareStrings);

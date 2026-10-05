@@ -7,7 +7,7 @@ stdout:
     Run each in its own terminal:
       rogen watch lobby
       rojo serve lobby.project.json
-    Add tags under "tags" in lobby.rogen.json to swap in variants like Analytics.mock.luau.
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
   Wrote 1 file.
 
 $ rogen build default lobby

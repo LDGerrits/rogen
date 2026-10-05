@@ -1,0 +1,21 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.project.json - warning: 2 data files were turned into Lua modules under "dist" (src/Inventory/Note.txt: expected "dist/Inventory/Note.txt", found "dist/Inventory/Note.lua", src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the sync dir after it runs, or require them as modules.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Kept: ModuleScript  <- dist/Inventory/Kept.json
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- dist/Inventory/Save.server.luau

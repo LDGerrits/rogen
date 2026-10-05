@@ -20,5 +20,5 @@ Game: DataModel
   ServerScriptService: ServerScriptService
     Save: Script  <- src/Save.server.luau
   TextChatService: TextChatService
-    Kick: ModuleScript  <- src/Kick.chat.luau
+    Kick: ModuleScript  <- src/Kick@chat.luau
   Workspace: Workspace

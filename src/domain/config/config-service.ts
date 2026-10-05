@@ -1,3 +1,4 @@
+import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -72,7 +73,19 @@ export interface ConfigSelection {
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 
-/** Finds, loads and resolves configs. It keeps nothing between calls: the selection it hands out does. */
+/** A config file that failed to load, as a file check sees it. */
+export interface FailedConfigFile {
+	readonly file: string;
+	/** What the file holds when it parses as JSON; `undefined` when it doesn't. */
+	readonly value: unknown;
+}
+
+/** Adds hints to the errors of a config file that failed to load. */
+export type ConfigFileCheck = (
+	failed: FailedConfigFile
+) => readonly Diagnostic[];
+
+/** Finds, loads and resolves configs. It keeps no loaded configs between calls, only the file checks registered on it: the selection it hands out holds the configs. */
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
@@ -83,6 +96,8 @@ export interface ConfigService {
 	): Promise<Result<ConfigSelection, Error>>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
+	/** Runs `check` on every config file that fails to load, never on one that loads; what it returns is added to that file's errors. Dispose the result to remove it. */
+	registerFileCheck(check: ConfigFileCheck): Disposable;
 }
 
 export const ConfigService =

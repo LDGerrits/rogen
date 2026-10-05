@@ -66,8 +66,8 @@ describe("CoreBuildService.locate", () => {
 	it("should place a file with its route and how the route matched", async () => {
 		await write(
 			"src/Inventory/Server/Save.luau",
-			"src/Net/HttpClient.luau",
-			"src/Net/Socket-Client.luau",
+			"src/Net/Http@client.luau",
+			"src/Net/Socket.client.luau",
 			"src/Anti/.server",
 			"src/Anti/Check.luau",
 			"src/Util.luau"
@@ -75,8 +75,8 @@ describe("CoreBuildService.locate", () => {
 
 		const located = await locate([
 			"src/Inventory/Server/Save.luau",
-			"src/Net/HttpClient.luau",
-			"src/Net/Socket-Client.luau",
+			"src/Net/Http@client.luau",
+			"src/Net/Socket.client.luau",
 			"src/Anti/Check.luau",
 			"src/Util.luau",
 		]);
@@ -88,11 +88,11 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
-				tags: [],
+				variants: [],
 			},
 			{
 				status: "placed",
-				source: abs("src/Net/HttpClient.luau"),
+				source: abs("src/Net/Http@client.luau"),
 				instancePath: [
 					"StarterPlayer",
 					"StarterPlayerScripts",
@@ -100,12 +100,12 @@ describe("CoreBuildService.locate", () => {
 					"Http",
 				],
 				route: "Client",
-				routeMatch: "capital",
-				tags: [],
+				routeMatch: "suffix",
+				variants: [],
 			},
 			expect.objectContaining({
-				source: abs("src/Net/Socket-Client.luau"),
-				routeMatch: "separator",
+				source: abs("src/Net/Socket.client.luau"),
+				routeMatch: "suffix",
 			}),
 			{
 				status: "placed",
@@ -113,7 +113,7 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
-				tags: [],
+				variants: [],
 			},
 			{
 				status: "placed",
@@ -121,12 +121,12 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Util"],
 				route: "*",
 				routeMatch: "fallback",
-				tags: [],
+				variants: [],
 			},
 		]);
 	});
 
-	it("should say which dormant tag pruned a file and how it matched, and which active tags a placed file carries", async () => {
+	it("should say which dormant variant pruned a file and how it matched, and which active variants a placed file carries", async () => {
 		await write(
 			"src/Net/Http.mock.luau",
 			"src/Net/DataMock.luau",
@@ -134,30 +134,51 @@ describe("CoreBuildService.locate", () => {
 		);
 
 		const located = await locate(undefined, {
-			tags: { mock: false, dev: true },
+			variants: { mock: false, dev: true },
 		});
 
 		expect(located).toEqual([
-			{
-				status: "pruned",
+			expect.objectContaining({
 				source: abs("src/Net/DataMock.luau"),
-				tags: [
-					{
-						tag: "mock",
-						form: "capital",
-					},
-				],
-			},
+				status: "placed",
+			}),
 			{
 				status: "pruned",
 				source: abs("src/Net/Http.mock.luau"),
-				tags: [{ tag: "mock", form: "separator" }],
+				variants: [{ variant: "mock", form: "suffix" }],
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Store.dev.luau"),
 				instancePath: ["ReplicatedStorage", "Shared", "Net", "Store"],
-				tags: [{ tag: "dev", form: "separator" }],
+				variants: [{ variant: "dev", form: "suffix" }],
 			}),
+		]);
+	});
+
+	it("should say the template mounts a file inside a folder it mounts", async () => {
+		await write("src/Vendor/Lib/Init.luau", "src/Save.luau");
+
+		expect(
+			await locate(["src/Vendor/Lib/Init.luau"], {
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Vendor: { $path: "src/Vendor" },
+							},
+						},
+					},
+				},
+			})
+		).toEqual([
+			{
+				status: "mounted",
+				source: abs("src/Vendor/Lib/Init.luau"),
+				node: ["ReplicatedStorage", "Vendor"],
+			},
 		]);
 	});
 
@@ -198,7 +219,7 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
 				route: "*",
 				routeMatch: "fallback",
-				tags: [],
+				variants: [],
 			},
 			{
 				status: "displaced",
@@ -306,7 +327,7 @@ describe("CoreBuildService.locate", () => {
 
 			const located = await locate(
 				["src/Analytics.luau", "src/Analytics.mock.luau"],
-				{ tags: { mock: true } }
+				{ variants: { mock: true } }
 			);
 
 			expect(located.map(({ status }) => status)).toEqual([
@@ -512,7 +533,7 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should share the fate of the folder when a dormant tag prunes it", async () => {
+		it("should share the fate of the folder when a dormant variant prunes it", async () => {
 			await write(
 				"src/Combat/Server/Moves/init.mock.luau",
 				"src/Combat/Server/Moves/Punch.luau"
@@ -523,7 +544,7 @@ describe("CoreBuildService.locate", () => {
 					"src/Combat/Server/Moves",
 					"src/Combat/Server/Moves/Punch.luau",
 				],
-				{ tags: { mock: false } }
+				{ variants: { mock: false } }
 			);
 
 			expect(located.map(({ status }) => status)).toEqual([

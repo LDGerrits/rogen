@@ -212,7 +212,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		builder.addEdit(...template.edits);
 		builder.addEdit(
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
-			ConfigSet.tagsStep(language, configFileName(name))
+			ConfigSet.variantsStep(language, configFileName(name))
 		);
 		if (first) placeSetup.planSteps(first, builder);
 		else this.planSteps(builder, choices, configSet);

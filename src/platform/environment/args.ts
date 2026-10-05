@@ -24,8 +24,8 @@ export interface ParsedArgs {
 	"out-file"?: string;
 	"sync-dir"?: string;
 	template?: string;
-	tag?: string[];
-	"no-tag"?: string[];
+	variant?: string[];
+	"no-variant"?: string[];
 }
 
 /** The options every command takes. */
@@ -76,28 +76,26 @@ const ConfigPathOption: OptionDescriptor = {
 	description: "An explicit config path.",
 };
 
-const TagOption: OptionDescriptor = {
-	name: "tag",
-	short: "t",
+const VariantOption: OptionDescriptor = {
+	name: "variant",
 	type: "string",
 	multiple: true,
-	description: "Turns a tag on.",
+	description: "Turns a variant on.",
 };
 
-const NoTagOption: OptionDescriptor = {
-	name: "no-tag",
-	short: "T",
+const NoVariantOption: OptionDescriptor = {
+	name: "no-variant",
 	type: "string",
 	multiple: true,
-	description: "Turns a tag off.",
+	description: "Turns a variant off.",
 };
 
-/** The flags that pick the configs a command reads and which tags are on in them. */
+/** The flags that pick the configs a command reads and which variants are on in them. */
 export const ConfigSelectionOptions: readonly OptionDescriptor[] = [
 	AllOption,
 	ConfigPathOption,
-	TagOption,
-	NoTagOption,
+	VariantOption,
+	NoVariantOption,
 ];
 
 /** The flags that pick, or override, the configs a command builds. */
@@ -121,8 +119,8 @@ export const ConfigOptions: readonly OptionDescriptor[] = [
 		type: "string",
 		description: "Overrides template.",
 	},
-	TagOption,
-	NoTagOption,
+	VariantOption,
+	NoVariantOption,
 ];
 
 export interface ParsedCli {

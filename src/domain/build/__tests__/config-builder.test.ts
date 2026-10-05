@@ -50,6 +50,17 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
+		it("should also report the meta of a Script, which may set its run context", async () => {
+			await fs.writeFile(abs("src/Save.server.luau"), "");
+			await fs.writeFile(abs("src/Save.meta.json"), "{}");
+
+			const result = await buildOf(configOf());
+
+			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Save.meta.json"),
+			]);
+		});
+
 		it("should return a tree with no warnings when every root dir exists", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
@@ -67,29 +78,35 @@ describe("ConfigBuilder", () => {
 			});
 		});
 
-		it("should return the tag stage's warnings", async () => {
+		it("should return the variant stage's warnings", async () => {
 			await fs.writeFile(abs("src/Save.server.mock.luau"), "");
-			const config = configOf({ tags: { mock: true } });
+			const config = configOf({ variants: { mock: true } });
 
 			const result = await buildOf(config);
 
 			expect(result.unwrap().warnings).toMatchObject([
-				{ code: "tag.buriedScriptSuffix" },
+				{ code: "variant.buriedScriptSuffix" },
 			]);
 		});
 
-		it("should fail when two active tags claim one instance", async () => {
+		it("should fail when two active variants claim one instance", async () => {
 			await fs.writeFile(abs("src/A.mock.luau"), "");
 			await fs.writeFile(abs("src/A.dev.luau"), "");
-			const config = configOf({ tags: { mock: true, dev: true } });
+			const config = configOf({ variants: { mock: true, dev: true } });
 
 			const result = await buildOf(config);
 
 			expect(
 				result.isErr() ? result.error.diagnostics : []
 			).toMatchObject([
-				{ code: "tag.activeClash", resource: abs("src/A.dev.luau") },
-				{ code: "tag.activeClash", resource: abs("src/A.mock.luau") },
+				{
+					code: "variant.activeClash",
+					resource: abs("src/A.dev.luau"),
+				},
+				{
+					code: "variant.activeClash",
+					resource: abs("src/A.mock.luau"),
+				},
 			]);
 		});
 
@@ -236,7 +253,7 @@ describe("ConfigBuilder", () => {
 						"src/Legacy.meta.json",
 					],
 					{
-						tags: { mock: false },
+						variants: { mock: false },
 						exclude: [toPosix(abs("src/Legacy.luau"))],
 					}
 				);
@@ -339,12 +356,47 @@ describe("ConfigBuilder", () => {
 						rootDir: abs("src"),
 						files: 2,
 						excluded: 1,
+						mounted: 0,
 						skippedLinks: 0,
 					},
 					{
 						rootDir: abs("lib"),
 						files: 1,
 						excluded: 0,
+						mounted: 0,
+						skippedLinks: 0,
+					},
+				]);
+			});
+
+			it("should count each path the template mounts that exists, once", async () => {
+				await fs.writeFile(abs("src/Vendor/Lib.luau"), "");
+				await fs.writeFile(abs("src/Save.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						template: {
+							file: abs("template.project.json"),
+							project: {
+								name: "game",
+								tree: {
+									$className: "DataModel",
+									ReplicatedStorage: {
+										Vendor: { $path: "src/Vendor" },
+										Gone: { $path: "src/Gone" },
+									},
+								},
+							},
+						},
+					})
+				);
+
+				expect(result.unwrap().summary.roots).toEqual([
+					{
+						rootDir: abs("src"),
+						files: 1,
+						excluded: 0,
+						mounted: 1,
 						skippedLinks: 0,
 					},
 				]);
@@ -376,32 +428,32 @@ describe("ConfigBuilder", () => {
 				]);
 			});
 
-			it("should count the files each tag marks, whether on or off", async () => {
+			it("should count the files each variant marks, whether on or off", async () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
 				await fs.writeFile(abs("src/debug/B.luau"), "");
 				await fs.writeFile(abs("src/debug/C.luau"), "");
 
 				const result = await buildOf(
-					configOf({ tags: { mock: true, debug: false } })
+					configOf({ variants: { mock: true, debug: false } })
 				);
 
-				expect(result.unwrap().summary.tags).toEqual([
-					{ tag: "mock", on: true, files: 1 },
-					{ tag: "debug", on: false, files: 2 },
+				expect(result.unwrap().summary.variants).toEqual([
+					{ variant: "mock", on: true, files: 1 },
+					{ variant: "debug", on: false, files: 2 },
 				]);
 			});
 
-			it("should count only placed files for a tag that's on", async () => {
+			it("should count only placed files for a variant that's on", async () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
 				await fs.writeFile(abs("src/B.mock.debug.luau"), "");
 
 				const result = await buildOf(
-					configOf({ tags: { mock: true, debug: false } })
+					configOf({ variants: { mock: true, debug: false } })
 				);
 
-				expect(result.unwrap().summary.tags).toEqual([
-					{ tag: "mock", on: true, files: 1 },
-					{ tag: "debug", on: false, files: 1 },
+				expect(result.unwrap().summary.variants).toEqual([
+					{ variant: "mock", on: true, files: 1 },
+					{ variant: "debug", on: false, files: 1 },
 				]);
 			});
 
@@ -421,7 +473,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
 
 				const result = await buildOf(
-					configOf({ tags: { mock: true } })
+					configOf({ variants: { mock: true } })
 				);
 
 				expect(result.unwrap().summary.superseded).toBe(1);

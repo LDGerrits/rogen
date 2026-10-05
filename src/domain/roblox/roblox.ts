@@ -16,6 +16,62 @@ const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterCharacterScripts",
 ];
 
+/** The services whose contents never replicate to clients. */
+const SERVER_ONLY_SERVICES: readonly string[] = [
+	"ServerScriptService",
+	"ServerStorage",
+];
+
+/** Whether everything in the service stays on the server. */
+export function isServerOnlyService(service: string): boolean {
+	return SERVER_ONLY_SERVICES.includes(service);
+}
+
+/** The services where a legacy Script runs. */
+const SERVER_SCRIPT_SERVICES: readonly string[] = [
+	"ServerScriptService",
+	"Workspace",
+];
+
+/** The containers whose LocalScripts run: the player's own, which clone from the Starter containers, and ReplicatedFirst. */
+const CLIENT_SCRIPT_SERVICES: readonly string[] = [
+	"StarterGui",
+	"StarterPack",
+	"ReplicatedFirst",
+];
+
+/** How a script runs: a legacy `Script` or a `LocalScript` by its class, any other `Script` by its `RunContext`. */
+export type ScriptRun =
+	"Script" | "LocalScript" | "Server" | "Client" | "Plugin";
+
+/** Where scripts are kept for code to clone out, so a script there that never runs isn't a mistake. */
+export const SCRIPT_STORAGE_SERVICE = "ServerStorage";
+
+/** Whether a script that runs as `run` ever runs at `instancePath`, as Roblox documents it; no script runs from ServerStorage. */
+export function scriptRunsAt(
+	run: ScriptRun,
+	instancePath: readonly string[]
+): boolean {
+	const [service, child] = instancePath;
+	switch (run) {
+		case "Script":
+			return SERVER_SCRIPT_SERVICES.includes(service);
+		case "LocalScript":
+			return (
+				CLIENT_SCRIPT_SERVICES.includes(service) ||
+				(service === "StarterPlayer" &&
+					PLAYER_SCRIPT_CONTAINERS.includes(child))
+			);
+		case "Server":
+			return service !== SCRIPT_STORAGE_SERVICE;
+		case "Client":
+			// Clients never receive what is in a server-only service.
+			return !isServerOnlyService(service);
+		case "Plugin":
+			return true;
+	}
+}
+
 /** Where a route puts files: a service Rojo can write to, and the folders below it. */
 export class Target {
 	constructor(

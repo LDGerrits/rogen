@@ -1,0 +1,17 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Net: Folder
+        Http: ModuleScript  <- src/Net/Http.luau
+        HttpMock: ModuleScript  <- src/Net/HttpMock.luau

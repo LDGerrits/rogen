@@ -13,17 +13,17 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Combat: Folder
+        Delta+server: ModuleScript  <- src/Combat/Delta+server.luau
+        Eta-server: ModuleScript  <- src/Combat/Eta-server.luau
+        Gamma_server: ModuleScript  <- src/Combat/Gamma_server.luau
         HTTPServer: ModuleScript  <- src/Combat/HTTPServer.luau
+        ZetaServer: ModuleScript  <- src/Combat/ZetaServer.luau
   ServerScriptService: ServerScriptService
     Combat: Folder
       Alpha: Script  <- src/Combat/Alpha.server.luau
-      Beta: ModuleScript  <- src/Combat/Beta-server.luau
-      Delta: ModuleScript  <- src/Combat/Delta+server.luau
-      Epsilon: ModuleScript  <- src/Combat/Epsilon@server.luau
-      Eta: ModuleScript  <- src/Combat/Eta-server.luau
-      Gamma: ModuleScript  <- src/Combat/Gamma_server.luau
-      Zeta: ModuleScript  <- src/Combat/ZetaServer.luau
+      Beta: ModuleScript  <- src/Combat/Beta@server.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Combat: Folder
+        Epsilon: ModuleScript  <- src/Combat/Epsilon@client.luau
         Hud: LocalScript  <- src/Combat/Hud.client.luau

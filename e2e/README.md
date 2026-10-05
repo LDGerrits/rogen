@@ -8,7 +8,7 @@ exit codes, output, written files and the tree Rojo sees) is compared with
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "--tag", "mock"]], "links": {}, "rojo": false, "show": [] }
+  case.json      optional: { "steps": [["build", "--variant", "mock"]], "links": {}, "rojo": false, "show": [] }
   expected.txt   the transcript
 ```
 

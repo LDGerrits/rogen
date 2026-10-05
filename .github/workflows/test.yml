@@ -43,3 +43,35 @@ jobs:
 
             - name: Test
               run: npm test
+
+    binary:
+        name: End-to-end tests on the compiled binary
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Bundle
+              run: npm run bundle
+
+            - name: Compile Binary
+              run: node scripts/make-binary.ts rogen-binary/rogen
+
+            - name: Test the Binary
+              run: npm test -- e2e
+              env:
+                  ROGEN_E2E_BINARY: ${{ github.workspace }}/rogen-binary/rogen

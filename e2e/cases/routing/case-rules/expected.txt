@@ -5,8 +5,9 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  src/Inventory/Load.SERVER.luau - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server" or "Server", or declare it as written.
   src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written.
+  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
+    src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 
 written:
   default.project.json
@@ -16,7 +17,8 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Inventory: Folder
-        Load.SERVER: ModuleScript  <- src/Inventory/Load.SERVER.luau
+        HttpClient: ModuleScript  <- src/Inventory/HttpClient.luau
+        Load@SERVER: ModuleScript  <- src/Inventory/Load@SERVER.luau
       SHARED: Folder
         Types: ModuleScript  <- src/SHARED/Types.luau
   ServerScriptService: ServerScriptService
@@ -24,5 +26,4 @@ project: DataModel
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder
-        Http: ModuleScript  <- src/Inventory/HttpClient.luau
-        Hud: ModuleScript  <- src/Inventory/Hud.Client.luau
+        Hud: ModuleScript  <- src/Inventory/Hud@Client.luau

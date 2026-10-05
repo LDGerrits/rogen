@@ -1,6 +1,6 @@
 {
 	"rootDirs": "src",
-	"tags": {"mock": "yes"},
+	"variants": {"mock": "yes"},
 	"routes": {"*": 5},
 	"exclude": [1]
 }

@@ -3,9 +3,9 @@
 		["build", "--nope"],
 		["build", "--root-dir", "src"],
 		["watch", "-w"],
-		["build", "--tag"],
+		["build", "--variant"],
 		["build", "--json=yes"],
 		["build", "--jsno"],
-		["init", "--tag", "x"]
+		["init", "--variant", "x"]
 	]
 }

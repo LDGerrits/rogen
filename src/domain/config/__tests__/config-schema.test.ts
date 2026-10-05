@@ -9,7 +9,7 @@ describe("domain/config/config-schema", () => {
 			"extends",
 			"rootDirs",
 			"routes",
-			"tags",
+			"variants",
 			"exclude",
 			"template",
 			"syncDir",
@@ -60,8 +60,8 @@ describe("domain/config/config-schema", () => {
 				expect(schema.properties!.routes.default).toEqual({});
 			});
 
-			it("defaults tags to {}", () => {
-				expect(schema.properties!.tags.default).toEqual({});
+			it("defaults variants to {}", () => {
+				expect(schema.properties!.variants.default).toEqual({});
 			});
 
 			it("defaults exclude to []", () => {
@@ -87,7 +87,7 @@ describe("domain/config/config-schema", () => {
 			expect(configDefaults.contents).toEqual({
 				rootDirs: ["src"],
 				routes: {},
-				tags: {},
+				variants: {},
 				exclude: [],
 			});
 		});

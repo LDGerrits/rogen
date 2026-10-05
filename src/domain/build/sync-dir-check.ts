@@ -27,6 +27,7 @@ export class SyncDirCheck {
 		return [
 			...(await this.nothingEmitted(placement, syncDir)),
 			...(await this.metaNotSynced(placement, syncDir)),
+			...(await this.dataFileConverted(placement, syncDir)),
 		];
 	}
 
@@ -110,6 +111,53 @@ export class SyncDirCheck {
 				"output.metaNotSynced",
 				{ resource: config.outFile },
 				`${missing.length} meta ${missing.length === 1 ? "file has" : "files have"} no copy under "${layout.relativeToProject(syncDir) || "."}" (${listLimited(missing, LISTED_PATHS)}), so Rojo doesn't apply ${them}. ${cause}`
+			),
+		];
+	}
+
+	/** Warns once for data files whose emitted path is missing while a `.lua` with the same stem exists: a processor converted them, so Rojo finds nothing, or a module, where it expects the data. */
+	private async dataFileConverted(
+		placement: Placement,
+		syncDir: string
+	): Promise<Diagnostic[]> {
+		const { config, layout, files } = placement;
+		const converted: { source: string; expected: string; found: string }[] =
+			[];
+		const synced = new Map<string, boolean>();
+		for (const { entry } of files) {
+			if (entry.kind !== "data") continue;
+			if (!synced.has(entry.rootDir))
+				synced.set(
+					entry.rootDir,
+					await this.hasSyncedOutput(entry.rootDir, layout)
+				);
+			if (!synced.get(entry.rootDir)) continue;
+
+			const expected = layout.emittedPath(
+				path.join(entry.rootDir, entry.relativePath)
+			);
+			if (await this.fileSystemService.exists(expected)) continue;
+			const found = `${expected.slice(0, -path.extname(expected).length)}.lua`;
+			if (await this.fileSystemService.exists(found))
+				converted.push({ source: entry.source, expected, found });
+		}
+		if (converted.length === 0) return [];
+
+		const shown = (target: string) => layout.relativeToProject(target);
+		const [note] = layout.dataReplacements.map(({ note }) => note);
+		const many = converted.length > 1;
+		const listed = listLimited(
+			converted.map(
+				({ source, expected, found }) =>
+					`${layout.relativeToProject(source)}: expected "${shown(expected)}", found "${shown(found)}"`
+			),
+			LISTED_PATHS
+		);
+		return [
+			warningDiagnostic(
+				"output.dataFileConverted",
+				{ resource: config.outFile },
+				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(syncDir) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note ?? "The processor that writes the sync dir converts them."} Copy the data files unchanged into the sync dir after it runs, or require them as modules.`
 			),
 		];
 	}

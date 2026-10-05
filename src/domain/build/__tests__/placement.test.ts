@@ -790,7 +790,7 @@ describe("Placer", () => {
 					server: "ServerScriptService",
 					"*": "ReplicatedStorage",
 				},
-				tags: { mock: true },
+				variants: { mock: true },
 				...overrides,
 			});
 			const index = await indexOf(store, fs, config.rootDirs);
@@ -837,7 +837,7 @@ describe("Placer", () => {
 					},
 					{
 						segment: "mock",
-						kind: "tag",
+						kind: "variant",
 						invisible: false,
 						dir: "server/(Hidden)/mock",
 					},
@@ -938,14 +938,14 @@ describe("Placer", () => {
 				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
 			});
 
-			it("should note a suffix that only differs from a key in case", async () => {
-				await write("src/Save.SERVER.luau");
+			it("should note an @ that matches no route, with the closest one", async () => {
+				await write("src/Save@sever.luau");
 
 				const { entries } = await read();
 
 				expect(
-					entries.get(at("src/Save.SERVER.luau"))?.match.nearMissKey
-				).toBe("server");
+					entries.get(at("src/Save@sever.luau"))?.match.strayAt
+				).toMatchObject({ text: "sever", closestKey: "server" });
 			});
 
 			it("should read a data file without its .json suffix", async () => {
@@ -985,10 +985,12 @@ describe("Placer", () => {
 			const index = await indexOf(store, fs, rootDirs);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.map(({ warnings }) => {
+			return built.map(({ warnings, tree }) => {
 				const placement = builder.place(config).unwrap();
 				return {
 					routed: placement.routed,
+					leftOut: placement.leftOut,
+					globIgnorePaths: tree.globIgnorePaths,
 					unrouted: placement.leftOut
 						.withStatus("unrouted")
 						.map(([source]) => source),
@@ -1015,11 +1017,12 @@ describe("Placer", () => {
 		});
 
 		describe("folder nodes", () => {
-			it("should pair each node a folder names with that folder, skipping routing, tag and invisible folders", async () => {
+			it("should pair each node a folder names with that folder, skipping routing, variant and invisible folders", async () => {
 				await write("src/Combat/(group)/server/dev/Moves/Punch.luau");
 
-				const [file] = (await route({ tags: { dev: true } })).unwrap()
-					.routed;
+				const [file] = (
+					await route({ variants: { dev: true } })
+				).unwrap().routed;
 
 				expect(file.instancePath).toEqual([
 					"ServerScriptService",
@@ -1076,43 +1079,68 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should strip the governing suffix in every separator and capital form", async () => {
+			it("should strip an @key suffix, and leave a ModuleScript a ModuleScript", async () => {
 				await write(
-					"src/Inventory/Combat-server.luau",
 					"src/Inventory/Save@server.luau",
-					"src/Inventory/Load_server.luau",
-					"src/Inventory/PlayerServer.luau"
+					"src/Inventory/Load@client.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Combat",
-					"ServerScriptService/Inventory/Load",
-					"ServerScriptService/Inventory/Player",
+					"StarterPlayer/StarterPlayerScripts/Inventory/Load",
 					"ServerScriptService/Inventory/Save",
 				]);
 			});
 
+			it("should not route by -, _, + or a capital letter", async () => {
+				await write(
+					"src/Inventory/Combat-server.luau",
+					"src/Inventory/Load_server.luau",
+					"src/Inventory/Save+server.luau",
+					"src/Inventory/PlayerServer.luau",
+					"src/Net/HttpClient.luau"
+				);
+
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Inventory/Combat-server",
+					"ReplicatedStorage/shared/Inventory/Load_server",
+					"ReplicatedStorage/shared/Inventory/PlayerServer",
+					"ReplicatedStorage/shared/Inventory/Save+server",
+					"ReplicatedStorage/shared/Net/HttpClient",
+				]);
+			});
+
+			it("should not route .shared, which belongs to Rojo", async () => {
+				await write("src/Types.shared.luau");
+
+				expect(
+					await paths({
+						routes: {
+							shared: "ReplicatedStorage",
+							"*": "Workspace",
+						},
+					})
+				).toEqual(["Workspace/Types.shared"]);
+			});
+
 			it("should not strip a suffix whose letter case differs beyond the first letter", async () => {
 				await write(
-					"src/Inventory/Load_SERVER.luau",
+					"src/Inventory/Load@SERVER.luau",
 					"src/Inventory/Saveserver.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Load_SERVER",
+					"ReplicatedStorage/shared/Inventory/Load@SERVER",
 					"ReplicatedStorage/shared/Inventory/Saveserver",
 				]);
 			});
 
 			it("should match a suffix with the first letter of the key in either case", async () => {
 				await write(
-					"src/Inventory/Load_Server.luau",
-					"src/Inventory/Level2Server.luau",
-					"src/Inventory/Save.Client.luau"
+					"src/Inventory/Load@Server.luau",
+					"src/Inventory/Save@Client.luau"
 				);
 
 				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Level2",
 					"ServerScriptService/Inventory/Load",
 					"StarterPlayer/StarterPlayerScripts/Inventory/Save",
 				]);
@@ -1146,10 +1174,33 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should ignore a nested route folder's target but still remove the folder", async () => {
+			it("should keep a nested route folder as an ordinary folder", async () => {
 				await write("src/ReplicatedFirst/client/main.luau");
 
+				expect(await paths()).toEqual(["ReplicatedFirst/client/main"]);
+			});
+
+			it("should keep a nested Name@key folder under its written name", async () => {
+				await write("src/ReplicatedFirst/Queue@client/main.luau");
+
+				expect(await paths()).toEqual([
+					"ReplicatedFirst/Queue@client/main",
+				]);
+			});
+
+			it("should still hide a nested invisible routing folder", async () => {
+				await write("src/ReplicatedFirst/(server)/main.luau");
+
 				expect(await paths()).toEqual(["ReplicatedFirst/main"]);
+			});
+
+			it("should let only the governing marker act", async () => {
+				await write(
+					"src/ReplicatedFirst/Net/.server",
+					"src/ReplicatedFirst/Net/main.luau"
+				);
+
+				expect(await paths()).toEqual(["ReplicatedFirst/Net/main"]);
 			});
 
 			it("should ignore a suffix under an outer routing folder", async () => {
@@ -1255,11 +1306,12 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should treat an invisible folder named after a tag as a tag folder", async () => {
+			it("should treat an invisible folder named after a variant as a variant folder", async () => {
 				await write("src/Analytics/(mock)/Service.luau");
 
-				const [file] = (await route({ tags: { mock: true } })).unwrap()
-					.routed;
+				const [file] = (
+					await route({ variants: { mock: true } })
+				).unwrap().routed;
 
 				expect(file.instancePath).toEqual([
 					"ReplicatedStorage",
@@ -1267,7 +1319,9 @@ describe("Placer", () => {
 					"Analytics",
 					"Service",
 				]);
-				expect(file.tags).toEqual([{ tag: "mock", form: "folder" }]);
+				expect(file.variants).toEqual([
+					{ variant: "mock", form: "folder" },
+				]);
 			});
 
 			it("should drop an invisible folder from the path", async () => {
@@ -1302,13 +1356,15 @@ describe("Placer", () => {
 				);
 			});
 
-			it("should warn about an invisible folder named like a tag in different case", async () => {
+			it("should warn about an invisible folder named like a variant in different case", async () => {
 				await write("src/Analytics/(MOCK)/Service.luau");
 
-				const [warning] = await caseWarnings({ tags: { mock: true } });
+				const [warning] = await caseWarnings({
+					variants: { mock: true },
+				});
 
 				expect(warning.resource).toBe(abs("src/Analytics/(MOCK)"));
-				expect(warning.message).toContain('tag "mock"');
+				expect(warning.message).toContain('variant "mock"');
 			});
 
 			it("should warn about a marker file named like a route in different case", async () => {
@@ -1318,24 +1374,6 @@ describe("Placer", () => {
 
 				expect(warning.resource).toBe(abs("src/Inventory/.SERVER"));
 				expect(warning.message).toContain('route "server"');
-			});
-
-			it("should warn about a separator suffix in different case", async () => {
-				await write("src/Inventory/Load.SERVER.luau");
-
-				const [warning] = await caseWarnings();
-
-				expect(warning.resource).toBe(
-					abs("src/Inventory/Load.SERVER.luau")
-				);
-			});
-
-			it("should warn about a separator suffix on an init script", async () => {
-				await write("src/Inventory/init.SERVER.luau");
-
-				const [warning] = await caseWarnings();
-
-				expect(warning.resource).toBe(abs("src/Inventory"));
 			});
 
 			it("should warn once for a folder however many files it holds", async () => {
@@ -1348,15 +1386,15 @@ describe("Placer", () => {
 				await write(
 					"src/SERVER/A.luau",
 					"src/Inventory/.CLIENT",
-					"src/Inventory/B.SERVER.luau"
+					"src/CLIENT/B.luau"
 				);
 
 				const warnings = await caseWarnings();
 
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
 					[
+						abs("src/CLIENT"),
 						abs("src/Inventory/.CLIENT"),
-						abs("src/Inventory/B.SERVER.luau"),
 						abs("src/SERVER"),
 					]
 				);
@@ -1366,7 +1404,7 @@ describe("Placer", () => {
 				await write(
 					"src/Server/Save.luau",
 					"src/Inventory/.Client",
-					"src/Inventory/Load.Server.luau"
+					"src/Inventory/Load@Server.luau"
 				);
 
 				expect(await caseWarnings()).toEqual([]);
@@ -1397,22 +1435,453 @@ describe("Placer", () => {
 			});
 		});
 
-		describe("capital route suffixes", () => {
-			it("should route and rename a file by its capital suffix without a warning", async () => {
-				await write("src/Net/HttpClient.luau");
+		describe("@ that routes nowhere", () => {
+			const strayWarnings = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.strayAt");
 
-				expect(await paths()).toEqual([
-					"StarterPlayer/StarterPlayerScripts/Net/Http",
-				]);
-				expect((await route()).unwrap().warnings).toEqual([]);
+			it("should warn once for every file and folder, naming the closest route", async () => {
+				await write(
+					"src/Inventory/Save@sever.luau",
+					"src/Queue@clent/Load.luau",
+					"src/Inventory/Fine@server.luau"
+				);
+
+				const [warning, ...others] = await strayWarnings();
+
+				expect(others).toEqual([]);
+				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
+				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.message).toContain("2 names have");
+				expect(warning.message).toContain(
+					`${abs("src/Inventory/Save@sever.luau")} (did you mean "@server"?)`
+				);
+				expect(warning.message).toContain(
+					`${abs("src/Queue@clent")} (did you mean "@client"?)`
+				);
+				expect(warning.message).not.toContain("Fine@server");
 			});
 
-			it("should leave a capital suffix alone when an outer route governs", async () => {
-				await write("src/server/Net/HttpClient.luau");
+			it("should say when a declared route isn't at the end of the name", async () => {
+				await write("src/Save@server.bak.luau");
 
-				expect(await paths()).toEqual([
-					"ServerScriptService/Net/HttpClient",
-				]);
+				const [warning] = await strayWarnings();
+
+				expect(warning.message).toContain(
+					'"@server" must end the name'
+				);
+			});
+
+			it("should list the first few and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/Save${index}@sever.luau`
+					)
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.message).toContain("12 names have");
+				expect(warning.message).toContain("2 more like it");
+			});
+
+			it("should not warn for a route that an outer route ignores", async () => {
+				await write("src/server/Net/Save@client.luau");
+
+				expect(await strayWarnings()).toEqual([]);
+			});
+		});
+
+		describe("paths the template mounts", () => {
+			const mounting = (...mounts: [string, string][]) => ({
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: Object.fromEntries(
+								mounts.map(([name, target]) => [
+									name,
+									{ $path: target },
+								])
+							),
+						},
+					},
+				},
+			});
+
+			it("should leave a mounted folder out of the scan, saying which node mounts it", async () => {
+				await write(
+					"src/Vendor/Lib/Server/Thing.luau",
+					"src/Vendor/Lib@sever.luau",
+					"src/Inventory/Save.luau"
+				);
+
+				const result = (
+					await route(mounting(["Vendor", "src/Vendor"]))
+				).unwrap();
+
+				expect(
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual(["ReplicatedStorage/shared/Inventory/Save"]);
+				expect(result.leftOut.get(abs("src/Vendor"))).toEqual({
+					status: "mounted",
+					node: ["ReplicatedStorage", "Vendor"],
+				});
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should leave out a single mounted file", async () => {
+				await write("src/Config.json", "src/Save.luau");
+
+				const result = (
+					await route(mounting(["Config", "src/Config.json"]))
+				).unwrap();
+
+				expect(
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual(["ReplicatedStorage/shared/Save"]);
+			});
+
+			it("should take a mounted path relative to the template's directory", async () => {
+				await write("src/Vendor/Lib.luau", "src/Save.luau");
+				const config = mounting(["Vendor", "../src/Vendor"]);
+
+				const result = (
+					await route({
+						template: {
+							...config.template,
+							file: abs("templates/template.project.json"),
+						},
+					})
+				).unwrap();
+
+				expect(result.leftOut.get(abs("src/Vendor"))).toMatchObject({
+					status: "mounted",
+				});
+			});
+
+			it("should leave a mount outside every root dir alone", async () => {
+				await write("src/Save.luau");
+
+				const result = (
+					await route(mounting(["Packages", "Packages"]))
+				).unwrap();
+
+				expect(result.routed).toHaveLength(1);
+			});
+
+			it("should fail when the template mounts a folder inside an init folder, which Rojo reads whole", async () => {
+				await write("src/Net/init.luau", "src/Net/Vendor/Lib.luau");
+
+				const result = await route(
+					mounting(["Vendor", "src/Net/Vendor"])
+				);
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code }) => code)
+				).toEqual(["template.mountsInsideInitFolder"]);
+			});
+
+			it("should report a mount inside an excluded folder as mounted, and keep the folder out of globIgnorePaths", async () => {
+				await write("src/Third/Vendor/Lib.luau", "src/Save.luau");
+
+				const result = (
+					await route({
+						...mounting(["Vendor", "src/Third/Vendor"]),
+						exclude: [abs("src/Third")],
+					})
+				).unwrap();
+
+				expect(
+					result.leftOut.get(abs("src/Third/Vendor"))
+				).toMatchObject({
+					status: "mounted",
+				});
+				expect(result.globIgnorePaths ?? []).toEqual([]);
+			});
+
+			it("should fail when the template mounts a root dir or a folder above one", async () => {
+				await write("src/Save.luau");
+
+				for (const target of ["src", "."]) {
+					const result = await route(mounting(["All", target]));
+
+					expect(result.isErr()).toBe(true);
+					expect(
+						result.isErr() &&
+							result.error.diagnostics.map(({ code }) => code)
+					).toEqual(["template.mountsRootDir"]);
+				}
+			});
+		});
+
+		describe("scripts that never run", () => {
+			const dead = async (overrides: ResolvedConfigSpec = {}) =>
+				(
+					await route({
+						routes: {
+							...ROUTES,
+							shared: "ReplicatedStorage/shared",
+						},
+						...overrides,
+					})
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "tree.deadScript");
+
+			it("should warn once for a LocalScript in a server service and a Script in a replicating one", async () => {
+				await write(
+					"src/server/Hud.client.luau",
+					"src/shared/Secret.server.luau",
+					"src/server/Boot.server.luau",
+					"src/client/Main.client.luau",
+					"src/ReplicatedFirst/Load.client.luau",
+					"src/Types.luau"
+				);
+
+				const [warning, ...others] = await dead();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("2 scripts will never run");
+				expect(warning.message).toContain(
+					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a LocalScript, placed by the "server" route)`
+				);
+				expect(warning.message).toContain(
+					`${abs("src/shared/Secret.server.luau")} -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)`
+				);
+			});
+
+			const metaWith = (runContext: string) =>
+				JSON.stringify({ properties: { RunContext: runContext } });
+
+			it("should not warn about a Script whose meta sets a run context, which runs by that", async () => {
+				await write("src/shared/Hud.server.luau");
+				await fs.writeFile(
+					abs("src/shared/Hud.meta.json"),
+					metaWith("Client")
+				);
+
+				expect(await dead()).toEqual([]);
+			});
+
+			it("should not warn about an init folder's Script whose meta sets a run context", async () => {
+				await write("src/shared/Net/init.server.luau");
+				await fs.writeFile(
+					abs("src/shared/Net/init.meta.json"),
+					metaWith("Server")
+				);
+
+				expect(await dead()).toEqual([]);
+			});
+
+			it("should still warn when the meta sets the Legacy run context or is invalid", async () => {
+				await write(
+					"src/shared/A.server.luau",
+					"src/shared/B.server.luau"
+				);
+				await fs.writeFile(
+					abs("src/shared/A.meta.json"),
+					metaWith("Legacy")
+				);
+				await fs.writeFile(abs("src/shared/B.meta.json"), "{ nope");
+
+				expect((await dead())[0].message).toContain("2 scripts");
+			});
+
+			const legacyOff = {
+				template: {
+					file: abs("template.project.json"),
+					project: {
+						name: "game",
+						emitLegacyScripts: false,
+						tree: { $className: "DataModel" },
+					},
+				},
+			};
+
+			it("should warn without legacy scripts about a Client script in ServerScriptService", async () => {
+				await write(
+					"src/server/Hud.client.luau",
+					"src/server/Boot.server.luau",
+					"src/shared/Load.client.luau",
+					"src/shared/Rules.server.luau"
+				);
+
+				const [warning, ...others] = await dead(legacyOff);
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("1 script will never run");
+				expect(warning.message).toContain(
+					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a Script with RunContext Client, placed by the "server" route)`
+				);
+			});
+
+			it("should warn about a Script in ServerScriptService whose meta sets RunContext Client", async () => {
+				await write("src/server/Hud.server.luau");
+				await fs.writeFile(
+					abs("src/server/Hud.meta.json"),
+					metaWith("Client")
+				);
+
+				expect((await dead())[0].message).toContain(
+					"a Script with RunContext Client"
+				);
+			});
+
+			it("should never warn about a script in ServerStorage, where scripts wait to be cloned", async () => {
+				await write(
+					"src/storage/Npc.server.luau",
+					"src/storage/Hud.client.luau"
+				);
+				const routes = {
+					...ROUTES,
+					shared: "ReplicatedStorage/shared",
+					storage: "ServerStorage",
+				};
+
+				expect(await dead({ routes })).toEqual([]);
+				expect(await dead({ routes, ...legacyOff })).toEqual([]);
+			});
+
+			it("should warn about an init folder's script", async () => {
+				await write("src/shared/Net/init.server.luau");
+
+				expect((await dead())[0].message).toContain("1 script will");
+			});
+
+			it("should not warn about a ModuleScript or a script that is pruned", async () => {
+				await write(
+					"src/server/Hud.client.mock.luau",
+					"src/server/Save@client.luau"
+				);
+
+				expect(await dead({ variants: { mock: false } })).toEqual([]);
+			});
+
+			it("should list the first few and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/shared/Save${index}.server.luau`
+					)
+				);
+
+				expect((await dead())[0].message).toContain("2 more like it");
+			});
+		});
+
+		describe("variant typos", () => {
+			const typos = async () =>
+				(await route({ variants: { mock: true } }))
+					.unwrap()
+					.warnings.filter(({ code }) => code === "variant.typo");
+
+			it("should warn once, naming the variant a dot part is one edit from", async () => {
+				await write(
+					"src/Analytics.mok.luau",
+					"src/Save.spec.luau",
+					"src/Fine.mock.luau"
+				);
+
+				const [warning, ...others] = await typos();
+
+				expect(others).toEqual([]);
+				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.message).toContain(
+					`${abs("src/Analytics.mok.luau")} (did you mean ".mock" for ".mok"?)`
+				);
+				expect(warning.message).not.toContain("spec");
+			});
+		});
+
+		describe("server code that ships to clients", () => {
+			const shipped = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.serverCodeShipped"
+					);
+
+			it("should warn once, naming each file, the route it sits under and the one that governs it", async () => {
+				await write(
+					"src/ReplicatedFirst/server/Datastore.luau",
+					"src/ReplicatedFirst/Other@server/Save.luau",
+					"src/server/Net/Fine.luau"
+				);
+
+				const [warning, ...others] = await shipped();
+
+				expect(others).toEqual([]);
+				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
+				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.message).toBe(
+					[
+						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',
+						`  ${abs("src/ReplicatedFirst/Other@server/Save.luau")} -> ReplicatedFirst/Other@server/Save`,
+						`  ${abs("src/ReplicatedFirst/server/Datastore.luau")} -> ReplicatedFirst/server/Datastore`,
+						"Move them out of the \"ReplicatedFirst\" route's files if they're server code.",
+					].join("\n")
+				);
+			});
+
+			it("should warn for a data file and a suffix that an outer route ignores", async () => {
+				await write(
+					"src/ReplicatedFirst/Config@server.json",
+					"src/ReplicatedFirst/Rules@server.luau"
+				);
+
+				expect((await shipped())[0].message).toContain("2 files");
+			});
+
+			it("should not warn when the governing route is server-only too", async () => {
+				await write("src/server/Net/client/Save.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should not warn about a Script, whose source stays on the server", async () => {
+				await write("src/ReplicatedFirst/server/Boot.server.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should not warn about a route that targets a replicating service", async () => {
+				await write("src/ReplicatedFirst/client/Hud.luau");
+
+				expect(await shipped()).toEqual([]);
+			});
+
+			it("should list the first few files and count the rest", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) =>
+							`src/ReplicatedFirst/server/Save${index}.luau`
+					)
+				);
+
+				const [warning] = await shipped();
+
+				expect(warning.message).toContain("12 files");
+				expect(warning.message).toContain("2 more like it");
+			});
+
+			it("should not warn about a file a dormant variant prunes", async () => {
+				await write("src/ReplicatedFirst/server/Save.mock.luau");
+
+				const [warning] = await (async () =>
+					(await route({ variants: { mock: false } }))
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "route.serverCodeShipped"
+						))();
+
+				expect(warning).toBeUndefined();
 			});
 		});
 
@@ -1441,20 +1910,20 @@ describe("Placer", () => {
 		});
 
 		describe("suffixes and stacked keys", () => {
-			it("should route a script whose route suffix is followed by a tag", async () => {
+			it("should route a script whose route suffix is followed by a variant", async () => {
 				await write("src/Foo.server.mock.luau");
 
-				const result = await route({ tags: { mock: true } });
+				const result = await route({ variants: { mock: true } });
 
 				expect(
 					result.unwrap().routed.map((file) => file.instancePath)
 				).toEqual([["ServerScriptService", "Foo"]]);
 			});
 
-			it("should strip a tag suffix from the name", async () => {
+			it("should strip a variant suffix from the name", async () => {
 				await write("src/Foo.mock.server.luau");
 
-				const result = await route({ tags: { mock: true } });
+				const result = await route({ variants: { mock: true } });
 
 				expect(
 					result.unwrap().routed.map((file) => file.instancePath)
@@ -1476,16 +1945,16 @@ describe("Placer", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Gun"]);
 			});
 
-			it("should strip a tag suffix before .model from the name", async () => {
+			it("should strip a variant suffix before .model from the name", async () => {
 				await write("src/Gun.mock.model.json");
 
-				const result = await route({ tags: { mock: true } });
+				const result = await route({ variants: { mock: true } });
 
 				expect(
 					result.unwrap().routed.map((file) => file.instancePath)
 				).toEqual([["ReplicatedStorage", "shared", "Gun"]]);
-				expect(result.unwrap().routed[0].tags).toMatchObject([
-					{ tag: "mock" },
+				expect(result.unwrap().routed[0].variants).toMatchObject([
+					{ variant: "mock" },
 				]);
 			});
 
@@ -1505,10 +1974,10 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should not route on a tag alone", async () => {
+			it("should not route on a variant alone", async () => {
 				await write("src/Foo.mock.luau");
 
-				expect(await paths({ tags: { mock: true } })).toEqual([
+				expect(await paths({ variants: { mock: true } })).toEqual([
 					"ReplicatedStorage/shared/Foo",
 				]);
 			});
@@ -1516,25 +1985,26 @@ describe("Placer", () => {
 			it("should leave an undeclared suffix in the name", async () => {
 				await write("src/Foo.beta.luau");
 
-				expect(await paths({ tags: { mock: true } })).toEqual([
+				expect(await paths({ variants: { mock: true } })).toEqual([
 					"ReplicatedStorage/shared/Foo.beta",
 				]);
 			});
 		});
 
-		describe("tags", () => {
-			const tagsOf = async (
-				overrides: ResolvedConfigSpec = { tags: { mock: true } }
+		describe("variants", () => {
+			const variantsOf = async (
+				overrides: ResolvedConfigSpec = { variants: { mock: true } }
 			) =>
 				(await route(overrides))
 					.unwrap()
-					.routed.map((file) => file.tags);
+					.routed.map((file) => file.variants);
 
-			it("should remove a tag folder from the path", async () => {
+			it("should remove a variant folder from the path", async () => {
 				await write("src/Analytics/mock/Service.luau");
 
-				const [file] = (await route({ tags: { mock: true } })).unwrap()
-					.routed;
+				const [file] = (
+					await route({ variants: { mock: true } })
+				).unwrap().routed;
 
 				expect(file.instancePath).toEqual([
 					"ReplicatedStorage",
@@ -1542,17 +2012,20 @@ describe("Placer", () => {
 					"Analytics",
 					"Service",
 				]);
-				expect(file.tags).toEqual([{ tag: "mock", form: "folder" }]);
+				expect(file.variants).toEqual([
+					{ variant: "mock", form: "folder" },
+				]);
 			});
 
-			it("should keep a folder that a tag marker applies to", async () => {
+			it("should keep a folder that a variant marker applies to", async () => {
 				await write(
 					"src/Experimental/.mock",
 					"src/Experimental/Save.luau"
 				);
 
-				const [file] = (await route({ tags: { mock: true } })).unwrap()
-					.routed;
+				const [file] = (
+					await route({ variants: { mock: true } })
+				).unwrap().routed;
 
 				expect(file.instancePath).toEqual([
 					"ReplicatedStorage",
@@ -1560,66 +2033,64 @@ describe("Placer", () => {
 					"Experimental",
 					"Save",
 				]);
-				expect(file.tags).toEqual([{ tag: "mock", form: "marker" }]);
+				expect(file.variants).toEqual([
+					{ variant: "mock", form: "marker" },
+				]);
 			});
 
 			it("should apply a marker in the root dir to every file", async () => {
 				await write("src/.mock", "src/A/B.luau");
 
-				expect(await tagsOf()).toEqual([
-					[{ tag: "mock", form: "marker" }],
+				expect(await variantsOf()).toEqual([
+					[{ variant: "mock", form: "marker" }],
 				]);
 			});
 
 			it("should record how a suffix matched", async () => {
 				await write("src/Analytics.mock.luau", "src/HttpMock.luau");
 
-				expect(await tagsOf()).toEqual([
-					[{ tag: "mock", form: "separator" }],
-					[
-						{
-							tag: "mock",
-							form: "capital",
-						},
-					],
+				expect(await variantsOf()).toEqual([
+					[{ variant: "mock", form: "suffix" }],
+					[],
 				]);
 			});
 
-			it("should record a tag on a script's init file", async () => {
+			it("should record a variant on a script's init file", async () => {
 				await write("src/Combat/init.mock.luau");
 
-				expect(await tagsOf()).toEqual([
-					[{ tag: "mock", form: "separator" }],
+				expect(await variantsOf()).toEqual([
+					[{ variant: "mock", form: "suffix" }],
 				]);
 			});
 
-			it("should record every tag a file carries", async () => {
+			it("should record every variant a file carries", async () => {
 				await write("src/dev/Save.mock.luau");
 
 				expect(
-					await tagsOf({ tags: { mock: true, dev: true } })
+					await variantsOf({ variants: { mock: true, dev: true } })
 				).toEqual([
 					[
-						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "separator" },
+						{ variant: "dev", form: "folder" },
+						{ variant: "mock", form: "suffix" },
 					],
 				]);
 			});
 
-			it("should not record a dot-file or folder that is not a declared tag", async () => {
+			it("should not record a dot-file or folder that is not a declared variant", async () => {
 				await write("src/.beta", "src/beta/Save.luau");
 
-				expect(await tagsOf()).toEqual([[]]);
+				expect(await variantsOf()).toEqual([[]]);
 			});
 
-			it("should report a .server that a tag suffix follows", async () => {
+			it("should report a .server that a variant suffix follows", async () => {
 				await write(
 					"src/Foo.server.mock.luau",
 					"src/Bar.mock.server.luau"
 				);
 
-				const files = (await route({ tags: { mock: true } })).unwrap()
-					.routed;
+				const files = (
+					await route({ variants: { mock: true } })
+				).unwrap().routed;
 
 				expect(files.map((file) => file.buriedScriptSuffix)).toEqual([
 					undefined,
@@ -1740,50 +2211,50 @@ describe("Placer", () => {
 		});
 	});
 
-	type TagResult = Pick<Placement, "files" | "leftOut"> & {
+	type VariantResult = Pick<Placement, "files" | "leftOut"> & {
 		readonly warnings: readonly Diagnostic[];
 	};
 
-	const TAG_ROUTES = {
+	const VARIANT_ROUTES = {
 		server: "ServerScriptService",
 		client: "StarterPlayer/StarterPlayerScripts",
 		"*": "ReplicatedStorage",
 	};
 
-	describe("tagging", () => {
+	describe("variants", () => {
 		let fs: MemoryFileSystemService;
 		let store: DisposableStore;
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 		const apply = async (
-			tags: Record<string, boolean>,
+			variants: Record<string, boolean>,
 			rootDirs: readonly string[] = [abs("src")]
 		) => {
 			const config: ResolvedConfig = configOf({
-				routes: TAG_ROUTES,
-				tags,
+				routes: VARIANT_ROUTES,
+				variants,
 				rootDirs: [...rootDirs],
 			});
 			const index = await indexOf(store, fs, rootDirs);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.map(({ warnings }): TagResult => {
+			return built.map(({ warnings }): VariantResult => {
 				const { files, leftOut } = builder.place(config).unwrap();
 				return { files, leftOut, warnings };
 			});
 		};
 
-		const prunedPaths = (result: TagResult) =>
+		const prunedPaths = (result: VariantResult) =>
 			[...result.leftOut]
 				.filter(([, why]) => why.status === "pruned")
 				.map(([source]) => source);
 
 		const instances = async (
-			tags: Record<string, boolean>,
+			variants: Record<string, boolean>,
 			rootDirs?: readonly string[]
 		) =>
-			(await apply(tags, rootDirs))
+			(await apply(variants, rootDirs))
 				.unwrap()
 				.files.map((file) => file.instancePath.join("/"));
 
@@ -1796,8 +2267,8 @@ describe("Placer", () => {
 			store[Symbol.dispose]();
 		});
 
-		describe("tag folder", () => {
-			it("should move an active tag folder's contents up into the parent", async () => {
+		describe("variant folder", () => {
+			it("should move an active variant folder's contents up into the parent", async () => {
 				await write("src/Analytics/mock/Service.luau");
 
 				expect(await instances({ mock: true })).toEqual([
@@ -1805,7 +2276,7 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should prune a dormant tag folder whole", async () => {
+			it("should prune a dormant variant folder whole", async () => {
 				await write(
 					"src/Analytics/mock/Service.luau",
 					"src/Analytics/mock/deep/Data.luau"
@@ -1874,7 +2345,7 @@ describe("Placer", () => {
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should name the dormant tag that pruned each file, and how it matched", async () => {
+			it("should name the dormant variant that pruned each file, and how it matched", async () => {
 				await write("src/Analytics.mock.luau", "src/dev/Save.luau");
 
 				const result = (
@@ -1887,21 +2358,21 @@ describe("Placer", () => {
 							abs("src/Analytics.mock.luau"),
 							{
 								status: "pruned",
-								tags: [{ tag: "mock", form: "separator" }],
+								variants: [{ variant: "mock", form: "suffix" }],
 							},
 						],
 						[
 							abs("src/dev/Save.luau"),
 							{
 								status: "pruned",
-								tags: [{ tag: "dev", form: "folder" }],
+								variants: [{ variant: "dev", form: "folder" }],
 							},
 						],
 					])
 				);
 			});
 
-			it("should list every dormant tag a pruned file carries, the first first", async () => {
+			it("should list every dormant variant a pruned file carries, the first first", async () => {
 				await write("src/dev/Analytics.mock.luau");
 
 				const result = (
@@ -1912,14 +2383,14 @@ describe("Placer", () => {
 					result.leftOut.get(abs("src/dev/Analytics.mock.luau"))
 				).toEqual({
 					status: "pruned",
-					tags: [
-						{ tag: "dev", form: "folder" },
-						{ tag: "mock", form: "separator" },
+					variants: [
+						{ variant: "dev", form: "folder" },
+						{ variant: "mock", form: "suffix" },
 					],
 				});
 			});
 
-			it("should report the file an active tag replaced", async () => {
+			it("should report the file an active variant replaced", async () => {
 				await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
 				const result = (await apply({ mock: true })).unwrap();
@@ -1962,37 +2433,25 @@ describe("Placer", () => {
 				).toEqual([abs("src/Gun.mock.rbxm")]);
 			});
 
-			it("should prune a file carrying one dormant tag among active ones", async () => {
+			it("should prune a file carrying one dormant variant among active ones", async () => {
 				await write("src/dev/Save.mock.luau");
 
 				expect(await instances({ dev: true, mock: false })).toEqual([]);
 			});
 		});
 
-		describe("capital suffix on a dormant tag", () => {
-			it("should prune the files without a warning", async () => {
-				await write(
-					"src/HttpMock.luau",
-					"src/DataMock.luau",
-					"src/Analytics.mock.luau"
-				);
+		describe("capital suffix on a dormant variant", () => {
+			it("should neither prune nor warn: a capital letter no longer carries a variant", async () => {
+				await write("src/HttpMock.luau", "src/DataMock.luau");
 
 				const result = (await apply({ mock: false })).unwrap();
 
-				expect(result.files).toEqual([]);
-				expect(prunedPaths(result)).toHaveLength(3);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should not warn or prune when the tag is active", async () => {
-				await write("src/HttpMock.luau");
-
-				const result = (await apply({ mock: true })).unwrap();
-
-				expect(result.warnings).toEqual([]);
 				expect(result.files.map((file) => file.instancePath)).toEqual([
-					["ReplicatedStorage", "Http"],
+					["ReplicatedStorage", "DataMock"],
+					["ReplicatedStorage", "HttpMock"],
 				]);
+				expect(prunedPaths(result)).toEqual([]);
+				expect(result.warnings).toEqual([]);
 			});
 		});
 
@@ -2016,7 +2475,7 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should let a tagged file beat an untagged one silently", async () => {
+			it("should let a variant file beat a plain one silently", async () => {
 				await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
 				const result = (await apply({ mock: true })).unwrap();
@@ -2027,7 +2486,7 @@ describe("Placer", () => {
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should keep the untagged file when the variant is dormant", async () => {
+			it("should keep the plain file when the variant is dormant", async () => {
 				await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
 				const result = (await apply({ mock: false })).unwrap();
@@ -2038,7 +2497,7 @@ describe("Placer", () => {
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should fail at each file when two active tags claim one name", async () => {
+			it("should fail at each file when two active variants claim one name", async () => {
 				await write(
 					"src/Analytics.mock.luau",
 					"src/Analytics.dev.luau"
@@ -2051,28 +2510,28 @@ describe("Placer", () => {
 				).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Error,
-						code: "tag.activeClash",
+						code: "variant.activeClash",
 						resource: abs("src/Analytics.dev.luau"),
-						message: `becomes "ReplicatedStorage/Analytics" with an active tag, and so does ${abs("src/Analytics.mock.luau")}. Only one can apply: turn a tag off or rename a file.`,
+						message: `becomes "ReplicatedStorage/Analytics" with an active variant, and so does ${abs("src/Analytics.mock.luau")}. Only one can apply: turn a variant off or rename a file.`,
 					},
 					{
-						code: "tag.activeClash",
+						code: "variant.activeClash",
 						resource: abs("src/Analytics.mock.luau"),
 					},
 				]);
 			});
 
-			it("should fail when two files carry the same active tag", async () => {
+			it("should fail when two files carry the same active variant", async () => {
 				await write("src/mock/Service.luau", "src/Service.mock.luau");
 
 				const result = await apply({ mock: true });
 
 				expect(
 					result.isErr() ? result.error.diagnostics[0].code : ""
-				).toBe("tag.activeClash");
+				).toBe("variant.activeClash");
 			});
 
-			it("should warn at the untagged file left out, naming the one used", async () => {
+			it("should warn at the plain file left out, naming the one used", async () => {
 				await write("src/Types.luau", "src/Types.lua");
 
 				const result = (await apply({})).unwrap();
@@ -2111,7 +2570,7 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should warn at every untagged file left out of a clash", async () => {
+			it("should warn at every plain file left out of a clash", async () => {
 				await write(
 					"src/Types.luau",
 					"src/Types.lua",
@@ -2125,7 +2584,7 @@ describe("Placer", () => {
 				);
 			});
 
-			it("should not warn about untagged files that lose to a tagged one", async () => {
+			it("should not warn about plain files that lose to a variant one", async () => {
 				await write(
 					"src/Types.luau",
 					"src/Types.lua",
@@ -2152,7 +2611,7 @@ describe("Placer", () => {
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should apply the last-root rule after tag precedence", async () => {
+			it("should apply the last-root rule after variant precedence", async () => {
 				await write("core/Save.mock.luau", "lobby/Save.luau");
 
 				const result = (
@@ -2164,7 +2623,7 @@ describe("Placer", () => {
 				]);
 			});
 
-			it("should not treat files in different root dirs as a tag clash", async () => {
+			it("should not treat files in different root dirs as a variant clash", async () => {
 				await write("core/Save.mock.luau", "lobby/Save.dev.luau");
 
 				const result = await apply({ mock: true, dev: true }, [
@@ -2177,7 +2636,7 @@ describe("Placer", () => {
 		});
 
 		describe("warnings", () => {
-			it("should warn that a script with a tag after .server becomes a ModuleScript", async () => {
+			it("should warn that a script with a variant after .server becomes a ModuleScript", async () => {
 				await write("src/Foo.server.mock.luau");
 
 				const { warnings } = (await apply({ mock: true })).unwrap();
@@ -2185,7 +2644,7 @@ describe("Placer", () => {
 				expect(warnings).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Warning,
-						code: "tag.buriedScriptSuffix",
+						code: "variant.buriedScriptSuffix",
 						resource: abs("src/Foo.server.mock.luau"),
 					},
 				]);
@@ -2211,7 +2670,7 @@ describe("Placer", () => {
 				).toEqual([]);
 			});
 
-			it("should keep a suffix that isn't a declared tag in the name, without a warning", async () => {
+			it("should keep a suffix that isn't a declared variant in the name, without a warning", async () => {
 				await write("src/Foo.beta.luau");
 
 				const result = (await apply({ mock: true })).unwrap();

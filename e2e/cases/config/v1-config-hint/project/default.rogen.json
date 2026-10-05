@@ -1,0 +1,5 @@
+{
+	"source": ["src"],
+	"aliases": { "Service": "ServerScriptService" },
+	"project": { "name": "game", "tree": { "$className": "DataModel" } }
+}

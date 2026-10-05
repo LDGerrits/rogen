@@ -1,0 +1,4 @@
+{
+	"steps": [["build"], ["build", "-c", ".rogen.json"]],
+	"rojo": false
+}

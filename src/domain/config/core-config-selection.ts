@@ -25,7 +25,7 @@ export class ManagedConfig {
 	private _entry: ConfigEntry | undefined;
 	private config: Config | undefined;
 	private _files: readonly string[] = [];
-	private _skippedTags: readonly string[] | undefined;
+	private _skippedVariants: readonly string[] | undefined;
 
 	constructor(
 		readonly file: string,
@@ -44,9 +44,9 @@ export class ManagedConfig {
 		return this._files;
 	}
 
-	/** The CLI tags this config does not declare; `undefined` when its chain could not be read. */
-	get skippedTags(): readonly string[] | undefined {
-		return this._skippedTags;
+	/** The CLI variants this config does not declare; `undefined` when its chain could not be read. */
+	get skippedVariants(): readonly string[] | undefined {
+		return this._skippedVariants;
 	}
 
 	reads(changed: ReadonlySet<string>): boolean {
@@ -58,7 +58,7 @@ export class ManagedConfig {
 		const loaded = await this.loader.load(this.file, this.overrides);
 		const fields = { file: this.file, parents: loaded.chain.slice(1) };
 		this._files = loaded.files;
-		this._skippedTags = loaded.skippedTags;
+		this._skippedVariants = loaded.skippedVariants;
 
 		if (loaded.resolved.isOk()) {
 			this.config = loaded.config;
@@ -107,7 +107,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		this._files = this.readFiles();
 	}
 
-	/** Loads `files` with `overrides`; fails when a tag override is declared by none of them. */
+	/** Loads `files` with `overrides`; fails when a variant override is declared by none of them. */
 	static async load(
 		files: readonly string[],
 		loader: ConfigLoader,
@@ -118,7 +118,7 @@ export class CoreConfigSelection implements ConfigSelection {
 			(file) => new ManagedConfig(file, loader, overrides)
 		);
 		await Promise.all(managed.map((config) => config.load()));
-		const problem = undeclaredTag(managed, overrides);
+		const problem = undeclaredVariant(managed, overrides);
 		return problem
 			? err(problem)
 			: ok(new CoreConfigSelection(managed, unselected));
@@ -189,27 +189,31 @@ export class CoreConfigSelection implements ConfigSelection {
 	}
 }
 
-/** A tag override that no config being built declares, as an error. */
-function undeclaredTag(
+/** A variant override that no config being built declares, as an error. */
+function undeclaredVariant(
 	managed: readonly ManagedConfig[],
 	overrides: ConfigOverrides
 ): Error | undefined {
 	const allReadable = managed.every(
-		(config) => config.skippedTags !== undefined
+		(config) => config.skippedVariants !== undefined
 	);
 	if (!allReadable) return undefined;
-	for (const tag of Object.keys(overrides.tags)) {
-		if (!managed.every((config) => config.skippedTags?.includes(tag)))
+	for (const variant of Object.keys(overrides.variants)) {
+		if (
+			!managed.every((config) =>
+				config.skippedVariants?.includes(variant)
+			)
+		)
 			continue;
 		const declared = managed.flatMap((config) =>
-			Object.keys(buildableConfig(config.entry)?.tags ?? {})
+			Object.keys(buildableConfig(config.entry)?.variants ?? {})
 		);
-		const suggestion = closestMatch(tag, declared);
+		const suggestion = closestMatch(variant, declared);
 		return new Error(
-			`Tag "${tag}" is not declared by any config being built. ` +
+			`Variant "${variant}" is not declared by any config being built. ` +
 				(suggestion
 					? `Did you mean "${suggestion}"?`
-					: `Add it under "tags" in a config, or drop the flag.`)
+					: `Add it under "variants" in a config, or drop the flag.`)
 		);
 	}
 	return undefined;

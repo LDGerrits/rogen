@@ -1,0 +1,21 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
+    src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.luau
+      Analytics.mok: ModuleScript  <- src/Analytics.mok.luau
+      Net: ModuleScript  <- src/Net.Mock.luau
+      Save: ModuleScript  <- src/Save.mock.luau

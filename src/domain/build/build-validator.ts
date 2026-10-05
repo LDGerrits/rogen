@@ -1,12 +1,18 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
-import { capitalized } from "../../base/strings.js";
+import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import {
+	SCRIPT_STORAGE_SERVICE,
+	ScriptRun,
+	isServerOnlyService,
+	scriptRunsAt,
+} from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo-file.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
@@ -15,7 +21,10 @@ import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 type InstancelessFolder =
-	"a root dir" | "a routing folder" | "a tag folder" | "an invisible folder";
+	| "a root dir"
+	| "a routing folder"
+	| "a variant folder"
+	| "an invisible folder";
 
 const DIAGNOSED_PATHS = 10;
 
@@ -36,7 +45,11 @@ export class BuildValidator {
 			...this.unresolvedLink(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
+			...this.strayAt(),
+			...this.variantTypo(),
 			...this.unrouted(),
+			...this.serverCodeShipped(),
+			...this.deadScript(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
@@ -87,17 +100,65 @@ export class BuildValidator {
 		);
 	}
 
-	/** A folder, marker or suffix that only differs from a declared key in letter case is read as an ordinary name. */
+	/** A folder or marker that only differs from a declared key in letter case is read as an ordinary name. */
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
 		return this.diagnosePaths([...nearMisses], (resource, key) => {
-			const kind = this.config.keys.isTag(key) ? "tag" : "route";
+			const kind = this.config.keys.isVariant(key) ? "variant" : "route";
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
 				`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
 			);
 		});
+	}
+
+	/** An `@` means nothing else, so one that routes nowhere is a typo or a misplaced suffix. */
+	private strayAt(): Diagnostic[] {
+		const { strayAts } = this.placement.readings;
+		if (strayAts.size === 0) return [];
+		const listed = this.listed(
+			[...strayAts],
+			([resource, { text, closestKey, notLast }]) => {
+				const hint = notLast
+					? `"@${text}" must end the name, or be followed only by a variant`
+					: `did you mean "@${closestKey}"?`;
+				return `${resource} (${hint})`;
+			}
+		);
+		const count = strayAts.size === 1 ? "name has" : "names have";
+		return [
+			warningDiagnostic(
+				"route.strayAt",
+				{ resource: this.config.file },
+				[
+					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
+					...listed,
+				].join("\n")
+			),
+		];
+	}
+
+	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
+	private variantTypo(): Diagnostic[] {
+		const { variantTypos } = this.placement.readings;
+		if (variantTypos.size === 0) return [];
+		const listed = this.listed(
+			[...variantTypos],
+			([resource, { text, variant }]) =>
+				`${resource} (did you mean ".${variant}" for ".${text}"?)`
+		);
+		const many = variantTypos.size > 1;
+		return [
+			warningDiagnostic(
+				"variant.typo",
+				{ resource: this.config.file },
+				[
+					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+					...listed,
+				].join("\n")
+			),
+		];
 	}
 
 	private unrouted(): Diagnostic[] {
@@ -112,6 +173,115 @@ export class BuildValidator {
 		);
 	}
 
+	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
+	private serverCodeShipped(): Diagnostic[] {
+		const { routes } = this.config;
+		const shipped = this.placement.files.flatMap((file) => {
+			const ignored = [...new Set(file.ignoredRoutes)].filter((key) => {
+				const service = routes.get(key)?.service;
+				return service !== undefined && isServerOnlyService(service);
+			});
+			const { kind, stem } = this.placement.readings.entryAt(
+				file.entry.source
+			);
+			// A Script's source stays on the server, and a LocalScript is client code to begin with.
+			const isScript =
+				kind === "script" &&
+				RojoFile.scriptSuffixOf(stem) !== undefined;
+			return ignored.length > 0 &&
+				!isScript &&
+				!isServerOnlyService(file.instancePath[0])
+				? [{ file, ignored }]
+				: [];
+		});
+		if (shipped.length === 0) return [];
+
+		const quoted = (keys: Iterable<string>) =>
+			joinedWithAnd([...new Set(keys)].map((key) => `"${key}"`));
+		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
+		const governing = quoted(shipped.map(({ file }) => file.route));
+		const listed = this.listed(
+			shipped,
+			({ file }) =>
+				`${file.entry.source} -> ${instanceKey(file.instancePath)}`
+		);
+		const many = shipped.length > 1;
+		return [
+			warningDiagnostic(
+				"route.serverCodeShipped",
+				{ resource: this.config.file },
+				[
+					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
+					...listed,
+					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code.`,
+				].join("\n")
+			),
+		];
+	}
+
+	/** A script that its class or run context and its service rule out running. ServerStorage holds scripts that code clones out, so it never counts. */
+	private deadScript(): Diagnostic[] {
+		const dead = this.placement.files.flatMap((file) => {
+			const run = this.scriptRunOf(file);
+			return run !== undefined &&
+				file.instancePath[0] !== SCRIPT_STORAGE_SERVICE &&
+				!scriptRunsAt(run, file.instancePath)
+				? [{ file, run }]
+				: [];
+		});
+		if (dead.length === 0) return [];
+
+		const listed = this.listed(
+			dead,
+			({ file, run }) =>
+				`${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
+		);
+		const many = dead.length > 1;
+		return [
+			warningDiagnostic(
+				"tree.deadScript",
+				{ resource: this.config.file },
+				[
+					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
+					...listed,
+					"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.",
+				].join("\n")
+			),
+		];
+	}
+
+	/** How Rojo makes a `.server` or `.client` script run: by class with legacy scripts, else by run context, and a run context in the script's meta wins. */
+	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
+		const { kind, stem } = this.placement.readings.entryAt(
+			file.entry.source
+		);
+		const suffix =
+			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
+		if (suffix !== "server" && suffix !== "client") return undefined;
+		const legacy = !this.placement.template.disablesLegacyScripts;
+		if (suffix === "client" && legacy) return "LocalScript";
+		switch (
+			this.assembly.scriptRunContexts.contexts.get(file.entry.source)
+		) {
+			case "Legacy":
+				return "Script";
+			case "Server":
+				return "Server";
+			case "Client":
+				return "Client";
+			case "Plugin":
+				return "Plugin";
+		}
+		if (legacy) return "Script";
+		return suffix === "server" ? "Server" : "Client";
+	}
+
+	private static describeRun(run: ScriptRun): string {
+		return run === "Script" || run === "LocalScript"
+			? `a ${run}`
+			: `a Script with RunContext ${run}`;
+	}
+
 	private buriedScriptSuffix(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
 		return routed.flatMap((file) =>
@@ -119,7 +289,7 @@ export class BuildValidator {
 			leftOut.get(file.entry.source)?.status !== "pruned"
 				? [
 						warningDiagnostic(
-							"tag.buriedScriptSuffix",
+							"variant.buriedScriptSuffix",
 							{ resource: file.entry.source },
 							`".${file.buriedScriptSuffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${file.buriedScriptSuffix}.luau.`
 						),
@@ -128,11 +298,11 @@ export class BuildValidator {
 		);
 	}
 
-	/** Only one untagged file can become an instance; a tagged one replacing it is the point of tags. */
+	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
 	private instanceClash(): Diagnostic[] {
 		return this.placement.clashes
 			.filter(({ claimants }) =>
-				claimants.every((file) => file.tags.length === 0)
+				claimants.every((file) => file.variants.length === 0)
 			)
 			.flatMap(({ instance, claimants }) => {
 				const winner = claimants[claimants.length - 1].entry.source;
@@ -261,17 +431,24 @@ export class BuildValidator {
 		});
 	}
 
-	/** Meta in folders that never become an instance, decided by the folder's name. */
+	/** Meta in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
 	private metaAppliesToNothing(): Diagnostic[] {
-		const { readings } = this.placement;
+		const { readings, routed } = this.placement;
+		const named = new Set(
+			routed.flatMap(({ entry, folderNodes }) =>
+				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
+			)
+		);
 		const instanceless = ({
 			rootDir,
 			dir,
 		}: FolderMeta): InstancelessFolder | undefined => {
 			if (dir === "") return "a root dir";
-			const folder = readings.folders.get(joinPosix(rootDir, dir));
+			const key = joinPosix(rootDir, dir);
+			if (named.has(key)) return undefined;
+			const folder = readings.folders.get(key);
 			if (folder?.kind === "route") return "a routing folder";
-			if (folder?.kind === "tag") return "a tag folder";
+			if (folder?.kind === "variant") return "a variant folder";
 			return folder?.invisible ? "an invisible folder" : undefined;
 		};
 		const metas = this.assembly.folderMeta.flatMap((meta) => {
@@ -285,6 +462,20 @@ export class BuildValidator {
 				`applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`
 			)
 		);
+	}
+
+	/** The first few items as indented lines, then how many more went unlisted. */
+	private listed<T>(
+		items: readonly T[],
+		line: (item: T) => string
+	): string[] {
+		const lines = items
+			.slice(0, DIAGNOSED_PATHS)
+			.map((item) => `  ${line(item)}`);
+		const unlisted = items.length - lines.length;
+		return unlisted > 0
+			? [...lines, `  ${unlisted} more like it aren't listed.`]
+			: lines;
 	}
 
 	/** One diagnostic per path, up to a cap; the last one says how many more went unlisted. */

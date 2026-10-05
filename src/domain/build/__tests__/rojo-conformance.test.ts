@@ -101,7 +101,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Pick<ResolvedConfigSpec, "routes" | "tags"> = {}
+		overrides: Pick<ResolvedConfigSpec, "routes" | "variants"> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
@@ -110,7 +110,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			name: "t",
 			rootDirs: [path.join(dir, "src")],
 			routes: { "*": "ReplicatedStorage" },
-			tags: {},
+			variants: {},
 			exclude: [],
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
@@ -148,8 +148,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"Inv/Foo.mock.meta.json": meta,
 			"Inv/Combat@server.luau": "",
 			"Inv/Combat@server.meta.json": meta,
-			"Inv/HitServer.luau": "",
-			"Inv/HitServer.meta.json": meta,
 			"Inv/Analytics.mock.luau": "",
 			"Inv/Analytics.mock.meta.json": meta,
 			"Inv/Tool.plugin.luau": "",
@@ -163,7 +161,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		});
 		await rogenTree({
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-			tags: { mock: true },
+			variants: { mock: true },
 		});
 
 		expect(metaApplied(sourcemap(dir, "ours.project.json"))).toEqual([
@@ -174,7 +172,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ReplicatedStorage/Inv/Tool <- src/Inv/Tool.meta.json",
 			"ServerScriptService/Inv/Combat <- src/Inv/Combat@server.meta.json",
 			"ServerScriptService/Inv/Foo <- src/Inv/Foo.mock.meta.json",
-			"ServerScriptService/Inv/Hit <- src/Inv/HitServer.meta.json",
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
 			"ServerScriptService/Inv/Stats <- src/Inv/Stats.server.meta.json",
 		]);

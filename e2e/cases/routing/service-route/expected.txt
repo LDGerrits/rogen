@@ -11,7 +11,8 @@ written:
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedFirst: ReplicatedFirst
-    Loading: ModuleScript  <- src/ReplicatedFirst/client/Loading.luau
+    client: Folder
+      Loading: ModuleScript  <- src/ReplicatedFirst/client/Loading.luau
     main: LocalScript  <- src/ReplicatedFirst/main.client.luau
   ReplicatedStorage: ReplicatedStorage
     shared: Folder

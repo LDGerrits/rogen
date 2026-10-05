@@ -8,20 +8,22 @@ import {
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
-/** How a route or tag key matched a file by its name. */
-export type MatchForm = "folder" | "marker" | "separator" | "capital";
+/** How a route or variant key matched a file by its name. */
+export type MatchForm = "folder" | "marker" | "suffix";
 
 /** How the governing route matched the file; `fallback` is the `*` route. */
 export type RouteMatch = MatchForm | "fallback";
 
-export interface TagMatch {
-	readonly tag: string;
+export interface VariantMatch {
+	readonly variant: string;
 	readonly form: MatchForm;
 }
 
 /** Why the scan left a path out; the path is the key it is stored under. */
 export type ScanLeftOut =
 	| { readonly status: "excluded"; readonly pattern: string }
+	/** The template mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
+	| { readonly status: "mounted"; readonly node: readonly string[] }
 	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
 	| { readonly status: "skipped" };
 
@@ -30,8 +32,8 @@ export type LeftOut =
 	| ScanLeftOut
 	/** No route governs it. */
 	| { readonly status: "unrouted" }
-	/** Every dormant tag it carries, the first first. */
-	| { readonly status: "pruned"; readonly tags: readonly TagMatch[] }
+	/** Every dormant variant it carries, the first first. */
+	| { readonly status: "pruned"; readonly variants: readonly VariantMatch[] }
 	/** Another file took its instance path. */
 	| { readonly status: "replaced"; readonly by: string }
 	/** The template defines the node it would be, or a `$path` above it. */
@@ -41,6 +43,8 @@ export interface RootSummary {
 	readonly rootDir: string;
 	readonly files: number;
 	readonly excluded: number;
+	/** Paths the template mounts, which Rojo reads instead. */
+	readonly mounted: number;
 	readonly skippedLinks: number;
 }
 
@@ -50,10 +54,10 @@ export interface RouteSummary {
 	readonly files: number;
 }
 
-export interface TagSummary {
-	readonly tag: string;
+export interface VariantSummary {
+	readonly variant: string;
 	readonly on: boolean;
-	/** Files placed with the tag when it's on, or left out by it when it's off. */
+	/** Files placed with the variant when it's on, or left out by it when it's off. */
 	readonly files: number;
 }
 
@@ -61,7 +65,7 @@ export interface BuildSummary {
 	readonly roots: readonly RootSummary[];
 	/** In the order the config declares them. */
 	readonly routes: readonly RouteSummary[];
-	readonly tags: readonly TagSummary[];
+	readonly variants: readonly VariantSummary[];
 	readonly unrouted: number;
 	readonly superseded: number;
 	/** Left out because the template defines their node. */
@@ -117,8 +121,8 @@ export interface PlacedLocation extends Located {
 	readonly instancePath: readonly string[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The active tags the file carries. */
-	readonly tags: readonly TagMatch[];
+	/** The active variants the file carries. */
+	readonly variants: readonly VariantMatch[];
 }
 
 export interface UnplacedLocation extends Located {
@@ -152,6 +156,12 @@ export interface MetaReplacement {
 	readonly note: string;
 }
 
+/** What a sync tool does to a data file: it writes a Lua module in its place, which Rojo syncs as a ModuleScript. */
+export interface DataReplacement {
+	/** Says which data files, in the warning about the file Rojo no longer finds. */
+	readonly note: string;
+}
+
 /** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place; the build asks it, and never names one. */
 export interface SyncTool {
 	readonly id: string;
@@ -161,6 +171,8 @@ export interface SyncTool {
 	readsOnly?(source: string): boolean;
 	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
 	readonly metaReplacement?: MetaReplacement;
+	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */
+	readonly dataReplacement?: DataReplacement;
 }
 
 /** What `locate` found, config by config. */

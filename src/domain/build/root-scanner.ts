@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { joinPosix, stemOf, toPosix } from "../../base/path.js";
+import { isInside, joinPosix, stemOf, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -10,6 +10,7 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
 import { ScanLeftOut } from "./build.js";
+import { TemplateMount } from "./build-template.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
@@ -97,6 +98,21 @@ export class ScannedRoot {
 		return this.countLeftOut("excluded");
 	}
 
+	/** The template nodes that mount a path that exists under this root dir; a node counts once, whatever case its path is spelt in. */
+	get mountedCount(): number {
+		const nodes = new Set<string>();
+		for (const [mounted, why] of this.leftOut)
+			if (
+				why.status === "mounted" &&
+				this.index.hasEntry(
+					path.dirname(mounted),
+					path.basename(mounted)
+				)
+			)
+				nodes.add(why.node.join("/"));
+		return nodes.size;
+	}
+
 	get skippedCount(): number {
 		return this.countLeftOut("skipped");
 	}
@@ -182,11 +198,12 @@ interface Walk {
 	readonly leftOut: Map<string, ScanLeftOut>;
 }
 
-/** Walks root dirs in the index, leaving out what `exclude` matches. */
+/** Walks root dirs in the index, leaving out what `exclude` matches and what the template mounts. */
 export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
-		private readonly exclude: readonly string[]
+		private readonly exclude: readonly string[],
+		private readonly mounts: readonly TemplateMount[]
 	) {}
 
 	scan(rootDir: string): ScannedRoot {
@@ -195,7 +212,14 @@ export class RootScanner {
 			entries: [],
 			markers: [],
 			metaFiles: [],
-			leftOut: new Map(),
+			leftOut: new Map(
+				this.mounts
+					.filter((mount) => isInside(mount.path, rootDir))
+					.map(({ path: mounted, node }): [string, ScanLeftOut] => [
+						toPosix(mounted),
+						{ status: "mounted", node },
+					])
+			),
 		};
 		if (!this.visit(walk, rootDir)) {
 			return ScannedRoot.missing(rootDir, this.index);
@@ -213,12 +237,19 @@ export class RootScanner {
 		);
 	}
 
+	/** Compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
+	private mountAt(absolutePath: string): TemplateMount | undefined {
+		return this.mounts.find(
+			(mount) => path.relative(mount.path, absolutePath) === ""
+		);
+	}
+
 	private excludingGlob(absolutePath: string): string | undefined {
 		const posixPath = toPosix(absolutePath);
 		return this.exclude.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that `exclude` doesn't match; the rest are recorded as excluded. */
+	/** The entries of `dir` that the template doesn't mount and `exclude` doesn't match; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,
@@ -226,8 +257,14 @@ export class RootScanner {
 	): [string, FileType][] {
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
+			const mount = this.mountAt(path.join(dir, name));
 			const glob = this.excludingGlob(path.join(dir, name));
-			if (glob)
+			if (mount)
+				walk.leftOut.set(joinPosix(dir, name), {
+					status: "mounted",
+					node: mount.node,
+				});
+			else if (glob)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "excluded",
 					pattern: glob,

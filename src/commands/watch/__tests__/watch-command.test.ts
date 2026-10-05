@@ -422,7 +422,7 @@ describe("watch command", () => {
 			beforeEach(async () => {
 				await write(
 					"/repo/default.rogen.json",
-					config({ tags: { dev: true, mock: true } })
+					config({ variants: { dev: true, mock: true } })
 				);
 				await memFs.writeFile("/repo/src/Analytics.dev.luau", "");
 				await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
@@ -557,7 +557,7 @@ describe("watch command", () => {
 
 		it("should accept the override flags, but not --json", () => {
 			expect(
-				parse("watch", "-t", "mock", "-c", "a.rogen.json").isOk()
+				parse("watch", "--variant", "mock", "-c", "a.rogen.json").isOk()
 			).toBe(true);
 			expect(parse("watch", "--json").isErr()).toBe(true);
 		});

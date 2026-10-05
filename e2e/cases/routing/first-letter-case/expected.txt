@@ -22,5 +22,5 @@ project: DataModel
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Combat: Folder
-        Combat: ModuleScript  <- src/Combat/CombatClient.luau
         Hud: ModuleScript  <- src/Combat/Client/Hud.luau
+        Net: ModuleScript  <- src/Combat/Net@Client.luau

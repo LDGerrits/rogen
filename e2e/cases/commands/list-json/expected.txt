@@ -17,7 +17,7 @@ stdout:
         "shared": "ReplicatedStorage/shared",
         "*": "ReplicatedStorage/shared"
       },
-      "tags": {
+      "variants": {
         "mock": false,
         "dev": true
       },
@@ -41,7 +41,7 @@ stdout:
         "shared": "ReplicatedStorage/shared",
         "*": "ReplicatedStorage/shared"
       },
-      "tags": {},
+      "variants": {},
       "exclude": [],
       "template": null,
       "syncDir": null,
@@ -61,7 +61,7 @@ stdout:
         "shared": "ReplicatedStorage/shared",
         "*": "ReplicatedStorage/shared"
       },
-      "tags": {
+      "variants": {
         "mock": false,
         "dev": true
       },
@@ -91,7 +91,7 @@ stdout:
         "shared": "ReplicatedStorage/shared",
         "*": "ReplicatedStorage/shared"
       },
-      "tags": {},
+      "variants": {},
       "exclude": [],
       "template": null,
       "syncDir": null,

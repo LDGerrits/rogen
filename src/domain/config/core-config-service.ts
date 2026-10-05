@@ -1,3 +1,4 @@
+import { Disposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
 import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -6,6 +7,7 @@ import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
 import { ConfigLoader, ConfigOverrides, PathField } from "./config-loader.js";
 import {
 	ConfigEntry,
+	ConfigFileCheck,
 	ConfigScope,
 	ConfigSelection,
 	ConfigService,
@@ -25,16 +27,18 @@ function flagOf(name: string): string {
 	return short ? `-${short}` : `--${name}`;
 }
 
-/** The overrides the command line's flags set; `-T` beats `-t` for one tag. */
+/** The overrides the command line's flags set; `-T` beats `-t` for one variant. */
 function overridesOf(args: ParsedArgs): ConfigOverrides {
 	return {
 		outFile: args["out-file"],
 		syncDir: args["sync-dir"],
 		template: args.template,
-		tags: {
-			...Object.fromEntries((args.tag ?? []).map((tag) => [tag, true])),
+		variants: {
 			...Object.fromEntries(
-				(args["no-tag"] ?? []).map((tag) => [tag, false])
+				(args.variant ?? []).map((variant) => [variant, true])
+			),
+			...Object.fromEntries(
+				(args["no-variant"] ?? []).map((variant) => [variant, false])
 			),
 		},
 	};
@@ -106,9 +110,13 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async read(file: string): Promise<ConfigEntry> {
-		const config = new ManagedConfig(file, this.loader, { tags: {} });
+		const config = new ManagedConfig(file, this.loader, { variants: {} });
 		await config.load();
 		return config.entry;
+	}
+
+	registerFileCheck(check: ConfigFileCheck): Disposable {
+		return this.loader.registerFileCheck(check);
 	}
 
 	/** The config files in the working dir that aren't `selected`; none when it can't be read. */

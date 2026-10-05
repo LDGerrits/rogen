@@ -241,12 +241,15 @@ export class DetectedWorkspace {
 
 /** Darklua, the one processor `init` sets up: it writes processed code into the sync dir, which Rojo syncs instead. */
 export class Darklua {
-	/** What a build needs to know of Darklua: it writes a `.meta.lua` for each `.meta.json`. */
+	/** What a build needs to know of Darklua: it writes a `.meta.lua` for each `.meta.json`, and a `.lua` for each data file. */
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "darklua",
 		metaReplacement: {
 			suffix: ".meta.lua",
 			note: "Darklua converts every .meta.json this way.",
+		},
+		dataReplacement: {
+			note: "Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them.",
 		},
 	};
 

@@ -144,3 +144,15 @@ Run `rogen init` and answer that Darklua processes your code. The setup differs 
 <Callout type="info">
 	`rogen build` and `rogen watch` print one line naming any `*.rogen.json` they weren't asked to build, so forgetting the synced config in a Darklua setup doesn't go unnoticed.
 </Callout>
+
+## Data Files
+
+Darklua turns data files into Lua modules. `darklua process src dist` writes `src/Note.txt` as `dist/Note.lua`, and does the same for `.json`, `.toml`, `.yaml` and `.yml` (a `.model.json` becomes `Model.model.lua`). It has no option to copy them unchanged, and it leaves `.csv` files out.
+
+Rogen builds the path it expects from the source file, so a `Note.txt` points at `dist/Note.txt`, which Darklua never wrote. Rojo finds nothing there, so the instance is missing, or it syncs a `ModuleScript` where a folder collapses. Rogen doesn't rewrite the path to what exists, because a build never depends on what the sync dir holds. It warns instead, once per build (and once per config load in `watch`, when Darklua may not have run):
+
+```
+warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua").
+```
+
+Either accept the conversion and require the module (`require(script.Parent.Note)` returns the string), or copy the data files into the sync dir after Darklua runs, so Rogen finds them where it expects.

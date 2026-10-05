@@ -1,4 +1,6 @@
 import path from "path";
+import { Disposable } from "../../base/disposable.js";
+import { parse } from "../../base/jsonc.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -21,7 +23,9 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configDefaults, configSchema } from "./config-schema.js";
+import { ConfigFileCheck } from "./config-service.js";
 import {
+	CONFIG_SUFFIX,
 	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
@@ -37,8 +41,8 @@ export type PathField = (typeof PATH_FIELDS)[number];
 
 /** Per-invocation values that sit above every layer of a config's chain. */
 export type ConfigOverrides = Readonly<Partial<Record<PathField, string>>> & {
-	/** Tag name to whether it is on. */
-	readonly tags: Readonly<Record<string, boolean>>;
+	/** Variant name to whether it is on. */
+	readonly variants: Readonly<Record<string, boolean>>;
 };
 
 /** One read of one config, with everything a reload needs to compare against. */
@@ -49,8 +53,8 @@ export interface LoadedConfig {
 	readonly files: readonly string[];
 	/** The merged layers, once the chain could be read. */
 	readonly config?: Config;
-	/** The CLI tags this config doesn't declare; `undefined` when its chain could not be read. */
-	readonly skippedTags?: readonly string[];
+	/** The CLI variants this config doesn't declare; `undefined` when its chain could not be read. */
+	readonly skippedVariants?: readonly string[];
 	readonly resolved: Result<ResolvedConfig, Diagnostic[]>;
 }
 
@@ -64,6 +68,7 @@ interface ConfigChain {
 /** Reads a config file, its `extends` chain and its template, then resolves and validates them. */
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
+	private readonly fileChecks = new Set<ConfigFileCheck>();
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -72,11 +77,30 @@ export class ConfigLoader {
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
 	}
 
+	registerFileCheck(check: ConfigFileCheck): Disposable {
+		this.fileChecks.add(check);
+		return { [Symbol.dispose]: () => this.fileChecks.delete(check) };
+	}
+
 	/** Never throws for a problem the user can cause. */
 	async load(
 		file: string,
 		overrides: ConfigOverrides
 	): Promise<LoadedConfig> {
+		if (path.basename(file) === CONFIG_SUFFIX) {
+			return {
+				chain: [file],
+				files: [file],
+				resolved: err([
+					errorDiagnostic(
+						"config.unnamed",
+						{ resource: file },
+						`a config file needs a name before "${CONFIG_SUFFIX}". Rename it to <name>${CONFIG_SUFFIX}, such as default${CONFIG_SUFFIX}.`
+					),
+					...(await this.hintsFor(file)),
+				]),
+			};
+		}
 		const chain = await this.readChain(file);
 		if (chain.diagnostics.length > 0) {
 			return {
@@ -97,7 +121,7 @@ export class ConfigLoader {
 		const loaded = {
 			chain: chain.files,
 			files: templateFile ? [...chain.files, templateFile] : chain.files,
-			skippedTags: layered.skippedTags,
+			skippedVariants: layered.skippedVariants,
 		};
 
 		const template = templateFile
@@ -155,7 +179,12 @@ export class ConfigLoader {
 										`"extends" target "${current}": ${diagnostics[0].message}`
 									),
 								]
-							: diagnostics,
+							: kind === "invalid"
+								? [
+										...diagnostics,
+										...(await this.hintsFor(current)),
+									]
+								: diagnostics,
 				};
 			}
 
@@ -170,6 +199,19 @@ export class ConfigLoader {
 			};
 			current = path.resolve(path.dirname(current), parent);
 		}
+	}
+
+	/** What the registered checks add to a file that failed to load. */
+	private async hintsFor(file: string): Promise<Diagnostic[]> {
+		if (this.fileChecks.size === 0) return [];
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		const parsed = text.isOk() ? parse(text.value) : undefined;
+		const value = parsed?.isOk() ? parsed.value : undefined;
+		return [...this.fileChecks].flatMap((check) => [
+			...check({ file, value }),
+		]);
 	}
 
 	/** `location` is where the config named the template, for the diagnostic. */
@@ -211,8 +253,8 @@ class LayeredConfig {
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
 	readonly files: readonly ConfigFile[];
-	/** The tags the CLI named that no layer declares, so they were left out of `config`. */
-	readonly skippedTags: readonly string[];
+	/** The variants the CLI named that no layer declares, so they were left out of `config`. */
+	readonly skippedVariants: readonly string[];
 
 	/** `chain` is the leaf first, then each parent. */
 	constructor(
@@ -229,12 +271,14 @@ class LayeredConfig {
 		const declared = new Set(
 			layers.flatMap((layer) =>
 				Object.keys(
-					layer.getValue<Record<string, boolean>>("tags") ?? {}
+					layer.getValue<Record<string, boolean>>("variants") ?? {}
 				)
 			)
 		);
-		const tagNames = Object.keys(overrides.tags);
-		this.skippedTags = tagNames.filter((tag) => !declared.has(tag));
+		const variantNames = Object.keys(overrides.variants);
+		this.skippedVariants = variantNames.filter(
+			(variant) => !declared.has(variant)
+		);
 		this.config = new Config(
 			new ConfigModel(
 				LayeredConfig.absolutize(
@@ -245,7 +289,7 @@ class LayeredConfig {
 			layers,
 			LayeredConfig.cliModel(
 				overrides,
-				tagNames.filter((tag) => declared.has(tag)),
+				variantNames.filter((variant) => declared.has(variant)),
 				cwd
 			)
 		);
@@ -268,16 +312,19 @@ class LayeredConfig {
 
 	private static cliModel(
 		overrides: ConfigOverrides,
-		declaredTags: readonly string[],
+		declaredVariants: readonly string[],
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
 		for (const key of PATH_FIELDS) {
 			if (overrides[key] !== undefined) contents[key] = overrides[key];
 		}
-		if (declaredTags.length > 0) {
-			contents.tags = Object.fromEntries(
-				declaredTags.map((tag) => [tag, overrides.tags[tag]])
+		if (declaredVariants.length > 0) {
+			contents.variants = Object.fromEntries(
+				declaredVariants.map((variant) => [
+					variant,
+					overrides.variants[variant],
+				])
 			);
 		}
 		return new ConfigModel(LayeredConfig.absolutize(contents, cwd));
@@ -326,7 +373,7 @@ class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
 	private readonly rootDirs: readonly string[];
 	private readonly routes: Readonly<Record<string, string>>;
-	private readonly tags: Readonly<Record<string, boolean>>;
+	private readonly variants: Readonly<Record<string, boolean>>;
 	private readonly outFile: string;
 
 	constructor(
@@ -336,7 +383,7 @@ class ConfigValidator {
 		const { config } = layered;
 		this.rootDirs = config.getValue<string[]>("rootDirs");
 		this.routes = config.getValue<Record<string, string>>("routes");
-		this.tags = config.getValue<Record<string, boolean>>("tags");
+		this.variants = config.getValue<Record<string, boolean>>("variants");
 		this.outFile =
 			config.getValue<string | undefined>("outFile") ??
 			path.join(
@@ -353,7 +400,7 @@ class ConfigValidator {
 		const claimed = new Map<string, string>();
 
 		const routes = this.checkRoutes(claimed);
-		this.checkTags(claimed);
+		this.checkVariants(claimed);
 		this.checkOutFile(template);
 		this.checkRootDirs();
 
@@ -361,14 +408,14 @@ class ConfigValidator {
 			new ResolvedConfig({
 				file: this.layered.leaf.file,
 				parents: this.parents,
-				skippedTags: this.layered.skippedTags,
+				skippedVariants: this.layered.skippedVariants,
 				name:
 					template?.project.name ||
 					path.basename(dir) ||
 					FALLBACK_NAME,
 				rootDirs: this.rootDirs,
 				routes,
-				tags: this.tags,
+				variants: this.variants,
 				exclude: config.getValue<string[]>("exclude"),
 				template,
 				syncDir: config.getValue<string | undefined>("syncDir"),
@@ -399,23 +446,23 @@ class ConfigValidator {
 		return targets;
 	}
 
-	private checkTags(claimed: Map<string, string>): void {
-		for (const tag of Object.keys(this.tags)) {
-			const location = this.layered.locate("tags", tag);
-			if (!DeclaredKeys.isName(tag)) {
+	private checkVariants(claimed: Map<string, string>): void {
+		for (const variant of Object.keys(this.variants)) {
+			const location = this.layered.locate("variants", variant);
+			if (!DeclaredKeys.isName(variant)) {
 				this.problems.error(
-					"config.invalidTagName",
+					"config.invalidVariantName",
 					location,
-					`tag "${tag}" is invalid: ${NAME_RULE}.`
+					`variant "${variant}" is invalid: ${NAME_RULE}.`
 				);
-			} else if (tag in this.routes) {
+			} else if (variant in this.routes) {
 				this.problems.error(
-					"config.tagClashesWithRoute",
+					"config.variantClashesWithRoute",
 					location,
-					`tag "${tag}" has the same name as a route key; rename one of them.`
+					`variant "${variant}" has the same name as a route key; rename one of them.`
 				);
 			} else {
-				this.claim(claimed, tag, location);
+				this.claim(claimed, variant, location);
 			}
 		}
 	}

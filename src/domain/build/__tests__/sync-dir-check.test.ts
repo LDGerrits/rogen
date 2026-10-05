@@ -151,6 +151,150 @@ describe("SyncDirCheck", () => {
 		): ResolvedConfig =>
 			baseConfigOf({ syncDir: abs("dist"), ...overrides });
 
+		describe("data file converted", () => {
+			let fs: MemoryFileSystemService;
+			let store: DisposableStore;
+
+			const write = (...paths: string[]) => writeFiles(fs, ...paths);
+
+			const check = async (
+				overrides: ResolvedConfigSpec = {},
+				tools: readonly SyncTool[] = syncTools
+			) => {
+				const config = distConfigOf(overrides);
+				const index = await indexOf(store, fs, config.rootDirs);
+				const warnings = await new SyncDirCheck(fs).check(
+					placeFiles(index, config, tools).unwrap()
+				);
+				return warnings.filter(
+					({ code }) => code === "output.dataFileConverted"
+				);
+			};
+
+			beforeEach(() => {
+				fs = new MemoryFileSystemService();
+				store = new DisposableStore();
+			});
+
+			afterEach(() => {
+				store[Symbol.dispose]();
+			});
+
+			it("should warn when dist/Note.lua stands where dist/Note.txt is expected", async () => {
+				await write(
+					"src/Note.txt",
+					"src/Other.luau",
+					"dist/Note.lua",
+					"dist/Other.luau"
+				);
+
+				const [warning, ...others] = await check();
+
+				expect(others).toEqual([]);
+				expect(warning).toMatchObject({
+					code: "output.dataFileConverted",
+					resource: abs("default.project.json"),
+				});
+				expect(warning.message).toContain(
+					`1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua")`
+				);
+				expect(warning.message).toContain("Darklua converts .txt");
+			});
+
+			it("should check every data extension", async () => {
+				await write(
+					"src/A.json",
+					"src/B.toml",
+					"src/C.yaml",
+					"src/Other.luau",
+					"dist/A.lua",
+					"dist/B.lua",
+					"dist/C.lua",
+					"dist/Other.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("3 data files were");
+			});
+
+			it("should find the .lua of a .model.json by its stem", async () => {
+				await write(
+					"src/D.model.json",
+					"src/Other.luau",
+					"dist/D.model.lua",
+					"dist/Other.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain(
+					'src/D.model.json: expected "dist/D.model.json", found "dist/D.model.lua"'
+				);
+			});
+
+			it("should list the first few and elide the rest", async () => {
+				const names = ["A", "B", "C", "D", "E"];
+				await write(
+					"src/Other.luau",
+					"dist/Other.luau",
+					...names.flatMap((name) => [
+						`src/${name}.txt`,
+						`dist/${name}.lua`,
+					])
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("5 data files were");
+				expect(warning.message).toContain("…)");
+			});
+
+			it("should not warn about a data file that exists under the sync dir", async () => {
+				await write(
+					"src/Note.txt",
+					"src/Other.luau",
+					"dist/Note.txt",
+					"dist/Note.lua",
+					"dist/Other.luau"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should not warn about a data file with no .lua beside its missing copy", async () => {
+				await write(
+					"src/Note.txt",
+					"src/Other.luau",
+					"dist/Other.luau"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should not warn without a sync dir or before the compiler has run", async () => {
+				await write("src/Note.txt", "dist/Note.lua");
+
+				expect(await check({ syncDir: undefined })).toEqual([]);
+				expect(await check()).toEqual([]);
+			});
+
+			it("should say the processor converted it when no tool describes how", async () => {
+				await write(
+					"src/Note.txt",
+					"src/Other.luau",
+					"dist/Note.lua",
+					"dist/Other.luau"
+				);
+
+				const [warning] = await check({}, []);
+
+				expect(warning.message).toContain(
+					"The processor that writes the sync dir converts them."
+				);
+			});
+		});
+
 		describe("meta not synced", () => {
 			let fs: MemoryFileSystemService;
 			let store: DisposableStore;

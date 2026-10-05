@@ -30,6 +30,7 @@ jobs:
                       artifact_name: rogen
                       asset_name: rogen-${{ github.ref_name }}-macos-x86_64.zip
                       compress_cmd: zip -r
+                      node_platform: darwin-x64
                     - os: macos-latest
                       target: macos-arm64
                       artifact_name: rogen
@@ -43,8 +44,14 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: 18
+                  node-version: 22
                   cache: "npm"
+
+            - name: Install Rojo
+              if: matrix.target == 'linux-x64'
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
 
             - name: Install Dependencies
               run: npm ci
@@ -52,8 +59,28 @@ jobs:
             - name: Bundle Code with esbuild
               run: npm run bundle
 
+            # The macOS x64 binary is built on an arm64 runner, from an x64 Node.
+            - name: Fetch Node for macOS x64
+              if: matrix.node_platform == 'darwin-x64'
+              run: |
+                  NODE_VERSION=$(node -p process.version)
+                  curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-darwin-x64.tar.gz" | tar -xz
+                  echo "TARGET_NODE=$PWD/node-${NODE_VERSION}-darwin-x64/bin/node" >> "$GITHUB_ENV"
+
             - name: Compile Script to Binary
-              run: npx pkg dist/bundle.cjs --target node18-${{ matrix.target }} --output ${{ matrix.artifact_name }}
+              shell: bash
+              run: |
+                  if [ -n "$TARGET_NODE" ]; then
+                      node scripts/make-binary.ts ${{ matrix.artifact_name }} --node "$TARGET_NODE" --platform darwin
+                  else
+                      node scripts/make-binary.ts ${{ matrix.artifact_name }}
+                  fi
+
+            - name: Test the Binary
+              if: matrix.target == 'linux-x64'
+              run: npm test -- e2e
+              env:
+                  ROGEN_E2E_BINARY: ${{ github.workspace }}/${{ matrix.artifact_name }}
 
             - name: Archive Binary (Windows)
               if: matrix.os == 'windows-latest'

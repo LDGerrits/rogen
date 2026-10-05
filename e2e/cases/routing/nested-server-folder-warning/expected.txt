@@ -1,0 +1,31 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 2 files under a "server" route ship to clients, because "shared" governs them:
+    src/Shared/Net/Save@server.luau -> ReplicatedStorage/shared/Net/Save@server
+    src/Shared/Server/Datastore.luau -> ReplicatedStorage/shared/Server/Datastore
+  Move them out of the "shared" route's files if they're server code.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Net: Folder
+        Save@server: ModuleScript  <- src/Shared/Net/Save@server.luau
+      Server: Folder
+        Datastore: ModuleScript  <- src/Shared/Server/Datastore.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      client: Folder
+        Bar: ModuleScript  <- src/server/Inventory/client/Bar.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Inventory: Folder
+        Hud: ModuleScript  <- src/Inventory/client/Hud.luau

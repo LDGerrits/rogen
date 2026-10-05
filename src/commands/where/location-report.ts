@@ -20,8 +20,7 @@ const sourceOf = (answer: Answer): string =>
 const MATCH_LABELS: Record<RouteMatch, string> = {
 	folder: "folder",
 	marker: "marker",
-	separator: "suffix",
-	capital: "capital suffix",
+	suffix: "suffix",
 	fallback: "fallback",
 };
 
@@ -35,23 +34,25 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const tags = location.tags.map(
-				({ tag, form }) => `${tag} (${MATCH_LABELS[form]})`
+			const matches = location.variants.map(
+				({ variant, form }) => `${variant} (${MATCH_LABELS[form]})`
 			);
-			const tagged =
-				tags.length === 0
+			const variants =
+				matches.length === 0
 					? ""
-					: ` · ${tags.length === 1 ? "tag" : "tags"} ${tags.join(", ")}`;
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${tagged}`;
+					: ` · ${matches.length === 1 ? "variant" : "variants"} ${matches.join(", ")}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${variants}`;
 		}
 		case "pruned":
-			return `pruned · tag ${location.tags[0].tag} is off (${MATCH_LABELS[location.tags[0].form]})`;
+			return `pruned · variant ${location.variants[0].variant} is off (${MATCH_LABELS[location.variants[0].form]})`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
 			return `displaced · the template defines ${instanceKey(location.node)}`;
 		case "unrouted":
 			return "unrouted · no route matches it";
+		case "mounted":
+			return `mounted · the template mounts it at ${instanceKey(location.node)}`;
 		case "excluded":
 			// A glob keeps its slashes, which path.relative would turn into backslashes on Windows.
 			return `excluded · matches ${path.posix.relative(toPosix(cwd), location.pattern) || "."}`;
@@ -76,15 +77,22 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 				instancePath: location.instancePath,
 				route: location.route,
 				routeMatch: location.routeMatch,
-				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+				variants: location.variants.map(({ variant, form }) => ({
+					variant,
+					form,
+				})),
 			};
 		case "pruned":
 			return {
-				tags: location.tags.map(({ tag, form }) => ({ tag, form })),
+				variants: location.variants.map(({ variant, form }) => ({
+					variant,
+					form,
+				})),
 			};
 		case "replaced":
 			return { by: toNative(location.by) };
 		case "displaced":
+		case "mounted":
 			return { node: location.node };
 		case "excluded":
 			return { pattern: location.pattern };

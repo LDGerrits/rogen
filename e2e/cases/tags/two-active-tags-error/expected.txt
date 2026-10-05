@@ -1,9 +1,0 @@
-$ rogen build
-exit 1
-stdout:
-  rogen build · default
-  build failed.
-stderr:
-  error: default.project.json · not written
-  src/Analytics/Analytics.dev.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active tag, and so does src/Analytics/Analytics.mock.luau. Only one can apply: turn a tag off or rename a file.
-  src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active tag, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a tag off or rename a file.

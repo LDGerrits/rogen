@@ -51,8 +51,8 @@ Prints where each file lands in the game, and why, without writing anything. One
 
 ```
 $ rogen where src/Net src/Combat/Server/Hit.luau
-src/Net/HttpClient.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (capital suffix)
-src/Net/HttpMock.luau -> pruned · tag mock is off (capital suffix)
+src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+src/Net/Http.mock.luau -> pruned · variant mock is off (suffix)
 src/Net/Types.lua -> replaced by src/Net/Types.luau
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
@@ -68,29 +68,29 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 An instance no file places says `no file places it`; the template's own nodes, such as package mounts, are among those. When the working directory holds a folder named after the service, the argument is read as that path instead.
 
-A placed file shows its instance path, the governing route and how it matched (`folder`, `marker`, `suffix`, `capital suffix` or `fallback`), and any active tags. A file that isn't placed says why: `pruned` by a dormant tag, `replaced by` the file that took its name, `displaced` by a template node, `unrouted`, `excluded` with the glob that matched, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
+A placed file shows its instance path, the governing route and how it matched (`folder`, `marker`, `suffix` or `fallback`), and any active variants. A file that isn't placed says why: `pruned` by a dormant variant, `replaced by` the file that took its name, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` with the glob that matched, or `outside the root dirs`. A path that doesn't exist yet is placed as if it did, since Rogen reads only names, so you can ask before creating a file.
 
 An init folder is one instance, so its init script is the folder's line and every other script below it is a child of it.
 
-Add `--json` to read the answer as data (see [JSON output](#json-output)). Positionals are paths here, not config names. `where` reads the default config; pick others with `-c` or `--all`, and turn tags on or off with `-t` and `-T`. With several configs a line is printed once when they all agree, and otherwise once per config, headed by its name.
+Add `--json` to read the answer as data (see [JSON output](#json-output)). Positionals are paths here, not config names. `where` reads the default config; pick others with `-c` or `--all`, and turn variants on or off with `--variant` and `--no-variant`. With several configs a line is printed once when they all agree, and otherwise once per config, headed by its name.
 
 ### `init [name]`
 
 Writes a starting `<name>.rogen.json`, or `default.rogen.json` when bare. It detects the language (roblox-ts when there is a `tsconfig.json`, else Luau), Darklua and packages once, and writes the result down as plain fields. Builds never guess.
 
-In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. On a first run it asks whether you're setting up one place or several; with folders in `places/` it sets up several, writing one config per place that extends `default`. When `default.rogen.json` already exists, it asks what to add: a **place**, a **variant** of default, or a separate config.
+In a terminal it asks first, and pressing Enter at every question writes what a non-interactive `init` writes. On a first run it asks whether you're setting up one place or several; with folders in `places/` it sets up several, writing one config per place that extends `default`. When `default.rogen.json` already exists, it asks what to add: a **place**, a config that extends default, or a separate config.
 
-Without a terminal it takes those same defaults, so beside an existing `default.rogen.json`, `rogen init lobby` adds the place `lobby` with its code in `places/lobby`, and a bare `rogen init` fails, since a place needs a name. A variant is one line to write yourself: `{ "extends": "./default.rogen.json" }`. With `--json` it never asks either, and prints what it wrote and the next steps as data (see [JSON output](#init---json)).
+Without a terminal it takes those same defaults, so beside an existing `default.rogen.json`, `rogen init lobby` adds the place `lobby` with its code in `places/lobby`, and a bare `rogen init` fails, since a place needs a name. A config that extends default is one line to write yourself: `{ "extends": "./default.rogen.json" }`. With `--json` it never asks either, and prints what it wrote and the next steps as data (see [JSON output](#init---json)).
 
 Answers are checked where they're typed: root directories may not nest or repeat, and a roblox-ts project takes one. It never overwrites, and never touches `.gitignore` or editor settings. When a hand-written project file such as `default.project.json` exists, which a build would replace, `init` copies it to `template.project.json` first, so its name, properties and packages carry over.
 
-It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and tags.
+It ends with the next steps: the long-running commands to run side by side (the compiler watcher, `rogen watch`, `rojo serve`), one `darklua process` per root directory with Darklua, and where to add routes and variants.
 
 ### `list [name…]`
 
-Lists every `*.rogen.json` in the working directory, with its root directories, sync directory, project file and active tags. With variants as files, this is where "what can this repo build?" is answered.
+Lists every `*.rogen.json` in the working directory, with its root directories, sync directory, project file and active variants. With a config per place or build, this is where "what can this repo build?" is answered.
 
-Name configs to list only those, and use `-c`, `--all`, `-t` and `-T` to pick configs and turn tags on or off first. With `--json` it prints each config fully resolved, with every default explicit and every path absolute, which is how to read the common root or an `extends` chain.
+Name configs to list only those, and use `-c`, `--all`, `--variant` and `--no-variant` to pick configs and turn variants on or off first. With `--json` it prints each config fully resolved, with every default explicit and every path absolute, which is how to read the common root or an `extends` chain.
 
 ### `help [command]`
 
@@ -102,7 +102,7 @@ Prints the installed version.
 
 ## Options
 
-`build` and `watch` accept the override flags, and `where` and `list` the flags that pick configs: `--all`, `-c`, `-t` and `-T`. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
+`build` and `watch` accept the override flags, and `where` and `list` the flags that pick configs: `--all`, `-c`, `--variant` and `--no-variant`. **Overrides** replace a config value for one invocation. Anything that stays the same belongs in the file.
 
 ### `--all`
 
@@ -124,16 +124,16 @@ Overrides `syncDir`.
 
 Overrides `template`. It has no short flag.
 
-### `-t, --tag <name>`
+### `--variant <name>`
 
-Turns a tag on. Repeatable.
+Turns a variant on. Repeatable. It has no short flag.
 
-### `-T, --no-tag <name>`
+### `--no-variant <name>`
 
-Turns a tag off. Repeatable. It is the capital of `-t`, the way `ssh -t` and `ssh -T` are a pair.
+Turns a variant off. Repeatable. It has no short flag.
 
 <Callout type="info">
-	`-o`, `-s` and `--template` target one config, so using them with several names is an error. A tag flag applies wherever a built config declares that tag, and is an error only when none does.
+	`-o`, `-s` and `--template` target one config, so using them with several names is an error. A variant flag applies wherever a built config declares that variant, and is an error only when none does.
 </Callout>
 
 ### `--json`
@@ -195,15 +195,16 @@ An array with one entry per config and path, in the order the text form prints t
 
 | `status` | Fields |
 |---|---|
-| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `tags` |
-| `pruned` | `tags`, the dormant ones |
+| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `variants` |
+| `pruned` | `variants`, the dormant ones |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
+| `mounted` | `node`, the template node whose `$path` mounts it |
 | `excluded` | `pattern`, the glob that matched |
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` in place of `source`: no file places an instance that was asked for |
 
-`routeMatch` is `folder`, `marker`, `separator`, `capital` or `fallback`. Each of `tags` is `{ "tag": "mock", "form": "capital" }`, where `form` is `folder`, `marker`, `separator` or `capital`.
+`routeMatch` is `folder`, `marker`, `suffix` or `fallback`. Each of `variants` is `{ "variant": "mock", "form": "suffix" }`, where `form` is `folder`, `marker` or `suffix`.
 
 ### `init --json`
 
@@ -215,7 +216,7 @@ An array with one entry per config and path, in the order the text form prints t
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
 		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen watch lobby", "rojo serve lobby.project.json"],
 		"darklua": [],
-		"edits": ["Add tags under \"tags\" in lobby.rogen.json to swap in variants like Analytics.mock.ts."]
+		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts."]
 	}
 }
 ```
@@ -224,7 +225,7 @@ An array with one entry per config and path, in the order the text form prints t
 
 ### `list --json`
 
-An object keyed by the config file's absolute path. Each value has `extends` (the parents, nearest first) and `diagnostics`, and for a config that resolved, `name`, `rootDirs`, `commonRoot`, `routes`, `tags`, `exclude`, `template`, `syncDir` and `outFile`. Unset `template`, `syncDir` and `commonRoot` are `null`. A config with errors has only `extends` and `diagnostics`, the other configs are still printed, and the exit code is 1.
+An object keyed by the config file's absolute path. Each value has `extends` (the parents, nearest first) and `diagnostics`, and for a config that resolved, `name`, `rootDirs`, `commonRoot`, `routes`, `variants`, `exclude`, `template`, `syncDir` and `outFile`. Unset `template`, `syncDir` and `commonRoot` are `null`. A config with errors has only `extends` and `diagnostics`, the other configs are still printed, and the exit code is 1.
 
 ## Output
 

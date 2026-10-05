@@ -8,7 +8,7 @@
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"tags": {
+	"variants": {
 		"mock": false
 	},
 	"exclude": [

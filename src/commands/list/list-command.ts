@@ -32,7 +32,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, sync dir, project file and tags.",
+						"Lists every config here with its root dirs, sync dir, project file and variants.",
 					args: [
 						{
 							name: "name",
@@ -105,7 +105,7 @@ registerCommand(
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
-					`tags: ${listed(config.enabledTags)}`,
+					`variants: ${listed(config.enabledVariants)}`,
 				].join("\n")
 			);
 		}

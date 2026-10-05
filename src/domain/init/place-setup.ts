@@ -96,7 +96,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		this.planSteps(choices, builder);
 		const { configSet } = this.layout(choices);
 		builder.addEdit(
-			ConfigSet.tagsStep(
+			ConfigSet.variantsStep(
 				configSet.language,
 				configFileName(configSet.name)
 			)

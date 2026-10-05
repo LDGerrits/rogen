@@ -1,0 +1,18 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Hud: ModuleScript  <- src/Hud.luau
+      Hud.story: ModuleScript  <- src/Hud.story.luau
+      Save: ModuleScript  <- src/Save.luau
+      Save.spec: ModuleScript  <- src/Save.spec.luau

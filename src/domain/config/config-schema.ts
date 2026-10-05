@@ -14,13 +14,13 @@ const routesSchema: JSONSchema = {
 	additionalProperties: { type: "string" },
 };
 
-const tagsSchema: JSONSchema = {
+const variantsSchema: JSONSchema = {
 	type: "object",
 	default: {},
 	description:
-		"Every tag this project uses, and whether it is on in this config. " +
+		"Every variant this project uses, and whether it is on in this config. " +
 		"A standalone config must know the whole declared set, or an " +
-		"undeclared suffix ships silently as part of an instance name.",
+		"undeclared variant ships silently as part of an instance name.",
 	additionalProperties: { type: "boolean" },
 };
 
@@ -44,7 +44,7 @@ const fieldSchemas: Record<keyof RogenConfig, JSONSchema> = {
 			"the last wins on a clash.",
 	},
 	routes: routesSchema,
-	tags: tagsSchema,
+	variants: variantsSchema,
 	exclude: {
 		type: "array",
 		items: { type: "string" },

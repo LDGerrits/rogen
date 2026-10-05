@@ -11,7 +11,7 @@ stdout:
     Have Darklua process your code into the sync dir:
       darklua process src dist
     Add your own routes under "routes" in default.rogen.json.
-    Add tags under "tags" in default.rogen.json to swap in variants like Analytics.mock.luau.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
     Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch
   Wrote 2 files.
 

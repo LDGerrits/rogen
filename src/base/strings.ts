@@ -14,7 +14,7 @@ export function plural(count: number, noun: string): string {
 }
 
 /** Edits between `a` and `b`, counting two swapped neighbours as one. */
-function editDistance(a: string, b: string): number {
+export function editDistance(a: string, b: string): number {
 	let twoBack: number[] = [];
 	let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
 	for (let i = 1; i <= a.length; i++) {

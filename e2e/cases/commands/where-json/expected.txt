@@ -14,7 +14,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -27,7 +27,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -40,11 +40,22 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
-      "source": "<dir>/src/Net/HttpClient.luau",
+      "source": "<dir>/src/Net/Http.mock.luau",
+      "status": "pruned",
+      "variants": [
+        {
+          "variant": "mock",
+          "form": "suffix"
+        }
+      ]
+    },
+    {
+      "config": "default",
+      "source": "<dir>/src/Net/Http@client.luau",
       "status": "placed",
       "instancePath": [
         "StarterPlayer",
@@ -53,19 +64,8 @@ stdout:
         "Http"
       ],
       "route": "Client",
-      "routeMatch": "capital",
-      "tags": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/HttpMock.luau",
-      "status": "pruned",
-      "tags": [
-        {
-          "tag": "mock",
-          "form": "capital"
-        }
-      ]
+      "routeMatch": "suffix",
+      "variants": []
     },
     {
       "config": "default",
@@ -85,7 +85,7 @@ stdout:
       ],
       "route": "*",
       "routeMatch": "fallback",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -95,13 +95,13 @@ stdout:
     }
   ]
 
-$ rogen where --json src/Net/HttpMock.luau -t mock
+$ rogen where --json src/Net/Http.mock.luau --variant mock
 exit 0
 stdout:
   [
     {
       "config": "default",
-      "source": "<dir>/src/Net/HttpMock.luau",
+      "source": "<dir>/src/Net/Http.mock.luau",
       "status": "placed",
       "instancePath": [
         "ReplicatedStorage",
@@ -111,10 +111,10 @@ stdout:
       ],
       "route": "*",
       "routeMatch": "fallback",
-      "tags": [
+      "variants": [
         {
-          "tag": "mock",
-          "form": "capital"
+          "variant": "mock",
+          "form": "suffix"
         }
       ]
     }
@@ -136,7 +136,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",
@@ -149,7 +149,7 @@ stdout:
       ],
       "route": "Server",
       "routeMatch": "folder",
-      "tags": []
+      "variants": []
     },
     {
       "config": "default",

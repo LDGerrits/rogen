@@ -32,6 +32,7 @@ import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
+import { LegacyConfig } from "./domain/legacy/legacy-config.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
@@ -44,6 +45,9 @@ import "./commands/list/list-command.js";
 import "./commands/version/version-command.js";
 import "./commands/watch/watch-command.js";
 import "./commands/where/where-command.js";
+
+/** The version `scripts/bundle.ts` bakes into a bundle; undefined in a run from source. */
+declare const ROGEN_VERSION: string | undefined;
 
 export default function run(): void {
 	main().catch((error) => {
@@ -106,6 +110,7 @@ async function main(): Promise<void> {
 			environment
 		);
 		services.set(ConfigService, configService);
+		disposables.add(configService.registerFileCheck(LegacyConfig.check));
 
 		services.set(EnvironmentService, environment);
 		services.set(LogService, logService);
@@ -133,7 +138,11 @@ async function main(): Promise<void> {
 		);
 		services.set(
 			ProductService,
-			new CoreProductService(fileSystemService, import.meta.dirname)
+			new CoreProductService(
+				fileSystemService,
+				import.meta.dirname,
+				typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
+			)
 		);
 		services.set(
 			LifecycleService,
