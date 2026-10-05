@@ -6,14 +6,14 @@ description: Set up separate development and production builds with tags.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Tags keep test files, mock data and development scripts out of production builds. Rogen drops files with an inactive tag and strips active tags from file names.
+Tags keep test files, mock data and development scripts out of your production builds. Rogen drops files with an inactive tag and strips active tags from file names.
 
 <Steps>
 
 <Step>
 ### Configure Modes
 
-In `.rogen.json`, add one mode for development and one for production. Give each a `tags` object, with `true` for the tags it keeps and `false` for the ones it drops.
+In `.rogen.json`, add one mode for development and one for production. Give each a `tags` object, with `true` for the tags to keep and `false` for the ones to drop.
 
 ```json title=".rogen.json"
 {
@@ -49,13 +49,13 @@ Pick the mode with `-m` or `--mode`:
 rogen watch -m luau-dev
 ```
 
-In the `luau-dev` mode, anything tagged `prod` is left out.
+In `luau-dev`, anything tagged `prod` is left out.
 
 </Step>
 
 </Steps>
 
 <Callout title="CLI Overrides" type="info">
-	Turn on extra tags from the command line with `-t` or `--tag`, as in
-	`rogen watch -m luau-prod -t debug`.
+	You can turn on extra tags from the command line with `-t` or `--tag`, as
+	in `rogen watch -m luau-prod -t debug`.
 </Callout>

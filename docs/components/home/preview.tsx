@@ -187,7 +187,7 @@ export function Preview() {
 						Preview
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						See where your files end up in Roblox Studio
+						See where each file ends up in Roblox Studio.
 					</p>
 				</div>
 

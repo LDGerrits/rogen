@@ -6,7 +6,7 @@ description: How Rogen routes files by folder name, file name and marker file.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen uses names to decide which Roblox service each file goes to, such as `ServerScriptService` or `StarterPlayerScripts`. There are three ways to route code: **folder names**, **file names** and **marker files**.
+Rogen looks at names to decide which Roblox service each file goes to, such as `ServerScriptService` or `StarterPlayerScripts`. You can route code in three ways: with **folder names**, **file names** or **marker files**.
 
 <Steps>
 
@@ -18,7 +18,7 @@ Name a folder after a routing keyword (`server`, `client`, `shared`) or a Roblox
 - A folder named `client` sends its files to `StarterPlayerScripts`.
 - A folder named `ReplicatedFirst` sends its files to that service.
 
-The folder itself is removed from the path, but its contents are kept.
+The folder itself disappears from the path, but its contents stay.
 
 </Step>
 
@@ -26,13 +26,13 @@ The folder itself is removed from the path, but its contents are kept.
 
 ### File Names (Affixes)
 
-To send one file somewhere other than its folder, add a keyword to the start or end of its name:
+To send a single file somewhere other than its folder, add a keyword to the start or end of its name:
 
 - `CombatClient.luau` goes to `StarterPlayerScripts`.
 - `Combat_Server.luau` goes to `ServerScriptService`.
 - `Combat-ReplicatedFirst.ts` goes to `ReplicatedFirst`.
 
-Set the keyword off with a separator (`.`, `-`, `_` or `+`), or attach it in camelCase or PascalCase. Rogen strips the keyword from the script's name.
+Separate the keyword with `.`, `-`, `_` or `+`, or attach it in camelCase or PascalCase. Rogen strips it from the script's name.
 
 </Step>
 
@@ -40,19 +40,19 @@ Set the keyword off with a separator (`.`, `-`, `_` or `+`), or attach it in cam
 
 ### Marker Files
 
-Put an empty file named after a keyword, like `.server` or `.client`, in a folder to route the whole folder there. Unlike a routing folder, the folder keeps its name in the final tree.
+Put an empty file named after a keyword, like `.server` or `.client`, in a folder to route the whole folder there. Unlike with a routing folder, the folder keeps its name in the final tree.
 
 </Step>
 
 </Steps>
 
 <Callout type="info" title="The Deepest Rule Wins">
-	When several rules apply to one path, the deepest one wins. A file name is
-	always the deepest part of a path, so routing by file name always beats
-	routing by folder.
+	When several rules apply to one path, the deepest one wins. Since a file
+	name is always the deepest part of a path, routing by file name always
+	beats routing by folder.
 </Callout>
 
 <Callout type="info" title="Default Fallback">
-	If no rule applies anywhere in a file's path, Rogen puts it in
+	If no rule applies anywhere in a file's path, it goes to
 	`ReplicatedStorage`.
 </Callout>

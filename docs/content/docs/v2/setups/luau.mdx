@@ -6,7 +6,7 @@ description: Set up Rogen in a Luau project.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Luau is the simplest setup. There's no compiler, so Rojo syncs straight from your root directories and you don't need a sync directory.
+Luau is the simplest setup. There's no compiler, so Rojo syncs straight from your source and you don't need a sync directory.
 
 <Steps>
 
@@ -44,7 +44,7 @@ Next steps
 }
 ```
 
-In a terminal, `init` asks about the root directories, the routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, until you install) and writes a `template.project.json` for them. If you already have a hand-written `default.project.json`, it copies that to `template.project.json` instead, so you don't lose anything.
+In a terminal, `init` asks about your root directories, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in a new `template.project.json`. If you already have a hand-written `default.project.json`, it copies that to `template.project.json` instead, so you don't lose anything.
 
 </Step>
 
@@ -59,14 +59,14 @@ src/Inventory/Client/InventoryController.luau
 src/Inventory/Shared/InventoryTypes.luau
 ```
 
-Rogen puts them in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. See [Routing](/docs/v2/core-concepts/routing).
+Rogen puts these in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. [Routing](/docs/v2/core-concepts/routing) explains the details.
 
 </Step>
 
 <Step>
 ### Start Watching
 
-Start Rogen in watch mode. It builds `default.project.json` and keeps it up to date as files change.
+Start Rogen in watch mode. It builds `default.project.json` and keeps it up to date as you add, move and rename files.
 
 ```bash
 rogen watch

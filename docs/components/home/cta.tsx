@@ -40,7 +40,7 @@ export function Cta() {
 					Upgrade your codebase
 				</h2>
 				<p className="text-gray-400 mb-10 tracking-tight text-lg">
-					Install Rogen with Rokit or npm
+					Install it with Rokit or npm.
 				</p>
 
 				<div className="w-full flex flex-col md:flex-row items-center justify-center gap-4 mb-6">

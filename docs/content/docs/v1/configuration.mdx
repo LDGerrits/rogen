@@ -5,9 +5,9 @@ description: Every field of the .rogen.json configuration file.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-`.rogen.json` configures your project: the source folders, how routing behaves, and the base project tree. Keep it in the project root.
+`.rogen.json` lives in your project root and sets up the source folders, how routing behaves and the base project tree.
 
-Here's a fuller example with some top-level options and a mode that overrides them:
+Here's a fuller example, with some top-level options and a mode that overrides them:
 
 ```json title=".rogen.json"
 {
@@ -48,11 +48,11 @@ Here's a fuller example with some top-level options and a mode that overrides th
 
 ### `source`
 
-_(Required)_ A string or an array of strings. The folders with your uncompiled code, which Rogen scans to build the tree. With an array, the folders are merged.
+_(Required)_ A string or an array of strings: the folders with your uncompiled code, which Rogen scans to build the tree. If you list several, they're merged.
 
 ### `tags`
 
-_(Optional)_ An object mapping tag names to booleans. `true` keeps the tagged files, and `false` drops them.
+_(Optional)_ An object mapping tag names to booleans. `true` keeps the tagged files and `false` drops them.
 
 ### `casing`
 
@@ -60,7 +60,7 @@ _(Optional)_ How the generated wrapper folders (like `server` or `client`) are c
 
 ### `verbatim`
 
-_(Optional)_ A boolean. Set it to `true` to keep routing keywords in script names instead of stripping them. Defaults to `false`.
+_(Optional)_ A boolean, `false` by default. Set it to `true` to keep routing keywords in script names instead of stripping them.
 
 ### `unwrap`
 
@@ -68,11 +68,11 @@ _(Optional)_ A boolean. Set it to `true` to leave out the wrapper folders (`serv
 
 ### `aliases`
 
-_(Optional)_ An object of custom routing keywords. Use it to add your own keywords or change where the built-in ones go.
+_(Optional)_ An object of custom routing keywords, for adding your own or changing where the built-in ones go.
 
 ### `globIgnorePaths`
 
-_(Optional)_ An array of glob patterns. Matching files and folders are ignored completely.
+_(Optional)_ An array of glob patterns. Files and folders that match are ignored completely.
 
 ### `project`
 
@@ -82,7 +82,7 @@ _(Optional)_ The base Rojo tree, either inline or as a path to a JSON file. Roge
 
 ## Modes
 
-A mode is a pipeline for one workflow, such as `luau`, `ts` or `darklua`. You can define your own modes too.
+A mode is a pipeline for one workflow, such as `luau`, `ts` or `darklua`, and you can define your own as well.
 
 ### `output`
 

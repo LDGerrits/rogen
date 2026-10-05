@@ -25,11 +25,10 @@ export function Hero() {
 				</h1>
 
 				<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
-					Keep a feature&apos;s client, server and shared code
-					together in one folder
+					Keep each feature&apos;s server, client and shared code in
+					one folder.
 					<br />
-					Rogen writes the Rojo project file that puts each script
-					where it runs
+					Rogen works out where every script belongs in Studio.
 				</p>
 
 				<div className="flex flex-col sm:flex-row gap-4 mb-6 w-full sm:w-auto">

@@ -5,19 +5,19 @@ description: The complete command-line interface for Rogen.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-The `rogen` command builds and watches your project. To build once, run `rogen build`, or just `rogen`:
+The `rogen` command builds and watches your project. To build once, run `rogen build` (or just `rogen`):
 
 ```bash
 rogen build
 ```
 
-Flags change how Rogen behaves or override parts of the config.
+Flags let you change how Rogen behaves or override parts of the config.
 
 ## Commands
 
 ### `build`
 
-Builds the project. This is the default command.
+Builds the project. It's the default command.
 
 ### `watch`
 
@@ -35,15 +35,15 @@ Uses a config file at a custom path.
 
 ### `-m, --mode <mode>`
 
-Picks the mode to build, such as `luau`, `ts`, `darklua` or one of your own. Without it, Rogen detects the mode from the config.
+Picks the mode to build, such as `luau`, `ts`, `darklua` or one of your own. Without it, Rogen works out the mode from the config.
 
 ### `-s, --source <path>`
 
-Overrides the source folders from the config. Repeat it to merge several folders.
+Overrides the source folders from the config. Repeat it to merge several.
 
 ### `-t, --tag <tag>`
 
-Turns a tag on. Repeat it for more tags.
+Turns a tag on. Repeat it to turn on more.
 
 ### `-p, --project <path>`
 

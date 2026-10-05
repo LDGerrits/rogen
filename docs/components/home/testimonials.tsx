@@ -11,7 +11,7 @@ export function Testimonials() {
 						Top developers use Rogen
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Here&apos;s what they say
+						Here&apos;s what they have to say.
 					</p>
 				</div>
 

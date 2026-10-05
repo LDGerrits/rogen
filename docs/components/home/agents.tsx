@@ -11,7 +11,7 @@ export function Agents() {
 						Built for you and your agents
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						A layout that people and coding agents read the same way
+						People and coding agents read the layout the same way.
 					</p>
 				</div>
 
@@ -19,27 +19,27 @@ export function Agents() {
 					{[
 						{
 							title: "One folder, one feature",
-							desc: "Point an agent at a feature folder and it has the right context",
+							desc: "Point an agent at a feature folder and it has all the context it needs.",
 						},
 						{
 							title: "A small blast radius",
-							desc: "A change inside one feature can only break that feature, and the file list tells you which",
+							desc: "A change inside one feature can only break that feature, and the file list tells you which one.",
 						},
 						{
 							title: "Boundaries a linter checks",
-							desc: "Rules like “features don't require each other” are rules about paths, so a linter can enforce them",
+							desc: "Rules like “features don't require each other” are rules about paths, so a linter can enforce them.",
 						},
 						{
 							title: "Placement is declared",
-							desc: "Where a file ends up comes from a short routes map, not a convention to guess",
+							desc: "Where a file ends up comes from a short routes map, not a convention the agent has to guess.",
 						},
 						{
 							title: "No generated file to break",
-							desc: "The project file is output. Rogen rewrites it every build, so nobody edits it by hand",
+							desc: "Rogen rewrites the project file on every build, so nobody, human or agent, edits it by hand.",
 						},
 						{
 							title: "It checks its own work",
-							desc: "rogen where shows where a file lands and why, and rogen build reports what to fix",
+							desc: "rogen where shows where a file lands and why, and rogen build says what to fix.",
 						},
 					].map((point, i) => (
 						<div

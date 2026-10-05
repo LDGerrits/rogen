@@ -11,8 +11,8 @@ export function Routing() {
 						How routing works
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Your config names the routes. A file picks one up in
-						three ways
+						You declare the routes in your config, and a file can
+						pick one up in three ways.
 					</p>
 				</div>
 
@@ -20,19 +20,19 @@ export function Routing() {
 					{[
 						{
 							title: "Routing Folders",
-							desc: "Name a folder after a route. Everything inside goes to its service, and the folder itself disappears",
+							desc: "Name a folder after a route and everything inside goes to that service. The folder itself disappears.",
 							example: "Inventory/Server/Save.luau",
 							result: "ServerScriptService/Inventory/Save",
 						},
 						{
 							title: "Marker Files",
-							desc: "Drop an empty file named after a route into a folder. The whole folder follows it and keeps its name",
+							desc: "Drop an empty file named after a route into a folder, and the whole folder moves with its name intact.",
 							example: "AntiCheat/.server",
 							result: "ServerScriptService/AntiCheat/…",
 						},
 						{
 							title: "The @ Sign",
-							desc: "End a name with @ and a route to send just that file. A module stays a module",
+							desc: "Add @ and a route to the end of a name to send just that one file. A module stays a module.",
 							example: "Combat/CombatService@server.luau",
 							result: "ServerScriptService/Combat/CombatService",
 						},

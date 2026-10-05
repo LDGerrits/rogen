@@ -6,14 +6,14 @@ description: Set up Rogen in a roblox-ts project.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-With [roblox-ts](https://roblox-ts.com/), Rogen reads your uncompiled `src` folder to decide where each file goes, swaps `.ts` for `.luau` in the paths it writes, and points Rojo at the compiled output. `rbxtsc` and `rojo serve` both read the same generated project file.
+With [roblox-ts](https://roblox-ts.com/), Rogen reads your uncompiled `src` folder to decide where each file goes, then writes paths into the compiled output, with `.ts` swapped for `.luau`. `rbxtsc` and `rojo serve` both read that same project file.
 
 <Steps>
 
 <Step>
 ### Create the Config
 
-In the project root, run `init`. It spots roblox-ts from your `tsconfig.json`:
+In the project root, run `init`. It recognizes roblox-ts from your `tsconfig.json`:
 
 ```bash
 rogen init
@@ -47,7 +47,7 @@ Next steps
 }
 ```
 
-The `syncDir` comes from the `outDir` in `tsconfig.json`, or `out` if that isn't set. The template mounts `include` and `node_modules/@rbxts`, the way roblox-ts projects expect.
+The `syncDir` comes from the `outDir` in `tsconfig.json` (or `out` if that isn't set), and the template mounts `include` and `node_modules/@rbxts` the way roblox-ts projects expect.
 
 </Step>
 
@@ -62,14 +62,14 @@ src/Inventory/client/InventoryController.ts
 src/Inventory/shared/InventoryTypes.ts
 ```
 
-Rogen puts them in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/shared/Inventory`, with paths into `out/Inventory/…`.
+Rogen puts these in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/shared/Inventory`, with paths pointing into `out/Inventory/…`.
 
 </Step>
 
 <Step>
 ### Run the Pipeline
 
-`rbxtsc` and Rogen both need to run at the same time. One way to do that is `concurrently`:
+`rbxtsc` and Rogen need to run side by side. One easy way to do that is with `concurrently`:
 
 ```bash
 npm install -D concurrently
@@ -95,5 +95,5 @@ rojo serve
 </Steps>
 
 <Callout type="info">
-	Every path Rogen writes is optional, so the project file works on a fresh checkout, before `rbxtsc` has written `out`.
+	Every path Rogen writes is optional, so the project file still works on a fresh checkout before `rbxtsc` has created `out`.
 </Callout>

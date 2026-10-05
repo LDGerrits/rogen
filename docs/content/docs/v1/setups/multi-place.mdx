@@ -6,7 +6,7 @@ description: Share code across several places in one repo.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Give each place its own config that combines the shared code with the place's own folder.
+Give each place its own config that combines the shared code with that place's own folder.
 
 <Steps>
 
@@ -45,14 +45,14 @@ Create a config for the lobby, and list both folders in `source`:
 }
 ```
 
-Rogen reads every listed folder and merges them into one tree.
+Rogen reads every folder you list and merges them into one tree.
 
 </Step>
 
 <Step>
 ### Configure the Match Place
 
-Do the same for the match:
+Then do the same for the match:
 
 ```json title="match.rogen.json"
 {
@@ -75,7 +75,7 @@ Do the same for the match:
 <Step>
 ### Start Watching
 
-Pick the config to build with `-c` or `--config`:
+Choose which config to build with `-c` or `--config`:
 
 ```bash
 rogen watch --config lobby.rogen.json

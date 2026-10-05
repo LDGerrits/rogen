@@ -5,7 +5,7 @@ description: Set up Rogen in a roblox-ts project.
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-With [roblox-ts](https://roblox-ts.com/), Rogen reads your uncompiled `src` folder to work out the routing, swaps the extensions to `.luau`, and points Rojo at the compiled output.
+With [roblox-ts](https://roblox-ts.com/), Rogen reads your uncompiled `src` folder to work out the routing, then points Rojo at the compiled output, with the extensions swapped to `.luau`.
 
 <Steps>
 
@@ -18,7 +18,7 @@ In the project root, run:
 rogen init
 ```
 
-Rogen detects roblox-ts and sets up a `ts` mode. Make sure `build` matches the `outDir` in your `tsconfig.json`.
+Rogen detects roblox-ts and sets up a `ts` mode. Check that `build` matches the `outDir` in your `tsconfig.json`.
 
 ```json title=".rogen.json"
 {
@@ -42,7 +42,7 @@ Rogen detects roblox-ts and sets up a `ts` mode. Make sure `build` matches the `
 <Step>
 ### Run the Pipeline
 
-`rbxtsc` and Rogen both need to run at the same time. One way to do that is `concurrently`:
+`rbxtsc` and Rogen need to run side by side. One easy way to do that is with `concurrently`:
 
 ```bash
 npm install -D concurrently

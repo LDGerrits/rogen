@@ -6,7 +6,7 @@ description: Keep test and development scripts out of production builds.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Most projects have code that's only for testing, mock data or development tools. Tags let you keep those files out of a build.
+Most projects have some code that's only for testing, mock data or development tools. Tags let you keep those files out of a build.
 
 <Steps>
 
@@ -15,7 +15,7 @@ Most projects have code that's only for testing, mock data or development tools.
 
 Define tags in `.rogen.json` or on the command line, then use them in file names, folder names or marker files.
 
-To tag a whole folder, name it after the tag (`dev`), or put an empty marker file like `.dev` inside it. You can also add a tag to a file name, the same way as a routing keyword:
+To tag a whole folder, name it after the tag (`dev`) or put an empty marker file like `.dev` inside it. You can also add a tag to a file name, just like a routing keyword:
 
 - `InventoryService.spec.luau`
 - `TeleportDev.luau`
@@ -35,21 +35,21 @@ When a folder or file name contains a tag:
 <Step>
 ### Build-Time Dependency Injection
 
-A folder named after an active tag disappears in Studio, but its contents stay. That lets you swap scripts by tag without changing any `require` paths.
+A folder named after an active tag disappears in Studio, but its contents stay. That means you can swap scripts by tag without changing any `require` paths.
 
 For example, create a `prod` folder and a `dev` folder, each with its own `AnalyticsService.luau`:
 
 - `src/core/prod/AnalyticsService.luau`
 - `src/core/dev/AnalyticsService.luau`
 
-Build with the `dev` tag active, and Rogen drops the `prod` folder entirely. It removes the `dev` folder from the path, so the development `AnalyticsService` lands at `core/AnalyticsService`.
+Build with the `dev` tag active and Rogen drops the `prod` folder entirely, while the `dev` folder vanishes from the path. The development `AnalyticsService` ends up at `core/AnalyticsService`.
 
 </Step>
 
 </Steps>
 
 <Callout type="info" title="Configuration">
-	Tags are an object of booleans in `.rogen.json`: `true` turns a tag on and
-	`false` turns it off. Set them at the top level, or override them per mode
-	(like `luau` or `ts`).
+	Tags are an object of booleans in `.rogen.json`, where `true` turns a tag
+	on and `false` turns it off. Set them at the top level, or override them
+	per mode (like `luau` or `ts`).
 </Callout>

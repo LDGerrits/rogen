@@ -5,11 +5,11 @@ description: VS Code's layers, with feature folders inside them.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Feature folders, stacked in layers. Each layer can only require the layers below it, so you can see which way every dependency points just from the path.
+This is feature folders, stacked in layers. Each layer can only require the layers below it, so you can tell which way a dependency points just by looking at the path.
 
 ## The Rule
 
-The top level has five layers. Each holds modules, or feature folders with `Server/`, `Client/` and `Shared/` inside:
+The top level has five layers, and each holds modules or feature folders with `Server/`, `Client/` and `Shared/` inside:
 
 | Layer | Holds | May require |
 |---|---|---|
@@ -19,17 +19,15 @@ The top level has five layers. Each holds modules, or feature folders with `Serv
 | `features` | Gameplay features: inventory, trading, quests | `base`, `platform`, `core` |
 | `app` | The entry points: one `Script` and one `LocalScript` | everything |
 
-Features don't require each other. When two features need the same thing, it moves down into `core`.
-
-Inside each feature, the sides follow one more rule:
+Features don't require each other; when two features need the same thing, it moves down into `core`. Inside each feature, the sides follow one more rule:
 
 - `Shared` requires only `Shared`.
 - `Server` and `Client` require `Shared`, never each other.
 
 ## Where It Comes From
 
-- **VS Code.** Its [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) splits the code into layers (`base`, `platform`, `editor`, `workbench`, and `code` as the entry point that "stitches everything together"), each depending only on the layers below. "Inside each layer the code is organised by the target runtime environment", and workbench features live in `contrib/<feature>/`, with no dependency from outside `contrib` into it. VS Code checks its runtime rules with an ESLint rule of its own, `code-layering`.
-- **Game engines.** Jason Gregory's _Game Engine Architecture_ ([CRC Press](https://www.gameenginebook.com/)) describes a runtime engine as layers, from the platform independence layer up through core systems to gameplay foundations and game-specific code. On Roblox, the engine layers _are_ Roblox. What's left for a game is the top of that stack, which is this page's `platform`, `core` and `features`.
+- **VS Code.** Its [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) splits the code into layers (`base`, `platform`, `editor`, `workbench`, and `code` as the entry point that "stitches everything together"), each depending only on the layers below it. "Inside each layer the code is organised by the target runtime environment", and workbench features live in `contrib/<feature>/`, which nothing outside `contrib` depends on. VS Code checks its runtime rules with its own ESLint rule, `code-layering`.
+- **Game engines.** Jason Gregory's _Game Engine Architecture_ ([CRC Press](https://www.gameenginebook.com/)) describes a runtime engine as a stack of layers, from platform independence up through core systems to gameplay foundations and game-specific code. On Roblox, the engine layers _are_ Roblox, so what's left for your game is the top of that stack: this page's `platform`, `core` and `features`.
 - **Unreal's Lyra.** Epic's [Lyra sample](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine) keeps a small, generic core and ships gameplay as [Game Feature plugins](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine), "fully encapsulated within the plugin". That's the `core` and `features` split.
 - **Roblox.** [Script locations](https://create.roblox.com/docs/scripting/locations) recommends "a single entry point on the client and server sides". That's `app`.
 
@@ -76,7 +74,7 @@ Inside each feature, the sides follow one more rule:
 	<TreeFile name="Remotes.luau" level={4} />
 </SystemWindow>
 
-`base/` has no routing folder, since everything in it runs on both sides. `app/` holds nothing but the two entry points.
+`base/` has no routing folder because everything in it runs on both sides, and `app/` holds nothing but the two entry points.
 
 ## The Config
 
@@ -95,11 +93,11 @@ The routes `rogen init` writes are enough:
 }
 ```
 
-`base/` matches no route, so the `*` route sends it to `ReplicatedStorage/Shared`. That's the Roblox version of VS Code's rule that `base` code runs everywhere.
+`base/` matches no route, so the `*` route sends it to `ReplicatedStorage/Shared`, which is the Roblox version of VS Code's rule that `base` code runs everywhere.
 
 ### Dropping a Layer From Studio
 
-The layers show up in Studio, as in `ServerScriptService/features/Inventory`. To keep a layer on disk only, make it an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders). With every layer invisible:
+By default the layers show up in Studio, as in `ServerScriptService/features/Inventory`. To keep a layer on disk only, make it an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders). With every layer invisible, you get:
 
 ```
 src/(base)/Signal.luau                                 ->  ReplicatedStorage/Shared/Signal
@@ -108,7 +106,7 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 ```
 
 <Callout type="warn" title="Invisible layers share one namespace">
-	Two layers can then produce the same instance. A `Combat` folder in both `(core)` and `(features)` becomes a single `Combat` folder in Studio, and a module with the same name in both is a clash: Rogen warns, and the last one wins. Keep the layers visible if feature names repeat across them.
+	With invisible layers, two layers can produce the same instance. A `Combat` folder in both `(core)` and `(features)` turns into a single `Combat` folder in Studio, and a module with the same name in both is a clash (Rogen warns, and the last one wins). Keep the layers visible if feature names repeat across them.
 </Callout>
 
 ## In Studio
@@ -160,30 +158,30 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 	<StudioFile name="ClientNetwork" level={4} />
 </StudioWindow>
 
-`app/Server/main.server.luau` becomes a `Script` named `main`, and `app/Client/main.client.luau` a `LocalScript`. The routing folder governs, so `.server` and `.client` just set the class, as Rojo reads them.
+`app/Server/main.server.luau` becomes a `Script` named `main`, and `app/Client/main.client.luau` a `LocalScript`. The routing folder governs here, so `.server` and `.client` only set the class.
 
 ## Why It Fits a Game
 
-- **The server/client problem is VS Code's problem.** VS Code splits by runtime so code for one environment never calls another's APIs. That's the same rule as between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
-- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about the other features, because nothing in `features` requires another feature. A pull request that stays inside `features/Trading` can't break the rest of the game.
+- **The server/client problem is VS Code's problem.** VS Code splits by runtime so code for one environment never calls another's APIs. That's the same rule you want between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
+- **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about other features, because no feature requires another. A pull request that stays inside `features/Trading` can't break the rest of the game.
 - **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` you can require, test or disable on its own.
-- **Live games change their feature set.** New modes and events are new folders in `features/`, on top of a core that changes less often.
+- **Live games keep changing.** New modes and events are just new folders in `features/`, sitting on a core that changes less often.
 
 ## Trade-offs
 
 - **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers once utilities and infrastructure start piling up.
-- **Every module needs a layer.** Choosing between `core` and `features`, or `platform` and `base`, is a judgment call. Write down what each layer means for your game.
-- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table. In Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
-- **Longer paths in Studio**, unless you make the layers invisible, which trades the paths for possible name clashes.
+- **Every module needs a layer.** Choosing between `core` and `features`, or between `platform` and `base`, is a judgment call, so write down what each layer means for your game.
+- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table; in Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **Longer paths in Studio**, unless you make the layers invisible, which trades long paths for possible name clashes.
 
 ## Feature-Sliced Design
 
-[Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as it caught on in frontend development, with one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
+[Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as it caught on in frontend development, plus one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
 
 - "A module (file) in a slice can only import other slices when they are located on layers strictly below."
 - "Slices cannot use other slices on the same layer."
 
-That second rule is what makes it stricter. The layout above lets a module require others in its own layer (`core` requires `core`), but FSD never allows a sideways require, except in `app` and `shared`, which have no slices. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
+That second rule is what makes it stricter. The layout above lets a module require others in its own layer (`core` requires `core`), but FSD never allows a sideways require, except in `app` and `shared`, which don't have slices. In a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
 
 <SystemWindow>
 	<TreeFolder name="src" open />
@@ -209,7 +207,7 @@ That second rule is what makes it stricter. The layout above lets a module requi
 </SystemWindow>
 
 <Callout type="warn" title="shared is a route key">
-	FSD's `shared` layer has the same name as the `Shared` route, so it's a routing folder: its modules land directly in `ReplicatedStorage/Shared`. A `Server/` folder inside it is just an ordinary folder, because the outer route governs, so any server code there goes to every client. Rogen warns when that happens. Keep `shared/` for code both sides run, or give the layer another name.
+	FSD's `shared` layer has the same name as the `Shared` route, so it acts as a routing folder and its modules land directly in `ReplicatedStorage/Shared`. Because the outer route governs, a `Server/` folder inside it is just an ordinary folder, and any server code there goes to every client (Rogen warns when that happens). Keep `shared/` for code both sides run, or give the layer another name.
 </Callout>
 
-Pick FSD over the layout above if your team wants the stricter rule, or already knows it from the web.
+Go with FSD if your team wants the stricter rule, or already knows it from the web.

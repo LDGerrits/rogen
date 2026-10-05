@@ -20,7 +20,7 @@ export function Features() {
 						Organize code by feature
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Make your codebase easier to work with
+						Everything about one part of your game, in one place.
 					</p>
 				</div>
 
@@ -28,32 +28,32 @@ export function Features() {
 					{[
 						{
 							title: "Feature Folders",
-							desc: "Keep everything a feature needs in one folder, named after what it does in your game",
+							desc: "Everything a feature needs sits in one folder, named after what it does in your game.",
 							icon: <FaFolder className="text-white" />,
 						},
 						{
 							title: "Declared Routes",
-							desc: "A short map in the config says where each route goes. Rogen never guesses",
+							desc: "A short map in your config says where each route goes, so Rogen never has to guess.",
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
 							title: "Variants",
-							desc: "Swap in a mock or dev version of a file at build time, without touching a require",
+							desc: "Swap in a mock or dev version of a file at build time, without touching a single require.",
 							icon: <FaClone className="text-white" />,
 						},
 						{
 							title: "Several Places",
-							desc: "Share code between places. Each place is a small config that extends a common one",
+							desc: "Share code between places. Each place is a small config that extends a common one.",
 							icon: <FaFolderPlus className="text-white" />,
 						},
 						{
 							title: "Luau, roblox-ts and Darklua",
-							desc: "rogen init detects your toolchain and writes a config to match",
+							desc: "rogen init detects your toolchain and writes a config to match.",
 							icon: <FaLayerGroup className="text-white" />,
 						},
 						{
 							title: "Watch and Diagnostics",
-							desc: "Rebuilds as files change, reloads the config as you edit it, and points every error at a file and line",
+							desc: "Rogen rebuilds as you work, picks up config edits on the fly, and points every error at a file and line.",
 							icon: <FaSyncAlt className="text-white" />,
 						},
 					].map((feature, i) => (
@@ -86,9 +86,9 @@ export function Features() {
 							</h3>
 							<p className="text-gray-400 text-sm leading-relaxed">
 								Feature folders, VS Code-style layers, or ECS
-								with Jecs or Matter. Pick the layout that fits
-								your game, and let a linter enforce its import
-								rules
+								with Jecs or Matter. Pick the layout that suits
+								your game and let a linter keep its import rules
+								honest.
 							</p>
 						</div>
 						<span className="text-gray-400 text-sm font-medium flex items-center gap-1">

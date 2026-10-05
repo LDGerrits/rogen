@@ -8,12 +8,12 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="warning" title="Init files">
 	A folder with an init file (`init.luau`, `index.ts`) is routed as usual,
-	but Rogen doesn't apply any routing rules to what's inside it.
+	but Rogen leaves everything inside it alone.
 </Callout>
 
 <Callout type="warning" title="Data and asset files">
-	Rogen can't write direct paths for files like `.json` or `.toml`. It tells
-	you in the console when one of them needs to be wrapped in a folder.
+	Rogen can't write direct paths for files like `.json` or `.toml`. It'll
+	tell you in the console when one of them needs to be wrapped in a folder.
 </Callout>
 
 <Steps>
@@ -21,7 +21,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 <Step>
 ### Invisible Folders
 
-Group files on disk without changing where they end up in Studio. Wrap a folder name in parentheses, like `(inventory)`, and Rogen leaves the folder out but keeps its contents.
+Wrap a folder name in parentheses, like `(inventory)`, to group files on disk without changing where they end up in Studio. Rogen leaves the folder out but keeps what's inside.
 
 </Step>
 
@@ -38,10 +38,10 @@ To put a script at the root of its service, start its name with `^`:
 <Step>
 ### Advanced Marker Files
 
-An empty file in a folder changes how Rogen treats that folder and everything below it.
+These empty files change how Rogen treats the folder they're in and everything below it.
 
-- **`.structure`** keeps the folder layout exactly as it is by turning routing off. Tag filtering still applies.
-- **`.sync`** stops Rogen from looking inside and syncs the folder as it is, with no routing or tag filtering.
+- **`.structure`** turns routing off, so the folder layout stays exactly as it is. Tag filtering still applies.
+- **`.sync`** stops Rogen from looking inside at all and syncs the folder as-is, with no routing or tag filtering.
 - **`.verbatim`** keeps routing keywords in file names, so `InputClient` keeps its `Client`.
 - **`.unwrap`** keeps the wrapper folders (`server`, `client` and `shared`) out of Studio.
 

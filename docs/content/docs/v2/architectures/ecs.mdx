@@ -3,19 +3,19 @@ title: ECS by Feature
 description: Entity Component System with Jecs or Matter, components shared and systems per side.
 ---
 
-The architecture most specific to games. Data and behavior are kept apart, and each feature folder owns the components and systems for one part of the game.
+This is the most game-specific of the three. Data and behavior are kept apart, and each feature folder owns the components and systems for one part of the game.
 
 ## The Rule
 
 An Entity Component System has three parts. In the words of Sander Mertens, the author of flecs ([ECS FAQ](https://github.com/SanderMertens/ecs-faq)): "entities, which are unique identifiers", "components, which are plain datatypes without behavior", and "systems, which are functions matched with entities that have a certain set of components".
 
-Organized by feature:
+When you organize them by feature:
 
 - **Components go in `Shared/`.** They're data, and both sides need to know their shape.
 - **Systems go where they run.** A system that decides (applying damage, validating speed) goes in `Server/`. A system that presents (a hit flash) goes in `Client/`. A system both sides run, such as movement that the client predicts, goes in `Shared/`.
 - **Systems don't require each other.** They talk through the components they read and write.
 
-Every feature shares the world and the scheduler, so those sit at the top.
+The world and the scheduler are shared by every feature, so they sit at the top.
 
 ## Where It Comes From
 
@@ -23,7 +23,7 @@ Every feature shares the world and the scheduler, so those sit at the top.
 - **Bevy.** "All Bevy engine features are implemented as plugins" ([Bevy](https://bevy.org/learn/quick-start/getting-started/plugins/)). A plugin is a feature folder.
 - **Unity.** In [Netcode for Entities](https://docs.unity3d.com/Packages/com.unity.netcode@1.3/manual/client-server-worlds.html), each system runs in the client world, the server world, or both (the default). The side belongs to the system, not to a top-level folder.
 - **Shipped games.** The ECS FAQ lists Overwatch, Diablo II: Resurrected and Minecraft Legends among others. Blizzard presented Overwatch's ECS architecture and its netcode at [GDC 2017](https://www.gdcvault.com/play/1024001/-Overwatch-Gameplay-Architecture-and).
-- **Roblox.** [Jecs](https://github.com/Ukendio/jecs) ("A fast, portable Entity Component System for Luau") and [Matter](https://matter-ecs.github.io/matter/) bring ECS to Luau. Matter's own example game is split by side at the root (`server/systems`, `client/systems`, `shared/components`). This page shows the same kind of game, split by feature.
+- **Roblox.** [Jecs](https://github.com/Ukendio/jecs) ("A fast, portable Entity Component System for Luau") and [Matter](https://matter-ecs.github.io/matter/) bring ECS to Luau. Matter's own example game is split by side at the root (`server/systems`, `client/systems`, `shared/components`); this page shows the same kind of game split by feature instead.
 
 ## On Disk
 
@@ -62,7 +62,7 @@ Every feature shares the world and the scheduler, so those sit at the top.
 	<TreeFile name="Replicate.luau" level={3} />
 </SystemWindow>
 
-- `Combat` keeps its components (`Health`, `Damage`) in `Shared/`, the systems that decide on the server, and a system that presents on the client.
+- `Combat` keeps its components (`Health`, `Damage`) in `Shared/`, its deciding systems on the server, and a presenting system on the client.
 - `Movement/Shared/Systems/Integrate` runs on both sides: on the server to simulate, on the client to predict.
 - `Replication` copies component changes from the server's world to the clients'.
 
@@ -83,7 +83,7 @@ The routes `rogen init` writes are enough:
 }
 ```
 
-`(Ecs)` is an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders) with no route, so the `*` route places `World` and `Scheduler` directly in `ReplicatedStorage/Shared`.
+`(Ecs)` is an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders) with no route, so the `*` route puts `World` and `Scheduler` directly in `ReplicatedStorage/Shared`.
 
 ## In Studio
 
@@ -123,18 +123,18 @@ The routes `rogen init` writes are enough:
 	<StudioFile name="Receive" level={3} />
 </StudioWindow>
 
-Server systems stay in `ServerScriptService`, where clients can't see them. Components and shared systems live in `ReplicatedStorage`, so both sides require the same modules.
+Server systems stay in `ServerScriptService` where clients can't see them, while components and shared systems live in `ReplicatedStorage` so both sides require the same modules.
 
 ## Why It Fits a Game
 
-- **Many entities, shared behavior.** Mobs, projectiles and vehicles are combinations of the same components. A system you write once applies to every entity that has them.
-- **The side is per system.** As with Unity's worlds, a system runs on the server, the client or both, and its folder says which. A feature with authority on the server and effects on the client stays in one place.
+- **Many entities, shared behavior.** Mobs, projectiles and vehicles are combinations of the same components, so a system you write once applies to every entity that has them.
+- **Each system picks its side.** As with Unity's worlds, a system runs on the server, the client or both, and its folder says which. A feature with authority on the server and effects on the client stays in one place.
 - **Components are the contract.** The server and client agree on data, not on each other's code. `Shared/Components.luau` is everything the two sides have in common.
-- **Performance.** Jecs advertises cache-friendly archetype storage, and ECS keeps hot loops over plain data.
+- **Performance.** Jecs advertises cache-friendly archetype storage, and ECS keeps hot loops running over plain data.
 
 ## Trade-offs
 
-- **A different model.** ECS asks you to think in data and queries instead of objects. UI and one-off logic are often simpler as plain modules next to it, and a feature folder has room for both.
-- **Systems are spread across folders.** Matter's getting-started guide loads every system from one folder. With systems in every feature, collecting them is your entry point's job.
-- **Ordering is global.** Systems in different features still run in one schedule, so the order lives in the scheduler, not in the folders.
-- **Rogen doesn't check the rules.** A system that requires another system still works. Hold the line in review, or lint it. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **A different way of thinking.** ECS asks you to think in data and queries instead of objects. UI and one-off logic are often simpler as plain modules alongside it, and a feature folder has room for both.
+- **Systems are spread across folders.** Matter's getting-started guide loads every system from one folder. With systems in every feature, collecting them becomes your entry point's job.
+- **Ordering is global.** Systems from different features still run in one schedule, so the order lives in the scheduler, not in the folders.
+- **Rogen doesn't check the rules.** A system that requires another system still works, so hold the line in review or lint it. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
