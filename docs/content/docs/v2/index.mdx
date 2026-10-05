@@ -1,22 +1,22 @@
 ---
 title: Introduction
-description: Organise Roblox code by feature, not by where it runs.
+description: Organize Roblox code by feature, not by where it runs.
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { BookOpen, LayoutGrid, Rocket, Settings2 } from "lucide-react";
 
-A bad folder structure slows development. Remembering where the related pieces are increases cognitive load. And finding files wastes time.
+A bad folder structure slows you down. You spend effort remembering where the related pieces live, and time hunting for them.
 
 ## The Problem: Technical Grouping
 
-Most Roblox codebases group files by what kind of code they are, not by what they're about. That's **technical grouping**, and it comes in two forms:
+Most Roblox codebases group files by what kind of code they are rather than what they're about. This is **technical grouping**, and it shows up in two forms:
 
-1. **By type:** folders for each technical role, such as `Controllers`, `Services` and `Utils`. Codebases in every industry do this, and it's a well-known anti-pattern.
-2. **By runtime, at the root:** `server`, `client` and `shared` folders at the top of the tree. Rojo maps folders one-to-one onto instances, so Roblox tooling forces this form on you. This is the one Rogen removes.
+1. **By type:** a folder per technical role, like `Controllers`, `Services` and `Utils`. Every industry does this, and it's a well-known anti-pattern.
+2. **By runtime, at the root:** `server`, `client` and `shared` at the top of the tree. Rojo maps folders one-to-one onto instances, so Roblox tooling pushes you into this one. It's the form Rogen removes.
 
-Either way, one feature is spread across the whole tree. Updating an **Inventory** system means searching three folders for its pieces, and deleting it means finding all of them.
+Either way, a single feature ends up scattered across the tree. To change the **Inventory** system you search three folders for its pieces, and to delete it you have to find every one of them.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -33,20 +33,19 @@ Either way, one feature is spread across the whole tree. Updating an **Inventory
 	</SystemWindow>
 </PreviewGroup>
 
-This was named as a mistake in 1972. David Parnas argued that modules should hide design decisions, not follow the order the program runs in:
+David Parnas called this a mistake back in 1972. Modules, he argued, should hide design decisions instead of following the order the program runs in:
 
 > Since, in most cases, design decisions transcend time of execution, modules will not correspond to steps in the processing.
 >
 > — D. L. Parnas, [_On the Criteria To Be Used in Decomposing Systems into Modules_](https://wstomv.win.tue.nl/edu/2ip30/references/criteria_for_modularization.pdf) (1972)
 
-On Roblox, _where code runs_ is that step. A feature has server, client and shared code, so the feature is the module, and where each piece runs is a detail inside it.
+On Roblox, _where code runs_ is one of those steps. A feature has server, client and shared code, so the feature should be the module, and where each piece runs is a detail inside it.
 
 ## The Solution: Package by Feature
 
-Keep all the code for one feature (client, server and shared) in a single **feature folder**, named after what it does in your game. This is **package by feature**. Domain-driven design gives the same advice: name modules after the concepts of your domain (`Trading`, `Quests`), not after technical roles.
+Put all the code for one feature (client, server and shared) in a single **feature folder** named after what it does in your game. This is **package by feature**, and domain-driven design says the same thing: name modules after the concepts in your domain (`Trading`, `Quests`), not after technical roles.
 
-Rogen reads the folder layout and the file names, and generates a Rojo **project file** that places every script in the Roblox **service** where it needs to run.
-Rogen doesn't sync anything itself: Rojo or Argon reads the generated project file and syncs the files into Roblox Studio.
+Rogen reads your folders and file names and generates a Rojo **project file** that puts every script in the Roblox **service** where it needs to run. It doesn't sync anything itself. Rojo or Argon reads that project file and syncs your code into Studio.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -80,7 +79,7 @@ Rogen doesn't sync anything itself: Rojo or Argon reads the generated project fi
 
 </PreviewGroup>
 
-The **routes** in the [config](/docs/v2/configuration) say where each kind of code goes:
+The **routes** in your [config](/docs/v2/configuration) say where each kind of code goes:
 
 ```json title="default.rogen.json"
 {
@@ -94,11 +93,11 @@ The **routes** in the [config](/docs/v2/configuration) say where each kind of co
 ```
 
 <Callout type="info">
-	**The Result:** Developers maintain a clean repository, while Roblox Studio
-	receives the scripts in the right containers.
+	**The result:** your repository stays organized by feature, and Studio still
+	gets every script in the right container.
 </Callout>
 
-Feature folders are a starting point, not the only option. Layers are fine too, as long as dependencies point one way and each layer is organised by feature. [Architectures](/docs/v2/architectures) compares the layouts that work well with Rogen.
+Feature folders are a good place to start, but not the only option. Layers work too, as long as dependencies point one way and each layer is split by feature. [Architectures](/docs/v2/architectures) compares the layouts that suit Rogen.
 
 ## Where to Go Next
 
@@ -115,7 +114,7 @@ Feature folders are a starting point, not the only option. Layers are fine too, 
 		title="Routing"
 		href="/docs/v2/core-concepts/routing"
 	>
-		How folders, marker files and suffixes decide where a file goes.
+		How folders, marker files and the `@` sign decide where a file goes.
 	</Card>
 	<Card
 		icon={<LayoutGrid />}

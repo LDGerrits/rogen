@@ -5,64 +5,62 @@ description: The complete command-line interface for Rogen.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-The Rogen command-line interface builds and watches projects.
-
-Run `rogen build` (or simply `rogen`) to execute a single build of the project:
+The `rogen` command builds and watches your project. To build once, run `rogen build`, or just `rogen`:
 
 ```bash
 rogen build
 ```
 
-Use flags to change Rogen behavior or override configurations.
+Flags change how Rogen behaves or override parts of the config.
 
 ## Commands
 
 ### `build`
 
-Builds the project. This is the default command if none is provided.
+Builds the project. This is the default command.
 
 ### `watch`
 
-Watches the source directories and builds the project automatically upon file changes.
+Watches the source folders and rebuilds whenever a file changes.
 
 ### `init`
 
-Generates a default `.rogen.json` configuration file in the current directory.
+Writes a default `.rogen.json` in the current folder.
 
 ## Options
 
 ### `-c, --config <path>`
 
-Specifies a custom configuration file path.
+Uses a config file at a custom path.
 
 ### `-m, --mode <mode>`
 
-Overrides the target mode (e.g., `luau`, `ts`, `darklua`, or custom modes). Rogen detects the mode from the configuration file if omitted.
+Picks the mode to build, such as `luau`, `ts`, `darklua` or one of your own. Without it, Rogen detects the mode from the config.
 
 ### `-s, --source <path>`
 
-Overrides the source directories defined in the configuration. Pass the flag multiple times to merge multiple directories.
+Overrides the source folders from the config. Repeat it to merge several folders.
 
 ### `-t, --tag <tag>`
 
-Activates specific tags. Pass the flag multiple times to activate multiple tags.
+Turns a tag on. Repeat it for more tags.
 
 ### `-p, --project <path>`
 
-Overrides the `project` object by specifying a path to a project file.
+Overrides `project` with the path to a project file.
 
 ### `-b, --build <path>`
 
-Overrides the output directory for transpiled code.
+Overrides the folder with the compiled code (`build`).
 
 ### `-o, --output <path>`
 
-Overrides the file path of the generated Rojo project file.
+Overrides where the Rojo project file is written.
 
 ### `-h, --help`
 
-Prints the help menu with all available options.
+Prints help with every option.
 
 ### `-v, --version`
 
-Prints the installed version of Rogen.
+Prints the installed version.

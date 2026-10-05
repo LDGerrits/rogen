@@ -1,13 +1,13 @@
 ---
 title: Multi-Place
-description: Step-by-step setup guide for sharing code across multiple places.
+description: Share code across several places in one repo.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **place** is one Roblox place in a repo that builds several. It's a config that `extends` a shared one and adds a folder of its own to the root directories, so core code is shared across places.
+A **place** is one Roblox place in a repo that builds several. Each place is a config that `extends` a shared one and adds a folder of its own to the root directories, so every place shares the core code.
 
 <Steps>
 
@@ -29,16 +29,16 @@ Keep shared code in `src`, and each place's own code in `places/<name>`.
 <Step>
 ### Add the Place
 
-Starting fresh, run `rogen init` and pick **Several places that share code**; with folders already in `places/`, that's the default. It asks the usual questions for the shared config, then the place names, and writes one config per place.
+If you're starting fresh, run `rogen init` and pick **Several places that share code**. That's the default if there are already folders in `places/`. It asks the usual questions for the shared config, then the place names, and writes one config per place.
 
-To add a place later, run `rogen init` again in a terminal and pick **A place**. It asks for the place's name and folder (`places/lobby` by default). Nothing else is asked: language, Darklua, routes and packages come from the existing project. Without a terminal, or with `--no-input`, `rogen init lobby` takes those defaults and adds the place without asking, which is how a script or a coding agent adds one:
+To add a place later, run `rogen init` again in a terminal and pick **A place**. It only asks for the place's name and folder (`places/lobby` by default), and takes the language, Darklua, routes and packages from the existing project. Without a terminal, or with `--no-input`, `rogen init lobby` takes those defaults and adds the place without asking. That's how a script or a coding agent adds one:
 
 ```bash
 rogen init                    # in a terminal, then pick A place
 rogen init lobby --no-input   # without asking
 ```
 
-A place folder may not overlap the shared root directories, and `init` never edits an existing file. What it writes depends on the toolchain:
+A place folder can't overlap the shared root directories, and `init` never edits an existing file. What it writes depends on the toolchain:
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -52,10 +52,10 @@ A place folder may not overlap the shared root directories, and `init` never edi
     }
     ```
 
-    Rogen reads both root directories and merges them into one tree. If two files land on the same instance, the directory listed last wins, so the place can override shared code.
+    Rogen reads both root directories and merges them into one tree. If two files land on the same instance, the directory listed last wins, so a place can override shared code.
   </Tab>
   <Tab value="roblox-ts">
-    One config and one tsconfig. A place's root directories have a different common root than `src` alone, so its compiled files land at a different path and need their own `outDir`:
+    One config and one tsconfig. A place's root directories have a different common root than `src` on its own, so its compiled files land at a different path and need their own `outDir`:
 
     ```json title="lobby.rogen.json"
     {
@@ -78,7 +78,7 @@ A place folder may not overlap the shared root directories, and `init` never edi
     }
     ```
 
-    `tsconfig.json` itself is never edited. When it has no `include`, its own build would pick up `places/lobby`, so `init` tells you to add `"include": ["src"]`.
+    `init` never edits `tsconfig.json` itself. If it has no `include`, its own build would pick up `places/lobby` too, so `init` tells you to add `"include": ["src"]`.
   </Tab>
 </Tabs>
 
@@ -105,7 +105,7 @@ Name the place to build it:
   </Tab>
 </Tabs>
 
-The config's name names its project file: `lobby.rogen.json` writes `lobby.project.json`. `rogen list` shows every config the repo can build.
+The project file is named after the config: `lobby.rogen.json` writes `lobby.project.json`. `rogen list` shows every config the repo can build.
 
 </Step>
 
@@ -113,7 +113,7 @@ The config's name names its project file: `lobby.rogen.json` writes `lobby.proje
 
 ## With Darklua
 
-Each place needs a source-rooted project file for Darklua **and** a synced one for Studio, so a place is two configs: `lobby` extends `default` and adds the place's root directory, and `lobby-sync` extends `lobby` and adds a sync directory.
+Each place needs a project file that points at its source, for Darklua, **and** one that points at the processed output, for Studio. So a place is two configs: `lobby` extends `default` and adds the place's root directory, and `lobby-sync` extends `lobby` and adds a sync directory.
 
 ```json title="lobby.rogen.json"
 {
@@ -131,7 +131,7 @@ Each place needs a source-rooted project file for Darklua **and** a synced one f
 }
 ```
 
-The common root of `src` and `places/lobby` is the repo root, so the synced paths are `dist/lobby/src/…` and `dist/lobby/places/lobby/…`. Run Darklua once per root directory to match, keep the place's sourcemap current for Darklua's `convert_require`, and serve the synced project:
+The common root of `src` and `places/lobby` is the repo root, so the synced paths are `dist/lobby/src/…` and `dist/lobby/places/lobby/…`. Run Darklua once per root directory to match, keep the place's sourcemap current for `convert_require`, and serve the synced project:
 
 ```bash
 darklua process src dist/lobby/src
@@ -141,10 +141,10 @@ rojo sourcemap lobby.project.json --output sourcemap.json --watch
 rojo serve lobby-sync.project.json
 ```
 
-luau-lsp regenerates `sourcemap.json` from `default.project.json`, which holds only the shared code, and would overwrite the place's. While you work on a place, point luau-lsp at it with `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
+luau-lsp regenerates `sourcemap.json` from `default.project.json`, which only has the shared code, and would overwrite the place's version. While you work on a place, point luau-lsp at it with `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 
-A merged source config for every place wouldn't work: Darklua rewrites requires against the sourcemap, so the sourcemap must be the place's own tree, and places that override each other's files would collapse into one.
+One merged source config for all places wouldn't work. Darklua rewrites requires against the sourcemap, so the sourcemap has to be the place's own tree, and places that override each other's files would collapse into one.
 
 <Callout type="info">
-	Shared `routes`, `variants` and `template` live in the config that every place extends, so a place only states what differs.
+	Shared `routes`, `variants` and `template` live in the config every place extends, so each place only says what's different.
 </Callout>

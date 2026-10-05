@@ -1,33 +1,31 @@
 ---
 title: Darklua
-description: Step-by-step setup guide for Darklua projects.
+description: Set up Rogen with Darklua.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-[Darklua](https://github.com/seaofvoices/darklua) processes code, applies rules, and outputs code to a build directory.
-Rogen integrates directly with this workflow.
-Rogen detects Darklua automatically upon finding a `.darklua.json` or `.darklua.json5` file in the root directory.
+[Darklua](https://github.com/seaofvoices/darklua) applies rules to your code and writes the result to a build folder. Rogen detects it when there's a `.darklua.json` or `.darklua.json5` in the project root.
 
 <Steps>
 
 <Step>
 ### Define the Build Directory
 
-Assume the Darklua configuration takes files from `src` and outputs files to `dist`.
+This guide assumes Darklua reads from `src` and writes to `dist`.
 
 </Step>
 
 <Step>
 ### Configure Rogen
 
-Initialize the Rogen configuration via the terminal:
+In the project root, run:
 
 ```bash
 rogen init
 ```
 
-Rogen detects Darklua and adds a `darklua` mode to the `.rogen.json` file. Ensure the `build` path matches the Darklua output folder.
+Rogen detects Darklua and adds a `darklua` mode to `.rogen.json`. Make sure `build` matches Darklua's output folder.
 
 ```json title=".rogen.json"
 {
@@ -45,14 +43,14 @@ Rogen detects Darklua and adds a `darklua` mode to the `.rogen.json` file. Ensur
 }
 ```
 
-Rogen reads the `src` folder for routing rules but maps the final paths to the `dist` folder.
+Rogen reads `src` to work out the routing, but points the paths in the project file at `dist`.
 
 </Step>
 
 <Step>
 ### Run the Pipeline
 
-Run the Darklua watcher to process files from `src` to `dist`. Run Rogen in watch mode simultaneously.
+Run Darklua in watch mode to process `src` into `dist`, and Rogen in watch mode next to it:
 
 ```bash
 darklua process src dist --watch

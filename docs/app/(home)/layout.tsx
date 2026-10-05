@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { HomeLayout } from "fumadocs-ui/layouts/home";
 import { baseOptions } from "@/lib/layout.shared";
-import { BookText, Telescope, ChevronDown } from "lucide-react";
+import { BookText, History, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import {
 	NavbarMenu,
@@ -31,7 +31,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 			links={[
 				{
 					text: "Docs",
-					url: "/docs/v1",
+					url: "/docs/v2",
 					active: "nested-url",
 				},
 				{
@@ -44,11 +44,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 								<ChevronDown className="w-4 h-4 opacity-50" />
 							</NavbarMenuTrigger>
 							<NavbarMenuContent>
-								<NavbarMenuLink href="/docs/v1">
+								<NavbarMenuLink href="/docs/v2">
 									<BookText className="mr-3 h-5 w-5 text-white" />
 									<div className="flex flex-col">
 										<span className="font-medium text-white">
-											Rogen v1 (latest)
+											Rogen v2 (latest)
 										</span>
 										<span className="text-sm text-muted-foreground">
 											Documentation for the latest version
@@ -57,14 +57,15 @@ export default function Layout({ children }: { children: ReactNode }) {
 									</div>
 								</NavbarMenuLink>
 
-								<NavbarMenuLink href="/docs/v2">
-									<Telescope className="mr-3 h-5 w-5 opacity-50" />
+								<NavbarMenuLink href="/docs/v1">
+									<History className="mr-3 h-5 w-5 opacity-50" />
 									<div className="flex flex-col">
 										<span className="font-medium opacity-50">
-											Rogen v2 (coming soon)
+											Rogen v1
 										</span>
 										<span className="text-sm opacity-50">
-											Upcoming documentation
+											Documentation for the previous
+											version
 										</span>
 									</div>
 								</NavbarMenuLink>

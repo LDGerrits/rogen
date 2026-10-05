@@ -7,17 +7,20 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 import { BookOpen, Rocket, Settings2 } from "lucide-react";
 
-A bad folder structure slows development. Remembering where the related pieces are increases cognitive load. And finding files wastes time.
+<Callout type="warn" title="You're reading the v1 docs">
+	Rogen v2 is the current release. It reads configs and file names differently, so to move a project over, follow [Migrating from v1](/docs/v2/migrating-from-v1).
+</Callout>
+
+A bad folder structure slows you down. You spend effort remembering where the related pieces live, and time hunting for them.
 
 ## The Problem: Layer-Based Architecture
 
-Typical Roblox projects structure their codebases in two ways:
+Most Roblox projects split their code twice:
 
-1. **By Environment:** Split code at the root into `server`, `client`, and `shared` folders.
-2. **By Type:** Inside the roots, group files by technical role (like `Controllers`, `Services`, or `Utils`).
+1. **By environment:** `server`, `client` and `shared` folders at the root.
+2. **By type:** inside those, a folder per technical role, like `Controllers`, `Services` or `Utils`.
 
-The layout may clean at the beginning but it gets messy in large codebases. Folders grow rapidly. Related files live far apart. Navigating the project becomes slow.
-Updating an **Inventory** system forces developers to search through massive file trees just to gather the related pieces.
+That looks tidy at first, but it doesn't scale. The folders keep growing, and related files end up far apart. To change the **Inventory** system, you dig through three big trees just to collect its pieces.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -38,16 +41,15 @@ Updating an **Inventory** system forces developers to search through massive fil
 </PreviewGroup>
 
 <Callout type="warn">
-	**The Friction:** Context switching. Working on one feature requires
-	navigating through unrelated systems just to find the right server script.
+	**The cost:** context switching. Working on one feature means wading
+	through unrelated systems just to find the right server script.
 </Callout>
 
 ## The Solution: Feature-Based Architecture
 
-Keep all code for a specific feature (e.g. client, server, and shared code) inside a single, self-contained folder.
+Keep all the code for one feature (client, server and shared) together in a single folder.
 
-Rogen routes every file to its target Roblox service automatically based on the folder structure and naming rules.
-Repositories stay clean and localized while Roblox Studio receives scripts in the expected service containers.
+Rogen reads your folders and file names and sends every file to the Roblox service where it belongs. Your repository stays organized by feature, and Studio still gets every script in the right place.
 
 <PreviewGroup>
 	<SystemWindow>
@@ -80,6 +82,6 @@ Repositories stay clean and localized while Roblox Studio receives scripts in th
 </PreviewGroup>
 
 <Callout type="info">
-	**The Result:** Developers maintain a clean repository, while Roblox Studio
-	receives the scripts in the right containers.
+	**The result:** a clean repository, and every script in the right
+	container in Studio.
 </Callout>

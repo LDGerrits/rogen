@@ -5,27 +5,27 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## The Pipeline
 
-- **Root directory**: A directory Rogen scans and watches for code, declared in `rootDirs`. With several, their feature folders and modules merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-root-directories).
+- **Root directory**: A directory Rogen scans and watches for code, listed in `rootDirs`. With several, their feature folders merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-root-directories).
 
-- **Common root**: The deepest directory containing every root directory. Derived, never written in the config. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).
+- **Common root**: The deepest folder that contains every root directory. Rogen works it out; you never write it in the config. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).
 
-- **Linked directory**: A symlink or Windows junction inside a root directory, read as the directory it points at. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
+- **Linked directory**: A symlink or Windows junction inside a root directory, read as the directory it points to. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
 
-- **Feature folder**: A folder inside a root directory that groups every file belonging to one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+- **Feature folder**: A folder inside a root directory that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Sync directory**: The directory Rojo syncs from, declared as `syncDir`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-directory).
+- **Sync directory**: The folder Rojo syncs from, set as `syncDir`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-directory).
 
-- **Template**: The Rojo project file that Rogen merges its generated tree into, declared as `template`. See [Output and Sync](/docs/v2/core-concepts/output#template).
+- **Template**: The Rojo project file that Rogen merges its generated tree into, set as `template`. See [Output and Sync](/docs/v2/core-concepts/output#template).
 
-- **Output**: The Rojo project file a config writes, named by `outFile`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
+- **Output**: The Rojo project file a config writes, set as `outFile`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
 
-- **Build**: One complete run that turns root directories into an output for one config. See [CLI](/docs/v2/cli#build-name).
+- **Build**: One complete run that turns the root directories into an output for one config. See [CLI](/docs/v2/cli#build-name).
 
-- **Rendering**: The tree written out as a project file, with its `$path`s rooted at one directory. See [Output and Sync](/docs/v2/core-concepts/output#one-tree-two-renderings).
+- **Rendering**: The tree written out as a project file, with its `$path`s rooted at one folder. See [Output and Sync](/docs/v2/core-concepts/output#one-tree-two-renderings).
 
-- **Watch**: A long-running build that regenerates its output when files change, and reloads itself when a config changes. See [CLI](/docs/v2/cli#watch-name).
+- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#watch-name).
 
-- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager that a workspace uses. `init` detects it once. See [CLI](/docs/v2/cli#init-name).
+- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init-name).
 
 - **Processor**: A tool such as Darklua that rewrites your code into a folder of its own before Rojo syncs it. See the [Darklua guide](/docs/v2/setups/darklua).
 
@@ -33,46 +33,52 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Routing
 
-- **Service**: A top-level Roblox DataModel container that code can be placed in, such as `ServerScriptService`. See [Routing](/docs/v2/core-concepts/routing#targets).
+- **Service**: A top-level Roblox container that code can go in, such as `ServerScriptService`. See [Routing](/docs/v2/core-concepts/routing#targets).
 
-- **Route**: A rule in `routes` that sends files to a target. Its name is the **route key**. See [Routing](/docs/v2/core-concepts/routing).
+- **Route**: An entry in `routes` that sends files to a target. Its name is the **route key**. See [Routing](/docs/v2/core-concepts/routing).
 
-- **Governing route**: The one route that decides where a file goes: the outermost one, walking from the root directory down. See [Routing](/docs/v2/core-concepts/routing#the-governing-route).
+- **Governing route**: The one route that decides where a file goes: the first one Rogen meets, walking down from the root directory. Every route after it is ignored. See [Routing](/docs/v2/core-concepts/routing#the-governing-route).
 
-- **Target**: The path a route places files at, whose first segment is a service. See [Routing](/docs/v2/core-concepts/routing#targets).
+- **Target**: The path a route places files at. Its first segment is a service. See [Routing](/docs/v2/core-concepts/routing#targets).
 
-- **Fallback route**: The `*` route, for files that no route matched. See [Routing](/docs/v2/core-concepts/routing#files-that-match-no-route).
+- **Fallback route**: The `*` route, for files no other route matched. See [Routing](/docs/v2/core-concepts/routing#files-that-match-no-route).
 
-- **Routing folder**: A folder named after a route key, or `Name@key`. A plain one never appears in the generated tree; `Name@key` keeps its name. A routing folder that an outer route outranks is an ordinary folder. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+- **Routing folder**: A folder named after a route key, like `Server/` or `@server/`. When it governs, it disappears from the generated tree. Below another route, it's an ordinary folder. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Suffix**: A route key after an `@`, or a variant after a dot, at the end of a file name. See [Routing](/docs/v2/core-concepts/routing#suffixes).
+- **Suffix**: The end of a name that routes it or marks a variant. Routes use `@` (`Save@server.luau`, `Matchmaking@server/`), variants use a dot (`Analytics.mock.luau`), and Rojo's `.server` and `.client` route too when a key of that name exists. See [Routing](/docs/v2/core-concepts/routing#the--sign).
 
-- **Declared key**: A route key or a variant. Both are recognised as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
+- **Declared key**: A route key or a variant. Both are recognized as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
 
-- **Marker file**: An empty dot-file naming a declared key, which applies it to its directory and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
+- **Marker file**: An empty dot-file named after a declared key, which applies it to its folder and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
 
-- **Metadata file**: Rojo's `*.meta.json`, which sets a class, properties or attributes. See [Project Layout](/docs/v2/core-concepts/project-layout).
+- **Metadata file**: Rojo's `*.meta.json`, which sets a class, properties or attributes. See [Project Layout](/docs/v2/core-concepts/project-layout#metadata-files).
 
-- **Invisible folder**: A folder written as `(name)`, left out of the generated tree. See [Project Layout](/docs/v2/core-concepts/project-layout).
+- **Invisible folder**: A folder written as `(name)`, left out of the generated tree. See [Project Layout](/docs/v2/core-concepts/project-layout#invisible-folders).
 
-- **Init folder**: A directory containing an `init` or `index` script, which Rojo treats as one instance. See [Project Layout](/docs/v2/core-concepts/project-layout).
+- **Init folder**: A folder with an `init` or `index` script, which Rojo treats as one instance. See [Project Layout](/docs/v2/core-concepts/project-layout#init-folders).
 
 ## Variants and Filtering
 
-- **Variant**: A name declared in `variants` that marks a colocated alternative to a file, such as `Analytics.mock.luau`. Not a Roblox instance Tag. See [Variants](/docs/v2/core-concepts/variants).
+- **Variant**: A name declared in `variants` that marks another version of a file, kept right next to it. See [Variants](/docs/v2/core-concepts/variants).
 
-- **Active variant**: A variant switched on for the current build. Its suffix is stripped and its file replaces a plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Active variant**: A variant that's on for the current build. Its suffix is stripped, and its file replaces the plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+
+- **Dormant variant**: A declared variant that's off for the current build. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
 - **Variant folder**: A folder named after a declared variant. It never appears in the tree. See [Variants](/docs/v2/core-concepts/variants#variant-folders).
 
-- **Dormant variant**: A declared variant that isn't active in the current build. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Pruned**: Left out of the output because the file belongs to a dormant variant. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
-- **Pruned**: Left out of the output because the file carries a dormant variant. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
 
-- **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout).
+- **Mounted**: Left out of the scan because a template `$path` points at it, inside a root directory. Rojo reads it as it is, and Rogen neither routes it nor warns about it. See [Output and Sync](/docs/v2/core-concepts/output#template).
+
+- **Displaced**: Left out of the output because the template defines the file's node, or gives one of its folders a `$path`. See [Output and Sync](/docs/v2/core-concepts/output#template).
 
 ## Configuration
 
-- **Config**: A `<name>.rogen.json` file. See [Configuration](/docs/v2/configuration).
+- **Config**: A `<name>.rogen.json` file. One config is one tree and one output. See [Configuration](/docs/v2/configuration).
 
-- **Override**: A CLI flag that replaces a config value for one invocation. See [CLI](/docs/v2/cli#options).
+- **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `.rogen.json` that fails to load and has v1's keys gets a hint that links to the [migration page](/docs/v2/migrating-from-v1).
+
+- **Override**: A CLI flag that replaces a config value for a single run. See [CLI](/docs/v2/cli#options).

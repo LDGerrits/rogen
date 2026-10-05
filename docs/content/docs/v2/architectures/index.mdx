@@ -6,7 +6,7 @@ description: Folder layouts that work well with Rogen, and when to pick each.
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
 
-[Core Concepts](/docs/v2/core-concepts/routing) explains how Rogen reads a tree. These pages are about which tree to write. Each one describes a layout that works well for a Roblox game, where it comes from, and what it costs.
+[Core Concepts](/docs/v2/core-concepts/routing) explains how Rogen reads a tree. These pages are about which tree to write: each one describes a layout that works well for a Roblox game, where it comes from, and what it costs.
 
 ## Two Axes
 
@@ -15,7 +15,7 @@ A Roblox codebase can be split along two axes:
 - **Where code runs:** server, client or both. Roblox requires this split at runtime.
 - **What code is about:** inventory, combat, trading.
 
-Rojo maps folders one-to-one onto instances, so without Rogen the first axis has to be the top-level split. Rogen reverses that. Every layout on these pages puts features (or layers, then features) at the top, and puts `Server/`, `Client/` and `Shared/` inside them.
+Rojo maps folders one-to-one onto instances, so without Rogen the first axis has to be your top-level split. Rogen turns that around. Every layout here puts features (or layers, then features) at the top, with `Server/`, `Client/` and `Shared/` inside them.
 
 ## Comparison
 
@@ -29,26 +29,26 @@ Rojo maps folders one-to-one onto instances, so without Rogen the first axis has
 
 ## Pick This If…
 
-- **Feature folders**, if you're starting out or migrating from `server/client/shared`. It's the baseline the other two build on, and the smallest change to how you already write code.
-- **Layered**, if your codebase has grown enough that utilities, infrastructure and gameplay blur together, and you want a rule that says which module may require which.
-- **ECS by feature**, if you already use Jecs or Matter, or your game has many entities sharing behaviour: mobs, projectiles, vehicles.
+- **Feature folders** if you're starting out or moving away from `server/client/shared`. The other two build on it, and it's the smallest change to how you already write code.
+- **Layered** if your codebase has grown to the point where utilities, infrastructure and gameplay blur together, and you want a rule for which module may require which.
+- **ECS by feature** if you already use Jecs or Matter, or your game has lots of entities that share behavior: mobs, projectiles, vehicles.
 
-The layouts combine. A layered codebase has feature folders in `core/` and `features/`, and an ECS codebase can sit inside `features/`.
+The layouts mix well. A layered codebase has feature folders in `core/` and `features/`, and ECS can live inside `features/`.
 
 ## Prior Art
 
-Rogen's layout wasn't invented for Roblox. Large codebases that run in several environments already put the feature first and the environment second:
+None of this was invented for Roblox. Large codebases that run in several environments already put the feature first and the environment second:
 
-- **VS Code** organises its code in layers, and inside each layer by the runtime it targets. Workbench features live in `contrib/<feature>/` and are split again by runtime: [`contrib/terminal`](https://github.com/microsoft/vscode/tree/main/src/vs/workbench/contrib/terminal) has `common/`, `browser/` and `electron-browser/` folders (see the [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) wiki page). Read `common` as `Shared`, `browser` as `Client` and `node` as `Server`, and that's a Rogen feature folder.
+- **VS Code** organizes its code in layers, and inside each layer by the runtime it targets. Workbench features live in `contrib/<feature>/` and are split again by runtime: [`contrib/terminal`](https://github.com/microsoft/vscode/tree/main/src/vs/workbench/contrib/terminal) has `common/`, `browser/` and `electron-browser/` folders (see the [source code organization](https://github.com/microsoft/vscode/wiki/Source-Code-Organization) wiki page). Read `common` as `Shared`, `browser` as `Client` and `node` as `Server`, and that's a Rogen feature folder.
 - **Nevermore**, Quenty's Roblox package library, puts `Client/`, `Server/` and `Shared/` inside every package (for example [`ragdoll`](https://github.com/Quenty/NevermoreEngine/tree/main/src/ragdoll/src)). Its [loader](https://github.com/Quenty/NevermoreEngine/blob/main/src/loader/README.md) splits them at runtime: "Modules will be split between client/server/shared based upon their parent". Rogen does the same split at build time, so Rojo syncs every script straight to its service.
 
 ## Enforcing the Rules
 
-Every rule on these pages is a rule about paths: `platform` doesn't require `features`, one feature doesn't require another, `Shared` doesn't require `Server`. Feature folders put the layer, the feature and the side in every file's path, so a linter can check each rule by comparing two paths.
+Every rule on these pages is a rule about paths: `platform` doesn't require `features`, one feature doesn't require another, `Shared` doesn't require `Server`. Feature folders put the layer, the feature and the side in every file's path, so a linter can check each rule just by comparing two paths.
 
-Technical grouping can't express these rules. `InventoryController` sits in `client/Controllers/` beside every other controller, and nothing in its path says it belongs to the inventory, so "the inventory doesn't require trading" can't be written down, let alone checked.
+Technical grouping can't express these rules. `InventoryController` sits in `client/Controllers/` next to every other controller, and nothing in its path says it belongs to the inventory, so you can't even write down "the inventory doesn't require trading", let alone check it.
 
-Rogen routes files. It doesn't read your `require` calls, so the checking is up to your tools. Roblox enforces one rule for you: `ServerScriptService` isn't replicated, so a client can't require server code at all. A shared module that requires server code only fails when a client loads it, and a feature that requires another's internals works fine until someone changes them.
+Rogen routes files. It doesn't read your `require` calls, so checking them is up to your tools. Roblox enforces one rule for you: `ServerScriptService` isn't replicated, so a client can't require server code at all. But a shared module that requires server code only fails once a client loads it, and a feature that reaches into another's internals works fine until someone changes them.
 
 ### roblox-ts
 
@@ -90,22 +90,22 @@ export default [
 ];
 ```
 
-The resolver setting needs `eslint-import-resolver-typescript`. For [feature folders](/docs/v2/architectures/feature-folders), the side zones work as they are. Features there may import the helper features that hold shared code, so give each feature a zone whose `except` lists the helpers it may use.
+The resolver setting needs `eslint-import-resolver-typescript`. For [feature folders](/docs/v2/architectures/feature-folders), the side zones work as they are. Features there can import the helper features that hold shared code, so give each feature a zone whose `except` lists the helpers it's allowed to use.
 
 ### Luau
 
-Luau has no common linter for requires yet. The check is the same comparison, though: the path of the requiring file against the path it requires. A short script in CI can do it, and until you have one, state the rules in your `AGENTS.md` and in review.
+Luau doesn't have a common linter for requires yet. The check is the same comparison, though: the path of the requiring file against the path it requires. A short script in CI can do it. Until you have one, write the rules in your `AGENTS.md` and hold to them in review.
 
 ### Why It Pays Off
 
-- **Smaller blast radius.** When features can't require each other, a change inside `features/Shop` can only break the shop. A pull request's file list tells you what it can affect, before you read a line.
+- **Smaller blast radius.** When features can't require each other, a change inside `features/Shop` can only break the shop. A pull request's file list tells you what it can affect before you read a line.
 - **Deleting a feature is safe.** Nothing outside a feature requires it, so removing its folder can't break another one.
 - **Teams work in parallel.** Two people on two features touch different folders, and a crossed boundary fails in CI instead of surfacing in review weeks later.
 - **Agents stay inside the lines.** An agent runs the linter, sees the boundary it crossed, and fixes it before you review. `AGENTS.md` states the intent, and the linter checks it. See [Working with agents](/docs/v2/agents).
-- **The architecture doesn't erode.** Rules that live only in people's heads get broken one shortcut at a time. Rules in a lint config hold.
+- **The architecture doesn't erode.** Rules that only live in people's heads get broken one shortcut at a time. Rules in a lint config hold.
 
 <Callout type="info" title="About the examples">
-	The trees use the routes `rogen init` writes for Luau. In a roblox-ts project the routing folders are lowercase (`server/`, `client/`, `shared/`) and the files end in `.ts`. Client modules go to `StarterPlayerScripts` because that's where `init` routes them; point the `Client` route at a folder in `ReplicatedStorage` if you'd rather keep them there.
+	The trees use the routes `rogen init` writes for Luau. In a roblox-ts project, the routing folders are lowercase (`server/`, `client/`, `shared/`) and the files end in `.ts`. Client modules go to `StarterPlayerScripts` because that's where `init` routes them. Point the `Client` route at a folder in `ReplicatedStorage` if you'd rather keep them there.
 </Callout>
 
 <Cards>

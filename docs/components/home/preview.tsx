@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { SiRoblox } from "react-icons/si";
 
-type ViewState = "folders" | "suffixes" | "markers";
+type ViewState = "folders" | "at" | "markers";
 
 interface Row {
 	readonly name: string;
@@ -123,13 +123,13 @@ const views: Record<
 			["InventoryController"]
 		),
 	},
-	suffixes: {
-		label: "Suffixes",
+	at: {
+		label: "The @ Sign",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Combat", level: 1, kind: "feature" },
-			{ name: "CombatControllerClient.luau", level: 2, kind: "script" },
-			{ name: "CombatServiceServer.luau", level: 2, kind: "script" },
+			{ name: "CombatController@client.luau", level: 2, kind: "script" },
+			{ name: "CombatService@server.luau", level: 2, kind: "script" },
 			{ name: "CombatTypes.luau", level: 2, kind: "script" },
 		],
 		studio: studioTree(
@@ -187,7 +187,7 @@ export function Preview() {
 						Preview
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						See how Rogen routes files into Roblox Studio
+						See where your files end up in Roblox Studio
 					</p>
 				</div>
 

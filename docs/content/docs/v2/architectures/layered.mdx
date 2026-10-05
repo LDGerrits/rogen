@@ -5,11 +5,11 @@ description: VS Code's layers, with feature folders inside them.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Feature folders, stacked in layers. Each layer may only require the layers below it, so the direction of every dependency is visible from the path.
+Feature folders, stacked in layers. Each layer can only require the layers below it, so you can see which way every dependency points just from the path.
 
 ## The Rule
 
-The top level has five layers. Each one holds modules, or feature folders with `Server/`, `Client/` and `Shared/` inside:
+The top level has five layers. Each holds modules, or feature folders with `Server/`, `Client/` and `Shared/` inside:
 
 | Layer | Holds | May require |
 |---|---|---|
@@ -21,7 +21,7 @@ The top level has five layers. Each one holds modules, or feature folders with `
 
 Features don't require each other. When two features need the same thing, it moves down into `core`.
 
-Inside every feature, the sides follow one more rule:
+Inside each feature, the sides follow one more rule:
 
 - `Shared` requires only `Shared`.
 - `Server` and `Client` require `Shared`, never each other.
@@ -76,7 +76,7 @@ Inside every feature, the sides follow one more rule:
 	<TreeFile name="Remotes.luau" level={4} />
 </SystemWindow>
 
-`base/` has no routing folder, because everything in it runs on both sides. `app/` holds nothing but the two entry points.
+`base/` has no routing folder, since everything in it runs on both sides. `app/` holds nothing but the two entry points.
 
 ## The Config
 
@@ -99,7 +99,7 @@ The routes `rogen init` writes are enough:
 
 ### Dropping a Layer From Studio
 
-The layers show up in Studio, as in `ServerScriptService/features/Inventory`. To keep a layer on disk only, write it as an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders). With every layer invisible:
+The layers show up in Studio, as in `ServerScriptService/features/Inventory`. To keep a layer on disk only, make it an [invisible folder](/docs/v2/core-concepts/project-layout#invisible-folders). With every layer invisible:
 
 ```
 src/(base)/Signal.luau                                 ->  ReplicatedStorage/Shared/Signal
@@ -108,7 +108,7 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 ```
 
 <Callout type="warn" title="Invisible layers share one namespace">
-	Two layers can then produce the same instance. A `Combat` folder in both `(core)` and `(features)` becomes one `Combat` folder in Studio, and a module with the same name in both is a clash: Rogen warns, and the last one wins. Keep layers visible if feature names repeat across them.
+	Two layers can then produce the same instance. A `Combat` folder in both `(core)` and `(features)` becomes a single `Combat` folder in Studio, and a module with the same name in both is a clash: Rogen warns, and the last one wins. Keep the layers visible if feature names repeat across them.
 </Callout>
 
 ## In Studio
@@ -160,30 +160,30 @@ src/(app)/Server/main.server.luau                      ->  ServerScriptService/m
 	<StudioFile name="ClientNetwork" level={4} />
 </StudioWindow>
 
-`app/Server/main.server.luau` becomes a `Script` named `main`, and `app/Client/main.client.luau` a `LocalScript`. The routing folder governs them, so `.server` and `.client` keep Rojo's meaning.
+`app/Server/main.server.luau` becomes a `Script` named `main`, and `app/Client/main.client.luau` a `LocalScript`. The routing folder governs, so `.server` and `.client` just set the class, as Rojo reads them.
 
 ## Why It Fits a Game
 
-- **The server/client problem is VS Code's problem.** VS Code splits by runtime so that code for one environment never calls another's APIs. That's the rule between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
+- **The server/client problem is VS Code's problem.** VS Code splits by runtime so code for one environment never calls another's APIs. That's the same rule as between `Server` and `Client`, and Roblox already enforces half of it: a client can't require anything in `ServerScriptService`.
 - **It scales with the team.** Someone working on `features/Trading` can read `core` and `platform` without worrying about the other features, because nothing in `features` requires another feature. A pull request that stays inside `features/Trading` can't break the rest of the game.
-- **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` that can be required, tested or disabled on its own.
+- **One entry point per side.** `app/` is the only place scripts start, as Roblox recommends, so everything else is a `ModuleScript` you can require, test or disable on its own.
 - **Live games change their feature set.** New modes and events are new folders in `features/`, on top of a core that changes less often.
 
 ## Trade-offs
 
-- **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers when utilities and infrastructure start piling up.
-- **Every module needs a layer.** Deciding between `core` and `features`, or `platform` and `base`, is a judgement call. Write down what each layer means for your game.
-- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table; in Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
+- **More folders.** A small game doesn't need five layers. Start with [feature folders](/docs/v2/architectures/feature-folders) and add layers once utilities and infrastructure start piling up.
+- **Every module needs a layer.** Choosing between `core` and `features`, or `platform` and `base`, is a judgment call. Write down what each layer means for your game.
+- **The rules need a linter.** Rogen doesn't read requires, so a `features` module that requires another feature still builds. In roblox-ts, ESLint can enforce every rule in the table. In Luau there's no common tool yet. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 - **Longer paths in Studio**, unless you make the layers invisible, which trades the paths for possible name clashes.
 
 ## Feature-Sliced Design
 
-[Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as popularised in frontend development, with one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
+[Feature-Sliced Design](https://fsd.how/docs/get-started/overview) is the same idea as it caught on in frontend development, with one extra rule. Its [layers](https://fsd.how/docs/reference/layers) are `app`, `pages`, `widgets`, `features`, `entities` and `shared`, each split into **slices**, and:
 
 - "A module (file) in a slice can only import other slices when they are located on layers strictly below."
 - "Slices cannot use other slices on the same layer."
 
-That second rule is what makes it stricter. The layout above lets a module require others in its own layer (`core` requires `core`); FSD never allows a sideways require, except in `app` and `shared`, which have no slices. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
+That second rule is what makes it stricter. The layout above lets a module require others in its own layer (`core` requires `core`), but FSD never allows a sideways require, except in `app` and `shared`, which have no slices. For a game, `pages` becomes screens or modes, `widgets` holds HUD pieces, and each slice gets routing folders:
 
 <SystemWindow>
 	<TreeFolder name="src" open />
@@ -209,7 +209,7 @@ That second rule is what makes it stricter. The layout above lets a module requi
 </SystemWindow>
 
 <Callout type="warn" title="shared is a route key">
-	FSD's `shared` layer has the same name as the `Shared` route, so it's a routing folder: its modules land directly in `ReplicatedStorage/Shared`, and a `Server/` folder inside it is ignored, because the outer route governs. Server-only code in `shared/` would be sent to every client. Keep `shared/` for code both sides run, or give the layer another name.
+	FSD's `shared` layer has the same name as the `Shared` route, so it's a routing folder: its modules land directly in `ReplicatedStorage/Shared`. A `Server/` folder inside it is just an ordinary folder, because the outer route governs, so any server code there goes to every client. Rogen warns when that happens. Keep `shared/` for code both sides run, or give the layer another name.
 </Callout>
 
-Pick FSD over the layout above when your team wants the stricter rule, or already knows it from the web.
+Pick FSD over the layout above if your team wants the stricter rule, or already knows it from the web.

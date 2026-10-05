@@ -6,7 +6,7 @@ description: How Rogen decides which Roblox service a file goes to.
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **route** sends files to a **target**: a path that starts at a Roblox **service**. Routes are declared in the config's `routes` map, and the name of a route is its **route key**.
+A **route** sends files to a **target**, a path that starts at a Roblox **service**. You declare routes in the config's `routes` map, and each route's name is its **route key**.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -35,13 +35,11 @@ A **route** sends files to a **target**: a path that starts at a Roblox **servic
   </Tab>
 </Tabs>
 
-`rogen init` writes this set for the language it detects. Nothing is built in: only the routes a config declares exist, so a service name such as `ReplicatedFirst` is a route key only when the config declares it.
-
-A file is routed in one of three ways. All three match a declared route key.
+`rogen init` writes this set for the language it detects. Nothing is built in: the only routes are the ones your config declares, so `ReplicatedFirst` is a route key only if you add it.
 
 ## Routing Folders
 
-Name a folder after a route key, and everything inside it goes to that route's target. This is the recommended layout: a **feature folder** holds one routing folder per side.
+Name a folder after a route key and everything inside it goes to that route's target. This is the recommended layout: each **feature folder** holds one routing folder per side.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -60,142 +58,127 @@ Name a folder after a route key, and everything inside it goes to that route's t
   </Tab>
 </Tabs>
 
-A routing folder exists only to route, so it never appears in the generated tree. The `Inventory` folder does: Rogen keeps the feature folder's name under each target.
+The routing folder only exists to route, so it disappears from the generated tree. The feature folder stays: `Inventory` shows up under each target.
 
-Luau projects usually capitalize the folder (`Server/`) and roblox-ts projects don't (`server/`). One route key matches both spellings, because the [first letter may be in either case](#matching).
+Luau projects tend to capitalize these folders (`Server/`) and roblox-ts projects don't (`server/`). Either spelling matches the same key, because the [first letter can be either case](#matching).
 
-Files can also go through the `*` route, or be routed one by one with the other two methods below.
+## The `@` Sign
 
-### Keeping the Folder's Name
-
-Write the folder as `Name@key` to route it **and keep its name**. A bare `@key` routes and leaves no folder, which is what a plain `Server/` does.
+When a feature is too small for a folder per side, route by name instead. Rogen adds one sign of its own for this, `@`, and it reads like an email address: this name, at that place. The rule is short: **`@key` at the end of a name routes, and whatever comes before the `@` is the name.**
 
 ```
-src/Matchmaking@server/Queue.luau  ->  ServerScriptService/Matchmaking/Queue
-src/Inventory/@server/Save.luau    ->  ServerScriptService/Inventory/Save
+Inventory/InventoryService@server.luau  ->  ServerScriptService/Inventory/InventoryService
+Matchmaking@server/Queue.luau           ->  ServerScriptService/Matchmaking/Queue
+Inventory/@server/Save.luau             ->  ServerScriptService/Inventory/Save
 ```
 
-Use `Name@key` when a folder is both a feature and a route, and a flat layout reads better than `Matchmaking/Server/`.
+- **On a file**, `@server` routes that file and comes off its name. It never changes the script's class, so `InventoryService@server.luau` is still a `ModuleScript`. This is how you put a module in another service without a folder.
+- **On a folder**, `Matchmaking@server/` routes everything inside and keeps the name `Matchmaking`.
+- **On its own**, `@server/` has no name before the `@`, so no folder appears in the game. It's the same as a plain `server/` routing folder.
+
+Because `@` means nothing else, a typo gets caught: an `@` that nearly spells a declared route draws one warning that names it, so `Save@sever.luau` and `@sever/` both get `did you mean "@Server"?`. Any other `@` stays in the name without a word, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`).
 
 ## Marker Files
 
-An empty dot-file named after a route key (`.server`) routes its directory and every directory below it. Unlike a routing folder, the marked folder **keeps its name**, like `Name@key`.
+An empty dot-file named after a route key, such as `.server`, routes its folder and everything below it. Like `Matchmaking@server/`, the folder **keeps its name**, but you don't have to rename it.
 
 ```
 src/Anti-cheat/.server
 src/Anti-cheat/Check.luau  ->  ServerScriptService/Anti-cheat/Check
 ```
 
-## Suffixes
+## Rojo's Script Suffixes
 
-`@key` at the end of a file name routes that file. Whatever stands before the `@` is the name, and the suffix is stripped from the instance name:
-
-```
-Combat@server.luau  ->  ServerScriptService/.../Combat
-Hud@client.luau     ->  StarterPlayer/StarterPlayerScripts/.../Hud
-```
-
-`@` is the only sign Rogen adds, and it reads like an email address: this name, at that place. Nothing else in a name routes a file. Rogen doesn't read `Combat-server.luau`, `Combat_server.luau`, `Combat+server.luau` or `CombatServer.luau` as routes, so `HttpClient.luau` stays `HttpClient`.
-
-Rojo's own suffixes still work. Rojo reads `.server` and `.client` at the end of a script name as the script's class, and a file has to land where it runs, so Rogen routes on them when a route key of that name is declared:
+Rojo reads `.server` and `.client` at the end of a script name as its class: `Bootstrap.server.luau` is a `Script` and `Hud.client.luau` is a `LocalScript`. When your config declares a `server` or `client` key, these suffixes route as well, because a script has to land where it can run:
 
 ```
-Bootstrap.server.luau  ->  ServerScriptService/.../Bootstrap   (a Script)
-Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/.../Hud   (a LocalScript)
+src/Inventory/Bootstrap.server.luau  ->  ServerScriptService/Inventory/Bootstrap   (a Script)
+src/Inventory/Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud   (a LocalScript)
 ```
 
-No other route key routes through a dot: `Types.shared.luau` is an instance named `Types.shared`, and `Types@shared.luau` is the route.
+The dot belongs to Rojo, so no other key routes through it. `Types.shared.luau` is an instance named `Types.shared`. Write `Types@shared.luau` to route it.
 
-<Callout type="info" title="A suffix sets where a script goes, not its class">
-	`Combat@server.luau` is a `ModuleScript` in `ServerScriptService`, and `Bootstrap.server.luau` is a `Script`. An `@` suffix decides **where** a file goes, never **what class** it is, so it is how a module reaches another service without a folder. Routing folders read best when a feature has several files per side, and suffixes suit a small feature with a file or two.
-</Callout>
-
-An `@` followed by a near miss of a declared route is a typo, so `rogen build` warns once, naming the route: `Save@sever.luau` and the folder `@sever/` get `did you mean "@server"?`. Any other `@` stays in the name silently, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`). A dot part that isn't a [variant](/docs/v2/core-concepts/variants), such as `.spec`, stays in the name silently.
+The dot is also how you mark a [variant](/docs/v2/core-concepts/variants), such as `Analytics.mock.luau`. A variant and an `@` route combine in either order, and these docs write the variant first: `Analytics.mock@server.luau`. Rojo's `.server` or `.client` always goes last.
 
 ## Matching
 
-A folder, marker file or suffix matches a route key when it spells the key **exactly**, except that the first letter may be in either case. With the key `server`:
+A folder, marker file or `@` matches a route key when it spells the key **exactly**, except that the first letter can be either case. With the key `server`:
 
 | Matches | Doesn't match |
 |---|---|
-| `server/`, `Server/`, `Queue@server/` | `SERVER/`, `sErver/` |
+| `server/`, `Server/` | `SERVER/`, `sErver/` |
 | `.server`, `.Server` | `.SERVER` |
-| `Combat@server.luau`, `Combat@Server.luau` | `Combat@SERVER.luau` |
+| `Save@server.luau`, `Save@Server.luau` | `Save@SERVER.luau` |
 
-A folder or marker that differs from a key only in letter case beyond the first letter isn't routed, and `rogen build` warns about it, naming the key it resembles. Nothing is guessed.
+Rogen never guesses. A folder that differs from a key in the case of a later letter isn't routed, and `rogen build` warns about it, naming the key it looks like.
 
-Route keys (other than `*`) use letters and digits and start with a letter, and two keys that differ only in the case of their first letter (`server` and `Server`) are an error.
+Route keys other than `*` start with a letter and contain only letters and digits. Two keys that differ only in the case of their first letter, like `server` and `Server`, are an error.
 
 ## The Governing Route
 
-Several rules can apply to one path. Rogen walks from the root directory down to the file and takes the **first** route it finds: the **governing route**. Every route after it is **ignored whole**: an ignored routing folder is an ordinary folder that keeps its name, and an ignored suffix stays in the name as Rojo reads it.
+More than one route can apply to a path. Rogen walks from the root directory down to the file and uses the **first** route it meets, the **governing route**. Every route after it is ignored completely: a routing folder further down keeps its name, and a suffix stays whatever Rojo makes of it.
 
 With routes `ReplicatedFirst`, `server` and `client`:
 
 ```
-src/ReplicatedFirst/main.client.luau     ->  ReplicatedFirst/main
-src/ReplicatedFirst/client/main.luau     ->  ReplicatedFirst/client/main
-src/server/Inventory/Hud.client.luau     ->  ServerScriptService/Inventory/Hud
-src/Inventory/Hud.client.luau            ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud
+src/ReplicatedFirst/main.client.luau  ->  ReplicatedFirst/main
+src/ReplicatedFirst/client/main.luau  ->  ReplicatedFirst/client/main
+src/Inventory/Hud.client.luau         ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud
+src/server/Inventory/Hud.client.luau  ->  ServerScriptService/Inventory/Hud
 ```
-
-- The **governing** folder is removed from the tree (or keeps its name, as `Name@key`), and the **governing** suffix is stripped from the instance name.
-- An **ignored** routing folder (`client/` under `ReplicatedFirst/`) is an ordinary folder. It can collapse, and its `init.meta.json` applies. Wrap it as `(client)/` to hide it.
-- An **ignored** suffix isn't touched. The name is whatever Rojo makes of the file: `main.client.luau` is a `LocalScript` named `main`, while `Save@server.luau` stays `Save@server`.
 
 ### Server Code Under a Replicating Route
 
-An ignored route can put server code where clients can read it. `src/Shared/Server/Datastore.luau` lands in `ReplicatedStorage/Shared/Server/Datastore`, because `Shared` governs and `Server` is ignored. Rogen warns once when an ignored route targets a server-only service (`ServerScriptService`, `ServerStorage`) while the file lands in a service that replicates:
+An ignored route can put server code where clients can read it:
 
 ```
-warning: 2 files under a "server" route ship to clients, because "shared" governs them:
+src/Shared/Server/Datastore.luau    ->  ReplicatedStorage/Shared/Server/Datastore
+src/Shared/(Server)/Datastore.luau  ->  ReplicatedStorage/Shared/Datastore
+```
+
+`Shared/` governs, so `Server/` is an ordinary folder and `Datastore` ends up in `ReplicatedStorage`, where every client can read it. Rogen warns once when an ignored route points at a server-only service (`ServerScriptService` or `ServerStorage`) but the file lands in a service that replicates:
+
+```
+default.rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it:
   src/Shared/Server/Datastore.luau -> ReplicatedStorage/Shared/Server/Datastore
-Move them out of the "shared" route's files if they're server code.
+Move it out of the "Shared" route's files if it's server code.
 ```
 
-The warning covers modules, models and data files. A script's source doesn't replicate, so scripts have their own warning below. Rogen doesn't warn about other nested routes it ignores.
+This covers modules, models and data files. A script's source doesn't replicate, so scripts get their own warning, below. Other ignored routes don't draw a warning. Parentheses still hide a folder, as the second line shows. See [Invisible Folders](/docs/v2/core-concepts/project-layout#invisible-folders).
 
 ### Scripts That Never Run
 
-A `Script` runs only in `ServerScriptService` or `Workspace`, and a `LocalScript` only in `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui`, `StarterPack` or `ReplicatedFirst`. Rogen knows each script's class and where it lands, and warns once about the ones that will never run:
+A `Script` only runs in `ServerScriptService` or `Workspace`, and a `LocalScript` only in `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui`, `StarterPack` or `ReplicatedFirst`. Rogen knows each script's class and where it lands, so it warns once about the ones that won't run:
 
 ```
 src/Inventory/Server/Hud.client.luau  ->  a LocalScript in ServerScriptService
 src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 ```
 
-With `emitLegacyScripts: false` in the template, Rojo makes every script a `Script` with a `RunContext` instead: `Server` for `.server`, `Client` for `.client`. A `Server` script also runs in `ReplicatedStorage`, and a `Client` script runs wherever clients can see it, so Rogen only warns about a `Client` script in `ServerScriptService`. Routes that target `StarterPlayerScripts` or `StarterCharacterScripts` get their own warning, since a `Client` script there runs twice.
+This happens when a folder governs and a `.client` suffix only sets the class. With `emitLegacyScripts: false` in the template, Rojo makes every script a `Script` with a `RunContext` instead (`Server` for `.server`, `Client` for `.client`). A `Server` script also runs in `ReplicatedStorage`, and a `Client` script runs wherever clients can see it, so Rogen only warns about a `Client` script in `ServerScriptService`. Routes that target `StarterPlayerScripts` or `StarterCharacterScripts` get their own warning, since a `Client` script there runs twice.
 
-A `RunContext` set in the script's own `.meta.json` (`"properties": { "RunContext": "Client" }`) wins over both, and Rogen reads it.
+A `RunContext` in the script's own `.meta.json` (`"properties": { "RunContext": "Client" }`) wins over both, and Rogen reads it. A script in `ServerStorage` is never reported. Nothing runs there, but it's where scripts are kept for code to clone out.
 
-Rogen never warns about a script in `ServerStorage`. Nothing runs there, but that's where scripts are kept for code to clone out, into a character or a tool.
-
-### Names That Route by Accident
-
-Only `@` and Rojo's `.server` and `.client` route, so a name seldom routes by accident. `rogen where` shows where a file lands and which suffix routed it. A file that used another form lands in the `*` route:
-
-```
-src/Net/HttpClient.luau  ->  ReplicatedStorage/Shared/Net/HttpClient · route * (fallback)
-```
+`rogen where` shows the governing route for any file, and how it matched. It also shows what happened to a file that used an old suffix form. `src/Net/HttpClient.luau` isn't routed, so it prints `route * (fallback)`.
 
 ## Files That Match No Route
 
-The `*` route is the **fallback route**. It catches files that no route matched. Declare it like any other route:
+The `*` route is the **fallback route**: it catches every file no other route matched. You declare it like any other route:
 
 ```json
 "*": "ReplicatedStorage/Shared"
 ```
 
-Without `*`, those files are **unrouted**: they're left out of the output, and Rogen warns about each one, up to ten. The last warning says how many more went unlisted. Rogen never picks a destination itself, so code never reaches the client by accident.
+Without `*`, those files are **unrouted**. Rogen leaves them out of the output and warns about each one, up to ten, then says how many more it skipped. It never picks a destination for you, so code can't reach the client by accident.
 
-A config that declares no routes at all can't build. That's an error, not an empty project.
+A config with no routes at all can't build. That's an error, not an empty project.
 
 <Callout type="info" title="Why declare both shared and *">
-	`*` catches unmatched files. The `shared` key is what makes `Types@shared.luau` and a `shared/` folder *declared* routes, so the suffix is stripped and the folder is removed from the tree. Without the key, `Types@shared.luau` would ship as an instance literally named `Types@shared`.
+	`*` catches unmatched files. The `shared` key is what turns `shared/` into a routing folder and `Types@shared.luau` into a route, so the folder disappears from the tree and `@shared` comes off the name. Without the key, both would keep their names in the game.
 </Callout>
 
 ## Targets
 
-A target is a path: `"ServerScriptService"` puts files at the service root, and `"ReplicatedStorage/Shared"` also wraps them in a `Shared` folder that Rogen creates. The first segment must be a supported service, such as `ServerScriptService`, `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui` or `TextChatService`. Any further segments are folders. Rogen rejects a target whose first segment isn't a service, which catches typos.
+A target is a path. `"ServerScriptService"` puts files at the root of the service, and `"ReplicatedStorage/Shared"` also wraps them in a `Shared` folder that Rogen creates. The first segment must be a supported service, such as `ServerScriptService`, `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui` or `TextChatService`, and any further segments are folders. Rogen rejects a target that doesn't start with a service, which catches typos.
 
-`StarterPlayer/StarterPlayerScripts` is written out in full because Rogen has no built-in knowledge of a service's children.
+You have to write `StarterPlayer/StarterPlayerScripts` out in full, because Rogen doesn't know what children a service has.

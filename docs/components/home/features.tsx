@@ -3,7 +3,7 @@ import {
 	FaFolder,
 	FaMapSigns,
 	FaFolderPlus,
-	FaExchangeAlt,
+	FaClone,
 	FaSyncAlt,
 	FaLayerGroup,
 	FaSitemap,
@@ -28,32 +28,32 @@ export function Features() {
 					{[
 						{
 							title: "Feature Folders",
-							desc: "Keep a feature's client, server and shared code in one folder, named after what it does",
+							desc: "Keep everything a feature needs in one folder, named after what it does in your game",
 							icon: <FaFolder className="text-white" />,
 						},
 						{
 							title: "Declared Routes",
-							desc: "A short map in the config says which service each route goes to. Nothing is guessed",
+							desc: "A short map in the config says where each route goes. Rogen never guesses",
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
 							title: "Variants",
-							desc: "Swap in a mock or dev variant of a file at build time, without changing a require",
-							icon: <FaExchangeAlt className="text-white" />,
+							desc: "Swap in a mock or dev version of a file at build time, without touching a require",
+							icon: <FaClone className="text-white" />,
 						},
 						{
 							title: "Several Places",
-							desc: "Share code across places. Each place is a config that extends a common one",
+							desc: "Share code between places. Each place is a small config that extends a common one",
 							icon: <FaFolderPlus className="text-white" />,
 						},
 						{
 							title: "Luau, roblox-ts and Darklua",
-							desc: "rogen init detects your toolchain and writes a config for it",
+							desc: "rogen init detects your toolchain and writes a config to match",
 							icon: <FaLayerGroup className="text-white" />,
 						},
 						{
 							title: "Watch and Diagnostics",
-							desc: "Rebuild as files change, reload the config as you edit it, and get errors with a file and position",
+							desc: "Rebuilds as files change, reloads the config as you edit it, and points every error at a file and line",
 							icon: <FaSyncAlt className="text-white" />,
 						},
 					].map((feature, i) => (
@@ -85,10 +85,10 @@ export function Features() {
 								Any Architecture
 							</h3>
 							<p className="text-gray-400 text-sm leading-relaxed">
-								Feature folders, layers in the style of VS Code,
-								or ECS with Jecs or Matter. Pick the layout that
-								fits your game, and enforce its import rules
-								with a linter
+								Feature folders, VS Code-style layers, or ECS
+								with Jecs or Matter. Pick the layout that fits
+								your game, and let a linter enforce its import
+								rules
 							</p>
 						</div>
 						<span className="text-gray-400 text-sm font-medium flex items-center gap-1">

@@ -1,18 +1,18 @@
 ---
 title: Variants
-description: Swap in variants of a file, like a mock, at build time.
+description: Swap in another version of a file, like a mock, at build time.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **variant** is a colocated alternative to a file. `Analytics.mock.luau` is a variant of `Analytics`: when the `mock` variant is on, it *becomes* `Analytics`, and when the variant is off, it is left out.
+A **variant** is another version of a file that sits right next to it. `Analytics.mock.luau` is a variant of `Analytics`: when the `mock` variant is on, it *becomes* `Analytics`, and when it's off, the file is left out.
 
-Variants exist for exactly that. Leaving files out without a replacement is the job of [`exclude`](/docs/v2/configuration#exclude).
+That's all variants are for. To leave files out without replacing them, use [`exclude`](/docs/v2/configuration#exclude).
 
 ## Declaring Variants
 
-Declare every variant the project uses in the config's `variants` map, with whether it is on:
+List every variant your project uses in the config's `variants` map, along with whether it's on:
 
 ```json title="default.rogen.json"
 {
@@ -23,21 +23,19 @@ Declare every variant the project uses in the config's `variants` map, with whet
 }
 ```
 
-Declaring the whole set lets Rogen tell a variant from a name that only looks like one. A dot part that isn't a declared variant stays in the instance name, so `Save.spec.luau` and `Hud.story.luau` are ordinary names. A variant can't share a name with a route key, but it can share a name with a config.
+A variant that's on for the current build is **active**, and one that's off is **dormant**. A file of a dormant variant is **pruned**, meaning it's left out of the output.
 
-A variant is **active** when it is on for the current build, and **dormant** otherwise. A file that carries a dormant variant is **pruned**: left out of the output.
-
-Roblox instances have their own Tags (CollectionService). Variants have nothing to do with them.
+A variant can't share its name with a route key, but it can share one with a config.
 
 ## Marking Files
 
-A variant is recognised the same three ways a [route key](/docs/v2/core-concepts/routing) is, with the same matching rules:
+You mark a variant the same three ways you [route](/docs/v2/core-concepts/routing) a file, with the same matching rules. The only difference is the suffix: a route uses `@`, and a variant uses a dot.
 
 | | Route key | Variant |
 |---|---|---|
-| **Folder** named after it (`mock/` or `(mock)/`) | removed from the tree | removed from the tree |
+| **Folder** named after it (`server/`, `mock/`, `(mock)/`) | removed from the tree | removed from the tree |
 | **Marker file** (`.server`, `.mock`) | applies below; the folder keeps its name | applies below; the folder keeps its name |
-| **Suffix** | `Combat@server`, stripped when governing | `Analytics.mock`, stripped when active |
+| **Suffix** (`Combat@server`, `Analytics.mock`) | stripped when governing | stripped when active |
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -56,48 +54,46 @@ A variant is recognised the same three ways a [route key](/docs/v2/core-concepts
   </Tab>
 </Tabs>
 
-A variant suffix uses a dot, the way React Native writes `.ios.tsx` and Angular writes `.prod.ts`. It is the only form: `Analytics-mock.luau`, `Analytics_mock.luau` and `AnalyticsMock.luau` are ordinary names. `@` is for routes, and a variant isn't a place.
+Since the whole set is declared, Rogen can tell a variant from an ordinary dotted name. `Button.spec.luau` and `Button.story.luau` stay as they are unless you declare `spec` or `story`. Rogen only speaks up when a dotted part is one letter off a declared variant, so `Analytics.mok.luau` gets `did you mean ".mock" for ".mok"?`, once per build.
 
-A variant and a route can follow each other in either order. `Analytics.mock@server.luau` and `Analytics@server.mock.luau` behave the same, and the docs write the variant first. Rojo's own `.server` or `.client` still has to be last: `Save.mock.server.luau` is a `Script`, and `Save.server.mock.luau` is a `ModuleScript`, so Rogen warns about it.
+The dot is the only form. `Analytics-mock.luau`, `Analytics_mock.luau` and `AnalyticsMock.luau` are ordinary names, and a dormant `mock` doesn't prune them.
 
-### Typos
-
-Rogen can't report every undeclared dot part, because `.spec` and `.story` are legitimate names. It warns only when a dot part is one edit away from a declared variant, so `Analytics.mok.luau` gets `did you mean ".mock" for ".mok"?` once per build.
+A variant combines with an `@` route in either order. Write the variant first and the route last, like `first.last@domain`: `Analytics.mock@server.luau`. Rojo's `.server` or `.client` always goes at the very end. `Save.mock.server.luau` is a `Script`, while `Save.server.mock.luau` is a `ModuleScript`, so Rogen warns about that one.
 
 ## Variant Folders
 
-A folder named after a declared variant is a **variant folder**. Like a routing folder, it exists only to declare, so it never appears in the tree: an active variant's folder is removed and its contents move up into the parent, and a dormant variant's folder is pruned whole.
+A folder named after a declared variant is a **variant folder**. Like a routing folder, it never shows up in the tree. When the variant is active, the folder is removed and its contents move up into the parent. When it's dormant, the whole folder is pruned.
 
-That makes build-time swapping work without touching a single `require`:
+That lets you swap implementations at build time without touching a single `require`:
 
 ```
 src/Analytics/dev/Service.luau   ->  Analytics/Service   (dev active: dev/ removed)
 src/Analytics/prod/Service.luau  ->  pruned              (prod dormant)
 ```
 
-Both files target the same instance, and the active variant decides which one gets there. `(mock)/` works as well: parentheses come off before names are matched.
+Both files target the same instance, and the active variant decides which one gets there. `(mock)/` works as well, since parentheses come off before names are matched.
 
 ## Precedence
 
 Within one root directory:
 
-1. A variant file beats a plain one at the same instance name, silently. That's the feature, not a clash.
-2. Two files with active variants claiming one instance name is an error naming both files.
-3. Two plain files at one instance name is a warning.
-4. Across root directories, the last one wins. This applies after the rules above.
+1. A variant quietly beats the plain file with the same instance name. That's the point of variants, not a clash.
+2. Two active variants that claim the same instance name are an error, and Rogen names both files.
+3. Two plain files with the same instance name get a warning.
+4. Across root directories, the last one wins, after the rules above are applied.
 
 ## Turning Variants On and Off
 
-The config says whether a variant is on. The CLI overrides it for one invocation:
+The config says whether a variant is on, and the CLI can override that for a single run:
 
 ```bash
 rogen build --variant mock
 rogen build --variant mock --no-variant dev
 ```
 
-`--variant` turns a variant on and `--no-variant` turns one off. Both are repeatable, and naming a variant that no built config declares is an error. They have no short forms. See the [CLI reference](/docs/v2/cli#options).
+You can repeat both flags, and naming a variant that none of the built configs declare is an error. See the [CLI reference](/docs/v2/cli#options).
 
-For a permanent choice, use a second config that extends the first and flips the variant:
+To keep a combination around, add a second config that extends the first and flips the variant:
 
 ```json title="mocked.rogen.json"
 {
@@ -108,6 +104,6 @@ For a permanent choice, use a second config that extends the first and flips the
 
 `rogen build mocked` then writes `mocked.project.json`.
 
-<Callout type="info" title="Only the dot carries a variant">
-	`HttpMock.luau` isn't pruned by a dormant `mock` variant, because a capital letter doesn't carry one. `rogen where` shows which variant pruned a file, and how it matched.
+<Callout type="info" title="Not Roblox's Tags">
+	Variants used to be called tags. They were renamed because Roblox instances already have Tags (CollectionService), which have nothing to do with this.
 </Callout>

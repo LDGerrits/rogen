@@ -1,20 +1,19 @@
 ---
 title: Advanced Routing
-description: Rogen provides advanced tools to control exactly how it builds the project tree.
+description: Fine-tune how Rogen builds the project tree.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-<Callout type="warning" title="Initialization Files">
-	If a folder contains an initialization file (`init.luau`, `index.ts`), it
-	will apply the routing rules like normal. However, no more routing rules
-	will be applied to that folder's contents.
+<Callout type="warning" title="Init files">
+	A folder with an init file (`init.luau`, `index.ts`) is routed as usual,
+	but Rogen doesn't apply any routing rules to what's inside it.
 </Callout>
 
-<Callout type="warning" title="Data & Asset Files">
-	Rogen cannot generate direct paths for files like `.json` or `.toml`. Rogen
-	will notify you in the console if a file needs to be wrapped in a folder.
+<Callout type="warning" title="Data and asset files">
+	Rogen can't write direct paths for files like `.json` or `.toml`. It tells
+	you in the console when one of them needs to be wrapped in a folder.
 </Callout>
 
 <Steps>
@@ -22,30 +21,29 @@ import { Callout } from "fumadocs-ui/components/callout";
 <Step>
 ### Invisible Folders
 
-Group files locally without changing their final path in Roblox Studio.
-Wrap a folder name in parentheses like `(inventory)`, and Rogen will leave out the folder but not its contents in Roblox Studio.
+Group files on disk without changing where they end up in Studio. Wrap a folder name in parentheses, like `(inventory)`, and Rogen leaves the folder out but keeps its contents.
 
 </Step>
 
 <Step>
 ### File Hoisting
 
-Need a specific script to sit at the root of a Roblox service? Hoist it by prefixing the file name with a `^` symbol!
+To put a script at the root of its service, start its name with `^`:
 
 - File: `src/core/physics/server/^collision-service.ts`
-- Result: Placed directly at the root of `ServerScriptService`.
+- Result: placed directly in `ServerScriptService`.
 
 </Step>
 
 <Step>
 ### Advanced Marker Files
 
-Place an empty file inside a folder to change how Rogen processes it. It applies to the folder and all of its subfolders.
+An empty file in a folder changes how Rogen treats that folder and everything below it.
 
-- **`.structure`:** Preserves the exact folder layout by disabling the routing rules, but continues to apply tag filtering.
-- **`.sync`:** Halts file traversal and syncs the folder exactly as it is, bypassing all routing and tag filtering.
-- **`.verbatim`:** Forces Rogen to keep routing keywords in file names (e.g., a file named `InputClient` will not have `Client` stripped).
-- **`.unwrap`:** Stops wrapper folder (i.e. `server`, `client`, and `shared`) from appearing in Roblox Studio.
+- **`.structure`** keeps the folder layout exactly as it is by turning routing off. Tag filtering still applies.
+- **`.sync`** stops Rogen from looking inside and syncs the folder as it is, with no routing or tag filtering.
+- **`.verbatim`** keeps routing keywords in file names, so `InputClient` keeps its `Client`.
+- **`.unwrap`** keeps the wrapper folders (`server`, `client` and `shared`) out of Studio.
 
 </Step>
 
