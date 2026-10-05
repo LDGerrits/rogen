@@ -66,11 +66,11 @@ describe("scripts/services-module", () => {
 		it("should export the services and the guard that checks against them", () => {
 			const source = renderServicesModule(
 				["Lighting", "Workspace"],
-				"7.6.1"
+				"7.7.1"
 			);
 			expect(source).toContain('\t"Lighting",\n\t"Workspace",\n');
 			expect(source).toContain(
-				'export const SERVICES_ROJO_VERSION = "7.6.1";'
+				'export const SERVICES_ROJO_VERSION = "7.7.1";'
 			);
 			expect(source).toContain("export type SupportedService");
 			expect(source).toContain("export function isSupportedService");
