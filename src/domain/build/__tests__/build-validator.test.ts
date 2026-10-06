@@ -7,7 +7,7 @@ import { MetaReader } from "../meta-reader.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,
-	builderOf,
+	buildAndPlace,
 	configOf,
 	configOf as baseConfigOf,
 	indexOf,
@@ -84,28 +84,26 @@ describe("BuildValidator rules", () => {
 		const route = async (
 			overrides: ResolvedConfigSpec = {},
 			rootDirs: readonly string[] = [abs("src")]
-		) => {
-			const config = configOf({
-				routes: ROUTES,
-				rootDirs: [...rootDirs],
-				...overrides,
-			});
-			const index = await indexOf(store, fs, rootDirs);
-			const builder = builderOf(fs, index);
-			const built = await builder.build(config);
-			return built.map(({ findings: { warnings }, tree }) => {
-				const placement = builder.place(config).unwrap();
-				return {
-					routed: placement.routed,
-					leftOut: placement.leftOut,
-					globIgnorePaths: tree.globIgnorePaths,
-					unrouted: placement.leftOut
-						.withStatus("unrouted")
-						.map(([source]) => source),
-					warnings,
-				};
-			});
-		};
+		) =>
+			(
+				await buildAndPlace(
+					store,
+					fs,
+					configOf({
+						routes: ROUTES,
+						rootDirs: [...rootDirs],
+						...overrides,
+					})
+				)
+			).map(({ placement, tree, findings: { warnings } }) => ({
+				routed: placement.routed,
+				leftOut: placement.leftOut,
+				globIgnorePaths: tree.globIgnorePaths,
+				unrouted: placement.leftOut
+					.withStatus("unrouted")
+					.map(([source]) => source),
+				warnings,
+			}));
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();

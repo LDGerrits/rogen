@@ -6,14 +6,13 @@ import {
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
 import { Placement } from "../placement.js";
 import {
 	abs,
-	builderOf,
+	buildAndPlace,
 	configOf,
-	indexOf,
 	placeFiles,
+	placedLines,
 	syncTools,
 	writeFiles,
 } from "./fixtures.js";
@@ -68,20 +67,23 @@ describe("Placer", () => {
 		const apply = async (
 			variants: Record<string, boolean>,
 			rootDirs: readonly string[] = [abs("src")]
-		) => {
-			const config: ResolvedConfig = configOf({
-				routes: VARIANT_ROUTES,
-				variants,
-				rootDirs: [...rootDirs],
-			});
-			const index = await indexOf(store, fs, rootDirs);
-			const builder = builderOf(fs, index);
-			const built = await builder.build(config);
-			return built.map(({ findings: { warnings } }): VariantResult => {
-				const { files, leftOut } = builder.place(config).unwrap();
-				return { files, leftOut, warnings };
-			});
-		};
+		) =>
+			(
+				await buildAndPlace(
+					store,
+					fs,
+					configOf({
+						routes: VARIANT_ROUTES,
+						variants,
+						rootDirs: [...rootDirs],
+					})
+				)
+			).map(
+				({
+					placement: { files, leftOut },
+					findings: { warnings },
+				}): VariantResult => ({ files, leftOut, warnings })
+			);
 
 		const prunedPaths = (result: VariantResult) =>
 			[...result.leftOut]
@@ -552,15 +554,13 @@ describe("Placer", () => {
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 		const route = async (overrides: ResolvedConfigSpec = {}) => {
-			const config = configOf({
-				routes: ROUTES,
-				rootDirs: [abs("src")],
-				...overrides,
-			});
-			const index = await indexOf(store, fs, [abs("src")]);
-			const builder = builderOf(fs, index);
-			(await builder.build(config)).unwrap();
-			const placement = builder.place(config).unwrap();
+			const { placement } = (
+				await buildAndPlace(
+					store,
+					fs,
+					configOf({ routes: ROUTES, ...overrides })
+				)
+			).unwrap();
 			return {
 				routed: placement.routed,
 				nodes: placement.nodes,
@@ -572,10 +572,7 @@ describe("Placer", () => {
 		};
 
 		const placed = async (overrides: ResolvedConfigSpec = {}) =>
-			(await route(overrides)).nodes.map(
-				(file) =>
-					`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
-			);
+			placedLines((await route(overrides)).nodes);
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();

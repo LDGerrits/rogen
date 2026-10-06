@@ -1,7 +1,13 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { abs, builderOf, configOf, indexOf, writeFiles } from "./fixtures.js";
+import {
+	abs,
+	buildAndPlace,
+	configOf,
+	placedLines,
+	writeFiles,
+} from "./fixtures.js";
 
 describe("Router", () => {
 	const ROUTES = {
@@ -20,29 +26,27 @@ describe("Router", () => {
 		const route = async (
 			overrides: ResolvedConfigSpec = {},
 			rootDirs: readonly string[] = [abs("src")]
-		) => {
-			const config = configOf({
-				routes: ROUTES,
-				rootDirs: [...rootDirs],
-				...overrides,
-			});
-			const index = await indexOf(store, fs, rootDirs);
-			const builder = builderOf(fs, index);
-			const built = await builder.build(config);
-			return built.map(({ findings: { warnings }, tree }) => {
-				const placement = builder.place(config).unwrap();
-				return {
-					routed: placement.routed,
-					files: placement.files,
-					leftOut: placement.leftOut,
-					globIgnorePaths: tree.globIgnorePaths,
-					unrouted: placement.leftOut
-						.withStatus("unrouted")
-						.map(([source]) => source),
-					warnings,
-				};
-			});
-		};
+		) =>
+			(
+				await buildAndPlace(
+					store,
+					fs,
+					configOf({
+						routes: ROUTES,
+						rootDirs: [...rootDirs],
+						...overrides,
+					})
+				)
+			).map(({ placement, tree, findings: { warnings } }) => ({
+				routed: placement.routed,
+				files: placement.files,
+				leftOut: placement.leftOut,
+				globIgnorePaths: tree.globIgnorePaths,
+				unrouted: placement.leftOut
+					.withStatus("unrouted")
+					.map(([source]) => source),
+				warnings,
+			}));
 
 		const paths = async (
 			overrides: ResolvedConfigSpec = {},
@@ -755,12 +759,7 @@ describe("Router", () => {
 
 		describe("init folders", () => {
 			const placed = async (overrides: ResolvedConfigSpec = {}) =>
-				(await route(overrides))
-					.unwrap()
-					.files.map(
-						(file) =>
-							`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}`
-					);
+				placedLines((await route(overrides)).unwrap().files);
 
 			it("should make an init script its folder and route what sits beside it on its own", async () => {
 				await write(
