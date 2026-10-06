@@ -2,14 +2,11 @@ import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ParsedArgs } from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig } from "./config.js";
+import { ConfigOptionValues, ResolvedConfig } from "./config.js";
 
-/** Which configs a command line names. */
+/** How a command reads a line that names no config. */
 export interface ConfigScope {
-	/** The config names; the positionals after the command unless given. */
-	readonly names?: readonly string[];
 	/** What naming none reads: the default config, or every config here. */
 	readonly unnamed?: "default" | "all";
 }
@@ -92,9 +89,10 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs the command line picks by name, `-c` and `--all`, with its overrides. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs a command line picks by `names`, `-c` and `--all`, with the overrides its `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
-		args: ParsedArgs,
+		names: readonly string[],
+		options: ConfigOptionValues,
 		scope?: ConfigScope
 	): Promise<Result<ConfigSelection, Error>>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */

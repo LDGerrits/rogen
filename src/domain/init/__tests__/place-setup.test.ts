@@ -317,10 +317,7 @@ describe("BaseConfigReader", () => {
 
 	const readBase = (entries: readonly string[] = ["default.rogen.json"]) =>
 		new BaseConfigReader(
-			new CoreConfigService(
-				fs,
-				new MockEnvironmentService({ _: [] }, directory)
-			),
+			new CoreConfigService(fs, new MockEnvironmentService(directory)),
 			directory
 		).read(new Set(entries));
 

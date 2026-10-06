@@ -10,7 +10,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { ReportedError } from "../../../base/errors.js";
 import {
 	CommandRegistry,
@@ -22,7 +22,7 @@ describe("list command", () => {
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
 	let run: (
-		options?: Omit<ParsedArgs, "_"> & { _?: string[] }
+		options?: CommandLine["options"] & { _?: string[] }
 	) => Promise<Result<void, Error>>;
 
 	const write = (file: string, config: Record<string, unknown> | string) =>
@@ -53,7 +53,7 @@ describe("list command", () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 		logService = new MockLogService();
-		const environment = new MockEnvironmentService(undefined, "/repo");
+		const environment = new MockEnvironmentService("/repo");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		services.set(FileSystemService, fs);
@@ -62,8 +62,8 @@ describe("list command", () => {
 		const commandService = new CoreCommandService(services, logService);
 		run = ({ _ = [], ...options } = {}) =>
 			commandService.executeCommand("list", {
-				_: ["list", ..._],
-				...options,
+				positionals: _,
+				options,
 			});
 	});
 

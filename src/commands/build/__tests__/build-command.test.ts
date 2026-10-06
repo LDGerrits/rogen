@@ -15,7 +15,7 @@ import { BuildService } from "../../../domain/build/build-service.js";
 import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
@@ -51,7 +51,7 @@ describe("build command", () => {
 	const run = (
 		configService: MockConfigService,
 		logService: LogService,
-		args: ParsedArgs = { _: ["build"] },
+		line: CommandLine = { positionals: [], options: {} },
 		index: IndexService = new CoreIndexService(fs)
 	) => {
 		const services = new ServiceCollection();
@@ -60,13 +60,10 @@ describe("build command", () => {
 		services.set(FileSystemService, fs);
 		services.set(IndexService, index);
 		services.set(BuildService, buildServiceOf(fs, index));
-		services.set(
-			EnvironmentService,
-			new MockEnvironmentService(undefined, "/repo")
-		);
+		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
 		return new CoreCommandService(services, logService).executeCommand(
 			"build",
-			args
+			line
 		);
 	};
 
@@ -120,7 +117,7 @@ describe("build command", () => {
 				),
 			]),
 			new NullLogService(),
-			{ _: ["build"] }
+			{ positionals: [], options: {} }
 		);
 
 		expect(result.isOk()).toBe(true);
@@ -413,8 +410,8 @@ describe("build command", () => {
 			logService = new MockLogService()
 		) => {
 			const result = await run(configService, logService, {
-				_: ["build"],
-				json: true,
+				positionals: [],
+				options: { json: true },
 			});
 			const printed = logService.entries
 				.filter(({ kind }) => kind === "print")
@@ -609,7 +606,7 @@ describe("build command", () => {
 			]);
 
 		it("should parse every override flag, with the repeatable ones as arrays", () => {
-			const { command, options } = parse(
+			const { command, line } = parse(
 				"build",
 				"lobby",
 				"-c",
@@ -632,8 +629,8 @@ describe("build command", () => {
 			).unwrap();
 
 			expect(command).toBe("build");
-			expect(options).toEqual({
-				_: ["build", "lobby"],
+			expect(line.positionals).toEqual(["lobby"]);
+			expect(line.options).toEqual({
 				config: ["a.rogen.json", "b.rogen.json"],
 				"out-file": "out.project.json",
 				"sync-dir": "dist",
@@ -653,7 +650,7 @@ describe("build command", () => {
 				"dev",
 				"--no-variant",
 				"prod"
-			).unwrap();
+			).unwrap().line;
 
 			expect(options).toMatchObject({
 				variant: ["mock"],
@@ -667,7 +664,9 @@ describe("build command", () => {
 		});
 
 		it("should accept --all", () => {
-			expect(parse("build", "--all").unwrap().options.all).toBe(true);
+			expect(parse("build", "--all").unwrap().line.options.all).toBe(
+				true
+			);
 		});
 
 		it.each([

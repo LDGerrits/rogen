@@ -68,9 +68,7 @@ describe("CoreWatchSession", () => {
 		updates.filter(({ cause }) => cause.kind === "change");
 
 	const start = async (names: string[] = []) => {
-		selection = (
-			await configService.select({ _: ["watch", ...names] })
-		).unwrap();
+		selection = (await configService.select(names, {})).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
@@ -95,7 +93,7 @@ describe("CoreWatchSession", () => {
 		watcher = new MemoryWatcher(fs, new NullLogService());
 		configService = new CoreConfigService(
 			fs,
-			new MockEnvironmentService(undefined, "/repo")
+			new MockEnvironmentService("/repo")
 		);
 		store = new DisposableStore();
 		updates = [];

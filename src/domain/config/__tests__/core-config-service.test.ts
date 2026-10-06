@@ -55,12 +55,8 @@ describe("domain/config/core-config-service", () => {
 		cwd = "/repo"
 	) => {
 		const variants = Object.entries(overrides?.variants ?? {});
-		service = new CoreConfigService(
-			fs,
-			new MockEnvironmentService({ _: [] }, cwd)
-		);
-		const result = await service.select({
-			_: ["build", ...names],
+		service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
+		const result = await service.select(names, {
 			config: paths,
 			all,
 			"out-file": overrides?.outFile,
@@ -89,7 +85,7 @@ describe("domain/config/core-config-service", () => {
 		await fs.createDirectory("/repo");
 		service = new CoreConfigService(
 			fs,
-			new MockEnvironmentService({ _: [] }, "/repo")
+			new MockEnvironmentService("/repo")
 		);
 	});
 
@@ -278,10 +274,7 @@ describe("domain/config/core-config-service", () => {
 			await write("/repo/a.rogen.json", {});
 			await write("/repo/b.rogen.json", {});
 
-			const result = await service.select(
-				{ _: ["list"] },
-				{ unnamed: "all" }
-			);
+			const result = await service.select([], {}, { unnamed: "all" });
 
 			expect(result.unwrap().entries.map(({ file }) => file)).toEqual([
 				"/repo/a.rogen.json",
@@ -622,7 +615,7 @@ describe("domain/config/core-config-service", () => {
 			await fs.createDirectory("/repo");
 			service = new CoreConfigService(
 				fs,
-				new MockEnvironmentService({ _: [] }, "/repo")
+				new MockEnvironmentService("/repo")
 			);
 			await write("/repo/core.rogen.json", { rootDirs: ["core"] });
 			await write("/repo/default.rogen.json", {

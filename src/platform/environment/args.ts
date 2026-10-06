@@ -11,25 +11,24 @@ export interface OptionDescriptor {
 	readonly description: string;
 }
 
-export interface ParsedArgs {
-	_: string[];
-	help?: boolean;
-	version?: boolean;
-	verbose?: boolean;
-	quiet?: boolean;
-	"no-input"?: boolean;
-	json?: boolean;
-	all?: boolean;
-	config?: string[];
-	"out-file"?: string;
-	"sync-dir"?: string;
-	template?: string;
-	variant?: string[];
-	"no-variant"?: string[];
+/** An option's value; one whose descriptor isn't known exactly may hold any. */
+type OptionValue<D extends OptionDescriptor> = D extends {
+	readonly type: "boolean";
 }
+	? boolean
+	: D extends { readonly multiple: true }
+		? readonly string[]
+		: D extends { readonly type: "string" }
+			? string
+			: boolean | string | readonly string[];
+
+/** The values a line gives the options of `O`, keyed by name; an option not given is absent. */
+export type OptionValues<O extends readonly OptionDescriptor[]> = {
+	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
+};
 
 /** The options every command takes. */
-export const GlobalOptions: readonly OptionDescriptor[] = [
+export const GlobalOptions = [
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
 		name: "version",
@@ -53,79 +52,26 @@ export const GlobalOptions: readonly OptionDescriptor[] = [
 		type: "boolean",
 		description: "Never ask, and print plain lines.",
 	},
-];
+] as const satisfies readonly OptionDescriptor[];
 
 /** For the commands whose answer a program reads. */
-export const JsonOption: OptionDescriptor = {
+export const JsonOption = {
 	name: "json",
 	type: "boolean",
 	description: "Print one JSON document instead of text.",
-};
+} as const satisfies OptionDescriptor;
 
-const AllOption: OptionDescriptor = {
-	name: "all",
-	type: "boolean",
-	description: "Every config in the working directory.",
-};
-
-const ConfigPathOption: OptionDescriptor = {
-	name: "config",
-	short: "c",
-	type: "string",
-	multiple: true,
-	description: "An explicit config path.",
-};
-
-const VariantOption: OptionDescriptor = {
-	name: "variant",
-	type: "string",
-	multiple: true,
-	description: "Turns a variant on.",
-};
-
-const NoVariantOption: OptionDescriptor = {
-	name: "no-variant",
-	type: "string",
-	multiple: true,
-	description: "Turns a variant off.",
-};
-
-/** The flags that pick the configs a command reads and which variants are on in them. */
-export const ConfigSelectionOptions: readonly OptionDescriptor[] = [
-	AllOption,
-	ConfigPathOption,
-	VariantOption,
-	NoVariantOption,
-];
-
-/** The flags that pick, or override, the configs a command builds. */
-export const ConfigOptions: readonly OptionDescriptor[] = [
-	AllOption,
-	ConfigPathOption,
-	{
-		name: "out-file",
-		short: "o",
-		type: "string",
-		description: "Overrides outFile.",
-	},
-	{
-		name: "sync-dir",
-		short: "s",
-		type: "string",
-		description: "Overrides syncDir.",
-	},
-	{
-		name: "template",
-		type: "string",
-		description: "Overrides template.",
-	},
-	VariantOption,
-	NoVariantOption,
-];
+/** One command line: the positionals after the command word, and the options it gives, typed by the table `O` the command declares. */
+export interface CommandLine<
+	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
+> {
+	readonly positionals: readonly string[];
+	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
+}
 
 export interface ParsedCli {
-	command: string;
-	options: ParsedArgs;
+	readonly command: string;
+	readonly line: CommandLine;
 }
 
 function toOptionTable(options: readonly OptionDescriptor[]) {
@@ -150,13 +96,16 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
+/** The command a line runs, and whether its first positional named it. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
-	positionals: string[]
-): string {
-	if (values.version) return "version";
-	if (values.help) return "help";
-	return positionals.length > 0 ? positionals[0].toLowerCase() : "build";
+	positionals: readonly string[]
+): { readonly command: string; readonly named: boolean } {
+	if (values.version) return { command: "version", named: false };
+	if (values.help) return { command: "help", named: false };
+	return positionals.length > 0
+		? { command: positionals[0].toLowerCase(), named: true }
+		: { command: "build", named: false };
 }
 
 function unknownOption(
@@ -225,9 +174,7 @@ export function parseArgs(
 				)
 				.sort();
 		const { values, positionals, tokens } = tokenize(args, allOptions);
-		const command = commandOf(values, positionals);
-		if (command === "build" && positionals.length === 0)
-			positionals.push(command);
+		const { command, named } = commandOf(values, positionals);
 
 		if (commands.includes(command)) {
 			const problem = findOptionProblem(
@@ -243,7 +190,10 @@ export function parseArgs(
 		}
 		return ok({
 			command,
-			options: { ...values, _: positionals } as ParsedArgs,
+			line: {
+				positionals: named ? positionals.slice(1) : positionals,
+				options: values as CommandLine["options"],
+			},
 		});
 	} catch (error) {
 		return err(ErrorUtils.fromUnknown(error));

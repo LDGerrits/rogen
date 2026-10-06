@@ -1,6 +1,6 @@
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
-import { ParsedArgs } from "../environment/args.js";
+import { CommandLine } from "../environment/args.js";
 import { ServicesAccessor } from "../instantiation/instantiation.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
@@ -16,7 +16,7 @@ export class CoreCommandService implements CommandService {
 
 	async executeCommand(
 		commandId: string,
-		args: ParsedArgs
+		line: CommandLine
 	): Promise<Result<void, Error>> {
 		this.logService.trace("CommandService#executeCommand", commandId);
 
@@ -37,6 +37,6 @@ export class CoreCommandService implements CommandService {
 			);
 		}
 
-		return command.handler(this.accessor, args);
+		return command.handler(this.accessor, line);
 	}
 }

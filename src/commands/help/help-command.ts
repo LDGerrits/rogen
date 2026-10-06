@@ -8,9 +8,9 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
+	CommandLine,
 	GlobalOptions,
 	OptionDescriptor,
-	ParsedArgs,
 } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -122,13 +122,13 @@ registerCommand(
 
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<readonly []>
 		): Promise<Result<void, Error>> {
 			const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 			const logService = accessor.get(LogService);
 
 			// `rogen build --help` and `rogen help build` both name the command.
-			const target = args.help ? args._[0] : args._[1];
+			const [target] = line.positionals;
 
 			if (target === undefined) {
 				logService.print(

@@ -12,10 +12,12 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { JsonOption, ParsedArgs } from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
+
+const InitOptions = [JsonOption] as const;
 
 const indent = (line: string) => `  ${line}`;
 
@@ -35,7 +37,7 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 ];
 
 registerCommand(
-	class InitCommand extends AbstractCommand {
+	class InitCommand extends AbstractCommand<typeof InitOptions> {
 		constructor() {
 			super({
 				id: "init",
@@ -50,37 +52,43 @@ registerCommand(
 							isOptional: true,
 						},
 					],
-					options: [JsonOption],
+					options: InitOptions,
 				},
 			});
 		}
 
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
+			const { isInteractive } = accessor.get(PromptService);
 
-			if (!args.json) logService.intro("rogen init");
-			const planned = await initService.plan(args._.slice(1));
+			if (!line.options.json) logService.intro("rogen init");
+			const planned = await initService.plan(line.positionals);
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
 
-			return args.json
+			return line.options.json
 				? this.writeAsJson(initService, logService, plan)
-				: this.writeAsText(initService, logService, plan, accessor);
+				: this.writeAsText(
+						initService,
+						logService,
+						plan,
+						isInteractive
+					);
 		}
 
 		private async writeAsText(
 			initService: InitService,
 			logService: LogService,
 			plan: InitPlan,
-			accessor: ServicesAccessor
+			interactive: boolean
 		): Promise<Result<void, Error>> {
 			// A blank gutter line sets the results apart from the last answer.
-			if (accessor.get(PromptService).isInteractive) logService.info("");
+			if (interactive) logService.info("");
 			for (const note of plan.notes) logService.info(note);
 			const written = await initService.write(plan, (fileName) =>
 				logService.success(`Created ${fileName}.`)

@@ -40,11 +40,14 @@ describe("CoreCommandService", () => {
 			);
 
 			const result = await commandService.executeCommand("foo", {
-				_: ["foo", "bar"],
+				positionals: ["foo", "bar"],
+				options: {},
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(calls).toEqual([[logService, { _: ["foo", "bar"] }]]);
+			expect(calls).toEqual([
+				[logService, { positionals: ["foo", "bar"], options: {} }],
+			]);
 		});
 
 		it("should return the handler's error", async () => {
@@ -58,7 +61,8 @@ describe("CoreCommandService", () => {
 			);
 
 			const result = await commandService.executeCommand("foo", {
-				_: [],
+				positionals: [],
+				options: {},
 			});
 
 			expect((result as ResultError<Error>).error).toBe(error);
@@ -66,7 +70,8 @@ describe("CoreCommandService", () => {
 
 		it("should return an error naming an unknown command", async () => {
 			const result = await commandService.executeCommand("prod", {
-				_: [],
+				positionals: [],
+				options: {},
 			});
 
 			expect(result.isErr()).toBe(true);
@@ -77,7 +82,8 @@ describe("CoreCommandService", () => {
 
 		it("should suggest building a config named like the unknown command", async () => {
 			const result = await commandService.executeCommand("prod", {
-				_: ["prod"],
+				positionals: ["prod"],
+				options: {},
 			});
 
 			expect((result as ResultError<Error>).error.message).toContain(
@@ -95,7 +101,8 @@ describe("CoreCommandService", () => {
 			);
 
 			const result = await commandService.executeCommand("biuld", {
-				_: ["biuld"],
+				positionals: ["biuld"],
+				options: {},
 			});
 
 			expect((result as ResultError<Error>).error.message).toBe(

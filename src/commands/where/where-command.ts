@@ -1,23 +1,22 @@
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
+import { ConfigSelectionOptions } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import {
-	ConfigSelectionOptions,
-	JsonOption,
-	ParsedArgs,
-} from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { LocationReport } from "./location-report.js";
 
+const WhereOptions = [...ConfigSelectionOptions, JsonOption] as const;
+
 registerCommand(
-	class WhereCommand extends AbstractCommand {
+	class WhereCommand extends AbstractCommand<typeof WhereOptions> {
 		constructor() {
 			super({
 				id: "where",
@@ -33,14 +32,14 @@ registerCommand(
 							isVariadic: true,
 						},
 					],
-					options: [...ConfigSelectionOptions, JsonOption],
+					options: WhereOptions,
 				},
 			});
 		}
 
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<typeof WhereOptions>
 		): Promise<Result<void, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
@@ -48,16 +47,16 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			// The positionals are paths, so only the flags pick configs.
-			const selection = await configService.select(args, { names: [] });
+			const selection = await configService.select([], line.options);
 			if (selection.isErr()) return selection;
 			const located = await buildService.locate(selection.value, {
-				args: args._.slice(1),
+				args: line.positionals,
 				cwd,
 			});
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			if (args.json) {
+			if (line.options.json) {
 				logService.print(formatJsonDocument(report.json()));
 				return ok(undefined);
 			}

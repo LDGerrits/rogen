@@ -3,6 +3,7 @@ import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
+import { ConfigOptions } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -11,18 +12,16 @@ import {
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	ConfigOptions,
-	JsonOption,
-	ParsedArgs,
-} from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildReport } from "./build-report.js";
 
+const BuildOptions = [...ConfigOptions, JsonOption] as const;
+
 registerCommand(
-	class BuildCommand extends AbstractCommand {
+	class BuildCommand extends AbstractCommand<typeof BuildOptions> {
 		constructor() {
 			super({
 				id: "build",
@@ -36,21 +35,24 @@ registerCommand(
 							isVariadic: true,
 						},
 					],
-					options: [...ConfigOptions, JsonOption],
+					options: BuildOptions,
 				},
 			});
 		}
 
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<typeof BuildOptions>
 		): Promise<Result<void, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(args);
+			const selection = await configService.select(
+				line.positionals,
+				line.options
+			);
 			if (selection.isErr()) return selection;
 
 			const builds = await buildService.build(selection.value);
@@ -58,7 +60,7 @@ registerCommand(
 
 			const errors = builds.value.flatMap((build) => build.errors);
 			const { unselected } = selection.value;
-			return args.json
+			return line.options.json
 				? this.reportAsJson(
 						logService,
 						builds.value,

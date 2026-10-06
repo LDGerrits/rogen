@@ -1,8 +1,8 @@
 import { Disposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
-import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { ConfigOptionValues, ConfigOptions } from "./config.js";
 import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
 import { ConfigLoader, ConfigOverrides, PathField } from "./config-loader.js";
 import {
@@ -24,22 +24,23 @@ const PATH_FLAGS: Record<PathField, string> = {
 
 /** The flag as a user types it, taken from the option table so the two can't drift. */
 function flagOf(name: string): string {
-	const short = ConfigOptions.find((option) => option.name === name)?.short;
+	const option = ConfigOptions.find((candidate) => candidate.name === name);
+	const short = option && "short" in option ? option.short : undefined;
 	return short ? `-${short}` : `--${name}`;
 }
 
-/** The overrides the command line's flags set; `-T` beats `-t` for one variant. */
-function overridesOf(args: ParsedArgs): ConfigOverrides {
+/** The overrides the command line's flags set; `--no-variant` beats `--variant` for one variant. */
+function overridesOf(options: ConfigOptionValues): ConfigOverrides {
 	return {
-		outFile: args["out-file"],
-		syncDir: args["sync-dir"],
-		template: args.template,
+		outFile: options["out-file"],
+		syncDir: options["sync-dir"],
+		template: options.template,
 		variants: {
 			...Object.fromEntries(
-				(args.variant ?? []).map((variant) => [variant, true])
+				(options.variant ?? []).map((variant) => [variant, true])
 			),
 			...Object.fromEntries(
-				(args["no-variant"] ?? []).map((variant) => [variant, false])
+				(options["no-variant"] ?? []).map((variant) => [variant, false])
 			),
 		},
 	};
@@ -84,18 +85,19 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async select(
-		args: ParsedArgs,
-		{ names = args._.slice(1), unnamed = "default" }: ConfigScope = {}
+		names: readonly string[],
+		options: ConfigOptionValues,
+		{ unnamed = "default" }: ConfigScope = {}
 	): Promise<Result<ConfigSelection, Error>> {
-		const paths = args.config ?? [];
+		const paths = options.config ?? [];
 		const refs: ConfigRefs = {
 			names,
 			paths,
 			all:
-				args.all === true ||
+				options.all === true ||
 				(unnamed === "all" && names.length === 0 && paths.length === 0),
 		};
-		const overrides = overridesOf(args);
+		const overrides = overridesOf(options);
 		const problem = selectionProblem(refs, overrides);
 		if (problem) return err(problem);
 

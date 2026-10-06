@@ -3,6 +3,7 @@ import { formatJsonDocument } from "../../base/json.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
+import { ConfigSelectionOptions } from "../../domain/config/config.js";
 import {
 	ConfigEntry,
 	ConfigSelection,
@@ -12,11 +13,7 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import {
-	ConfigSelectionOptions,
-	JsonOption,
-	ParsedArgs,
-} from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -25,8 +22,10 @@ import { ConfigReport } from "./config-report.js";
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
+const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
+
 registerCommand(
-	class ListCommand extends AbstractCommand {
+	class ListCommand extends AbstractCommand<typeof ListOptions> {
 		constructor() {
 			super({
 				id: "list",
@@ -42,26 +41,29 @@ registerCommand(
 							isVariadic: true,
 						},
 					],
-					options: [...ConfigSelectionOptions, JsonOption],
+					options: ListOptions,
 				},
 			});
 		}
 
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<typeof ListOptions>
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(args, {
-				unnamed: "all",
-			});
+			const selection = await configService.select(
+				line.positionals,
+				line.options,
+				{ unnamed: "all" }
+			);
 			if (selection.isErr()) return selection;
 			const { entries, brokenError } = selection.value;
 
-			if (args.json) return this.listAsJson(selection.value, logService);
+			if (line.options.json)
+				return this.listAsJson(selection.value, logService);
 
 			logService.intro("rogen list");
 			for (const entry of entries) this.describe(logService, entry, cwd);

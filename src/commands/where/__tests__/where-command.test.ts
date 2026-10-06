@@ -5,7 +5,7 @@ import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
@@ -31,7 +31,7 @@ describe("where command", () => {
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
 	let run: (
-		args: Omit<ParsedArgs, "_"> & { _?: string[] }
+		args: CommandLine["options"] & { _?: string[] }
 	) => Promise<Result<void, Error>>;
 
 	const write = async (...paths: string[]) => {
@@ -50,7 +50,7 @@ describe("where command", () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 		logService = new MockLogService();
-		const environment = new MockEnvironmentService(undefined, "/repo");
+		const environment = new MockEnvironmentService("/repo");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
 		services.set(FileSystemService, fs);
@@ -61,10 +61,11 @@ describe("where command", () => {
 		const configService = new CoreConfigService(fs, environment);
 		services.set(ConfigService, configService);
 		const commandService = new CoreCommandService(services, logService);
-		run = async ({ _ = [], ...options }) => {
-			const args = { _: ["where", ..._], ...options };
-			return commandService.executeCommand("where", args);
-		};
+		run = async ({ _ = [], ...options }) =>
+			commandService.executeCommand("where", {
+				positionals: _,
+				options,
+			});
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {

@@ -1,6 +1,10 @@
 import path from "path";
 import { formatJsonFile, safeStringify } from "../../base/json.js";
 import { commonAncestor, isInside } from "../../base/path.js";
+import {
+	OptionDescriptor,
+	OptionValues,
+} from "../../platform/environment/args.js";
 import { Target } from "../roblox/roblox.js";
 import {
 	PROJECT_SUFFIX,
@@ -20,6 +24,70 @@ export interface RogenConfig {
 	readonly syncDir?: string;
 	readonly outFile?: string;
 }
+
+const AllOption = {
+	name: "all",
+	type: "boolean",
+	description: "Every config in the working directory.",
+} as const satisfies OptionDescriptor;
+
+const ConfigPathOption = {
+	name: "config",
+	short: "c",
+	type: "string",
+	multiple: true,
+	description: "An explicit config path.",
+} as const satisfies OptionDescriptor;
+
+const VariantOption = {
+	name: "variant",
+	type: "string",
+	multiple: true,
+	description: "Turns a variant on.",
+} as const satisfies OptionDescriptor;
+
+const NoVariantOption = {
+	name: "no-variant",
+	type: "string",
+	multiple: true,
+	description: "Turns a variant off.",
+} as const satisfies OptionDescriptor;
+
+/** The flags that pick the configs a command reads and which variants are on in them. */
+export const ConfigSelectionOptions = [
+	AllOption,
+	ConfigPathOption,
+	VariantOption,
+	NoVariantOption,
+] as const satisfies readonly OptionDescriptor[];
+
+/** The flags that pick, or override, the configs a command builds. */
+export const ConfigOptions = [
+	AllOption,
+	ConfigPathOption,
+	{
+		name: "out-file",
+		short: "o",
+		type: "string",
+		description: "Overrides outFile.",
+	},
+	{
+		name: "sync-dir",
+		short: "s",
+		type: "string",
+		description: "Overrides syncDir.",
+	},
+	{
+		name: "template",
+		type: "string",
+		description: "Overrides template.",
+	},
+	VariantOption,
+	NoVariantOption,
+] as const satisfies readonly OptionDescriptor[];
+
+/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
+export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
 
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";

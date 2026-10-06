@@ -73,13 +73,10 @@ describe("watch command", () => {
 			buildService
 		);
 		services.set(WatchService, watchService);
-		services.set(
-			EnvironmentService,
-			new MockEnvironmentService(undefined, "/repo")
-		);
+		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
 		return new CoreCommandService(services, logService).executeCommand(
 			"watch",
-			{ _: ["watch", ...names] }
+			{ positionals: names, options: {} }
 		);
 	};
 
@@ -108,7 +105,7 @@ describe("watch command", () => {
 		logService = new MockLogService();
 		configService = new CoreConfigService(
 			memFs,
-			new MockEnvironmentService(undefined, "/repo")
+			new MockEnvironmentService("/repo")
 		);
 		await write("/repo/default.rogen.json", config());
 	});
@@ -194,7 +191,7 @@ describe("watch command", () => {
 			logService.clear();
 			configService = new CoreConfigService(
 				memFs,
-				new MockEnvironmentService(undefined, "/repo")
+				new MockEnvironmentService("/repo")
 			);
 
 			void startWatch();
@@ -563,7 +560,9 @@ describe("watch command", () => {
 		});
 
 		it("should accept --all", () => {
-			expect(parse("watch", "--all").unwrap().options.all).toBe(true);
+			expect(parse("watch", "--all").unwrap().line.options.all).toBe(
+				true
+			);
 		});
 	});
 });

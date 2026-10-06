@@ -1,17 +1,13 @@
 import { NativeEnvironmentService } from "../native-environment-service.js";
-import { ParsedArgs } from "../args.js";
 
 describe("NativeEnvironmentService", () => {
-	it("should expose parsed arguments and evaluate logging getters", () => {
-		const args: ParsedArgs = {
-			verbose: true,
-			quiet: false,
-			_: [],
-		};
-		const env = new NativeEnvironmentService(args, "/mock/cwd");
+	it("should expose the working directory and the logging flags", () => {
+		const env = new NativeEnvironmentService(
+			{ verbose: true, quiet: false },
+			"/mock/cwd"
+		);
 
 		expect(env.cwd).toBe("/mock/cwd");
-		expect(env.args).toBe(args);
 		expect(env.verbose).toBe(true);
 		expect(env.quiet).toBe(false);
 	});
