@@ -1,6 +1,6 @@
-import { RojoFile } from "../rojo-file.js";
+import { RojoFile, RojoMeta, scriptRunOf } from "../rojo.js";
 
-describe("domain/rojo/rojo-file", () => {
+describe("domain/rojo/rojo", () => {
 	describe("RojoFile", () => {
 		describe("kind", () => {
 			it.each([
@@ -59,6 +59,7 @@ describe("domain/rojo/rojo-file", () => {
 				"initial.luau",
 				"Save.luau",
 				"init.meta.json",
+				"init-server.luau",
 			])("should reject %s", (name) => {
 				expect(new RojoFile(name).isInitScript).toBe(false);
 			});
@@ -183,6 +184,53 @@ describe("domain/rojo/rojo-file", () => {
 			it("should name none for a file that takes no meta", () => {
 				expect(new RojoFile("Gun.rbxm").metaFile).toBeUndefined();
 			});
+		});
+	});
+
+	describe("RojoMeta", () => {
+		describe("parse", () => {
+			it("should keep the fields Rojo reads and drop the rest", () => {
+				const parsed = RojoMeta.parse(
+					'{ "$schema": "x", "className": "Actor", "properties": { "RunContext": "Client" } }',
+					"/repo/A.meta.json"
+				);
+
+				expect(parsed.unwrap()).toEqual({
+					className: "Actor",
+					properties: { RunContext: "Client" },
+				});
+			});
+
+			it("should fail on a meta file that isn't an object", () => {
+				const parsed = RojoMeta.parse("[]", "/repo/A.meta.json");
+
+				expect(parsed.isErr() && parsed.error).toMatchObject([
+					{ code: "meta.notAnObject" },
+				]);
+			});
+		});
+	});
+
+	describe("scriptRunOf", () => {
+		it("should run a script by its class while legacy scripts are on", () => {
+			expect(scriptRunOf("server", true, undefined)).toBe("Script");
+			expect(scriptRunOf("client", true, "Server")).toBe("LocalScript");
+		});
+
+		it("should run a script by its run context once legacy scripts are off", () => {
+			expect(scriptRunOf("server", false, undefined)).toBe("Server");
+			expect(scriptRunOf("client", false, undefined)).toBe("Client");
+		});
+
+		it("should let a Script's meta set its run context", () => {
+			expect(scriptRunOf("server", true, "Client")).toBe("Client");
+			expect(scriptRunOf("server", false, "Legacy")).toBe("Script");
+			expect(scriptRunOf("server", true, "Bogus")).toBe("Script");
+		});
+
+		it("should give no run for a file that isn't a server or client script", () => {
+			expect(scriptRunOf(undefined, true, "Server")).toBeUndefined();
+			expect(scriptRunOf("plugin", true, undefined)).toBeUndefined();
 		});
 	});
 });

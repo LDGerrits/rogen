@@ -1,10 +1,9 @@
 import { compareStrings, groupBy } from "../../base/collections.js";
-import { JSONSchema } from "../../base/json-schema.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
+import { RojoMetaFields } from "../rojo/rojo.js";
 import {
 	InstanceMap,
 	RojoNode,
@@ -14,16 +13,8 @@ import {
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
-export interface FolderMetaFields {
-	readonly className?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
-	readonly attributes?: Readonly<Record<string, unknown>>;
-	readonly ignoreUnknownInstances?: boolean;
-	readonly id?: string;
-}
-
 /** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
-export class FolderMeta implements FolderMetaFields {
+export class FolderMeta implements RojoMetaFields {
 	readonly className?: string;
 	readonly properties?: Readonly<Record<string, unknown>>;
 	readonly attributes?: Readonly<Record<string, unknown>>;
@@ -35,7 +26,7 @@ export class FolderMeta implements FolderMetaFields {
 		readonly rootDir: string,
 		/** The folder, relative to the root dir; the root dir itself is "". */
 		readonly dir: string,
-		fields: FolderMetaFields
+		fields: RojoMetaFields
 	) {
 		this.className = fields.className;
 		this.properties = fields.properties;
@@ -75,46 +66,6 @@ export class FolderMeta implements FolderMetaFields {
 		if (this.id !== undefined && templateNode.$id === undefined)
 			fields.$id = this.id;
 		return fields;
-	}
-}
-
-const META_SCHEMA: JSONSchema = {
-	type: "object",
-	// Rojo ignores fields it doesn't know, such as `$schema`.
-	properties: {
-		className: { type: "string" },
-		properties: { type: "object" },
-		attributes: { type: "object" },
-		ignoreUnknownInstances: { type: "boolean" },
-		id: { type: "string" },
-	},
-};
-
-/** Reads the fields of one meta file. */
-export class FolderMetaParser {
-	private static readonly documents = new JsoncDocumentReader({
-		codePrefix: "meta",
-		noun: "a meta file",
-	});
-
-	constructor(private readonly file: string) {}
-
-	parse(text: string): Result<FolderMetaFields, Diagnostic[]> {
-		const document = FolderMetaParser.documents.read(
-			text,
-			this.file,
-			META_SCHEMA
-		);
-		if (document.isErr()) return err(document.error);
-
-		const { value } = document.value;
-		return ok(
-			Object.fromEntries(
-				Object.keys(META_SCHEMA.properties ?? {})
-					.filter((key) => value[key] !== undefined)
-					.map((key) => [key, value[key]])
-			) as FolderMetaFields
-		);
 	}
 }
 

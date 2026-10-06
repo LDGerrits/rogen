@@ -1,5 +1,10 @@
 import path from "path";
+import { JSONSchema } from "../../base/json-schema.js";
 import { stemOf } from "../../base/path.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
+import { ScriptRun } from "../roblox/roblox.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -16,7 +21,7 @@ const DATA_EXTENSIONS: readonly string[] = [
 	".yaml",
 	".yml",
 ];
-const INIT_SCRIPT = /^(init|index)([.@-][a-z0-9_]+)?\./i;
+const INIT_SCRIPT = /^(init|index)([.@][a-z0-9_]+)?\./i;
 
 /** A file name as Rojo reads it: what it turns the file into, and which names it takes from it. */
 export class RojoFile {
@@ -103,4 +108,73 @@ export class RojoFile {
 			? undefined
 			: `${name}${RojoFile.META_SUFFIX}`;
 	}
+}
+
+/** What a `.meta.json` sets on the instance it applies to. */
+export interface RojoMetaFields {
+	readonly className?: string;
+	readonly properties?: Readonly<Record<string, unknown>>;
+	readonly attributes?: Readonly<Record<string, unknown>>;
+	readonly ignoreUnknownInstances?: boolean;
+	readonly id?: string;
+}
+
+const META_SCHEMA: JSONSchema = {
+	type: "object",
+	// Rojo ignores fields it doesn't know, such as `$schema`.
+	properties: {
+		className: { type: "string" },
+		properties: { type: "object" },
+		attributes: { type: "object" },
+		ignoreUnknownInstances: { type: "boolean" },
+		id: { type: "string" },
+	},
+};
+
+/** A `.meta.json` as Rojo reads it. */
+export class RojoMeta {
+	private static readonly documents = new JsoncDocumentReader({
+		codePrefix: "meta",
+		noun: "a meta file",
+	});
+
+	/** The fields `text` sets, or why Rojo would refuse `file`. */
+	static parse(
+		text: string,
+		file: string
+	): Result<RojoMetaFields, Diagnostic[]> {
+		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
+		if (document.isErr()) return err(document.error);
+
+		const { value } = document.value;
+		return ok(
+			Object.fromEntries(
+				Object.keys(META_SCHEMA.properties ?? {})
+					.filter((key) => value[key] !== undefined)
+					.map((key) => [key, value[key]])
+			) as RojoMetaFields
+		);
+	}
+}
+
+const RUN_CONTEXTS: Readonly<Record<string, ScriptRun>> = {
+	Legacy: "Script",
+	Server: "Server",
+	Client: "Client",
+	Plugin: "Plugin",
+};
+
+/** How Rojo makes a script with `suffix` run: by its class with legacy scripts on, else by its run context, and a `RunContext` its meta sets wins over both for a Script. `undefined` for a file that isn't a `.server` or `.client` script. */
+export function scriptRunOf(
+	suffix: RojoScriptSuffix | undefined,
+	legacyScripts: boolean,
+	runContext: unknown
+): ScriptRun | undefined {
+	if (suffix !== "server" && suffix !== "client") return undefined;
+	if (suffix === "client" && legacyScripts) return "LocalScript";
+	const set =
+		typeof runContext === "string" ? RUN_CONTEXTS[runContext] : undefined;
+	if (set) return set;
+	if (legacyScripts) return "Script";
+	return suffix === "server" ? "Server" : "Client";
 }

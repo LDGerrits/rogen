@@ -1,7 +1,7 @@
 import { joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
-import { RojoFile, RojoScriptSuffix } from "../rojo/rojo-file.js";
+import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
 import { MatchForm, RouteMatch, VariantMatch } from "./build.js";
 import { EntryRead, NameReadings, SuffixSpan } from "./name-reader.js";
 import { ScannedEntry, ScannedRoot, rojoNameOf } from "./root-scanner.js";

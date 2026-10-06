@@ -9,7 +9,7 @@ import {
 	FileSystemService,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
-import { RojoFile } from "../rojo/rojo-file.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { Placement } from "./placement.js";
 import { SyncLayout } from "./sync-layout.js";
 import { MetaReplacement } from "./build.js";

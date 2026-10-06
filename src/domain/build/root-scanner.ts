@@ -8,7 +8,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
+import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
 import { TemplateMount } from "./build-template.js";
 

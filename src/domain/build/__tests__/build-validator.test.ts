@@ -1,6 +1,7 @@
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { BuildValidator } from "../build-validator.js";
+import { MetaReader } from "../meta-reader.js";
 import { TreeAssembler } from "../tree-assembler.js";
 import {
 	abs,
@@ -32,11 +33,11 @@ describe("BuildValidator", () => {
 				routes: { server: "ServerScriptService" },
 			});
 			const index = await indexOf(store, fs, config.rootDirs);
-			const assembled = (
-				await new TreeAssembler(fs).assemble(
-					placeFiles(index, config, syncTools).unwrap()
-				)
-			).unwrap();
+			const placement = placeFiles(index, config, syncTools).unwrap();
+			const meta = (await new MetaReader(fs).read(placement)).unwrap();
+			const assembled = new TreeAssembler()
+				.assemble(placement, meta)
+				.unwrap();
 
 			const warnings = new BuildValidator(assembled).validate();
 
@@ -51,11 +52,11 @@ describe("BuildValidator", () => {
 			await writeFiles(fs, "src/Fine.luau");
 			const config = baseConfigOf();
 			const index = await indexOf(store, fs, config.rootDirs);
-			const assembled = (
-				await new TreeAssembler(fs).assemble(
-					placeFiles(index, config, syncTools).unwrap()
-				)
-			).unwrap();
+			const placement = placeFiles(index, config, syncTools).unwrap();
+			const meta = (await new MetaReader(fs).read(placement)).unwrap();
+			const assembled = new TreeAssembler()
+				.assemble(placement, meta)
+				.unwrap();
 
 			expect(new BuildValidator(assembled).validate()).toEqual([]);
 		});

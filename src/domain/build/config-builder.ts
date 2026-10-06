@@ -7,6 +7,7 @@ import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
+import { MetaReader } from "./meta-reader.js";
 import { Placement, Placer } from "./placement.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
@@ -22,6 +23,7 @@ export interface BuiltConfig {
 
 /** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
 export class ConfigBuilder {
+	private readonly metaReader: MetaReader;
 	private readonly assembler: TreeAssembler;
 	private readonly syncDirCheck: SyncDirCheck;
 
@@ -30,7 +32,8 @@ export class ConfigBuilder {
 		private readonly index: IndexReader,
 		private readonly tools: readonly SyncTool[]
 	) {
-		this.assembler = new TreeAssembler(fileSystemService);
+		this.metaReader = new MetaReader(fileSystemService);
+		this.assembler = new TreeAssembler();
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
 	}
 
@@ -47,7 +50,9 @@ export class ConfigBuilder {
 		const placement = this.place(config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
-		const assembly = await this.assembler.assemble(placement.value);
+		const meta = await this.metaReader.read(placement.value);
+		if (meta.isErr()) return err(new DiagnosticsError(meta.error));
+		const assembly = this.assembler.assemble(placement.value, meta.value);
 		if (assembly.isErr()) return err(new DiagnosticsError(assembly.error));
 		return ok({
 			tree: assembly.value.tree,
@@ -58,7 +63,7 @@ export class ConfigBuilder {
 					syncWarnings ??
 					(await this.syncDirCheck.check(placement.value)),
 			},
-			readFiles: assembly.value.readFiles,
+			readFiles: meta.value.files,
 		});
 	}
 }

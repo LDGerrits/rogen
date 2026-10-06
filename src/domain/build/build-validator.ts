@@ -13,7 +13,7 @@ import {
 	isServerOnlyService,
 	scriptRunsAt,
 } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo-file.js";
+import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
@@ -250,30 +250,15 @@ export class BuildValidator {
 		];
 	}
 
-	/** How Rojo makes a `.server` or `.client` script run: by class with legacy scripts, else by run context, and a run context in the script's meta wins. */
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
 		const { kind, stem } = this.placement.readings.entryAt(
 			file.entry.source
 		);
-		const suffix =
-			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
-		if (suffix !== "server" && suffix !== "client") return undefined;
-		const legacy = !this.placement.template.disablesLegacyScripts;
-		if (suffix === "client" && legacy) return "LocalScript";
-		switch (
-			this.assembly.scriptRunContexts.contexts.get(file.entry.source)
-		) {
-			case "Legacy":
-				return "Script";
-			case "Server":
-				return "Server";
-			case "Client":
-				return "Client";
-			case "Plugin":
-				return "Plugin";
-		}
-		if (legacy) return "Script";
-		return suffix === "server" ? "Server" : "Client";
+		return scriptRunOf(
+			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined,
+			!this.placement.template.disablesLegacyScripts,
+			this.assembly.meta.runContextOf(file.entry.source)
+		);
 	}
 
 	private static describeRun(run: ScriptRun): string {
@@ -451,7 +436,7 @@ export class BuildValidator {
 			if (folder?.kind === "variant") return "a variant folder";
 			return folder?.invisible ? "an invisible folder" : undefined;
 		};
-		const metas = this.assembly.folderMeta.flatMap((meta) => {
+		const metas = this.assembly.meta.folderMeta.flatMap((meta) => {
 			const kind = instanceless(meta);
 			return kind ? [[meta.file, kind] as const] : [];
 		});

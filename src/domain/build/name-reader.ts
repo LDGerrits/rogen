@@ -2,7 +2,7 @@ import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
 import { closestMatch, editDistance } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
-import { RojoFile, RojoFileKind } from "../rojo/rojo-file.js";
+import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
 
 /** Whether a folder routes, carries a variant or is ordinary. */

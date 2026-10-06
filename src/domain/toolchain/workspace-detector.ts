@@ -4,7 +4,7 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { RojoFile } from "../rojo/rojo-file.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { DarkluaDetector } from "./darklua-detector.js";
 import { PackageManagerDetector } from "./package-manager-detector.js";
 import {
