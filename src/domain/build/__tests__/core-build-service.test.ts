@@ -225,6 +225,27 @@ describe("CoreBuildService", () => {
 			).toMatchObject([{ code: "route.noRoutes" }]);
 		});
 
+		it("should name every config that declares no routes", async () => {
+			const result = await buildServiceOfFs().locate(
+				selectionOf(
+					configOf({ routes: {} }),
+					configOf({
+						routes: {},
+						file: abs("lobby.rogen.json"),
+						outFile: abs("lobby.project.json"),
+					})
+				),
+				{ args: [], cwd: abs() }
+			);
+
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([
+				{ resource: abs("default.rogen.json") },
+				{ resource: abs("lobby.rogen.json") },
+			]);
+		});
+
 		it("should list every file and no instance without arguments", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
