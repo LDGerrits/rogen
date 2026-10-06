@@ -2,7 +2,7 @@ import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
 import { closestMatch, editDistance } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
-import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
+import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
 
 /** Whether a folder routes, carries a variant or is ordinary. */
@@ -208,6 +208,8 @@ export interface EntryRead {
 	readonly fileName: string;
 	readonly kind: RojoFileKind;
 	readonly stem: string;
+	/** The script class Rojo reads from the stem: a `.server`, `.client` or `.plugin` script; none for any other file. */
+	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly match: SuffixMatch;
 }
 
@@ -254,6 +256,10 @@ export class NameReadings {
 					fileName,
 					kind,
 					stem,
+					scriptSuffix:
+						kind === "script"
+							? RojoFile.scriptSuffixOf(stem)
+							: undefined,
 					match,
 				});
 				for (const folder of folders) {

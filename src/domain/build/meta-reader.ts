@@ -75,10 +75,9 @@ export class MetaReader {
 			)
 		);
 		for (const { entry } of placement.files) {
-			const { kind, stem } = placement.readings.entryAt(entry.source);
 			if (
-				kind !== "script" ||
-				RojoFile.scriptSuffixOf(stem) === undefined
+				placement.readings.entryAt(entry.source).scriptSuffix ===
+				undefined
 			)
 				continue;
 

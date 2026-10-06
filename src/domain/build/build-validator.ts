@@ -8,10 +8,10 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import {
-	SCRIPT_STORAGE_SERVICE,
 	ScriptRun,
+	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
-	scriptRunsAt,
+	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
@@ -181,13 +181,10 @@ export class BuildValidator {
 				const service = routes.get(key)?.service;
 				return service !== undefined && isServerOnlyService(service);
 			});
-			const { kind, stem } = this.placement.readings.entryAt(
-				file.entry.source
-			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
-				kind === "script" &&
-				RojoFile.scriptSuffixOf(stem) !== undefined;
+				this.placement.readings.entryAt(file.entry.source)
+					.scriptSuffix !== undefined;
 			return ignored.length > 0 &&
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
@@ -224,8 +221,7 @@ export class BuildValidator {
 		const dead = this.placement.files.flatMap((file) => {
 			const run = this.scriptRunOf(file);
 			return run !== undefined &&
-				file.instancePath[0] !== SCRIPT_STORAGE_SERVICE &&
-				!scriptRunsAt(run, file.instancePath)
+				scriptFate(run, file.instancePath) === "neverRuns"
 				? [{ file, run }]
 				: [];
 		});
@@ -244,18 +240,15 @@ export class BuildValidator {
 				[
 					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
 					...listed,
-					"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.",
+					WHERE_SCRIPTS_RUN,
 				].join("\n")
 			),
 		];
 	}
 
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
-		const { kind, stem } = this.placement.readings.entryAt(
-			file.entry.source
-		);
 		return scriptRunOf(
-			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined,
+			this.placement.readings.entryAt(file.entry.source).scriptSuffix,
 			!this.placement.template.disablesLegacyScripts,
 			this.assembly.meta.runContextOf(file.entry.source)
 		);
