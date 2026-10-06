@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { dirnamePosix, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -55,12 +55,11 @@ export class MetaReader {
 					problems.add(parsed.error);
 					continue;
 				}
-				const dir = path.posix.dirname(toPosix(metaFile));
 				folderMeta.push(
 					new FolderMeta(
 						file,
 						root.rootDir,
-						dir === "." ? "" : dir,
+						dirnamePosix(toPosix(metaFile)),
 						parsed.value
 					)
 				);

@@ -1,5 +1,4 @@
-import path from "path";
-import { joinPosix } from "../../base/path.js";
+import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
@@ -137,16 +136,11 @@ export class Router {
 				const reading = this.read(entry, markers, initRoutes);
 				const placed = this.place(entry, reading);
 				if (reading.leaf.isInit && reading.folders.length === 0) {
-					const dir = path.posix.dirname(entry.relativePath);
 					if (placed)
 						homeless.push({
 							source: entry.source,
 							variants: reading.claims.variants,
-							folder:
-								this.readings.instanceless(
-									entry.rootDir,
-									dir === "." ? "" : dir
-								) ?? "a root dir",
+							folder: this.homeOf(entry),
 						});
 					else unrouted.push(entry.source);
 					continue;
@@ -165,6 +159,19 @@ export class Router {
 		return { routed, unrouted, homeless };
 	}
 
+	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
+	private homeOf(entry: ScannedFile): InstancelessFolder {
+		const folder = this.readings.instanceless(
+			entry.rootDir,
+			dirnamePosix(entry.relativePath)
+		);
+		if (!folder)
+			throw new Error(
+				`${entry.source} has no folder to be, but the folder it sits in can become one.`
+			);
+		return folder;
+	}
+
 	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, so it gives none. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
 		const routes = new Map<string, { key: string; source: string }[]>();
@@ -178,7 +185,7 @@ export class Router {
 				)
 			)
 				continue;
-			const dir = path.posix.dirname(entry.relativePath);
+			const dir = dirnamePosix(entry.relativePath);
 			for (const { key } of spans)
 				if (this.keys.routeKeys.has(key)) {
 					const inDir = routes.get(dir) ?? [];
@@ -304,7 +311,7 @@ export class Router {
 				else claims.claimRoute(key, "marker");
 			}
 			// An init script claims its own suffix as any file does.
-			for (const { key, source } of initRoutes.get(dir || ".") ?? [])
+			for (const { key, source } of initRoutes.get(dir) ?? [])
 				if (source !== entry.source) claims.claimRoute(key, "init");
 		};
 

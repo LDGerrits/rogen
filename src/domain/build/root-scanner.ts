@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { joinPosix, stemOf, toPosix } from "../../base/path.js";
+import { dirnamePosix, joinPosix, stemOf, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -77,10 +77,7 @@ export class ScannedRoot {
 	markersByDir(): ReadonlyMap<string, string[]> {
 		return groupBy(
 			this.markers,
-			(marker) => {
-				const dir = path.posix.dirname(marker);
-				return dir === "." ? "" : dir;
-			},
+			(marker) => dirnamePosix(marker),
 			(marker) => path.posix.basename(marker)
 		);
 	}
