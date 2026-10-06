@@ -37,7 +37,7 @@ export class FileLocator {
 			.filter(
 				(location): location is PlacedLocation =>
 					location.status === "placed" &&
-					[location.instancePath, ...location.alsoAt].some(
+					[location.instancePath, ...(location.alsoAt ?? [])].some(
 						(instancePath) => reference.contains(instancePath)
 					)
 			)
@@ -75,7 +75,9 @@ export class FileLocator {
 			status: "placed",
 			source,
 			instancePath: file.instancePath,
-			alsoAt: others.map(({ instancePath }) => instancePath),
+			...(others.length > 0 && {
+				alsoAt: others.map(({ instancePath }) => instancePath),
+			}),
 			route: file.route,
 			routeMatch: file.routeMatch,
 			variants: file.variants,

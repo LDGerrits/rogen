@@ -33,10 +33,9 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				matches.length === 0
 					? ""
 					: ` · ${matches.length === 1 ? "variant" : "variants"} ${matches.join(", ")}`;
-			const alsoAt =
-				location.alsoAt.length === 0
-					? ""
-					: ` · also ${location.alsoAt.map(instanceKey).join(", ")}`;
+			const alsoAt = location.alsoAt
+				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
+				: "";
 			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${alsoAt}`;
 		}
 		case "pruned":
@@ -71,7 +70,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
-				alsoAt: location.alsoAt,
+				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
 				variants: location.variants.map(({ variant, form }) => ({

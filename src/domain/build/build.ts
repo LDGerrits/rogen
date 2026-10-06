@@ -167,8 +167,8 @@ interface Located {
 export interface PlacedLocation extends Located {
 	readonly status: "placed";
 	readonly instancePath: readonly string[];
-	/** The other nodes an init script is, where its folder becomes a node in another route. */
-	readonly alsoAt: readonly (readonly string[])[];
+	/** The other nodes an init script is, where its folder becomes a node in another route; only a copied init script has them. */
+	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
 	/** The active variants the file carries. */

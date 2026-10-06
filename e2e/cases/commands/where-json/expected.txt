@@ -12,7 +12,6 @@ stdout:
         "Moves",
         "Punch"
       ],
-      "alsoAt": [],
       "route": "Server",
       "routeMatch": "folder",
       "variants": []
@@ -26,7 +25,6 @@ stdout:
         "Combat",
         "Moves"
       ],
-      "alsoAt": [],
       "route": "Server",
       "routeMatch": "folder",
       "variants": []
@@ -40,7 +38,6 @@ stdout:
         "Inventory",
         "Save"
       ],
-      "alsoAt": [],
       "route": "Server",
       "routeMatch": "folder",
       "variants": []
@@ -66,7 +63,6 @@ stdout:
         "Net",
         "Http"
       ],
-      "alsoAt": [],
       "route": "Client",
       "routeMatch": "suffix",
       "variants": []
@@ -87,7 +83,6 @@ stdout:
         "Net",
         "Types"
       ],
-      "alsoAt": [],
       "route": "*",
       "routeMatch": "fallback",
       "variants": []
@@ -114,7 +109,6 @@ stdout:
         "Net",
         "Http"
       ],
-      "alsoAt": [],
       "route": "*",
       "routeMatch": "fallback",
       "variants": [
@@ -140,7 +134,6 @@ stdout:
         "Moves",
         "Punch"
       ],
-      "alsoAt": [],
       "route": "Server",
       "routeMatch": "folder",
       "variants": []
@@ -154,7 +147,6 @@ stdout:
         "Combat",
         "Moves"
       ],
-      "alsoAt": [],
       "route": "Server",
       "routeMatch": "folder",
       "variants": []
