@@ -199,7 +199,7 @@ export class Router {
 			const variants = spans
 				.filter(({ key }) => this.keys.isVariant(key))
 				.map((span) => this.asVariantMatch(span));
-			if (this.config.dormantVariants(variants).length > 0) continue;
+			if (!this.config.allVariantsOn(variants)) continue;
 			const dir = dirnamePosix(entry.relativePath);
 			for (const { key } of spans)
 				if (this.keys.routeKeys.has(key)) {

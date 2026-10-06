@@ -319,4 +319,11 @@ export class ResolvedConfig {
 	): T[] {
 		return matches.filter(({ variant }) => !this.variants[variant]);
 	}
+
+	/** Whether every variant a file carries is on, so it can be placed. */
+	allVariantsOn<T extends { readonly variant: string }>(
+		matches: readonly T[]
+	): boolean {
+		return this.dormantVariants(matches).length === 0;
+	}
 }

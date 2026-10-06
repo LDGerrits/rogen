@@ -268,10 +268,7 @@ export class Placer {
 		withoutFolder: readonly InitWithoutFolder[]
 	): Diagnostic[] {
 		return withoutFolder
-			.filter(
-				({ variants }) =>
-					this.config.dormantVariants(variants).length === 0
-			)
+			.filter(({ variants }) => this.config.allVariantsOn(variants))
 			.map(({ source, folder }) =>
 				errorDiagnostic(
 					"tree.initWithoutFolder",
@@ -304,10 +301,7 @@ export class Placer {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
 		const owned = new InstanceMap<true>();
 		for (const file of routed)
-			if (
-				file.init &&
-				this.config.dormantVariants(file.variants).length === 0
-			)
+			if (file.init && this.config.allVariantsOn(file.variants))
 				owned.set(file.instancePath, true);
 		const throughFolder = groupBy(
 			routed.flatMap((file) =>
