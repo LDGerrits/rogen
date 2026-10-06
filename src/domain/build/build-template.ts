@@ -1,10 +1,12 @@
 import path from "path";
+import { joinPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { containerClassName } from "../roblox/roblox.js";
 import {
 	RojoNode,
 	RojoProject,
 	RojoTree,
+	instanceKey,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncLayout } from "./sync-layout.js";
@@ -85,19 +87,35 @@ export class BuildTemplate {
 		return new RojoProject(this.project.getTree(), generatedContainer);
 	}
 
-	/** The file's own node, or a folder of its that the template gives a `$path`, which is that folder's whole content. */
-	displacingNode(file: {
+	/** The node of `file` the template defines: its own, or a folder of its that the template gives a `$path`, which is that folder's whole content. `source` is the file, or the folder, that names the node. */
+	displacing(file: {
+		readonly entry: { readonly source: string; readonly rootDir: string };
 		readonly instancePath: readonly string[];
 		readonly folderNodes: readonly {
+			readonly dir: string;
 			readonly instancePath: readonly string[];
 		}[];
-	}): readonly string[] | undefined {
-		const folder = file.folderNodes.find(
+	}):
+		| { readonly node: readonly string[]; readonly source: string }
+		| undefined {
+		const mounted = file.folderNodes.find(
 			({ instancePath }) =>
 				this.getNode(instancePath)?.$path !== undefined
 		);
-		if (folder) return folder.instancePath;
-		return this.getNode(file.instancePath) ? file.instancePath : undefined;
+		const node =
+			mounted?.instancePath ??
+			(this.getNode(file.instancePath) ? file.instancePath : undefined);
+		if (!node) return undefined;
+		const folder = file.folderNodes.find(
+			({ instancePath }) =>
+				instanceKey(instancePath) === instanceKey(node)
+		);
+		return {
+			node,
+			source: folder
+				? joinPosix(file.entry.rootDir, folder.dir)
+				: file.entry.source,
+		};
 	}
 
 	/** The project file to write: the template's own fields, and `tree` as the tree. */

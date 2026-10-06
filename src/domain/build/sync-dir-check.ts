@@ -121,8 +121,14 @@ export class SyncDirCheck {
 		syncDir: string
 	): Promise<Diagnostic[]> {
 		const { config, layout, files } = placement;
-		const converted: { source: string; expected: string; found: string }[] =
-			[];
+		const replacements = layout.dataReplacements;
+		if (replacements.length === 0) return [];
+		const converted: {
+			source: string;
+			expected: string;
+			found: string;
+			note: string;
+		}[] = [];
 		const synced = new Map<string, boolean>();
 		for (const { entry } of files) {
 			if (entry.kind !== "data") continue;
@@ -137,14 +143,18 @@ export class SyncDirCheck {
 				path.join(entry.rootDir, entry.relativePath)
 			);
 			if (await this.fileSystemService.exists(expected)) continue;
-			const found = `${expected.slice(0, -path.extname(expected).length)}.lua`;
-			if (await this.fileSystemService.exists(found))
-				converted.push({ source: entry.source, expected, found });
+			const base = expected.slice(0, -path.extname(expected).length);
+			for (const { suffix, note } of replacements) {
+				const found = `${base}${suffix}`;
+				if (!(await this.fileSystemService.exists(found))) continue;
+				converted.push({ source: entry.source, expected, found, note });
+				break;
+			}
 		}
 		if (converted.length === 0) return [];
 
 		const shown = (target: string) => layout.relativeToProject(target);
-		const [note] = layout.dataReplacements.map(({ note }) => note);
+		const [{ note }] = converted;
 		const many = converted.length > 1;
 		const listed = listLimited(
 			converted.map(
@@ -157,7 +167,7 @@ export class SyncDirCheck {
 			warningDiagnostic(
 				"output.dataFileConverted",
 				{ resource: config.outFile },
-				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(syncDir) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note ?? "The processor that writes the sync dir converts them."} Copy the data files unchanged into the sync dir after it runs, or require them as modules.`
+				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(syncDir) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note} Copy the data files unchanged into the sync dir after it runs, or require them as modules.`
 			),
 		];
 	}

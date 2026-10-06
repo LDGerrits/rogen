@@ -206,6 +206,8 @@ export interface MetaReplacement {
 
 /** What a sync tool does to a data file: it writes a Lua module in its place, which Rojo syncs as a ModuleScript. */
 export interface DataReplacement {
+	/** What the module's name ends in instead of the data file's extension. */
+	readonly suffix: string;
 	/** Says which data files, in the warning about the file Rojo no longer finds. */
 	readonly note: string;
 }

@@ -85,7 +85,7 @@ describe("BuildTemplate", () => {
 		});
 	});
 
-	describe("displacingNode", () => {
+	describe("displacing", () => {
 		const template = templateOf({
 			template: {
 				file: abs("default.project.json"),
@@ -99,30 +99,43 @@ describe("BuildTemplate", () => {
 				},
 			},
 		});
+		const entry = { source: abs("src/Lib.luau"), rootDir: abs("src") };
 
-		it("should name the file's own node when the template defines it", () => {
+		it("should name the file's own node, and the file, when the template defines it", () => {
 			expect(
-				template.displacingNode({
+				template.displacing({
+					entry,
 					instancePath: ["ReplicatedStorage", "Shared"],
 					folderNodes: [],
 				})
-			).toEqual(["ReplicatedStorage", "Shared"]);
+			).toEqual({
+				node: ["ReplicatedStorage", "Shared"],
+				source: abs("src/Lib.luau"),
+			});
 		});
 
-		it("should name a folder of the file that the template gives a $path", () => {
+		it("should name a folder of the file that the template gives a $path, and that folder", () => {
 			expect(
-				template.displacingNode({
+				template.displacing({
+					entry,
 					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
 					folderNodes: [
-						{ instancePath: ["ReplicatedStorage", "Vendor"] },
+						{
+							dir: "Vendor",
+							instancePath: ["ReplicatedStorage", "Vendor"],
+						},
 					],
 				})
-			).toEqual(["ReplicatedStorage", "Vendor"]);
+			).toEqual({
+				node: ["ReplicatedStorage", "Vendor"],
+				source: `${abs("src")}/Vendor`,
+			});
 		});
 
 		it("should name nothing for a node the template doesn't define", () => {
 			expect(
-				template.displacingNode({
+				template.displacing({
+					entry,
 					instancePath: ["ReplicatedStorage", "Other"],
 					folderNodes: [],
 				})

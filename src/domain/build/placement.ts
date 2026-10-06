@@ -50,16 +50,18 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	}
 }
 
-/** Files from one root dir that claim one instance path; within the root dir, the last one wins. */
+/** Plain files from one root dir that claim one instance path; the last one wins and the others are replaced. */
 export interface InstanceClash {
 	readonly instance: string;
-	readonly claimants: readonly RoutedFile[];
+	readonly winner: RoutedFile;
+	readonly losers: readonly RoutedFile[];
 }
 
-/** A routed file the template displaced, with the node that displaced it. */
+/** A routed file the template displaced: the node the template defines, and the file or folder that names it. */
 export interface DisplacedFile {
 	readonly file: RoutedFile;
 	readonly node: readonly string[];
+	readonly source: string;
 }
 
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
@@ -78,18 +80,10 @@ export class Placement {
 		readonly files: readonly RoutedFile[],
 		/** Every path the build leaves out of the tree. */
 		readonly leftOut: LeftOutPaths,
-		readonly clashes: readonly InstanceClash[]
+		readonly clashes: readonly InstanceClash[],
+		/** The routed files the template displaced, in scan order. */
+		readonly displaced: readonly DisplacedFile[]
 	) {}
-
-	/** The routed files the template displaced, in scan order. */
-	get displaced(): DisplacedFile[] {
-		return this.routed.flatMap((file) => {
-			const why = this.leftOut.get(file.entry.source);
-			return why?.status === "displaced"
-				? [{ file, node: why.node }]
-				: [];
-		});
-	}
 
 	/** Meta no file claims, across every root dir; computed once. */
 	unclaimedMeta(): UnclaimedMeta[] {
@@ -199,7 +193,8 @@ export class Placer {
 				routed,
 				templating.files,
 				leftOut,
-				applied.value.clashes
+				applied.value.clashes,
+				templating.displaced
 			)
 		);
 	}
@@ -298,13 +293,16 @@ export class Placer {
 							`becomes "${instance}" with an active variant, and so ${others.length === 1 ? "does" : "do"} ${others.join(", ")}. Only one can apply: turn a variant off or rename a file.`
 						);
 					}
-				} else if (claimants.length > 1) {
-					clashes.push({ instance, claimants });
 				}
-				winners.set(
-					claimants[0].instancePath,
-					variantFiles[0] ?? plain[plain.length - 1]
-				);
+				const winner = variantFiles[0] ?? plain[plain.length - 1];
+				// A variant file replacing a plain one is what variants are for, so only plain files clash.
+				if (variantFiles.length === 0 && plain.length > 1)
+					clashes.push({
+						instance,
+						winner,
+						losers: plain.slice(0, -1),
+					});
+				winners.set(claimants[0].instancePath, winner);
 			}
 		}
 		if (problems.hasErrors) return err([...problems.diagnostics]);
@@ -324,18 +322,23 @@ export class Placer {
 	private yieldToTemplate(placed: readonly RoutedFile[]): {
 		readonly files: readonly RoutedFile[];
 		readonly leftOut: [string, LeftOut][];
+		readonly displaced: readonly DisplacedFile[];
 	} {
 		const files: RoutedFile[] = [];
 		const leftOut: [string, LeftOut][] = [];
+		const displaced: DisplacedFile[] = [];
 		for (const file of placed) {
-			const node = this.template.displacingNode(file);
-			if (node)
-				leftOut.push([
-					file.entry.source,
-					{ status: "displaced", node },
-				]);
-			else files.push(file);
+			const displacing = this.template.displacing(file);
+			if (!displacing) {
+				files.push(file);
+				continue;
+			}
+			leftOut.push([
+				file.entry.source,
+				{ status: "displaced", node: displacing.node },
+			]);
+			displaced.push({ file, ...displacing });
 		}
-		return { files, leftOut };
+		return { files, leftOut, displaced };
 	}
 }

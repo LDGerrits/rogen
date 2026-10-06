@@ -285,22 +285,15 @@ export class BuildValidator {
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
 	private instanceClash(): Diagnostic[] {
-		return this.placement.clashes
-			.filter(({ claimants }) =>
-				claimants.every((file) => file.variants.length === 0)
+		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
+			losers.map(({ entry }) =>
+				warningDiagnostic(
+					"tree.instanceClash",
+					{ resource: entry.source },
+					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+				)
 			)
-			.flatMap(({ instance, claimants }) => {
-				const winner = claimants[claimants.length - 1].entry.source;
-				return claimants
-					.slice(0, -1)
-					.map(({ entry }) =>
-						warningDiagnostic(
-							"tree.instanceClash",
-							{ resource: entry.source },
-							`becomes "${instance}", as ${winner} does, which takes its place. Rename one of them to keep both.`
-						)
-					);
-			});
+		);
 	}
 
 	/** Rojo can't give scripts a run context there, so they'd never run. */
@@ -326,8 +319,7 @@ export class BuildValidator {
 			string,
 			{ instance: string; kind: "file" | "folder" }
 		>();
-		for (const { file, node } of this.placement.displaced) {
-			const source = this.namingSource(file, node);
+		for (const { file, node, source } of this.placement.displaced) {
 			clashes.set(source, {
 				instance: instanceKey(node),
 				kind: source === file.entry.source ? "file" : "folder",
@@ -340,17 +332,6 @@ export class BuildValidator {
 				`the template defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
 			)
 		);
-	}
-
-	/** The file itself, or the folder of the file that names the node. */
-	private namingSource(file: RoutedFile, node: readonly string[]): string {
-		const folder = file.folderNodes.find(
-			({ instancePath }) =>
-				instanceKey(instancePath) === instanceKey(node)
-		);
-		return folder
-			? joinPosix(file.entry.rootDir, folder.dir)
-			: file.entry.source;
 	}
 
 	/** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the template's `$path` is. */
