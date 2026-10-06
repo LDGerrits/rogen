@@ -571,7 +571,25 @@ describe("BuildValidator rules", () => {
 				expect(await ignoredAts()).toEqual([]);
 			});
 
-			it("should not warn about a route folder an outer route outranks", async () => {
+			it("should warn once per folder whose @ does nothing, where it stays in the name", async () => {
+				await write(
+					"src/server/Ui@client/Hud.luau",
+					"src/server/Ui@client/Bar.luau",
+					"src/server/@client/Probe.luau"
+				);
+
+				const warnings = await ignoredAts();
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/server/@client"),
+					abs("src/server/Ui@client"),
+				]);
+				expect(warnings[1].message).toBe(
+					'"@client" does nothing here, because the "server" route already governs this folder, so it stays in the name (Ui@client). Remove it, or move the folder out of the "server" route\'s files.'
+				);
+			});
+
+			it("should not warn about a folder named after a route that an outer route outranks", async () => {
 				await write("src/server/client/Bar.luau");
 
 				expect(await ignoredAts()).toEqual([]);

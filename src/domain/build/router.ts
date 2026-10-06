@@ -34,12 +34,18 @@ export interface RoutedFile {
 	readonly variants: readonly VariantMatch[];
 	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
-	/** The key of an `@` suffix that an outer route outranks, which therefore stays in the name. */
-	readonly ignoredAt?: string;
+	/** The `@key`s in its name and its folders' that an outer route outranks, which therefore stay in the names. */
+	readonly ignoredAts: readonly IgnoredAt[];
 	/** An init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
 	readonly isInit: boolean;
 	/** An init script placed where its folder becomes a node in another route; only a ModuleScript that no route of its own sends anywhere is. */
 	readonly isCopy: boolean;
+}
+
+export interface IgnoredAt {
+	readonly key: string;
+	/** The folder that spells it, relative to the root dir; none for the file's own name. */
+	readonly dir?: string;
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
@@ -54,6 +60,7 @@ export interface HomelessInit {
 class Claims {
 	route: { readonly key: string; readonly match: RouteMatch } | undefined;
 	readonly ignoredRoutes: string[] = [];
+	readonly ignoredAts: IgnoredAt[] = [];
 	readonly variants: VariantMatch[] = [];
 
 	/** Whether the route governs; a later one is ignored whole. */
@@ -74,7 +81,6 @@ class Claims {
 interface LeafReading {
 	readonly name: string;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
-	readonly ignoredAt: string | undefined;
 	readonly isInit: boolean;
 }
 
@@ -224,7 +230,7 @@ export class Router {
 			ignoredRoutes: claims.ignoredRoutes,
 			variants: claims.variants,
 			buriedScriptSuffix: leaf.buriedScriptSuffix,
-			ignoredAt: leaf.ignoredAt,
+			ignoredAts: claims.ignoredAts,
 			isInit: leaf.isInit,
 			isCopy: false,
 		};
@@ -266,6 +272,7 @@ export class Router {
 					instancePath,
 					folderNodes: file.folderNodes.slice(0, at + 1),
 					ignoredRoutes: [],
+					ignoredAts: [],
 					variants: reading.claims.variants,
 					buriedScriptSuffix: reading.leaf.buriedScriptSuffix,
 					isInit: true,
@@ -306,11 +313,16 @@ export class Router {
 		for (const folder of read.folders) {
 			for (const variant of folder.variants)
 				claims.claimVariant({ variant, form: "folder" });
-			const name =
-				folder.route === undefined ||
-				claims.claimRoute(folder.route, "folder")
-					? folder.keptName
-					: folder.outrankedName;
+			let governs = true;
+			if (folder.route !== undefined) {
+				governs = claims.claimRoute(folder.route, "folder");
+				if (!governs && folder.at)
+					claims.ignoredAts.push({
+						key: folder.route,
+						dir: folder.dir,
+					});
+			}
+			const name = governs ? folder.keptName : folder.outrankedName;
 			if (name !== undefined && !folder.invisible)
 				folders.push({ name, dir: folder.dir });
 			applyDirClaims(folder.dir);
@@ -327,11 +339,11 @@ export class Router {
 		for (const span of variantSpans)
 			claims.claimVariant(this.asVariantMatch(span));
 		let routeSpan: SuffixSpan | undefined;
-		let ignoredAt: string | undefined;
 		for (const span of match.spans) {
 			if (!this.keys.routeKeys.has(span.key)) continue;
 			if (claims.claimRoute(span.key, "suffix")) routeSpan = span;
-			else if (stem[span.start] === "@") ignoredAt ??= span.key;
+			else if (stem[span.start] === "@")
+				claims.ignoredAts.push({ key: span.key });
 		}
 
 		const buriedScriptSuffix =
@@ -348,7 +360,6 @@ export class Router {
 			name:
 				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
 			buriedScriptSuffix,
-			ignoredAt,
 			isInit: this.isInitRead(read),
 		};
 	}

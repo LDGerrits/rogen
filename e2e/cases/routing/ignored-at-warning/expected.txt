@@ -5,6 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
+  src/server/Ui@client - warning: "@client" does nothing here, because the "server" route already governs this folder, so it stays in the name (Ui@client). Remove it, or move the folder out of the "server" route's files.
   src/server/Util@client.luau - warning: "@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route's files.
 
 written:
@@ -13,6 +14,8 @@ written:
 $ rojo sourcemap default.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
+    Ui@client: Folder
+      Hud: ModuleScript  <- src/server/Ui@client/Hud.luau
     Util@client: ModuleScript  <- src/server/Util@client.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts

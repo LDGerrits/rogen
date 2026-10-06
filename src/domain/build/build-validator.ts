@@ -188,24 +188,47 @@ export class BuildValidator {
 		});
 	}
 
-	/** An `@` an outer route outranks does nothing; the files it ships to clients are reported as such instead. */
+	/** An `@` an outer route outranks does nothing, once per file or folder that spells it; the files it ships to clients are reported as such instead. */
 	private ignoredAt(): Diagnostic[] {
 		const shipped = new Set(
 			this.shipped().map(({ file }) => file.entry.source)
 		);
-		const ignored = this.placement.files.flatMap((file) =>
-			file.ignoredAt !== undefined &&
-			!file.isCopy &&
-			!shipped.has(file.entry.source)
-				? [[file.entry.source, file] as const]
-				: []
-		);
-		return this.diagnosePaths(ignored, (resource, file) =>
-			warningDiagnostic(
-				"route.ignoredAt",
-				{ resource },
-				`"@${file.ignoredAt}" does nothing here, because the "${file.route}" route already governs this file${file.isInit ? "" : `, so it stays in the name (${file.instancePath[file.instancePath.length - 1]})`}. Remove it, or move the file out of the "${file.route}" route's files.`
-			)
+		const ignored = new Map<
+			string,
+			{ key: string; route: string; kind: string; name?: string }
+		>();
+		for (const file of this.placement.files) {
+			if (shipped.has(file.entry.source)) continue;
+			for (const { key, dir } of file.ignoredAts) {
+				const { route } = file;
+				if (dir === undefined)
+					ignored.set(file.entry.source, {
+						key,
+						route,
+						kind: "file",
+						name: file.isInit
+							? undefined
+							: file.instancePath.at(-1),
+					});
+				else
+					ignored.set(joinPosix(file.entry.rootDir, dir), {
+						key,
+						route,
+						kind: "folder",
+						name: file.folderNodes
+							.find((node) => node.dir === dir)
+							?.instancePath.at(-1),
+					});
+			}
+		}
+		return this.diagnosePaths(
+			[...ignored].sort(([a], [b]) => compareStrings(a, b)),
+			(resource, { key, route, kind, name }) =>
+				warningDiagnostic(
+					"route.ignoredAt",
+					{ resource },
+					`"@${key}" does nothing here, because the "${route}" route already governs this ${kind}${name === undefined ? "" : `, so it stays in the name (${name})`}. Remove it, or move the ${kind} out of the "${route}" route's files.`
+				)
 		);
 	}
 

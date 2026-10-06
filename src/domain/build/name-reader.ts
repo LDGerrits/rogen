@@ -10,6 +10,8 @@ export interface FolderReading {
 	readonly invisible: boolean;
 	/** Its whole name, or an `@key` at its end. */
 	readonly route?: string;
+	/** Whether its route is spelled `@key`: a bare `server` may only be a name, but an `@` means to route. */
+	readonly at: boolean;
 	/** Its whole name, or `.variant` parts at its end. */
 	readonly variants: readonly string[];
 	/** Its name with its keys off; none for a folder named after a key alone, which exists only to declare it. */
@@ -83,18 +85,30 @@ export class NameReader {
 	folder(folderName: string): FolderReading {
 		const { name, invisible } =
 			NameReader.unwrapInvisibleFolder(folderName);
+		const bareRoute = this.keys.resolveRoute(name);
 		const route =
-			this.keys.resolveRoute(name) ??
+			bareRoute ??
 			(name.startsWith("@")
 				? this.keys.resolveRoute(name.slice(1))
 				: undefined);
 		if (route)
-			return { invisible, route, variants: [], outrankedName: name };
+			return {
+				invisible,
+				route,
+				at: bareRoute === undefined,
+				variants: [],
+				outrankedName: name,
+			};
 		const variant = this.keys.resolveVariant(
 			name.startsWith(".") ? name.slice(1) : name
 		);
 		if (variant)
-			return { invisible, variants: [variant], outrankedName: name };
+			return {
+				invisible,
+				at: false,
+				variants: [variant],
+				outrankedName: name,
+			};
 
 		const { spans } = this.suffixes(name, false);
 		const variantSpans = spans.filter(({ key }) =>
@@ -104,6 +118,7 @@ export class NameReader {
 		return {
 			invisible,
 			...(routeSpan && { route: routeSpan.key }),
+			at: routeSpan !== undefined,
 			variants: variantSpans.map(({ key }) => key),
 			keptName: NameReader.withoutSpans(
 				name,
