@@ -238,11 +238,14 @@ describe("CoreWatchSession", () => {
 	});
 
 	it("should not rebuild for an update to a meta file the build never read", async () => {
-		await fs.writeFile("/repo/src/Hud.luau", "");
-		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await fs.writeFile("/repo/src/Notes.txt", "");
+		await fs.writeFile("/repo/src/Notes.meta.json", "{}");
 		await start();
 
-		await fs.writeFile("/repo/src/Hud.meta.json", '{"className":"Actor"}');
+		await fs.writeFile(
+			"/repo/src/Notes.meta.json",
+			'{"attributes":{"a":1}}'
+		);
 		await settle();
 
 		expect(updates).toHaveLength(1);
