@@ -52,34 +52,53 @@ describe("NameReadings", () => {
 				);
 
 				expect(
-					entry?.folders.map(({ segment, kind, invisible, dir }) => ({
-						segment,
-						kind,
-						invisible,
-						dir,
-					}))
+					entry?.folders.map(
+						({
+							segment,
+							route,
+							variants,
+							keptName,
+							invisible,
+							dir,
+						}) => ({
+							segment,
+							route,
+							variants,
+							keptName,
+							invisible,
+							dir,
+						})
+					)
 				).toEqual([
 					{
 						segment: "server",
-						kind: "route",
+						route: "server",
+						variants: [],
+						keptName: undefined,
 						invisible: false,
 						dir: "server",
 					},
 					{
 						segment: "(Hidden)",
-						kind: "plain",
+						route: undefined,
+						variants: [],
+						keptName: "Hidden",
 						invisible: true,
 						dir: "server/(Hidden)",
 					},
 					{
 						segment: "mock",
-						kind: "variant",
+						route: undefined,
+						variants: ["mock"],
+						keptName: undefined,
 						invisible: false,
 						dir: "server/(Hidden)/mock",
 					},
 					{
 						segment: "Inventory",
-						kind: "plain",
+						route: undefined,
+						variants: [],
+						keptName: "Inventory",
 						invisible: false,
 						dir: "server/(Hidden)/mock/Inventory",
 					},
@@ -102,7 +121,8 @@ describe("NameReadings", () => {
 				const { folders } = await read();
 
 				expect(folders.get(at("src/Empty"))).toMatchObject({
-					kind: "plain",
+					keptName: "Empty",
+					variants: [],
 					segment: "Empty",
 				});
 			});
@@ -161,15 +181,16 @@ describe("NameReadings", () => {
 				]);
 			});
 
-			it("should read an init folder through its init file", async () => {
+			it("should read an init script like any other file", async () => {
 				await write("src/Inventory/init.server.luau");
 
 				const { entries } = await read();
-				const entry = entries.get(at("src/Inventory"));
+				const entry = entries.get(at("src/Inventory/init.server.luau"));
 
 				expect(entry).toMatchObject({
 					fileName: "init.server.luau",
 					kind: "script",
+					scriptSuffix: "server",
 				});
 				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
 			});

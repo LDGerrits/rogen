@@ -30,6 +30,7 @@ describe("LocationReport", () => {
 			expect(
 				describe1({
 					status: "placed",
+					alsoAt: [],
 					source: "/repo/src/Net/Http@client.luau",
 					instancePath: [
 						"StarterPlayer",
@@ -49,6 +50,7 @@ describe("LocationReport", () => {
 			expect(
 				describe1({
 					status: "placed",
+					alsoAt: [],
 					source: "/repo/src/A.luau",
 					instancePath: ["ReplicatedStorage", "A"],
 					route: "*",
@@ -230,6 +232,7 @@ describe("LocationReport", () => {
 			expect(
 				jsonOf({
 					status: "placed",
+					alsoAt: [],
 					source: "/repo/src/Net/Http@client.luau",
 					instancePath: [
 						"StarterPlayer",
@@ -245,6 +248,7 @@ describe("LocationReport", () => {
 					config: "default",
 					source: "/repo/src/Net/Http@client.luau",
 					status: "placed",
+					alsoAt: [],
 					instancePath: [
 						"StarterPlayer",
 						"StarterPlayerScripts",
@@ -310,6 +314,7 @@ describe("LocationReport", () => {
 		it("should say when no file places an instance, and list the files that do", () => {
 			const placed: FileLocation = {
 				status: "placed",
+				alsoAt: [],
 				source: "/repo/src/Save.luau",
 				instancePath: ["ServerScriptService", "Save"],
 				route: "Server",
@@ -343,6 +348,7 @@ describe("LocationReport", () => {
 				expect.objectContaining({
 					source: "/repo/src/Save.luau",
 					status: "placed",
+					alsoAt: [],
 				}),
 				{ instance: "ServerScriptService.Gone", status: "noFile" },
 			]);

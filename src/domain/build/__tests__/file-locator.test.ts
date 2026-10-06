@@ -86,6 +86,7 @@ describe("CoreBuildService.locate", () => {
 				status: "placed",
 				source: abs("src/Inventory/Server/Save.luau"),
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
+				alsoAt: [],
 				route: "Server",
 				routeMatch: "folder",
 				variants: [],
@@ -99,6 +100,7 @@ describe("CoreBuildService.locate", () => {
 					"Net",
 					"Http",
 				],
+				alsoAt: [],
 				route: "Client",
 				routeMatch: "suffix",
 				variants: [],
@@ -111,6 +113,7 @@ describe("CoreBuildService.locate", () => {
 				status: "placed",
 				source: abs("src/Anti/Check.luau"),
 				instancePath: ["ServerScriptService", "Anti", "Check"],
+				alsoAt: [],
 				route: "Server",
 				routeMatch: "marker",
 				variants: [],
@@ -119,6 +122,7 @@ describe("CoreBuildService.locate", () => {
 				status: "placed",
 				source: abs("src/Util.luau"),
 				instancePath: ["ReplicatedStorage", "Shared", "Util"],
+				alsoAt: [],
 				route: "*",
 				routeMatch: "fallback",
 				variants: [],
@@ -217,6 +221,7 @@ describe("CoreBuildService.locate", () => {
 				status: "placed",
 				source: abs("src/Kept.luau"),
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
+				alsoAt: [],
 				route: "*",
 				routeMatch: "fallback",
 				variants: [],
@@ -533,23 +538,62 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should share the fate of the folder when a dormant variant prunes it", async () => {
+		it("should prune only its init script when that carries a dormant variant", async () => {
 			await write(
 				"src/Combat/Server/Moves/init.mock.luau",
 				"src/Combat/Server/Moves/Punch.luau"
 			);
 
-			const located = await locate(
-				[
-					"src/Combat/Server/Moves",
-					"src/Combat/Server/Moves/Punch.luau",
-				],
-				{ variants: { mock: false } }
-			);
+			const located = await locate(["src/Combat/Server/Moves"], {
+				variants: { mock: false },
+			});
 
-			expect(located.map(({ status }) => status)).toEqual([
-				"pruned",
-				"pruned",
+			expect(
+				located.map(({ source, status }) => [
+					path.basename(source),
+					status,
+				])
+			).toEqual([
+				["Punch.luau", "placed"],
+				["init.mock.luau", "pruned"],
+			]);
+		});
+
+		it("should list every node an init script is copied to, and find it at each", async () => {
+			await write(
+				"src/Net/init.luau",
+				"src/Net/Types.luau",
+				"src/Net/Server/Remote.luau",
+				"src/Net/Client/Listener.luau"
+			);
+			const config = configOf();
+
+			const located = (
+				await locateIn(buildService(), config, {
+					args: [abs("src/Net/init.luau"), "ServerScriptService.Net"],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(located.files).toEqual([
+				{
+					status: "placed",
+					source: abs("src/Net/init.luau"),
+					instancePath: ["ReplicatedStorage", "Shared", "Net"],
+					alsoAt: [
+						["StarterPlayer", "StarterPlayerScripts", "Net"],
+						["ServerScriptService", "Net"],
+					],
+					route: "*",
+					routeMatch: "fallback",
+					variants: [],
+				},
+			]);
+			expect(
+				located.instances[0].files.map(({ source }) => source)
+			).toEqual([
+				abs("src/Net/Server/Remote.luau"),
+				abs("src/Net/init.luau"),
 			]);
 		});
 	});

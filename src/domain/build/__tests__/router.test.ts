@@ -33,6 +33,7 @@ describe("Router", () => {
 				const placement = builder.place(config).unwrap();
 				return {
 					routed: placement.routed,
+					files: placement.files,
 					leftOut: placement.leftOut,
 					globIgnorePaths: tree.globIgnorePaths,
 					unrouted: placement.leftOut
@@ -457,17 +458,17 @@ describe("Router", () => {
 				expect(result.routed).toHaveLength(1);
 			});
 
-			it("should fail when the template mounts a folder inside an init folder, which Rojo reads whole", async () => {
+			it("should keep a mount inside a folder with an init script out of what Rojo reads there", async () => {
 				await write("src/Net/init.luau", "src/Net/Vendor/Lib.luau");
 
-				const result = await route(
-					mounting(["Vendor", "src/Net/Vendor"])
-				);
+				const result = (
+					await route(mounting(["Vendor", "src/Net/Vendor"]))
+				).unwrap();
 
 				expect(
-					result.isErr() &&
-						result.error.diagnostics.map(({ code }) => code)
-				).toEqual(["template.mountsInsideInitFolder"]);
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual(["ReplicatedStorage/shared/Net"]);
+				expect(result.globIgnorePaths).toEqual(["src/Net/Vendor"]);
 			});
 
 			it("should report a mount inside an excluded folder as mounted, and keep the folder out of globIgnorePaths", async () => {
@@ -617,6 +618,41 @@ describe("Router", () => {
 					.unwrap()
 					.routed.map((file) => file.variants);
 
+			it("should keep the name of a Name.variant folder, and prune under it when the variant is off", async () => {
+				await write(
+					"src/Analytics.mock/Service.luau",
+					"src/.mock/Probe.luau"
+				);
+
+				expect(await paths({ variants: { mock: true } })).toEqual([
+					"ReplicatedStorage/shared/Probe",
+					"ReplicatedStorage/shared/Analytics/Service",
+				]);
+				expect(await paths({ variants: { mock: false } })).toEqual([
+					"ReplicatedStorage/shared/Probe",
+					"ReplicatedStorage/shared/Analytics/Service",
+				]);
+				expect(
+					(await route({ variants: { mock: false } })).unwrap().files
+				).toEqual([]);
+			});
+
+			it("should route and vary a folder named with both, and keep its route in the name when an outer route outranks it", async () => {
+				await write(
+					"src/Net.mock@server/Remote.luau",
+					"src/client/Hud.mock@server/Bar.luau"
+				);
+
+				expect(
+					(await route({ variants: { mock: true } }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/Net/Remote",
+					"StarterPlayer/StarterPlayerScripts/Hud@server/Bar",
+				]);
+			});
+
 			it("should remove a variant folder from the path", async () => {
 				await write("src/Analytics/mock/Service.luau");
 
@@ -718,14 +754,23 @@ describe("Router", () => {
 		});
 
 		describe("init folders", () => {
-			it("should route the folder as one unit named after the folder", async () => {
+			const placed = async (overrides: ResolvedConfigSpec = {}) =>
+				(await route(overrides))
+					.unwrap()
+					.files.map(
+						(file) =>
+							`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.isCopy ? " (copy)" : ""}`
+					);
+
+			it("should make an init script its folder and route what sits beside it on its own", async () => {
 				await write(
 					"src/Inventory/Combat/init.luau",
 					"src/Inventory/Combat/Helper.luau"
 				);
 
-				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Combat",
+				expect(await placed()).toEqual([
+					"Inventory/Combat/Helper.luau -> ReplicatedStorage/shared/Inventory/Combat/Helper",
+					"Inventory/Combat/init.luau -> ReplicatedStorage/shared/Inventory/Combat",
 				]);
 			});
 
@@ -735,10 +780,296 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Combat"]);
 			});
 
-			it("should route an init folder by the suffix on its init script", async () => {
-				await write("src/Combat/init.server.luau");
+			it("should route the folder by the route suffix on its init script, as a marker beside it would", async () => {
+				await write(
+					"src/Combat/init.server.luau",
+					"src/Combat/Moves/Punch.luau",
+					"src/Store/init@server.luau",
+					"src/Store/Row.luau"
+				);
 
-				expect(await paths()).toEqual(["ServerScriptService/Combat"]);
+				const files = (await route()).unwrap().routed;
+
+				expect(
+					files.map(
+						(file) =>
+							`${file.instancePath.join("/")} · ${file.routeMatch}`
+					)
+				).toEqual([
+					"ServerScriptService/Combat/Moves/Punch · init",
+					"ServerScriptService/Combat · suffix",
+					"ServerScriptService/Store/Row · init",
+					"ServerScriptService/Store · suffix",
+				]);
+			});
+
+			it("should leave the folder to its other files when the init script that routes it has a dormant variant", async () => {
+				await write(
+					"src/Combat/init.luau",
+					"src/Combat/init.mock.server.luau",
+					"src/Combat/Helper.luau"
+				);
+
+				expect(await placed({ variants: { mock: false } })).toEqual([
+					"Combat/Helper.luau -> ReplicatedStorage/shared/Combat/Helper",
+					"Combat/init.luau -> ReplicatedStorage/shared/Combat",
+				]);
+				expect(await placed({ variants: { mock: true } })).toEqual([
+					"Combat/Helper.luau -> ServerScriptService/Combat/Helper",
+					"Combat/init.mock.server.luau -> ServerScriptService/Combat",
+				]);
+			});
+
+			it("should copy an init script no route sends anywhere to every node its folder becomes", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/Types.luau",
+					"src/Net/server/Remote.luau",
+					"src/Net/client/Listener.luau"
+				);
+
+				expect(await placed()).toEqual([
+					"Net/Types.luau -> ReplicatedStorage/shared/Net/Types",
+					"Net/client/Listener.luau -> StarterPlayer/StarterPlayerScripts/Net/Listener",
+					"Net/init.luau -> ReplicatedStorage/shared/Net",
+					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
+					"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
+					"Net/init.luau -> ServerScriptService/Net (copy)",
+				]);
+			});
+
+			it("should leave out the fallback's own placement of a copied init script that nothing else is left beside", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/server/Remote.luau",
+					"src/Net/client/Listener.luau"
+				);
+
+				const result = (await route()).unwrap();
+
+				expect(await placed()).toEqual([
+					"Net/client/Listener.luau -> StarterPlayer/StarterPlayerScripts/Net/Listener",
+					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
+					"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
+					"Net/init.luau -> ServerScriptService/Net (copy)",
+				]);
+				expect(result.leftOut.count("unrouted")).toBe(0);
+			});
+
+			it("should leave out the fallback's own placements of nested copied init scripts that nothing else is left beside", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/Inner/init.luau",
+					"src/Net/Inner/server/A.luau"
+				);
+
+				expect(await placed()).toEqual([
+					"Net/Inner/server/A.luau -> ServerScriptService/Net/Inner/A",
+					"Net/Inner/init.luau -> ServerScriptService/Net/Inner (copy)",
+					"Net/init.luau -> ServerScriptService/Net (copy)",
+				]);
+			});
+
+			it("should keep the fallback's own placement of an init script whose copies the template displaces", async () => {
+				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
+
+				expect(
+					await placed({
+						template: {
+							file: abs("template.project.json"),
+							project: {
+								name: "game",
+								tree: {
+									$className: "DataModel",
+									ServerScriptService: {
+										Net: { $className: "Folder" },
+									},
+								},
+							},
+						},
+					})
+				).toEqual([
+					"Net/init.luau -> ReplicatedStorage/shared/Net",
+					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
+				]);
+			});
+
+			it("should not copy an init script to a node another init script it can be placed with already is", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/server/init.luau",
+					"src/Net/client/init.dev.luau",
+					"src/Net/client/Hud.luau"
+				);
+
+				const result = (
+					await route({ variants: { dev: false } })
+				).unwrap();
+
+				expect(await placed({ variants: { dev: false } })).toEqual([
+					"Net/client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Net/Hud",
+					"Net/server/init.luau -> ServerScriptService/Net",
+					"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
+				]);
+				expect(result.leftOut.withStatus("replaced")).toEqual([]);
+			});
+
+			it("should copy an init.luau whatever its meta sets, since a RunContext can't make it a Script", async () => {
+				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
+				await fs.writeFile(
+					abs("src/Net/init.meta.json"),
+					'{"properties":{"RunContext":"Server"}}'
+				);
+
+				expect(await placed()).toEqual([
+					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
+					"Net/init.luau -> ServerScriptService/Net (copy)",
+				]);
+			});
+
+			it("should say a copy is one", async () => {
+				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
+
+				const [, copy] = (await route()).unwrap().files;
+
+				expect([copy.route, copy.routeMatch]).toEqual([
+					"server",
+					"copy",
+				]);
+			});
+
+			it("should copy only an init script that is a ModuleScript, since a copied Script runs once per copy", async () => {
+				await write(
+					"src/Net/init.client.luau",
+					"src/Net/game/Remote.luau"
+				);
+
+				expect(
+					await placed({
+						routes: {
+							game: "ServerScriptService",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				).toEqual([
+					"Net/game/Remote.luau -> ServerScriptService/Net/Remote",
+					"Net/init.client.luau -> ReplicatedStorage/shared/Net",
+				]);
+			});
+
+			it("should copy an init script to its folder's nodes even with no fallback route to place it", async () => {
+				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
+
+				const result = (
+					await route({
+						routes: { server: "ServerScriptService" },
+					})
+				).unwrap();
+
+				expect(
+					result.routed.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/Net/Remote",
+					"ServerScriptService/Net",
+				]);
+				expect(result.unrouted).toEqual([]);
+			});
+
+			it("should not copy an init script that a route of its own sends somewhere", async () => {
+				await write(
+					"src/Net/init@shared.luau",
+					"src/Net/server/Remote.luau"
+				);
+
+				expect(
+					await placed({
+						routes: { ...ROUTES, shared: "ReplicatedStorage" },
+					})
+				).toEqual([
+					"Net/init@shared.luau -> ReplicatedStorage/Net",
+					"Net/server/Remote.luau -> ReplicatedStorage/Net/server/Remote",
+				]);
+			});
+
+			it("should copy only to nodes something placed is left at", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/client/Debug.dev.luau"
+				);
+
+				expect(await placed({ variants: { dev: false } })).toEqual([
+					"Net/init.luau -> ReplicatedStorage/shared/Net",
+				]);
+			});
+
+			it("should make an init script with a variant its folder, and let it replace the plain one at every node it is copied to", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/init.mock.luau",
+					"src/Net/server/Remote.luau"
+				);
+
+				expect(await placed({ variants: { mock: true } })).toEqual([
+					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
+					"Net/init.mock.luau -> ServerScriptService/Net (copy)",
+				]);
+			});
+
+			it("should make an init script in a variant or invisible folder the folder above it", async () => {
+				await write(
+					"src/Net/dev/init.luau",
+					"src/Bots/(impl)/init.luau"
+				);
+
+				expect(await placed({ variants: { dev: true } })).toEqual([
+					"Bots/(impl)/init.luau -> ReplicatedStorage/shared/Bots",
+					"Net/dev/init.luau -> ReplicatedStorage/shared/Net",
+				]);
+			});
+
+			it("should fail for an init script with no folder of its own to be", async () => {
+				await write("src/init.luau", "src/server/init.server.luau");
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(
+							({ code, resource }) => `${code} ${resource}`
+						)
+				).toEqual([
+					`tree.initWithoutFolder ${abs("src/init.luau")}`,
+					`tree.initWithoutFolder ${abs("src/server/init.server.luau")}`,
+				]);
+			});
+
+			it("should not fail for an init script with no folder that a dormant variant prunes", async () => {
+				await write("src/init.mock.luau", "src/Save.luau");
+
+				expect(await paths({ variants: { mock: false } })).toEqual([
+					"ReplicatedStorage/shared/Save",
+				]);
+			});
+
+			it("should read roblox-ts's index as init", async () => {
+				await write("src/Lib/index.ts", "src/Lib/Util.ts");
+
+				expect(await placed()).toEqual([
+					"Lib/Util.ts -> ReplicatedStorage/shared/Lib/Util",
+					"Lib/index.ts -> ReplicatedStorage/shared/Lib",
+				]);
+			});
+
+			it("should not read a data file named init, or a name that starts with init, as an init script", async () => {
+				await write(
+					"src/Config/init.json",
+					"src/Config/initialise.luau"
+				);
+
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Config/init",
+					"ReplicatedStorage/shared/Config/initialise",
+				]);
 			});
 		});
 

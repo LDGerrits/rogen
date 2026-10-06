@@ -1,0 +1,3 @@
+{
+	"steps": [["build"], ["where", "src/Net"]]
+}

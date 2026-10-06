@@ -65,23 +65,6 @@ export class TemplateMounts {
 					];
 		});
 	}
-
-	/** Rojo reads an init folder whole, so a mount inside one would sync that path twice. */
-	initFolderErrors(initFolders: readonly string[]): Diagnostic[] {
-		const { file } = this;
-		if (file === undefined) return [];
-		return initFolders.flatMap((folder) =>
-			this.mounts
-				.filter((mount) => isInside(mount.path, folder))
-				.map(({ path: mounted, node }) =>
-					errorDiagnostic(
-						"template.mountsInsideInitFolder",
-						{ resource: file },
-						`"${instanceKey(node)}" mounts ${mounted}, inside the init folder ${folder}, which Rojo reads whole, so it would be synced twice. Mount the init folder itself, or move the mounted folder out of it.`
-					)
-				)
-		);
-	}
 }
 
 /** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */

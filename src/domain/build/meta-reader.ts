@@ -74,28 +74,38 @@ export class MetaReader {
 				root.metaFiles.map((file) => path.join(root.rootDir, file))
 			)
 		);
-		for (const { entry } of placement.files) {
+		for (const file of placement.files) {
+			const { entry } = file;
 			if (
+				runContexts.has(entry.source) ||
 				placement.readings.entryAt(entry.source).scriptSuffix ===
-				undefined
+					undefined
 			)
 				continue;
 
-			if (entry.kind === "init-folder") {
+			// A folder's meta reaches its init script, read through the folder or copied onto it, over the script's own.
+			if (file.isInit) {
 				const meta = folderMeta.find(
-					({ folder }) => folder === entry.source
+					({ folder }) => folder === path.posix.dirname(entry.source)
 				);
-				runContexts.set(entry.source, meta?.properties?.RunContext);
-				continue;
+				if (meta?.properties?.RunContext !== undefined) {
+					runContexts.set(entry.source, meta.properties.RunContext);
+					continue;
+				}
 			}
-			const file = path.join(
+			const metaFile = path.join(
 				entry.rootDir,
 				path.dirname(entry.relativePath),
 				new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
 			);
-			if (!metaFiles.has(file)) continue;
-			scriptMetaFiles.push(file);
-			const parsed = await this.readMeta(file);
+			if (
+				!metaFiles.has(metaFile) ||
+				scriptMetaFiles.includes(metaFile) ||
+				folderMeta.some((meta) => meta.file === metaFile)
+			)
+				continue;
+			scriptMetaFiles.push(metaFile);
+			const parsed = await this.readMeta(metaFile);
 			if (parsed.isOk())
 				runContexts.set(
 					entry.source,

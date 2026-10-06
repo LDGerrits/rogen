@@ -43,25 +43,29 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
-		describe("isInitScript", () => {
+		describe("isInit", () => {
 			it.each([
 				"init.luau",
-				"index.ts",
+				"init.lua",
 				"init.server.luau",
 				"init.client.lua",
-				"Init.luau",
+				"init.plugin.luau",
 			])("should accept %s", (name) => {
-				expect(new RojoFile(name).isInitScript).toBe(true);
+				expect(new RojoFile(name).isInit).toBe(true);
 			});
 
 			it.each([
+				"Init.luau",
+				"index.ts",
+				"index.luau",
+				"init.mock.luau",
+				"init.local.luau",
+				"init@server.luau",
 				"init.json",
 				"initial.luau",
-				"Save.luau",
 				"init.meta.json",
-				"init-server.luau",
 			])("should reject %s", (name) => {
-				expect(new RojoFile(name).isInitScript).toBe(false);
+				expect(new RojoFile(name).isInit).toBe(false);
 			});
 		});
 

@@ -13,7 +13,7 @@ import {
 	isServerOnlyService,
 	scriptFate,
 } from "../roblox/roblox.js";
-import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
+import { RojoFile, RojoScriptSuffix, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
@@ -43,6 +43,7 @@ export class BuildValidator {
 			...this.variantTypo(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
+			...this.ignoredAt(),
 			...this.deadScript(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
@@ -167,10 +168,10 @@ export class BuildValidator {
 		);
 	}
 
-	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
-	private serverCodeShipped(): Diagnostic[] {
+	/** The files a server route names but a replicating one governs, with the server routes ignored. */
+	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
-		const shipped = this.placement.files.flatMap((file) => {
+		return this.placement.files.flatMap((file) => {
 			const ignored = [...new Set(file.ignoredRoutes)].filter((key) => {
 				const service = routes.get(key)?.service;
 				return service !== undefined && isServerOnlyService(service);
@@ -185,6 +186,32 @@ export class BuildValidator {
 				? [{ file, ignored }]
 				: [];
 		});
+	}
+
+	/** An `@` an outer route outranks does nothing; the files it ships to clients are reported as such instead. */
+	private ignoredAt(): Diagnostic[] {
+		const shipped = new Set(
+			this.shipped().map(({ file }) => file.entry.source)
+		);
+		const ignored = this.placement.files.flatMap((file) =>
+			file.ignoredAt !== undefined &&
+			!file.isCopy &&
+			!shipped.has(file.entry.source)
+				? [[file.entry.source, file] as const]
+				: []
+		);
+		return this.diagnosePaths(ignored, (resource, file) =>
+			warningDiagnostic(
+				"route.ignoredAt",
+				{ resource },
+				`"@${file.ignoredAt}" does nothing here, because the "${file.route}" route already governs this file${file.isInit ? "" : `, so it stays in the name (${file.instancePath[file.instancePath.length - 1]})`}. Remove it, or move the file out of the "${file.route}" route's files.`
+			)
+		);
+	}
+
+	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
+	private serverCodeShipped(): Diagnostic[] {
+		const shipped = this.shipped();
 		if (shipped.length === 0) return [];
 
 		const quoted = (keys: Iterable<string>) =>
@@ -254,19 +281,22 @@ export class BuildValidator {
 			: `a Script with RunContext ${run}`;
 	}
 
+	/** One warning per file, though a copied init script is routed more than once. */
 	private buriedScriptSuffix(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		return routed.flatMap((file) =>
-			file.buriedScriptSuffix &&
-			leftOut.get(file.entry.source)?.status !== "pruned"
-				? [
-						warningDiagnostic(
-							"variant.buriedScriptSuffix",
-							{ resource: file.entry.source },
-							`".${file.buriedScriptSuffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${file.buriedScriptSuffix}.luau.`
-						),
-					]
-				: []
+		const buried = new Map<string, RojoScriptSuffix>();
+		for (const { entry, buriedScriptSuffix } of routed)
+			if (
+				buriedScriptSuffix &&
+				leftOut.get(entry.source)?.status !== "pruned"
+			)
+				buried.set(entry.source, buriedScriptSuffix);
+		return [...buried].map(([source, suffix]) =>
+			warningDiagnostic(
+				"variant.buriedScriptSuffix",
+				{ resource: source },
+				`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
+			)
 		);
 	}
 
@@ -347,13 +377,13 @@ export class BuildValidator {
 	): Diagnostic {
 		const { entry } = file;
 		const location = { resource: meta.file };
-		if (entry.kind === "init-folder")
+		const fileName = path.posix.basename(entry.relativePath);
+		if (file.isInit)
 			return warningDiagnostic(
 				"meta.sharedWithScript",
 				location,
-				`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, RojoFile.INIT_META)} instead.`
+				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(path.posix.dirname(entry.source), RojoFile.INIT_META)} instead.`
 			);
-		const fileName = path.posix.basename(entry.relativePath);
 		const fix =
 			new RojoFile(fileName).metaFile ??
 			`${fileName}${RojoFile.META_SUFFIX}`;

@@ -1,3 +1,4 @@
+import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -10,6 +11,7 @@ import {
 	RojoProject,
 	instanceKey,
 } from "../rojo/rojo-project.js";
+import { InstancelessFolder } from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
@@ -85,7 +87,7 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly templateNode: RojoNode;
 	  }
-	/** A file is what Rojo reads at the node, so every meta reaching it applies to nothing. */
+	/** A file other than the folder's init script is what Rojo reads at the node, so every meta reaching it applies to nothing. */
 	| {
 			readonly kind: "shared";
 			readonly instance: string;
@@ -103,13 +105,6 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly folder: InstancelessFolder;
 	  };
-
-/** A folder that never becomes an instance, as a warning names it. */
-export type InstancelessFolder =
-	| "a root dir"
-	| "a routing folder"
-	| "a variant folder"
-	| "an invisible folder";
 
 interface ReachedNode {
 	readonly instancePath: readonly string[];
@@ -162,7 +157,15 @@ export class FolderMetaApplier {
 			...displaced.map(({ file }) => file),
 		])) {
 			const instance = instanceKey(nodePath);
-			const metas = [...node.dirs]
+			const shared = sharedWithFile.get(nodePath);
+			// A node's file can be the init script of a folder that names it, which is that folder itself, so that folder's meta reaches it.
+			const ownDir = shared?.isInit
+				? joinPosix(
+						shared.entry.rootDir,
+						shared.folderNodes[shared.folderNodes.length - 1].dir
+					)
+				: undefined;
+			const reached = [...node.dirs]
 				.filter((dir) => !this.collapsed.covers(dir))
 				.flatMap((dir) => this.metaByDir.get(dir) ?? [])
 				.sort(
@@ -170,9 +173,9 @@ export class FolderMetaApplier {
 						config.rootDirs.indexOf(a.rootDir) -
 						config.rootDirs.indexOf(b.rootDir)
 				);
-			if (metas.length === 0) continue;
+			if (reached.length === 0) continue;
 
-			for (const clash of this.sameRootClashes(metas)) {
+			for (const clash of this.sameRootClashes(reached)) {
 				const key = clash.map(({ file }) => file).join("\0");
 				if (reportedClashes.has(key)) continue;
 				reportedClashes.add(key);
@@ -183,16 +186,29 @@ export class FolderMetaApplier {
 				);
 			}
 
-			const shared = sharedWithFile.get(nodePath);
-			if (shared) {
+			const others = shared
+				? reached.filter(({ folder }) => folder !== ownDir)
+				: [];
+			if (shared && others.length > 0)
 				outcomes.push({
 					kind: "shared",
 					instance,
-					metas,
+					metas: others,
 					file: shared,
 				});
-				continue;
-			}
+			// Rojo applies the meta of the directory it reads for an init script itself.
+			const metas = shared
+				? reached.filter(
+						({ folder }) =>
+							folder === ownDir &&
+							!(
+								this.placement.readsThroughDir(shared) &&
+								folder ===
+									path.posix.dirname(shared.entry.source)
+							)
+					)
+				: reached;
+			if (metas.length === 0) continue;
 
 			const meta = metas[metas.length - 1];
 			const templateNode = template.getNode(node.instancePath);
@@ -220,15 +236,10 @@ export class FolderMetaApplier {
 		const folderOf = ({
 			rootDir,
 			dir,
-		}: FolderMeta): InstancelessFolder | undefined => {
-			if (dir === "") return "a root dir";
-			const key = joinPosix(rootDir, dir);
-			if (named.has(key)) return undefined;
-			const folder = readings.folders.get(key);
-			if (folder?.kind === "route") return "a routing folder";
-			if (folder?.kind === "variant") return "a variant folder";
-			return folder?.invisible ? "an invisible folder" : undefined;
-		};
+		}: FolderMeta): InstancelessFolder | undefined =>
+			dir !== "" && named.has(joinPosix(rootDir, dir))
+				? undefined
+				: readings.instanceless(rootDir, dir);
 		return [...this.metaByDir.values()].flatMap((meta) => {
 			const folder = folderOf(meta);
 			return folder ? [{ kind: "appliesToNothing", meta, folder }] : [];

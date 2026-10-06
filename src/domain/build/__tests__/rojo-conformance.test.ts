@@ -13,6 +13,7 @@ import {
 	describeWithRojo,
 	makeRojoDir,
 	sourcemap,
+	sourcemapError,
 } from "../../rojo/__tests__/rojo-cli.js";
 import { buildServiceOf } from "./fixtures.js";
 
@@ -175,5 +176,66 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
 			"ServerScriptService/Inv/Stats <- src/Inv/Stats.server.meta.json",
 		]);
+	});
+
+	it("should make an init script every node its folder becomes, alone or through its directory", async () => {
+		const meta = '{"attributes":{"a":1}}';
+		writeFiles({
+			"Net/init.luau": "",
+			"Net/init.meta.json": meta,
+			"Net/Types.luau": "",
+			"Net/server/Remote.luau": "",
+			"Net/client/Listener.luau": "",
+			"Bots/init.luau": "",
+			"Bots/init.mock.server.luau": "",
+			"Bots/init.meta.json": meta,
+			"Bots/Brain.luau": "",
+		});
+		await rogenTree({
+			routes: {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			},
+			variants: { mock: true },
+		});
+
+		const tree = sourcemap(dir, "ours.project.json");
+		expect(placed(tree)).toEqual(
+			[
+				"ReplicatedStorage: ReplicatedStorage",
+				"ReplicatedStorage/Net: ModuleScript",
+				"ReplicatedStorage/Net/Types: ModuleScript",
+				"ServerScriptService: ServerScriptService",
+				"ServerScriptService/Bots: Script",
+				"ServerScriptService/Bots/Brain: ModuleScript",
+				"ServerScriptService/Net: ModuleScript",
+				"ServerScriptService/Net/Remote: ModuleScript",
+				"StarterPlayer: StarterPlayer",
+				"StarterPlayer/StarterPlayerScripts: StarterPlayerScripts",
+				"StarterPlayer/StarterPlayerScripts/Net: ModuleScript",
+				"StarterPlayer/StarterPlayerScripts/Net/Listener: ModuleScript",
+			].sort()
+		);
+		expect(metaApplied(tree)).toEqual([
+			"ReplicatedStorage/Net <- src/Net/init.meta.json",
+			"ServerScriptService/Net <- src/Net/init.meta.json",
+			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
+		]);
+	});
+
+	it("should refuse a RunContext in the meta of an init.luau, so no meta makes a copied init script run", () => {
+		writeFiles({
+			"Net/init.luau": "",
+			"Net/init.meta.json": '{"properties":{"RunContext":"Server"}}',
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src/Net" } })
+		);
+
+		expect(sourcemapError(dir, "rojo.project.json")).toContain(
+			"Unknown property ModuleScript.RunContext"
+		);
 	});
 });

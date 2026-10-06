@@ -3,6 +3,8 @@ import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { isDirectoryType } from "../../platform/fs/file-system-service.js";
+import { RojoFile } from "../rojo/rojo.js";
 import {
 	InstanceMap,
 	RojoProject,
@@ -16,7 +18,6 @@ import {
 } from "./folder-meta.js";
 import { BuildMeta } from "./meta-reader.js";
 import { Placement } from "./placement.js";
-import { rojoNameOf } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
 
 /** A placed build with its tree; what the rules report on. */
@@ -51,7 +52,8 @@ class Collapsed implements CollapsedDirs {
 interface PlacedEntry {
 	readonly file: RoutedFile;
 	readonly source: string;
-	readonly rojoName: string;
+	/** None for an init script Rojo reads as the directory itself. */
+	readonly rojoName: string | undefined;
 }
 
 /** Turns a placed build and the meta it read into its Rojo tree. */
@@ -84,9 +86,10 @@ export class TreeAssembler {
 
 	/** Merges the placed files into `project`, collapsing a directory into one `$path` where Rojo would see the same files. */
 	private merge(
-		{ layout, template, files, leftOut: allLeftOut }: Placement,
+		placement: Placement,
 		project: RojoProject
 	): { collapsed: Collapsed; globIgnorePaths: string[] } {
+		const { layout, template, files, leftOut: allLeftOut } = placement;
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
@@ -105,7 +108,7 @@ export class TreeAssembler {
 			.sort(compareStrings);
 		const collapsed = new Collapsed(
 			this.collapsibleDirs(
-				files,
+				placement,
 				leftOut.map(([source]) => source),
 				(instancePath) => template.getNode(instancePath) !== undefined
 			)
@@ -113,11 +116,20 @@ export class TreeAssembler {
 
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNode(instancePath, { $path: layout.syncPath(dir) });
-		for (const { entry, instancePath } of files) {
+		const initDirs = new Map<string, string>();
+		for (const file of files) {
+			const { entry, instancePath } = file;
 			if (collapsed.covers(entry.source)) continue;
-			project.insertNode(instancePath, {
-				$path: layout.syncPath(entry.source),
-			});
+			if (placement.readsThroughDir(file)) {
+				const dir = path.posix.dirname(entry.source);
+				initDirs.set(dir, path.posix.basename(entry.source));
+				project.insertNode(instancePath, {
+					$path: layout.syncPath(dir),
+				});
+			} else
+				project.insertNode(instancePath, {
+					$path: layout.syncPath(entry.source),
+				});
 		}
 
 		return {
@@ -128,18 +140,46 @@ export class TreeAssembler {
 					...ignored.map(
 						(source) => layout.syncPath(source).optional
 					),
+					...[...initDirs].flatMap(([dir, init]) =>
+						this.besideInit(placement, dir, init)
+					),
 				]),
 			],
 		};
 	}
 
+	/** What Rojo would read beside the init script `init` in `dir`, which every node it is leaves to the nodes those files are placed at. */
+	private besideInit(
+		placement: Placement,
+		dir: string,
+		init: string
+	): string[] {
+		const { layout, roots } = placement;
+		const root = roots.find((candidate) =>
+			isInside(dir, toPosix(candidate.rootDir))
+		);
+		return [...(root?.listing(path.normalize(dir)) ?? [])].flatMap(
+			([name, type]) => {
+				const sibling = path.posix.join(dir, name);
+				const read =
+					isDirectoryType(type) ||
+					(name !== init && new RojoFile(name).kind !== undefined);
+				return read && !layout.isReadOnly(sibling)
+					? [layout.syncPath(sibling).optional]
+					: [];
+			}
+		);
+	}
+
 	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
 	private collapsibleDirs(
-		files: readonly RoutedFile[],
+		placement: Placement,
 		leftOut: readonly string[],
 		isReserved: (instancePath: readonly string[]) => boolean
 	): Map<string, readonly string[]> {
-		const placed = files.map((file) => this.placeEntry(file));
+		const placed = placement.files.map((file) =>
+			this.placeEntry(placement, file)
+		);
 		const claims = new InstanceMap<number>();
 		const entriesByDir = new Map<string, PlacedEntry[]>();
 		const namedDirs = new Set<string>();
@@ -195,7 +235,10 @@ export class TreeAssembler {
 		let base: readonly string[] | undefined;
 		for (const { source, rojoName, file } of entries) {
 			const below = path.posix.relative(dir, source).split("/");
-			const expected = [...below.slice(0, -1), rojoName];
+			const expected = [
+				...below.slice(0, -1),
+				...(rojoName === undefined ? [] : [rojoName]),
+			];
 			const head = file.instancePath.slice(
 				0,
 				file.instancePath.length - expected.length
@@ -213,11 +256,14 @@ export class TreeAssembler {
 		return base;
 	}
 
-	private placeEntry(file: RoutedFile): PlacedEntry {
+	private placeEntry(placement: Placement, file: RoutedFile): PlacedEntry {
+		const { source } = file.entry;
 		return {
 			file,
-			source: file.entry.source,
-			rojoName: rojoNameOf(file.entry),
+			source,
+			rojoName: placement.readsThroughDir(file)
+				? undefined
+				: new RojoFile(path.posix.basename(source)).instanceName,
 		};
 	}
 }

@@ -61,6 +61,17 @@ export function sourcemap(dir: string, projectFile: string): SourcemapNode {
 	return JSON.parse(result.stdout);
 }
 
+/** Fails the test when Rojo accepts the project file. */
+export function sourcemapError(dir: string, projectFile: string): string {
+	const result = runRojo(dir, [
+		"sourcemap",
+		"--include-non-scripts",
+		projectFile,
+	]);
+	expect(result.status).not.toBe(0);
+	return result.stderr;
+}
+
 export function classes(node: SourcemapNode, prefix = ""): string[] {
 	const here = prefix ? `${prefix}/${node.name}` : node.name;
 	return [

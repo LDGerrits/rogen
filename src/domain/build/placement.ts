@@ -1,16 +1,20 @@
 import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import path from "path";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader, NameReadings } from "./name-reader.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { RoutedFile, Router } from "./router.js";
+import { HomelessInit, RoutedFile, Router } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
@@ -80,6 +84,16 @@ export class Placement {
 		/** The routed files the template displaced, in scan order. */
 		readonly displaced: readonly DisplacedFile[]
 	) {}
+
+	/** Whether Rojo reads an init script through the directory it sits in, since it never reads a file with its init name alone. */
+	readsThroughDir(file: RoutedFile): boolean {
+		return (
+			file.isInit &&
+			new RojoFile(
+				path.basename(this.layout.emittedPath(file.entry.source))
+			).isInit
+		);
+	}
 
 	/** Meta no file claims, across every root dir; computed once. */
 	unclaimedMeta(): UnclaimedMeta[] {
@@ -159,31 +173,29 @@ export class Placer {
 		const rootDirMounts = mounts.rootDirErrors(this.config.rootDirs);
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
-		const initFolderMounts = mounts.initFolderErrors(
-			roots.flatMap((root) =>
-				root.entries
-					.filter((entry) => entry.kind === "init-folder")
-					.map((entry) =>
-						path.join(entry.rootDir, entry.relativePath)
-					)
-			)
-		);
-		if (initFolderMounts.length > 0) return err(initFolderMounts);
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, unrouted } = new Router(
+		const { routed, unrouted, homeless } = new Router(
 			keys,
 			this.config.routes,
-			readings
+			readings,
+			this.config.variants,
+			this.layout.initNames
 		).route(roots);
+		const homelessErrors = this.homelessErrors(homeless);
+		if (homelessErrors.length > 0) return err(homelessErrors);
 		const applied = this.applyVariants(routed);
 		if (applied.isErr()) return applied;
-		const templating = this.yieldToTemplate(applied.value.files);
+		const files = this.withoutLoneInits(applied.value.files);
+		const templating = this.yieldToTemplate(files);
+		const placed = new Set(files.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
-			unrouted.map((source): [string, LeftOut] => [
-				source,
-				{ status: "unrouted" },
-			]),
+			unrouted
+				.filter((source) => !placed.has(source))
+				.map((source): [string, LeftOut] => [
+					source,
+					{ status: "unrouted" },
+				]),
 			applied.value.leftOut,
 			templating.leftOut
 		);
@@ -214,6 +226,55 @@ export class Placer {
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
 	}
 
+	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
+	private homelessErrors(homeless: readonly HomelessInit[]): Diagnostic[] {
+		return homeless
+			.filter(({ variants }) =>
+				variants.every(({ variant }) => this.config.variants[variant])
+			)
+			.map(({ source, folder }) =>
+				errorDiagnostic(
+					"tree.initWithoutFolder",
+					{ resource: source },
+					`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
+				)
+			);
+	}
+
+	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the template keeps carries it. Repeats, since a dropped init script empties the folders above it. */
+	private withoutLoneInits(
+		files: readonly RoutedFile[]
+	): readonly RoutedFile[] {
+		let kept = files;
+		for (;;) {
+			const named = new InstanceMap<true>();
+			for (const { folderNodes, isCopy, isInit } of kept)
+				if (!isCopy)
+					for (const { instancePath } of isInit
+						? folderNodes.slice(0, -1)
+						: folderNodes)
+						named.set(instancePath, true);
+			const copies = kept.filter(
+				({ isCopy, instancePath }) => isCopy && named.get(instancePath)
+			);
+			const carried = new Set(
+				copies
+					.filter((copy) => !this.template.displacing(copy))
+					.map(({ entry }) => entry.source)
+			);
+			const next = kept.filter(
+				({ isCopy, isInit, entry, instancePath }) =>
+					isCopy
+						? named.get(instancePath)
+						: !isInit ||
+							!carried.has(entry.source) ||
+							named.get(instancePath)
+			);
+			if (next.length === kept.length) return kept;
+			kept = next;
+		}
+	}
+
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */
 	private applyVariants(
 		routed: readonly RoutedFile[]
@@ -233,6 +294,8 @@ export class Placer {
 		}
 
 		const problems = new DiagnosticCollector();
+		// A copied init script meets the same files at every node it is copied to, so each is reported once.
+		const reported = new Set<string>();
 		const clashes: InstanceClash[] = [];
 		const winners = new InstanceMap<RoutedFile>();
 		for (const root of groupBy(
@@ -250,6 +313,8 @@ export class Placer {
 				);
 				if (variantFiles.length > 1) {
 					for (const { entry } of variantFiles) {
+						if (reported.has(entry.source)) continue;
+						reported.add(entry.source);
 						const others = variantFiles
 							.filter((other) => other.entry !== entry)
 							.map((other) => other.entry.source);

@@ -21,7 +21,7 @@ const DATA_EXTENSIONS: readonly string[] = [
 	".yaml",
 	".yml",
 ];
-const INIT_SCRIPT = /^(init|index)([.@][a-z0-9_]+)?\./i;
+const INIT_FILE = /^init(\.(server|client|plugin))?\.luau?$/;
 
 /** A file name as Rojo reads it: what it turns the file into, and which names it takes from it. */
 export class RojoFile {
@@ -32,7 +32,8 @@ export class RojoFile {
 		".tsx",
 	];
 	static readonly META_SUFFIX = ".meta.json";
-	static readonly INIT_META = `init${RojoFile.META_SUFFIX}`;
+	static readonly INIT_NAME = "init";
+	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
 
 	readonly stem: string;
 
@@ -72,8 +73,9 @@ export class RojoFile {
 		return undefined;
 	}
 
-	get isInitScript(): boolean {
-		return this.kind === "script" && INIT_SCRIPT.test(this.name);
+	/** Whether Rojo reads the file as its folder, which also means a `$path` can't point at it. */
+	get isInit(): boolean {
+		return INIT_FILE.test(this.name);
 	}
 
 	/** The name Rojo gives the file when it enumerates the directory itself. */

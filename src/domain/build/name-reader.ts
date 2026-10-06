@@ -3,22 +3,27 @@ import { joinPosix, stemOf } from "../../base/path.js";
 import { closestMatch, editDistance } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
-import { ScannedEntry, ScannedRoot, namingFileOf } from "./root-scanner.js";
+import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
-/** Whether a folder routes, carries a variant or is ordinary. */
-export type FolderReading =
-	| {
-			readonly kind: "route" | "variant";
-			readonly key: string;
-			readonly invisible: boolean;
-			/** What a route folder written `Name@key` keeps as its name; a plain or bare `@key` folder keeps none. */
-			readonly keptName?: string;
-	  }
-	| {
-			readonly kind: "plain";
-			readonly name: string;
-			readonly invisible: boolean;
-	  };
+/** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
+export interface FolderReading {
+	readonly invisible: boolean;
+	/** Its whole name, or an `@key` at its end. */
+	readonly route?: string;
+	/** Its whole name, or `.variant` parts at its end. */
+	readonly variants: readonly string[];
+	/** Its name with its keys off; none for a folder named after a key alone, which exists only to declare it. */
+	readonly keptName?: string;
+	/** The name it keeps when an outer route outranks its own: only its variants come off. */
+	readonly outrankedName: string;
+}
+
+/** A folder that never becomes an instance, as a warning names it. */
+export type InstancelessFolder =
+	| "a root dir"
+	| "a routing folder"
+	| "a variant folder"
+	| "an invisible folder";
 
 export interface SuffixSpan {
 	readonly key: string;
@@ -74,27 +79,44 @@ export class NameReader {
 			: { name: inner, invisible: true };
 	}
 
-	/** Whether a folder routes, carries a variant or is ordinary; parentheses come off first. */
+	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
 	folder(folderName: string): FolderReading {
 		const { name, invisible } =
 			NameReader.unwrapInvisibleFolder(folderName);
-		const route = this.keys.resolveRoute(name);
-		if (route) return { kind: "route", key: route, invisible };
-		const variant = this.keys.resolveVariant(name);
-		if (variant) return { kind: "variant", key: variant, invisible };
-		const at = name.lastIndexOf("@");
-		const atKey =
-			at >= 0 ? this.keys.resolveRoute(name.slice(at + 1)) : undefined;
-		if (atKey) {
-			const keptName = name.slice(0, at);
-			return {
-				kind: "route",
-				key: atKey,
-				invisible,
-				...(keptName !== "" && { keptName }),
-			};
-		}
-		return { kind: "plain", name, invisible };
+		const route =
+			this.keys.resolveRoute(name) ??
+			(name.startsWith("@")
+				? this.keys.resolveRoute(name.slice(1))
+				: undefined);
+		if (route)
+			return { invisible, route, variants: [], outrankedName: name };
+		const variant = this.keys.resolveVariant(
+			name.startsWith(".") ? name.slice(1) : name
+		);
+		if (variant)
+			return { invisible, variants: [variant], outrankedName: name };
+
+		const { spans } = this.suffixes(name, false);
+		const variantSpans = spans.filter(({ key }) =>
+			this.keys.isVariant(key)
+		);
+		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
+		return {
+			invisible,
+			...(routeSpan && { route: routeSpan.key }),
+			variants: variantSpans.map(({ key }) => key),
+			keptName: NameReader.withoutSpans(
+				name,
+				routeSpan ? [...variantSpans, routeSpan] : variantSpans
+			),
+			outrankedName: NameReader.withoutSpans(name, variantSpans),
+		};
+	}
+
+	/** A dot part at the end of a folder name that is one edit from a declared variant. */
+	folderVariantTypo(folderName: string): VariantTypo | undefined {
+		const { name } = NameReader.unwrapInvisibleFolder(folderName);
+		return this.suffixes(name, false).variantTypo;
 	}
 
 	/** The `@` in a folder name that no declared route follows. */
@@ -114,16 +136,16 @@ export class NameReader {
 		};
 	}
 
-	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. */
-	suffixes(stem: string): SuffixMatch {
+	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. `dotRoutes` reads Rojo's `.server`/`.client`, which only a file has. */
+	suffixes(stem: string, dotRoutes = true): SuffixMatch {
 		let remaining = stem;
 		const matched = new Set<string>();
 		const spans: SuffixSpan[] = [];
 
 		for (
-			let span = this.trailingSpan(remaining);
+			let span = this.trailingSpan(remaining, dotRoutes);
 			span;
-			span = this.trailingSpan(remaining)
+			span = this.trailingSpan(remaining, dotRoutes)
 		) {
 			matched.add(span.key);
 			remaining = remaining.slice(0, span.start);
@@ -140,14 +162,17 @@ export class NameReader {
 	}
 
 	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */
-	private trailingSpan(remaining: string): SuffixSpan | undefined {
+	private trailingSpan(
+		remaining: string,
+		dotRoutes: boolean
+	): SuffixSpan | undefined {
 		const dot = remaining.lastIndexOf(".");
 		const at = remaining.lastIndexOf("@");
 		if (dot > at) {
 			const part = remaining.slice(dot + 1);
 			const key =
 				this.keys.resolveVariant(part) ??
-				(DOT_ROUTE_KEYS.has(part)
+				(dotRoutes && DOT_ROUTE_KEYS.has(part)
 					? this.keys.resolveRoute(part)
 					: undefined);
 			return key && dot > 0
@@ -172,6 +197,21 @@ export class NameReader {
 		return variant ? { text, variant } : undefined;
 	}
 
+	/** Spans start past the first character, so a name never loses all of it. */
+	private static withoutSpans(
+		name: string,
+		spans: readonly SuffixSpan[]
+	): string {
+		return [...spans]
+			.sort((a, b) => b.start - a.start)
+			.reduce(
+				(kept, span) =>
+					kept.slice(0, span.start) +
+					kept.slice(span.start + span.length),
+				name
+			);
+	}
+
 	private strayAt(name: string): StrayAt | undefined {
 		const at = name.lastIndexOf("@");
 		if (at < 0) return undefined;
@@ -192,6 +232,7 @@ export type FolderRead = FolderReading & {
 	readonly dir: string;
 	readonly nearMissKey?: string;
 	readonly strayAt?: StrayAt;
+	readonly variantTypo?: VariantTypo;
 };
 
 export interface MarkerRead {
@@ -200,11 +241,10 @@ export interface MarkerRead {
 	readonly nearMissKey: string | undefined;
 }
 
-/** An entry read once: its folders and the suffixes on the file that carries its name. */
+/** An entry read once: its folders and the suffixes on its name. */
 export interface EntryRead {
 	/** The folders above the entry, outermost first. */
 	readonly folders: readonly FolderRead[];
-	/** The file whose stem carries the suffixes: an init folder's script, or the file itself. */
 	readonly fileName: string;
 	readonly kind: RojoFileKind;
 	readonly stem: string;
@@ -225,7 +265,7 @@ export class NameReadings {
 	readonly nearMisses = new Map<string, string>();
 	/** Each folder above an entry, or entry, with an `@` that doesn't route; first found first. */
 	readonly strayAts = new Map<string, StrayAt>();
-	/** Each entry whose name ends in a dot part one edit from a declared variant; first found first. */
+	/** Each folder above an entry, or entry, whose name ends in a dot part one edit from a declared variant; first found first. */
 	readonly variantTypos = new Map<string, VariantTypo>();
 
 	constructor(
@@ -266,10 +306,10 @@ export class NameReadings {
 					const resource = joinPosix(root.rootDir, folder.dir);
 					this.noteNearMiss(resource, folder.nearMissKey);
 					this.noteStrayAt(resource, folder.strayAt);
+					this.noteVariantTypo(resource, folder.variantTypo);
 				}
 				this.noteStrayAt(entry.source, match.strayAt);
-				if (match.variantTypo && !this.variantTypos.has(entry.source))
-					this.variantTypos.set(entry.source, match.variantTypo);
+				this.noteVariantTypo(entry.source, match.variantTypo);
 			}
 		}
 	}
@@ -281,9 +321,27 @@ export class NameReadings {
 		return read;
 	}
 
+	/** Why the folder `dir` of a root dir can never become an instance by its name; `undefined` for one that can, if a route places something through it. */
+	instanceless(rootDir: string, dir: string): InstancelessFolder | undefined {
+		if (dir === "") return "a root dir";
+		const folder = this.folders.get(joinPosix(rootDir, dir));
+		if (folder?.keptName !== undefined)
+			return folder.invisible ? "an invisible folder" : undefined;
+		if (folder?.route !== undefined) return "a routing folder";
+		return folder?.variants.length ? "a variant folder" : undefined;
+	}
+
 	private noteNearMiss(resource: string, key: string | undefined): void {
 		if (key && !this.nearMisses.has(resource))
 			this.nearMisses.set(resource, key);
+	}
+
+	private noteVariantTypo(
+		resource: string,
+		typo: VariantTypo | undefined
+	): void {
+		if (typo && !this.variantTypos.has(resource))
+			this.variantTypos.set(resource, typo);
 	}
 
 	private noteStrayAt(resource: string, strayAt: StrayAt | undefined): void {
@@ -297,18 +355,22 @@ export class NameReadings {
 		if (!read) {
 			const segment = path.posix.basename(dir);
 			const reading = this.reader.folder(segment);
+			const plain =
+				reading.route === undefined && reading.variants.length === 0;
 			read = {
 				...reading,
 				segment,
 				dir,
-				nearMissKey:
-					reading.kind === "plain"
-						? this.keys.nearMiss(reading.name)
-						: undefined,
+				nearMissKey: plain
+					? this.keys.nearMiss(reading.outrankedName)
+					: undefined,
 				strayAt:
-					reading.kind === "plain"
+					reading.route === undefined
 						? this.reader.folderStrayAt(segment)
 						: undefined,
+				variantTypo: plain
+					? this.reader.folderVariantTypo(segment)
+					: undefined,
 			};
 			this.folders.set(key, read);
 		}
@@ -328,12 +390,13 @@ export class NameReadings {
 		return above;
 	}
 
-	private static suffixedNameOf(entry: ScannedEntry): {
+	private static suffixedNameOf(entry: ScannedFile): {
 		readonly fileName: string;
 		readonly kind: RojoFileKind;
 		readonly stem: string;
 	} {
-		const { fileName, kind } = namingFileOf(entry);
+		const { kind } = entry;
+		const fileName = path.posix.basename(entry.relativePath);
 		const stem = stemOf(fileName);
 		return {
 			fileName,

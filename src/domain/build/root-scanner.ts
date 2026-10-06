@@ -20,55 +20,6 @@ export interface ScannedFile {
 	readonly source: string;
 }
 
-/** A script Rojo reads as part of an init folder. */
-export interface InitFolderMember {
-	/** The absolute POSIX source path. */
-	readonly source: string;
-	/** Its instance path below the folder's; empty for the init script, which is the folder itself. */
-	readonly below: readonly string[];
-}
-
-export interface ScannedInitFolder {
-	readonly kind: "init-folder";
-	readonly rootDir: string;
-	readonly relativePath: string;
-	/** The absolute POSIX path of the folder. */
-	readonly source: string;
-	readonly initFile: string;
-	/** Every script inside the folder that isn't excluded, by source. */
-	readonly members: readonly InitFolderMember[];
-}
-
-export type ScannedEntry = ScannedFile | ScannedInitFolder;
-
-/** The name Rojo gives an entry when it lists its directory: an init folder keeps its own name. */
-export function rojoNameOf(entry: ScannedEntry): string {
-	const name = path.posix.basename(entry.relativePath);
-	return entry.kind === "init-folder"
-		? name
-		: new RojoFile(name).instanceName;
-}
-
-/** The file whose name carries an entry's suffixes, and what Rojo makes of it: an init folder's script, or the file itself. */
-export function namingFileOf(entry: ScannedEntry): {
-	readonly fileName: string;
-	readonly kind: RojoFileKind;
-} {
-	return entry.kind === "init-folder"
-		? { fileName: entry.initFile, kind: "script" }
-		: {
-				fileName: path.posix.basename(entry.relativePath),
-				kind: entry.kind,
-			};
-}
-
-/** Every source behind an entry, each with its instance path below the entry's: an init folder's scripts, or the file itself. */
-export function membersOf(entry: ScannedEntry): readonly InitFolderMember[] {
-	return entry.kind === "init-folder"
-		? entry.members
-		: [{ source: entry.source, below: [] }];
-}
-
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */
 	readonly path: string;
@@ -81,7 +32,7 @@ export class ScannedRoot {
 		readonly rootDir: string,
 		/** False for a root dir the index doesn't hold, which contributes nothing. */
 		readonly exists: boolean,
-		readonly entries: readonly ScannedEntry[],
+		readonly entries: readonly ScannedFile[],
 		readonly markers: readonly string[],
 		/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
 		readonly metaFiles: readonly string[],
@@ -115,6 +66,11 @@ export class ScannedRoot {
 
 	get skippedCount(): number {
 		return this.countLeftOut("skipped");
+	}
+
+	/** What the index holds in `dir`, or nothing for a dir it doesn't hold. */
+	listing(dir: string): ReadonlyMap<string, FileType> {
+		return this.index.getEntries(dir) ?? new Map<string, FileType>();
 	}
 
 	/** Marker file names per directory, both relative to the root dir; the root itself is "". */
@@ -192,7 +148,7 @@ export class ScannedRoot {
 /** What one walk of a root dir collects. */
 interface Walk {
 	readonly rootDir: string;
-	readonly entries: ScannedEntry[];
+	readonly entries: ScannedFile[];
 	readonly markers: string[];
 	readonly metaFiles: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
@@ -277,27 +233,6 @@ export class RootScanner {
 
 		const kept = this.keptEntries(walk, dir, listing);
 
-		const initFile = kept
-			.filter(
-				([name, type]) =>
-					isFileType(type) && new RojoFile(name).isInitScript
-			)
-			.map(([name]) => name)
-			.sort()[0];
-		if (initFile && relativeDir) {
-			if (kept.some(([name]) => name === RojoFile.INIT_META))
-				walk.metaFiles.push(relativeTo(RojoFile.INIT_META));
-			walk.entries.push({
-				kind: "init-folder",
-				rootDir: walk.rootDir,
-				relativePath: relativeDir,
-				source: joinPosix(walk.rootDir, relativeDir),
-				initFile,
-				members: this.initFolderMembers(walk, dir, kept),
-			});
-			return true;
-		}
-
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
 			if (type === FileType.SymbolicLink) {
@@ -324,45 +259,5 @@ export class RootScanner {
 
 		for (const subdir of subdirs) this.visit(walk, subdir);
 		return true;
-	}
-
-	/** Rojo reads everything in an init folder as children of the folder's instance, and its init script as the folder itself. */
-	private initFolderMembers(
-		walk: Walk,
-		folder: string,
-		kept: readonly [string, FileType][]
-	): InitFolderMember[] {
-		const members: InitFolderMember[] = [];
-		const visit = (
-			dir: string,
-			entries: readonly [string, FileType][],
-			below: readonly string[]
-		) => {
-			for (const [name, type] of [...entries].sort(([a], [b]) =>
-				compareStrings(a, b)
-			)) {
-				const entryPath = path.join(dir, name);
-				if (isDirectoryType(type)) {
-					const listing = this.index.getEntries(entryPath);
-					if (listing)
-						visit(
-							entryPath,
-							this.keptEntries(walk, entryPath, listing),
-							[...below, name]
-						);
-					continue;
-				}
-				const file = new RojoFile(name);
-				if (!isFileType(type) || !file.kind) continue;
-				members.push({
-					source: joinPosix(dir, name),
-					below: file.isInitScript
-						? below
-						: [...below, file.instanceName],
-				});
-			}
-		};
-		visit(folder, kept, []);
-		return members;
 	}
 }

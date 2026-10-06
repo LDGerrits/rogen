@@ -879,7 +879,7 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should list a file excluded anywhere inside an init folder", async () => {
+			it("should list a file excluded anywhere inside an init folder, and what Rojo would read beside its script", async () => {
 				await write(
 					"src/Moves/init.ts",
 					"src/Moves/Punch.spec.ts",
@@ -894,6 +894,7 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual([
 					"dist/Moves/Heavy/Slam.spec.luau",
 					"dist/Moves/Punch.spec.luau",
+					"dist/Moves/Heavy",
 				]);
 			});
 
@@ -1473,6 +1474,88 @@ describe("TreeAssembler", () => {
 				});
 
 				expect(warnings).toEqual([]);
+			});
+		});
+
+		describe("init scripts", () => {
+			const SPLIT = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			};
+
+			it("should point every node an init script is at its directory, and keep what sits beside it out of that read", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/Types.luau",
+					"src/Net/server/Remote.luau",
+					"src/Net/client/Listener.luau"
+				);
+				await fs.writeFile(
+					abs("src/Net/init.meta.json"),
+					JSON.stringify({ attributes: { Remote: true } })
+				);
+
+				const { tree: value } = await assemble({ routes: SPLIT });
+
+				expect(value.tree.ReplicatedStorage).toEqual({
+					$className: "ReplicatedStorage",
+					Net: {
+						$path: optional("src/Net"),
+						Types: { $path: optional("src/Net/Types.luau") },
+					},
+				});
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
+					Net: {
+						$path: optional("src/Net"),
+						Remote: {
+							$path: optional("src/Net/server/Remote.luau"),
+						},
+					},
+				});
+				expect([...(value.globIgnorePaths ?? [])].sort()).toEqual([
+					"src/Net/Types.luau",
+					"src/Net/client",
+					"src/Net/server",
+				]);
+			});
+
+			it("should point a node at an init script with a variant, which Rojo reads alone, and copy its folder's meta on", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/init.mock.luau",
+					"src/Net/Types.luau"
+				);
+				await fs.writeFile(
+					abs("src/Net/init.meta.json"),
+					JSON.stringify({ attributes: { Mocked: true } })
+				);
+
+				const storage = await storageOf({ variants: { mock: true } });
+
+				expect(storage.Net).toEqual({
+					$path: optional("src/Net/init.mock.luau"),
+					$attributes: { Mocked: true },
+					Types: { $path: optional("src/Net/Types.luau") },
+				});
+			});
+
+			it("should point at the directory roblox-ts writes an index script's init into", async () => {
+				await write("src/Lib/index.ts", "src/Lib/server/Api.ts");
+
+				const { tree: value } = await assemble({
+					routes: SPLIT,
+					syncDir: abs("out"),
+				});
+
+				expect(
+					(value.tree.ServerScriptService as RojoNode).Lib
+				).toEqual({
+					$path: optional("out/Lib"),
+					Api: { $path: optional("out/Lib/server/Api.luau") },
+				});
+				expect(value.globIgnorePaths).toEqual(["out/Lib/server"]);
 			});
 		});
 	});

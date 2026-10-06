@@ -119,7 +119,7 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should record an init folder's own init.meta.json and nothing else inside it", async () => {
+			it("should record every meta inside a folder with an init script", async () => {
 				await write(
 					"src/Bots/init.luau",
 					"src/Bots/init.meta.json",
@@ -129,7 +129,10 @@ describe("RootScanner", () => {
 
 				const { roots } = await scan();
 
-				expect(roots[0].metaFiles).toEqual(["Bots/init.meta.json"]);
+				expect(roots[0].metaFiles).toEqual([
+					"Bots/Brain.meta.json",
+					"Bots/init.meta.json",
+				]);
 			});
 
 			it("should leave an excluded .meta.json out of the meta files", async () => {
@@ -209,7 +212,7 @@ describe("RootScanner", () => {
 		});
 
 		describe("init folders", () => {
-			it("should return a directory holding an init script as one unit", async () => {
+			it("should list an init script and what sits beside it as files of their own", async () => {
 				await write(
 					"src/Inventory/init.luau",
 					"src/Inventory/Helper.luau"
@@ -219,47 +222,21 @@ describe("RootScanner", () => {
 
 				expect(roots[0].entries).toEqual([
 					{
-						kind: "init-folder",
+						kind: "script",
 						rootDir: abs("src"),
-						relativePath: "Inventory",
-						source: abs("src/Inventory"),
-						initFile: "init.luau",
-						members: [
-							{
-								source: abs("src/Inventory/Helper.luau"),
-								below: ["Helper"],
-							},
-							{
-								source: abs("src/Inventory/init.luau"),
-								below: [],
-							},
-						],
+						relativePath: "Inventory/Helper.luau",
+						source: abs("src/Inventory/Helper.luau"),
+					},
+					{
+						kind: "script",
+						rootDir: abs("src"),
+						relativePath: "Inventory/init.luau",
+						source: abs("src/Inventory/init.luau"),
 					},
 				]);
 			});
 
-			it("should recognise index scripts", async () => {
-				await write("src/Inventory/index.ts");
-
-				const { roots } = await scan();
-
-				expect(roots[0].entries).toMatchObject([
-					{ kind: "init-folder", initFile: "index.ts" },
-				]);
-			});
-
-			it("should recognise init scripts that carry a suffix", async () => {
-				await write("src/A/init.server.luau", "src/B/index@client.ts");
-
-				const { roots } = await scan();
-
-				expect(roots[0].entries).toMatchObject([
-					{ relativePath: "A", initFile: "init.server.luau" },
-					{ relativePath: "B", initFile: "index@client.ts" },
-				]);
-			});
-
-			it("should not traverse beneath an init folder", async () => {
+			it("should walk beneath a folder with an init script", async () => {
 				await write(
 					"src/Inventory/init.luau",
 					"src/Inventory/deep/Nested.luau",
@@ -268,38 +245,11 @@ describe("RootScanner", () => {
 
 				const { roots } = await scan();
 
-				expect(files(roots[0])).toEqual(["init-folder:Inventory"]);
-				expect(roots[0].markers).toEqual([]);
-			});
-
-			it("should still treat a directory with only index.ts and types.d.ts as one unit", async () => {
-				await write("src/Lib/index.ts", "src/Lib/types.d.ts");
-
-				const { roots } = await scan();
-
-				expect(files(roots[0])).toEqual(["init-folder:Lib"]);
-			});
-
-			it("should not treat a data file named init as an init script", async () => {
-				await write("src/Config/init.json", "src/Config/Other.luau");
-
-				const { roots } = await scan();
-
 				expect(files(roots[0])).toEqual([
-					"script:Config/Other.luau",
-					"data:Config/init.json",
+					"script:Inventory/deep/Nested.luau",
+					"script:Inventory/init.luau",
 				]);
-			});
-
-			it("should not treat names that merely start with init as init scripts", async () => {
-				await write("src/Foo/initialise.luau", "src/Foo/indexer.luau");
-
-				const { roots } = await scan();
-
-				expect(files(roots[0])).toEqual([
-					"script:Foo/indexer.luau",
-					"script:Foo/initialise.luau",
-				]);
+				expect(roots[0].markers).toEqual(["Inventory/deep/.server"]);
 			});
 		});
 
@@ -517,7 +467,7 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:U.luau"]);
 			});
 
-			it("should treat a linked directory with an init script as an init folder", async () => {
+			it("should scan a linked directory with an init script through the link", async () => {
 				await write("shared/Pkg/init.luau");
 				await fs.createSymbolicLink(abs("shared/Pkg"), abs("src/Pkg"));
 
@@ -525,14 +475,10 @@ describe("RootScanner", () => {
 
 				expect(roots[0].entries).toEqual([
 					{
-						kind: "init-folder",
+						kind: "script",
 						rootDir: abs("src"),
-						relativePath: "Pkg",
-						source: abs("src/Pkg"),
-						initFile: "init.luau",
-						members: [
-							{ source: abs("src/Pkg/init.luau"), below: [] },
-						],
+						relativePath: "Pkg/init.luau",
+						source: abs("src/Pkg/init.luau"),
 					},
 				]);
 			});

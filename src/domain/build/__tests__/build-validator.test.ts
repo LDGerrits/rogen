@@ -541,5 +541,41 @@ describe("BuildValidator rules", () => {
 				expect(warning).toBeUndefined();
 			});
 		});
+
+		describe("an @ an outer route outranks", () => {
+			const ignoredAts = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.ignoredAt");
+
+			it("should warn per file that the suffix does nothing and stays in the name", async () => {
+				await write(
+					"src/server/Util@client.luau",
+					"src/client/Hud@client.luau"
+				);
+
+				const warnings = await ignoredAts();
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/client/Hud@client.luau"),
+					abs("src/server/Util@client.luau"),
+				]);
+				expect(warnings[1].message).toBe(
+					'"@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route\'s files.'
+				);
+			});
+
+			it("should leave a file that ships to clients to that warning", async () => {
+				await write("src/client/Save@server.luau");
+
+				expect(await ignoredAts()).toEqual([]);
+			});
+
+			it("should not warn about a route folder an outer route outranks", async () => {
+				await write("src/server/client/Bar.luau");
+
+				expect(await ignoredAts()).toEqual([]);
+			});
+		});
 	});
 });

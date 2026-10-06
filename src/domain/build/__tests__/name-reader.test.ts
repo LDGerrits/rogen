@@ -249,57 +249,83 @@ describe("NameReader.unwrapInvisibleFolder", () => {
 });
 
 describe("NameReader folder", () => {
-	it("should read a folder named after a route as that route", () => {
-		expect(readFolderName("Server", ALL_KEYS)).toEqual({
-			kind: "route",
-			key: "server",
+	const read = (name: string) => readFolderName(name, ALL_KEYS);
+
+	it("should read a folder named after a route as that route, keeping no name", () => {
+		expect(read("Server")).toEqual({
 			invisible: false,
+			route: "server",
+			variants: [],
+			outrankedName: "Server",
 		});
 	});
 
-	it("should read a folder named after a variant as that variant", () => {
-		expect(readFolderName("mock", ALL_KEYS)).toEqual({
-			kind: "variant",
-			key: "mock",
+	it("should read a folder named after a variant as that variant, keeping no name", () => {
+		expect(read("mock")).toEqual({
 			invisible: false,
+			variants: ["mock"],
+			outrankedName: "mock",
 		});
+	});
+
+	it("should read a bare @key or .variant like the key alone", () => {
+		expect(read("@server")).toMatchObject({ route: "server" });
+		expect(read("@server").keptName).toBeUndefined();
+		expect(read(".mock")).toMatchObject({ variants: ["mock"] });
+		expect(read(".mock").keptName).toBeUndefined();
 	});
 
 	it("should read parentheses off first and mark the folder invisible", () => {
-		expect(readFolderName("(server)", ALL_KEYS)).toEqual({
-			kind: "route",
-			key: "server",
+		expect(read("(server)")).toMatchObject({
+			route: "server",
 			invisible: true,
 		});
 	});
 
 	it("should read Name@key as a route folder that keeps Name", () => {
-		expect(readFolderName("Matchmaking@server", ALL_KEYS)).toEqual({
-			kind: "route",
-			key: "server",
+		expect(read("Matchmaking@server")).toEqual({
 			invisible: false,
+			route: "server",
+			variants: [],
 			keptName: "Matchmaking",
+			outrankedName: "Matchmaking@server",
 		});
 	});
 
-	it("should read a bare @key as a route folder that keeps no name", () => {
-		expect(readFolderName("@server", ALL_KEYS)).toEqual({
-			kind: "route",
-			key: "server",
+	it("should read Name.variant as a variant folder that keeps Name", () => {
+		expect(read("Analytics.mock")).toEqual({
 			invisible: false,
+			variants: ["mock"],
+			keptName: "Analytics",
+			outrankedName: "Analytics",
 		});
+	});
+
+	it("should read a variant and a route in either order, and keep the route when it is outranked", () => {
+		for (const name of ["Net.mock@server", "Net@server.mock"])
+			expect(read(name)).toMatchObject({
+				route: "server",
+				variants: ["mock"],
+				keptName: "Net",
+				outrankedName: "Net@server",
+			});
 	});
 
 	it("should read @key with the first letter in the other case", () => {
-		expect(readFolderName("Queue@Server", ALL_KEYS)).toMatchObject({
-			key: "server",
+		expect(read("Queue@Server")).toMatchObject({
+			route: "server",
 			keptName: "Queue",
 		});
 	});
 
-	it("should read -server and .server as ordinary folders", () => {
+	it("should read -server, .server and Rojo's script class as ordinary names", () => {
 		for (const name of ["Queue-server", "Queue.server", "QueueServer"])
-			expect(readFolderName(name, ALL_KEYS).kind).toBe("plain");
+			expect(read(name)).toEqual({
+				invisible: false,
+				variants: [],
+				keptName: name,
+				outrankedName: name,
+			});
 	});
 
 	it("should report the @ of a folder that matches no route", () => {
@@ -314,11 +340,18 @@ describe("NameReader folder", () => {
 		).toBeUndefined();
 	});
 
-	it("should read any other folder as plain", () => {
-		expect(readFolderName("Inventory", ALL_KEYS)).toEqual({
-			kind: "plain",
-			name: "Inventory",
+	it("should report a dot part one edit from a variant", () => {
+		expect(
+			new NameReader(ALL_KEYS).folderVariantTypo("Analytics.mok")
+		).toEqual({ text: "mok", variant: "mock" });
+	});
+
+	it("should read any other folder as plain, keeping its name", () => {
+		expect(read("Inventory")).toEqual({
 			invisible: false,
+			variants: [],
+			keptName: "Inventory",
+			outrankedName: "Inventory",
 		});
 	});
 });

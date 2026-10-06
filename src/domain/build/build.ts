@@ -14,8 +14,8 @@ import { InstanceReference } from "../roblox/roblox.js";
 /** How a route or variant key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
 
-/** How the governing route matched the file; `fallback` is the `*` route. */
-export type RouteMatch = MatchForm | "fallback";
+/** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
+export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
 
 export interface VariantMatch {
 	readonly variant: string;
@@ -167,6 +167,8 @@ interface Located {
 export interface PlacedLocation extends Located {
 	readonly status: "placed";
 	readonly instancePath: readonly string[];
+	/** The other nodes an init script is, where its folder becomes a node in another route. */
+	readonly alsoAt: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
 	/** The active variants the file carries. */
@@ -219,6 +221,8 @@ export interface SyncTool {
 	emittedPath?(source: string): string;
 	/** Whether the tool reads a source but never writes anything for it. */
 	readsOnly?(source: string): boolean;
+	/** A script name the tool writes as Rojo's `init`, which makes the file its folder too. */
+	readonly initName?: string;
 	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
 	readonly metaReplacement?: MetaReplacement;
 	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */

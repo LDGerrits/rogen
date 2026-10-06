@@ -1,0 +1,52 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen where
+exit 0
+stdout:
+  src/.mock/Probe.luau -> ReplicatedStorage/shared/Probe · route * (fallback) · variant mock (folder)
+  src/Analytics.mock/Service.luau -> ReplicatedStorage/shared/Analytics/Service · route * (fallback) · variant mock (folder)
+  src/Analytics.prod/Service.luau -> pruned · variant prod is off (folder)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "globIgnorePaths": [
+    "src/Analytics.prod/Service.luau"
+  ],
+  "name": "project",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": false,
+        "Analytics": {
+          "$path": {
+            "optional": "src/Analytics.mock"
+          }
+        },
+        "Probe": {
+          "$path": {
+            "optional": "src/.mock/Probe.luau"
+          }
+        }
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Analytics: Folder  <- src/Analytics.mock/init.meta.json
+        Service: ModuleScript  <- src/Analytics.mock/Service.luau
+      Probe: ModuleScript  <- src/.mock/Probe.luau
