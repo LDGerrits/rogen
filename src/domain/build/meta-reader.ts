@@ -10,6 +10,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoFile, RojoMeta, RojoMetaFields } from "../rojo/rojo.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
+import { RoutedFile } from "./router.js";
 
 /** The meta files one build read, and what they set. */
 export class BuildMeta {
@@ -40,7 +41,7 @@ export class BuildMeta {
 export class MetaReader {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	/** Fails on a folder meta Rojo would refuse; a script meta that can't be read sets no run context, since the build only warns with it. */
+	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript; a script meta that can't be read sets no run context, since the build only warns with it. */
 	async read(placement: Placement): Promise<Result<BuildMeta, Diagnostic[]>> {
 		const problems = new DiagnosticCollector();
 		const folderMeta: FolderMeta[] = [];
@@ -76,43 +77,62 @@ export class MetaReader {
 		);
 		for (const file of placement.files) {
 			const { entry } = file;
-			if (
-				runContexts.has(entry.source) ||
-				placement.readings.entryAt(entry.source).scriptSuffix ===
-					undefined
-			)
-				continue;
-
-			// A folder's meta reaches its init script, read through the folder or copied onto it, over the script's own.
-			if (file.isInit) {
-				const meta = folderMeta.find(
-					({ folder }) => folder === path.posix.dirname(entry.source)
-				);
-				if (meta?.properties?.RunContext !== undefined) {
-					runContexts.set(entry.source, meta.properties.RunContext);
-					continue;
-				}
-			}
-			const metaFile = path.join(
-				entry.rootDir,
-				path.dirname(entry.relativePath),
-				new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
+			const { kind, scriptSuffix } = placement.readings.entryAt(
+				entry.source
 			);
-			if (
-				!metaFiles.has(metaFile) ||
-				scriptMetaFiles.includes(metaFile) ||
-				folderMeta.some((meta) => meta.file === metaFile)
-			)
-				continue;
-			scriptMetaFiles.push(metaFile);
-			const parsed = await this.readMeta(metaFile);
-			if (parsed.isOk())
-				runContexts.set(
-					entry.source,
-					parsed.value.properties?.RunContext
+			if (kind !== "script" || runContexts.has(entry.source)) continue;
+			const set = await this.runContextMeta(
+				file,
+				folderMeta,
+				metaFiles,
+				scriptMetaFiles
+			);
+			if (!set) continue;
+			runContexts.set(entry.source, set.runContext);
+			if (scriptSuffix === undefined && set.runContext !== undefined)
+				problems.error(
+					"meta.runContextOnModule",
+					{ resource: set.metaFile },
+					`sets a RunContext, but ${path.basename(entry.source)} is a ModuleScript, which has none, so Rojo refuses this meta. Name the script .server or .client to make it a Script, or remove RunContext.`
 				);
 		}
+		if (problems.hasErrors) return err([...problems.diagnostics]);
 		return ok(new BuildMeta(folderMeta, runContexts, scriptMetaFiles));
+	}
+
+	/** The meta that sets a script's `RunContext`: a folder's meta reaches its init script, read through the folder or copied onto it, over the script's own. */
+	private async runContextMeta(
+		{ entry, isInit }: RoutedFile,
+		folderMeta: readonly FolderMeta[],
+		metaFiles: ReadonlySet<string>,
+		scriptMetaFiles: string[]
+	): Promise<{ metaFile: string; runContext: unknown } | undefined> {
+		if (isInit) {
+			const meta = folderMeta.find(
+				({ folder }) => folder === path.posix.dirname(entry.source)
+			);
+			if (meta?.properties?.RunContext !== undefined)
+				return {
+					metaFile: meta.file,
+					runContext: meta.properties.RunContext,
+				};
+		}
+		const metaFile = path.join(
+			entry.rootDir,
+			path.dirname(entry.relativePath),
+			new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
+		);
+		if (
+			!metaFiles.has(metaFile) ||
+			scriptMetaFiles.includes(metaFile) ||
+			folderMeta.some((meta) => meta.file === metaFile)
+		)
+			return undefined;
+		scriptMetaFiles.push(metaFile);
+		const parsed = await this.readMeta(metaFile);
+		return parsed.isOk()
+			? { metaFile, runContext: parsed.value.properties?.RunContext }
+			: undefined;
 	}
 
 	private async readMeta(

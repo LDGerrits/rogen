@@ -914,19 +914,6 @@ describe("Router", () => {
 				expect(result.leftOut.withStatus("replaced")).toEqual([]);
 			});
 
-			it("should copy an init.luau whatever its meta sets, since a RunContext can't make it a Script", async () => {
-				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
-				await fs.writeFile(
-					abs("src/Net/init.meta.json"),
-					'{"properties":{"RunContext":"Server"}}'
-				);
-
-				expect(await placed()).toEqual([
-					"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
-					"Net/init.luau -> ServerScriptService/Net (copy)",
-				]);
-			});
-
 			it("should say a copy is one", async () => {
 				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
 

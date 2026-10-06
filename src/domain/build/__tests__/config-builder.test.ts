@@ -29,11 +29,11 @@ describe("ConfigBuilder", () => {
 	});
 
 	describe("build", () => {
-		it("should report the folder meta it read, and only that", async () => {
+		it("should report the folder meta it read, and not a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
-			await fs.writeFile(abs("src/Hud.luau"), "");
-			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
+			await fs.writeFile(abs("src/Notes.txt"), "");
+			await fs.writeFile(abs("src/Notes.meta.json"), "{}");
 
 			const result = await buildOf(configOf());
 
@@ -42,13 +42,16 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should also report the meta of a Script, which may set its run context", async () => {
+		it("should also report the meta of a script, which may set its run context", async () => {
 			await fs.writeFile(abs("src/Save.server.luau"), "");
 			await fs.writeFile(abs("src/Save.meta.json"), "{}");
+			await fs.writeFile(abs("src/Hud.luau"), "");
+			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
 
 			const result = await buildOf(configOf());
 
 			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Hud.meta.json"),
 				abs("src/Save.meta.json"),
 			]);
 		});

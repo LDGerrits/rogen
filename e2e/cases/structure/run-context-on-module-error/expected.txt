@@ -1,0 +1,8 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.project.json · not written
+  src/Net/init.meta.json - error: sets a RunContext, but init.luau is a ModuleScript, which has none, so Rojo refuses this meta. Name the script .server or .client to make it a Script, or remove RunContext.

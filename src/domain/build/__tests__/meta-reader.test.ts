@@ -142,6 +142,47 @@ describe("MetaReader", () => {
 			);
 		});
 
+		it("should fail when a ModuleScript's meta sets a RunContext, its own or its folder's", async () => {
+			await fs.writeFile(abs("src/Save.luau"), "");
+			await fs.writeFile(
+				abs("src/Save.meta.json"),
+				'{"properties": {"RunContext": "Server"}}'
+			);
+			await fs.writeFile(abs("src/Net/init.luau"), "");
+			await fs.writeFile(
+				abs("src/Net/init.meta.json"),
+				'{"properties": {"RunContext": "Client"}}'
+			);
+
+			const result = await read();
+
+			expect(
+				result.isErr()
+					? result.error.map(({ code, resource }) => [code, resource])
+					: []
+			).toEqual([
+				["meta.runContextOnModule", abs("src/Net/init.meta.json")],
+				["meta.runContextOnModule", abs("src/Save.meta.json")],
+			]);
+		});
+
+		it("should accept a RunContext in the meta of a Script", async () => {
+			await fs.writeFile(abs("src/Save.server.luau"), "");
+			await fs.writeFile(
+				abs("src/Save.meta.json"),
+				'{"properties": {"RunContext": "Server"}}'
+			);
+			await fs.writeFile(abs("src/Net/init.client.luau"), "");
+			await fs.writeFile(
+				abs("src/Net/init.meta.json"),
+				'{"properties": {"RunContext": "Client"}}'
+			);
+
+			const result = await read();
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should report every invalid meta file at once", async () => {
 			await fs.writeFile(abs("src/A/init.meta.json"), "{ broken");
 			await fs.writeFile(abs("src/B/init.meta.json"), '{"id": true}');
