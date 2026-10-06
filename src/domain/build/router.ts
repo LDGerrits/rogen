@@ -261,7 +261,7 @@ export class Router {
 		};
 	}
 
-	/** An init script no route of its own sends anywhere is copied to every node its folder becomes; a copied Script would run once per copy, so only a ModuleScript is. */
+	/** A copied Script would run once per copy, so only a ModuleScript is copied. */
 	private isCopied({ claims, leaf }: ClaimedPath): boolean {
 		return (
 			leaf.isInit &&
@@ -284,7 +284,7 @@ export class Router {
 			const folder = claimed.folders[claimed.folders.length - 1].dir;
 			const init = this.initFolders(entry, claimed.folders);
 			const nodes = new InstanceMap<RoutedFile>();
-			for (const init of inits) nodes.set(init.instancePath, init);
+			for (const own of inits) nodes.set(own.instancePath, own);
 			if (placed) nodes.set(placed.instancePath, placed);
 			const copies: RoutedFile[] = [];
 			for (const file of routed) {
