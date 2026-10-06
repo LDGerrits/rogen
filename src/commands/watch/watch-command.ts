@@ -58,7 +58,11 @@ registerCommand(
 			if (selection.isErr()) return selection;
 			const watched = watchService.watch(selection.value);
 			if (watched.isErr()) return watched;
-			log.begin(selection.value);
+			// The watch started, so every config is valid.
+			log.begin(
+				selection.value.requireValid().unwrap(),
+				selection.value.unselected
+			);
 
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();

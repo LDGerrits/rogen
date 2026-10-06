@@ -1,6 +1,5 @@
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
-import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
@@ -26,9 +25,6 @@ function brokenError(entries: readonly ConfigEntry[]): Error | undefined {
 		? new Error(`${broken} of ${entries.length} configs have errors.`)
 		: undefined;
 }
-
-const listed = (values: readonly string[]): string =>
-	values.length > 0 ? values.join(", ") : "(none)";
 
 const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -75,7 +71,7 @@ registerCommand(
 				return this.listAsJson(selection.value, logService);
 
 			logService.intro("rogen list");
-			for (const entry of entries) this.describe(logService, entry, cwd);
+			new ConfigReport(entries).print(logService, cwd);
 
 			if (broken) return err(broken);
 			logService.outro(`${plural(entries.length, "config")}.`);
@@ -91,34 +87,6 @@ registerCommand(
 
 			const broken = brokenError(selection.entries);
 			return broken ? err(new ReportedError(broken)) : ok(undefined);
-		}
-
-		private describe(
-			logService: LogService,
-			entry: ConfigEntry,
-			cwd: string
-		): void {
-			const relative = (file: string) => relativeTo(cwd, file);
-			logService.step(relative(entry.file));
-			if (entry.parents.length > 0) {
-				logService.info(
-					`extends: ${entry.parents.map(relative).join(" -> ")}`
-				);
-			}
-
-			if (entry.status === "broken") {
-				for (const error of entry.errors) logService.diagnostic(error);
-				return;
-			}
-			const { config } = entry;
-			logService.info(
-				[
-					`root dirs: ${listed(config.rootDirs.map(relative))}`,
-					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
-					`project file: ${relative(config.outFile)}`,
-					`variants: ${listed(config.enabledVariants)}`,
-				].join("\n")
-			);
 		}
 	}
 );
