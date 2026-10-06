@@ -1,4 +1,3 @@
-import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -146,25 +145,20 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { config, template, files, displaced } = this.placement;
+		const { config, template, nodes, displaced } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
-		for (const file of files) sharedWithFile.set(file.instancePath, file);
+		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
 		for (const [nodePath, node] of this.reachedNodes([
-			...files,
+			...nodes,
 			...displaced.map(({ file }) => file),
 		])) {
 			const instance = instanceKey(nodePath);
 			const shared = sharedWithFile.get(nodePath);
 			// A node's file can be the init script of a folder that names it, which is that folder itself, so that folder's meta reaches it.
-			const ownDir = shared?.isInit
-				? joinPosix(
-						shared.entry.rootDir,
-						shared.folderNodes[shared.folderNodes.length - 1].dir
-					)
-				: undefined;
+			const ownDir = shared?.init?.becomes;
 			const reached = [...node.dirs]
 				.filter((dir) => !this.collapsed.covers(dir))
 				.flatMap((dir) => this.metaByDir.get(dir) ?? [])
@@ -197,15 +191,10 @@ export class FolderMetaApplier {
 					file: shared,
 				});
 			// Rojo applies the meta of the directory it reads for an init script itself.
+			const initDir = shared && this.placement.initDirOf(shared);
 			const metas = shared
 				? reached.filter(
-						({ folder }) =>
-							folder === ownDir &&
-							!(
-								this.placement.readsThroughDir(shared) &&
-								folder ===
-									path.posix.dirname(shared.entry.source)
-							)
+						({ folder }) => folder === ownDir && folder !== initDir
 					)
 				: reached;
 			if (metas.length === 0) continue;

@@ -1,3 +1,4 @@
+import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
@@ -34,10 +35,16 @@ export interface RoutedFile {
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
 	/** The `@key`s in its name and its folders' that an outer route outranks, which therefore stay in the names. */
 	readonly ignoredAts: readonly IgnoredAt[];
-	/** An init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
-	readonly isInit: boolean;
-	/** An init script placed where its folder becomes a node in another route; only a ModuleScript that no route of its own sends anywhere is. */
-	readonly isCopy: boolean;
+	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
+	readonly init?: InitFolders;
+}
+
+/** The two folders of an init script, which differ when a variant folder sits between them. */
+export interface InitFolders {
+	/** The nearest of its folders that becomes a node, which the script is; an absolute POSIX path. */
+	readonly becomes: string;
+	/** The directory it sits in, which Rojo reads it through; an absolute POSIX path. */
+	readonly sitsIn: string;
 }
 
 export interface IgnoredAt {
@@ -61,6 +68,11 @@ class Claims {
 	readonly ignoredAts: IgnoredAt[] = [];
 	readonly variants: VariantMatch[] = [];
 
+	/** The governing route key, or `*`. */
+	get routeKey(): string {
+		return this.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
+	}
+
 	/** Whether the route governs; a later one is ignored whole. */
 	claimRoute(key: string, match: RouteMatch): boolean {
 		if (this.route) {
@@ -78,6 +90,7 @@ class Claims {
 
 interface LeafReading {
 	readonly name: string;
+	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
 }
@@ -135,9 +148,8 @@ export class Router {
 			const loose: Loose[] = [];
 			for (const entry of root.entries) {
 				const reading = this.read(entry, markers, initRoutes);
-				const placed = this.place(entry, reading);
 				if (reading.leaf.isInit && reading.folders.length === 0) {
-					if (placed)
+					if (this.config.routes.has(reading.claims.routeKey))
 						homeless.push({
 							source: entry.source,
 							variants: reading.claims.variants,
@@ -146,13 +158,10 @@ export class Router {
 					else unrouted.push(entry.source);
 					continue;
 				}
+				const placed = this.place(entry, reading);
 				if (placed) fromRoot.push(placed);
 				else unrouted.push(entry.source);
-				if (
-					reading.leaf.isInit &&
-					reading.claims.route === undefined &&
-					this.isModule(entry)
-				)
+				if (this.isCopied(reading))
 					loose.push({ entry, reading, placed });
 			}
 			routed.push(...fromRoot, ...this.copies(loose, fromRoot));
@@ -217,7 +226,7 @@ export class Router {
 		reading: Reading
 	): RoutedFile | undefined {
 		const { claims, folders, leaf } = reading;
-		const route = claims.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
+		const route = claims.routeKey;
 		const target = this.config.routes.get(route);
 		if (!target) return undefined;
 
@@ -237,14 +246,27 @@ export class Router {
 			variants: claims.variants,
 			buriedScriptSuffix: leaf.buriedScriptSuffix,
 			ignoredAts: claims.ignoredAts,
-			isInit: leaf.isInit,
-			isCopy: false,
+			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 		};
 	}
 
-	/** A copied Script would run once per copy, so only a ModuleScript is copied. */
-	private isModule(entry: ScannedFile): boolean {
-		return this.readings.entryAt(entry.source).scriptSuffix === undefined;
+	private initFolders(
+		entry: ScannedFile,
+		folders: Reading["folders"]
+	): InitFolders {
+		return {
+			becomes: joinPosix(entry.rootDir, folders[folders.length - 1].dir),
+			sitsIn: path.posix.dirname(entry.source),
+		};
+	}
+
+	/** An init script no route of its own sends anywhere is copied to every node its folder becomes; a copied Script would run once per copy, so only a ModuleScript is. */
+	private isCopied({ claims, leaf }: Reading): boolean {
+		return (
+			leaf.isInit &&
+			claims.route === undefined &&
+			leaf.scriptSuffix === undefined
+		);
 	}
 
 	/** An init ModuleScript no route sends anywhere is every node its folder becomes, so each of the others gets a copy of it. */
@@ -254,11 +276,12 @@ export class Router {
 	): RoutedFile[] {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
 		const inits = routed.filter(
-			({ isInit, variants }) =>
-				isInit && this.config.dormantVariants(variants).length === 0
+			({ init, variants }) =>
+				init && this.config.dormantVariants(variants).length === 0
 		);
 		return loose.flatMap(({ entry, reading, placed }) => {
 			const folder = reading.folders[reading.folders.length - 1].dir;
+			const init = this.initFolders(entry, reading.folders);
 			const nodes = new InstanceMap<RoutedFile>();
 			for (const init of inits) nodes.set(init.instancePath, init);
 			if (placed) nodes.set(placed.instancePath, placed);
@@ -280,8 +303,7 @@ export class Router {
 					ignoredAts: [],
 					variants: reading.claims.variants,
 					buriedScriptSuffix: reading.leaf.buriedScriptSuffix,
-					isInit: true,
-					isCopy: true,
+					init,
 				};
 				nodes.set(instancePath, copy);
 				copies.push(copy);
@@ -337,7 +359,7 @@ export class Router {
 
 	/** Reads the suffixes of a file into `claims` and returns its instance name. */
 	private readLeaf(read: EntryRead, claims: Claims): LeafReading {
-		const { kind, stem, match } = read;
+		const { kind, stem, match, scriptSuffix } = read;
 		const variantSpans = match.spans.filter((span) =>
 			this.keys.isVariant(span.key)
 		);
@@ -364,6 +386,7 @@ export class Router {
 		return {
 			name:
 				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
+			scriptSuffix,
 			buriedScriptSuffix,
 			isInit: this.isInitRead(read),
 		};

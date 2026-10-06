@@ -34,6 +34,7 @@ describe("Router", () => {
 				return {
 					routed: placement.routed,
 					files: placement.files,
+					nodes: placement.nodes,
 					leftOut: placement.leftOut,
 					globIgnorePaths: tree.globIgnorePaths,
 					unrouted: placement.leftOut
@@ -757,9 +758,9 @@ describe("Router", () => {
 			const placed = async (overrides: ResolvedConfigSpec = {}) =>
 				(await route(overrides))
 					.unwrap()
-					.files.map(
+					.nodes.map(
 						(file) =>
-							`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.isCopy ? " (copy)" : ""}`
+							`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
 					);
 
 			it("should make an init script its folder and route what sits beside it on its own", async () => {
@@ -917,7 +918,7 @@ describe("Router", () => {
 			it("should say a copy is one", async () => {
 				await write("src/Net/init.luau", "src/Net/server/Remote.luau");
 
-				const [, copy] = (await route()).unwrap().files;
+				const [, copy] = (await route()).unwrap().nodes;
 
 				expect([copy.route, copy.routeMatch]).toEqual([
 					"server",

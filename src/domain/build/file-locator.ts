@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings, groupBy } from "../../base/collections.js";
+import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -51,29 +51,15 @@ export class FileLocator {
 			all.set(location.source, location);
 
 		for (const [source, why] of leftOut) add({ ...why, source });
-
-		for (const [source, placed] of groupBy(
-			files,
-			({ entry }) => entry.source
-		)) {
-			// An init script copied to other nodes is reported at its own node, if a route placed it, then at the others.
-			const [first, ...others] = [
-				...placed.filter(({ isCopy }) => !isCopy),
-				...placed.filter(({ isCopy }) => isCopy),
-			];
-			add(this.placedAt(source, first, others));
-		}
+		for (const file of files) add(this.placedAt(file));
 		return all;
 	}
 
-	private placedAt(
-		source: string,
-		file: RoutedFile,
-		others: readonly RoutedFile[]
-	): PlacedLocation {
+	private placedAt(file: RoutedFile): PlacedLocation {
+		const others = this.placement.otherNodesOf(file);
 		return {
 			status: "placed",
-			source,
+			source: file.entry.source,
 			instancePath: file.instancePath,
 			...(others.length > 0 && {
 				alsoAt: others.map(({ instancePath }) => instancePath),

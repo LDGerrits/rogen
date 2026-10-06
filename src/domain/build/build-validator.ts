@@ -206,7 +206,7 @@ export class BuildValidator {
 						key,
 						route,
 						kind: "file",
-						name: file.isInit
+						name: file.init
 							? undefined
 							: file.instancePath.at(-1),
 					});
@@ -401,11 +401,11 @@ export class BuildValidator {
 		const { entry } = file;
 		const location = { resource: meta.file };
 		const fileName = path.posix.basename(entry.relativePath);
-		if (file.isInit)
+		if (file.init)
 			return warningDiagnostic(
 				"meta.sharedWithScript",
 				location,
-				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(path.posix.dirname(entry.source), RojoFile.INIT_META)} instead.`
+				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
 			);
 		const fix =
 			new RojoFile(fileName).metaFile ??

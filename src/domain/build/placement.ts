@@ -66,6 +66,9 @@ export interface DisplacedFile {
 
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
+	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
+	readonly files: readonly RoutedFile[];
+	private readonly nodesBySource: ReadonlyMap<string, readonly RoutedFile[]>;
 	private unclaimed: UnclaimedMeta[] | undefined;
 
 	constructor(
@@ -74,25 +77,39 @@ export class Placement {
 		readonly template: BuildTemplate,
 		readonly roots: readonly ScannedRoot[],
 		readonly readings: NameReadings,
-		/** Every file a route governs, in scan order, before variants decide which are placed. */
+		/** Every node a route sends a file to, in scan order, then the copies of init scripts, before variants decide which are placed. */
 		readonly routed: readonly RoutedFile[],
-		/** Every instance path appears once; the last root dir wins across roots. */
-		readonly files: readonly RoutedFile[],
+		/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last root dir wins across roots. */
+		readonly nodes: readonly RoutedFile[],
 		/** Every path the build leaves out of the tree. */
 		readonly leftOut: LeftOutPaths,
 		readonly clashes: readonly InstanceClash[],
 		/** The routed files the template displaced, in scan order. */
 		readonly displaced: readonly DisplacedFile[]
-	) {}
+	) {
+		this.nodesBySource = groupBy(nodes, ({ entry }) => entry.source);
+		this.files = [...this.nodesBySource.values()].map(
+			(placed) =>
+				placed.find(({ routeMatch }) => routeMatch !== "copy") ??
+				placed[0]
+		);
+	}
 
-	/** Whether Rojo reads an init script through the directory it sits in, since it never reads a file with its init name alone. */
-	readsThroughDir(file: RoutedFile): boolean {
-		return (
-			file.isInit &&
+	/** The other nodes a copied init script is. */
+	otherNodesOf(file: RoutedFile): readonly RoutedFile[] {
+		return (this.nodesBySource.get(file.entry.source) ?? []).filter(
+			(node) => node !== file
+		);
+	}
+
+	/** The directory Rojo reads an init script through, if it does, since it never reads a file with its init name alone. */
+	initDirOf(file: RoutedFile): string | undefined {
+		return file.init &&
 			new RojoFile(
 				path.basename(this.layout.emittedPath(file.entry.source))
 			).isInit
-		);
+			? file.init.sitsIn
+			: undefined;
 	}
 
 	/** Meta no file claims, across every root dir; computed once. */
@@ -247,14 +264,15 @@ export class Placer {
 		let kept = files;
 		for (;;) {
 			const named = new InstanceMap<true>();
-			for (const { folderNodes, isCopy, isInit } of kept)
-				if (!isCopy)
-					for (const { instancePath } of isInit
+			for (const { folderNodes, routeMatch, init } of kept)
+				if (routeMatch !== "copy")
+					for (const { instancePath } of init
 						? folderNodes.slice(0, -1)
 						: folderNodes)
 						named.set(instancePath, true);
 			const copies = kept.filter(
-				({ isCopy, instancePath }) => isCopy && named.get(instancePath)
+				({ routeMatch, instancePath }) =>
+					routeMatch === "copy" && named.get(instancePath)
 			);
 			const carried = new Set(
 				copies
@@ -262,10 +280,10 @@ export class Placer {
 					.map(({ entry }) => entry.source)
 			);
 			const next = kept.filter(
-				({ isCopy, isInit, entry, instancePath }) =>
-					isCopy
+				({ routeMatch, init, entry, instancePath }) =>
+					routeMatch === "copy"
 						? named.get(instancePath)
-						: !isInit ||
+						: !init ||
 							!carried.has(entry.source) ||
 							named.get(instancePath)
 			);

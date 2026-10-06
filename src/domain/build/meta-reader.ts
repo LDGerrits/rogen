@@ -1,5 +1,5 @@
 import path from "path";
-import { dirnamePosix, joinPosix, toPosix } from "../../base/path.js";
+import { dirnamePosix, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -79,7 +79,7 @@ export class MetaReader {
 			const { kind, scriptSuffix } = placement.readings.entryAt(
 				entry.source
 			);
-			if (kind !== "script" || runContexts.has(entry.source)) continue;
+			if (kind !== "script") continue;
 			const set = await this.runContextMeta(
 				file,
 				folderMeta,
@@ -101,20 +101,13 @@ export class MetaReader {
 
 	/** The meta that sets a script's `RunContext`: the meta of the folder an init script becomes, copied onto it, then of the directory Rojo reads it through, over the script's own. */
 	private async runContextMeta(
-		{ entry, isInit, folderNodes }: RoutedFile,
+		{ entry, init }: RoutedFile,
 		folderMeta: readonly FolderMeta[],
 		metaFiles: ReadonlySet<string>,
 		scriptMetaFiles: string[]
 	): Promise<{ metaFile: string; runContext: unknown } | undefined> {
-		if (isInit) {
-			const dirs = [
-				joinPosix(
-					entry.rootDir,
-					folderNodes[folderNodes.length - 1].dir
-				),
-				path.posix.dirname(entry.source),
-			];
-			for (const dir of dirs) {
+		if (init) {
+			for (const dir of [init.becomes, init.sitsIn]) {
 				const meta = folderMeta.find(({ folder }) => folder === dir);
 				if (meta?.properties?.RunContext !== undefined)
 					return {

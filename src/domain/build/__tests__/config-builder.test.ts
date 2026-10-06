@@ -425,6 +425,27 @@ describe("ConfigBuilder", () => {
 				]);
 			});
 
+			it("should count a copied init script once, at the route that places it", async () => {
+				await fs.writeFile(abs("src/Net/init.luau"), "");
+				await fs.writeFile(abs("src/Net/Util.luau"), "");
+				await fs.writeFile(abs("src/Net/server/Remote.luau"), "");
+				await fs.writeFile(abs("src/Net/client/Hud.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						routes: {
+							server: "ServerScriptService",
+							client: "StarterPlayer/StarterPlayerScripts",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				);
+
+				expect(
+					result.unwrap().summary.routes.map(({ files }) => files)
+				).toEqual([1, 1, 2]);
+			});
+
 			it("should count the files each variant marks, whether on or off", async () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
 				await fs.writeFile(abs("src/debug/B.luau"), "");

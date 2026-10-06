@@ -89,7 +89,7 @@ export class TreeAssembler {
 		placement: Placement,
 		project: RojoProject
 	): { collapsed: Collapsed; globIgnorePaths: string[] } {
-		const { layout, template, files, leftOut: allLeftOut } = placement;
+		const { layout, template, nodes, leftOut: allLeftOut } = placement;
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
@@ -117,11 +117,11 @@ export class TreeAssembler {
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNode(instancePath, { $path: layout.syncPath(dir) });
 		const initDirs = new Map<string, string>();
-		for (const file of files) {
+		for (const file of nodes) {
 			const { entry, instancePath } = file;
 			if (collapsed.covers(entry.source)) continue;
-			if (placement.readsThroughDir(file)) {
-				const dir = path.posix.dirname(entry.source);
+			const dir = placement.initDirOf(file);
+			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
 				project.insertNode(instancePath, {
 					$path: layout.syncPath(dir),
@@ -177,7 +177,7 @@ export class TreeAssembler {
 		leftOut: readonly string[],
 		isReserved: (instancePath: readonly string[]) => boolean
 	): Map<string, readonly string[]> {
-		const placed = placement.files.map((file) =>
+		const placed = placement.nodes.map((file) =>
 			this.placeEntry(placement, file)
 		);
 		const claims = new InstanceMap<number>();
@@ -261,7 +261,7 @@ export class TreeAssembler {
 		return {
 			file,
 			source,
-			rojoName: placement.readsThroughDir(file)
+			rojoName: placement.initDirOf(file) !== undefined
 				? undefined
 				: new RojoFile(path.posix.basename(source)).instanceName,
 		};
