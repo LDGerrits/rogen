@@ -1,8 +1,8 @@
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildBlockers } from "../build/build.js";
+import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { CoreWatchSession } from "./core-watch-session.js";
@@ -18,15 +18,13 @@ export class CoreWatchService implements WatchService {
 	) {}
 
 	watch(selection: ConfigSelection): Result<WatchSession, DiagnosticsError> {
-		const configs = selection.requireValid();
-		if (configs.isErr()) return configs;
-		const blockers = new BuildBlockers(configs.value);
-		if (blockers.diagnostics.length > 0)
-			return err(new DiagnosticsError([...blockers.diagnostics]));
+		const set = BuildSet.of(selection);
+		if (set.isErr()) return set;
 
 		return ok(
 			new CoreWatchSession(
 				selection,
+				set.value,
 				this.watcher,
 				this.indexService,
 				this.buildService

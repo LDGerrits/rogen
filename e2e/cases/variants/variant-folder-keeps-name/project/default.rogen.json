@@ -1,0 +1,5 @@
+{
+	"rootDirs": ["src"],
+	"variants": { "mock": true, "prod": false },
+	"routes": { "*": "ReplicatedStorage/shared" }
+}

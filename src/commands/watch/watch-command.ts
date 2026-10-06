@@ -2,13 +2,14 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { ConfigOptions } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { ConfigOptions, ParsedArgs } from "../../platform/environment/args.js";
+import { CommandLine } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
@@ -16,7 +17,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { WatchLog } from "./watch-log.js";
 
 registerCommand(
-	class WatchCommand extends AbstractCommand {
+	class WatchCommand extends AbstractCommand<typeof ConfigOptions> {
 		constructor() {
 			super({
 				id: "watch",
@@ -39,7 +40,7 @@ registerCommand(
 		/** Watches until the process is asked to shut down. */
 		async run(
 			accessor: ServicesAccessor,
-			args: ParsedArgs
+			line: CommandLine<typeof ConfigOptions>
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
@@ -50,11 +51,18 @@ registerCommand(
 				accessor.get(EnvironmentService).cwd
 			);
 
-			const selection = await configService.select(args);
+			const selection = await configService.select(
+				line.positionals,
+				line.options
+			);
 			if (selection.isErr()) return selection;
 			const watched = watchService.watch(selection.value);
 			if (watched.isErr()) return watched;
-			log.begin(selection.value);
+			// The watch started, so every config is valid.
+			log.begin(
+				selection.value.requireValid().unwrap(),
+				selection.value.unselected
+			);
 
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();

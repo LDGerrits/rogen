@@ -12,5 +12,5 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Config: ModuleScript  <- src/Config.luau
+      Config: ModuleScript  <- shared-code/Config.luau
       Local: ModuleScript  <- src/Local.luau

@@ -12,7 +12,8 @@ import { InitQuestions } from "../init-questions.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { BaseConfigReader, PlaceSetup } from "../place-setup.js";
+import { BaseConfigReader } from "../base-config-reader.js";
+import { PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
@@ -317,10 +318,7 @@ describe("BaseConfigReader", () => {
 
 	const readBase = (entries: readonly string[] = ["default.rogen.json"]) =>
 		new BaseConfigReader(
-			new CoreConfigService(
-				fs,
-				new MockEnvironmentService({ _: [] }, directory)
-			),
+			new CoreConfigService(fs, new MockEnvironmentService(directory)),
 			directory
 		).read(new Set(entries));
 

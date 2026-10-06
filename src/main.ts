@@ -88,9 +88,9 @@ async function main(): Promise<void> {
 		}
 
 		// Initialize environment
-		const { command, options: cliArgs } = argsResult.unwrap();
+		const { command, line } = argsResult.unwrap();
 		const environment = new NativeEnvironmentService(
-			cliArgs,
+			line.options,
 			process.cwd()
 		);
 
@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 		const commandService = new CoreCommandService(services, logService);
 		services.set(CommandService, commandService);
 
-		const result = await commandService.executeCommand(command, cliArgs);
+		const result = await commandService.executeCommand(command, line);
 
 		if (result.isErr()) {
 			failure.report(result.error, command);

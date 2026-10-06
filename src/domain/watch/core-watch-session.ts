@@ -2,10 +2,14 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
+import {
+	isError,
+	newDiagnostics,
+} from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
-import { BuildBlockers, ConfigBuild, failedBuild } from "../build/build.js";
+import { BuildSet, ConfigBuild } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -41,9 +45,20 @@ class WatchedConfig {
 		return this.pending === 0 && !this.failing;
 	}
 
-	finished(build: ConfigBuild): void {
+	/** Records `build` as the latest, and reports what it says that the one before didn't. */
+	finished(build: ConfigBuild): RebuildReport {
+		const unreported = newDiagnostics(
+			this.latest?.diagnostics ?? [],
+			build.diagnostics
+		);
 		this.latest = build;
 		if (build.readFiles) this.readFiles = new Set(build.readFiles);
+		return {
+			build,
+			unreported,
+			repeatedFailure:
+				build.errors.length > 0 && !unreported.some(isError),
+		};
 	}
 }
 
@@ -64,8 +79,6 @@ export class CoreWatchSession
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
-	/** Why configs can't be built beside the others, from the latest load. */
-	private blocked = new BuildBlockers([]);
 	private started = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
@@ -76,6 +89,8 @@ export class CoreWatchSession
 
 	constructor(
 		private readonly selection: ConfigSelection,
+		/** The configs that build, from the latest load, and which of them can't. */
+		private set: BuildSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService
@@ -112,11 +127,10 @@ export class CoreWatchSession
 			)
 		);
 
-		this.refreshBlocked();
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
-			this.currentConfigs.map(({ file }) => this.queueRebuild(file, true))
+			this.currentConfigs.map(({ file }) => this.queueRebuild(file))
 		);
 		this.started = true;
 	}
@@ -151,26 +165,19 @@ export class CoreWatchSession
 		);
 	}
 
-	/** `load` also checks the sync dir, which only changes when the config or its compiler does. */
 	private async rebuild(
 		watched: WatchedConfig,
-		file: string,
-		load: boolean
+		file: string
 	): Promise<RebuildReport | undefined> {
-		const entry = this.selection.entries.find(
-			(candidate) => candidate.file === file
+		if (!this.set.configOf(file)) return undefined;
+		return watched.finished(
+			await this.buildService.rebuild(
+				this.set,
+				file,
+				this.listing,
+				watched.latest
+			)
 		);
-		const config = entry && buildableConfig(entry);
-		if (!config) return undefined;
-		const blocked = this.blocked.blocking(file);
-		const build =
-			blocked.length > 0
-				? failedBuild(config, blocked)
-				: await this.buildService.rebuild(config, this.listing, {
-						checkSyncDir: load,
-					});
-		watched.finished(build);
-		return { ...build, checkedSyncDir: load && blocked.length === 0 };
 	}
 
 	/** Runs `task`, turning a throw into `onDidError`; queued work is dropped once the session stops. */
@@ -195,10 +202,7 @@ export class CoreWatchSession
 		void tracked.finally(() => this.pending.delete(tracked));
 	}
 
-	private queueRebuild(
-		file: string,
-		load: boolean
-	): Promise<RebuildReport | undefined> {
+	private queueRebuild(file: string): Promise<RebuildReport | undefined> {
 		let watched = this.watched.get(file);
 		if (!watched) {
 			watched = new WatchedConfig();
@@ -207,7 +211,7 @@ export class CoreWatchSession
 		const config = watched;
 		config.pending++;
 		const queued = config.rebuilds.queue(
-			this.guarded(() => this.rebuild(config, file, load))
+			this.guarded(() => this.rebuild(config, file))
 		);
 		void queued.then(
 			() => config.pending--,
@@ -286,10 +290,10 @@ export class CoreWatchSession
 	}
 
 	/** Re-checks the configs as a set, and returns the config files whose block was lifted or put on. */
-	private refreshBlocked(): string[] {
-		const before = this.blocked.files;
-		this.blocked = new BuildBlockers(this.currentConfigs);
-		const after = this.blocked.files;
+	private refreshSet(): string[] {
+		const before = this.set.blockedFiles;
+		this.set = new BuildSet(this.currentConfigs);
+		const after = this.set.blockedFiles;
 		return [...new Set([...before, ...after])].filter(
 			(file) => before.has(file) !== after.has(file)
 		);
@@ -324,7 +328,7 @@ export class CoreWatchSession
 		return {
 			reloaded: [...reloaded],
 			reindexed,
-			reblocked: this.refreshBlocked(),
+			reblocked: this.refreshSet(),
 		};
 	}
 
@@ -366,27 +370,20 @@ export class CoreWatchSession
 				configFiles,
 				reloaded: reloaded.length > 0,
 			},
-			[...affected].map((file) =>
-				this.queueRebuild(
-					file,
-					reloaded.includes(file) || reblocked.includes(file)
-				)
-			),
+			[...affected].map((file) => this.queueRebuild(file)),
 			sourceChanges
 		);
 	}
 
 	private async onBurst(burst: ChangeBurst): Promise<void> {
-		const { reloaded, reindexed } = await this.applyConfigChanges([
+		const { reindexed } = await this.applyConfigChanges([
 			...this.selection.files,
 		]);
 		if (!reindexed)
 			this.listing = await this.indexService.list(this.plan.roots);
 		this.announce(
 			{ kind: "burst", ...burst },
-			this.currentConfigs.map(({ file }) =>
-				this.queueRebuild(file, reloaded.includes(file))
-			)
+			this.currentConfigs.map(({ file }) => this.queueRebuild(file))
 		);
 	}
 }

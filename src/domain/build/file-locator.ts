@@ -3,11 +3,11 @@ import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { RojoFile } from "../rojo/rojo-file.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { FileLocation, PlacedLocation } from "./build.js";
 import { Placement } from "./placement.js";
-import { membersOf } from "./root-scanner.js";
+import { RoutedFile } from "./router.js";
 
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
 export class FileLocator {
@@ -37,7 +37,9 @@ export class FileLocator {
 			.filter(
 				(location): location is PlacedLocation =>
 					location.status === "placed" &&
-					reference.contains(location.instancePath)
+					[location.instancePath, ...(location.alsoAt ?? [])].some(
+						(instancePath) => reference.contains(instancePath)
+					)
 			)
 			.sort(this.bySource);
 	}
@@ -49,19 +51,23 @@ export class FileLocator {
 			all.set(location.source, location);
 
 		for (const [source, why] of leftOut) add({ ...why, source });
-
-		for (const file of files) {
-			for (const { source, below } of membersOf(file.entry))
-				add({
-					status: "placed",
-					source,
-					instancePath: [...file.instancePath, ...below],
-					route: file.route,
-					routeMatch: file.routeMatch,
-					variants: file.variants,
-				});
-		}
+		for (const file of files) add(this.placedAt(file));
 		return all;
+	}
+
+	private placedAt(file: RoutedFile): PlacedLocation {
+		const others = this.placement.otherNodesOf(file);
+		return {
+			status: "placed",
+			source: file.entry.source,
+			instancePath: file.instancePath,
+			...(others.length > 0 && {
+				alsoAt: others.map(({ instancePath }) => instancePath),
+			}),
+			route: file.route,
+			routeMatch: file.routeMatch,
+			variants: file.variants,
+		};
 	}
 
 	private locatePath(target: string): FileLocation[] {

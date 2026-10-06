@@ -3,20 +3,10 @@ import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../build.js";
-import { TreeAssembler } from "../tree-assembler.js";
-import {
-	abs,
-	builderOf,
-	configOf,
-	indexOf,
-	placeFiles,
-	syncTools,
-	writeFiles,
-} from "./fixtures.js";
+import { abs, builderOf, configOf, indexOf, writeFiles } from "./fixtures.js";
 
 describe("TreeAssembler", () => {
 	const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
@@ -46,7 +36,7 @@ describe("TreeAssembler", () => {
 				await assembleResult(overrides, extraTools)
 			).unwrap();
 			expectRojoProject(output.tree);
-			return output;
+			return { tree: output.tree, warnings: output.findings.warnings };
 		};
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
@@ -889,7 +879,7 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should list a file excluded anywhere inside an init folder", async () => {
+			it("should list a file excluded anywhere inside an init folder, and what Rojo would read beside its script", async () => {
 				await write(
 					"src/Moves/init.ts",
 					"src/Moves/Punch.spec.ts",
@@ -904,6 +894,7 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual([
 					"dist/Moves/Heavy/Slam.spec.luau",
 					"dist/Moves/Punch.spec.luau",
+					"dist/Moves/Heavy",
 				]);
 			});
 
@@ -1485,163 +1476,87 @@ describe("TreeAssembler", () => {
 				expect(warnings).toEqual([]);
 			});
 		});
-	});
 
-	type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
-
-	describe("folder meta", () => {
-		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
-
-		const read = async (overrides: Partial<Read> = {}) => {
-			const config: Read = {
-				rootDirs: [abs("src")],
-				exclude: [],
-				...overrides,
+		describe("init scripts", () => {
+			const SPLIT = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
 			};
-			const index = await indexOf(store, fs, config.rootDirs);
-			const built = await new TreeAssembler(fs).assemble(
-				placeFiles(index, configOf(config), syncTools).unwrap()
-			);
-			return built.map(({ folderMeta }) => folderMeta);
-		};
 
-		beforeEach(() => {
-			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
-		});
+			it("should point every node an init script is at its directory, and keep what sits beside it out of that read", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/Types.luau",
+					"src/Net/server/Remote.luau",
+					"src/Net/client/Listener.luau"
+				);
+				await fs.writeFile(
+					abs("src/Net/init.meta.json"),
+					JSON.stringify({ attributes: { Remote: true } })
+				);
 
-		afterEach(() => {
-			store[Symbol.dispose]();
-		});
+				const { tree: value } = await assemble({ routes: SPLIT });
 
-		it("should read every init.meta.json with its folder and fields", async () => {
-			await fs.writeFile(
-				abs("src/Combat/init.meta.json"),
-				JSON.stringify({
-					className: "Actor",
-					properties: { Enabled: false },
-					attributes: { Priority: 1 },
-					ignoreUnknownInstances: true,
-					id: "combat",
-				})
-			);
-			await fs.writeFile(abs("src/init.meta.json"), "{}");
+				expect(value.tree.ReplicatedStorage).toEqual({
+					$className: "ReplicatedStorage",
+					Net: {
+						$path: optional("src/Net"),
+						Types: { $path: optional("src/Net/Types.luau") },
+					},
+				});
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
+					Net: {
+						$path: optional("src/Net"),
+						Remote: {
+							$path: optional("src/Net/server/Remote.luau"),
+						},
+					},
+				});
+				expect([...(value.globIgnorePaths ?? [])].sort()).toEqual([
+					"src/Net/Types.luau",
+					"src/Net/client",
+					"src/Net/server",
+				]);
+			});
 
-			const result = await read();
+			it("should point a node at an init script with a variant, which Rojo reads alone, and copy its folder's meta on", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/init.mock.luau",
+					"src/Net/Types.luau"
+				);
+				await fs.writeFile(
+					abs("src/Net/init.meta.json"),
+					JSON.stringify({ attributes: { Mocked: true } })
+				);
 
-			expect(result.unwrap()).toEqual([
-				{
-					file: abs("src/Combat/init.meta.json"),
-					rootDir: abs("src"),
-					dir: "Combat",
-					className: "Actor",
-					properties: { Enabled: false },
-					attributes: { Priority: 1 },
-					ignoreUnknownInstances: true,
-					id: "combat",
-				},
-				{
-					file: abs("src/init.meta.json"),
-					rootDir: abs("src"),
-					dir: "",
-				},
-			]);
-		});
+				const storage = await storageOf({ variants: { mock: true } });
 
-		it("should skip a file's meta and an excluded folder's", async () => {
-			await fs.writeFile(abs("src/Save.meta.json"), "{ broken");
-			await fs.writeFile(abs("src/legacy/init.meta.json"), "{ broken");
+				expect(storage.Net).toEqual({
+					$path: optional("src/Net/init.mock.luau"),
+					$attributes: { Mocked: true },
+					Types: { $path: optional("src/Net/Types.luau") },
+				});
+			});
 
-			const result = await read({ exclude: [abs("src/legacy")] });
+			it("should point at the directory roblox-ts writes an index script's init into", async () => {
+				await write("src/Lib/index.ts", "src/Lib/server/Api.ts");
 
-			expect(result.unwrap()).toEqual([]);
-		});
+				const { tree: value } = await assemble({
+					routes: SPLIT,
+					syncDir: abs("out"),
+				});
 
-		it("should accept comments, trailing commas and unknown fields", async () => {
-			await fs.writeFile(
-				abs("src/Combat/init.meta.json"),
-				'{\n\t// an actor\n\t"$schema": "x",\n\t"className": "Actor",\n}'
-			);
-
-			const result = await read();
-
-			expect(result.unwrap()).toEqual([
-				{
-					file: abs("src/Combat/init.meta.json"),
-					rootDir: abs("src"),
-					dir: "Combat",
-					className: "Actor",
-				},
-			]);
-		});
-
-		it("should fail with the file and position when the JSONC is invalid", async () => {
-			await fs.writeFile(
-				abs("src/Combat/init.meta.json"),
-				'{\n\t"className": }'
-			);
-
-			const result = await read();
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{
-					code: "meta.invalidSyntax",
-					resource: abs("src/Combat/init.meta.json"),
-					position: { line: 2, column: 15 },
-				},
-			]);
-		});
-
-		it("should fail when the meta isn't an object", async () => {
-			await fs.writeFile(abs("src/Combat/init.meta.json"), "[]");
-
-			const result = await read();
-
-			expect(result.isErr() ? result.error : []).toMatchObject([
-				{
-					code: "meta.notAnObject",
-					resource: abs("src/Combat/init.meta.json"),
-				},
-			]);
-		});
-
-		it("should fail at the value when a known field has the wrong type", async () => {
-			await fs.writeFile(
-				abs("src/Combat/init.meta.json"),
-				'{\n\t"className": 1,\n\t"attributes": []\n}'
-			);
-
-			const result = await read();
-
-			const errors = result.isErr() ? result.error : [];
-			expect(errors).toMatchObject([
-				{ code: "meta.wrongType", position: { line: 2, column: 15 } },
-				{ code: "meta.wrongType", position: { line: 3, column: 16 } },
-			]);
-			expect(errors[0].message).toBe(
-				'"className": expected a string, found a number.'
-			);
-		});
-
-		it("should report every invalid meta file at once", async () => {
-			await fs.writeFile(abs("src/A/init.meta.json"), "{ broken");
-			await fs.writeFile(abs("src/B/init.meta.json"), '{"id": true}');
-
-			const result = await read();
-
-			expect(
-				new Set(
-					result.isErr()
-						? result.error.map(({ resource }) => resource)
-						: []
-				)
-			).toEqual(
-				new Set([
-					abs("src/A/init.meta.json"),
-					abs("src/B/init.meta.json"),
-				])
-			);
+				expect(
+					(value.tree.ServerScriptService as RojoNode).Lib
+				).toEqual({
+					$path: optional("out/Lib"),
+					Api: { $path: optional("out/Lib/server/Api.luau") },
+				});
+				expect(value.globIgnorePaths).toEqual(["out/Lib/server"]);
+			});
 		});
 	});
 });

@@ -64,6 +64,22 @@ describe("LocationReport", () => {
 			);
 		});
 
+		it("should list the other nodes a copied init script is", () => {
+			expect(
+				describe1({
+					status: "placed",
+					source: "/repo/src/Net/init.luau",
+					instancePath: ["ServerScriptService", "Net"],
+					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
+					route: "server",
+					routeMatch: "copy",
+					variants: [],
+				})
+			).toBe(
+				"src/Net/init.luau -> ServerScriptService/Net · route server (copy) · also StarterPlayer/StarterPlayerScripts/Net"
+			);
+		});
+
 		it("should say how a dormant variant matched a pruned file", () => {
 			expect(
 				describe1({
@@ -255,6 +271,22 @@ describe("LocationReport", () => {
 					variants: [{ variant: "mock", form: "suffix" }],
 				},
 			]);
+		});
+
+		it("should give the other nodes a copied init script is", () => {
+			expect(
+				jsonOf({
+					status: "placed",
+					source: "/repo/src/Net/init.luau",
+					instancePath: ["ServerScriptService", "Net"],
+					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
+					route: "server",
+					routeMatch: "copy",
+					variants: [],
+				})[0]
+			).toMatchObject({
+				alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
+			});
 		});
 
 		it.each<[FileLocation, Record<string, unknown>]>([

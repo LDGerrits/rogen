@@ -4,6 +4,7 @@ import {
 	commonAncestor,
 	contains,
 	containsPosix,
+	dirnamePosix,
 	isInside,
 	joinPosix,
 	normalizeDir,
@@ -37,6 +38,16 @@ describe("Path", () => {
 			expect(joinPosix("/repo/src", "./Net/../Save.luau")).toBe(
 				"/repo/src/Save.luau"
 			);
+		});
+	});
+
+	describe("dirnamePosix", () => {
+		it("should give the directory of a relative path", () => {
+			expect(dirnamePosix("Net/server/Remote.luau")).toBe("Net/server");
+		});
+
+		it("should give an empty directory for a path at the top", () => {
+			expect(dirnamePosix("Remote.luau")).toBe("");
 		});
 	});
 

@@ -46,11 +46,6 @@ export class ConfigSet {
 		return `${PLACES_DIR}/${name}`;
 	}
 
-	/** The files an extending config named `name` writes, plus its project file. */
-	static extendingFilesOf(name: string): string[] {
-		return [configFileName(name), defaultOutFileName(name)];
-	}
-
 	/** The command that serves the project file the config named `name` writes. */
 	static serveCommand(name: string): string {
 		return `rojo serve ${defaultOutFileName(name)}`;

@@ -1,5 +1,5 @@
 import path from "path";
-import { BuildBlockers, OutputFile } from "../build.js";
+import { BuildSet, OutputFile } from "../build.js";
 import { abs, configOf } from "./fixtures.js";
 
 const outFile = path.resolve("/repo", "default.project.json");
@@ -27,9 +27,9 @@ describe("domain/build/build", () => {
 		});
 	});
 
-	describe("BuildBlockers", () => {
+	describe("BuildSet", () => {
 		it("should block every config that shares an out file, each with the same error", () => {
-			const blockers = new BuildBlockers([
+			const blockers = new BuildSet([
 				configOf(),
 				configOf({ file: abs("other.rogen.json") }),
 				configOf({
@@ -38,7 +38,7 @@ describe("domain/build/build", () => {
 				}),
 			]);
 
-			expect([...blockers.files]).toEqual([
+			expect([...blockers.blockedFiles]).toEqual([
 				abs("default.rogen.json"),
 				abs("other.rogen.json"),
 			]);
@@ -51,7 +51,7 @@ describe("domain/build/build", () => {
 		});
 
 		it("should block a config that declares no routes", () => {
-			const blockers = new BuildBlockers([configOf({ routes: {} })]);
+			const blockers = new BuildSet([configOf({ routes: {} })]);
 
 			expect(blockers.blocking(abs("default.rogen.json"))).toMatchObject([
 				{ code: "route.noRoutes" },
@@ -59,7 +59,7 @@ describe("domain/build/build", () => {
 		});
 
 		it("should list each problem once, the configs without routes first", () => {
-			const blockers = new BuildBlockers([
+			const blockers = new BuildSet([
 				configOf({ routes: {} }),
 				configOf({ file: abs("other.rogen.json") }),
 			]);
@@ -71,9 +71,9 @@ describe("domain/build/build", () => {
 		});
 
 		it("should block nothing when every config can be built", () => {
-			const blockers = new BuildBlockers([configOf()]);
+			const blockers = new BuildSet([configOf()]);
 
-			expect(blockers.files.size).toBe(0);
+			expect(blockers.blockedFiles.size).toBe(0);
 			expect(blockers.blocking(abs("default.rogen.json"))).toEqual([]);
 		});
 	});

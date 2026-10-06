@@ -15,7 +15,8 @@ describe("version command", () => {
 
 	const run = () =>
 		new CoreCommandService(services, logService).executeCommand("version", {
-			_: ["version"],
+			positionals: [],
+			options: {},
 		});
 
 	beforeEach(() => {

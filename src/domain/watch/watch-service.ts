@@ -1,6 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
@@ -24,11 +25,15 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** What the run did for one config in a round; `config` is the version that was built. */
-export type RebuildReport = ConfigBuild & {
-	/** Whether this round checked the sync dir; `syncWarnings` is empty when it didn't. */
-	readonly checkedSyncDir: boolean;
-};
+/** One config's rebuild in a round, with what it says that the config's previous rebuild didn't. */
+export interface RebuildReport {
+	/** `build.config` is the version that was built. */
+	readonly build: ConfigBuild;
+	/** The diagnostics of `build` its previous rebuild didn't have, in print order. */
+	readonly unreported: readonly Diagnostic[];
+	/** It failed with the same errors as the previous rebuild. */
+	readonly repeatedFailure: boolean;
+}
 
 /** One round of rebuilds, fired once every rebuild in it has finished. */
 export interface WatchUpdate {

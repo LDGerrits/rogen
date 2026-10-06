@@ -6,26 +6,11 @@ import {
 	WatchCause,
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
-import {
-	Diagnostic,
-	isError,
-	renderDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	ConfigNotice,
-	ConfigSelection,
-	buildableConfig,
-} from "../../domain/config/config-service.js";
+import { ConfigNotice } from "../../domain/config/config-service.js";
+import { ResolvedConfig } from "../../domain/config/config.js";
 import { BuildLog } from "../build/build-log.js";
-
-/** A rebuild as this round shows it: only what wasn't printed before. */
-interface ShownReport {
-	readonly report: RebuildReport;
-	readonly diagnostics: readonly Diagnostic[];
-	readonly note?: string;
-}
 
 interface WatchChange {
 	readonly sourceFiles: number;
@@ -91,27 +76,9 @@ function titleOf(cause: WatchCause): string {
 	}
 }
 
-/** Remembers what was last printed per key, so a rebuild reports only what is new. */
-class PrintedDiagnostics {
-	private readonly printed = new Map<string, ReadonlySet<string>>();
-
-	/** Returns the diagnostics not printed for `key` last time, and records `diagnostics` as printed. */
-	unseen(key: string, diagnostics: readonly Diagnostic[]): Diagnostic[] {
-		const previous = this.printed.get(key);
-		const rendered = diagnostics.map((diagnostic) =>
-			renderDiagnostic(diagnostic)
-		);
-		this.printed.set(key, new Set(rendered));
-		return diagnostics.filter(
-			(_, index) => !previous?.has(rendered[index])
-		);
-	}
-}
-
 /** How `watch` reports each round of rebuilds. */
 export class WatchLog {
 	private readonly buildLog: BuildLog;
-	private readonly printed = new PrintedDiagnostics();
 
 	constructor(
 		private readonly logService: LogService,
@@ -121,12 +88,11 @@ export class WatchLog {
 	}
 
 	/** Opens the output: the configs it watches and the ones it leaves out. */
-	begin({ entries, unselected }: ConfigSelection): void {
-		this.buildLog.begin(
-			"watch",
-			entries.flatMap((entry) => buildableConfig(entry) ?? []),
-			unselected
-		);
+	begin(
+		configs: readonly ResolvedConfig[],
+		unselected: readonly string[]
+	): void {
+		this.buildLog.begin("watch", configs, unselected);
 	}
 
 	end(): void {
@@ -134,8 +100,6 @@ export class WatchLog {
 	}
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
-		const shown = reports.map((report) => this.unseenReport(report));
-
 		if (cause.kind === "burst") {
 			this.logService.warn(
 				`Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
@@ -145,35 +109,28 @@ export class WatchLog {
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
-		shown.forEach((report) => this.report(report));
+		reports.forEach((report) => this.report(report));
 	}
 
-	/** A report with only the diagnostics not printed for its config the last time. */
-	private unseenReport(report: RebuildReport): ShownReport {
-		const { file } = report.config;
-		const build = this.printed.unseen(`${file}#build`, [
-			...report.warnings,
-			...report.errors,
-		]);
-		const sync = report.checkedSyncDir
-			? this.printed.unseen(`${file}#sync`, report.syncWarnings)
-			: [];
-		const repeated = report.errors.length > 0 && !build.some(isError);
-		return {
-			report,
-			diagnostics: [...build, ...sync],
-			...(repeated && { note: "same errors as before" }),
-		};
+	private notice(notice: ConfigNotice): void {
+		const name = path.basename(notice.file);
+		if (notice.kind === "recovered") {
+			this.logService.info(`${name} loads again.`);
+			return;
+		}
+		this.buildLog.diagnostics(notice.errors);
+		this.logService.error(`Still building from the last valid ${name}.`);
 	}
 
-	private notice({ file, errors }: ConfigNotice): void {
-		this.buildLog.diagnostics(errors);
-		this.logService.error(
-			`Still building from the last valid ${path.basename(file)}.`
+	private report({
+		build,
+		unreported,
+		repeatedFailure,
+	}: RebuildReport): void {
+		this.buildLog.outcome(
+			build,
+			unreported,
+			repeatedFailure ? "same errors as before" : undefined
 		);
-	}
-
-	private report({ report, diagnostics, note }: ShownReport): void {
-		this.buildLog.outcome(report, diagnostics, note);
 	}
 }

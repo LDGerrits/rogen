@@ -20,6 +20,12 @@ export function joinPosix(...segments: string[]): string {
 	return toPosix(path.join(...segments));
 }
 
+/** The directory of a relative POSIX path, `""` rather than `"."` at the top, so a root reads like the dirs below it. */
+export function dirnamePosix(relativePath: string): string {
+	const dir = path.posix.dirname(relativePath);
+	return dir === "." ? "" : dir;
+}
+
 /** Whether `dir` lies strictly inside `parent`; both must be absolute. */
 export function isInside(dir: string, parent: string): boolean {
 	const relative = path.relative(parent, dir);

@@ -10,6 +10,17 @@ describe("roblox-ts sync tool", () => {
 		}
 	);
 
+	it.each([
+		["out/Lib/index.ts", "out/Lib/init.luau"],
+		["out/Lib/index.server.ts", "out/Lib/init.server.luau"],
+		["out/Lib/index.mock.ts", "out/Lib/init.mock.luau"],
+		["out/Lib/index@server.ts", "out/Lib/index@server.luau"],
+		["out/index/Foo.ts", "out/index/Foo.luau"],
+		["out/Lib/reindex.ts", "out/Lib/reindex.luau"],
+	])("should write %s as %s", (file, emitted) => {
+		expect(robloxTsSyncTool.emittedPath?.(file)).toBe(emitted);
+	});
+
 	it("should leave a Luau file's path alone", () => {
 		expect(robloxTsSyncTool.emittedPath?.("src/Foo.luau")).toBe(
 			"src/Foo.luau"

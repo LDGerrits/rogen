@@ -11,7 +11,7 @@ import {
 	buildableConfig,
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { OutputFile } from "../../build/build.js";
+import { BuildSet, OutputFile } from "../../build/build.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
@@ -68,13 +68,12 @@ describe("CoreWatchSession", () => {
 		updates.filter(({ cause }) => cause.kind === "change");
 
 	const start = async (names: string[] = []) => {
-		selection = (
-			await configService.select({ _: ["watch", ...names] })
-		).unwrap();
+		selection = (await configService.select(names, {})).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
 				selection,
+				BuildSet.of(selection).unwrap(),
 				watcher,
 				indexService,
 				buildServiceOf(fs, indexService)
@@ -94,7 +93,7 @@ describe("CoreWatchSession", () => {
 		watcher = new MemoryWatcher(fs, new NullLogService());
 		configService = new CoreConfigService(
 			fs,
-			new MockEnvironmentService(undefined, "/repo")
+			new MockEnvironmentService("/repo")
 		);
 		store = new DisposableStore();
 		updates = [];
@@ -118,9 +117,14 @@ describe("CoreWatchSession", () => {
 		expect(updates).toHaveLength(1);
 		expect(updates[0].cause).toEqual({ kind: "initial" });
 		expect(updates[0].reports).toMatchObject([
-			{ outcome: "wrote", config: { file: "/repo/default.rogen.json" } },
+			{
+				build: {
+					outcome: "wrote",
+					config: { file: "/repo/default.rogen.json" },
+				},
+			},
 		]);
-		expect(updates[0].reports[0].summary?.roots[0].files).toBe(1);
+		expect(updates[0].reports[0].build.summary?.roots[0].files).toBe(1);
 		expect(await fs.exists("/repo/default.project.json")).toBe(true);
 	});
 
@@ -142,9 +146,9 @@ describe("CoreWatchSession", () => {
 		expect(updates[1].changes.map(({ path }) => path)).toEqual([
 			"/repo/lobby/B.luau",
 		]);
-		expect(updates[1].reports.map(({ config }) => config.file)).toEqual([
-			"/repo/lobby.rogen.json",
-		]);
+		expect(
+			updates[1].reports.map(({ build }) => build.config.file)
+		).toEqual(["/repo/lobby.rogen.json"]);
 	});
 
 	it("should report a broken config and keep the last valid one, with nothing to rebuild", async () => {
@@ -158,10 +162,14 @@ describe("CoreWatchSession", () => {
 			configFiles: ["/repo/default.rogen.json"],
 		});
 		const [notice] = updates[1].notices;
-		expect(notice.file).toBe("/repo/default.rogen.json");
-		expect(new Set(notice.errors.map(({ code }) => code))).toEqual(
-			new Set(["config.invalidSyntax"])
-		);
+		expect(notice).toMatchObject({
+			kind: "broken",
+			file: "/repo/default.rogen.json",
+		});
+		expect(
+			notice.kind === "broken" &&
+				new Set(notice.errors.map(({ code }) => code))
+		).toEqual(new Set(["config.invalidSyntax"]));
 		expect(updates[1].reports).toEqual([]);
 		expect(buildableConfig(selection.entries[0])).toBeDefined();
 	});
@@ -174,7 +182,7 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		for (const update of updates.slice(0, 2)) {
-			expect(update.reports[0].warnings).toMatchObject([
+			expect(update.reports[0].build.warnings).toMatchObject([
 				{ code: "meta.unclaimed" },
 			]);
 		}
@@ -187,28 +195,57 @@ describe("CoreWatchSession", () => {
 		await fs.createSymbolicLink("/repo/src", "/repo/src/Loop");
 		await settle();
 
-		expect(updates.at(-1)?.reports[0].warnings).toMatchObject([
+		expect(updates.at(-1)?.reports[0].build.warnings).toMatchObject([
 			{ code: "scan.unresolvedLink" },
 		]);
-		expect(updates.at(-1)?.reports[0].summary?.roots[0].files).toBe(1);
+		expect(updates.at(-1)?.reports[0].build.summary?.roots[0].files).toBe(
+			1
+		);
 	});
 
-	it("should report the sync dir check only for a round that made it", async () => {
+	it("should report a diagnostic once while it persists, and again after it went away", async () => {
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
 		await start();
+		const unreported = () =>
+			updates.at(-1)?.reports[0].unreported.map(({ code }) => code);
 
 		await fs.writeFile("/repo/src/A.luau", "");
 		await settle();
+		expect(unreported()).toEqual([]);
 
-		expect(updates[0].reports[0].checkedSyncDir).toBe(true);
-		expect(updates[1].reports[0].checkedSyncDir).toBe(false);
+		await fs.delete("/repo/src/Hud.meta.json");
+		await settle();
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await settle();
+		expect(unreported()).toEqual(["meta.unclaimed"]);
+	});
+
+	it("should check the sync dir when the config loads, and not again until it changes", async () => {
+		await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+
+		await fs.writeFile("/repo/src/B.luau", "");
+		await settle();
+
+		expect(updates[0].reports[0].unreported).toMatchObject([
+			{ code: "output.nothingEmitted" },
+		]);
+		expect(updates[1].reports[0].unreported).toEqual([]);
+		expect(updates[1].reports[0].build.syncWarnings).toBe(
+			updates[0].reports[0].build.syncWarnings
+		);
 	});
 
 	it("should not rebuild for an update to a meta file the build never read", async () => {
-		await fs.writeFile("/repo/src/Hud.luau", "");
-		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await fs.writeFile("/repo/src/Notes.txt", "");
+		await fs.writeFile("/repo/src/Notes.meta.json", "{}");
 		await start();
 
-		await fs.writeFile("/repo/src/Hud.meta.json", '{"className":"Actor"}');
+		await fs.writeFile(
+			"/repo/src/Notes.meta.json",
+			'{"attributes":{"a":1}}'
+		);
 		await settle();
 
 		expect(updates).toHaveLength(1);
@@ -247,13 +284,13 @@ describe("CoreWatchSession", () => {
 		await fs.writeFile("/repo/src/Combat/Hit.luau", "");
 		await fs.writeFile("/repo/src/Combat/init.meta.json", "{ broken");
 		await start();
-		expect(updates[0].reports[0].outcome).toBe("failed");
+		expect(updates[0].reports[0].build.outcome).toBe("failed");
 
 		await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
 		await settle();
 
 		expect(updates).toHaveLength(2);
-		expect(updates[1].reports[0].outcome).toBe("wrote");
+		expect(updates[1].reports[0].build.outcome).toBe("wrote");
 	});
 
 	it("should report a config's errors again once it breaks again after a fix", async () => {
@@ -266,11 +303,25 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		const notices = updates.flatMap((update) => update.notices);
-		expect(notices.map(({ file }) => file)).toEqual([
-			"/repo/default.rogen.json",
-			"/repo/default.rogen.json",
+		expect(notices.map(({ kind }) => kind)).toEqual([
+			"broken",
+			"recovered",
+			"broken",
 		]);
-		expect(notices[1].errors).toEqual(notices[0].errors);
+		expect(notices[2]).toEqual(notices[0]);
+	});
+
+	it("should say a broken config loads again when the fix restores what last built", async () => {
+		await start();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
+
+		await writeConfig("/repo/default.rogen.json", {});
+		await settle();
+
+		expect(updates.at(-1)?.notices).toEqual([
+			{ kind: "recovered", file: "/repo/default.rogen.json" },
+		]);
 	});
 
 	it("should not report a config's errors again while it stays broken the same way", async () => {
@@ -295,9 +346,9 @@ describe("CoreWatchSession", () => {
 		};
 		const lastReports = () =>
 			Object.fromEntries(
-				updates[updates.length - 1].reports.map((report) => [
-					report.config.file,
-					report,
+				updates[updates.length - 1].reports.map(({ build }) => [
+					build.config.file,
+					build,
 				])
 			);
 
@@ -542,7 +593,7 @@ describe("CoreWatchSession", () => {
 			await write("/repo/src/Combat/init.meta.json", "{ broken");
 			await settle();
 			expect(await combatClass()).toBe("Configuration");
-			expect(updates.at(-1)?.reports[0].outcome).toBe("failed");
+			expect(updates.at(-1)?.reports[0].build.outcome).toBe("failed");
 		});
 
 		it("should reach every config that claims the path, each once", async () => {

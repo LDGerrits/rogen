@@ -13,6 +13,6 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       A: Folder
-        Util: ModuleScript  <- src/A/Util.luau
+        Util: ModuleScript  <- shared-code/Util.luau
       B: Folder
-        Util: ModuleScript  <- src/B/Util.luau
+        Util: ModuleScript  <- shared-code/Util.luau

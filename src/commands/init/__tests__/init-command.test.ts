@@ -27,7 +27,7 @@ import {
 	MockPromptService,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { ParsedArgs, parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -56,12 +56,9 @@ describe("init command", () => {
 		names: string[] = [],
 		promptService: PromptService = new MockPromptService([], false),
 		logService: LogService = new NullLogService(),
-		options: Omit<ParsedArgs, "_"> = {}
+		options: CommandLine["options"] = {}
 	) => {
-		const environment = new NativeEnvironmentService(
-			{ _: ["init", ...names], ...options },
-			cwd
-		);
+		const environment = new NativeEnvironmentService(options, cwd);
 		const services = new ServiceCollection();
 		services.set(EnvironmentService, environment);
 		services.set(
@@ -79,7 +76,7 @@ describe("init command", () => {
 
 		return new CoreCommandService(services, logService).executeCommand(
 			"init",
-			environment.args
+			{ positionals: names, options }
 		);
 	};
 
@@ -189,7 +186,7 @@ describe("init command", () => {
 				[...registry.getCommands().keys()]
 			);
 
-			expect(parsed.unwrap().options.json).toBe(true);
+			expect(parsed.unwrap().line.options.json).toBe(true);
 		});
 	});
 

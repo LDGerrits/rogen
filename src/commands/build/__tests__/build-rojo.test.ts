@@ -31,8 +31,8 @@ describeWithRojo("build command against Rojo", () => {
 	};
 
 	const build = async (names: string[]) => {
-		const args = { _: ["build", ...names] };
-		const environment = new NativeEnvironmentService(args, dir);
+		const line = { positionals: names, options: {} };
+		const environment = new NativeEnvironmentService(line.options, dir);
 		const fileSystem = new DiskFileSystemService();
 		const logService = new NullLogService();
 		const configService = new CoreConfigService(fileSystem, environment);
@@ -47,7 +47,7 @@ describeWithRojo("build command against Rojo", () => {
 		services.set(LogService, logService);
 		return new CoreCommandService(services, logService).executeCommand(
 			"build",
-			args
+			line
 		);
 	};
 

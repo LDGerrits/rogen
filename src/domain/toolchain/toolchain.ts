@@ -249,6 +249,7 @@ export class Darklua {
 			note: "Darklua converts every .meta.json this way.",
 		},
 		dataReplacement: {
+			suffix: ".lua",
 			note: "Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them.",
 		},
 	};

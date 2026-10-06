@@ -1,6 +1,7 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
 import { DataReplacement, MetaReplacement, SyncTool } from "./build.js";
 
@@ -18,6 +19,14 @@ export class SyncLayout {
 		this.commonRoot = config.commonRoot ?? config.projectDir;
 		this.syncDir = config.syncDir;
 		this.projectDir = config.projectDir;
+	}
+
+	/** The script names that make a file its folder: Rojo's `init`, and any name a tool writes as it. */
+	get initNames(): ReadonlySet<string> {
+		return new Set([
+			RojoFile.INIT_NAME,
+			...this.tools.flatMap(({ initName }) => initName ?? []),
+		]);
 	}
 
 	/** What the tools write instead of a `.meta.json`, which Rojo then no longer applies. */

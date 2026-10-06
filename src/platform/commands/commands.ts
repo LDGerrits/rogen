@@ -1,9 +1,9 @@
 import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import {
+	CommandLine,
 	GlobalOptions,
 	OptionDescriptor,
-	ParsedArgs,
 } from "../environment/args.js";
 import {
 	ServicesAccessor,
@@ -15,7 +15,7 @@ export interface CommandService {
 	readonly _serviceBrand: undefined;
 	executeCommand(
 		commandId: string,
-		args: ParsedArgs
+		line: CommandLine
 	): Promise<Result<void, Error>>;
 }
 
@@ -24,7 +24,7 @@ export const CommandService =
 
 export type CommandHandler = (
 	accessor: ServicesAccessor,
-	args: ParsedArgs
+	line: CommandLine
 ) => Promise<Result<void, Error>>;
 
 export interface Command {
@@ -33,7 +33,9 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
-export interface CommandMetadata {
+export interface CommandMetadata<
+	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
+> {
 	readonly description: string;
 	readonly args?: readonly {
 		readonly name: string;
@@ -41,7 +43,7 @@ export interface CommandMetadata {
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
 	}[];
-	readonly options?: readonly OptionDescriptor[];
+	readonly options?: O;
 }
 
 export interface CommandRegistry {
@@ -123,7 +125,7 @@ class CoreCommandRegistry implements CommandRegistry {
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {
-		const options = [...GlobalOptions];
+		const options: OptionDescriptor[] = [...GlobalOptions];
 		const commands =
 			commandId === undefined
 				? [...this.commands.values()]
@@ -146,27 +148,34 @@ export const Extensions = {
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
 
 /** What a command is, as `rogen help` and the argument parser read it. */
-export interface CommandDescriptor {
+export interface CommandDescriptor<
+	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
+> {
 	readonly id: string;
-	readonly metadata: CommandMetadata;
+	readonly metadata: CommandMetadata<O>;
 }
 
-/** A command as an object: a subclass describes itself to the constructor and does its work in `run`. */
-export abstract class AbstractCommand {
-	constructor(readonly desc: CommandDescriptor) {}
+/** A command as an object: a subclass describes itself to the constructor and does its work in `run`, on a line typed by the options it declares. */
+export abstract class AbstractCommand<
+	O extends readonly OptionDescriptor[] = readonly [],
+> {
+	constructor(readonly desc: CommandDescriptor<O>) {}
 
 	abstract run(
 		accessor: ServicesAccessor,
-		args: ParsedArgs
+		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
 }
 
-/** Contributes one instance of `ctor` to the command registry. */
-export function registerCommand(ctor: new () => AbstractCommand): Disposable {
+/** Contributes one instance of `ctor` to the command registry. The parser checked the line against the options the command declares, which is what lets its handler read it as typed. */
+export function registerCommand<O extends readonly OptionDescriptor[]>(
+	ctor: new () => AbstractCommand<O>
+): Disposable {
 	const command = new ctor();
 	return Registry.as<CommandRegistry>(Extensions.Commands).registerCommand({
 		id: command.desc.id,
 		metadata: command.desc.metadata,
-		handler: (accessor, args) => command.run(accessor, args),
+		handler: (accessor, line) =>
+			command.run(accessor, line as CommandLine<O>),
 	});
 }

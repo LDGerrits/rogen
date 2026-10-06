@@ -31,8 +31,9 @@ const commands = ["build", "watch", "help", "version"];
 
 const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
 
-const values = (argv: string[]) =>
-	parse(argv).unwrap().options as unknown as Record<string, unknown>;
+const values = (argv: string[]) => parse(argv).unwrap().line.options;
+
+const positionals = (argv: string[]) => parse(argv).unwrap().line.positionals;
 
 describe("parseArgs", () => {
 	it("should parse a command's own options alongside the global ones", () => {
@@ -49,11 +50,11 @@ describe("parseArgs", () => {
 		expect(parsed.quiet).toBe(true);
 	});
 
-	it("should map positional commands correctly and attach them to the '_' array", () => {
-		const { command, options } = parse(["watch", "extra_arg"]).unwrap();
+	it("should take the command from the first positional, and leave the rest", () => {
+		const { command, line } = parse(["watch", "extra_arg"]).unwrap();
 
 		expect(command).toBe("watch");
-		expect(options._).toEqual(["watch", "extra_arg"]);
+		expect(line.positionals).toEqual(["extra_arg"]);
 	});
 
 	it("should default to build, and let --help and --version win", () => {
@@ -63,13 +64,14 @@ describe("parseArgs", () => {
 		expect(parse(["build", "-v"]).unwrap().command).toBe("version");
 	});
 
-	it("should put the defaulted command first in the positionals", () => {
-		expect(values(["-q"])._).toEqual(["build"]);
+	it("should leave the positionals empty for a defaulted command", () => {
+		expect(positionals(["-q"])).toEqual([]);
 	});
 
-	it("should leave the positionals empty when --help or --version picks the command", () => {
-		expect(values(["--help"])._).toEqual([]);
-		expect(values(["--version"])._).toEqual([]);
+	it("should keep every positional when --help or --version picks the command", () => {
+		expect(positionals(["--help"])).toEqual([]);
+		expect(positionals(["build", "--help"])).toEqual(["build"]);
+		expect(positionals(["--version"])).toEqual([]);
 	});
 
 	it("should reject --verbose together with --quiet", () => {
@@ -158,7 +160,7 @@ describe("parseArgs", () => {
 			commands
 		);
 
-		expect(parsed.unwrap().options["no-input"]).toBe(true);
+		expect(parsed.unwrap().line.options["no-input"]).toBe(true);
 	});
 });
 

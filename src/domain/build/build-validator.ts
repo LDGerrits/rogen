@@ -8,23 +8,17 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import {
-	SCRIPT_STORAGE_SERVICE,
 	ScriptRun,
+	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
-	scriptRunsAt,
+	scriptFate,
 } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo-file.js";
+import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
-
-type InstancelessFolder =
-	| "a root dir"
-	| "a routing folder"
-	| "a variant folder"
-	| "an invisible folder";
 
 const DIAGNOSED_PATHS = 10;
 
@@ -49,6 +43,7 @@ export class BuildValidator {
 			...this.variantTypo(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
+			...this.ignoredAt(),
 			...this.deadScript(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
@@ -173,27 +168,71 @@ export class BuildValidator {
 		);
 	}
 
-	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
-	private serverCodeShipped(): Diagnostic[] {
+	/** The files a server route names but a replicating one governs, with the server routes ignored. */
+	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
-		const shipped = this.placement.files.flatMap((file) => {
+		return this.placement.files.flatMap((file) => {
 			const ignored = [...new Set(file.ignoredRoutes)].filter((key) => {
 				const service = routes.get(key)?.service;
 				return service !== undefined && isServerOnlyService(service);
 			});
-			const { kind, stem } = this.placement.readings.entryAt(
-				file.entry.source
-			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
-				kind === "script" &&
-				RojoFile.scriptSuffixOf(stem) !== undefined;
+				this.placement.readings.entryAt(file.entry.source)
+					.scriptSuffix !== undefined;
 			return ignored.length > 0 &&
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
 				? [{ file, ignored }]
 				: [];
 		});
+	}
+
+	/** An `@` an outer route outranks does nothing, once per file or folder that spells it; the files it ships to clients are reported as such instead. */
+	private ignoredAt(): Diagnostic[] {
+		const shipped = new Set(
+			this.shipped().map(({ file }) => file.entry.source)
+		);
+		const ignored = new Map<
+			string,
+			{ key: string; route: string; kind: string; name?: string }
+		>();
+		for (const file of this.placement.files) {
+			if (shipped.has(file.entry.source)) continue;
+			for (const { key, dir } of file.ignoredAts) {
+				const { route } = file;
+				if (dir === undefined)
+					ignored.set(file.entry.source, {
+						key,
+						route,
+						kind: "file",
+						name: file.init ? undefined : file.instancePath.at(-1),
+					});
+				else
+					ignored.set(joinPosix(file.entry.rootDir, dir), {
+						key,
+						route,
+						kind: "folder",
+						name: file.folderNodes
+							.find((node) => node.dir === dir)
+							?.instancePath.at(-1),
+					});
+			}
+		}
+		return this.diagnosePaths(
+			[...ignored].sort(([a], [b]) => compareStrings(a, b)),
+			(resource, { key, route, kind, name }) =>
+				warningDiagnostic(
+					"route.ignoredAt",
+					{ resource },
+					`"@${key}" does nothing here, because the "${route}" route already governs this ${kind}${name === undefined ? "" : `, so it stays in the name (${name})`}. Remove it, or move the ${kind} out of the "${route}" route's files.`
+				)
+		);
+	}
+
+	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
+	private serverCodeShipped(): Diagnostic[] {
+		const shipped = this.shipped();
 		if (shipped.length === 0) return [];
 
 		const quoted = (keys: Iterable<string>) =>
@@ -224,8 +263,7 @@ export class BuildValidator {
 		const dead = this.placement.files.flatMap((file) => {
 			const run = this.scriptRunOf(file);
 			return run !== undefined &&
-				file.instancePath[0] !== SCRIPT_STORAGE_SERVICE &&
-				!scriptRunsAt(run, file.instancePath)
+				scriptFate(run, file.instancePath) === "neverRuns"
 				? [{ file, run }]
 				: [];
 		});
@@ -244,36 +282,18 @@ export class BuildValidator {
 				[
 					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
 					...listed,
-					"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.",
+					WHERE_SCRIPTS_RUN,
 				].join("\n")
 			),
 		];
 	}
 
-	/** How Rojo makes a `.server` or `.client` script run: by class with legacy scripts, else by run context, and a run context in the script's meta wins. */
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
-		const { kind, stem } = this.placement.readings.entryAt(
-			file.entry.source
+		return scriptRunOf(
+			this.placement.readings.entryAt(file.entry.source).scriptSuffix,
+			!this.placement.template.disablesLegacyScripts,
+			this.assembly.meta.runContextOf(file.entry.source)
 		);
-		const suffix =
-			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
-		if (suffix !== "server" && suffix !== "client") return undefined;
-		const legacy = !this.placement.template.disablesLegacyScripts;
-		if (suffix === "client" && legacy) return "LocalScript";
-		switch (
-			this.assembly.scriptRunContexts.contexts.get(file.entry.source)
-		) {
-			case "Legacy":
-				return "Script";
-			case "Server":
-				return "Server";
-			case "Client":
-				return "Client";
-			case "Plugin":
-				return "Plugin";
-		}
-		if (legacy) return "Script";
-		return suffix === "server" ? "Server" : "Client";
 	}
 
 	private static describeRun(run: ScriptRun): string {
@@ -284,14 +304,13 @@ export class BuildValidator {
 
 	private buriedScriptSuffix(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		return routed.flatMap((file) =>
-			file.buriedScriptSuffix &&
-			leftOut.get(file.entry.source)?.status !== "pruned"
+		return routed.flatMap(({ entry, buriedScriptSuffix: suffix }) =>
+			suffix && leftOut.get(entry.source)?.status !== "pruned"
 				? [
 						warningDiagnostic(
 							"variant.buriedScriptSuffix",
-							{ resource: file.entry.source },
-							`".${file.buriedScriptSuffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${file.buriedScriptSuffix}.luau.`
+							{ resource: entry.source },
+							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
 						),
 					]
 				: []
@@ -300,22 +319,15 @@ export class BuildValidator {
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
 	private instanceClash(): Diagnostic[] {
-		return this.placement.clashes
-			.filter(({ claimants }) =>
-				claimants.every((file) => file.variants.length === 0)
+		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
+			losers.map(({ entry }) =>
+				warningDiagnostic(
+					"tree.instanceClash",
+					{ resource: entry.source },
+					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+				)
 			)
-			.flatMap(({ instance, claimants }) => {
-				const winner = claimants[claimants.length - 1].entry.source;
-				return claimants
-					.slice(0, -1)
-					.map(({ entry }) =>
-						warningDiagnostic(
-							"tree.instanceClash",
-							{ resource: entry.source },
-							`becomes "${instance}", as ${winner} does, which takes its place. Rename one of them to keep both.`
-						)
-					);
-			});
+		);
 	}
 
 	/** Rojo can't give scripts a run context there, so they'd never run. */
@@ -341,8 +353,7 @@ export class BuildValidator {
 			string,
 			{ instance: string; kind: "file" | "folder" }
 		>();
-		for (const { file, node } of this.placement.displaced) {
-			const source = this.namingSource(file, node);
+		for (const { file, node, source } of this.placement.displaced) {
 			clashes.set(source, {
 				instance: instanceKey(node),
 				kind: source === file.entry.source ? "file" : "folder",
@@ -355,17 +366,6 @@ export class BuildValidator {
 				`the template defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
 			)
 		);
-	}
-
-	/** The file itself, or the folder of the file that names the node. */
-	private namingSource(file: RoutedFile, node: readonly string[]): string {
-		const folder = file.folderNodes.find(
-			({ instancePath }) =>
-				instanceKey(instancePath) === instanceKey(node)
-		);
-		return folder
-			? joinPosix(file.entry.rootDir, folder.dir)
-			: file.entry.source;
 	}
 
 	/** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the template's `$path` is. */
@@ -394,13 +394,13 @@ export class BuildValidator {
 	): Diagnostic {
 		const { entry } = file;
 		const location = { resource: meta.file };
-		if (entry.kind === "init-folder")
+		const fileName = path.posix.basename(entry.relativePath);
+		if (file.init)
 			return warningDiagnostic(
 				"meta.sharedWithScript",
 				location,
-				`this folder shares "${instance}" with an init folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(entry.source, RojoFile.INIT_META)} instead.`
+				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
 			);
-		const fileName = path.posix.basename(entry.relativePath);
 		const fix =
 			new RojoFile(fileName).metaFile ??
 			`${fileName}${RojoFile.META_SUFFIX}`;
@@ -431,35 +431,18 @@ export class BuildValidator {
 		});
 	}
 
-	/** Meta in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
+	/** Meta in folders that never become an instance. */
 	private metaAppliesToNothing(): Diagnostic[] {
-		const { readings, routed } = this.placement;
-		const named = new Set(
-			routed.flatMap(({ entry, folderNodes }) =>
-				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
-			)
+		const metas = this.assembly.metaOutcomes.flatMap((outcome) =>
+			outcome.kind === "appliesToNothing"
+				? [[outcome.meta.file, outcome.folder] as const]
+				: []
 		);
-		const instanceless = ({
-			rootDir,
-			dir,
-		}: FolderMeta): InstancelessFolder | undefined => {
-			if (dir === "") return "a root dir";
-			const key = joinPosix(rootDir, dir);
-			if (named.has(key)) return undefined;
-			const folder = readings.folders.get(key);
-			if (folder?.kind === "route") return "a routing folder";
-			if (folder?.kind === "variant") return "a variant folder";
-			return folder?.invisible ? "an invisible folder" : undefined;
-		};
-		const metas = this.assembly.folderMeta.flatMap((meta) => {
-			const kind = instanceless(meta);
-			return kind ? [[meta.file, kind] as const] : [];
-		});
-		return this.diagnosePaths(metas, (resource, kind) =>
+		return this.diagnosePaths(metas, (resource, folder) =>
 			warningDiagnostic(
 				"meta.appliesToNothing",
 				{ resource },
-				`applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`
+				`applies to nothing, because ${folder} never becomes an instance. Move the meta into the folder that should get it.`
 			)
 		);
 	}

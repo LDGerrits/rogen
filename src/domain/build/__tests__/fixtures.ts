@@ -19,9 +19,10 @@ import {
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ConfigLocations, SyncTool } from "../build.js";
 import { BuildService, LocateTargets } from "../build-service.js";
-import { ConfigBuilder } from "../config-builder.js";
+import { BuiltConfig, ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
-import { Placer } from "../placement.js";
+import { Placement, Placer } from "../placement.js";
+import { RoutedFile } from "../router.js";
 
 export const { syncTools } = new CoreToolchainService(
 	new MemoryFileSystemService()
@@ -82,3 +83,25 @@ export function indexOf(
 ): Promise<Listing> {
 	return new CoreIndexService(fs).list(rootDirs);
 }
+
+/** Builds `config` from what `fs` holds in its root dirs, and places it again to show where each file landed. */
+export async function buildAndPlace(
+	store: DisposableStore,
+	fs: MemoryFileSystemService,
+	config: ResolvedConfig
+): Promise<Result<BuiltConfig & { placement: Placement }, DiagnosticsError>> {
+	const index = await indexOf(store, fs, config.rootDirs);
+	const builder = builderOf(fs, index);
+	const built = await builder.build(config);
+	return built.map((value) => ({
+		...value,
+		placement: builder.place(config).unwrap(),
+	}));
+}
+
+/** Each file as `source -> instance path`, its source relative to `src`, with a copy marked. */
+export const placedLines = (files: readonly RoutedFile[]): string[] =>
+	files.map(
+		(file) =>
+			`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
+	);

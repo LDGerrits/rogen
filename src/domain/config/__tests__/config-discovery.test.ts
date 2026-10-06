@@ -15,10 +15,7 @@ describe("ConfigDiscovery", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory(cwd);
-		discovery = new ConfigDiscovery(
-			fs,
-			new MockEnvironmentService({ _: [] }, cwd)
-		);
+		discovery = new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
 	});
 
 	describe("with no names and no explicit paths", () => {

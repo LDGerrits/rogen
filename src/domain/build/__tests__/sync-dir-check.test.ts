@@ -279,7 +279,7 @@ describe("SyncDirCheck", () => {
 				expect(await check()).toEqual([]);
 			});
 
-			it("should say the processor converted it when no tool describes how", async () => {
+			it("should check nothing when no tool converts data files", async () => {
 				await write(
 					"src/Note.txt",
 					"src/Other.luau",
@@ -287,11 +287,29 @@ describe("SyncDirCheck", () => {
 					"dist/Other.luau"
 				);
 
-				const [warning] = await check({}, []);
+				expect(await check({}, [])).toEqual([]);
+			});
 
-				expect(warning.message).toContain(
-					"The processor that writes the sync dir converts them."
+			it("should look for the module a tool says it writes, and give that tool's note", async () => {
+				await write(
+					"src/Note.txt",
+					"src/Other.luau",
+					"dist/Note.txt.luau",
+					"dist/Other.luau"
 				);
+
+				const [warning] = await check({}, [
+					{
+						id: "other",
+						dataReplacement: {
+							suffix: ".txt.luau",
+							note: "Other converts them.",
+						},
+					},
+				]);
+
+				expect(warning.message).toContain('found "dist/Note.txt.luau"');
+				expect(warning.message).toContain("Other converts them.");
 			});
 		});
 

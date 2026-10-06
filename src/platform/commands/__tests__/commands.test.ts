@@ -10,7 +10,7 @@ import {
 } from "../commands.js";
 import {
 	OptionDescriptor,
-	ParsedArgs,
+	CommandLine,
 	GlobalOptions,
 } from "../../environment/args.js";
 import { ServicesAccessor } from "../../instantiation/instantiation.js";
@@ -231,13 +231,13 @@ describe("registerCommand", () => {
 			super({ id: "echo", metadata: { description: "Echoes." } });
 		}
 
-		async run(accessor: ServicesAccessor, args: ParsedArgs) {
-			ran.push({ accessor, args });
+		async run(accessor: ServicesAccessor, line: CommandLine<readonly []>) {
+			ran.push({ accessor, line });
 			return ok(undefined);
 		}
 	}
 
-	let ran: { accessor: ServicesAccessor; args: ParsedArgs }[];
+	let ran: { accessor: ServicesAccessor; line: CommandLine }[];
 
 	beforeEach(() => {
 		ran = [];
@@ -254,14 +254,14 @@ describe("registerCommand", () => {
 	it("should run the command with the accessor and args its handler gets", async () => {
 		store.add(registerCommand(EchoCommand));
 		const accessor: ServicesAccessor = new ServiceCollection();
-		const args: ParsedArgs = { _: ["echo"] };
+		const line: CommandLine = { positionals: ["a"], options: {} };
 
 		const result = await registry
 			.getCommand("echo")
-			?.handler(accessor, args);
+			?.handler(accessor, line);
 
 		expect(result?.isOk()).toBe(true);
-		expect(ran).toEqual([{ accessor, args }]);
+		expect(ran).toEqual([{ accessor, line }]);
 	});
 
 	it("should remove the command when the registration is disposed", () => {

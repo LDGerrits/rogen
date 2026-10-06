@@ -55,12 +55,8 @@ describe("domain/config/core-config-service", () => {
 		cwd = "/repo"
 	) => {
 		const variants = Object.entries(overrides?.variants ?? {});
-		service = new CoreConfigService(
-			fs,
-			new MockEnvironmentService({ _: [] }, cwd)
-		);
-		const result = await service.select({
-			_: ["build", ...names],
+		service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
+		const result = await service.select(names, {
 			config: paths,
 			all,
 			"out-file": overrides?.outFile,
@@ -89,7 +85,7 @@ describe("domain/config/core-config-service", () => {
 		await fs.createDirectory("/repo");
 		service = new CoreConfigService(
 			fs,
-			new MockEnvironmentService({ _: [] }, "/repo")
+			new MockEnvironmentService("/repo")
 		);
 	});
 
@@ -278,10 +274,7 @@ describe("domain/config/core-config-service", () => {
 			await write("/repo/a.rogen.json", {});
 			await write("/repo/b.rogen.json", {});
 
-			const result = await service.select(
-				{ _: ["list"] },
-				{ unnamed: "all" }
-			);
+			const result = await service.select([], {}, { unnamed: "all" });
 
 			expect(result.unwrap().entries.map(({ file }) => file)).toEqual([
 				"/repo/a.rogen.json",
@@ -300,10 +293,9 @@ describe("domain/config/core-config-service", () => {
 					.unwrap()
 					.map(({ rootDirs }) => rootDirs)
 			).toEqual([["/repo/a"], ["/repo/b"]]);
-			expect(selection.brokenError).toBeUndefined();
 		});
 
-		it("should fail with the errors of every broken config, and count them", async () => {
+		it("should fail with the errors of every broken config", async () => {
 			await write("/repo/a.rogen.json", {});
 			await write("/repo/b.rogen.json", { bogus: 1 });
 			await write("/repo/c.rogen.json", "{ nope");
@@ -314,9 +306,6 @@ describe("domain/config/core-config-service", () => {
 			expect(
 				(result as ResultError<DiagnosticsError>).error.diagnostics
 			).toEqual([...errors(1), ...errors(2)]);
-			expect(selection.brokenError?.message).toBe(
-				"2 of 3 configs have errors."
-			);
 		});
 
 		it("should fail for a config that is broken now but has a last valid version", async () => {
@@ -622,7 +611,7 @@ describe("domain/config/core-config-service", () => {
 			await fs.createDirectory("/repo");
 			service = new CoreConfigService(
 				fs,
-				new MockEnvironmentService({ _: [] }, "/repo")
+				new MockEnvironmentService("/repo")
 			);
 			await write("/repo/core.rogen.json", { rootDirs: ["core"] });
 			await write("/repo/default.rogen.json", {
@@ -779,6 +768,22 @@ describe("domain/config/core-config-service", () => {
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
+		it("should keep the same config when a reload loads it unchanged, even after it broke", async () => {
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await start();
+			const before = resolved(0);
+
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await selection.reload(["/repo/default.rogen.json"]);
+			expect(resolved(0)).toBe(before);
+
+			await fs.writeFile("/repo/default.rogen.json", "{ nope");
+			await selection.reload(["/repo/default.rogen.json"]);
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await selection.reload(["/repo/default.rogen.json"]);
+			expect(resolved(0)).toBe(before);
+		});
+
 		it("should keep the last valid value when a reload breaks the config, and report the new errors", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
@@ -801,7 +806,11 @@ describe("domain/config/core-config-service", () => {
 			]);
 			expect(reload.changed).toEqual([]);
 			expect(reload.notices).toEqual([
-				{ file: "/repo/default.rogen.json", errors: errors(0) },
+				{
+					kind: "broken",
+					file: "/repo/default.rogen.json",
+					errors: errors(0),
+				},
 			]);
 		});
 
@@ -814,8 +823,10 @@ describe("domain/config/core-config-service", () => {
 
 			expect(errors(0)).toHaveLength(2);
 			expect(
-				reload.notices.flatMap(({ errors }) =>
-					errors.map(({ message }) => message)
+				reload.notices.flatMap((notice) =>
+					notice.kind === "broken"
+						? notice.errors.map(({ message }) => message)
+						: []
 				)
 			).toEqual([expect.stringContaining('"other"')]);
 		});
@@ -830,7 +841,7 @@ describe("domain/config/core-config-service", () => {
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
-		it("should clear the errors and report a change once the file is fixed", async () => {
+		it("should clear the errors, report a change and say it loads again once the file is fixed", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
 			await write("/repo/default.rogen.json", { bogus: 1 });
@@ -843,7 +854,9 @@ describe("domain/config/core-config-service", () => {
 			expect(resolved(0)?.rootDirs).toEqual(["/repo/c"]);
 			expect(reload).toEqual({
 				changed: ["/repo/default.rogen.json"],
-				notices: [],
+				notices: [
+					{ kind: "recovered", file: "/repo/default.rogen.json" },
+				],
 			});
 		});
 

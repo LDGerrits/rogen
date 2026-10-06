@@ -1,10 +1,15 @@
-import { joinPosix } from "../../base/path.js";
-import { DeclaredKeys } from "../config/config.js";
-import { Target } from "../roblox/roblox.js";
-import { RojoFile, RojoScriptSuffix } from "../rojo/rojo-file.js";
-import { MatchForm, RouteMatch, VariantMatch } from "./build.js";
-import { EntryRead, NameReadings, SuffixSpan } from "./name-reader.js";
-import { ScannedEntry, ScannedRoot, rojoNameOf } from "./root-scanner.js";
+import path from "path";
+import { dirnamePosix, joinPosix } from "../../base/path.js";
+import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
+import { RouteMatch, VariantMatch } from "./build.js";
+import {
+	EntryRead,
+	InstancelessFolder,
+	NameReadings,
+	SuffixSpan,
+} from "./name-reader.js";
+import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */
 export interface FolderNode {
@@ -13,11 +18,11 @@ export interface FolderNode {
 }
 
 export interface RoutedFile {
-	readonly entry: ScannedEntry;
+	readonly entry: ScannedFile;
 	/** The governing route key, or `*`. */
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The service, the target's folders, the file's own folders, then the instance name. */
+	/** The service, the target's folders, the file's own folders, then the instance name; an init script's ends at its folder's. */
 	readonly instancePath: readonly string[];
 	/** Routing, variant and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
 	readonly folderNodes: readonly FolderNode[];
@@ -27,16 +32,48 @@ export interface RoutedFile {
 	readonly variants: readonly VariantMatch[];
 	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
+	/** The `@key`s in its name and its folders' that an outer route outranks, which therefore stay in the names. */
+	readonly ignoredAts: readonly IgnoredAt[];
+	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
+	readonly init?: InitFolders;
+}
+
+/** The two folders of an init script, which differ when a variant folder sits between them. */
+export interface InitFolders {
+	/** The nearest of its folders that becomes a node, which the script is; an absolute POSIX path. */
+	readonly becomes: string;
+	/** The directory it sits in, which Rojo reads it through; an absolute POSIX path. */
+	readonly sitsIn: string;
+}
+
+export interface IgnoredAt {
+	readonly key: string;
+	/** The folder that spells it, relative to the root dir; none for the file's own name. */
+	readonly dir?: string;
+}
+
+/** An init script that no folder of its own becomes a node for, so it has no instance to be. */
+export interface InitWithoutFolder {
+	readonly source: string;
+	readonly variants: readonly VariantMatch[];
+	/** The folder it sits in. */
+	readonly folder: InstancelessFolder;
 }
 
 /** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
 class Claims {
-	route: { readonly key: string; readonly match: MatchForm } | undefined;
+	route: { readonly key: string; readonly match: RouteMatch } | undefined;
 	readonly ignoredRoutes: string[] = [];
+	readonly ignoredAts: IgnoredAt[] = [];
 	readonly variants: VariantMatch[] = [];
 
+	/** The governing route key, or `*`. */
+	get routeKey(): string {
+		return this.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
+	}
+
 	/** Whether the route governs; a later one is ignored whole. */
-	claimRoute(key: string, match: MatchForm): boolean {
+	claimRoute(key: string, match: RouteMatch): boolean {
 		if (this.route) {
 			this.ignoredRoutes.push(key);
 			return false;
@@ -50,48 +87,154 @@ class Claims {
 	}
 }
 
-interface LeafReading {
+/** The file's own name, as Rojo reads it once the suffixes its route and variants claimed are off. */
+interface LeafName {
 	readonly name: string;
+	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
+	readonly isInit: boolean;
 }
+
+/** A file's path, claimed up to its route: what claimed it, the folders that name its nodes, and its own name. */
+interface ClaimedPath {
+	readonly claims: Claims;
+	readonly folders: readonly {
+		readonly name: string;
+		readonly dir: string;
+	}[];
+	readonly leaf: LeafName;
+}
+
+/** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
+export interface InitToCopy extends Pick<
+	RoutedFile,
+	"entry" | "variants" | "buriedScriptSuffix"
+> {
+	readonly init: InitFolders;
+	readonly placed: RoutedFile | undefined;
+}
+
+/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir. */
+type InitRoutes = ReadonlyMap<
+	string,
+	readonly { readonly key: string; readonly source: string }[]
+>;
 
 /** Finds each scanned file's governing route and instance path. */
 export class Router {
-	constructor(
-		private readonly keys: DeclaredKeys,
-		private readonly targets: ReadonlyMap<string, Target>,
-		private readonly readings: NameReadings
-	) {}
+	private readonly keys: DeclaredKeys;
 
-	/** Every file a route governs, in scan order, and the sources of the files no route governs. */
-	route(roots: readonly ScannedRoot[]): {
-		routed: RoutedFile[];
-		unrouted: string[];
-	} {
-		const routed: RoutedFile[] = [];
-		const unrouted: string[] = [];
-		for (const root of roots) {
-			const markers = root.markersByDir();
-			for (const entry of root.entries) {
-				const outcome = this.routeEntry(entry, markers);
-				if (outcome) routed.push({ entry, ...outcome });
-				else unrouted.push(entry.source);
-			}
-		}
-		return { routed, unrouted };
+	constructor(
+		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder. */
+		private readonly config: ResolvedConfig,
+		private readonly readings: NameReadings,
+		/** The script names that make a file its folder. */
+		private readonly initNames: ReadonlySet<string>
+	) {
+		this.keys = config.keys;
 	}
 
-	private routeEntry(
-		entry: ScannedEntry,
-		markers: ReadonlyMap<string, string[]>
-	): Omit<RoutedFile, "entry"> | undefined {
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; and the init scripts with no folder to be. */
+	route(roots: readonly ScannedRoot[]): {
+		routed: RoutedFile[];
+		toCopy: InitToCopy[];
+		unrouted: string[];
+		withoutFolder: InitWithoutFolder[];
+	} {
+		const routed: RoutedFile[] = [];
+		const toCopy: InitToCopy[] = [];
+		const unrouted: string[] = [];
+		const withoutFolder: InitWithoutFolder[] = [];
+		for (const root of roots) {
+			const markers = root.markersByDir();
+			const initRoutes = this.initRoutesOf(root);
+			for (const entry of root.entries) {
+				const claimed = this.claim(entry, markers, initRoutes);
+				if (claimed.leaf.isInit && claimed.folders.length === 0) {
+					if (this.config.routes.has(claimed.claims.routeKey))
+						withoutFolder.push({
+							source: entry.source,
+							variants: claimed.claims.variants,
+							folder: this.instancelessFolderOf(entry),
+						});
+					else unrouted.push(entry.source);
+					continue;
+				}
+				const placed = this.place(entry, claimed);
+				if (placed) routed.push(placed);
+				else unrouted.push(entry.source);
+				if (this.isCopied(claimed))
+					toCopy.push({
+						entry,
+						variants: claimed.claims.variants,
+						buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
+						init: this.initFolders(entry, claimed.folders),
+						placed,
+					});
+			}
+		}
+		return { routed, toCopy, unrouted, withoutFolder };
+	}
+
+	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
+	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
+		const folder = this.readings.instanceless(
+			entry.rootDir,
+			dirnamePosix(entry.relativePath)
+		);
+		if (!folder)
+			throw new Error(
+				`${entry.source} has no folder to be, but the folder it sits in can become one.`
+			);
+		return folder;
+	}
+
+	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, so it gives none. */
+	private initRoutesOf(root: ScannedRoot): InitRoutes {
+		const routes = new Map<string, { key: string; source: string }[]>();
+		for (const entry of root.entries) {
+			const read = this.readings.entryAt(entry.source);
+			if (!this.isInitEntry(read)) continue;
+			const spans = read.match.spans;
+			const variants = spans
+				.filter(({ key }) => this.keys.isVariant(key))
+				.map((span) => this.asVariantMatch(span));
+			if (!this.config.allVariantsOn(variants)) continue;
+			const dir = dirnamePosix(entry.relativePath);
+			for (const { key } of spans)
+				if (this.keys.routeKeys.has(key)) {
+					const inDir = routes.get(dir) ?? [];
+					inDir.push({ key, source: entry.source });
+					routes.set(dir, inDir);
+				}
+		}
+		return routes;
+	}
+
+	private claim(
+		entry: ScannedFile,
+		markers: ReadonlyMap<string, string[]>,
+		initRoutes: InitRoutes
+	): ClaimedPath {
 		const read = this.readings.entryAt(entry.source);
 		const claims = new Claims();
-		const folders = this.readFolders(entry, read, markers, claims);
-		const { name, buriedScriptSuffix } = this.readLeaf(entry, read, claims);
+		const folders = this.claimFolders(
+			entry,
+			read,
+			markers,
+			initRoutes,
+			claims
+		);
+		return { claims, folders, leaf: this.claimLeaf(read, claims) };
+	}
 
-		const route = claims.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
-		const target = this.targets.get(route);
+	private place(
+		entry: ScannedFile,
+		claimed: ClaimedPath
+	): RoutedFile | undefined {
+		const { claims, folders, leaf } = claimed;
+		const route = claims.routeKey;
+		const target = this.config.routes.get(route);
 		if (!target) return undefined;
 
 		const folderNodes: FolderNode[] = [];
@@ -101,24 +244,47 @@ export class Router {
 			folderNodes.push({ instancePath: parent, dir });
 		}
 		return {
+			entry,
 			route,
 			routeMatch: claims.route?.match ?? "fallback",
-			instancePath: [...parent, name],
+			instancePath: leaf.isInit ? parent : [...parent, leaf.name],
 			folderNodes,
 			ignoredRoutes: claims.ignoredRoutes,
 			variants: claims.variants,
-			buriedScriptSuffix,
+			buriedScriptSuffix: leaf.buriedScriptSuffix,
+			ignoredAts: claims.ignoredAts,
+			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 		};
 	}
 
-	/** Routing, variant and invisible folders and markers claim the file; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
-	private readFolders(
-		entry: ScannedEntry,
+	private initFolders(
+		entry: ScannedFile,
+		folders: ClaimedPath["folders"]
+	): InitFolders {
+		return {
+			becomes: joinPosix(entry.rootDir, folders[folders.length - 1].dir),
+			sitsIn: path.posix.dirname(entry.source),
+		};
+	}
+
+	/** A copied Script would run once per copy, so only a ModuleScript is copied. */
+	private isCopied({ claims, leaf }: ClaimedPath): boolean {
+		return (
+			leaf.isInit &&
+			claims.route === undefined &&
+			leaf.scriptSuffix === undefined
+		);
+	}
+
+	/** Routing, variant and invisible folders and markers claim the file, then the route suffixes of the init scripts in each folder; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
+	private claimFolders(
+		entry: ScannedFile,
 		read: EntryRead,
 		markers: ReadonlyMap<string, string[]>,
+		initRoutes: InitRoutes,
 		claims: Claims
 	): { readonly name: string; readonly dir: string }[] {
-		const applyMarkers = (dir: string) => {
+		const applyDirClaims = (dir: string) => {
 			for (const fileName of markers.get(dir) ?? []) {
 				const key = this.readings.markers.get(
 					joinPosix(entry.rootDir, dir, fileName)
@@ -128,51 +294,47 @@ export class Router {
 					claims.claimVariant({ variant: key, form: "marker" });
 				else claims.claimRoute(key, "marker");
 			}
+			// An init script claims its own suffix as any file does.
+			for (const { key, source } of initRoutes.get(dir) ?? [])
+				if (source !== entry.source) claims.claimRoute(key, "init");
 		};
 
-		applyMarkers("");
+		applyDirClaims("");
 		const folders: { name: string; dir: string }[] = [];
 		for (const folder of read.folders) {
-			if (folder.kind === "route") {
-				if (claims.claimRoute(folder.key, "folder")) {
-					if (folder.keptName !== undefined && !folder.invisible)
-						folders.push({
-							name: folder.keptName,
-							dir: folder.dir,
-						});
-				} else if (!folder.invisible)
-					folders.push({ name: folder.segment, dir: folder.dir });
-			} else if (folder.kind === "variant")
-				claims.claimVariant({ variant: folder.key, form: "folder" });
-			else if (!folder.invisible)
-				folders.push({ name: folder.segment, dir: folder.dir });
-			applyMarkers(folder.dir);
+			for (const variant of folder.variants)
+				claims.claimVariant({ variant, form: "folder" });
+			let governs = true;
+			if (folder.route !== undefined) {
+				governs = claims.claimRoute(folder.route, "folder");
+				if (!governs && folder.at)
+					claims.ignoredAts.push({
+						key: folder.route,
+						dir: folder.dir,
+					});
+			}
+			const name = governs ? folder.keptName : folder.outrankedName;
+			if (name !== undefined && !folder.invisible)
+				folders.push({ name, dir: folder.dir });
+			applyDirClaims(folder.dir);
 		}
 		return folders;
 	}
 
-	/** Reads the suffixes of a file, or of an init folder's script, into `claims` and returns the instance name. */
-	private readLeaf(
-		entry: ScannedEntry,
-		{ kind, stem, match }: EntryRead,
-		claims: Claims
-	): LeafReading {
+	/** Reads the suffixes of a file into `claims` and returns its instance name. */
+	private claimLeaf(read: EntryRead, claims: Claims): LeafName {
+		const { kind, stem, match, scriptSuffix } = read;
 		const variantSpans = match.spans.filter((span) =>
 			this.keys.isVariant(span.key)
 		);
 		for (const span of variantSpans)
 			claims.claimVariant(this.asVariantMatch(span));
 		let routeSpan: SuffixSpan | undefined;
-		for (const span of match.spans)
-			if (
-				this.keys.routeKeys.has(span.key) &&
-				claims.claimRoute(span.key, "suffix")
-			)
-				routeSpan = span;
-
-		// Rojo names an init folder after the folder, so its script's suffixes only route.
-		if (entry.kind === "init-folder") {
-			return { name: rojoNameOf(entry), buriedScriptSuffix: undefined };
+		for (const span of match.spans) {
+			if (!this.keys.routeKeys.has(span.key)) continue;
+			if (claims.claimRoute(span.key, "suffix")) routeSpan = span;
+			else if (stem[span.start] === "@")
+				claims.ignoredAts.push({ key: span.key });
 		}
 
 		const buriedScriptSuffix =
@@ -188,8 +350,20 @@ export class Router {
 		return {
 			name:
 				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
+			scriptSuffix,
 			buriedScriptSuffix,
+			isInit: this.isInitEntry(read),
 		};
+	}
+
+	/** Whether the file is an init script once every declared key is off its name, a route it doesn't govern too. */
+	private isInitEntry({ kind, stem, match }: EntryRead): boolean {
+		return (
+			kind === "script" &&
+			this.initNames.has(
+				RojoFile.scriptNameOf(this.stripSpans(stem, match.spans))
+			)
+		);
 	}
 
 	private asVariantMatch(span: SuffixSpan): VariantMatch {

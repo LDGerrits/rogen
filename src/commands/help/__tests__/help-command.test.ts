@@ -28,7 +28,7 @@ describe("help command", () => {
 	let commandService: CoreCommandService;
 
 	const help = (...positionals: string[]) =>
-		commandService.executeCommand("help", { _: ["help", ...positionals] });
+		commandService.executeCommand("help", { positionals, options: {} });
 
 	const printed = () => String(info.mock.calls[0][0]);
 
@@ -75,8 +75,8 @@ describe("help command", () => {
 
 		it("should resolve the command from --help as well", async () => {
 			await commandService.executeCommand("help", {
-				_: ["build"],
-				help: true,
+				positionals: ["build"],
+				options: { help: true },
 			});
 
 			expect(printed()).toContain("rogen build");

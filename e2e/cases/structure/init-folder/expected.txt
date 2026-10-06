@@ -4,6 +4,10 @@ stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it:
+    src/Inventory/Ui/server/Nested.luau -> StarterPlayer/StarterPlayerScripts/Inventory/Ui/server/Nested
+  Move it out of the "client" route's files if it's server code.
 
 written:
   default.project.json

@@ -29,10 +29,7 @@ describe("CoreInitService", () => {
 		promptService: PromptService = new MockPromptService([], false),
 		cwd = directory
 	) => {
-		const environmentService = new NativeEnvironmentService(
-			{ _: ["init"] },
-			cwd
-		);
+		const environmentService = new NativeEnvironmentService({}, cwd);
 		return new CoreInitService(
 			fileSystem,
 			promptService,

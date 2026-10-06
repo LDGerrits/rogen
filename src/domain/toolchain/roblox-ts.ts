@@ -65,11 +65,20 @@ const firstSegment = (dir: string): string =>
 const COMPILED_EXTENSION = /\.tsx?$/i;
 const DECLARATION_FILE = /\.d\.ts$/i;
 
-/** What a build needs to know of roblox-ts: it writes `.luau` for each `.ts` and only reads declaration files. */
+/** roblox-ts names a file `init` when the name's first dot part is `index`. */
+const INDEX_FILE = /(?<=^|[\\/])index(?=\.[^\\/]*$)/;
+
+/** What a build needs to know of roblox-ts: it writes `.luau` for each `.ts`, `init` for `index`, and only reads declaration files. */
 export const ROBLOX_TS_SYNC_TOOL: SyncTool = {
 	id: "roblox-ts",
-	emittedPath: (source) => source.replace(COMPILED_EXTENSION, ".luau"),
+	emittedPath: (source) =>
+		COMPILED_EXTENSION.test(source)
+			? source
+					.replace(COMPILED_EXTENSION, ".luau")
+					.replace(INDEX_FILE, "init")
+			: source,
 	readsOnly: (source) => DECLARATION_FILE.test(source),
+	initName: "index",
 };
 
 /** The roblox-ts compiler as this workspace configures it. */

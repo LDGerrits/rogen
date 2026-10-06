@@ -10,12 +10,27 @@ export interface ExtendingConfigChoices {
 	readonly name: string;
 }
 
-/** An extending config inherits everything from default; its own file is where variants and excludes go. */
+/** An extending config inherits everything from default; its own file is where variants and excludes go. Like any named config, it gets a synced twin when Darklua processes source-rooted code (ADR-0016). */
 export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions
 	) {}
+
+	private configSetOf(name: string): ConfigSet {
+		const { workspace } = this.directory;
+		return new ConfigSet(
+			name,
+			workspace.language,
+			workspace.detectedDarklua
+		);
+	}
+
+	/** The configs it writes and their project files, none of which may exist. */
+	private filesOf(name: string): string[] {
+		const configSet = this.configSetOf(name);
+		return [...configSet.configFiles, ...configSet.outputFiles];
+	}
 
 	async ask(): Promise<
 		Result<ExtendingConfigChoices | undefined, Diagnostic[]>
@@ -23,9 +38,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		const { directory, questions } = this;
 		const given = directory.givenName;
 		if (given) {
-			const conflicts = directory.checkFree(
-				ConfigSet.extendingFilesOf(given)
-			);
+			const conflicts = directory.checkFree(this.filesOf(given));
 			if (conflicts.length > 0) return err(conflicts);
 		}
 		const name =
@@ -33,18 +46,22 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			(await questions.name(directory, {
 				message: "Config name",
 				description: `Writes <name>.rogen.json, which extends ${ConfigSet.DEFAULT_FILE}.`,
-				filesFor: ConfigSet.extendingFilesOf,
+				filesFor: (candidate) => this.filesOf(candidate),
 			}));
 		return ok(name === undefined ? undefined : { name });
 	}
 
 	plan({ name }: ExtendingConfigChoices, builder: InitPlanBuilder): void {
-		builder.addConfig(name, {
-			extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
-		});
+		const configSet = this.configSetOf(name);
+		// A compiler's sync dir is inherited from default; only a synced twin adds one.
+		configSet.planConfigs(
+			builder,
+			{ extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE) },
+			configSet.sourced ? configSet.syncDir : undefined
+		);
 		builder.addRun(
-			ConfigSet.watchCommand([name]),
-			ConfigSet.serveCommand(name)
+			ConfigSet.watchCommand(configSet.stems),
+			ConfigSet.serveCommand(configSet.servedStem)
 		);
 		builder.addEdit(
 			`Turn variants on or off under "variants", or add "exclude", in ${configFileName(name)}.`

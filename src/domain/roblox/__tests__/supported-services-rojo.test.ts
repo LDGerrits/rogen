@@ -48,7 +48,7 @@ describeWithRojo("supported services against Rojo", () => {
 			path.join(dir, "default.project.json"),
 			JSON.stringify({
 				name: "services",
-				tree: { $className: "DataModel", AnimatedImageService: {} },
+				tree: { $className: "DataModel", ChatbotUIService: {} },
 			})
 		);
 

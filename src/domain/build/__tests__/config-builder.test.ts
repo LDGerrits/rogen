@@ -29,19 +29,11 @@ describe("ConfigBuilder", () => {
 	});
 
 	describe("build", () => {
-		it("should name the file it would write", async () => {
-			const result = await buildOf(
-				configOf({ outFile: abs("out/game.project.json") })
-			);
-
-			expect(result.unwrap().outFile).toBe(abs("out/game.project.json"));
-		});
-
-		it("should report the folder meta it read, and only that", async () => {
+		it("should report the folder meta it read, and not a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
-			await fs.writeFile(abs("src/Hud.luau"), "");
-			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
+			await fs.writeFile(abs("src/Notes.txt"), "");
+			await fs.writeFile(abs("src/Notes.meta.json"), "{}");
 
 			const result = await buildOf(configOf());
 
@@ -50,13 +42,16 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should also report the meta of a Script, which may set its run context", async () => {
+		it("should also report the meta of a script, which may set its run context", async () => {
 			await fs.writeFile(abs("src/Save.server.luau"), "");
 			await fs.writeFile(abs("src/Save.meta.json"), "{}");
+			await fs.writeFile(abs("src/Hud.luau"), "");
+			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
 
 			const result = await buildOf(configOf());
 
 			expect(result.unwrap().readFiles).toEqual([
+				abs("src/Hud.meta.json"),
 				abs("src/Save.meta.json"),
 			]);
 		});
@@ -67,7 +62,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toEqual([]);
+			expect(result.unwrap().findings.warnings).toEqual([]);
 			expectRojoProject(result.unwrap().tree);
 			expect(result.unwrap().tree.tree).toEqual({
 				$className: "DataModel",
@@ -84,7 +79,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toMatchObject([
+			expect(result.unwrap().findings.warnings).toMatchObject([
 				{ code: "variant.buriedScriptSuffix" },
 			]);
 		});
@@ -116,7 +111,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toMatchObject([
+			expect(result.unwrap().findings.warnings).toMatchObject([
 				{
 					severity: DiagnosticSeverity.Warning,
 					code: "scan.missingRootDir",
@@ -135,7 +130,7 @@ describe("ConfigBuilder", () => {
 			const result = await buildOf(config);
 
 			expect(
-				result.unwrap().warnings.map((warning) => warning.code)
+				result.unwrap().findings.warnings.map((warning) => warning.code)
 			).toEqual(["scan.missingRootDir", "route.unrouted"]);
 		});
 
@@ -197,7 +192,9 @@ describe("ConfigBuilder", () => {
 				const config = configOf(overrides);
 				return (await buildOf(config))
 					.unwrap()
-					.warnings.filter(({ code }) => code === "meta.unclaimed");
+					.findings.warnings.filter(
+						({ code }) => code === "meta.unclaimed"
+					);
 			};
 
 			it("should not warn about meta that a sibling claims under the name Rojo gives it", async () => {
@@ -428,6 +425,27 @@ describe("ConfigBuilder", () => {
 				]);
 			});
 
+			it("should count a copied init script once, at the route that places it", async () => {
+				await fs.writeFile(abs("src/Net/init.luau"), "");
+				await fs.writeFile(abs("src/Net/Util.luau"), "");
+				await fs.writeFile(abs("src/Net/server/Remote.luau"), "");
+				await fs.writeFile(abs("src/Net/client/Hud.luau"), "");
+
+				const result = await buildOf(
+					configOf({
+						routes: {
+							server: "ServerScriptService",
+							client: "StarterPlayer/StarterPlayerScripts",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				);
+
+				expect(
+					result.unwrap().summary.routes.map(({ files }) => files)
+				).toEqual([1, 1, 2]);
+			});
+
 			it("should count the files each variant marks, whether on or off", async () => {
 				await fs.writeFile(abs("src/A.mock.luau"), "");
 				await fs.writeFile(abs("src/debug/B.luau"), "");
@@ -476,7 +494,7 @@ describe("ConfigBuilder", () => {
 					configOf({ variants: { mock: true } })
 				);
 
-				expect(result.unwrap().summary.superseded).toBe(1);
+				expect(result.unwrap().summary.replaced).toBe(1);
 			});
 
 			it("should count a file the template displaced, and not under its route", async () => {
@@ -513,7 +531,7 @@ describe("ConfigBuilder", () => {
 					configOf({ rootDirs: [abs("src"), abs("lib")] })
 				);
 
-				expect(result.unwrap().summary.superseded).toBe(1);
+				expect(result.unwrap().summary.replaced).toBe(1);
 			});
 		});
 
@@ -531,7 +549,7 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should check the sync dir only when asked", async () => {
+		it("should check the sync dir only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
 			const builder = builderOf(
@@ -539,15 +557,13 @@ describe("ConfigBuilder", () => {
 				await indexOf(store, fs, config.rootDirs)
 			);
 
-			const unchecked = await builder.build(config);
-			const checked = await builder.build(config, {
-				checkSyncDir: true,
-			});
+			const checked = await builder.build(config);
+			const known = await builder.build(config, []);
 
-			expect(unchecked.unwrap().syncWarnings).toEqual([]);
-			expect(checked.unwrap().syncWarnings).toMatchObject([
+			expect(checked.unwrap().findings.syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },
 			]);
+			expect(known.unwrap().findings.syncWarnings).toEqual([]);
 		});
 	});
 });

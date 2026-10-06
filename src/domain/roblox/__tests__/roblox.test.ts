@@ -1,5 +1,11 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { InstanceReference, Target, containerClassName } from "../roblox.js";
+import {
+	InstanceReference,
+	Target,
+	WHERE_SCRIPTS_RUN,
+	containerClassName,
+	scriptFate,
+} from "../roblox.js";
 
 const location = {
 	resource: "/repo/default.rogen.json",
@@ -203,5 +209,36 @@ describe("domain/roblox/roblox", () => {
 				)!.contains(["ReplicatedStorage", "Shared", "Types.shared"])
 			).toBe(true);
 		});
+	});
+});
+
+describe("scriptFate", () => {
+	it("should run a Script in ServerScriptService and a LocalScript in a player container", () => {
+		expect(scriptFate("Script", ["ServerScriptService", "A"])).toBe("runs");
+		expect(
+			scriptFate("LocalScript", ["StarterPlayer", "StarterPlayerScripts"])
+		).toBe("runs");
+	});
+
+	it("should keep any script in ServerStorage as stored, not dead", () => {
+		expect(scriptFate("Script", ["ServerStorage", "A"])).toBe("stored");
+		expect(scriptFate("Server", ["ServerStorage", "A"])).toBe("stored");
+	});
+
+	it("should say a script never runs where Roblox doesn't run it", () => {
+		expect(scriptFate("Script", ["ReplicatedStorage", "A"])).toBe(
+			"neverRuns"
+		);
+		expect(scriptFate("Client", ["ServerScriptService", "A"])).toBe(
+			"neverRuns"
+		);
+	});
+});
+
+describe("WHERE_SCRIPTS_RUN", () => {
+	it("should name every service where each kind of script runs", () => {
+		expect(WHERE_SCRIPTS_RUN).toBe(
+			"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see."
+		);
 	});
 });

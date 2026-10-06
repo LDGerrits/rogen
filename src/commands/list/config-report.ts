@@ -1,11 +1,42 @@
-import { toNative } from "../../base/path.js";
+import { relativeTo, toNative } from "../../base/path.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
+import { LogService } from "../../platform/log/log-service.js";
 
-/** The configs a run read, as one JSON document keyed by config file. */
+const listed = (values: readonly string[]): string =>
+	values.length > 0 ? values.join(", ") : "(none)";
+
+/** The configs a run read: as lines relative to the working dir, or as one JSON document keyed by config file. */
 export class ConfigReport {
 	constructor(private readonly entries: readonly ConfigEntry[]) {}
+
+	/** One block per config: its file, what it extends, then its values or its errors. */
+	print(logService: LogService, cwd: string): void {
+		const relative = (file: string) => relativeTo(cwd, file);
+		for (const entry of this.entries) {
+			logService.step(relative(entry.file));
+			if (entry.parents.length > 0) {
+				logService.info(
+					`extends: ${entry.parents.map(relative).join(" -> ")}`
+				);
+			}
+
+			if (entry.status === "broken") {
+				for (const error of entry.errors) logService.diagnostic(error);
+				continue;
+			}
+			const { config } = entry;
+			logService.info(
+				[
+					`root dirs: ${listed(config.rootDirs.map(relative))}`,
+					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
+					`project file: ${relative(config.outFile)}`,
+					`variants: ${listed(config.enabledVariants)}`,
+				].join("\n")
+			);
+		}
+	}
 
 	json(): Record<string, unknown> {
 		return Object.fromEntries(

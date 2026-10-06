@@ -5,7 +5,7 @@ const LAYERS = ["platform", "domain", "commands"];
 
 const EXCEPTIONS: Readonly<Record<string, string>> = {
 	"platform/environment/args":
-		"the option tables and parseArgs sit beside ParsedArgs",
+		"the parser, the CommandLine it makes and the global options sit together",
 };
 
 const kebab = (name: string) =>

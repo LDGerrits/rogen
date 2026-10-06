@@ -5,7 +5,6 @@ import {
 	ConfigLocations,
 	FileLocation,
 	Locations,
-	RouteMatch,
 } from "../../domain/build/build.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 
@@ -16,13 +15,6 @@ type Answer =
 
 const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
-
-const MATCH_LABELS: Record<RouteMatch, string> = {
-	folder: "folder",
-	marker: "marker",
-	suffix: "suffix",
-	fallback: "fallback",
-};
 
 /** One line: the path, where it lands, and why. */
 function describeLocation(location: FileLocation, cwd: string): string {
@@ -35,16 +27,19 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	switch (location.status) {
 		case "placed": {
 			const matches = location.variants.map(
-				({ variant, form }) => `${variant} (${MATCH_LABELS[form]})`
+				({ variant, form }) => `${variant} (${form})`
 			);
 			const variants =
 				matches.length === 0
 					? ""
 					: ` · ${matches.length === 1 ? "variant" : "variants"} ${matches.join(", ")}`;
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${MATCH_LABELS[location.routeMatch]})${variants}`;
+			const alsoAt = location.alsoAt
+				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
+				: "";
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${alsoAt}`;
 		}
 		case "pruned":
-			return `pruned · variant ${location.variants[0].variant} is off (${MATCH_LABELS[location.variants[0].form]})`;
+			return `pruned · variant ${location.variants[0].variant} is off (${location.variants[0].form})`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
@@ -75,6 +70,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
+				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
 				variants: location.variants.map(({ variant, form }) => ({

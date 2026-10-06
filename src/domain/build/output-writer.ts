@@ -5,6 +5,7 @@ import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoTree } from "../rojo/rojo-project.js";
+import { OutputFile } from "./build.js";
 
 /** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
@@ -12,12 +13,13 @@ export class OutputWriter {
 
 	/** Whether the file changed; unchanged bytes are left alone. */
 	async write(
-		outFile: string,
+		output: OutputFile,
 		tree: RojoTree
 	): Promise<Result<boolean, DiagnosticsError>> {
+		const outFile = output.path;
 		const content = `${stableStringify(tree)}\n`;
-		// A fresh staging file per write, so concurrent writers never share one; `OutputFile.stagingPattern` matches it.
-		const temporary = `${outFile}.${randomUUID()}.tmp`;
+		// A fresh staging file per write, so concurrent writers never share one.
+		const temporary = output.stagingFile(randomUUID());
 
 		const written = await tryWithAsync(async () => {
 			if (

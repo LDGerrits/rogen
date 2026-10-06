@@ -210,6 +210,32 @@ describe("domain/config/config", () => {
 			).toEqual(["mock"]);
 		});
 
+		it("should pick out the variants a file carries that are off", () => {
+			const config = mockConfig({ variants: { mock: true, dev: false } });
+
+			expect(
+				config.dormantVariants([
+					{ variant: "mock", form: "suffix" },
+					{ variant: "dev", form: "folder" },
+				])
+			).toEqual([{ variant: "dev", form: "folder" }]);
+		});
+
+		it("should say whether every variant a file carries is on", () => {
+			const config = mockConfig({ variants: { mock: true, dev: false } });
+
+			expect(config.allVariantsOn([])).toBe(true);
+			expect(
+				config.allVariantsOn([{ variant: "mock", form: "suffix" }])
+			).toBe(true);
+			expect(
+				config.allVariantsOn([
+					{ variant: "mock", form: "suffix" },
+					{ variant: "dev", form: "folder" },
+				])
+			).toBe(false);
+		});
+
 		it("should know its declared keys from its routes and variants", () => {
 			const { keys } = mockConfig({
 				routes: {

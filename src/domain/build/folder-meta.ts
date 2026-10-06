@@ -1,29 +1,21 @@
 import { compareStrings, groupBy } from "../../base/collections.js";
-import { JSONSchema } from "../../base/json-schema.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
+import { RojoMetaFields } from "../rojo/rojo.js";
 import {
 	InstanceMap,
 	RojoNode,
 	RojoProject,
 	instanceKey,
 } from "../rojo/rojo-project.js";
+import { InstancelessFolder } from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
-export interface FolderMetaFields {
-	readonly className?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
-	readonly attributes?: Readonly<Record<string, unknown>>;
-	readonly ignoreUnknownInstances?: boolean;
-	readonly id?: string;
-}
-
 /** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
-export class FolderMeta implements FolderMetaFields {
+export class FolderMeta implements RojoMetaFields {
 	readonly className?: string;
 	readonly properties?: Readonly<Record<string, unknown>>;
 	readonly attributes?: Readonly<Record<string, unknown>>;
@@ -35,7 +27,7 @@ export class FolderMeta implements FolderMetaFields {
 		readonly rootDir: string,
 		/** The folder, relative to the root dir; the root dir itself is "". */
 		readonly dir: string,
-		fields: FolderMetaFields
+		fields: RojoMetaFields
 	) {
 		this.className = fields.className;
 		this.properties = fields.properties;
@@ -78,46 +70,6 @@ export class FolderMeta implements FolderMetaFields {
 	}
 }
 
-const META_SCHEMA: JSONSchema = {
-	type: "object",
-	// Rojo ignores fields it doesn't know, such as `$schema`.
-	properties: {
-		className: { type: "string" },
-		properties: { type: "object" },
-		attributes: { type: "object" },
-		ignoreUnknownInstances: { type: "boolean" },
-		id: { type: "string" },
-	},
-};
-
-/** Reads the fields of one meta file. */
-export class FolderMetaParser {
-	private static readonly documents = new JsoncDocumentReader({
-		codePrefix: "meta",
-		noun: "a meta file",
-	});
-
-	constructor(private readonly file: string) {}
-
-	parse(text: string): Result<FolderMetaFields, Diagnostic[]> {
-		const document = FolderMetaParser.documents.read(
-			text,
-			this.file,
-			META_SCHEMA
-		);
-		if (document.isErr()) return err(document.error);
-
-		const { value } = document.value;
-		return ok(
-			Object.fromEntries(
-				Object.keys(META_SCHEMA.properties ?? {})
-					.filter((key) => value[key] !== undefined)
-					.map((key) => [key, value[key]])
-			) as FolderMetaFields
-		);
-	}
-}
-
 type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
 
 /** The directories written as one `$path`, whose content Rojo reads itself. */
@@ -134,7 +86,7 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly templateNode: RojoNode;
 	  }
-	/** A file is what Rojo reads at the node, so every meta reaching it applies to nothing. */
+	/** A file other than the folder's init script is what Rojo reads at the node, so every meta reaching it applies to nothing. */
 	| {
 			readonly kind: "shared";
 			readonly instance: string;
@@ -145,6 +97,12 @@ export type FolderMetaOutcome =
 			readonly kind: "templatePath";
 			readonly instance: string;
 			readonly meta: FolderMeta;
+	  }
+	/** The meta's folder never becomes an instance, by its name or because no route places anything through it. */
+	| {
+			readonly kind: "appliesToNothing";
+			readonly meta: FolderMeta;
+			readonly folder: InstancelessFolder;
 	  };
 
 interface ReachedNode {
@@ -168,7 +126,10 @@ export class FolderMetaApplier {
 	/** Edits `project`, and reports what each meta came to. Fails when two metas from one root dir reach one node, or a ref would repeat. */
 	apply(project: RojoProject): Result<FolderMetaOutcome[], Diagnostic[]> {
 		const problems = new DiagnosticCollector();
-		const outcomes = this.decide(project, problems);
+		const outcomes = [
+			...this.decide(project, problems),
+			...this.instanceless(),
+		];
 		this.checkIds(outcomes, problems);
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
@@ -184,18 +145,21 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { config, template, files, displaced } = this.placement;
+		const { config, template, nodes, displaced } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
-		for (const file of files) sharedWithFile.set(file.instancePath, file);
+		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
 		for (const [nodePath, node] of this.reachedNodes([
-			...files,
+			...nodes,
 			...displaced.map(({ file }) => file),
 		])) {
 			const instance = instanceKey(nodePath);
-			const metas = [...node.dirs]
+			const shared = sharedWithFile.get(nodePath);
+			// A node's file can be the init script of a folder that names it, which is that folder itself, so that folder's meta reaches it.
+			const ownDir = shared?.init?.becomes;
+			const reached = [...node.dirs]
 				.filter((dir) => !this.collapsed.covers(dir))
 				.flatMap((dir) => this.metaByDir.get(dir) ?? [])
 				.sort(
@@ -203,9 +167,9 @@ export class FolderMetaApplier {
 						config.rootDirs.indexOf(a.rootDir) -
 						config.rootDirs.indexOf(b.rootDir)
 				);
-			if (metas.length === 0) continue;
+			if (reached.length === 0) continue;
 
-			for (const clash of this.sameRootClashes(metas)) {
+			for (const clash of this.sameRootClashes(reached)) {
 				const key = clash.map(({ file }) => file).join("\0");
 				if (reportedClashes.has(key)) continue;
 				reportedClashes.add(key);
@@ -216,16 +180,24 @@ export class FolderMetaApplier {
 				);
 			}
 
-			const shared = sharedWithFile.get(nodePath);
-			if (shared) {
+			const others = shared
+				? reached.filter(({ folder }) => folder !== ownDir)
+				: [];
+			if (shared && others.length > 0)
 				outcomes.push({
 					kind: "shared",
 					instance,
-					metas,
+					metas: others,
 					file: shared,
 				});
-				continue;
-			}
+			// Rojo applies the meta of the directory it reads for an init script itself.
+			const initDir = shared && this.placement.initDirOf(shared);
+			const metas = shared
+				? reached.filter(
+						({ folder }) => folder === ownDir && folder !== initDir
+					)
+				: reached;
+			if (metas.length === 0) continue;
 
 			const meta = metas[metas.length - 1];
 			const templateNode = template.getNode(node.instancePath);
@@ -240,6 +212,27 @@ export class FolderMetaApplier {
 				});
 		}
 		return outcomes;
+	}
+
+	/** The metas in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
+	private instanceless(): FolderMetaOutcome[] {
+		const { readings, routed } = this.placement;
+		const named = new Set(
+			routed.flatMap(({ entry, folderNodes }) =>
+				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
+			)
+		);
+		const folderOf = ({
+			rootDir,
+			dir,
+		}: FolderMeta): InstancelessFolder | undefined =>
+			dir !== "" && named.has(joinPosix(rootDir, dir))
+				? undefined
+				: readings.instanceless(rootDir, dir);
+		return [...this.metaByDir.values()].flatMap((meta) => {
+			const folder = folderOf(meta);
+			return folder ? [{ kind: "appliesToNothing", meta, folder }] : [];
+		});
 	}
 
 	private copies(outcomes: readonly FolderMetaOutcome[]): Copy[] {
