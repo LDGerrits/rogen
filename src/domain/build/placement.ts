@@ -300,25 +300,21 @@ export class Placer {
 		toCopy: readonly InitToCopy[],
 		routed: readonly RoutedFile[]
 	): RoutedFile[] {
+		if (toCopy.length === 0) return [];
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
-		const owned = new InstanceMap<RoutedFile>();
+		const owned = new InstanceMap<true>();
 		for (const file of routed)
 			if (
 				file.init &&
 				this.config.dormantVariants(file.variants).length === 0
 			)
-				owned.set(file.instancePath, file);
-		const throughFolder = new Map<
-			string,
-			{ readonly file: RoutedFile; readonly at: number }[]
-		>();
-		for (const file of routed)
-			file.folderNodes.forEach(({ dir }, at) => {
-				const folder = joinPosix(file.entry.rootDir, dir);
-				const files = throughFolder.get(folder) ?? [];
-				files.push({ file, at });
-				throughFolder.set(folder, files);
-			});
+				owned.set(file.instancePath, true);
+		const throughFolder = groupBy(
+			routed.flatMap((file) =>
+				file.folderNodes.map(({ dir }, at) => ({ file, dir, at }))
+			),
+			({ file, dir }) => joinPosix(file.entry.rootDir, dir)
+		);
 		return toCopy.flatMap(
 			({ entry, variants, buriedScriptSuffix, init, placed }) => {
 				const taken = new InstanceMap<true>();
