@@ -293,10 +293,9 @@ describe("domain/config/core-config-service", () => {
 					.unwrap()
 					.map(({ rootDirs }) => rootDirs)
 			).toEqual([["/repo/a"], ["/repo/b"]]);
-			expect(selection.brokenError).toBeUndefined();
 		});
 
-		it("should fail with the errors of every broken config, and count them", async () => {
+		it("should fail with the errors of every broken config", async () => {
 			await write("/repo/a.rogen.json", {});
 			await write("/repo/b.rogen.json", { bogus: 1 });
 			await write("/repo/c.rogen.json", "{ nope");
@@ -307,9 +306,6 @@ describe("domain/config/core-config-service", () => {
 			expect(
 				(result as ResultError<DiagnosticsError>).error.diagnostics
 			).toEqual([...errors(1), ...errors(2)]);
-			expect(selection.brokenError?.message).toBe(
-				"2 of 3 configs have errors."
-			);
 		});
 
 		it("should fail for a config that is broken now but has a last valid version", async () => {

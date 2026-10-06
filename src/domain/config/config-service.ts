@@ -66,8 +66,6 @@ export interface ConfigSelection {
 
 	/** The configs, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
-	/** What a command that reports on every config ends with when some are broken, or `undefined` when none are. */
-	readonly brokenError: Error | undefined;
 
 	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
@@ -97,7 +95,7 @@ export interface ConfigService {
 	): Promise<Result<ConfigSelection, Error>>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
-	/** Runs `check` on every config file that fails to load, never on one that loads; what it returns is added to that file's errors. Dispose the result to remove it. */
+	/** Runs `check` on every config file that can't be read as a config (unnamed, not JSON, or against the schema), never on one that can; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
 }
 

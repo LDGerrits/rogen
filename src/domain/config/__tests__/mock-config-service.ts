@@ -119,17 +119,6 @@ export class MockConfigSelection implements ConfigSelection {
 			: ok(this.entries.flatMap((entry) => buildableConfig(entry) ?? []));
 	}
 
-	get brokenError(): Error | undefined {
-		const broken = this.entries.filter(
-			(entry) => entry.status === "broken"
-		).length;
-		return broken > 0
-			? new Error(
-					`${broken} of ${this.entries.length} configs have errors.`
-				)
-			: undefined;
-	}
-
 	async reload(): Promise<ConfigReload> {
 		return { changed: [], notices: [] };
 	}

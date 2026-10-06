@@ -19,6 +19,14 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigReport } from "./config-report.js";
 
+/** The run's result line when some configs are broken; none when every one loads. */
+function brokenError(entries: readonly ConfigEntry[]): Error | undefined {
+	const broken = entries.filter(({ status }) => status === "broken").length;
+	return broken > 0
+		? new Error(`${broken} of ${entries.length} configs have errors.`)
+		: undefined;
+}
+
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
@@ -60,7 +68,8 @@ registerCommand(
 				{ unnamed: "all" }
 			);
 			if (selection.isErr()) return selection;
-			const { entries, brokenError } = selection.value;
+			const { entries } = selection.value;
+			const broken = brokenError(entries);
 
 			if (line.options.json)
 				return this.listAsJson(selection.value, logService);
@@ -68,7 +77,7 @@ registerCommand(
 			logService.intro("rogen list");
 			for (const entry of entries) this.describe(logService, entry, cwd);
 
-			if (brokenError) return err(brokenError);
+			if (broken) return err(broken);
 			logService.outro(`${plural(entries.length, "config")}.`);
 			return ok(undefined);
 		}
@@ -80,7 +89,7 @@ registerCommand(
 			const report = new ConfigReport(selection.entries);
 			logService.print(formatJsonDocument(report.json()));
 
-			const broken = selection.brokenError;
+			const broken = brokenError(selection.entries);
 			return broken ? err(new ReportedError(broken)) : ok(undefined);
 		}
 

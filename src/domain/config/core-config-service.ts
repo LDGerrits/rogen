@@ -4,7 +4,8 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigOptionValues, ConfigOptions } from "./config.js";
 import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
-import { ConfigLoader, ConfigOverrides, PathField } from "./config-loader.js";
+import { ConfigLoader } from "./config-loader.js";
+import { ConfigOverrides, PathField } from "./layered-config.js";
 import {
 	ConfigEntry,
 	ConfigFileCheck,

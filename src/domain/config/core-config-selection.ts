@@ -7,7 +7,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "./config.js";
-import { ConfigLoader, ConfigOverrides } from "./config-loader.js";
+import { ConfigLoader } from "./config-loader.js";
+import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
 import {
 	ConfigEntry,
@@ -62,17 +63,6 @@ export class CoreConfigSelection implements ConfigSelection {
 		return errors.length > 0
 			? err(new DiagnosticsError(errors))
 			: ok(this.entries.flatMap((entry) => buildableConfig(entry) ?? []));
-	}
-
-	get brokenError(): Error | undefined {
-		const broken = this.entries.filter(
-			(entry) => entry.status === "broken"
-		);
-		return broken.length > 0
-			? new Error(
-					`${broken.length} of ${this.entries.length} configs have errors.`
-				)
-			: undefined;
 	}
 
 	reload(files: readonly string[]): Promise<ConfigReload> {

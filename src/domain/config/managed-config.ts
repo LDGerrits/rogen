@@ -1,5 +1,6 @@
 import { Config } from "../../platform/config/config-models.js";
-import { ConfigLoader, ConfigOverrides } from "./config-loader.js";
+import { ConfigLoader } from "./config-loader.js";
+import { ConfigOverrides } from "./layered-config.js";
 import { ConfigEntry, buildableConfig } from "./config-service.js";
 
 /** One config file that loads and reloads itself, and keeps its last valid version while the file is broken. */
