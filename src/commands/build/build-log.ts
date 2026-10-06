@@ -42,8 +42,8 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
-		...(summary.superseded > 0
-			? [`${summary.superseded} replaced by a file with the same name`]
+		...(summary.replaced > 0
+			? [`${summary.replaced} replaced by a file with the same name`]
 			: []),
 		...(summary.displaced > 0
 			? [`${summary.displaced} displaced by the template`]

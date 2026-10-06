@@ -70,7 +70,7 @@ export interface BuildSummary {
 	readonly routes: readonly RouteSummary[];
 	readonly variants: readonly VariantSummary[];
 	readonly unrouted: number;
-	readonly superseded: number;
+	readonly replaced: number;
 	/** Left out because the template defines their node. */
 	readonly displaced: number;
 }

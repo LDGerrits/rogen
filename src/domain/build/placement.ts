@@ -125,7 +125,7 @@ export class Placement {
 				})
 			),
 			unrouted: this.leftOut.count("unrouted"),
-			superseded: this.leftOut.count("replaced"),
+			replaced: this.leftOut.count("replaced"),
 			displaced: this.leftOut.count("displaced"),
 		};
 	}

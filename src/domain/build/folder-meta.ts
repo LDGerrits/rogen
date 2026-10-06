@@ -96,7 +96,20 @@ export type FolderMetaOutcome =
 			readonly kind: "templatePath";
 			readonly instance: string;
 			readonly meta: FolderMeta;
+	  }
+	/** The meta's folder never becomes an instance, by its name or because no route places anything through it. */
+	| {
+			readonly kind: "appliesToNothing";
+			readonly meta: FolderMeta;
+			readonly folder: InstancelessFolder;
 	  };
+
+/** A folder that never becomes an instance, as a warning names it. */
+export type InstancelessFolder =
+	| "a root dir"
+	| "a routing folder"
+	| "a variant folder"
+	| "an invisible folder";
 
 interface ReachedNode {
 	readonly instancePath: readonly string[];
@@ -119,7 +132,10 @@ export class FolderMetaApplier {
 	/** Edits `project`, and reports what each meta came to. Fails when two metas from one root dir reach one node, or a ref would repeat. */
 	apply(project: RojoProject): Result<FolderMetaOutcome[], Diagnostic[]> {
 		const problems = new DiagnosticCollector();
-		const outcomes = this.decide(project, problems);
+		const outcomes = [
+			...this.decide(project, problems),
+			...this.instanceless(),
+		];
 		this.checkIds(outcomes, problems);
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
@@ -191,6 +207,32 @@ export class FolderMetaApplier {
 				});
 		}
 		return outcomes;
+	}
+
+	/** The metas in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
+	private instanceless(): FolderMetaOutcome[] {
+		const { readings, routed } = this.placement;
+		const named = new Set(
+			routed.flatMap(({ entry, folderNodes }) =>
+				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
+			)
+		);
+		const folderOf = ({
+			rootDir,
+			dir,
+		}: FolderMeta): InstancelessFolder | undefined => {
+			if (dir === "") return "a root dir";
+			const key = joinPosix(rootDir, dir);
+			if (named.has(key)) return undefined;
+			const folder = readings.folders.get(key);
+			if (folder?.kind === "route") return "a routing folder";
+			if (folder?.kind === "variant") return "a variant folder";
+			return folder?.invisible ? "an invisible folder" : undefined;
+		};
+		return [...this.metaByDir.values()].flatMap((meta) => {
+			const folder = folderOf(meta);
+			return folder ? [{ kind: "appliesToNothing", meta, folder }] : [];
+		});
 	}
 
 	private copies(outcomes: readonly FolderMetaOutcome[]): Copy[] {

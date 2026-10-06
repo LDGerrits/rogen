@@ -470,7 +470,7 @@ describe("ConfigBuilder", () => {
 					configOf({ variants: { mock: true } })
 				);
 
-				expect(result.unwrap().summary.superseded).toBe(1);
+				expect(result.unwrap().summary.replaced).toBe(1);
 			});
 
 			it("should count a file the template displaced, and not under its route", async () => {
@@ -507,7 +507,7 @@ describe("ConfigBuilder", () => {
 					configOf({ rootDirs: [abs("src"), abs("lib")] })
 				);
 
-				expect(result.unwrap().summary.superseded).toBe(1);
+				expect(result.unwrap().summary.replaced).toBe(1);
 			});
 		});
 

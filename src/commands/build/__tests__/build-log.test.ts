@@ -60,7 +60,7 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	routes: [],
 	variants: [],
 	unrouted: 0,
-	superseded: 0,
+	replaced: 0,
 	displaced: 0,
 	...overrides,
 });
@@ -175,7 +175,7 @@ describe("BuildLog build lines", () => {
 		expect(describeBuild(summaryOf(), cwd)).toEqual([]);
 		expect(
 			describeBuild(
-				summaryOf({ unrouted: 2, superseded: 1, displaced: 3 }),
+				summaryOf({ unrouted: 2, replaced: 1, displaced: 3 }),
 				cwd
 			)
 		).toEqual([

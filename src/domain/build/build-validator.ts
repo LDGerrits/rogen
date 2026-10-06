@@ -20,12 +20,6 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
-type InstancelessFolder =
-	| "a root dir"
-	| "a routing folder"
-	| "a variant folder"
-	| "an invisible folder";
-
 const DIAGNOSED_PATHS = 10;
 
 /** Reports on a finished build and decides nothing. */
@@ -390,35 +384,18 @@ export class BuildValidator {
 		});
 	}
 
-	/** Meta in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
+	/** Meta in folders that never become an instance. */
 	private metaAppliesToNothing(): Diagnostic[] {
-		const { readings, routed } = this.placement;
-		const named = new Set(
-			routed.flatMap(({ entry, folderNodes }) =>
-				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
-			)
+		const metas = this.assembly.metaOutcomes.flatMap((outcome) =>
+			outcome.kind === "appliesToNothing"
+				? [[outcome.meta.file, outcome.folder] as const]
+				: []
 		);
-		const instanceless = ({
-			rootDir,
-			dir,
-		}: FolderMeta): InstancelessFolder | undefined => {
-			if (dir === "") return "a root dir";
-			const key = joinPosix(rootDir, dir);
-			if (named.has(key)) return undefined;
-			const folder = readings.folders.get(key);
-			if (folder?.kind === "route") return "a routing folder";
-			if (folder?.kind === "variant") return "a variant folder";
-			return folder?.invisible ? "an invisible folder" : undefined;
-		};
-		const metas = this.assembly.meta.folderMeta.flatMap((meta) => {
-			const kind = instanceless(meta);
-			return kind ? [[meta.file, kind] as const] : [];
-		});
-		return this.diagnosePaths(metas, (resource, kind) =>
+		return this.diagnosePaths(metas, (resource, folder) =>
 			warningDiagnostic(
 				"meta.appliesToNothing",
 				{ resource },
-				`applies to nothing, because ${kind} never becomes an instance. Move the meta into the folder that should get it.`
+				`applies to nothing, because ${folder} never becomes an instance. Move the meta into the folder that should get it.`
 			)
 		);
 	}
