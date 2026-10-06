@@ -14,7 +14,7 @@ import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader, NameReadings } from "./name-reader.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { HomelessInit, RoutedFile, Router } from "./router.js";
+import { InitWithoutFolder, RoutedFile, Router } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
@@ -191,13 +191,13 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, unrouted, homeless } = new Router(
+		const { routed, unrouted, withoutFolder } = new Router(
 			this.config,
 			readings,
 			this.layout.initNames
 		).route(roots);
-		const homelessErrors = this.homelessErrors(homeless);
-		if (homelessErrors.length > 0) return err(homelessErrors);
+		const withoutFolderErrors = this.withoutFolderErrors(withoutFolder);
+		if (withoutFolderErrors.length > 0) return err(withoutFolderErrors);
 		const applied = this.applyVariants(routed);
 		if (applied.isErr()) return applied;
 		const files = this.withoutLoneInits(applied.value.files);
@@ -242,8 +242,10 @@ export class Placer {
 	}
 
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
-	private homelessErrors(homeless: readonly HomelessInit[]): Diagnostic[] {
-		return homeless
+	private withoutFolderErrors(
+		withoutFolder: readonly InitWithoutFolder[]
+	): Diagnostic[] {
+		return withoutFolder
 			.filter(
 				({ variants }) =>
 					this.config.dormantVariants(variants).length === 0

@@ -54,7 +54,7 @@ export interface IgnoredAt {
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
-export interface HomelessInit {
+export interface InitWithoutFolder {
 	readonly source: string;
 	readonly variants: readonly VariantMatch[];
 	/** The folder it sits in. */
@@ -88,27 +88,28 @@ class Claims {
 	}
 }
 
-interface LeafReading {
+/** The file's own name, as Rojo reads it once the suffixes its route and variants claimed are off. */
+interface LeafName {
 	readonly name: string;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
 }
 
-/** A file read up to its route: what claimed it, its folders and its name. */
-interface Reading {
+/** A file's path, claimed up to its route: what claimed it, the folders that name its nodes, and its own name. */
+interface ClaimedPath {
 	readonly claims: Claims;
 	readonly folders: readonly {
 		readonly name: string;
 		readonly dir: string;
 	}[];
-	readonly leaf: LeafReading;
+	readonly leaf: LeafName;
 }
 
 /** An init ModuleScript that no route of its own sends anywhere, and where the fallback route placed it, if anywhere. */
-interface Loose {
+interface InitToCopy {
 	readonly entry: ScannedFile;
-	readonly reading: Reading;
+	readonly claimed: ClaimedPath;
 	readonly placed: RoutedFile | undefined;
 }
 
@@ -136,41 +137,41 @@ export class Router {
 	route(roots: readonly ScannedRoot[]): {
 		routed: RoutedFile[];
 		unrouted: string[];
-		homeless: HomelessInit[];
+		withoutFolder: InitWithoutFolder[];
 	} {
 		const routed: RoutedFile[] = [];
 		const unrouted: string[] = [];
-		const homeless: HomelessInit[] = [];
+		const withoutFolder: InitWithoutFolder[] = [];
 		for (const root of roots) {
 			const markers = root.markersByDir();
 			const initRoutes = this.initRoutesOf(root);
 			const fromRoot: RoutedFile[] = [];
-			const loose: Loose[] = [];
+			const toCopy: InitToCopy[] = [];
 			for (const entry of root.entries) {
-				const reading = this.read(entry, markers, initRoutes);
-				if (reading.leaf.isInit && reading.folders.length === 0) {
-					if (this.config.routes.has(reading.claims.routeKey))
-						homeless.push({
+				const claimed = this.claim(entry, markers, initRoutes);
+				if (claimed.leaf.isInit && claimed.folders.length === 0) {
+					if (this.config.routes.has(claimed.claims.routeKey))
+						withoutFolder.push({
 							source: entry.source,
-							variants: reading.claims.variants,
-							folder: this.homeOf(entry),
+							variants: claimed.claims.variants,
+							folder: this.instancelessFolderOf(entry),
 						});
 					else unrouted.push(entry.source);
 					continue;
 				}
-				const placed = this.place(entry, reading);
+				const placed = this.place(entry, claimed);
 				if (placed) fromRoot.push(placed);
 				else unrouted.push(entry.source);
-				if (this.isCopied(reading))
-					loose.push({ entry, reading, placed });
+				if (this.isCopied(claimed))
+					toCopy.push({ entry, claimed, placed });
 			}
-			routed.push(...fromRoot, ...this.copies(loose, fromRoot));
+			routed.push(...fromRoot, ...this.copies(toCopy, fromRoot));
 		}
-		return { routed, unrouted, homeless };
+		return { routed, unrouted, withoutFolder };
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
-	private homeOf(entry: ScannedFile): InstancelessFolder {
+	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
 		const folder = this.readings.instanceless(
 			entry.rootDir,
 			dirnamePosix(entry.relativePath)
@@ -187,7 +188,7 @@ export class Router {
 		const routes = new Map<string, { key: string; source: string }[]>();
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
-			if (!this.isInitRead(read)) continue;
+			if (!this.isInitEntry(read)) continue;
 			const spans = read.match.spans;
 			const variants = spans
 				.filter(({ key }) => this.keys.isVariant(key))
@@ -204,28 +205,28 @@ export class Router {
 		return routes;
 	}
 
-	private read(
+	private claim(
 		entry: ScannedFile,
 		markers: ReadonlyMap<string, string[]>,
 		initRoutes: InitRoutes
-	): Reading {
+	): ClaimedPath {
 		const read = this.readings.entryAt(entry.source);
 		const claims = new Claims();
-		const folders = this.readFolders(
+		const folders = this.claimFolders(
 			entry,
 			read,
 			markers,
 			initRoutes,
 			claims
 		);
-		return { claims, folders, leaf: this.readLeaf(read, claims) };
+		return { claims, folders, leaf: this.claimLeaf(read, claims) };
 	}
 
 	private place(
 		entry: ScannedFile,
-		reading: Reading
+		claimed: ClaimedPath
 	): RoutedFile | undefined {
-		const { claims, folders, leaf } = reading;
+		const { claims, folders, leaf } = claimed;
 		const route = claims.routeKey;
 		const target = this.config.routes.get(route);
 		if (!target) return undefined;
@@ -252,7 +253,7 @@ export class Router {
 
 	private initFolders(
 		entry: ScannedFile,
-		folders: Reading["folders"]
+		folders: ClaimedPath["folders"]
 	): InitFolders {
 		return {
 			becomes: joinPosix(entry.rootDir, folders[folders.length - 1].dir),
@@ -261,7 +262,7 @@ export class Router {
 	}
 
 	/** An init script no route of its own sends anywhere is copied to every node its folder becomes; a copied Script would run once per copy, so only a ModuleScript is. */
-	private isCopied({ claims, leaf }: Reading): boolean {
+	private isCopied({ claims, leaf }: ClaimedPath): boolean {
 		return (
 			leaf.isInit &&
 			claims.route === undefined &&
@@ -271,7 +272,7 @@ export class Router {
 
 	/** An init ModuleScript no route sends anywhere is every node its folder becomes, so each of the others gets a copy of it. */
 	private copies(
-		loose: readonly Loose[],
+		toCopy: readonly InitToCopy[],
 		routed: readonly RoutedFile[]
 	): RoutedFile[] {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
@@ -279,9 +280,9 @@ export class Router {
 			({ init, variants }) =>
 				init && this.config.dormantVariants(variants).length === 0
 		);
-		return loose.flatMap(({ entry, reading, placed }) => {
-			const folder = reading.folders[reading.folders.length - 1].dir;
-			const init = this.initFolders(entry, reading.folders);
+		return toCopy.flatMap(({ entry, claimed, placed }) => {
+			const folder = claimed.folders[claimed.folders.length - 1].dir;
+			const init = this.initFolders(entry, claimed.folders);
 			const nodes = new InstanceMap<RoutedFile>();
 			for (const init of inits) nodes.set(init.instancePath, init);
 			if (placed) nodes.set(placed.instancePath, placed);
@@ -301,8 +302,8 @@ export class Router {
 					folderNodes: file.folderNodes.slice(0, at + 1),
 					ignoredRoutes: [],
 					ignoredAts: [],
-					variants: reading.claims.variants,
-					buriedScriptSuffix: reading.leaf.buriedScriptSuffix,
+					variants: claimed.claims.variants,
+					buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
 					init,
 				};
 				nodes.set(instancePath, copy);
@@ -313,7 +314,7 @@ export class Router {
 	}
 
 	/** Routing, variant and invisible folders and markers claim the file, then the route suffixes of the init scripts in each folder; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
-	private readFolders(
+	private claimFolders(
 		entry: ScannedFile,
 		read: EntryRead,
 		markers: ReadonlyMap<string, string[]>,
@@ -358,7 +359,7 @@ export class Router {
 	}
 
 	/** Reads the suffixes of a file into `claims` and returns its instance name. */
-	private readLeaf(read: EntryRead, claims: Claims): LeafReading {
+	private claimLeaf(read: EntryRead, claims: Claims): LeafName {
 		const { kind, stem, match, scriptSuffix } = read;
 		const variantSpans = match.spans.filter((span) =>
 			this.keys.isVariant(span.key)
@@ -388,12 +389,12 @@ export class Router {
 				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
 			scriptSuffix,
 			buriedScriptSuffix,
-			isInit: this.isInitRead(read),
+			isInit: this.isInitEntry(read),
 		};
 	}
 
 	/** Whether the file is an init script once every declared key is off its name, a route it doesn't govern too. */
-	private isInitRead({ kind, stem, match }: EntryRead): boolean {
+	private isInitEntry({ kind, stem, match }: EntryRead): boolean {
 		return (
 			kind === "script" &&
 			this.initNames.has(

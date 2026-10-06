@@ -206,9 +206,7 @@ export class BuildValidator {
 						key,
 						route,
 						kind: "file",
-						name: file.init
-							? undefined
-							: file.instancePath.at(-1),
+						name: file.init ? undefined : file.instancePath.at(-1),
 					});
 				else
 					ignored.set(joinPosix(file.entry.rootDir, dir), {
