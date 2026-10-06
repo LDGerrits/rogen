@@ -1,5 +1,5 @@
 import { groupBy } from "../../base/collections.js";
-import { isInside, toPosix } from "../../base/path.js";
+import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import path from "path";
 import {
@@ -16,7 +16,7 @@ import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader, NameReadings } from "./name-reader.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { InitWithoutFolder, RoutedFile, Router } from "./router.js";
+import { InitToCopy, InitWithoutFolder, RoutedFile, Router } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
@@ -191,7 +191,7 @@ interface VariantOutcome {
 	readonly clashes: InstanceClash[];
 }
 
-/** Finds where every file of a config lands: scans the root dirs, routes each file, applies variants and lets the template win. */
+/** Finds where every file of a config lands: scans the root dirs, routes each file, then decides across files: copies init scripts, applies variants and lets the template win. */
 export class Placer {
 	private readonly layout: SyncLayout;
 	private readonly template: BuildTemplate;
@@ -212,18 +212,19 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, unrouted, withoutFolder } = new Router(
+		const { routed, toCopy, unrouted, withoutFolder } = new Router(
 			this.config,
 			readings,
 			this.layout.initNames
 		).route(roots);
 		const withoutFolderErrors = this.withoutFolderErrors(withoutFolder);
 		if (withoutFolderErrors.length > 0) return err(withoutFolderErrors);
-		const applied = this.applyVariants(routed);
+		const routedNodes = this.withCopies(routed, toCopy);
+		const applied = this.applyVariants(routedNodes);
 		if (applied.isErr()) return applied;
-		const files = this.withoutLoneInits(applied.value.files);
-		const templating = this.yieldToTemplate(files);
-		const placed = new Set(files.map(({ entry }) => entry.source));
+		const nodes = this.withoutLoneInits(applied.value.files);
+		const templating = this.yieldToTemplate(nodes);
+		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
 			unrouted
@@ -243,7 +244,7 @@ export class Placer {
 				this.template,
 				roots,
 				readings,
-				routed,
+				routedNodes,
 				templating.files,
 				leftOut,
 				applied.value.clashes,
@@ -278,6 +279,64 @@ export class Placer {
 					`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
 				)
 			);
+	}
+
+	/** Each root dir's routed files, then the copies of its init scripts. */
+	private withCopies(
+		routed: readonly RoutedFile[],
+		toCopy: readonly InitToCopy[]
+	): RoutedFile[] {
+		const toCopyByRoot = groupBy(toCopy, ({ entry }) => entry.rootDir);
+		return [...groupBy(routed, ({ entry }) => entry.rootDir)].flatMap(
+			([rootDir, fromRoot]) => [
+				...fromRoot,
+				...this.copies(toCopyByRoot.get(rootDir) ?? [], fromRoot),
+			]
+		);
+	}
+
+	/** An init ModuleScript no route sends anywhere is every node its folder becomes, so each of the others gets a copy of it. */
+	private copies(
+		toCopy: readonly InitToCopy[],
+		routed: readonly RoutedFile[]
+	): RoutedFile[] {
+		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
+		const inits = routed.filter(
+			({ init, variants }) =>
+				init && this.config.dormantVariants(variants).length === 0
+		);
+		return toCopy.flatMap(
+			({ entry, variants, buriedScriptSuffix, init, placed }) => {
+				const nodes = new InstanceMap<RoutedFile>();
+				for (const own of inits) nodes.set(own.instancePath, own);
+				if (placed) nodes.set(placed.instancePath, placed);
+				const copies: RoutedFile[] = [];
+				for (const file of routed) {
+					const at = file.folderNodes.findIndex(
+						({ dir }) =>
+							joinPosix(file.entry.rootDir, dir) === init.becomes
+					);
+					if (at < 0) continue;
+					const { instancePath } = file.folderNodes[at];
+					if (nodes.get(instancePath)) continue;
+					const copy: RoutedFile = {
+						entry,
+						route: file.route,
+						routeMatch: "copy",
+						instancePath,
+						folderNodes: file.folderNodes.slice(0, at + 1),
+						ignoredRoutes: [],
+						ignoredAts: [],
+						variants,
+						buriedScriptSuffix,
+						init,
+					};
+					nodes.set(instancePath, copy);
+					copies.push(copy);
+				}
+				return copies;
+			}
+		);
 	}
 
 	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the template keeps carries it. Repeats, since a dropped init script empties the folders above it. */

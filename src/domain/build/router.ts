@@ -2,7 +2,6 @@ import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
-import { InstanceMap } from "../rojo/rojo-project.js";
 import { RouteMatch, VariantMatch } from "./build.js";
 import {
 	EntryRead,
@@ -106,10 +105,12 @@ interface ClaimedPath {
 	readonly leaf: LeafName;
 }
 
-/** An init ModuleScript that no route of its own sends anywhere, and where the fallback route placed it, if anywhere. */
-interface InitToCopy {
+/** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
+export interface InitToCopy {
 	readonly entry: ScannedFile;
-	readonly claimed: ClaimedPath;
+	readonly variants: readonly VariantMatch[];
+	readonly buriedScriptSuffix?: RojoScriptSuffix;
+	readonly init: InitFolders;
 	readonly placed: RoutedFile | undefined;
 }
 
@@ -124,7 +125,7 @@ export class Router {
 	private readonly keys: DeclaredKeys;
 
 	constructor(
-		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder or keeps a copy off its node. */
+		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder. */
 		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings,
 		/** The script names that make a file its folder. */
@@ -133,20 +134,20 @@ export class Router {
 		this.keys = config.keys;
 	}
 
-	/** Every file a route governs, in scan order, then the copies of init scripts; the sources of the files no route governs; and the init scripts with no folder to be. */
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; and the init scripts with no folder to be. */
 	route(roots: readonly ScannedRoot[]): {
 		routed: RoutedFile[];
+		toCopy: InitToCopy[];
 		unrouted: string[];
 		withoutFolder: InitWithoutFolder[];
 	} {
 		const routed: RoutedFile[] = [];
+		const toCopy: InitToCopy[] = [];
 		const unrouted: string[] = [];
 		const withoutFolder: InitWithoutFolder[] = [];
 		for (const root of roots) {
 			const markers = root.markersByDir();
 			const initRoutes = this.initRoutesOf(root);
-			const fromRoot: RoutedFile[] = [];
-			const toCopy: InitToCopy[] = [];
 			for (const entry of root.entries) {
 				const claimed = this.claim(entry, markers, initRoutes);
 				if (claimed.leaf.isInit && claimed.folders.length === 0) {
@@ -160,14 +161,19 @@ export class Router {
 					continue;
 				}
 				const placed = this.place(entry, claimed);
-				if (placed) fromRoot.push(placed);
+				if (placed) routed.push(placed);
 				else unrouted.push(entry.source);
 				if (this.isCopied(claimed))
-					toCopy.push({ entry, claimed, placed });
+					toCopy.push({
+						entry,
+						variants: claimed.claims.variants,
+						buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
+						init: this.initFolders(entry, claimed.folders),
+						placed,
+					});
 			}
-			routed.push(...fromRoot, ...this.copies(toCopy, fromRoot));
 		}
-		return { routed, unrouted, withoutFolder };
+		return { routed, toCopy, unrouted, withoutFolder };
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
@@ -268,49 +274,6 @@ export class Router {
 			claims.route === undefined &&
 			leaf.scriptSuffix === undefined
 		);
-	}
-
-	/** An init ModuleScript no route sends anywhere is every node its folder becomes, so each of the others gets a copy of it. */
-	private copies(
-		toCopy: readonly InitToCopy[],
-		routed: readonly RoutedFile[]
-	): RoutedFile[] {
-		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
-		const inits = routed.filter(
-			({ init, variants }) =>
-				init && this.config.dormantVariants(variants).length === 0
-		);
-		return toCopy.flatMap(({ entry, claimed, placed }) => {
-			const folder = claimed.folders[claimed.folders.length - 1].dir;
-			const init = this.initFolders(entry, claimed.folders);
-			const nodes = new InstanceMap<RoutedFile>();
-			for (const own of inits) nodes.set(own.instancePath, own);
-			if (placed) nodes.set(placed.instancePath, placed);
-			const copies: RoutedFile[] = [];
-			for (const file of routed) {
-				const at = file.folderNodes.findIndex(
-					({ dir }) => dir === folder
-				);
-				if (at < 0) continue;
-				const { instancePath } = file.folderNodes[at];
-				if (nodes.get(instancePath)) continue;
-				const copy: RoutedFile = {
-					entry,
-					route: file.route,
-					routeMatch: "copy",
-					instancePath,
-					folderNodes: file.folderNodes.slice(0, at + 1),
-					ignoredRoutes: [],
-					ignoredAts: [],
-					variants: claimed.claims.variants,
-					buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
-					init,
-				};
-				nodes.set(instancePath, copy);
-				copies.push(copy);
-			}
-			return copies;
-		});
 	}
 
 	/** Routing, variant and invisible folders and markers claim the file, then the route suffixes of the init scripts in each folder; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
