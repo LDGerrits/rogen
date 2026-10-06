@@ -68,6 +68,8 @@ export interface DisplacedFile {
 
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
+	/** One per file a route governs, in scan order, before variants decide which are placed; at its own node, or at its first copy when a route placed it nowhere itself. */
+	readonly routed: readonly RoutedFile[];
 	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
 	readonly files: readonly RoutedFile[];
 	private readonly nodesBySource: ReadonlyMap<string, readonly RoutedFile[]>;
@@ -79,8 +81,8 @@ export class Placement {
 		readonly template: BuildTemplate,
 		readonly roots: readonly ScannedRoot[],
 		readonly readings: NameReadings,
-		/** Every node a route sends a file to, in scan order, then the copies of init scripts, before variants decide which are placed. */
-		readonly routed: readonly RoutedFile[],
+		/** Every node a route sends a file to, in scan order, then the copies of init scripts. */
+		routedNodes: readonly RoutedFile[],
 		/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last root dir wins across roots. */
 		readonly nodes: readonly RoutedFile[],
 		/** Every path the build leaves out of the tree. */
@@ -90,10 +92,19 @@ export class Placement {
 		readonly displaced: readonly DisplacedFile[]
 	) {
 		this.nodesBySource = groupBy(nodes, ({ entry }) => entry.source);
-		this.files = [...this.nodesBySource.values()].map(
-			(placed) =>
-				placed.find(({ routeMatch }) => routeMatch !== "copy") ??
-				placed[0]
+		this.routed = Placement.onePerFile(
+			groupBy(routedNodes, ({ entry }) => entry.source)
+		);
+		this.files = Placement.onePerFile(this.nodesBySource);
+	}
+
+	private static onePerFile(
+		bySource: ReadonlyMap<string, readonly RoutedFile[]>
+	): RoutedFile[] {
+		return [...bySource.values()].map(
+			(nodes) =>
+				nodes.find(({ routeMatch }) => routeMatch !== "copy") ??
+				nodes[0]
 		);
 	}
 

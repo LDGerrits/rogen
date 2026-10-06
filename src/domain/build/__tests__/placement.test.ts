@@ -488,6 +488,25 @@ describe("Placer", () => {
 				expect(warnings[0].message).toContain(".server");
 			});
 
+			it("should warn once for an init script copied to several nodes", async () => {
+				await write(
+					"src/Net/init.plugin.mock.luau",
+					"src/Net/Util.luau",
+					"src/Net/server/Remote.luau",
+					"src/Net/client/Hud.luau"
+				);
+
+				const { warnings } = (await apply({ mock: true })).unwrap();
+
+				expect(
+					warnings.filter(
+						({ code }) => code === "variant.buriedScriptSuffix"
+					)
+				).toMatchObject([
+					{ resource: abs("src/Net/init.plugin.mock.luau") },
+				]);
+			});
+
 			it("should not warn when the script suffix comes last", async () => {
 				await write(
 					"src/Foo.mock.server.luau",

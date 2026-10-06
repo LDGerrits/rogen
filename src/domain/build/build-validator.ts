@@ -13,7 +13,7 @@ import {
 	isServerOnlyService,
 	scriptFate,
 } from "../roblox/roblox.js";
-import { RojoFile, RojoScriptSuffix, scriptRunOf } from "../rojo/rojo.js";
+import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
@@ -302,22 +302,18 @@ export class BuildValidator {
 			: `a Script with RunContext ${run}`;
 	}
 
-	/** One warning per file, though a copied init script is routed more than once. */
 	private buriedScriptSuffix(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		const buried = new Map<string, RojoScriptSuffix>();
-		for (const { entry, buriedScriptSuffix } of routed)
-			if (
-				buriedScriptSuffix &&
-				leftOut.get(entry.source)?.status !== "pruned"
-			)
-				buried.set(entry.source, buriedScriptSuffix);
-		return [...buried].map(([source, suffix]) =>
-			warningDiagnostic(
-				"variant.buriedScriptSuffix",
-				{ resource: source },
-				`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
-			)
+		return routed.flatMap(({ entry, buriedScriptSuffix: suffix }) =>
+			suffix && leftOut.get(entry.source)?.status !== "pruned"
+				? [
+						warningDiagnostic(
+							"variant.buriedScriptSuffix",
+							{ resource: entry.source },
+							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
+						),
+					]
+				: []
 		);
 	}
 
