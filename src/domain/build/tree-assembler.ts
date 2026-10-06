@@ -3,8 +3,7 @@ import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { isDirectoryType } from "../../platform/fs/file-system-service.js";
-import { RojoFile } from "../rojo/rojo.js";
+import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
 import {
 	InstanceMap,
 	RojoProject,
@@ -154,21 +153,11 @@ export class TreeAssembler {
 		dir: string,
 		init: string
 	): string[] {
-		const { layout, roots } = placement;
-		const root = roots.find((candidate) =>
-			isInside(dir, toPosix(candidate.rootDir))
-		);
-		return [...(root?.listing(path.normalize(dir)) ?? [])].flatMap(
-			([name, type]) => {
-				const sibling = path.posix.join(dir, name);
-				const read =
-					isDirectoryType(type) ||
-					(name !== init && new RojoFile(name).kind !== undefined);
-				return read && !layout.isReadOnly(sibling)
-					? [layout.syncPath(sibling).optional]
-					: [];
-			}
-		);
+		const { layout } = placement;
+		return childrenBesideInit(placement.listing(dir), init)
+			.map((name) => path.posix.join(dir, name))
+			.filter((sibling) => !layout.isReadOnly(sibling))
+			.map((sibling) => layout.syncPath(sibling).optional);
 	}
 
 	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
@@ -261,9 +250,10 @@ export class TreeAssembler {
 		return {
 			file,
 			source,
-			rojoName: placement.initDirOf(file) !== undefined
-				? undefined
-				: new RojoFile(path.posix.basename(source)).instanceName,
+			rojoName:
+				placement.initDirOf(file) !== undefined
+					? undefined
+					: new RojoFile(path.posix.basename(source)).instanceName,
 		};
 	}
 }

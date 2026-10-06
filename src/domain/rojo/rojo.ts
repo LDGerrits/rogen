@@ -3,6 +3,10 @@ import { JSONSchema } from "../../base/json-schema.js";
 import { stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	FileType,
+	isDirectoryType,
+} from "../../platform/fs/file-system-service.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ScriptRun } from "../roblox/roblox.js";
 
@@ -179,4 +183,17 @@ export function scriptRunOf(
 	if (set) return set;
 	if (legacyScripts) return "Script";
 	return suffix === "server" ? "Server" : "Client";
+}
+
+/** What Rojo reads as children of the instance an init script makes its directory, from that directory's listing: every directory, and every other file that is an instance on its own. */
+export function childrenBesideInit(
+	listing: ReadonlyMap<string, FileType>,
+	init: string
+): string[] {
+	return [...listing].flatMap(([name, type]) =>
+		isDirectoryType(type) ||
+		(name !== init && new RojoFile(name).kind !== undefined)
+			? [name]
+			: []
+	);
 }

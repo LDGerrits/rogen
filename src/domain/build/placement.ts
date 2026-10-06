@@ -1,4 +1,5 @@
 import { groupBy } from "../../base/collections.js";
+import { isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import path from "path";
 import {
@@ -6,6 +7,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
+import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -110,6 +112,14 @@ export class Placement {
 			).isInit
 			? file.init.sitsIn
 			: undefined;
+	}
+
+	/** What the index holds in `dir`, which lies in one of the root dirs. */
+	listing(dir: string): ReadonlyMap<string, FileType> {
+		const root = this.roots.find((candidate) =>
+			isInside(dir, toPosix(candidate.rootDir))
+		);
+		return root?.listing(path.normalize(dir)) ?? new Map();
 	}
 
 	/** Meta no file claims, across every root dir; computed once. */

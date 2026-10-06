@@ -1,4 +1,10 @@
-import { RojoFile, RojoMeta, scriptRunOf } from "../rojo.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
+import {
+	RojoFile,
+	RojoMeta,
+	childrenBesideInit,
+	scriptRunOf,
+} from "../rojo.js";
 
 describe("domain/rojo/rojo", () => {
 	describe("RojoFile", () => {
@@ -235,6 +241,28 @@ describe("domain/rojo/rojo", () => {
 		it("should give no run for a file that isn't a server or client script", () => {
 			expect(scriptRunOf(undefined, true, "Server")).toBeUndefined();
 			expect(scriptRunOf("plugin", true, undefined)).toBeUndefined();
+		});
+	});
+
+	describe("childrenBesideInit", () => {
+		it("should give every directory and every other file that is an instance on its own", () => {
+			const listing = new Map([
+				["init.luau", FileType.File],
+				["init.meta.json", FileType.File],
+				["Helper.luau", FileType.File],
+				["Data.json", FileType.File],
+				["Types.d.ts", FileType.File],
+				["README.md", FileType.File],
+				["Moves", FileType.Directory],
+				["Linked", FileType.SymbolicLink | FileType.Directory],
+			]);
+
+			expect(childrenBesideInit(listing, "init.luau")).toEqual([
+				"Helper.luau",
+				"Data.json",
+				"Moves",
+				"Linked",
+			]);
 		});
 	});
 });
