@@ -68,7 +68,7 @@ export interface DisplacedFile {
 
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
-	/** One per file a route governs, in scan order, before variants decide which are placed; at its own node, or at its first copy when a route placed it nowhere itself. */
+	/** As `files`, but every file a route governs, before variants decide which are placed. */
 	readonly routed: readonly RoutedFile[];
 	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
 	readonly files: readonly RoutedFile[];
@@ -185,7 +185,7 @@ export class Placement {
 
 interface VariantOutcome {
 	/** Every instance path appears once per build; the last root dir wins across roots. */
-	readonly files: readonly RoutedFile[];
+	readonly nodes: readonly RoutedFile[];
 	/** The files pruned by a dormant variant and those another file replaced. */
 	readonly leftOut: [string, LeftOut][];
 	readonly clashes: InstanceClash[];
@@ -222,7 +222,7 @@ export class Placer {
 		const routedNodes = this.withCopies(routed, toCopy);
 		const applied = this.applyVariants(routedNodes);
 		if (applied.isErr()) return applied;
-		const nodes = this.withoutLoneInits(applied.value.files);
+		const nodes = this.withoutLoneInits(applied.value.nodes);
 		const templating = this.yieldToTemplate(nodes);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
@@ -245,7 +245,7 @@ export class Placer {
 				roots,
 				readings,
 				routedNodes,
-				templating.files,
+				templating.nodes,
 				leftOut,
 				applied.value.clashes,
 				templating.displaced
@@ -341,9 +341,9 @@ export class Placer {
 
 	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the template keeps carries it. Repeats, since a dropped init script empties the folders above it. */
 	private withoutLoneInits(
-		files: readonly RoutedFile[]
+		nodes: readonly RoutedFile[]
 	): readonly RoutedFile[] {
-		let kept = files;
+		let kept = nodes;
 		for (;;) {
 			const named = new InstanceMap<true>();
 			for (const { folderNodes, routeMatch, init } of kept)
@@ -443,22 +443,22 @@ export class Placer {
 					{ status: "replaced", by: winner.entry.source },
 				]);
 		}
-		return ok({ files: [...new Set(winners.values())], leftOut, clashes });
+		return ok({ nodes: [...new Set(winners.values())], leftOut, clashes });
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */
 	private yieldToTemplate(placed: readonly RoutedFile[]): {
-		readonly files: readonly RoutedFile[];
+		readonly nodes: readonly RoutedFile[];
 		readonly leftOut: [string, LeftOut][];
 		readonly displaced: readonly DisplacedFile[];
 	} {
-		const files: RoutedFile[] = [];
+		const nodes: RoutedFile[] = [];
 		const leftOut: [string, LeftOut][] = [];
 		const displaced: DisplacedFile[] = [];
 		for (const file of placed) {
 			const displacing = this.template.displacing(file);
 			if (!displacing) {
-				files.push(file);
+				nodes.push(file);
 				continue;
 			}
 			leftOut.push([
@@ -467,6 +467,6 @@ export class Placer {
 			]);
 			displaced.push({ file, ...displacing });
 		}
-		return { files, leftOut, displaced };
+		return { nodes, leftOut, displaced };
 	}
 }

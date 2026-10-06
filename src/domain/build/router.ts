@@ -106,10 +106,10 @@ interface ClaimedPath {
 }
 
 /** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
-export interface InitToCopy {
-	readonly entry: ScannedFile;
-	readonly variants: readonly VariantMatch[];
-	readonly buriedScriptSuffix?: RojoScriptSuffix;
+export interface InitToCopy extends Pick<
+	RoutedFile,
+	"entry" | "variants" | "buriedScriptSuffix"
+> {
 	readonly init: InitFolders;
 	readonly placed: RoutedFile | undefined;
 }
