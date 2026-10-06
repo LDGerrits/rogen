@@ -116,11 +116,14 @@ export class WatchLog {
 		reports.forEach((report) => this.report(report));
 	}
 
-	private notice({ file, errors }: ConfigNotice): void {
-		this.buildLog.diagnostics(errors);
-		this.logService.error(
-			`Still building from the last valid ${path.basename(file)}.`
-		);
+	private notice(notice: ConfigNotice): void {
+		const name = path.basename(notice.file);
+		if (notice.kind === "recovered") {
+			this.logService.info(`${name} loads again.`);
+			return;
+		}
+		this.buildLog.diagnostics(notice.errors);
+		this.logService.error(`Still building from the last valid ${name}.`);
 	}
 
 	private report({

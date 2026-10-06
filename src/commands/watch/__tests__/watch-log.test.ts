@@ -213,7 +213,11 @@ describe("WatchLog.update", () => {
 			);
 
 			log.update(
-				updateOf({ notices: [{ file: entry.file, errors: [error] }] })
+				updateOf({
+					notices: [
+						{ kind: "broken", file: entry.file, errors: [error] },
+					],
+				})
 			);
 
 			expect(
@@ -227,6 +231,20 @@ describe("WatchLog.update", () => {
 					"Still building from the last valid default.rogen.json.",
 				],
 			]);
+		});
+
+		it("should say a broken config loads again", () => {
+			const { log, logService } = session();
+
+			log.update(
+				updateOf({ notices: [{ kind: "recovered", file: entry.file }] })
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind !== "step")
+					.map(({ kind, text }) => [kind, text])
+			).toEqual([["info", "default.rogen.json loads again."]]);
 		});
 	});
 });

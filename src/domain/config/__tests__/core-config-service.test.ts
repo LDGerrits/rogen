@@ -817,7 +817,11 @@ describe("domain/config/core-config-service", () => {
 			]);
 			expect(reload.changed).toEqual([]);
 			expect(reload.notices).toEqual([
-				{ file: "/repo/default.rogen.json", errors: errors(0) },
+				{
+					kind: "broken",
+					file: "/repo/default.rogen.json",
+					errors: errors(0),
+				},
 			]);
 		});
 
@@ -830,8 +834,10 @@ describe("domain/config/core-config-service", () => {
 
 			expect(errors(0)).toHaveLength(2);
 			expect(
-				reload.notices.flatMap(({ errors }) =>
-					errors.map(({ message }) => message)
+				reload.notices.flatMap((notice) =>
+					notice.kind === "broken"
+						? notice.errors.map(({ message }) => message)
+						: []
 				)
 			).toEqual([expect.stringContaining('"other"')]);
 		});
@@ -846,7 +852,7 @@ describe("domain/config/core-config-service", () => {
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
-		it("should clear the errors and report a change once the file is fixed", async () => {
+		it("should clear the errors, report a change and say it loads again once the file is fixed", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();
 			await write("/repo/default.rogen.json", { bogus: 1 });
@@ -859,7 +865,9 @@ describe("domain/config/core-config-service", () => {
 			expect(resolved(0)?.rootDirs).toEqual(["/repo/c"]);
 			expect(reload).toEqual({
 				changed: ["/repo/default.rogen.json"],
-				notices: [],
+				notices: [
+					{ kind: "recovered", file: "/repo/default.rogen.json" },
+				],
 			});
 		});
 

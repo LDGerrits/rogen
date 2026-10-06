@@ -43,11 +43,14 @@ export function buildableConfig(
 	return entry.status === "valid" ? entry.config : entry.lastValid;
 }
 
-/** The errors a config's latest load found that its previous load didn't. */
-export interface ConfigNotice {
-	readonly file: string;
-	readonly errors: readonly Diagnostic[];
-}
+/** What a reload says of one config: its latest load found errors the previous one didn't, or a broken config loads again. */
+export type ConfigNotice =
+	| {
+			readonly kind: "broken";
+			readonly file: string;
+			readonly errors: readonly Diagnostic[];
+	  }
+	| { readonly kind: "recovered"; readonly file: string };
 
 /** What one `reload` did. */
 export interface ConfigReload {

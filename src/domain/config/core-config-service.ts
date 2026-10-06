@@ -12,7 +12,8 @@ import {
 	ConfigSelection,
 	ConfigService,
 } from "./config-service.js";
-import { CoreConfigSelection, ManagedConfig } from "./core-config-selection.js";
+import { CoreConfigSelection } from "./core-config-selection.js";
+import { ManagedConfig } from "./managed-config.js";
 
 /** The flag that overrides each path field; each names one value, which several configs can't share. */
 const PATH_FLAGS: Record<PathField, string> = {

@@ -164,10 +164,14 @@ describe("CoreWatchSession", () => {
 			configFiles: ["/repo/default.rogen.json"],
 		});
 		const [notice] = updates[1].notices;
-		expect(notice.file).toBe("/repo/default.rogen.json");
-		expect(new Set(notice.errors.map(({ code }) => code))).toEqual(
-			new Set(["config.invalidSyntax"])
-		);
+		expect(notice).toMatchObject({
+			kind: "broken",
+			file: "/repo/default.rogen.json",
+		});
+		expect(
+			notice.kind === "broken" &&
+				new Set(notice.errors.map(({ code }) => code))
+		).toEqual(new Set(["config.invalidSyntax"]));
 		expect(updates[1].reports).toEqual([]);
 		expect(buildableConfig(selection.entries[0])).toBeDefined();
 	});
@@ -298,11 +302,25 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		const notices = updates.flatMap((update) => update.notices);
-		expect(notices.map(({ file }) => file)).toEqual([
-			"/repo/default.rogen.json",
-			"/repo/default.rogen.json",
+		expect(notices.map(({ kind }) => kind)).toEqual([
+			"broken",
+			"recovered",
+			"broken",
 		]);
-		expect(notices[1].errors).toEqual(notices[0].errors);
+		expect(notices[2]).toEqual(notices[0]);
+	});
+
+	it("should say a broken config loads again when the fix restores what last built", async () => {
+		await start();
+		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await settle();
+
+		await writeConfig("/repo/default.rogen.json", {});
+		await settle();
+
+		expect(updates.at(-1)?.notices).toEqual([
+			{ kind: "recovered", file: "/repo/default.rogen.json" },
+		]);
 	});
 
 	it("should not report a config's errors again while it stays broken the same way", async () => {
