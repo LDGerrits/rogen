@@ -301,25 +301,36 @@ export class Placer {
 		routed: readonly RoutedFile[]
 	): RoutedFile[] {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
-		const inits = routed.filter(
-			({ init, variants }) =>
-				init && this.config.dormantVariants(variants).length === 0
-		);
+		const owned = new InstanceMap<RoutedFile>();
+		for (const file of routed)
+			if (
+				file.init &&
+				this.config.dormantVariants(file.variants).length === 0
+			)
+				owned.set(file.instancePath, file);
+		const throughFolder = new Map<
+			string,
+			{ readonly file: RoutedFile; readonly at: number }[]
+		>();
+		for (const file of routed)
+			file.folderNodes.forEach(({ dir }, at) => {
+				const folder = joinPosix(file.entry.rootDir, dir);
+				const files = throughFolder.get(folder) ?? [];
+				files.push({ file, at });
+				throughFolder.set(folder, files);
+			});
 		return toCopy.flatMap(
 			({ entry, variants, buriedScriptSuffix, init, placed }) => {
-				const nodes = new InstanceMap<RoutedFile>();
-				for (const own of inits) nodes.set(own.instancePath, own);
-				if (placed) nodes.set(placed.instancePath, placed);
+				const taken = new InstanceMap<true>();
+				if (placed) taken.set(placed.instancePath, true);
 				const copies: RoutedFile[] = [];
-				for (const file of routed) {
-					const at = file.folderNodes.findIndex(
-						({ dir }) =>
-							joinPosix(file.entry.rootDir, dir) === init.becomes
-					);
-					if (at < 0) continue;
+				for (const { file, at } of throughFolder.get(init.becomes) ??
+					[]) {
 					const { instancePath } = file.folderNodes[at];
-					if (nodes.get(instancePath)) continue;
-					const copy: RoutedFile = {
+					if (owned.get(instancePath) || taken.get(instancePath))
+						continue;
+					taken.set(instancePath, true);
+					copies.push({
 						entry,
 						route: file.route,
 						routeMatch: "copy",
@@ -330,9 +341,7 @@ export class Placer {
 						variants,
 						buriedScriptSuffix,
 						init,
-					};
-					nodes.set(instancePath, copy);
-					copies.push(copy);
+					});
 				}
 				return copies;
 			}
