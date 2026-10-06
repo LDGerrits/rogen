@@ -41,7 +41,7 @@ jobs:
                   fi
 
             - name: Generate Schema
-              run: npx tsx scripts/generate-schema.ts site/schema
+              run: npm run generate:schema -- site/schema
 
             - name: Publish to gh-pages
               run: |
