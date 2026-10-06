@@ -91,7 +91,7 @@ export class TreeAssembler {
 			([source]) => !layout.isReadOnly(source)
 		);
 		// A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one.
-		const mounts = template.mounts.map((mount) => toPosix(mount.path));
+		const mounts = template.mounts.paths;
 		// Rojo must read a mount, so a left-out folder that holds one can't be ignored either; it is never collapsed, so nothing else reads it.
 		const ignored = leftOut
 			.filter(

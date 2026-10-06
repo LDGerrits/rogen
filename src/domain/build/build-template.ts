@@ -1,5 +1,9 @@
 import path from "path";
-import { joinPosix } from "../../base/path.js";
+import { contains, isInside, joinPosix, toPosix } from "../../base/path.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
 import { containerClassName } from "../roblox/roblox.js";
 import {
@@ -17,6 +21,67 @@ const NO_TEMPLATE = new RojoProject({ tree: {} });
 export interface TemplateMount {
 	readonly path: string;
 	readonly node: readonly string[];
+}
+
+/** The paths the template's own `$path`s mount, which Rojo reads and Rogen leaves alone, and the places a mount can't go. */
+export class TemplateMounts {
+	constructor(
+		private readonly mounts: readonly TemplateMount[],
+		/** The template file, which every mount error points at; none without a template. */
+		private readonly file: string | undefined
+	) {}
+
+	/** Every mounted path, as an absolute POSIX path. */
+	get paths(): string[] {
+		return this.mounts.map((mount) => toPosix(mount.path));
+	}
+
+	/** The mounts at or inside `dir`. */
+	inside(dir: string): TemplateMount[] {
+		return this.mounts.filter((mount) => isInside(mount.path, dir));
+	}
+
+	/** The mount at `absolutePath`, compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
+	at(absolutePath: string): TemplateMount | undefined {
+		return this.mounts.find(
+			(mount) => path.relative(mount.path, absolutePath) === ""
+		);
+	}
+
+	/** A mount at a root dir or above one would hand the whole root dir to Rojo, leaving Rogen nothing to place there. */
+	rootDirErrors(rootDirs: readonly string[]): Diagnostic[] {
+		const { file } = this;
+		if (file === undefined) return [];
+		return this.mounts.flatMap(({ path: mounted, node }) => {
+			const rootDir = rootDirs.find((dir) => contains(mounted, dir));
+			return rootDir === undefined
+				? []
+				: [
+						errorDiagnostic(
+							"template.mountsRootDir",
+							{ resource: file },
+							`"${instanceKey(node)}" mounts ${mounted === rootDir ? `the root dir ${rootDir}` : `${mounted}, which holds the root dir ${rootDir}`}, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the root dir, or remove the root dir from "rootDirs".`
+						),
+					];
+		});
+	}
+
+	/** Rojo reads an init folder whole, so a mount inside one would sync that path twice. */
+	initFolderErrors(initFolders: readonly string[]): Diagnostic[] {
+		const { file } = this;
+		if (file === undefined) return [];
+		return initFolders.flatMap((folder) =>
+			this.mounts
+				.filter((mount) => isInside(mount.path, folder))
+				.map(({ path: mounted, node }) =>
+					errorDiagnostic(
+						"template.mountsInsideInitFolder",
+						{ resource: file },
+						`"${instanceKey(node)}" mounts ${mounted}, inside the init folder ${folder}, which Rojo reads whole, so it would be synced twice. Mount the init folder itself, or move the mounted folder out of it.`
+					)
+				)
+		);
+	}
 }
 
 /** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */
@@ -57,14 +122,21 @@ export class BuildTemplate {
 		return this.config.template?.project.emitLegacyScripts === false;
 	}
 
-	/** Every path the template's own `$path`s mount, absolute, with the node that mounts it. Rojo reads these, not Rogen. */
-	get mounts(): TemplateMount[] {
+	/** Every path the template's own `$path`s mount. Rojo reads these, not Rogen. */
+	get mounts(): TemplateMounts {
 		const project = this.config.template?.project;
-		if (!project) return [];
-		return project.getPaths().map(({ path: rojoPath, instancePath }) => ({
-			path: path.resolve(this.templateDir, rojoPathTarget(rojoPath)),
-			node: instancePath,
-		}));
+		return new TemplateMounts(
+			(project?.getPaths() ?? []).map(
+				({ path: rojoPath, instancePath }) => ({
+					path: path.resolve(
+						this.templateDir,
+						rojoPathTarget(rojoPath)
+					),
+					node: instancePath,
+				})
+			),
+			this.templateFile
+		);
 	}
 
 	/** The template's `globIgnorePaths`, relative to the project dir. */

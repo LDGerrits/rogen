@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { isInside, joinPosix, stemOf, toPosix } from "../../base/path.js";
+import { joinPosix, stemOf, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -10,7 +10,7 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
-import { TemplateMount } from "./build-template.js";
+import { TemplateMounts } from "./build-template.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
@@ -203,7 +203,7 @@ export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
 		private readonly exclude: readonly string[],
-		private readonly mounts: readonly TemplateMount[]
+		private readonly mounts: TemplateMounts
 	) {}
 
 	scan(rootDir: string): ScannedRoot {
@@ -214,7 +214,7 @@ export class RootScanner {
 			metaFiles: [],
 			leftOut: new Map(
 				this.mounts
-					.filter((mount) => isInside(mount.path, rootDir))
+					.inside(rootDir)
 					.map(({ path: mounted, node }): [string, ScanLeftOut] => [
 						toPosix(mounted),
 						{ status: "mounted", node },
@@ -237,13 +237,6 @@ export class RootScanner {
 		);
 	}
 
-	/** Compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
-	private mountAt(absolutePath: string): TemplateMount | undefined {
-		return this.mounts.find(
-			(mount) => path.relative(mount.path, absolutePath) === ""
-		);
-	}
-
 	private excludingGlob(absolutePath: string): string | undefined {
 		const posixPath = toPosix(absolutePath);
 		return this.exclude.find((glob) => isMatch(posixPath, glob));
@@ -257,7 +250,7 @@ export class RootScanner {
 	): [string, FileType][] {
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
-			const mount = this.mountAt(path.join(dir, name));
+			const mount = this.mounts.at(path.join(dir, name));
 			const glob = this.excludingGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
