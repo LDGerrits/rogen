@@ -13,10 +13,10 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Common: Folder
-        Util: ModuleScript  <- src/Common/Util.luau
+        Util: ModuleScript  <- shared-code/Util.luau
       Local: ModuleScript  <- src/Local.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Common: Folder
         Net: Folder
-          Client: LocalScript  <- src/Common/Net/Client.client.luau
+          Client: LocalScript  <- shared-code/Net/Client.client.luau
