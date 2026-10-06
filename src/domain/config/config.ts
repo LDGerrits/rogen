@@ -320,7 +320,7 @@ export class ResolvedConfig {
 		return matches.filter(({ variant }) => !this.variants[variant]);
 	}
 
-	/** Whether every variant a file carries is on, so it can be placed. */
+	/** Whether every variant among a file's is on; otherwise it is pruned. */
 	allVariantsOn<T extends { readonly variant: string }>(
 		matches: readonly T[]
 	): boolean {
