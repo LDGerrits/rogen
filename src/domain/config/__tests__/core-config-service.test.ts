@@ -779,6 +779,22 @@ describe("domain/config/core-config-service", () => {
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
+		it("should keep the same config when a reload loads it unchanged, even after it broke", async () => {
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await start();
+			const before = resolved(0);
+
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await selection.reload(["/repo/default.rogen.json"]);
+			expect(resolved(0)).toBe(before);
+
+			await fs.writeFile("/repo/default.rogen.json", "{ nope");
+			await selection.reload(["/repo/default.rogen.json"]);
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+			await selection.reload(["/repo/default.rogen.json"]);
+			expect(resolved(0)).toBe(before);
+		});
+
 		it("should keep the last valid value when a reload breaks the config, and report the new errors", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();

@@ -4,7 +4,7 @@ import { closestMatch } from "../../base/strings.js";
 import { Config } from "../../platform/config/config-models.js";
 import {
 	Diagnostic,
-	renderDiagnostic,
+	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "./config.js";
@@ -77,7 +77,7 @@ export class ManagedConfig {
 		}
 	}
 
-	/** Whether the reload changed the version that builds. */
+	/** Whether the reload changed the version that builds. A config that loads equal to it keeps it, so the version is its identity. */
 	async reload(): Promise<boolean> {
 		const before = {
 			config: this.config,
@@ -87,11 +87,17 @@ export class ManagedConfig {
 		const built = buildableConfig(this.entry);
 		if (!this.config || !built) return false;
 
-		if (!before.config || !before.config.equals(this.config)) return true;
 		const template = before.built?.template;
-		return template
-			? !template.equals(built.template)
-			: built.template !== undefined;
+		const same =
+			before.config !== undefined &&
+			before.config.equals(this.config) &&
+			(template
+				? template.equals(built.template)
+				: built.template === undefined);
+		if (!same) return true;
+		if (this._entry?.status === "valid" && before.built)
+			this._entry = { ...this._entry, config: before.built };
+		return false;
 	}
 }
 
@@ -157,14 +163,11 @@ export class CoreConfigSelection implements ConfigSelection {
 				this.managed
 					.filter((config) => config.reads(changedFiles))
 					.map(async (config) => {
-						const before = new Set(
-							errorsOf(config.entry).map((error) =>
-								renderDiagnostic(error)
-							)
-						);
+						const before = errorsOf(config.entry);
 						const changed = await config.reload();
-						const errors = errorsOf(config.entry).filter(
-							(error) => !before.has(renderDiagnostic(error))
+						const errors = newDiagnostics(
+							before,
+							errorsOf(config.entry)
 						);
 						return { file: config.file, changed, errors };
 					})

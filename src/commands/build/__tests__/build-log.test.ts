@@ -1,7 +1,10 @@
 import path from "path";
 import { BuildSummary, ConfigBuild } from "../../../domain/build/build.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
-import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import {
@@ -20,32 +23,34 @@ const debugLines = (
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
 	const log = new BuildLog(logService, dir);
-	log.outcome({ ...(summary ? builtOf(summary) : failed), config }, []);
+	log.outcome(
+		summary ? builtOf(summary, "wrote", config) : failedOf([], config),
+		[]
+	);
 	return logService.entries
 		.filter(({ kind }) => kind === "debug")
 		.map(({ text }) => text);
 };
 
-const failed: ConfigBuild = {
-	config: mockConfig(),
-	outcome: "failed",
-	warnings: [],
-	syncWarnings: [],
-	errors: [],
-};
+const failedOf = (
+	errors: readonly Diagnostic[] = [],
+	config: ResolvedConfig = mockConfig()
+): ConfigBuild => ConfigBuild.failed(config, errors);
+
+const failed = failedOf();
 
 const builtOf = (
 	summary: BuildSummary,
-	outcome: "wrote" | "unchanged" | "notWritten" = "wrote"
-): ConfigBuild => ({
-	config: mockConfig(),
-	outcome,
-	warnings: [],
-	syncWarnings: [],
-	errors: [],
-	summary,
-	readFiles: [],
-});
+	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
+	config: ResolvedConfig = mockConfig()
+): ConfigBuild =>
+	ConfigBuild.built(
+		config,
+		outcome,
+		{ warnings: [], syncWarnings: [] },
+		summary,
+		[]
+	);
 
 const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({ file: path.join(cwd, "match.rogen.json"), ...spec });
@@ -215,7 +220,7 @@ describe("BuildLog.outcome", () => {
 	});
 
 	it("should print the diagnostics it is given after the line", () => {
-		expect(lines({ ...failed, errors: [error] }, [error])).toEqual([
+		expect(lines(failedOf([error]), [error])).toEqual([
 			["error", "default.project.json · not written"],
 			["diagnosticError", expect.stringContaining("bad.")],
 		]);
@@ -229,8 +234,9 @@ describe("BuildLog.outcome", () => {
 	});
 
 	it("should end the line of a config it didn't write with the note", () => {
-		expect(
-			lines({ ...failed, errors: [error] }, [], "see above")[0]
-		).toEqual(["error", "default.project.json · not written · see above"]);
+		expect(lines(failedOf([error]), [], "see above")[0]).toEqual([
+			"error",
+			"default.project.json · not written · see above",
+		]);
 	});
 });

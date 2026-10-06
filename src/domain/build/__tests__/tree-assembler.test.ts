@@ -46,7 +46,7 @@ describe("TreeAssembler", () => {
 				await assembleResult(overrides, extraTools)
 			).unwrap();
 			expectRojoProject(output.tree);
-			return output;
+			return { tree: output.tree, warnings: output.findings.warnings };
 		};
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>

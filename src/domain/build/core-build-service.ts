@@ -1,5 +1,6 @@
 import path from "path";
 import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
@@ -7,35 +8,19 @@ import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import {
-	BuildBlockers,
+	BuildSet,
 	ConfigBuild,
 	ConfigLocations,
 	FileLocation,
 	Locations,
+	OutputFile,
 	SyncTool,
-	failedBuild,
 	missingRoutes,
 } from "./build.js";
-import { BuildOptions, BuildService, LocateTargets } from "./build-service.js";
-import { BuiltProject, ConfigBuilder } from "./config-builder.js";
+import { BuildService, LocateTargets } from "./build-service.js";
+import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 import { OutputWriter } from "./output-writer.js";
-
-function builtAs(
-	config: ResolvedConfig,
-	project: BuiltProject,
-	outcome: "wrote" | "unchanged" | "notWritten"
-): ConfigBuild {
-	return {
-		config,
-		outcome,
-		warnings: project.warnings,
-		syncWarnings: project.syncWarnings,
-		errors: [],
-		summary: project.summary,
-		readFiles: project.readFiles,
-	};
-}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -52,27 +37,40 @@ export class CoreBuildService implements BuildService {
 	}
 
 	async build(
-		selection: ConfigSelection,
-		options: BuildOptions = {}
+		selection: ConfigSelection
 	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
-		const configs = selection.requireValid();
-		if (configs.isErr()) return configs;
-
-		const blockers = new BuildBlockers(configs.value);
-		if (blockers.diagnostics.length > 0)
-			return err(new DiagnosticsError([...blockers.diagnostics]));
+		const set = BuildSet.of(selection);
+		if (set.isErr()) return set;
+		const { configs } = set.value;
 		const listing = await this.indexService.list(
-			configs.value.flatMap(({ rootDirs }) => rootDirs)
+			configs.flatMap(({ rootDirs }) => rootDirs)
 		);
-		return ok(await this.run(configs.value, listing, options));
+		return ok(
+			await this.run(
+				configs.map((config) => ({ config, syncWarnings: undefined })),
+				listing
+			)
+		);
 	}
 
 	async rebuild(
-		config: ResolvedConfig,
+		set: BuildSet,
+		file: string,
 		listing: IndexReader,
-		options: BuildOptions = {}
+		previous?: ConfigBuild
 	): Promise<ConfigBuild> {
-		const [build] = await this.run([config], listing, options);
+		const config = set.configOf(file);
+		if (!config) throw new Error(`${file} is not in the set.`);
+		// The sync dir changes only with the config or its compiler, so an answer for this version still holds.
+		const syncWarnings =
+			previous?.config === config ? previous.syncWarnings : undefined;
+		const blocked = set.blocking(file);
+		if (blocked.length > 0)
+			return ConfigBuild.failed(config, blocked, {
+				warnings: [],
+				syncWarnings,
+			});
+		const [build] = await this.run([{ config, syncWarnings }], listing);
 		return build;
 	}
 
@@ -102,39 +100,54 @@ export class CoreBuildService implements BuildService {
 
 	/** Builds every config from `listing`, then writes them in order. */
 	private async run(
-		configs: readonly ResolvedConfig[],
-		listing: IndexReader,
-		options: BuildOptions
+		configs: readonly {
+			readonly config: ResolvedConfig;
+			readonly syncWarnings: readonly Diagnostic[] | undefined;
+		}[],
+		listing: IndexReader
 	): Promise<ConfigBuild[]> {
 		const builder = this.builderOf(listing);
-		const built: Result<BuiltProject, DiagnosticsError>[] = [];
-		for (const config of configs)
-			built.push(await builder.build(config, options));
-
-		const builds = built.map((result, index) =>
-			result.isErr()
-				? failedBuild(configs[index], result.error.diagnostics)
-				: builtAs(configs[index], result.value, "notWritten")
-		);
+		const builds: ConfigBuild[] = [];
+		const built: BuiltConfig[] = [];
+		for (const { config, syncWarnings } of configs) {
+			const result = await builder.build(config, syncWarnings);
+			if (result.isErr()) {
+				builds.push(
+					ConfigBuild.failed(config, result.error.diagnostics, {
+						warnings: [],
+						syncWarnings,
+					})
+				);
+				continue;
+			}
+			built.push(result.value);
+			builds.push(
+				ConfigBuild.built(
+					config,
+					"notWritten",
+					result.value.findings,
+					result.value.summary,
+					result.value.readFiles
+				)
+			);
+		}
 		if (builds.some(({ outcome }) => outcome === "failed")) return builds;
 
-		for (const [index, result] of built.entries()) {
-			const project = result.unwrap();
+		for (const [index, { tree, findings }] of built.entries()) {
+			const { config } = builds[index];
 			const written = await this.writer.write(
-				project.outFile,
-				project.tree
+				new OutputFile(config.outFile),
+				tree
 			);
 			if (written.isErr()) {
-				builds[index] = failedBuild(
-					configs[index],
+				builds[index] = ConfigBuild.failed(
+					config,
 					written.error.diagnostics,
-					project
+					findings
 				);
 				break;
 			}
-			builds[index] = builtAs(
-				configs[index],
-				project,
+			builds[index] = builds[index].withOutcome(
 				written.value ? "wrote" : "unchanged"
 			);
 		}

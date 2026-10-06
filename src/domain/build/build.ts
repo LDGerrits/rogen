@@ -5,7 +5,10 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { Result, err, ok } from "../../base/result.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/config.js";
+import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
 /** How a route or variant key matched a file by its name. */
@@ -72,43 +75,88 @@ export interface BuildSummary {
 	readonly displaced: number;
 }
 
-/** What a run did for one config. */
-interface ConfigBuildFields {
-	readonly config: ResolvedConfig;
-	readonly warnings: readonly Diagnostic[];
-	/** What `checkSyncDir` found; empty when it wasn't asked for. */
-	readonly syncWarnings: readonly Diagnostic[];
-	/** Why the config failed, none for any other outcome. */
-	readonly errors: readonly Diagnostic[];
+/** What a run did for one config: `failed` is a config whose build, write or set check went wrong; `notWritten` built, but another config's failure stopped the run first. */
+export type BuildOutcome = "wrote" | "unchanged" | "notWritten" | "failed";
+
+/** What a run did for one config: the one record the build, the watch and every presenter read. */
+export class ConfigBuild {
+	private constructor(
+		readonly config: ResolvedConfig,
+		readonly outcome: BuildOutcome,
+		readonly warnings: readonly Diagnostic[],
+		/** What the sync dir check found for this version of the config, whether this build checked it or the previous one did; `undefined` while unknown. */
+		readonly syncWarnings: readonly Diagnostic[] | undefined,
+		/** Why the config failed; empty for any other outcome. */
+		readonly errors: readonly Diagnostic[],
+		/** What the build placed; absent when it failed. */
+		readonly summary: BuildSummary | undefined,
+		/** The files whose contents the build read, which a change to must rebuild it; absent when it failed. */
+		readonly readFiles: readonly string[] | undefined
+	) {}
+
+	static built(
+		config: ResolvedConfig,
+		outcome: "wrote" | "unchanged" | "notWritten",
+		said: BuildFindings,
+		summary: BuildSummary,
+		readFiles: readonly string[]
+	): ConfigBuild {
+		return new ConfigBuild(
+			config,
+			outcome,
+			said.warnings,
+			said.syncWarnings,
+			[],
+			summary,
+			readFiles
+		);
+	}
+
+	/** A config whose build, write or set check went wrong; `said` is what its build found before that. */
+	static failed(
+		config: ResolvedConfig,
+		errors: readonly Diagnostic[],
+		said: BuildFindings = { warnings: [], syncWarnings: undefined }
+	): ConfigBuild {
+		return new ConfigBuild(
+			config,
+			"failed",
+			said.warnings,
+			said.syncWarnings,
+			errors,
+			undefined,
+			undefined
+		);
+	}
+
+	/** The same build, as written (or found unchanged) after all. */
+	withOutcome(outcome: "wrote" | "unchanged"): ConfigBuild {
+		return new ConfigBuild(
+			this.config,
+			outcome,
+			this.warnings,
+			this.syncWarnings,
+			this.errors,
+			this.summary,
+			this.readFiles
+		);
+	}
+
+	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, errors. */
+	get diagnostics(): readonly Diagnostic[] {
+		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
+	}
+
+	/** What a document says of the project file, which a failed config left as it was. */
+	get documentOutcome(): "wrote" | "unchanged" | "notWritten" {
+		return this.outcome === "failed" ? "notWritten" : this.outcome;
+	}
 }
 
-/** `failed` is a config whose build or write went wrong; `notWritten` built, but another config's failure stopped the run first. */
-export type ConfigBuild = ConfigBuildFields &
-	(
-		| {
-				readonly outcome: "wrote" | "unchanged" | "notWritten";
-				readonly summary: BuildSummary;
-				/** The files whose contents the build read, which a change to must rebuild it. */
-				readonly readFiles: readonly string[];
-		  }
-		| {
-				readonly outcome: "failed";
-				readonly summary?: undefined;
-				readonly readFiles?: undefined;
-		  }
-	);
-
-/** A config whose build, write or set check went wrong; `said` is what its build warned about before that. */
-export function failedBuild(
-	config: ResolvedConfig,
-	errors: readonly Diagnostic[],
-	said: Pick<ConfigBuild, "warnings" | "syncWarnings"> = {
-		warnings: [],
-		syncWarnings: [],
-	}
-): ConfigBuild {
-	const { warnings, syncWarnings } = said;
-	return { config, outcome: "failed", warnings, syncWarnings, errors };
+/** What a build found before it was written or failed. */
+export interface BuildFindings {
+	readonly warnings: readonly Diagnostic[];
+	readonly syncWarnings: readonly Diagnostic[] | undefined;
 }
 
 interface Located {
@@ -186,6 +234,11 @@ export interface Locations {
 export class OutputFile {
 	constructor(readonly path: string) {}
 
+	/** The file one write stages its content in; `token` keeps concurrent writers apart. */
+	stagingFile(token: string): string {
+		return `${this.path}.${token}.tmp`;
+	}
+
 	/** Matches the staging file of any writer, in posix form. */
 	get stagingPattern(): RegExp {
 		const escaped = toPosix(this.path).replace(
@@ -214,11 +267,11 @@ interface Blocker {
 	readonly files: readonly string[];
 }
 
-/** Why a set of configs can't be built together: one that declares no routes, or several that write one file. */
-export class BuildBlockers {
+/** The configs a run builds together, and the one rule for which of them can't be: one that declares no routes, or several that write one file. */
+export class BuildSet {
 	private readonly blockers: readonly Blocker[];
 
-	constructor(configs: readonly ResolvedConfig[]) {
+	constructor(readonly configs: readonly ResolvedConfig[]) {
 		const byOutFile = groupBy(
 			configs,
 			({ outFile }) => path.resolve(outFile),
@@ -244,13 +297,23 @@ export class BuildBlockers {
 		];
 	}
 
+	/** The configs of `selection` when every one is valid now and they can be built together; otherwise every error. */
+	static of(selection: ConfigSelection): Result<BuildSet, DiagnosticsError> {
+		const configs = selection.requireValid();
+		if (configs.isErr()) return configs;
+		const set = new BuildSet(configs.value);
+		return set.diagnostics.length > 0
+			? err(new DiagnosticsError([...set.diagnostics]))
+			: ok(set);
+	}
+
 	/** Each problem once, in the order it is reported. */
 	get diagnostics(): readonly Diagnostic[] {
 		return this.blockers.map(({ diagnostic }) => diagnostic);
 	}
 
 	/** The config files some problem blocks. */
-	get files(): ReadonlySet<string> {
+	get blockedFiles(): ReadonlySet<string> {
 		return new Set(this.blockers.flatMap(({ files }) => files));
 	}
 
@@ -259,5 +322,9 @@ export class BuildBlockers {
 		return this.blockers
 			.filter(({ files }) => files.includes(file))
 			.map(({ diagnostic }) => diagnostic);
+	}
+
+	configOf(file: string): ResolvedConfig | undefined {
+		return this.configs.find((config) => config.file === file);
 	}
 }

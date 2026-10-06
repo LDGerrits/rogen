@@ -12,6 +12,7 @@ import {
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
+import { BuildSet, ConfigBuild } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
@@ -39,12 +40,9 @@ describe("CoreBuildService", () => {
 				...spec,
 			});
 
-		const runOf = async (
-			configs: readonly ResolvedConfig[],
-			options?: { checkSyncDir?: boolean }
-		) => {
+		const runOf = async (configs: readonly ResolvedConfig[]) => {
 			return (
-				await buildServiceOfFs().build(selectionOf(...configs), options)
+				await buildServiceOfFs().build(selectionOf(...configs))
 			).unwrap();
 		};
 
@@ -136,21 +134,78 @@ describe("CoreBuildService", () => {
 		it("should keep the sync dir warnings of a config that was not written", async () => {
 			await fs.writeFile(abs("lobby/init.meta.json"), "{ nope");
 
-			const result = await runOf(
-				[configOf({ syncDir: abs("dist") }), lobby()],
-				{ checkSyncDir: true }
-			);
+			const result = await runOf([
+				configOf({ syncDir: abs("dist") }),
+				lobby(),
+			]);
 
 			expect(result[0]).toMatchObject({
 				outcome: "notWritten",
 				syncWarnings: [{ code: "output.nothingEmitted" }],
 			});
 		});
+	});
 
-		it("should check the sync dir only when asked", async () => {
-			const result = await runOf([configOf({ syncDir: abs("dist") })]);
+	describe("rebuild", () => {
+		const rebuildOf = async (
+			set: BuildSet,
+			previous?: ConfigBuild
+		): Promise<ConfigBuild> =>
+			buildServiceOfFs().rebuild(
+				set,
+				abs("default.rogen.json"),
+				await new CoreIndexService(fs).list([abs("src")]),
+				previous
+			);
 
-			expect(result[0]).toMatchObject({ syncWarnings: [] });
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+		});
+
+		it("should check the sync dir of a config it hasn't built before", async () => {
+			const build = await rebuildOf(
+				new BuildSet([configOf({ syncDir: abs("dist") })])
+			);
+
+			expect(build.syncWarnings).toMatchObject([
+				{ code: "output.nothingEmitted" },
+			]);
+		});
+
+		it("should keep what it knows of the sync dir while the config is the same", async () => {
+			const set = new BuildSet([configOf({ syncDir: abs("dist") })]);
+			const first = await rebuildOf(set);
+			await fs.writeFile(abs("dist/A.luau"), "");
+
+			const again = await rebuildOf(set, first);
+
+			expect(again.syncWarnings).toBe(first.syncWarnings);
+		});
+
+		it("should check the sync dir again for a new version of the config", async () => {
+			const first = await rebuildOf(
+				new BuildSet([configOf({ syncDir: abs("dist") })])
+			);
+			await fs.writeFile(abs("dist/A.luau"), "");
+
+			const again = await rebuildOf(
+				new BuildSet([configOf({ syncDir: abs("dist") })]),
+				first
+			);
+
+			expect(again.syncWarnings).toEqual([]);
+		});
+
+		it("should fail a config the set blocks without writing it", async () => {
+			const build = await rebuildOf(
+				new BuildSet([configOf({ routes: {} })])
+			);
+
+			expect(build).toMatchObject({
+				outcome: "failed",
+				errors: [{ code: "route.noRoutes" }],
+			});
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 	});
 

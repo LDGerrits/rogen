@@ -4,7 +4,9 @@ import {
 	RebuildReport,
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
+import { ConfigBuild } from "../../../domain/build/build.js";
 import {
+	Diagnostic,
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
@@ -135,101 +137,62 @@ describe("WatchLog.update", () => {
 		});
 	});
 
-	describe("diagnostics it already printed", () => {
+	describe("a rebuild", () => {
 		const warning = (message: string) =>
 			warningDiagnostic("x.warn", { resource: "/repo/src" }, message);
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			warnings: RebuildReport["warnings"],
-			syncWarnings?: RebuildReport["syncWarnings"]
-		): RebuildReport => ({
-			config: entry.config,
-			outcome: "unchanged",
-			warnings,
-			syncWarnings: syncWarnings ?? [],
-			checkedSyncDir: syncWarnings !== undefined,
-			errors: [],
-			readFiles: [],
-			summary: {
-				roots: [],
-				routes: [],
-				variants: [],
-				unrouted: 0,
-				superseded: 0,
-				displaced: 0,
-			},
-		});
+			build: ConfigBuild,
+			unreported: readonly Diagnostic[],
+			repeatedFailure = false
+		): RebuildReport => ({ build, unreported, repeatedFailure });
 
 		const session = () => {
 			const logService = new MockLogService();
 			const log = new WatchLog(logService, cwd);
-			const texts = () =>
-				logService.entries
-					.filter(
-						({ kind }) =>
-							kind === "diagnosticWarning" ||
-							kind === "diagnosticError"
-					)
-					.map((logged) => logged.text);
-			return { log, logService, texts };
+			return { log, logService };
 		};
 
-		it("should print a build warning once while it persists", () => {
-			const { log, texts } = session();
+		it("should print only the diagnostics the session hadn't reported", () => {
+			const { log, logService } = session();
+			const built = ConfigBuild.built(
+				entry.config,
+				"unchanged",
+				{ warnings: [warning("a"), warning("b")], syncWarnings: [] },
+				{
+					roots: [],
+					routes: [],
+					variants: [],
+					unrouted: 0,
+					superseded: 0,
+					displaced: 0,
+				},
+				[]
+			);
 
-			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
 			log.update(
-				updateOf({ reports: [reportOf([warning("a"), warning("b")])] })
+				updateOf({ reports: [reportOf(built, [warning("b")])] })
 			);
 
-			expect(texts().filter((text) => text.includes(": a"))).toHaveLength(
-				1
-			);
-			expect(texts().filter((text) => text.includes(": b"))).toHaveLength(
-				1
-			);
-		});
-
-		it("should print it again after it went away", () => {
-			const { log, texts } = session();
-
-			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
-			log.update(updateOf({ reports: [reportOf([])] }));
-			log.update(updateOf({ reports: [reportOf([warning("a")])] }));
-
-			expect(texts().filter((text) => text.includes(": a"))).toHaveLength(
-				2
-			);
-		});
-
-		it("should track the sync dir check apart from the build, and keep it when a round doesn't check", () => {
-			const { log, texts } = session();
-
-			log.update(updateOf({ reports: [reportOf([], [warning("s")])] }));
-			log.update(updateOf({ reports: [reportOf([])] }));
-			log.update(updateOf({ reports: [reportOf([], [warning("s")])] }));
-
-			expect(texts().filter((text) => text.includes(": s"))).toHaveLength(
-				1
-			);
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind === "diagnosticWarning")
+					.map(({ text }) => text)
+			).toEqual([expect.stringContaining(": b")]);
 		});
 
 		it("should say a failed config's errors were printed before, rather than print them again", () => {
 			const { log, logService } = session();
-			const failed: RebuildReport = {
-				config: entry.config,
-				outcome: "failed",
-				warnings: [],
-				syncWarnings: [],
-				errors: [
-					errorDiagnostic("x.err", { resource: entry.file }, "bad."),
-				],
-				checkedSyncDir: false,
-			};
+			const error = errorDiagnostic(
+				"x.err",
+				{ resource: entry.file },
+				"bad."
+			);
+			const failed = ConfigBuild.failed(entry.config, [error]);
 
-			log.update(updateOf({ reports: [failed] }));
-			log.update(updateOf({ reports: [failed] }));
+			log.update(updateOf({ reports: [reportOf(failed, [error])] }));
+			log.update(updateOf({ reports: [reportOf(failed, [], true)] }));
 
 			expect(
 				logService.entries

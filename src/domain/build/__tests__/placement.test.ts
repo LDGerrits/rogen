@@ -80,7 +80,9 @@ describe("Placer", () => {
 			const built = await builder.build(config);
 			return {
 				roots: builder.place(config).unwrap().roots,
-				warnings: built.isOk() ? built.value.warnings : built.error,
+				warnings: built.isOk()
+					? built.value.findings.warnings
+					: built.error,
 			};
 		};
 
@@ -985,7 +987,7 @@ describe("Placer", () => {
 			const index = await indexOf(store, fs, rootDirs);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.map(({ warnings, tree }) => {
+			return built.map(({ findings: { warnings }, tree }) => {
 				const placement = builder.place(config).unwrap();
 				return {
 					routed: placement.routed,
@@ -2239,7 +2241,7 @@ describe("Placer", () => {
 			const index = await indexOf(store, fs, rootDirs);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
-			return built.map(({ warnings }): VariantResult => {
+			return built.map(({ findings: { warnings } }): VariantResult => {
 				const { files, leftOut } = builder.place(config).unwrap();
 				return { files, leftOut, warnings };
 			});

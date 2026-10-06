@@ -127,3 +127,16 @@ export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
 		.map((diagnostic) => renderDiagnostic(diagnostic))
 		.join("\n");
 }
+
+/** The diagnostics of `after` that `before` didn't hold, compared as the user reads them. */
+export function newDiagnostics(
+	before: readonly Diagnostic[],
+	after: readonly Diagnostic[]
+): Diagnostic[] {
+	const seen = new Set(
+		before.map((diagnostic) => renderDiagnostic(diagnostic))
+	);
+	return after.filter(
+		(diagnostic) => !seen.has(renderDiagnostic(diagnostic))
+	);
+}

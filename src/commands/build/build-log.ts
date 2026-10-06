@@ -80,6 +80,28 @@ export class BuildLog {
 		}
 	}
 
+	/** The whole output of a build: each config's outcome and warnings, then the closing line when none failed. */
+	report(
+		builds: readonly ConfigBuild[],
+		unselected: readonly string[]
+	): void {
+		this.begin(
+			"build",
+			builds.map(({ config }) => config),
+			unselected
+		);
+		for (const build of builds) {
+			if (builds.length > 1) this.heading(build.config);
+			// A config's errors end the run, so the failure prints them last.
+			this.outcome(build, [
+				...build.warnings,
+				...(build.syncWarnings ?? []),
+			]);
+		}
+		if (builds.every(({ errors }) => errors.length === 0))
+			this.end(builds.length);
+	}
+
 	/** Heads the lines about one config, when a run builds several. */
 	heading(config: ResolvedConfig): void {
 		this.logService.step(config.label);
@@ -104,7 +126,7 @@ export class BuildLog {
 			case "notWritten":
 			case "failed":
 				this.logService.error(line("not written"));
-				this.details(build.config);
+				this.details(build.config, build.summary);
 				break;
 		}
 		this.diagnostics(diagnostics);

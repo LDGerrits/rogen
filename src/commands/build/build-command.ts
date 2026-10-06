@@ -21,14 +21,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildReport } from "./build-report.js";
 
-/** What a config's build warned about; its errors are the run's to report. */
-function warningsOf({
-	warnings,
-	syncWarnings,
-}: ConfigBuild): readonly Diagnostic[] {
-	return [...warnings, ...syncWarnings];
-}
-
 registerCommand(
 	class BuildCommand extends AbstractCommand {
 		constructor() {
@@ -61,9 +53,7 @@ registerCommand(
 			const selection = await configService.select(args);
 			if (selection.isErr()) return selection;
 
-			const builds = await buildService.build(selection.value, {
-				checkSyncDir: true,
-			});
+			const builds = await buildService.build(selection.value);
 			if (builds.isErr()) return builds;
 
 			const errors = builds.value.flatMap((build) => build.errors);
@@ -89,20 +79,10 @@ registerCommand(
 			errors: readonly Diagnostic[],
 			unselected: readonly string[]
 		): Result<void, Error> {
-			log.begin(
-				"build",
-				builds.map(({ config }) => config),
-				unselected
-			);
-
-			for (const build of builds) {
-				if (builds.length > 1) log.heading(build.config);
-				log.outcome(build, warningsOf(build));
-			}
-			if (errors.length > 0) return err(new DiagnosticsError(errors));
-
-			log.end(builds.length);
-			return ok(undefined);
+			log.report(builds, unselected);
+			return errors.length > 0
+				? err(new DiagnosticsError(errors))
+				: ok(undefined);
 		}
 
 		private reportAsJson(

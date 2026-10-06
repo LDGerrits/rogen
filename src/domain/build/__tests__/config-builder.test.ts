@@ -29,14 +29,6 @@ describe("ConfigBuilder", () => {
 	});
 
 	describe("build", () => {
-		it("should name the file it would write", async () => {
-			const result = await buildOf(
-				configOf({ outFile: abs("out/game.project.json") })
-			);
-
-			expect(result.unwrap().outFile).toBe(abs("out/game.project.json"));
-		});
-
 		it("should report the folder meta it read, and only that", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
@@ -67,7 +59,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toEqual([]);
+			expect(result.unwrap().findings.warnings).toEqual([]);
 			expectRojoProject(result.unwrap().tree);
 			expect(result.unwrap().tree.tree).toEqual({
 				$className: "DataModel",
@@ -84,7 +76,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toMatchObject([
+			expect(result.unwrap().findings.warnings).toMatchObject([
 				{ code: "variant.buriedScriptSuffix" },
 			]);
 		});
@@ -116,7 +108,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().warnings).toMatchObject([
+			expect(result.unwrap().findings.warnings).toMatchObject([
 				{
 					severity: DiagnosticSeverity.Warning,
 					code: "scan.missingRootDir",
@@ -135,7 +127,7 @@ describe("ConfigBuilder", () => {
 			const result = await buildOf(config);
 
 			expect(
-				result.unwrap().warnings.map((warning) => warning.code)
+				result.unwrap().findings.warnings.map((warning) => warning.code)
 			).toEqual(["scan.missingRootDir", "route.unrouted"]);
 		});
 
@@ -197,7 +189,9 @@ describe("ConfigBuilder", () => {
 				const config = configOf(overrides);
 				return (await buildOf(config))
 					.unwrap()
-					.warnings.filter(({ code }) => code === "meta.unclaimed");
+					.findings.warnings.filter(
+						({ code }) => code === "meta.unclaimed"
+					);
 			};
 
 			it("should not warn about meta that a sibling claims under the name Rojo gives it", async () => {
@@ -531,7 +525,7 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should check the sync dir only when asked", async () => {
+		it("should check the sync dir only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
 			const builder = builderOf(
@@ -539,15 +533,13 @@ describe("ConfigBuilder", () => {
 				await indexOf(store, fs, config.rootDirs)
 			);
 
-			const unchecked = await builder.build(config);
-			const checked = await builder.build(config, {
-				checkSyncDir: true,
-			});
+			const checked = await builder.build(config);
+			const known = await builder.build(config, []);
 
-			expect(unchecked.unwrap().syncWarnings).toEqual([]);
-			expect(checked.unwrap().syncWarnings).toMatchObject([
+			expect(checked.unwrap().findings.syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },
 			]);
+			expect(known.unwrap().findings.syncWarnings).toEqual([]);
 		});
 	});
 });

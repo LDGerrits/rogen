@@ -23,7 +23,8 @@ describe("OutputWriter", () => {
 	let writer: OutputWriter;
 	let store: DisposableStore;
 
-	const write = (tree: RojoTree) => writer.write(outFile, tree);
+	const write = (tree: RojoTree) =>
+		writer.write(new OutputFile(outFile), tree);
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
