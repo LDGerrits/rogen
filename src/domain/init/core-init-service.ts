@@ -12,7 +12,8 @@ import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitPlan, InitService } from "./init-service.js";
-import { BaseConfigReader, PlaceSetup } from "./place-setup.js";
+import { BaseConfigReader } from "./base-config-reader.js";
+import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
 import { ExtendingConfigSetup } from "./extending-config-setup.js";
 

@@ -2,8 +2,6 @@ import { Result } from "../../base/result.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
-export type { PlannedFile };
-
 /** What to do after `init`, grouped by how it is done. */
 export interface NextSteps {
 	/** One-time edits before anything runs. */

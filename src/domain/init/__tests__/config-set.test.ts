@@ -108,13 +108,6 @@ describe("ConfigSet naming", () => {
 		expect(ConfigSet.placeFolderOf("lobby")).toBe("places/lobby");
 	});
 
-	it("should write an extending config's config and project file", () => {
-		expect(ConfigSet.extendingFilesOf("prod")).toEqual([
-			"prod.rogen.json",
-			"prod.project.json",
-		]);
-	});
-
 	it("should watch default without naming it, and any other set by its stems", () => {
 		expect(ConfigSet.watchCommand(["default"])).toBe("rogen watch");
 		expect(ConfigSet.watchCommand(["lobby"])).toBe("rogen watch lobby");

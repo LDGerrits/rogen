@@ -2,11 +2,15 @@ import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { ExtendingConfigSetup } from "../extending-config-setup.js";
+import { WorkspaceSpec } from "../../toolchain/__tests__/workspaces.js";
 import { directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
 describe("ExtendingConfigSetup", () => {
-	const extending = async (existing: readonly string[] = []) => {
-		const target = directoryOf({ givenName: "prod", existing });
+	const extending = async (
+		existing: readonly string[] = [],
+		workspace?: WorkspaceSpec
+	) => {
+		const target = directoryOf({ givenName: "prod", existing, workspace });
 		const setup = new ExtendingConfigSetup(
 			target,
 			new InitQuestions(new MockPromptService([], false))
@@ -36,6 +40,48 @@ describe("ExtendingConfigSetup", () => {
 				'Turn variants on or off under "variants", or add "exclude", in prod.rogen.json.',
 			],
 		});
+	});
+
+	it("should write a synced twin beside a Darklua default, and serve it", async () => {
+		const { asked, setup, target } = await extending([], {
+			darkluaConfig: ".darklua.json",
+		});
+
+		const plan = legacyPlan(
+			planOf(setup, asked.unwrap()!, target).unwrap()
+		);
+
+		expect(
+			plan.configs.map(({ fileName, content }) => [
+				fileName,
+				JSON.parse(content),
+			])
+		).toEqual([
+			[
+				"prod.rogen.json",
+				{ $schema: SCHEMA, extends: "./default.rogen.json" },
+			],
+			[
+				"prod-sync.rogen.json",
+				{
+					$schema: SCHEMA,
+					extends: "./prod.rogen.json",
+					syncDir: "dist",
+				},
+			],
+		]);
+		expect(plan.nextSteps.run).toEqual([
+			"rogen watch prod prod-sync",
+			"rojo serve prod-sync.project.json",
+		]);
+	});
+
+	it("should fail when the synced twin's config exists", async () => {
+		const { asked } = await extending(["prod-sync.rogen.json"], {
+			darkluaConfig: ".darklua.json",
+		});
+
+		expect(asked.isErr()).toBe(true);
 	});
 
 	it("should fail when the extending config's config exists", async () => {
