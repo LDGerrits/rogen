@@ -210,6 +210,17 @@ describe("domain/config/config", () => {
 			).toEqual(["mock"]);
 		});
 
+		it("should pick out the variants a file carries that are off", () => {
+			const config = mockConfig({ variants: { mock: true, dev: false } });
+
+			expect(
+				config.dormantVariants([
+					{ variant: "mock", form: "suffix" },
+					{ variant: "dev", form: "folder" },
+				])
+			).toEqual([{ variant: "dev", form: "folder" }]);
+		});
+
 		it("should know its declared keys from its routes and variants", () => {
 			const { keys } = mockConfig({
 				routes: {

@@ -175,10 +175,8 @@ export class Placer {
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
 		const { routed, unrouted, homeless } = new Router(
-			keys,
-			this.config.routes,
+			this.config,
 			readings,
-			this.config.variants,
 			this.layout.initNames
 		).route(roots);
 		const homelessErrors = this.homelessErrors(homeless);
@@ -229,8 +227,9 @@ export class Placer {
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
 	private homelessErrors(homeless: readonly HomelessInit[]): Diagnostic[] {
 		return homeless
-			.filter(({ variants }) =>
-				variants.every(({ variant }) => this.config.variants[variant])
+			.filter(
+				({ variants }) =>
+					this.config.dormantVariants(variants).length === 0
 			)
 			.map(({ source, folder }) =>
 				errorDiagnostic(
@@ -282,9 +281,7 @@ export class Placer {
 		const leftOut: [string, LeftOut][] = [];
 		const kept: RoutedFile[] = [];
 		for (const file of routed) {
-			const dormant = file.variants.filter(
-				({ variant }) => !this.config.variants[variant]
-			);
+			const dormant = this.config.dormantVariants(file.variants);
 			if (dormant.length === 0) kept.push(file);
 			else
 				leftOut.push([

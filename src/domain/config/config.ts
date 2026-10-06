@@ -312,4 +312,11 @@ export class ResolvedConfig {
 			(variant) => this.variants[variant]
 		);
 	}
+
+	/** The variants among a file's that are off; a file that carries any is pruned. */
+	dormantVariants<T extends { readonly variant: string }>(
+		matches: readonly T[]
+	): T[] {
+		return matches.filter(({ variant }) => !this.variants[variant]);
+	}
 }

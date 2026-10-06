@@ -1,6 +1,5 @@
 import { dirnamePosix, joinPosix } from "../../base/path.js";
-import { DeclaredKeys } from "../config/config.js";
-import { Target } from "../roblox/roblox.js";
+import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
 import { InstanceMap } from "../rojo/rojo-project.js";
 import { RouteMatch, VariantMatch } from "./build.js";
@@ -108,15 +107,17 @@ type InitRoutes = ReadonlyMap<
 
 /** Finds each scanned file's governing route and instance path. */
 export class Router {
+	private readonly keys: DeclaredKeys;
+
 	constructor(
-		private readonly keys: DeclaredKeys,
-		private readonly targets: ReadonlyMap<string, Target>,
+		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder or keeps a copy off its node. */
+		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings,
-		/** Which declared variants are on, since only an init script that can be placed routes its folder. */
-		private readonly variants: Readonly<Record<string, boolean>>,
 		/** The script names that make a file its folder. */
 		private readonly initNames: ReadonlySet<string>
-	) {}
+	) {
+		this.keys = config.keys;
+	}
 
 	/** Every file a route governs, in scan order, then the copies of init scripts; the sources of the files no route governs; and the init scripts with no folder to be. */
 	route(roots: readonly ScannedRoot[]): {
@@ -179,12 +180,10 @@ export class Router {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitRead(read)) continue;
 			const spans = read.match.spans;
-			if (
-				spans.some(
-					({ key }) => this.keys.isVariant(key) && !this.variants[key]
-				)
-			)
-				continue;
+			const variants = spans
+				.filter(({ key }) => this.keys.isVariant(key))
+				.map((span) => this.asVariantMatch(span));
+			if (this.config.dormantVariants(variants).length > 0) continue;
 			const dir = dirnamePosix(entry.relativePath);
 			for (const { key } of spans)
 				if (this.keys.routeKeys.has(key)) {
@@ -219,7 +218,7 @@ export class Router {
 	): RoutedFile | undefined {
 		const { claims, folders, leaf } = reading;
 		const route = claims.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
-		const target = this.targets.get(route);
+		const target = this.config.routes.get(route);
 		if (!target) return undefined;
 
 		const folderNodes: FolderNode[] = [];
@@ -256,8 +255,7 @@ export class Router {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
 		const inits = routed.filter(
 			({ isInit, variants }) =>
-				isInit &&
-				variants.every(({ variant }) => this.variants[variant])
+				isInit && this.config.dormantVariants(variants).length === 0
 		);
 		return loose.flatMap(({ entry, reading, placed }) => {
 			const folder = reading.folders[reading.folders.length - 1].dir;
