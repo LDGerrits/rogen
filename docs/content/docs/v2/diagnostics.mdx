@@ -225,7 +225,7 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. Rojo's `.server` and `.client` at the end of a script still route and are never reported. One warning lists every such name.
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing:
@@ -233,7 +233,7 @@ default.rogen.json - warning: 2 names write a route key after a dot, where only 
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
 
-Rename each to its `@` form: a marker file is `@server`, and a name is `Types@shared.luau`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 

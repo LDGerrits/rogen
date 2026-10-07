@@ -94,7 +94,7 @@ src/Inventory/Bootstrap.server.luau  ->  ServerScriptService/Inventory/Bootstrap
 src/Inventory/Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud   (a LocalScript)
 ```
 
-No other key routes through a dot. `Types.shared.luau` is just an instance called `Types.shared`, and Rogen warns about it; write `Types@shared.luau` to route it. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
+No other key routes through a dot, and nothing but a script does. `Types.shared.luau` is just an instance called `Types.shared`, and `Config.server.json` one called `Config.server`, since a data file or model has no script class; Rogen warns about each. Write `Types@shared.luau` and `Config@server.json` to route them. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
 
 ## Matching
 

@@ -164,6 +164,22 @@ export class NameReader {
 				outrankedName: name,
 				misspellings: [],
 			};
+		const dotRoute = name.startsWith(".")
+			? this.keys.resolveRoute(name.slice(1))
+			: undefined;
+		if (dotRoute)
+			return {
+				invisible,
+				hoisted,
+				at: false,
+				variants: [],
+				keptName: name,
+				outrankedName: name,
+				misspellings: NameReader.inFolderName(
+					[NameReader.dotRouteOf(name.slice(1), dotRoute, 0)],
+					offset
+				),
+			};
 		const variant = this.keys.resolveVariant(
 			name.startsWith(".") ? name.slice(1) : name
 		);
@@ -264,7 +280,7 @@ export class NameReader {
 		};
 	}
 
-	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. `dotRoutes` reads Rojo's `.server`/`.client`, which only a file has. */
+	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. `dotRoutes` reads Rojo's `.server`/`.client`, which only a script has. */
 	suffixes(stem: string, dotRoutes = true): SuffixMatch {
 		let remaining = stem;
 		const matched = new Set<string>();
@@ -489,7 +505,7 @@ export class NameReadings {
 					root.rootDir,
 					entry.relativePath
 				);
-				const match = this.reader.suffixes(stem);
+				const match = this.reader.suffixes(stem, kind === "script");
 				this.entries.set(entry.source, {
 					folders,
 					fileName,

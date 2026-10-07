@@ -678,8 +678,8 @@ describe("Router", () => {
 				).toEqual([["ServerScriptService", "Foo"]]);
 			});
 
-			it("should route models and data files by suffix and strip it", async () => {
-				await write("src/Gun.server.rbxm", "src/Data.client.json");
+			it("should route models and data files by an @ suffix and strip it", async () => {
+				await write("src/Gun@server.rbxm", "src/Data@client.json");
 
 				expect(await paths()).toEqual([
 					"StarterPlayer/StarterPlayerScripts/Data",
@@ -687,8 +687,17 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should leave Rojo's .server and .client in a model's or data file's name, since only a script has a class", async () => {
+				await write("src/Gun.server.rbxm", "src/Data.client.json");
+
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Data.client",
+					"ReplicatedStorage/shared/Gun.server",
+				]);
+			});
+
 			it("should route a .model.json file by a suffix before .model", async () => {
-				await write("src/Gun.server.model.json");
+				await write("src/Gun@server.model.json");
 
 				expect(await paths()).toEqual(["ServerScriptService/Gun"]);
 			});

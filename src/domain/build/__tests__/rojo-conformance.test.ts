@@ -183,6 +183,8 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"Inv/Tool.meta.json": meta,
 			"Inv/Stats.server.json": "{}",
 			"Inv/Stats.server.meta.json": meta,
+			"Inv/Gun@server.json": "{}",
+			"Inv/Gun@server.meta.json": meta,
 			"Inv/Notes.txt": "text",
 			"Inv/Notes.meta.json": meta,
 			"Inv/Items.csv": "Key,Source",
@@ -198,11 +200,12 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ReplicatedStorage/Inv/Items <- src/Inv/Items.meta.json",
 			"ReplicatedStorage/Inv/Notes <- src/Inv/Notes.meta.json",
 			"ReplicatedStorage/Inv/Plain <- src/Inv/Plain.meta.json",
+			"ReplicatedStorage/Inv/Stats.server <- src/Inv/Stats.server.meta.json",
 			"ReplicatedStorage/Inv/Tool <- src/Inv/Tool.meta.json",
 			"ServerScriptService/Inv/Combat <- src/Inv/Combat@server.meta.json",
 			"ServerScriptService/Inv/Foo <- src/Inv/Foo.mock.meta.json",
+			"ServerScriptService/Inv/Gun <- src/Inv/Gun@server.meta.json",
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
-			"ServerScriptService/Inv/Stats <- src/Inv/Stats.server.meta.json",
 		]);
 	});
 

@@ -527,6 +527,47 @@ describe("BuildValidator rules", () => {
 				});
 			});
 
+			it("should warn about Rojo's .server and .client on a data file or model, which has no script class", async () => {
+				await write(
+					"src/Data.server.json",
+					"src/Hud.client.rbxmx",
+					"src/Gun.server.model.json",
+					"src/Boot.client.luau"
+				);
+
+				const [warning] = await warningsOf("route.dotRoute");
+
+				expect(warning.message).toContain("3 names write a route key");
+				expect(warning.message).toContain(`(write "Data@server.json")`);
+				expect(warning.message).toContain(`(write "Hud@client.rbxmx")`);
+				expect(warning.message).not.toContain("Boot");
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Gun.server.model.json"),
+						to: at("src/Gun@server.model.json"),
+					},
+				});
+			});
+
+			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
+				await write("src/.server/A.luau", "src/.Server/B.luau");
+
+				const [warning] = await warningsOf("route.dotRoute");
+				const paths = (await route({ routes: SHARED }))
+					.unwrap()
+					.routed.map(({ instancePath }) => instancePath.join("/"));
+
+				expect(warning.message).toContain("2 names write a route key");
+				expect(warning.fixes).toEqual([
+					{ rename: { from: at("src/.Server"), to: at("src/@server") } },
+					{ rename: { from: at("src/.server"), to: at("src/@server") } },
+				]);
+				expect(paths).toEqual([
+					"ReplicatedStorage/shared/.Server/B",
+					"ReplicatedStorage/shared/.server/A",
+				]);
+			});
+
 			it("should leave a dot-file's folder and a dot part's name to the route above", async () => {
 				await write(
 					"src/Inventory/.server",
