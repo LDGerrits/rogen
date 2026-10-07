@@ -1,5 +1,3 @@
-import { ReportedError } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
@@ -91,10 +89,11 @@ registerCommand(
 			const report = new BuildReport();
 			for (const build of builds) report.add(build);
 
-			logService.print(formatJsonDocument(report.json()));
-			return errors.length > 0
-				? err(new ReportedError(new DiagnosticsError(errors)))
-				: ok(undefined);
+			return this.printJson(
+				logService,
+				report.json(),
+				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+			);
 		}
 	}
 );

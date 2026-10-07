@@ -1,5 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
-import { Result } from "../../base/result.js";
+import { ReportedError } from "../../base/errors.js";
+import { formatJsonDocument } from "../../base/json.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	CommandLine,
 	GlobalOptions,
@@ -9,6 +11,7 @@ import {
 	ServicesAccessor,
 	createServiceIdentifier,
 } from "../instantiation/instantiation.js";
+import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 
 export interface CommandService {
@@ -169,6 +172,16 @@ export abstract class AbstractCommand<
 		accessor: ServicesAccessor,
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
+
+	/** Prints the run's one JSON document. A run that failed passes `failure`, which then only sets the exit code, since the document says what went wrong. */
+	protected printJson(
+		logService: LogService,
+		document: unknown,
+		failure?: Error
+	): Result<void, Error> {
+		logService.print(formatJsonDocument(document));
+		return failure ? err(new ReportedError(failure)) : ok(undefined);
+	}
 }
 
 /** Contributes one instance of `ctor` to the command registry. The parser checked the line against the options the command declares, which is what lets its handler read it as typed. */

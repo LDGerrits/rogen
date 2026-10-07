@@ -1,4 +1,3 @@
-import { formatJsonDocument } from "../../base/json.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
@@ -61,10 +60,7 @@ registerCommand(
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			if (line.options.json) {
-				logService.print(formatJsonDocument(report.json()));
-				return ok(undefined);
-			}
+			if (line.options.json) return this.printJson(logService, report.json());
 			const lines = report.lines();
 			if (lines.length > 0) logService.print(lines.join("\n"));
 			return ok(undefined);

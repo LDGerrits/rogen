@@ -1,6 +1,5 @@
 import path from "path";
-import { CancelledError, ReportedError } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
+import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import {
@@ -127,25 +126,18 @@ registerCommand(
 					if (appends) appended.push(file);
 				}
 			);
-			if (written.isErr()) {
-				logService.print(
-					formatJsonDocument({
-						files,
-						appended,
-						error: written.error.message,
-					})
+			if (written.isErr())
+				return this.printJson(
+					logService,
+					{ files, appended, error: written.error.message },
+					written.error
 				);
-				return err(new ReportedError(written.error));
-			}
-			logService.print(
-				formatJsonDocument({
-					files,
-					appended,
-					notes: plan.notes,
-					nextSteps: plan.nextSteps,
-				})
-			);
-			return ok(undefined);
+			return this.printJson(logService, {
+				files,
+				appended,
+				notes: plan.notes,
+				nextSteps: plan.nextSteps,
+			});
 		}
 	}
 );
