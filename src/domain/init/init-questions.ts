@@ -45,7 +45,7 @@ export class InitQuestions {
 		readonly interactive = promptService.isInteractive
 	) {}
 
-	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. `agentFile` offers Rogen's rules for agents, in that file. */
+	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
 	async whatToAdd(agentFile?: string): Promise<Addition | undefined> {
 		if (!this.interactive) return "place";
 		return this.promptService.select<Addition>({

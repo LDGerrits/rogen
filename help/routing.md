@@ -4,6 +4,12 @@ Rogen reads the folder and file names under each config's `rootDirs` and writes 
 
 `routes` maps a route key to a target, `Service` or `Service/Folder/...`. Only declared keys route, and nothing is built in. Read the keys and targets from the config's `routes`; `rogen list --json` resolves an `extends` chain.
 
+Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
+
+  src/Inventory/Server/InventoryService.luau   -> ServerScriptService/Inventory/InventoryService
+  src/Inventory/Client/InventoryController.luau -> StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
+  src/Inventory/Shared/InventoryTypes.luau     -> ReplicatedStorage/Shared/Inventory/InventoryTypes
+
 A key routes a file in four ways:
 
 - Routing folder: `Server/` (the key's name) sends everything inside to the key's target and leaves no folder.
@@ -11,7 +17,7 @@ A key routes a file in four ways:
 - Marker file: an empty `@server` routes its directory and everything below, and the directory keeps its name. A dot-file like `.server` routes nothing and warns; only variant markers (`.mock`) take a dot.
 - Rojo's `.server` and `.client` at the end of a script name set its class (Script, LocalScript), and also route when a key of that name is declared. No other key routes through a dot: `Types.shared.luau` is named `Types.shared` and warns; write `Types@shared.luau`.
 
-`-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file falls to `*`.
+`-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file falls to `*`, and `rogen where` says `route * (fallback)`.
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
 

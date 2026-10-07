@@ -17,7 +17,7 @@ src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 
 ## Init Folders
 
-Rojo treats a folder with an `init` or `index` script as a single instance, so Rogen routes it as a whole and leaves its contents alone.
+A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed and varied like any other file, so a folder split across routes gets a copy of its init ModuleScript in each. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
 
 ## Data Files
 

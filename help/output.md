@@ -4,7 +4,7 @@ Diagnostics print as `file:line:col - severity: message`, on stderr. Errors stop
 
 Exit codes: 0 done, warnings included; 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `--json` keeps the same codes.
 
-`--json` on `build`, `where`, `list` and `init` prints one JSON document on stdout, whatever the exit code. Read it instead of parsing text.
+Plain lines (in pipes, CI and under an agent) put results on stdout and warnings, errors and diagnostics on stderr. `--json` on `build`, `where`, `list` and `init` prints one JSON document on stdout, whatever the exit code, and nothing else. Read it instead of parsing text.
 
 - `build --json`: `{ "configs": [{ "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`.
 - `where --json`: one entry per config and path, with `config`, `source` and `status`; a placed file adds `instancePath`, `route`, `routeMatch` and `variants`.

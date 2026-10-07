@@ -9,9 +9,8 @@ const MARKER = "<!-- rogen -->";
 export class AgentFile {
 	private constructor(
 		readonly fileName: string,
-		/** What the file holds now; none when it doesn't exist. */
 		private readonly text: string | undefined,
-		/** What a `CLAUDE.md` beside `AGENTS.md` holds. */
+		/** A `CLAUDE.md` beside `AGENTS.md`, which may already hold the block, or not import it. */
 		private readonly claudeText: string | undefined
 	) {}
 
@@ -29,8 +28,11 @@ export class AgentFile {
 
 	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
 
+	/** Whether either agent file already holds the block, so a second copy would load twice. */
 	get hasBlock(): boolean {
-		return this.text?.includes(MARKER) ?? false;
+		return [this.text, this.claudeText].some(
+			(text) => text?.includes(MARKER) ?? false
+		);
 	}
 
 	/** The file with the block appended after a blank line, every byte before it kept, or the block alone. */

@@ -17,7 +17,6 @@ export const agentBlock = ${JSON.stringify(`${block}\n`)};
 `;
 }
 
-/** The module as the skill makes it now. */
 export function currentAgentBlockModule(): string {
 	return renderAgentBlockModule(fs.readFileSync(SKILL, "utf8"));
 }

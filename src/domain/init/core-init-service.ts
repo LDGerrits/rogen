@@ -104,15 +104,17 @@ export class CoreInitService implements InitService {
 			questions,
 			this.fileSystemService
 		);
-		const agentFile = await this.agentFileIn(directory);
+		if (!directory.hasDefaultConfig && directory.hasConfigs)
+			return this.planWith(directory, projectSetup);
+		const read = await this.agentFileIn(directory);
+		if (read.isErr()) return read;
+		const agentFile = read.value;
 		if (!directory.hasDefaultConfig)
-			return directory.hasConfigs
-				? this.planWith(directory, projectSetup)
-				: this.planWith(
-						directory,
-						projectSetup,
-						new AgentSetup(agentFile, questions)
-					);
+			return this.planWith(
+				directory,
+				projectSetup,
+				new AgentSetup(agentFile, questions)
+			);
 		const offered = agentFile.hasBlock ? undefined : agentFile.fileName;
 		switch (await questions.whatToAdd(offered)) {
 			case undefined:
@@ -156,20 +158,34 @@ export class CoreInitService implements InitService {
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
 
-	/** The agent file the repo has, read so `init` can tell whether it already holds Rogen's rules. */
-	private async agentFileIn(directory: InitDirectory): Promise<AgentFile> {
-		const [agents, claude] = await Promise.all(
-			AgentFile.FILE_NAMES.map(async (fileName) => {
-				if (!directory.has(fileName)) return undefined;
-				const text = await tryWithAsync(() =>
-					this.fileSystemService.readFile(
-						path.join(directory.path, fileName)
+	/** Fails on a file it can't read rather than take it for missing, which would write over it. */
+	private async agentFileIn(
+		directory: InitDirectory
+	): Promise<Result<AgentFile, Error>> {
+		const texts: (string | undefined)[] = [];
+		for (const fileName of AgentFile.FILE_NAMES) {
+			if (!directory.has(fileName)) {
+				texts.push(undefined);
+				continue;
+			}
+			const text = await tryWithAsync(() =>
+				this.fileSystemService.readFile(
+					path.join(directory.path, fileName)
+				)
+			);
+			if (text.isErr())
+				return err(
+					new Error(
+						`Failed to read ${fileName}: ${text.error.message}`,
+						{
+							cause: text.error,
+						}
 					)
 				);
-				return text.isOk() ? text.value : undefined;
-			})
-		);
-		return AgentFile.choose(agents, claude);
+			texts.push(text.value);
+		}
+		const [agents, claude] = texts;
+		return ok(AgentFile.choose(agents, claude));
 	}
 
 	async write(

@@ -220,9 +220,10 @@ registerCommand(
 			if (isCode(target)) return helpTexts.diagnostics[target];
 			const name = target.toLowerCase();
 			const command = registry.getCommand(name);
-			return command
-				? formatCommandHelp(command, GlobalOptions)
-				: helpTexts.topics[name];
+			if (command) return formatCommandHelp(command, GlobalOptions);
+			return TOPICS.some((topic) => topic.name === name)
+				? helpTexts.topics[name]
+				: undefined;
 		}
 
 		private unknown(target: string, registry: CommandRegistry): Error {

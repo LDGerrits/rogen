@@ -142,13 +142,33 @@ describe("CoreInitService", () => {
 			).toBeUndefined();
 		});
 
+		it("should leave both files alone when CLAUDE.md holds the block", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			await write("CLAUDE.md", agentBlock);
+
+			expect(await agentFile()).toBeUndefined();
+		});
+
+		it("should fail rather than write over an agent file it can't read", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			jest.spyOn(fileSystem, "readFile").mockRejectedValueOnce(
+				new Error("busy")
+			);
+
+			const result = await serviceFor().plan([]);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Failed to read AGENTS.md: busy"
+			);
+		});
+
 		it("should say to import AGENTS.md when CLAUDE.md doesn't", async () => {
 			await write("AGENTS.md", "");
 			await write("CLAUDE.md", "Use tabs.\n");
 
 			const plan = (await serviceFor().plan([])).unwrap();
 
-			expect(plan?.nextSteps.setup).toContain(
+			expect(plan?.nextSteps.edits[0]).toBe(
 				"Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules."
 			);
 		});

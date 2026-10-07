@@ -5,10 +5,10 @@ stdout:
   Created default.rogen.json.
   Added Rogen's rules to AGENTS.md.
   Next steps
-    Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules.
     Run each in its own terminal:
       rogen watch
       rojo serve default.project.json
+    Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules.
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
   Wrote 2 files.

@@ -26,6 +26,7 @@ export class InitPlanBuilder {
 	private readonly configs: PlannedFile[] = [];
 	private readonly compilerConfigs: PlannedFile[] = [];
 	private agentFile: PlannedFile | undefined;
+	private agentStep: string | undefined;
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
@@ -54,8 +55,7 @@ export class InitPlanBuilder {
 	/** Rogen's rules for agents, written last; the one existing file `init` adds to. */
 	addAgentFile(file: AgentFile): void {
 		this.agentFile = file.planned;
-		const step = file.nextStep;
-		if (step) this.addSetup(step);
+		this.agentStep = file.nextStep;
 	}
 
 	addNote(note: string): void {
@@ -112,7 +112,11 @@ export class InitPlanBuilder {
 				setup: [...this.setup],
 				run: [...this.run],
 				darklua: [...this.darklua],
-				edits: [...this.edits],
+				// Before the edits that always come last.
+				edits: [
+					...(this.agentStep ? [this.agentStep] : []),
+					...this.edits,
+				],
 			},
 		});
 	}

@@ -49,7 +49,7 @@ export const OutFileOption = {
 	name: "out-file",
 	short: "o",
 	type: "string",
-	description: "Overrides outFile.",
+	description: "Overrides outFile, for one config.",
 } as const satisfies OptionDescriptor;
 
 /** The flags that override the configs a command builds. */

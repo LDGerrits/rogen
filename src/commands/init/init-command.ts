@@ -23,7 +23,7 @@ const InitOptions = [
 		short: "y",
 		type: "boolean",
 		description:
-			"Write the defaults without asking, as a run without a terminal does.",
+			"Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.",
 	},
 	JsonOption,
 ] as const;

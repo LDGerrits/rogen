@@ -9,7 +9,6 @@ export const DIAGNOSTICS_PAGE = path.resolve(
 );
 export const OUTPUT = path.resolve("src/commands/help/help-texts.ts");
 
-/** The help module as the sources make it now. */
 export function currentHelpModule(): string {
 	const topics = Object.fromEntries(
 		fs

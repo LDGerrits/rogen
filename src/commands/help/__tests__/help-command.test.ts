@@ -102,8 +102,12 @@ describe("help command", () => {
 				await help(command.id);
 
 				const text = printed();
-				expect(command.metadata.examples?.length).toBeGreaterThanOrEqual(2);
-				expect(text).toContain(`Examples:\n  ${command.metadata.examples?.[0]}`);
+				expect(
+					command.metadata.examples?.length
+				).toBeGreaterThanOrEqual(2);
+				expect(text).toContain(
+					`Examples:\n  ${command.metadata.examples?.[0]}`
+				);
 				expect(text.indexOf("Examples:")).toBeGreaterThan(
 					text.indexOf("Arguments:")
 				);
@@ -156,6 +160,17 @@ describe("help command", () => {
 			expect(printed()).toContain("Topics:");
 			for (const topic of Object.keys(helpTexts.topics))
 				expect(printed()).toMatch(new RegExp(`^  ${topic} `, "m"));
+		});
+
+		it("should list exactly the topics whose text it embeds", async () => {
+			await help();
+
+			const listed = printed()
+				.split("Topics:\n")[1]
+				.split("\n\n")[0]
+				.split("\n")
+				.map((line) => line.trim().split(" ")[0]);
+			expect(listed.sort()).toEqual(Object.keys(helpTexts.topics).sort());
 		});
 
 		it("should name no topic after a command", () => {
