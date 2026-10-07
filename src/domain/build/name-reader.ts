@@ -1,6 +1,6 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
-import { closestMatch, editDistance } from "../../base/strings.js";
+import { closestMatches, editDistance } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
@@ -42,13 +42,24 @@ export interface StrayAt {
 	readonly closestKey: string;
 	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
 	readonly notLast: boolean;
+	/** Where the `@` sits in the name read. */
+	readonly start: number;
+	/** No other route key is as close as `closestKey`. */
+	readonly onlyClosest: boolean;
 }
 
 /** A trailing dot part that is one edit from a declared variant. */
 export interface VariantTypo {
 	readonly text: string;
 	readonly variant: string;
+	/** Where the dot sits in the name read. */
+	readonly start: number;
+	/** No other variant is one edit from `text`. */
+	readonly onlyClosest: boolean;
 }
+
+/** A misspelled name as the readings note it, with the path it's renamed to when one rename fixes it. */
+export type NotedName<T> = T & { readonly renamedTo?: string };
 
 export interface SuffixMatch {
 	readonly baseName: string;
@@ -206,10 +217,17 @@ export class NameReader {
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
 		if (DOT_ROUTE_KEYS.has(text)) return undefined;
-		const variant = [...this.keys.variantKeys].find(
+		const variants = [...this.keys.variantKeys].filter(
 			(key) => editDistance(text.toLowerCase(), key.toLowerCase()) <= 1
 		);
-		return variant ? { text, variant } : undefined;
+		return variants.length > 0
+			? {
+					text,
+					variant: variants[0],
+					start: dot,
+					onlyClosest: variants.length === 1,
+				}
+			: undefined;
 	}
 
 	/** Spans start past the first character, so a name never loses all of it. */
@@ -232,11 +250,17 @@ export class NameReader {
 		if (at < 0) return undefined;
 		const text = name.slice(at + 1).split(".")[0];
 		if (text === "") return undefined;
-		const closestKey = closestMatch(text, this.keys.routeKeys);
+		const closest = closestMatches(text, this.keys.routeKeys);
 		const notLast = this.keys.resolveRoute(text) !== undefined;
 		// Package names use `@` too (`@rbxts`, `owner_name@1.5.1`), so only a near miss of a route is a typo.
-		if (closestKey === undefined || (at === 0 && notLast)) return undefined;
-		return { text, closestKey, notLast };
+		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
+		return {
+			text,
+			closestKey: closest[0],
+			notLast,
+			start: at,
+			onlyClosest: closest.length === 1,
+		};
 	}
 }
 
@@ -279,9 +303,9 @@ export class NameReadings {
 	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
 	readonly nearMisses = new Map<string, string>();
 	/** Each folder above an entry, or entry, with an `@` that doesn't route; first found first. */
-	readonly strayAts = new Map<string, StrayAt>();
+	readonly strayAts = new Map<string, NotedName<StrayAt>>();
 	/** Each folder above an entry, or entry, whose name ends in a dot part one edit from a declared variant; first found first. */
-	readonly variantTypos = new Map<string, VariantTypo>();
+	readonly variantTypos = new Map<string, NotedName<VariantTypo>>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -319,12 +343,14 @@ export class NameReadings {
 				});
 				for (const folder of folders) {
 					const resource = joinPosix(root.rootDir, folder.dir);
+					// The parentheses come off before a folder's name is read.
+					const offset = folder.invisible ? 1 : 0;
 					this.noteNearMiss(resource, folder.nearMissKey);
-					this.noteStrayAt(resource, folder.strayAt);
-					this.noteVariantTypo(resource, folder.variantTypo);
+					this.noteStrayAt(resource, offset, folder.strayAt);
+					this.noteVariantTypo(resource, offset, folder.variantTypo);
 				}
-				this.noteStrayAt(entry.source, match.strayAt);
-				this.noteVariantTypo(entry.source, match.variantTypo);
+				this.noteStrayAt(entry.source, 0, match.strayAt);
+				this.noteVariantTypo(entry.source, 0, match.variantTypo);
 			}
 		}
 	}
@@ -353,15 +379,57 @@ export class NameReadings {
 
 	private noteVariantTypo(
 		resource: string,
+		offset: number,
 		typo: VariantTypo | undefined
 	): void {
-		if (typo && !this.variantTypos.has(resource))
-			this.variantTypos.set(resource, typo);
+		if (!typo || this.variantTypos.has(resource)) return;
+		const { start, text, variant, onlyClosest } = typo;
+		this.variantTypos.set(resource, {
+			...typo,
+			...(onlyClosest && {
+				renamedTo: NameReadings.respelled(
+					resource,
+					offset + start,
+					`.${text}`,
+					`.${variant}`
+				),
+			}),
+		});
 	}
 
-	private noteStrayAt(resource: string, strayAt: StrayAt | undefined): void {
-		if (strayAt && !this.strayAts.has(resource))
-			this.strayAts.set(resource, strayAt);
+	private noteStrayAt(
+		resource: string,
+		offset: number,
+		strayAt: StrayAt | undefined
+	): void {
+		if (!strayAt || this.strayAts.has(resource)) return;
+		const { start, text, closestKey, notLast, onlyClosest } = strayAt;
+		this.strayAts.set(resource, {
+			...strayAt,
+			...(onlyClosest &&
+				!notLast && {
+					renamedTo: NameReadings.respelled(
+						resource,
+						offset + start,
+						`@${text}`,
+						`@${closestKey}`
+					),
+				}),
+		});
+	}
+
+	/** `resource` with `written`, which starts at `start` of its base name, spelt `spelling`. */
+	private static respelled(
+		resource: string,
+		start: number,
+		written: string,
+		spelling: string
+	): string {
+		const name = path.posix.basename(resource);
+		return joinPosix(
+			path.posix.dirname(resource),
+			name.slice(0, start) + spelling + name.slice(start + written.length)
+		);
 	}
 
 	private folderAt(rootDir: string, dir: string): FolderRead {

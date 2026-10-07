@@ -4,6 +4,7 @@ import { joinPosix } from "../../base/path.js";
 import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
+	DiagnosticFix,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
@@ -21,6 +22,17 @@ import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 const DIAGNOSED_PATHS = 10;
+
+/** A rename for every noted name that has one, not only the names a message lists. */
+function renames(
+	noted: ReadonlyMap<string, { readonly renamedTo?: string }>
+): DiagnosticFix[] {
+	return [...noted]
+		.sort(([a], [b]) => compareStrings(a, b))
+		.flatMap(([from, { renamedTo }]) =>
+			renamedTo ? [{ rename: { from, to: renamedTo } }] : []
+		);
+}
 
 /** Reports on a finished build and decides nothing. */
 export class BuildValidator {
@@ -129,7 +141,8 @@ export class BuildValidator {
 				[
 					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
 					...listed,
-				].join("\n")
+				].join("\n"),
+				renames(strayAts)
 			),
 		];
 	}
@@ -151,7 +164,8 @@ export class BuildValidator {
 				[
 					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
 					...listed,
-				].join("\n")
+				].join("\n"),
+				renames(variantTypos)
 			),
 		];
 	}

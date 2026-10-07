@@ -45,14 +45,24 @@ export function closestMatch(
 	word: string,
 	candidates: Iterable<string>
 ): string | undefined {
+	return closestMatches(word, candidates)[0];
+}
+
+/** Every candidate as close to `word` as the closest one, in the order given, judged as `closestMatch` judges. */
+export function closestMatches(
+	word: string,
+	candidates: Iterable<string>
+): string[] {
 	const lower = word.toLowerCase();
-	let best: string | undefined;
+	let best: string[] = [];
 	let bestDistance = Math.floor(word.length * 0.4) + 1;
 	for (const candidate of candidates) {
 		const distance = editDistance(lower, candidate.toLowerCase());
 		if (distance < bestDistance) {
-			best = candidate;
+			best = [candidate];
 			bestDistance = distance;
+		} else if (distance === bestDistance && best.length > 0) {
+			best.push(candidate);
 		}
 	}
 	return best;

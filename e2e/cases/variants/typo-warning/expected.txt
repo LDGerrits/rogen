@@ -8,6 +8,36 @@ stderr:
   default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
     src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
 
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "variant.typo",
+            "message": "1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\" for \".mok\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Analytics.mok.luau",
+                  "to": "<dir>/src/Analytics.mock.luau"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
 written:
   default.project.json
 

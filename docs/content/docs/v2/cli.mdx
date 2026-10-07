@@ -132,6 +132,14 @@ Diagnostics look like this. Match on `code`, since the wording of `message` can 
 }
 ```
 
+A warning whose fix is one rename also has `fixes`, a rename for every name it covers, including names the message leaves out. Rogen never applies them: after a rename, update the requires and imports that name the file.
+
+```json
+"fixes": [
+	{ "rename": { "from": "/repo/src/Inventory/Save@sever.luau", "to": "/repo/src/Inventory/Save@server.luau" } }
+]
+```
+
 If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
 
 ### `build --json`

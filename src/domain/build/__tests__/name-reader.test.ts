@@ -134,6 +134,8 @@ describe("NameReader suffixes", () => {
 			text: "server",
 			closestKey: "server",
 			notLast: true,
+			start: 3,
+			onlyClosest: true,
 		});
 	});
 });
@@ -143,15 +145,17 @@ describe("NameReader variant typo", () => {
 		readerOf(ALL_KEYS).suffixes(stem).variantTypo;
 
 	it("names the declared variant a trailing dot part is one edit from", () => {
-		expect(typoOf("Analytics.mok")).toEqual({
+		expect(typoOf("Analytics.mok")).toMatchObject({
 			text: "mok",
 			variant: "mock",
+			start: 9,
+			onlyClosest: true,
 		});
-		expect(typoOf("Analytics.mcok")).toEqual({
+		expect(typoOf("Analytics.mcok")).toMatchObject({
 			text: "mcok",
 			variant: "mock",
 		});
-		expect(typoOf("Analytics.MOCK")).toEqual({
+		expect(typoOf("Analytics.MOCK")).toMatchObject({
 			text: "MOCK",
 			variant: "mock",
 		});
@@ -168,6 +172,11 @@ describe("NameReader variant typo", () => {
 	});
 
 	it("reports nothing for a matched variant, a name without a dot or a Rojo suffix", () => {
+		expect(
+			readerOf(new DeclaredKeys(ROUTES, ["mock", "mook"])).suffixes(
+				"Analytics.mok"
+			).variantTypo?.onlyClosest
+		).toBe(false);
 		expect(typoOf("Analytics.mock")).toBeUndefined();
 		expect(typoOf("Analytics")).toBeUndefined();
 		expect(typoOf("Main.client")).toBeUndefined();
@@ -180,7 +189,16 @@ describe("NameReader stray @", () => {
 			text: "sever",
 			closestKey: "server",
 			notLast: false,
+			start: 4,
+			onlyClosest: true,
 		});
+	});
+
+	it("should say when another route is as close", () => {
+		expect(
+			matchSuffixKeys("Save@serer", new Set(["server", "sever"])).strayAt
+				?.onlyClosest
+		).toBe(false);
 	});
 
 	it("suggests the route for an @ that only differs in case", () => {
@@ -348,7 +366,12 @@ describe("NameReader folder", () => {
 	it("should report a dot part one edit from a variant", () => {
 		expect(
 			new NameReader(ALL_KEYS).folderVariantTypo("Analytics.mok")
-		).toEqual({ text: "mok", variant: "mock" });
+		).toEqual({
+			text: "mok",
+			variant: "mock",
+			start: 9,
+			onlyClosest: true,
+		});
 	});
 
 	it("should read any other folder as plain, keeping its name", () => {

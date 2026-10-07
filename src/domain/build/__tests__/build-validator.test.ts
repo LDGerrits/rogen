@@ -1,3 +1,4 @@
+import { toPosix } from "../../../base/path.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -68,6 +69,7 @@ describe("BuildValidator", () => {
 });
 
 describe("BuildValidator rules", () => {
+	const at = (...segments: string[]) => toPosix(abs(...segments));
 	const ROUTES = {
 		ReplicatedFirst: "ReplicatedFirst",
 		server: "ServerScriptService",
@@ -273,6 +275,63 @@ describe("BuildValidator rules", () => {
 
 				expect(await strayWarnings()).toEqual([]);
 			});
+
+			it("should fix each name by renaming it to the closest route, a folder as a folder", async () => {
+				await write(
+					"src/Inventory/Save@sever.luau",
+					"src/(Queue@clent)/Load.luau"
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/(Queue@clent)"),
+							to: at("src/(Queue@client)"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/Inventory/Save@sever.luau"),
+							to: at("src/Inventory/Save@server.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should give no fix when two routes are as close", async () => {
+				await write("src/Save@serer.luau");
+
+				const [warning] = (
+					await route({ routes: { ...ROUTES, sever: "Workspace" } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.strayAt");
+
+				expect(warning.fixes).toBeUndefined();
+			});
+
+			it("should give no fix for a declared route that isn't at the end", async () => {
+				await write("src/Save@server.bak.luau");
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toBeUndefined();
+			});
+
+			it("should fix every name, not only those the message lists", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/Save${index}@sever.luau`
+					)
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toHaveLength(12);
+			});
 		});
 
 		describe("scripts that never run", () => {
@@ -451,6 +510,33 @@ describe("BuildValidator rules", () => {
 					`${abs("src/Analytics.mok.luau")} (did you mean ".mock" for ".mok"?)`
 				);
 				expect(warning.message).not.toContain("spec");
+			});
+
+			it("should fix the name by renaming it to the variant", async () => {
+				await write("src/Analytics.mok.luau");
+
+				const [warning] = await typos();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/Analytics.mok.luau"),
+							to: at("src/Analytics.mock.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should give no fix when two variants are one edit away", async () => {
+				await write("src/Analytics.mok.luau");
+
+				const [warning] = (
+					await route({ variants: { mock: true, mook: false } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "variant.typo");
+
+				expect(warning.fixes).toBeUndefined();
 			});
 		});
 

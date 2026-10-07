@@ -19,11 +19,18 @@ export interface DiagnosticLocation {
 	readonly position?: DiagnosticPosition;
 }
 
+/** An edit that resolves a diagnostic. Renaming a file or folder is the only kind; paths are absolute. */
+export interface DiagnosticFix {
+	readonly rename: { readonly from: string; readonly to: string };
+}
+
 export interface Diagnostic extends DiagnosticLocation {
 	readonly severity: DiagnosticSeverity;
 	/** Stable identifier such as `config.unknownField`; tests assert on it. */
 	readonly code: string;
 	readonly message: string;
+	/** Given only when they are the one answer; the rendered line leaves them out. */
+	readonly fixes?: readonly DiagnosticFix[];
 }
 
 export const isError = (diagnostic: Diagnostic): boolean =>
@@ -45,13 +52,15 @@ export function errorDiagnostic(
 export function warningDiagnostic(
 	code: string,
 	location: DiagnosticLocation,
-	message: string
+	message: string,
+	fixes: readonly DiagnosticFix[] = []
 ): Diagnostic {
 	return {
 		...location,
 		severity: DiagnosticSeverity.Warning,
 		code,
 		message,
+		...(fixes.length > 0 && { fixes }),
 	};
 }
 
@@ -111,6 +120,8 @@ export interface DiagnosticJson {
 	readonly message: string;
 	/** The code's section on the diagnostics page. */
 	readonly url: string;
+	/** As the diagnostic's, with native paths. */
+	readonly fixes?: readonly DiagnosticFix[];
 }
 
 /** The anchor of `code`'s section on the diagnostics page: `route.dotRoute` is `route-dotroute`. */
@@ -119,7 +130,7 @@ const diagnosticAnchor = (code: string): string =>
 
 /** The form a `--json` run prints; the code is here and not in the text, since only a program matches on it. */
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
-	const { resource, position, severity, code, message } = diagnostic;
+	const { resource, position, severity, code, message, fixes } = diagnostic;
 	return {
 		file: toNative(resource),
 		...(position && { line: position.line, column: position.column }),
@@ -127,6 +138,14 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 		code,
 		message,
 		url: `${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`,
+		...(fixes && {
+			fixes: fixes.map(({ rename }) => ({
+				rename: {
+					from: toNative(rename.from),
+					to: toNative(rename.to),
+				},
+			})),
+		}),
 	};
 }
 
