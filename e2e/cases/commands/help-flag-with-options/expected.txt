@@ -53,3 +53,25 @@ stdout:
     -V, --version  Print the version.
     -v, --verbose  Print debug output.
     -q, --quiet    Only print errors.
+
+$ rogen help --help
+exit 0
+stdout:
+  Prints usage, a command's details, a topic, or what a diagnostic code means.
+  
+  Usage:
+    rogen help [name] [options]
+  
+  Arguments:
+    name  A command, a topic, or a diagnostic code such as route.strayAt.
+  
+  Examples:
+    rogen help where
+    rogen help routing
+    rogen help route.strayAt
+  
+  Global options:
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.

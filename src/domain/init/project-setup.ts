@@ -11,7 +11,7 @@ import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
-import { PlaceChoices, PlacePlan } from "./place-setup.js";
+import { PlaceChoices, PlacePlan } from "./place-plan.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 

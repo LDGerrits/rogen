@@ -1,5 +1,6 @@
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -11,7 +12,6 @@ import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";

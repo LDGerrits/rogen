@@ -155,6 +155,13 @@ describe("parseArgs", () => {
 		expect(parse(["build", "--variant", "a", "-V"]).isOk()).toBe(true);
 	});
 
+	it("should ask help about help itself for 'help --help'", () => {
+		expect(parse(["help", "--help"]).unwrap()).toMatchObject({
+			command: "help",
+			line: { positionals: ["help"] },
+		});
+	});
+
 	it("should refuse a --help line with an option the named command doesn't take", () => {
 		const result = parse(["watch", "--variant", "a", "--help"]);
 

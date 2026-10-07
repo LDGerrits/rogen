@@ -75,8 +75,7 @@ export interface BuildSummary {
 	readonly displaced: number;
 }
 
-/** What a run did for one config: the one record the build, the watch and every presenter read. */
-/** What a run did for one config: the one record the build, the watch and every presenter read (ADR-0017). Narrow it on `outcome`; each kind holds what its outcome has. */
+/** What a run did for one config: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
 export type ConfigBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
 
 /** What every kind of config build holds. */
@@ -95,7 +94,7 @@ abstract class AbstractConfigBuild {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, errors. */
+	/** Everything the build has to say, in the order it is printed: warnings, then sync dir warnings. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? [])];
 	}
@@ -151,6 +150,7 @@ export class FailedBuild extends AbstractConfigBuild {
 		super(config, findings);
 	}
 
+	/** Warnings, sync dir warnings, then the errors that failed it. */
 	override get diagnostics(): readonly Diagnostic[] {
 		return [...super.diagnostics, ...this.errors];
 	}

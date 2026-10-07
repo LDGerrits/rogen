@@ -95,16 +95,23 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
-/** The command a line runs, and the one it names, whose options it is checked against: `rogen build --help` runs help but must still be a valid build line. */
+/** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
 	positionals: readonly string[]
-): { readonly runs: string; readonly names: string } {
+): {
+	readonly runs: string;
+	readonly names: string;
+	readonly consumesWord: boolean;
+} {
 	const named = positionals[0]?.toLowerCase();
-	if (named === undefined) return { runs: HELP_COMMAND, names: HELP_COMMAND };
+	if (named === undefined)
+		return { runs: HELP_COMMAND, names: HELP_COMMAND, consumesWord: false };
+	const redirected = Boolean(values.version || values.help);
 	return {
-		runs: values.version || values.help ? HELP_COMMAND : named,
+		runs: redirected ? HELP_COMMAND : named,
 		names: named,
+		consumesWord: !redirected,
 	};
 }
 
@@ -174,7 +181,7 @@ export function parseArgs(
 				)
 				.sort();
 		const { values, positionals, tokens } = tokenize(args, allOptions);
-		const { runs, names } = commandOf(values, positionals);
+		const { runs, names, consumesWord } = commandOf(values, positionals);
 
 		if (commands.includes(names)) {
 			const problem = findOptionProblem(
@@ -193,7 +200,7 @@ export function parseArgs(
 		return ok({
 			command: runs,
 			line: {
-				positionals: runs === names ? positionals.slice(1) : positionals,
+				positionals: consumesWord ? positionals.slice(1) : positionals,
 				options: values as CommandLine["options"],
 			},
 		});
