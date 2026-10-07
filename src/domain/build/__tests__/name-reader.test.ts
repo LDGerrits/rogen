@@ -168,6 +168,18 @@ describe("NameReader variant typo", () => {
 		expect(typoOf("Foo.beta")).toBeUndefined();
 	});
 
+	it("should respell to the closest variant when another is a further edit away", () => {
+		expect(
+			readerOf(new DeclaredKeys(ROUTES, ["mocks", "mock"])).suffixes(
+				"Analytics.MOCK"
+			).variantTypo
+		).toEqual({
+			text: "MOCK",
+			variant: "mock",
+			respelling: { start: 9, written: ".MOCK", spelling: ".mock" },
+		});
+	});
+
 	it("should give no respelling when two variants are one edit away", () => {
 		expect(
 			readerOf(new DeclaredKeys(ROUTES, ["mock", "mook"])).suffixes(

@@ -50,7 +50,7 @@ export interface StrayAt {
 export interface VariantTypo {
 	readonly text: string;
 	readonly variant: string;
-	/** The one rename that fixes it: none when another variant is one edit away too. */
+	/** The one rename that fixes it: none when another variant is as close. */
 	readonly respelling?: Respelling;
 }
 
@@ -238,9 +238,16 @@ export class NameReader {
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
 		if (DOT_ROUTE_KEYS.has(text)) return undefined;
-		const variants = [...this.keys.variantKeys].filter(
-			(key) => editDistance(text.toLowerCase(), key.toLowerCase()) <= 1
-		);
+		const distances = [...this.keys.variantKeys]
+			.map((key) => ({
+				key,
+				distance: editDistance(text.toLowerCase(), key.toLowerCase()),
+			}))
+			.filter(({ distance }) => distance <= 1);
+		const nearest = Math.min(...distances.map(({ distance }) => distance));
+		const variants = distances
+			.filter(({ distance }) => distance === nearest)
+			.map(({ key }) => key);
 		if (variants.length === 0) return undefined;
 		const [variant] = variants;
 		return {

@@ -3,7 +3,7 @@ title: Diagnostics
 description: Every error and warning Rogen reports, why it fires and how to fix it.
 ---
 
-Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints it as `file:line:col - severity: message`, and `--json` adds the code, a `url` pointing at its section on this page, and, for some warnings, the `fixes` that resolve it. `rogen help <code>` prints the same section from the version you have installed.
+Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints it as `file:line:col - severity: message`, and `--json` adds the code, a `url` pointing at its section on this page, and, for some warnings, the `fixes` that resolve it.
 
 An error stops every config in the run from being written. A warning never does, but it always names something to fix.
 
@@ -197,6 +197,7 @@ Error. The config declares no `routes`, so no file can be placed. Rogen never pi
 
 ```
 default.rogen.json - error: no routes declared, so nothing can be placed.
+Add a "routes" map — `rogen init` writes a starting set.
 ```
 
 Add a `routes` map. `rogen init` writes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
@@ -213,14 +214,14 @@ Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name has an `@` that matches no declared route, so the `@` stays in the instance name. It's usually a typo, a wrong case, or a variant written with `@` instead of a dot. One warning lists every such name.
+Warning. A name has an `@` that doesn't route, so the `@` stays in the instance name: either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
 
 ```
 default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
   src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 ```
 
-Rename the file to the key suggested, or declare the route. In `--json`, `fixes` holds the rename when there's exactly one closest key. See [The `@` Sign](/docs/v2/core-concepts/routing).
+Rename the file to the key suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -265,7 +266,7 @@ default.rogen.json - warning: 1 name ends in a dot part that is one edit from a 
   src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
 ```
 
-Rename the file to the variant suggested. In `--json`, `fixes` holds the rename when there's exactly one closest variant. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
+Rename the file to the variant suggested. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
 
 ### `variant.activeClash` [#variant-activeclash]
 
@@ -539,7 +540,7 @@ Run the compiler or processor first. If the message finds the files elsewhere, p
 
 ### `output.metaNotSynced` [#output-metanotsynced]
 
-Warning. `.meta.json` files have no copy in the sync directory, so Rojo doesn't apply them. Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
+Warning. `.meta.json` files have no copy in the sync directory, so Rojo doesn't apply them. Either the compiler didn't copy them, or a processor converted them: Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
 
 ```
 default.project.json - warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.
@@ -561,7 +562,7 @@ Copy the data files unchanged into the sync directory after the processor runs, 
 
 ### `init.configExists` [#init-configexists]
 
-Error. The config `init` would write already exists, and `init` never overwrites one. Without a terminal, `init` beside an existing `default.rogen.json` adds a place, which needs a name.
+Error. The config `init` would write already exists, and `init` never overwrites one. A run that can't ask (no terminal, `-y`, `--json`, CI or an agent) adds a place beside an existing `default.rogen.json`, which needs a name.
 
 ```
 default.rogen.json - error: this config already exists. To add a place beside it, run 'rogen init <name>'.
