@@ -86,11 +86,16 @@ export function labelOfDefaultOutFile(fileName: string): string | undefined {
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
 /** The schema a config written by this release points at. */
-export const SCHEMA_URL = schemaUrlFor("2.0.0");
+export const SCHEMA_URL = schemaUrlFor("2.0.0-beta.1");
+
+/** Where a release's configs point: its major, except a pre-release of a later minor or patch, which may add fields its major doesn't have yet. */
+export function schemaChannel(version: string): string {
+	const exact = version.includes("-") && !/^\d+\.0\.0-/.test(version);
+	return exact ? version : version.split(".")[0];
+}
 
 export function schemaUrlFor(version: string): string {
-	const channel = version.includes("-") ? version : version.split(".")[0];
-	return `${SCHEMA_BASE_URL}/${channel}/rogen.json`;
+	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
 /** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */

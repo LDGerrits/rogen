@@ -1,3 +1,5 @@
+import { schemaChannel } from "../src/domain/config/config.js";
+
 const isPrerelease = (version: string): boolean => version.includes("-");
 
 const versionParts = (version: string): number[] =>
@@ -15,17 +17,22 @@ function compareVersions(a: string, b: string): number {
 	return 0;
 }
 
-/** The paths a release publishes to: a pre-release only its exact version, and an alias only when no newer stable release holds it. */
+/** The paths a release publishes to; an alias moves only while no newer stable release holds it. */
 export function schemaChannels(
 	version: string,
 	published: readonly string[] = []
 ): readonly string[] {
-	if (isPrerelease(version)) return [version];
-
-	const newer = published.filter(
-		(other) => !isPrerelease(other) && compareVersions(other, version) > 0
-	);
+	const stable = published.filter((other) => !isPrerelease(other));
 	const major = majorOf(version);
+	if (isPrerelease(version)) {
+		const channel = schemaChannel(version);
+		const exactOnly =
+			channel === version ||
+			stable.some((other) => majorOf(other) === major);
+		return exactOnly ? [version] : [version, channel];
+	}
+
+	const newer = stable.filter((other) => compareVersions(other, version) > 0);
 	return [
 		version,
 		...(newer.some((other) => majorOf(other) === major) ? [] : [major]),
