@@ -38,5 +38,18 @@ export interface FileSystemService {
 	): Promise<void>;
 }
 
+/** The codes a file system rejects with, as Node's own errors carry them. */
+export type FileSystemErrorCode =
+	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP";
+
+/** An error shaped like Node's, so a caller checks `code` alike on every file system. */
+export function fileSystemError(
+	code: FileSystemErrorCode,
+	message: string,
+	cause?: unknown
+): Error {
+	return Object.assign(new Error(message, { cause }), { code });
+}
+
 export const FileSystemService =
 	createServiceIdentifier<FileSystemService>("fileSystemService");

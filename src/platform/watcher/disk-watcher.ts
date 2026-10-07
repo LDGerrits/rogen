@@ -12,6 +12,8 @@ export class DiskWatcher extends AbstractWatcher {
 	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
 	private unfollowed = new Set<string>();
 	private ready = false;
+	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
+	private cancelStart: (() => void) | undefined;
 
 	protected async startWatching(
 		paths: readonly string[],
@@ -52,8 +54,18 @@ export class DiskWatcher extends AbstractWatcher {
 
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;
-		await new Promise<void>((resolve) => watcher.once("ready", resolve));
+		await new Promise<void>((resolve) => {
+			this.cancelStart = resolve;
+			watcher.once("ready", resolve);
+		});
+		this.cancelStart = undefined;
 		this.ready = true;
+	}
+
+	/** Doesn't wait for a start's initial scan to finish. */
+	override stop(): Promise<void> {
+		this.cancelStart?.();
+		return super.stop();
 	}
 
 	/** Skips a link that can't be followed and reports it once, as a link, after the initial scan. */

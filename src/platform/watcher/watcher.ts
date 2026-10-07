@@ -15,7 +15,7 @@ export interface Watcher {
 
 	readonly onDidChangeFile: Event<FileChange[]>;
 
-	/** Replaces whatever was being watched, and resolves once changes to `paths` are being reported: a file's own, and everything under a directory. Watches and stops take effect in the order they're called. */
+	/** Replaces what was watched, in call order with `stop`; resolves once changes to `paths` are reported: a file's own, and everything under a directory. */
 	watch(paths: readonly string[], options?: WatchOptions): Promise<void>;
 	stop(): Promise<void>;
 }

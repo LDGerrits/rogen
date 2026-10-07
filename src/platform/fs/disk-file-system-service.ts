@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ErrorUtils } from "../../base/errors.js";
-import { FileType, FileSystemService } from "./file-system-service.js";
+import {
+	FileType,
+	FileSystemService,
+	fileSystemError,
+} from "./file-system-service.js";
 
 const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
 
@@ -121,7 +125,7 @@ export class DiskFileSystemService implements FileSystemService {
 		} catch (error) {
 			// Node reports this one with its own code, not the system's.
 			if (ErrorUtils.hasCode(error, "ERR_FS_EISDIR"))
-				throw fsError(
+				throw fileSystemError(
 					"EISDIR",
 					`EISDIR: illegal operation on a directory, rm '${filePath}'`,
 					error
@@ -135,18 +139,22 @@ export class DiskFileSystemService implements FileSystemService {
 		destination: string,
 		overwrite: boolean = false
 	): Promise<void> {
+		if (path.resolve(source) === path.resolve(destination)) return;
 		const existing = await fs.promises
-			.stat(destination)
-			.catch(() => undefined);
+			.lstat(destination)
+			.catch((error: unknown) => {
+				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
+				throw error;
+			});
 		if (existing && !overwrite) {
-			throw fsError(
+			throw fileSystemError(
 				"EEXIST",
 				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
 			);
 		}
 		// Refused outright: the system would move a directory onto an empty one, but not onto a full one.
 		if (existing?.isDirectory()) {
-			throw fsError(
+			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
 			);
@@ -154,8 +162,4 @@ export class DiskFileSystemService implements FileSystemService {
 		await this.createDirectory(path.dirname(destination));
 		await fs.promises.rename(source, destination);
 	}
-}
-
-function fsError(code: string, message: string, cause?: unknown): Error {
-	return Object.assign(new Error(message, { cause }), { code });
 }

@@ -130,6 +130,16 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			expect(await fixture.fileSystem.readFile(at("b.json"))).toBe("new");
 		});
 
+		it("should leave a directory renamed onto itself as it is", async () => {
+			await fixture.fileSystem.writeFile(at("src/a.luau"), "");
+
+			await fixture.fileSystem.rename(at("src"), at("src"), true);
+
+			expect(await fixture.fileSystem.exists(at("src/a.luau"))).toBe(
+				true
+			);
+		});
+
 		it("should reject with EISDIR to replace a directory, even when told to overwrite", async () => {
 			await fixture.fileSystem.writeFile(at("a.json"), "x");
 			await fixture.fileSystem.writeFile(at("src/a.luau"), "");

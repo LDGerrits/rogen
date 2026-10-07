@@ -24,26 +24,24 @@ export class MemoryWatcher extends AbstractWatcher {
 		this.ignored = options.ignored ?? [];
 		this.watched = paths.map(toPosix);
 
-		if (!this.watchDisposables) {
-			this.watchDisposables = new DisposableStore();
+		this.watchDisposables = new DisposableStore();
 
-			this.memoryFs.onDidMutateFile((change) => {
-				const normalizedChangePath = toPosix(change.path);
-				if (isIgnored(normalizedChangePath, this.ignored)) return;
+		this.memoryFs.onDidMutateFile((change) => {
+			const normalizedChangePath = toPosix(change.path);
+			if (isIgnored(normalizedChangePath, this.ignored)) return;
 
-				const isWatched = this.watched.some((watched) =>
-					containsPosix(watched, normalizedChangePath)
-				);
+			const isWatched = this.watched.some((watched) =>
+				containsPosix(watched, normalizedChangePath)
+			);
 
-				if (isWatched) {
-					this.fireChange({
-						type: change.type,
-						path: normalizedChangePath,
-						fileType: change.fileType,
-					});
-				}
-			}, this.watchDisposables);
-		}
+			if (isWatched) {
+				this.fireChange({
+					type: change.type,
+					path: normalizedChangePath,
+					fileType: change.fileType,
+				});
+			}
+		}, this.watchDisposables);
 	}
 
 	protected async stopWatching(): Promise<void> {

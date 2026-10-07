@@ -39,7 +39,7 @@ export class CommandFailure {
 	}
 
 	/** Keeps `--json`'s one document when the run threw; the stack is still the caller's to print, on stderr. */
-	crashed(error: unknown): void {
+	reportCrash(error: unknown): void {
 		if (!this.json) return;
 		this.logService.print(
 			formatJsonDocument(failureToJson(ErrorUtils.fromUnknown(error)))
