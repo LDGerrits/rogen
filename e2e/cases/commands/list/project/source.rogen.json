@@ -9,7 +9,7 @@
 		"*": "ReplicatedStorage/shared"
 	},
 	"variants": {
-		"mock": false,
-		"dev": true
+		"dev": true,
+		"mock": false
 	}
 }

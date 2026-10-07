@@ -1,7 +1,8 @@
 {
 	"steps": [
 		["where"],
-		["where", "places/lobby/Lobby/Server/Queue.luau", "src/Inventory"]
+		["where", "places/lobby/Lobby/Server/Queue.luau", "src/Inventory", "README.md"],
+		["where", "places/lobby/Lobby/Server/Queue.luau", "--json"]
 	],
 	"rojo": false
 }

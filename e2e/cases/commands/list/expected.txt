@@ -7,7 +7,7 @@ stdout:
     root dirs: src
     sync dir: dist
     project file: default.project.json
-    variants: dev
+    variants: dev on, mock off
   lobby.rogen.json
     root dirs: core, places/lobby
     sync dir: (none)
@@ -17,5 +17,5 @@ stdout:
     root dirs: src
     sync dir: (none)
     project file: source.project.json
-    variants: dev
+    variants: dev on, mock off
   3 configs.

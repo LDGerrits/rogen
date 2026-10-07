@@ -191,16 +191,56 @@ describe("LocationReport", () => {
 			).toEqual(["a -> outside the root dirs"]);
 		});
 
+		const placed = (name: string, at: string): FileLocation => ({
+			status: "placed",
+			source: `/repo/${name}`,
+			instancePath: ["ReplicatedStorage", at],
+			route: "*",
+			routeMatch: "fallback",
+			variants: [],
+		});
+
 		it("should prefix each config's line when they differ", () => {
+			expect(
+				report([
+					["default", [placed("a", "A")]],
+					["lobby", [placed("a", "B")]],
+				]).lines()
+			).toEqual([
+				"default: a -> ReplicatedStorage/A · route * (fallback)",
+				"lobby: a -> ReplicatedStorage/B · route * (fallback)",
+			]);
+		});
+
+		it("should drop a config's outside answer when another config places the path, and head the rest", () => {
+			expect(
+				report([
+					["default", [outside("a")]],
+					["lobby", [placed("a", "A")]],
+				]).lines()
+			).toEqual(["lobby: a -> ReplicatedStorage/A · route * (fallback)"]);
+		});
+
+		it("should print a path every config places the same way once, unheaded, beside one only some place", () => {
+			expect(
+				report([
+					["default", [placed("a", "A"), outside("b")]],
+					["lobby", [placed("a", "A"), placed("b", "B")]],
+					["match", [placed("a", "A"), outside("b")]],
+				]).lines()
+			).toEqual([
+				"a -> ReplicatedStorage/A · route * (fallback)",
+				"lobby: b -> ReplicatedStorage/B · route * (fallback)",
+			]);
+		});
+
+		it("should count any answer but outside as placing a path", () => {
 			expect(
 				report([
 					["default", [outside("a")]],
 					["lobby", [missing("a")]],
 				]).lines()
-			).toEqual([
-				"default: a -> outside the root dirs",
-				"lobby: a -> does not exist",
-			]);
+			).toEqual(["lobby: a -> does not exist"]);
 		});
 
 		it("should prefix a line that only some configs have", () => {
@@ -377,6 +417,32 @@ describe("LocationReport", () => {
 					status: "placed",
 				}),
 				{ instance: "ServerScriptService.Gone", status: "noFile" },
+			]);
+		});
+
+		it("should keep a config's outside entry when another config places the path", () => {
+			const report = reportOf([
+				["default", [{ status: "outside", source: "/repo/a" }]],
+				[
+					"lobby",
+					[
+						{
+							status: "placed",
+							source: "/repo/a",
+							instancePath: ["ReplicatedStorage", "A"],
+							route: "*",
+							routeMatch: "fallback",
+							variants: [],
+						},
+					],
+				],
+			]);
+
+			expect(
+				report.json().map(({ config, status }) => [config, status])
+			).toEqual([
+				["default", "outside"],
+				["lobby", "placed"],
 			]);
 		});
 

@@ -67,7 +67,7 @@ describe("list command", () => {
 			});
 	});
 
-	it("should show a config's root dirs, sync dir, project file and active variants", async () => {
+	it("should show a config's root dirs, sync dir, project file and every variant with its state", async () => {
 		await write("default.rogen.json", {
 			rootDirs: ["src", "lobby"],
 			syncDir: "out",
@@ -83,12 +83,12 @@ describe("list command", () => {
 				"root dirs: src, lobby",
 				"sync dir: out",
 				"project file: default.project.json",
-				"variants: mock, prod",
+				"variants: mock on, dev off, prod on",
 			].join("\n"),
 		]);
 	});
 
-	it("should say so when there is no sync dir and no active variant", async () => {
+	it("should say so when there is no sync dir and no variant", async () => {
 		await write("default.rogen.json", {});
 
 		await run();
@@ -176,7 +176,7 @@ describe("list command", () => {
 		expect(steps()).toEqual(["places/lobby.rogen.json"]);
 	});
 
-	it("should show the variants that are on once variant flags are applied", async () => {
+	it("should show each variant's state once variant flags are applied", async () => {
 		await write("default.rogen.json", {
 			variants: { mock: true, dev: false },
 		});
@@ -184,7 +184,7 @@ describe("list command", () => {
 		await run({ variant: ["dev"], "no-variant": ["mock"] });
 
 		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("variants: dev"),
+			expect.stringContaining("variants: mock off, dev on"),
 		]);
 	});
 

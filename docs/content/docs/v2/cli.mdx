@@ -61,7 +61,14 @@ $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
-Unlike other commands, `where` takes paths, not config names, so it reads every config in the folder. When the configs place a file differently, each line starts with the config that gives it. It accepts `--variant`, `--no-variant` and `--json`.
+Unlike other commands, `where` takes paths, not config names, so it reads every config in the folder. A file every config places the same way prints one line. Otherwise each config's line starts with its name, and `outside the root dirs` is left out when another config places the file, so a place's file prints only the place's line:
+
+```
+$ rogen where places/lobby/Lobby/Server/Queue.luau
+lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+```
+
+`where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
 
 ### `init [name]`
 
@@ -73,7 +80,7 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 ### `list [config…]`
 
-Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and active variants. It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
 ### `help [command]`
 

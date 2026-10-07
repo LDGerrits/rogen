@@ -102,6 +102,15 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 	}
 }
 
+const isOutside = (answer: Answer): boolean =>
+	"location" in answer && answer.location.status === "outside";
+
+/** A path outside one config's root dirs is no news when another config places it. */
+function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
+	const inside = answers.filter((answer) => !isOutside(answer));
+	return inside.length > 0 ? inside : answers;
+}
+
 /** Where files land, one line per path however many configs answered. */
 export class LocationReport {
 	private readonly answers: Answer[];
@@ -139,9 +148,10 @@ export class LocationReport {
 		];
 	}
 
-	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Paths keep the order they were first given in, or are sorted. */
+	/** One line per path when every config agrees; otherwise each config's line, headed by its name. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
-		return this.bySource().flatMap((answers) => {
+		return this.bySource().flatMap((all) => {
+			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
 				answers.length === this.configs &&

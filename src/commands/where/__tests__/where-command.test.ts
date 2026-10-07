@@ -171,13 +171,15 @@ describe("where command", () => {
 			await write("src/Util.luau", "places/lobby/Queue.luau");
 		});
 
-		it("should print a line once when the configs agree and head each config's line when they differ", async () => {
-			await run({ _: ["src/Util.luau", "places/lobby/Queue.luau"] });
+		it("should print a line once when the configs agree, and only the placing config's line for a place's file", async () => {
+			await run({
+				_: ["src/Util.luau", "places/lobby/Queue.luau", "README.md"],
+			});
 
 			expect(printed()).toEqual([
 				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-				"default: places/lobby/Queue.luau -> outside the root dirs",
 				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
+				"README.md -> outside the root dirs",
 			]);
 		});
 
