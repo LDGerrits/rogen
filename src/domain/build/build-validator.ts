@@ -42,7 +42,7 @@ function renames(
 		);
 }
 
-/** Reports on a finished build and decides nothing. */
+/** Reports on a finished build. It works out what to say from what the phases hold, but never re-decides what they decided. */
 export class BuildValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;
