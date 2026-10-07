@@ -278,12 +278,14 @@ describe("where command", () => {
 					route: "Server",
 					routeMatch: "folder",
 					variants: [],
+					diagnostics: [],
 				},
 				{
 					config: "default",
 					source: "/repo/src/Net/Http.mock.luau",
 					status: "pruned",
 					variants: [{ variant: "mock", form: "suffix" }],
+					diagnostics: [],
 				},
 				{
 					config: "default",
@@ -293,6 +295,7 @@ describe("where command", () => {
 					route: "*",
 					routeMatch: "fallback",
 					variants: [],
+					diagnostics: [],
 				},
 			]);
 		});
@@ -315,6 +318,7 @@ describe("where command", () => {
 					config: "default",
 					instance: "ServerScriptService.Gone",
 					status: "noFile",
+					diagnostics: [],
 				},
 			]);
 		});

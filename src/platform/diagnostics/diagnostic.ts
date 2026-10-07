@@ -106,6 +106,11 @@ function stripDirectory(text: string, dir: string): string {
 	);
 }
 
+/** `message` with the paths under `cwd` written relative to it. */
+export function messageRelativeTo(message: string, cwd: string): string {
+	return stripDirectory(message, cwd);
+}
+
 /** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const { position, severity } = diagnostic;

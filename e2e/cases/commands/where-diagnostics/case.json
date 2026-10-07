@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["where", "src/Inventory/Save@sever.luau", "src/Shared/Server/Secret.server.luau", "src/Inventory/New@sever.luau", "src/Inventory/Clean.luau"],
+		["where", "src/Inventory/Save@sever.luau", "src/Shared/Server/Secret.server.luau", "src/Inventory/New@sever.luau", "src/Inventory/Clean.luau", "--json"]
+	],
+	"rojo": false
+}

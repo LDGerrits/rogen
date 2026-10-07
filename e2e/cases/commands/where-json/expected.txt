@@ -15,7 +15,8 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
@@ -28,7 +29,8 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
@@ -41,7 +43,8 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
@@ -52,7 +55,8 @@ stdout:
             "variant": "mock",
             "form": "suffix"
           }
-        ]
+        ],
+        "diagnostics": []
       },
       {
         "config": "default",
@@ -66,13 +70,23 @@ stdout:
         ],
         "route": "Client",
         "routeMatch": "suffix",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
         "source": "<dir>/src/Net/Types.lua",
         "status": "replaced",
-        "by": "<dir>/src/Net/Types.luau"
+        "by": "<dir>/src/Net/Types.luau",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Net/Types.lua",
+            "severity": "warning",
+            "code": "tree.instanceClash",
+            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place. Rename one of them to keep both.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#tree-instanceclash"
+          }
+        ]
       },
       {
         "config": "default",
@@ -86,13 +100,15 @@ stdout:
         ],
         "route": "*",
         "routeMatch": "fallback",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
         "source": "<dir>/src/Specs",
         "status": "excluded",
-        "pattern": "<dir>/src/Specs"
+        "pattern": "<dir>/src/Specs",
+        "diagnostics": []
       }
     ],
     "diagnostics": []
@@ -120,7 +136,8 @@ stdout:
             "variant": "mock",
             "form": "suffix"
           }
-        ]
+        ],
+        "diagnostics": []
       }
     ],
     "diagnostics": []
@@ -143,7 +160,8 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
@@ -156,12 +174,14 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       },
       {
         "config": "default",
         "instance": "ReplicatedStorage/Shared/Nope",
-        "status": "noFile"
+        "status": "noFile",
+        "diagnostics": []
       }
     ],
     "diagnostics": []

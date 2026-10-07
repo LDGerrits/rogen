@@ -19,7 +19,8 @@ stdout:
       {
         "config": "default",
         "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
-        "status": "outside"
+        "status": "outside",
+        "diagnostics": []
       },
       {
         "config": "lobby",
@@ -32,7 +33,8 @@ stdout:
         ],
         "route": "Server",
         "routeMatch": "folder",
-        "variants": []
+        "variants": [],
+        "diagnostics": []
       }
     ],
     "diagnostics": []

@@ -4,6 +4,7 @@ import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
+	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { LocationReport } from "../location-report.js";
 
@@ -13,6 +14,7 @@ const reportOf = (
 		label: string,
 		files: FileLocation[],
 		instances?: InstanceLocation[],
+		diagnostics?: Diagnostic[],
 	][],
 	everyFile = false,
 	errors: Diagnostic[] = []
@@ -20,12 +22,14 @@ const reportOf = (
 	new LocationReport("/repo", {
 		everyFile,
 		errors,
-		configs: configs.map(([label, files, instances = []]) => ({
-			config: mockConfig({ file: `/repo/${label}.rogen.json` }),
-			files,
-			instances,
-			diagnostics: [],
-		})),
+		configs: configs.map(
+			([label, files, instances = [], diagnostics = []]) => ({
+				config: mockConfig({ file: `/repo/${label}.rogen.json` }),
+				files,
+				instances,
+				diagnostics,
+			})
+		),
 	});
 
 const describe1 = (location: FileLocation) =>
@@ -304,6 +308,165 @@ describe("LocationReport", () => {
 		});
 	});
 
+	describe("diagnostics", () => {
+		const source = "/repo/src/Save@sever.luau";
+		const placed = (at: string): FileLocation => ({
+			status: "placed",
+			source: at,
+			instancePath: ["ReplicatedStorage", "Save"],
+			route: "*",
+			routeMatch: "fallback",
+			variants: [],
+		});
+		const strayAt = warningDiagnostic(
+			"route.strayAt",
+			{ resource: "/repo/default.rogen.json" },
+			'2 names have an "@" that routes nowhere:',
+			[
+				{
+					rename: {
+						from: source,
+						to: "/repo/src/Save@server.luau",
+					},
+				},
+				{
+					rename: {
+						from: "/repo/src/Other@sever.luau",
+						to: "/repo/src/Other@server.luau",
+					},
+				},
+			],
+			[
+				{ resource: source, message: 'did you mean "@server"?' },
+				{
+					resource: "/repo/src/Other@sever.luau",
+					message: 'did you mean "@server"?',
+				},
+			]
+		);
+		const own = warningDiagnostic(
+			"route.unrouted",
+			{ resource: "/repo/src/U.luau" },
+			"matched no route."
+		);
+
+		it("should print a line under the path for a grouped diagnostic's entry about it, with the code", () => {
+			const report = reportOf([
+				["default", [placed(source)], [], [strayAt]],
+			]);
+
+			expect(report.lines()).toEqual([
+				"src/Save@sever.luau -> ReplicatedStorage/Save · route * (fallback)",
+				'  warning: did you mean "@server"? (route.strayAt)',
+			]);
+		});
+
+		it("should print a path's own diagnostic and none about other paths or the config as a whole", () => {
+			const report = reportOf([
+				[
+					"default",
+					[
+						placed("/repo/src/U.luau"),
+						placed("/repo/src/Clean.luau"),
+					],
+					[],
+					[own, strayAt],
+				],
+			]);
+
+			expect(report.lines()).toEqual([
+				"src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"  warning: matched no route. (route.unrouted)",
+				"src/Clean.luau -> ReplicatedStorage/Save · route * (fallback)",
+			]);
+		});
+
+		it("should print an error as an error", () => {
+			const report = reportOf([
+				[
+					"default",
+					[placed("/repo/src/Combat/init.meta.json")],
+					[],
+					[
+						errorDiagnostic(
+							"meta.invalidSyntax",
+							{ resource: "/repo/src/Combat/init.meta.json" },
+							"invalid JSONC."
+						),
+					],
+				],
+			]);
+
+			expect(report.lines()[1]).toBe(
+				"  error: invalid JSONC. (meta.invalidSyntax)"
+			);
+		});
+
+		it("should print a diagnostic once when every config agrees and under each config when they differ", () => {
+			const agree = reportOf([
+				["default", [placed("/repo/src/U.luau")], [], [own]],
+				["lobby", [placed("/repo/src/U.luau")], [], [own]],
+			]);
+			const differ = reportOf([
+				["default", [placed("/repo/src/U.luau")], [], [own]],
+				["lobby", [placed("/repo/src/U.luau")]],
+			]);
+			const apart = reportOf([
+				["default", [placed("/repo/src/U.luau")], [], [own]],
+				[
+					"lobby",
+					[{ status: "unrouted", source: "/repo/src/U.luau" }],
+					[],
+					[own],
+				],
+			]);
+
+			expect(agree.lines()).toHaveLength(2);
+			expect(differ.lines()).toEqual([
+				"src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"  default: warning: matched no route. (route.unrouted)",
+			]);
+			expect(apart.lines()).toEqual([
+				"default: src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"  warning: matched no route. (route.unrouted)",
+				"lobby: src/U.luau -> unrouted · no route matches it",
+				"  warning: matched no route. (route.unrouted)",
+			]);
+		});
+
+		it("should narrow a grouped diagnostic to the path in json: its entry's message and its own fixes", () => {
+			const [entry] = reportOf([
+				["default", [placed(source)], [], [strayAt]],
+			]).json().locations;
+
+			expect(entry.diagnostics).toEqual([
+				{
+					file: source,
+					severity: "warning",
+					code: "route.strayAt",
+					message: 'did you mean "@server"?',
+					url: expect.stringContaining("#route-strayat"),
+					fixes: [
+						{
+							rename: {
+								from: source,
+								to: "/repo/src/Save@server.luau",
+							},
+						},
+					],
+				},
+			]);
+		});
+
+		it("should give a clean path an empty list", () => {
+			const [entry] = reportOf([
+				["default", [placed("/repo/src/Clean.luau")], [], [strayAt]],
+			]).json().locations;
+
+			expect(entry.diagnostics).toEqual([]);
+		});
+	});
+
 	describe("json", () => {
 		const jsonOf = (location: FileLocation) => {
 			return reportOf([["default", [location]]]).json().locations;
@@ -357,6 +520,7 @@ describe("LocationReport", () => {
 					route: "Client",
 					routeMatch: "suffix",
 					variants: [{ variant: "mock", form: "suffix" }],
+					diagnostics: [],
 				},
 			]);
 		});
@@ -423,6 +587,7 @@ describe("LocationReport", () => {
 					source: location.source,
 					status: location.status,
 					...fields,
+					diagnostics: [],
 				},
 			]);
 		});
@@ -466,7 +631,11 @@ describe("LocationReport", () => {
 					source: "/repo/src/Save.luau",
 					status: "placed",
 				}),
-				{ instance: "ServerScriptService.Gone", status: "noFile" },
+				{
+					instance: "ServerScriptService.Gone",
+					status: "noFile",
+					diagnostics: [],
+				},
 			]);
 		});
 

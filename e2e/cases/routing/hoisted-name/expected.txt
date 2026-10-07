@@ -28,7 +28,8 @@ stdout:
         "route": "character",
         "routeMatch": "marker",
         "variants": [],
-        "hoisted": true
+        "hoisted": true,
+        "diagnostics": []
       }
     ],
     "diagnostics": []

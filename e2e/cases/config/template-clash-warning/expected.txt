@@ -18,6 +18,7 @@ exit 0
 stdout:
   src/Load.server.luau -> ServerScriptService/Load · route server (suffix)
   src/Save.server.luau -> displaced · the template defines ServerScriptService/Save
+    warning: the template defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both. (tree.templateClash)
 
 written:
   default.project.json

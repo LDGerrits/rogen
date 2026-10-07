@@ -22,7 +22,7 @@ registerCommand(
 				id: "where",
 				metadata: {
 					description:
-						"Prints where each file lands in the game, and why.",
+						"Prints where each file lands in the game, and why, with its warnings.",
 					args: [
 						{
 							name: "path",

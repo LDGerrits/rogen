@@ -10,13 +10,47 @@ import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
 	DiagnosticJson,
+	DiagnosticSeverity,
 	diagnosticToJson,
+	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
 
-/** What one config says: where a path lands, or that no file places an instance. */
+/** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
 type Answer =
-	| { readonly label: string; readonly location: FileLocation }
+	| {
+			readonly label: string;
+			readonly location: FileLocation;
+			readonly diagnostics: readonly Diagnostic[];
+	  }
 	| { readonly label: string; readonly instance: string };
+
+/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+function aboutPath(
+	diagnostics: readonly Diagnostic[],
+	source: string
+): Diagnostic[] {
+	const target = toPosix(source);
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		const entries = (related ?? []).filter(
+			({ resource }) => toPosix(resource) === target
+		);
+		if (entries.length > 0)
+			return entries.map(({ message }) => ({
+				...rest,
+				resource: source,
+				position: undefined,
+				message,
+				fixes: diagnostic.fixes?.filter(
+					({ rename }) => toPosix(rename.from) === target
+				),
+			}));
+		// A group is about its related files; its own resource is the config.
+		return !related?.length && toPosix(diagnostic.resource) === target
+			? [rest]
+			: [];
+	});
+}
 
 const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
@@ -142,11 +176,13 @@ export class LocationReport {
 		config,
 		files: locations,
 		instances,
+		diagnostics,
 	}: ConfigLocations): Answer[] {
 		const { label } = config;
 		const answer = (location: FileLocation): Answer => ({
 			label,
 			location,
+			diagnostics: aboutPath(diagnostics, location.source),
 		});
 		return [
 			...locations.map(answer),
@@ -158,7 +194,7 @@ export class LocationReport {
 		];
 	}
 
-	/** One line per path when every config agrees; otherwise each config's line, headed by its name. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
+	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Under each, a line for every diagnostic a build raises about the path. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
 		return this.bySource().flatMap((all) => {
 			const answers = withoutOutside(all);
@@ -166,11 +202,12 @@ export class LocationReport {
 			const agreed =
 				answers.length === this.configs &&
 				lines.every((line) => line === lines[0]);
-			return agreed || this.configs === 1
-				? [lines[0]]
-				: answers.map(
-						({ label }, index) => `${label}: ${lines[index]}`
-					);
+			if (agreed || this.configs === 1)
+				return [lines[0], ...this.sharedNotes(answers)];
+			return answers.flatMap((answer, index) => [
+				`${answer.label}: ${lines[index]}`,
+				...this.noted(answer),
+			]);
 		});
 	}
 
@@ -188,8 +225,14 @@ export class LocationReport {
 							source: toNative(answer.location.source),
 							status: answer.location.status,
 							...locationFields(answer.location),
+							diagnostics:
+								answer.diagnostics.map(diagnosticToJson),
 						}
-					: { instance: answer.instance, status: "noFile" }),
+					: {
+							instance: answer.instance,
+							status: "noFile",
+							diagnostics: [],
+						}),
 			}));
 		return {
 			locations,
@@ -202,6 +245,31 @@ export class LocationReport {
 		const sources = [...bySource.keys()];
 		if (this.sorted) sources.sort();
 		return sources.map((source) => bySource.get(source) ?? []);
+	}
+
+	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */
+	private noted(answer: Answer): string[] {
+		if (!("location" in answer)) return [];
+		return answer.diagnostics.map(
+			({ severity, message, code }) =>
+				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageRelativeTo(message, this.cwd)} (${code})`
+		);
+	}
+
+	/** The notes every answer has once, then the ones only some have, headed by their config. */
+	private sharedNotes(answers: readonly Answer[]): string[] {
+		const notes = answers.map((answer) => this.noted(answer));
+		const shared = notes[0].filter((note) =>
+			notes.every((own) => own.includes(note))
+		);
+		return [
+			...new Set(shared),
+			...answers.flatMap(({ label }, index) =>
+				notes[index]
+					.filter((note) => !shared.includes(note))
+					.map((note) => `  ${label}: ${note.trimStart()}`)
+			),
+		];
 	}
 
 	private describe(answer: Answer): string {
