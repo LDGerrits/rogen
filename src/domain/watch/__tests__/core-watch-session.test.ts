@@ -124,7 +124,9 @@ describe("CoreWatchSession", () => {
 				},
 			},
 		]);
-		expect(updates[0].reports[0].build.summary?.roots[0].files).toBe(1);
+		expect(updates[0].reports[0].build).toMatchObject({
+			summary: { roots: [{ files: 1 }] },
+		});
 		expect(await fs.exists("/repo/default.project.json")).toBe(true);
 	});
 
@@ -198,9 +200,9 @@ describe("CoreWatchSession", () => {
 		expect(updates.at(-1)?.reports[0].build.warnings).toMatchObject([
 			{ code: "scan.unresolvedLink" },
 		]);
-		expect(updates.at(-1)?.reports[0].build.summary?.roots[0].files).toBe(
-			1
-		);
+		expect(updates.at(-1)?.reports[0].build).toMatchObject({
+			summary: { roots: [{ files: 1 }] },
+		});
 	});
 
 	it("should report a diagnostic once while it persists, and again after it went away", async () => {
@@ -367,10 +369,10 @@ describe("CoreWatchSession", () => {
 				"/repo/default.rogen.json",
 				"/repo/lobby.rogen.json",
 			]) {
-				expect(reports[file].outcome).toBe("failed");
-				expect(reports[file].errors).toMatchObject([
-					{ code: "output.sameOutFile" },
-				]);
+				expect(reports[file]).toMatchObject({
+					outcome: "failed",
+					errors: [{ code: "output.sameOutFile" }],
+				});
 			}
 			expect(await fs.readFile("/repo/default.project.json")).toBe(
 				before

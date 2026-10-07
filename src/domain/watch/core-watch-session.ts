@@ -52,12 +52,12 @@ class WatchedConfig {
 			build.diagnostics
 		);
 		this.latest = build;
-		if (build.readFiles) this.readFiles = new Set(build.readFiles);
+		if (build.outcome !== "failed") this.readFiles = new Set(build.readFiles);
 		return {
 			build,
 			unreported,
 			repeatedFailure:
-				build.errors.length > 0 && !unreported.some(isError),
+				build.outcome === "failed" && !unreported.some(isError),
 		};
 	}
 }

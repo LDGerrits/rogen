@@ -64,7 +64,9 @@ registerCommand(
 			const builds = await buildService.build(selection.value);
 			if (builds.isErr()) return builds;
 
-			const errors = builds.value.flatMap((build) => build.errors);
+			const errors = builds.value.flatMap((build) =>
+				build.outcome === "failed" ? build.errors : []
+			);
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors)
 				: this.report(new BuildLog(logService, cwd), builds.value, errors);
