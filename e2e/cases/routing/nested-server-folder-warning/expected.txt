@@ -5,10 +5,9 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.rogen.json - warning: 2 files under a "server" route ship to clients, because "shared" governs them:
-    src/Shared/Net/Save@server.luau -> ReplicatedStorage/shared/Net/Save@server
+  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "shared" governs it:
     src/Shared/Server/Datastore.luau -> ReplicatedStorage/shared/Server/Datastore
-  Move them out of the "shared" route's files if they're server code.
+  Move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder.
 
 written:
   default.project.json
@@ -17,10 +16,14 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Net: Folder
-        Save@server: ModuleScript  <- src/Shared/Net/Save@server.luau
+      Admin: Folder
+        Server: Folder
+          Ban: ModuleScript  <- src/Shared/Admin/Server/Ban.luau
+          Deep: Folder
+            Log: ModuleScript  <- src/Shared/Admin/Server/Deep/Log.luau
       Server: Folder
         Datastore: ModuleScript  <- src/Shared/Server/Datastore.luau
+        Secret: ModuleScript  <- src/Shared/Server/Secret@shared.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       client: Folder
