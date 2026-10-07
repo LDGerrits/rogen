@@ -12,6 +12,23 @@ import { LogService } from "../../platform/log/log-service.js";
 /** How many warnings of one code a config prints before the rest are counted. */
 const LISTED_PER_CODE = 10;
 
+/** A grouped diagnostic lists each related file on a line of its message after the first; this keeps ten and counts the rest. */
+function withListCapped(diagnostic: Diagnostic): Diagnostic {
+	const count = diagnostic.related?.length ?? 0;
+	if (count <= LISTED_PER_CODE) return diagnostic;
+	const [headline, ...lines] = diagnostic.message.split("\n");
+	const unlisted = count - LISTED_PER_CODE;
+	return {
+		...diagnostic,
+		message: [
+			headline,
+			...lines.slice(0, LISTED_PER_CODE),
+			`  ${unlisted} more like it aren't listed.`,
+			...lines.slice(count),
+		].join("\n"),
+	};
+}
+
 /** At most `LISTED_PER_CODE` warnings of one code; the last one printed says how many more there were. Errors always print, since the build stops on them. */
 function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	const totals = new Map<string, number>();
@@ -23,7 +40,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	const seen = new Map<string, number>();
 	return diagnostics.flatMap((diagnostic) => {
 		if (diagnostic.severity !== DiagnosticSeverity.Warning)
-			return [diagnostic];
+			return [withListCapped(diagnostic)];
 		const { code } = diagnostic;
 		const position = (seen.get(code) ?? 0) + 1;
 		seen.set(code, position);
@@ -36,7 +53,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 						message: `${diagnostic.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
 					},
 				]
-			: [diagnostic];
+			: [withListCapped(diagnostic)];
 	});
 }
 

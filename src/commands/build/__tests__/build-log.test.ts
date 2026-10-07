@@ -399,6 +399,32 @@ describe("BuildLog.diagnostics", () => {
 		expect(printed(warnings(10))[9]).not.toContain("more like it");
 	});
 
+	it("should print ten of the related files a grouped warning lists, then count the rest", () => {
+		const related = Array.from({ length: 12 }, (_, n) => ({
+			resource: `/repo/src/F${n}`,
+			message: "hint",
+		}));
+		const grouped = warningDiagnostic(
+			"route.strayAt",
+			{ resource: "/repo/default.rogen.json" },
+			[
+				"12 names:",
+				...related.map(({ resource }) => `  ${resource} (hint)`),
+				"Fix them.",
+			].join("\n"),
+			[],
+			related
+		);
+
+		const [text] = printed([grouped]);
+
+		const lines = text.split("\n");
+		expect(lines).toHaveLength(13);
+		expect(lines[10]).toContain("/repo/src/F9 (hint)");
+		expect(lines[11]).toBe("  2 more like it aren't listed.");
+		expect(lines[12]).toBe("Fix them.");
+	});
+
 	it("should cap each code on its own and never an error", () => {
 		const errors = Array.from({ length: 12 }, (_, n) =>
 			errorDiagnostic("x.err", { resource: `/repo/e${n}` }, "boom.")

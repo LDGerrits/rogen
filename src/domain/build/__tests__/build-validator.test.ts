@@ -256,7 +256,7 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
-			it("should list the first few and count the rest", async () => {
+			it("should list every name in related and the message", async () => {
 				await write(
 					...Array.from(
 						{ length: 12 },
@@ -267,7 +267,12 @@ describe("BuildValidator rules", () => {
 				const [warning] = await strayWarnings();
 
 				expect(warning.message).toContain("12 names have");
-				expect(warning.message).toContain("2 more like it");
+				expect(warning.message).not.toContain("more like it");
+				expect(warning.related).toHaveLength(12);
+				expect(warning.related?.[0]).toEqual({
+					resource: at("src/Save0@sever.luau"),
+					message: 'did you mean "@server"?',
+				});
 			});
 
 			it("should not warn for a route that restates the outer one", async () => {
@@ -477,7 +482,7 @@ describe("BuildValidator rules", () => {
 				expect(await dead({ variants: { mock: false } })).toEqual([]);
 			});
 
-			it("should list the first few and count the rest", async () => {
+			it("should name every script in related, and list them all", async () => {
 				await write(
 					...Array.from(
 						{ length: 12 },
@@ -485,7 +490,14 @@ describe("BuildValidator rules", () => {
 					)
 				);
 
-				expect((await dead())[0].message).toContain("2 more like it");
+				const [warning] = await dead();
+
+				expect(warning.message).not.toContain("more like it");
+				expect(warning.related).toHaveLength(12);
+				expect(warning.related?.[0]).toEqual({
+					resource: at("src/shared/Save0.server.luau"),
+					message: "a Script never runs in ReplicatedStorage",
+				});
 			});
 		});
 
@@ -1027,7 +1039,7 @@ describe("BuildValidator rules", () => {
 				expect(await shipped()).toEqual([]);
 			});
 
-			it("should list the first few files and count the rest", async () => {
+			it("should name every file in related, and list them all", async () => {
 				await write(
 					...Array.from(
 						{ length: 12 },
@@ -1039,7 +1051,8 @@ describe("BuildValidator rules", () => {
 				const [warning] = await shipped();
 
 				expect(warning.message).toContain("12 files");
-				expect(warning.message).toContain("2 more like it");
+				expect(warning.message).not.toContain("more like it");
+				expect(warning.related).toHaveLength(12);
 			});
 
 			it("should not warn about a file a dormant variant prunes", async () => {

@@ -136,12 +136,10 @@ export class BuildValidator {
 			"strayAt",
 			(count) =>
 				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
-			(resource, { text, suggestion, notLast }) => {
-				const hint = notLast
+			(_, { text, suggestion, notLast }) =>
+				notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
-					: `did you mean "${suggestion}"?`;
-				return `${resource} (${hint})`;
-			}
+					: `did you mean "${suggestion}"?`
 		);
 	}
 
@@ -153,7 +151,7 @@ export class BuildValidator {
 			(count) =>
 				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
 			(resource, { renamedTo }) =>
-				`${resource} (write "${path.posix.basename(renamedTo ?? resource)}")`
+				`write "${path.posix.basename(renamedTo ?? resource)}"`
 		);
 	}
 
@@ -164,8 +162,8 @@ export class BuildValidator {
 			"variantTypo",
 			(count) =>
 				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-			(resource, { text, variant }) =>
-				`${resource} (did you mean ".${variant}" for ".${text}"?)`
+			(_, { text, variant }) =>
+				`did you mean ".${variant}" for ".${text}"?`
 		);
 	}
 
@@ -174,21 +172,26 @@ export class BuildValidator {
 		code: string,
 		kind: K,
 		headline: (count: number) => string,
-		line: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
+		hint: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
 	): Diagnostic[] {
 		const noted = this.placement.readings.misspelt(kind);
 		if (noted.size === 0) return [];
+		const items = [...noted].map(([resource, misspelt]) => ({
+			resource,
+			message: hint(resource, misspelt),
+		}));
 		return [
 			warningDiagnostic(
 				code,
 				{ resource: this.config.file },
 				[
 					headline(noted.size),
-					...this.listed([...noted], ([resource, misspelt]) =>
-						line(resource, misspelt)
+					...items.map(
+						({ resource, message }) => `  ${resource} (${message})`
 					),
 				].join("\n"),
-				renames(noted)
+				renames(noted),
+				items
 			),
 		];
 	}
@@ -308,10 +311,13 @@ export class BuildValidator {
 		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
 		const routeKeys = [...new Set(shipped.map(({ file }) => file.route))];
 		const governing = quoted(routeKeys);
-		const listed = this.listed(
-			shipped,
+		const related = shipped.map(({ file }) => ({
+			resource: file.entry.source,
+			message: `ships to clients as ${instanceKey(file.instancePath)}`,
+		}));
+		const listed = shipped.map(
 			({ file }) =>
-				`${file.entry.source} -> ${instanceKey(file.instancePath)}`
+				`  ${file.entry.source} -> ${instanceKey(file.instancePath)}`
 		);
 		const many = shipped.length > 1;
 		const marker =
@@ -326,7 +332,9 @@ export class BuildValidator {
 					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
 					...listed,
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
-				].join("\n")
+				].join("\n"),
+				[],
+				related
 			),
 		];
 	}
@@ -342,10 +350,13 @@ export class BuildValidator {
 		});
 		if (dead.length === 0) return [];
 
-		const listed = this.listed(
-			dead,
+		const related = dead.map(({ file, run }) => ({
+			resource: file.entry.source,
+			message: `${BuildValidator.describeRun(run)} never runs in ${file.instancePath[0]}`,
+		}));
+		const listed = dead.map(
 			({ file, run }) =>
-				`${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
+				`  ${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
 		);
 		const many = dead.length > 1;
 		return [
@@ -356,7 +367,9 @@ export class BuildValidator {
 					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
 					...listed,
 					WHERE_SCRIPTS_RUN,
-				].join("\n")
+				].join("\n"),
+				[],
+				related
 			),
 		];
 	}

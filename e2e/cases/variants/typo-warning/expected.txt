@@ -27,6 +27,20 @@ stdout:
             "code": "variant.typo",
             "message": "3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:\n  <dir>/src/Experimental/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\" for \".mok\"?)",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
+            "related": [
+              {
+                "file": "<dir>/src/Experimental/.mok",
+                "message": "did you mean \".mock\" for \".mok\"?"
+              },
+              {
+                "file": "<dir>/src/.mok",
+                "message": "did you mean \".mock\" for \".mok\"?"
+              },
+              {
+                "file": "<dir>/src/Analytics.mok.luau",
+                "message": "did you mean \".mock\" for \".mok\"?"
+              }
+            ],
             "fixes": [
               {
                 "rename": {

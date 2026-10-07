@@ -148,6 +148,16 @@ A warning whose fix is one rename also has `fixes`, a rename for every name it c
 
 Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (the name every command takes: `lobby` for `lobby.rogen.json`) and `file` (its absolute path). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
 
+A warning about several files, such as `route.strayAt` or `tree.deadScript`, is filed under the config and lists every file it is about in `related`, each with what it says about that file. The list is complete, while the text output stops at ten lines.
+
+```json
+"related": [
+	{ "file": "/repo/src/Inventory/Save@sever.luau", "message": "did you mean \"@server\"?" }
+]
+```
+
+A diagnostic is about a file when its `file` is that file or `related[].file` includes it. A program that wants every warning about the files it just changed filters on that, instead of reading `message`.
+
 If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
 
 ### `build --json`

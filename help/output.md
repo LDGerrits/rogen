@@ -14,7 +14,7 @@ Plain lines (in pipes, CI and under an agent) put results on stdout and warnings
 
 An entry that is a config has `config` (the name every command takes, `lobby` for `lobby.rogen.json`) and `file` (its absolute path); an entry that belongs to a config has `config`. Identity comes first and `diagnostics` last.
 
-Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file.
+Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file. A warning about several files has `related`: `[{ "file", "message" }]`, one for every file, uncapped (the text stops at ten). A diagnostic is about a file when its `file` is that file or `related[].file` includes it.
 
 `rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build.
 

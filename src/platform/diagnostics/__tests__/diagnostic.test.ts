@@ -158,6 +158,33 @@ describe("platform/diagnostics/diagnostic", () => {
 			).not.toHaveProperty("fixes");
 		});
 
+		it("should give each related file as a native path with its message, and leave related out when there is none", () => {
+			const grouped = warningDiagnostic(
+				"test.example",
+				{ resource: "/repo/default.rogen.json" },
+				"1 name:",
+				[],
+				[
+					{
+						resource: "/repo/src/A@sever.luau",
+						message: "did you mean?",
+					},
+				]
+			);
+
+			expect(diagnosticToJson(grouped).related).toEqual([
+				{
+					file: path.normalize("/repo/src/A@sever.luau"),
+					message: "did you mean?",
+				},
+			]);
+			expect(
+				diagnosticToJson(
+					warningDiagnostic("test.example", { resource: "/repo" }, "")
+				)
+			).not.toHaveProperty("related");
+		});
+
 		it("should leave fixes out of the rendered line", () => {
 			const fixed = warningDiagnostic(
 				"test.example",
