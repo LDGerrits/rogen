@@ -8,6 +8,7 @@ export class BuildReport {
 
 	add(build: ConfigBuild): void {
 		this.configs.push({
+			config: build.config.label,
 			file: toNative(build.config.file),
 			outFile: toNative(build.config.outFile),
 			outcome: build.documentOutcome,

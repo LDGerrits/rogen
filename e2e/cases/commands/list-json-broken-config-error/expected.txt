@@ -2,18 +2,23 @@ $ rogen list --json
 exit 1
 stdout:
   {
-    "<dir>/default.rogen.json": {
-      "extends": [],
-      "diagnostics": [
-        {
-          "file": "<dir>/default.rogen.json",
-          "line": 2,
-          "column": 2,
-          "severity": "error",
-          "code": "config.unknownField",
-          "message": "unknown field \"bogus\".",
-          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
-        }
-      ]
-    }
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "status": "broken",
+        "extends": [],
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "line": 2,
+            "column": 2,
+            "severity": "error",
+            "code": "config.unknownField",
+            "message": "unknown field \"bogus\".",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
+          }
+        ]
+      }
+    ]
   }

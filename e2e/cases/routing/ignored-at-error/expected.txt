@@ -18,6 +18,7 @@ stdout:
   {
     "configs": [
       {
+        "config": "default",
         "file": "<dir>/default.rogen.json",
         "outFile": "<dir>/default.project.json",
         "outcome": "notWritten",

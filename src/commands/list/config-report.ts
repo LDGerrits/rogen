@@ -1,5 +1,5 @@
 import { relativeTo, toNative } from "../../base/path.js";
-import { ResolvedConfig } from "../../domain/config/config.js";
+import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -13,7 +13,7 @@ const variantStates = ({ variants }: ResolvedConfig): string[] =>
 		([variant, on]) => `${variant} ${on ? "on" : "off"}`
 	);
 
-/** The configs a run read: as lines relative to the working dir, or as one JSON document keyed by config file. */
+/** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ConfigReport {
 	constructor(private readonly entries: readonly ConfigEntry[]) {}
 
@@ -45,27 +45,27 @@ export class ConfigReport {
 	}
 
 	json(): Record<string, unknown> {
-		return Object.fromEntries(
-			this.entries.map((entry) => [
-				toNative(entry.file),
-				{
-					extends: entry.parents.map((file) => toNative(file)),
-					...(entry.status === "valid"
-						? describeConfig(entry.config)
-						: {}),
-					diagnostics:
-						entry.status === "broken"
-							? entry.errors.map(diagnosticToJson)
-							: [],
-				},
-			])
-		);
+		return {
+			configs: this.entries.map((entry) => ({
+				config: configLabel(entry.file),
+				file: toNative(entry.file),
+				status: entry.status,
+				extends: entry.parents.map((file) => toNative(file)),
+				...(entry.status === "valid"
+					? describeConfig(entry.config)
+					: {}),
+				diagnostics:
+					entry.status === "broken"
+						? entry.errors.map(diagnosticToJson)
+						: [],
+			})),
+		};
 	}
 }
 
 function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 	return {
-		name: config.name,
+		projectName: config.name,
 		rootDirs: config.rootDirs.map((file) => toNative(file)),
 		commonRoot: config.commonRoot ? toNative(config.commonRoot) : null,
 		routes: Object.fromEntries(

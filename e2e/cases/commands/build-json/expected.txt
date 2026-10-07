@@ -4,12 +4,14 @@ stdout:
   {
     "configs": [
       {
+        "config": "lobby",
         "file": "<dir>/lobby.rogen.json",
         "outFile": "<dir>/lobby.project.json",
         "outcome": "wrote",
         "diagnostics": []
       },
       {
+        "config": "match",
         "file": "<dir>/match.rogen.json",
         "outFile": "<dir>/match.project.json",
         "outcome": "wrote",

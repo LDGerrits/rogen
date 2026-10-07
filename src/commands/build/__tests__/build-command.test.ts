@@ -403,6 +403,7 @@ describe("build command", () => {
 			expect(document).toEqual({
 				configs: [
 					{
+						config: "default",
 						file: "/repo/default.rogen.json",
 						outFile: "/repo/default.project.json",
 						outcome: "wrote",

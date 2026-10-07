@@ -299,7 +299,7 @@ describe("LocationReport", () => {
 
 	describe("json", () => {
 		const jsonOf = (location: FileLocation) => {
-			return reportOf([["default", [location]]]).json();
+			return reportOf([["default", [location]]]).json().locations;
 		};
 
 		it("should give the config, the source, the instance path, the route and how it matched", () => {
@@ -430,7 +430,9 @@ describe("LocationReport", () => {
 			]);
 
 			expect(
-				report.json().map(({ config: _config, ...rest }) => rest)
+				report
+					.json()
+					.locations.map(({ config: _config, ...rest }) => rest)
 			).toEqual([
 				expect.objectContaining({
 					source: "/repo/src/Save.luau",
@@ -459,7 +461,9 @@ describe("LocationReport", () => {
 			]);
 
 			expect(
-				report.json().map(({ config, status }) => [config, status])
+				report
+					.json()
+					.locations.map(({ config, status }) => [config, status])
 			).toEqual([
 				["default", "outside"],
 				["lobby", "placed"],
@@ -474,10 +478,9 @@ describe("LocationReport", () => {
 				])
 			);
 
-			expect(report.json().map(({ config }) => config)).toEqual([
-				"default",
-				"lobby",
-			]);
+			expect(report.json().locations.map(({ config }) => config)).toEqual(
+				["default", "lobby"]
+			);
 		});
 
 		it("should sort the sources when every file was asked about, and keep the order given otherwise", () => {
@@ -489,12 +492,12 @@ describe("LocationReport", () => {
 			expect(
 				reportOf([["default", files]])
 					.json()
-					.map(({ source }) => source)
+					.locations.map(({ source }) => source)
 			).toEqual(["/repo/b", "/repo/a"]);
 			expect(
 				reportOf([["default", files]], true)
 					.json()
-					.map(({ source }) => source)
+					.locations.map(({ source }) => source)
 			).toEqual(["/repo/a", "/repo/b"]);
 		});
 	});

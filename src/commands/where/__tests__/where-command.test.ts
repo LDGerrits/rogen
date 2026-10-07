@@ -225,7 +225,11 @@ describe("where command", () => {
 
 	describe("with --json", () => {
 		const document = () =>
-			JSON.parse(printed().join("\n")) as Record<string, unknown>[];
+			(
+				JSON.parse(printed().join("\n")) as {
+					locations: Record<string, unknown>[];
+				}
+			).locations;
 
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
@@ -308,7 +312,7 @@ describe("where command", () => {
 			).toEqual([]);
 		});
 
-		it("should print an empty array when nothing is placed", async () => {
+		it("should print an empty list when nothing is placed", async () => {
 			await fs.delete("/repo/src/Inventory/Server/Save.luau");
 			await fs.delete("/repo/src/Net/Http.mock.luau");
 

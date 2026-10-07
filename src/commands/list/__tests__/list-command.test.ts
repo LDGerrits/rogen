@@ -195,9 +195,12 @@ describe("list command", () => {
 					.filter(({ kind }) => kind === "print")
 					.map(({ text }) => text)
 					.join("\n")
-			) as Record<string, Record<string, unknown>>;
+			) as { configs: Record<string, unknown>[] };
 
-		it("should print each config's resolved fields, keyed by its file", async () => {
+		const entry = (config: string) =>
+			document().configs.find((candidate) => candidate.config === config);
+
+		it("should print each config's resolved fields, identity first", async () => {
 			await write("base.rogen.json", {
 				routes: { Server: "ServerScriptService" },
 			});
@@ -214,22 +217,27 @@ describe("list command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({
-				"/repo/default.rogen.json": {
-					extends: ["/repo/base.rogen.json"],
-					name: "repo",
-					rootDirs: ["/repo/src", "/repo/lobby"],
-					commonRoot: "/repo",
-					routes: {
-						Server: "ServerScriptService",
-						"*": "ReplicatedStorage/Shared",
+				configs: [
+					{
+						config: "default",
+						file: "/repo/default.rogen.json",
+						status: "valid",
+						extends: ["/repo/base.rogen.json"],
+						projectName: "repo",
+						rootDirs: ["/repo/src", "/repo/lobby"],
+						commonRoot: "/repo",
+						routes: {
+							Server: "ServerScriptService",
+							"*": "ReplicatedStorage/Shared",
+						},
+						variants: { mock: true },
+						exclude: ["/repo/**/*.spec.luau"],
+						template: null,
+						syncDir: "/repo/out",
+						outFile: "/repo/default.project.json",
+						diagnostics: [],
 					},
-					variants: { mock: true },
-					exclude: ["/repo/**/*.spec.luau"],
-					template: null,
-					syncDir: "/repo/out",
-					outFile: "/repo/default.project.json",
-					diagnostics: [],
-				},
+				],
 			});
 		});
 
@@ -239,9 +247,9 @@ describe("list command", () => {
 
 			await run({ json: true });
 
-			expect(Object.keys(document())).toEqual([
-				"/repo/default.rogen.json",
-				"/repo/lobby.rogen.json",
+			expect(document().configs.map(({ config }) => config)).toEqual([
+				"default",
+				"lobby",
 			]);
 		});
 
@@ -250,7 +258,7 @@ describe("list command", () => {
 
 			await run({ json: true, variant: ["mock"] });
 
-			expect(document()["/repo/default.rogen.json"].variants).toEqual({
+			expect(entry("default")?.variants).toEqual({
 				mock: true,
 			});
 		});
@@ -261,8 +269,12 @@ describe("list command", () => {
 
 			const result = await run({ json: true });
 
-			expect(document()["/repo/a.rogen.json"]).toHaveProperty("rootDirs");
-			expect(document()["/repo/b.rogen.json"]).toEqual({
+			expect(entry("a")).toMatchObject({ status: "valid" });
+			expect(entry("a")).toHaveProperty("rootDirs");
+			expect(entry("b")).toEqual({
+				config: "b",
+				file: "/repo/b.rogen.json",
+				status: "broken",
 				extends: [],
 				diagnostics: [
 					expect.objectContaining({

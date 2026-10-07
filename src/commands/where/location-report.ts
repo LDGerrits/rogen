@@ -166,9 +166,9 @@ export class LocationReport {
 		});
 	}
 
-	/** One entry per config and path, in the order `lines` puts the paths. */
-	json(): Record<string, unknown>[] {
-		return this.bySource()
+	/** One entry per config and path, in the order `lines` puts the paths, under `locations`. */
+	json(): { locations: Record<string, unknown>[] } {
+		const locations = this.bySource()
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
@@ -180,6 +180,7 @@ export class LocationReport {
 						}
 					: { instance: answer.instance, status: "noFile" }),
 			}));
+		return { locations };
 	}
 
 	private bySource(): Answer[][] {
