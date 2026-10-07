@@ -65,6 +65,18 @@ function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 	});
 }
 
+function within<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<never>((_, reject) =>
+			setTimeout(
+				() => reject(new Error("Timed out waiting for promise.")),
+				timeoutMs
+			).unref()
+		),
+	]);
+}
+
 describe.each(fixtures)("%s: contract", (_name, create) => {
 	let fixture: Fixture;
 	let store: DisposableStore;
@@ -111,6 +123,33 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			changed.includes(toPosix(at("default.rogen.json")))
 		);
 		expect(changed).not.toContain(toPosix(at("other.rogen.json")));
+	});
+
+	it("should finish a watch that is stopped before it is ready", async () => {
+		await fixture.write(at("src/a.luau"));
+
+		const watching = fixture.watcher.watch([at("src")]);
+		await new Promise((resolve) => setImmediate(resolve));
+		const stopping = fixture.watcher.stop();
+
+		await expect(
+			within(Promise.all([watching, stopping]))
+		).resolves.toBeDefined();
+	});
+
+	it("should report only the latest of two overlapping watches", async () => {
+		await fixture.write(at("old/a.luau"));
+		await fixture.write(at("new/a.luau"));
+
+		await Promise.all([
+			fixture.watcher.watch([at("old")]),
+			fixture.watcher.watch([at("new")]),
+		]);
+		await fixture.write(at("old/b.luau"));
+		await fixture.write(at("new/b.luau"));
+
+		await waitFor(() => changed.includes(toPosix(at("new/b.luau"))));
+		expect(changed).not.toContain(toPosix(at("old/b.luau")));
 	});
 
 	it("should report nothing it was told to ignore", async () => {

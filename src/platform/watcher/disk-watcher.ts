@@ -17,8 +17,6 @@ export class DiskWatcher extends AbstractWatcher {
 		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
-		await this.stop();
-
 		const ignored = options.ignored ?? [];
 
 		this.watcher = chokidar.watch([...paths], {
@@ -90,7 +88,7 @@ export class DiskWatcher extends AbstractWatcher {
 		this.fireChange({ type, path: toPosix(rawPath), fileType });
 	}
 
-	async stop(): Promise<void> {
+	protected async stopWatching(): Promise<void> {
 		this.ready = false;
 		this.unfollowed = new Set();
 		if (this.watcher) {

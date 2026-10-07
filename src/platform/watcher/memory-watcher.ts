@@ -46,7 +46,7 @@ export class MemoryWatcher extends AbstractWatcher {
 		}
 	}
 
-	async stop(): Promise<void> {
+	protected async stopWatching(): Promise<void> {
 		if (this.watchDisposables) {
 			this.watchDisposables[Symbol.dispose]();
 			this.watchDisposables = null;
