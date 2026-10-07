@@ -28,6 +28,7 @@ export interface RogenConfig {
 const VariantOption = {
 	name: "variant",
 	type: "string",
+	placeholder: "name",
 	multiple: true,
 	description: "Turns a variant on.",
 } as const satisfies OptionDescriptor;
@@ -35,6 +36,7 @@ const VariantOption = {
 const NoVariantOption = {
 	name: "no-variant",
 	type: "string",
+	placeholder: "name",
 	multiple: true,
 	description: "Turns a variant off.",
 } as const satisfies OptionDescriptor;
@@ -49,6 +51,7 @@ export const OutFileOption = {
 	name: "out-file",
 	short: "o",
 	type: "string",
+	placeholder: "path",
 	description: "Overrides outFile, for one config.",
 } as const satisfies OptionDescriptor;
 

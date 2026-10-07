@@ -6,9 +6,9 @@ stdout:
   Built 1 config.
 stderr:
   default.rogen.json - warning: 3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:
-    src/Experimental/.mok (did you mean ".mock" for ".mok"?)
-    src/.mok (did you mean ".mock" for ".mok"?)
-    src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
+    src/Experimental/.mok (did you mean ".mock"?)
+    src/.mok (did you mean ".mock"?)
+    src/Analytics.mok.luau (did you mean ".mock"?)
 
 $ rogen build --json
 exit 0
@@ -25,20 +25,20 @@ stdout:
             "file": "<dir>/default.rogen.json",
             "severity": "warning",
             "code": "variant.typo",
-            "message": "3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:\n  <dir>/src/Experimental/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\" for \".mok\"?)",
+            "message": "3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:\n  <dir>/src/Experimental/.mok (did you mean \".mock\"?)\n  <dir>/src/.mok (did you mean \".mock\"?)\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\"?)",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
             "related": [
               {
                 "file": "<dir>/src/Experimental/.mok",
-                "message": "did you mean \".mock\" for \".mok\"?"
+                "message": "did you mean \".mock\"?"
               },
               {
                 "file": "<dir>/src/.mok",
-                "message": "did you mean \".mock\" for \".mok\"?"
+                "message": "did you mean \".mock\"?"
               },
               {
                 "file": "<dir>/src/Analytics.mok.luau",
-                "message": "did you mean \".mock\" for \".mok\"?"
+                "message": "did you mean \".mock\"?"
               }
             ],
             "fixes": [

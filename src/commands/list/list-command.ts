@@ -19,9 +19,13 @@ import { ConfigReport } from "./config-report.js";
 /** The run's result line when some configs are broken; none when every one loads. */
 function brokenError(entries: readonly ConfigEntry[]): Error | undefined {
 	const broken = entries.filter(({ status }) => status === "broken").length;
-	return broken > 0
-		? new Error(`${broken} of ${entries.length} configs have errors.`)
-		: undefined;
+	if (broken === 0) return undefined;
+	const verb = broken === 1 ? "has" : "have";
+	return new Error(
+		broken === entries.length
+			? `${plural(broken, "config")} ${verb} errors.`
+			: `${broken} of ${entries.length} configs ${verb} errors.`
+	);
 }
 
 const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;

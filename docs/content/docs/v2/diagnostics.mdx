@@ -285,7 +285,7 @@ Warning. A name ends in a dot part that is one edit away from a declared variant
 
 ```
 default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
-  src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
+  src/Analytics.mok.luau (did you mean ".mock"?)
 ```
 
 Rename the file or folder to the variant suggested. A dot-file that really is something else, such as a `.lock` next to a `mock` variant, can be renamed or left out with `exclude`. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).

@@ -5,14 +5,17 @@ import "../../init/init-command.js";
 import "../../watch/watch-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
-import { ResultError } from "../../../base/result.js";
+import { Result, ResultError, ok } from "../../../base/result.js";
 import {
+	AbstractCommand,
 	CommandRegistry,
 	Extensions,
+	registerCommand,
 } from "../../../platform/commands/commands.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	GlobalOptions,
+	OptionDescriptor,
 	parseArgs,
 } from "../../../platform/environment/args.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
@@ -213,6 +216,47 @@ describe("help command", () => {
 	});
 
 	describe("option table", () => {
+		it("should write an option's placeholder after it", async () => {
+			await help("build");
+
+			expect(printed()).toContain("-o, --out-file <path>");
+			expect(printed()).toContain("--variant <name>");
+			expect(printed()).toContain("--no-variant <name>");
+		});
+
+		it("should write <value> for a string option without a placeholder", async () => {
+			const options = [
+				{
+					name: "thing",
+					type: "string",
+					description: "Takes a thing.",
+				},
+			] as const satisfies readonly OptionDescriptor[];
+			store.add(
+				registerCommand(
+					class extends AbstractCommand<typeof options> {
+						constructor() {
+							super({
+								id: "placeholder-fallback",
+								metadata: {
+									description: "A test command.",
+									options,
+								},
+							});
+						}
+
+						async run(): Promise<Result<void, Error>> {
+							return ok(undefined);
+						}
+					}
+				)
+			);
+
+			await help("placeholder-fallback");
+
+			expect(printed()).toContain("--thing <value>");
+		});
+
 		it("should accept every option that help prints for a command", async () => {
 			for (const command of registry.getCommands().values()) {
 				info.mockClear();

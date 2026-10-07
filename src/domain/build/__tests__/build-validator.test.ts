@@ -802,7 +802,7 @@ describe("BuildValidator rules", () => {
 				expect(others).toEqual([]);
 				expect(warning.resource).toBe(abs("default.rogen.json"));
 				expect(warning.message).toContain(
-					`${abs("src/Analytics.mok.luau")} (did you mean ".mock" for ".mok"?)`
+					`${abs("src/Analytics.mok.luau")} (did you mean ".mock"?)`
 				);
 				expect(warning.message).not.toContain("spec");
 			});

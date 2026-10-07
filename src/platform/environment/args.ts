@@ -8,6 +8,8 @@ export interface OptionDescriptor {
 	readonly short?: string;
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
+	/** What help writes for a string option's value: `--out-file <path>`. Defaults to `value`. */
+	readonly placeholder?: string;
 	readonly description: string;
 }
 

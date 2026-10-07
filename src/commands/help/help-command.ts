@@ -69,7 +69,8 @@ function formatOption(option: OptionDescriptor): [string, string] {
 	const flags = option.short
 		? `-${option.short}, --${option.name}`
 		: `    --${option.name}`;
-	const value = option.type === "string" ? " <value>" : "";
+	const value =
+		option.type === "string" ? ` <${option.placeholder ?? "value"}>` : "";
 	const repeatable = option.multiple ? " (repeatable)" : "";
 	return [flags + value, option.description + repeatable];
 }

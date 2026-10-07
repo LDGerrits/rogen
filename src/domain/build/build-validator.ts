@@ -162,8 +162,7 @@ export class BuildValidator {
 			"variantTypo",
 			(count) =>
 				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-			(_, { text, variant }) =>
-				`did you mean ".${variant}" for ".${text}"?`
+			(_, { variant }) => `did you mean ".${variant}"?`
 		);
 	}
 
