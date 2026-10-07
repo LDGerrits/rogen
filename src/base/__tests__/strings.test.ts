@@ -1,6 +1,7 @@
 import {
 	capitalized,
 	closestMatch,
+	closestMatches,
 	joinedWithAnd,
 	listLimited,
 	plural,
@@ -35,6 +36,22 @@ describe("plural", () => {
 
 	it.each([0, 2, 20])("should add an s for %i", (count) => {
 		expect(plural(count, "file")).toBe(`${count} files`);
+	});
+});
+
+describe("closestMatches", () => {
+	it("should give every candidate as close as the closest, in the order given", () => {
+		expect(closestMatches("serer", ["sever", "client", "server"])).toEqual(
+			["sever", "server"]
+		);
+	});
+
+	it("should give only the closest when one is nearer", () => {
+		expect(closestMatches("serv", ["server", "serve"])).toEqual(["serve"]);
+	});
+
+	it("should give none when nothing is close", () => {
+		expect(closestMatches("zzz", ["server"])).toEqual([]);
 	});
 });
 

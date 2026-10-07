@@ -123,6 +123,7 @@ describe("init command", () => {
 				"print",
 			]);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
+				appended: [],
 				files: [
 					path.join(cwd, "lobby.rogen.json"),
 					path.join(cwd, "tsconfig.lobby.json"),
@@ -173,6 +174,7 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
+				appended: [],
 				files: [path.join(cwd, "lobby.rogen.json")],
 				error: "Failed to write tsconfig.lobby.json: disk full",
 			});
@@ -190,6 +192,35 @@ describe("init command", () => {
 		});
 	});
 
+	describe("agent instructions", () => {
+		it("should say it added Rogen's rules to an agent file that exists", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(logService.lines).toContain(
+				"success: Added Rogen's rules to AGENTS.md."
+			);
+			expect(await memFs.readFile(path.join(cwd, "AGENTS.md"))).toMatch(
+				/^# Rules\n\n<!-- rogen -->\n/
+			);
+		});
+
+		it("should list an appended agent file under appended in JSON", async () => {
+			await write("CLAUDE.md", "Use tabs.\n");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService, {
+				json: true,
+			});
+
+			expect(JSON.parse(logService.entries[0].text).appended).toEqual([
+				path.join(cwd, "CLAUDE.md"),
+			]);
+		});
+	});
+
 	describe("output", () => {
 		it("should open with a header, list each file written and close with a result", async () => {
 			const logService = new MockLogService();
@@ -199,13 +230,14 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"success: Created default.rogen.json.",
+				"success: Created AGENTS.md.",
 				"step: Next steps",
 				"info: Run each in its own terminal:",
 				"info:   rogen watch",
 				"info:   rojo serve default.project.json",
 				'info: Add your own routes under "routes" in default.rogen.json.',
 				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.',
-				"outro: Wrote 1 file.",
+				"outro: Wrote 2 files.",
 			]);
 		});
 
@@ -549,6 +581,7 @@ describe("init command", () => {
 				ACCEPT_DEFAULT,
 				["server", "starterGui"],
 				"leave",
+				ACCEPT_DEFAULT,
 			]);
 
 			await runInit([], prompts);
@@ -579,6 +612,7 @@ describe("init command", () => {
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				["Packages"],
+				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 			]);

@@ -311,21 +311,6 @@ export class MemoryFileSystemService
 		this._emitDeleted(target, toPosix(filePath));
 	}
 
-	async copy(
-		source: string,
-		destination: string,
-		overwrite: boolean = false
-	): Promise<void> {
-		if (!overwrite && (await this.exists(destination))) {
-			throw mockFsError(
-				"EEXIST",
-				`EEXIST: file already exists, copyfile '${source}' -> '${destination}'`
-			);
-		}
-		const content = await this.readFile(source);
-		await this.writeFile(destination, content);
-	}
-
 	async rename(
 		source: string,
 		destination: string,
@@ -473,11 +458,5 @@ export class MemoryFileSystemService
 		const link = new LinkNode(this._absoluteTarget(target, linkPath));
 		parent.entries.set(name, link);
 		this._emitAdded(link, toPosix(linkPath), FileChangeType.ADDED);
-	}
-
-	async realPath(filePath: string): Promise<string> {
-		const { node, realParts, failure } = this._walk(filePath, true);
-		if (!node) throw walkError(failure!, "realpath", filePath);
-		return `/${realParts.join("/")}`;
 	}
 }

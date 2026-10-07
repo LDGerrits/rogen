@@ -297,7 +297,7 @@ describe("build command", () => {
 		);
 
 		expect(error.mock.calls).toEqual([
-			["default.project.json · not written"],
+			["default.project.json · not written · bad failed"],
 			["bad.project.json · not written"],
 		]);
 	});

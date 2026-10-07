@@ -1,5 +1,3 @@
-import { ReportedError } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
@@ -35,7 +33,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, sync dir, project file and variants.",
+						"Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.",
 					args: [
 						{
 							name: "config",
@@ -83,10 +81,11 @@ registerCommand(
 			logService: LogService
 		): Result<void, Error> {
 			const report = new ConfigReport(selection.entries);
-			logService.print(formatJsonDocument(report.json()));
-
-			const broken = brokenError(selection.entries);
-			return broken ? err(new ReportedError(broken)) : ok(undefined);
+			return this.printJson(
+				logService,
+				report.json(),
+				brokenError(selection.entries)
+			);
 		}
 	}
 );

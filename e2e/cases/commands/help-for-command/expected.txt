@@ -10,7 +10,7 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-    -o, --out-file <value>    Overrides outFile.
+    -o, --out-file <value>    Overrides outFile, for one config.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
         --json                Print one JSON document instead of text.
@@ -38,7 +38,7 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-    -o, --out-file <value>    Overrides outFile.
+    -o, --out-file <value>    Overrides outFile, for one config.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
   
@@ -61,10 +61,10 @@ stdout:
     rogen init [name] [options]
   
   Arguments:
-    name  The config to write. Defaults to default.
+    name  The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place in places/<name>.
   
   Options:
-    -y, --yes   Write the defaults without asking, as a run without a terminal does.
+    -y, --yes   Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
         --json  Print one JSON document instead of text.
   
   Examples:
@@ -81,7 +81,7 @@ stdout:
 $ rogen help list
 exit 0
 stdout:
-  Lists every config here with its root dirs, sync dir, project file and variants.
+  Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
   
   Usage:
     rogen list [config...] [options]
@@ -116,7 +116,7 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-    -o, --out-file <value>    Overrides outFile.
+    -o, --out-file <value>    Overrides outFile, for one config.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
         --json                Print one JSON document instead of text.

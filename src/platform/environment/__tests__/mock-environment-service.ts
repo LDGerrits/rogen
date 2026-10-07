@@ -1,3 +1,4 @@
+import { LogLevel } from "../../log/log-service.js";
 import { EnvironmentService } from "../environment-service.js";
 
 export class MockEnvironmentService implements EnvironmentService {
@@ -7,8 +8,7 @@ export class MockEnvironmentService implements EnvironmentService {
 
 	constructor(
 		public readonly cwd: string = "/mock/cwd",
-		public readonly verbose: boolean = false,
-		public readonly quiet: boolean = false,
+		public readonly logLevel: LogLevel = LogLevel.Info,
 		public readonly isInteractive: boolean = false
 	) {
 		this.isPlain = !isInteractive;

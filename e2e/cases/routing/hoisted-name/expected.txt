@@ -1,0 +1,47 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen where src/Player/^Animate.client.luau src/Ui
+exit 0
+stdout:
+  src/Player/^Animate.client.luau -> StarterPlayer/StarterCharacterScripts/Animate · route character (marker) · hoisted by ^
+  src/Ui/^Hud/Health.luau -> ReplicatedStorage/shared/Hud/Health · route * (fallback) · hoisted by ^
+
+$ rogen where src/Player/^Animate.client.luau --json
+exit 0
+stdout:
+  [
+    {
+      "config": "default",
+      "source": "<dir>/src/Player/^Animate.client.luau",
+      "status": "placed",
+      "instancePath": [
+        "StarterPlayer",
+        "StarterCharacterScripts",
+        "Animate"
+      ],
+      "route": "character",
+      "routeMatch": "marker",
+      "variants": [],
+      "hoisted": true
+    }
+  ]
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Hud: Folder
+        Health: ModuleScript  <- src/Ui/^Hud/Health.luau
+  StarterPlayer: StarterPlayer
+    StarterCharacterScripts: StarterCharacterScripts
+      Animate: LocalScript  <- src/Player/^Animate.client.luau, src/Player/^Animate.meta.json
+      Player: Folder
+        Sprint: LocalScript  <- src/Player/Sprint.client.luau

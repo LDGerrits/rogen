@@ -52,6 +52,11 @@ export class InitDirectory {
 		return this.has(configFileName(DEFAULT_CONFIG_STEM));
 	}
 
+	/** Whether any config is here; a first `init` finds none. */
+	get hasConfigs(): boolean {
+		return [...this.entries].some((entry) => entry.endsWith(CONFIG_SUFFIX));
+	}
+
 	/** Project files here that no config beside them writes. */
 	get projectFilesWithoutConfig(): string[] {
 		return [...this.entries]

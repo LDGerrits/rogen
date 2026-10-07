@@ -20,6 +20,7 @@ import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { ProductService } from "../../../platform/product/product-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
+import { helpTexts } from "../help-texts.js";
 
 describe("help command", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
@@ -101,8 +102,12 @@ describe("help command", () => {
 				await help(command.id);
 
 				const text = printed();
-				expect(command.metadata.examples?.length).toBeGreaterThanOrEqual(2);
-				expect(text).toContain(`Examples:\n  ${command.metadata.examples?.[0]}`);
+				expect(
+					command.metadata.examples?.length
+				).toBeGreaterThanOrEqual(2);
+				expect(text).toContain(
+					`Examples:\n  ${command.metadata.examples?.[0]}`
+				);
 				expect(text.indexOf("Examples:")).toBeGreaterThan(
 					text.indexOf("Arguments:")
 				);
@@ -125,7 +130,7 @@ describe("help command", () => {
 				UsageError
 			);
 			expect((result as ResultError<Error>).error.message).toContain(
-				'Unknown command "prod"'
+				'Unknown command or topic "prod"'
 			);
 		});
 
@@ -133,7 +138,76 @@ describe("help command", () => {
 			const result = await help("wacth");
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command \"wacth\". Did you mean 'rogen help watch'?"
+				"Unknown command or topic \"wacth\". Did you mean 'rogen help watch'?"
+			);
+		});
+	});
+
+	describe("rogen help <topic>", () => {
+		it.each(["routing", "variants", "config", "layout", "output"])(
+			"should print the %s topic as written",
+			async (topic) => {
+				const result = await help(topic);
+
+				expect(result.isOk()).toBe(true);
+				expect(printed()).toBe(helpTexts.topics[topic]);
+			}
+		);
+
+		it("should list every topic with its description", async () => {
+			await help();
+
+			expect(printed()).toContain("Topics:");
+			for (const topic of Object.keys(helpTexts.topics))
+				expect(printed()).toMatch(new RegExp(`^  ${topic} `, "m"));
+		});
+
+		it("should list exactly the topics whose text it embeds", async () => {
+			await help();
+
+			const listed = printed()
+				.split("Topics:\n")[1]
+				.split("\n\n")[0]
+				.split("\n")
+				.map((line) => line.trim().split(" ")[0]);
+			expect(listed.sort()).toEqual(Object.keys(helpTexts.topics).sort());
+		});
+
+		it("should name no topic after a command", () => {
+			const commands = [...registry.getCommands().keys()];
+
+			expect(
+				Object.keys(helpTexts.topics).filter((topic) =>
+					commands.includes(topic)
+				)
+			).toEqual([]);
+		});
+
+		it("should suggest the topic a misspelled one is closest to, as a usage error", async () => {
+			const result = await help("varients");
+
+			expect((result as ResultError<Error>).error).toBeInstanceOf(
+				UsageError
+			);
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command or topic \"varients\". Did you mean 'rogen help variants'?"
+			);
+		});
+	});
+
+	describe("rogen help <code>", () => {
+		it("should print the code's section, headed by the code", async () => {
+			await help("route.strayAt");
+
+			expect(printed().split("\n")[0]).toBe("route.strayAt");
+			expect(printed()).toContain("Warning.");
+		});
+
+		it("should suggest the code a misspelled one is closest to", async () => {
+			const result = await help("route.strayAd");
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown diagnostic code \"route.strayAd\". Did you mean 'rogen help route.strayAt'?"
 			);
 		});
 	});

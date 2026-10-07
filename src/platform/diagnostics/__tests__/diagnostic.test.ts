@@ -1,8 +1,11 @@
+import { DOCS_URL } from "../../product/product-service.js";
+import path from "path";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 	diagnosticToJson,
 	renderDiagnostic,
+	warningDiagnostic,
 } from "../diagnostic.js";
 
 describe("platform/diagnostics/diagnostic", () => {
@@ -88,7 +91,7 @@ describe("platform/diagnostics/diagnostic", () => {
 	});
 
 	describe("diagnosticToJson", () => {
-		it("should name the file, position, severity, code and message", () => {
+		it("should name the file, position, severity, code, message and the code's docs", () => {
 			const diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Error,
 				code: "test.example",
@@ -104,6 +107,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "error",
 				code: "test.example",
 				message: 'unknown field "outDir".',
+				url: `${DOCS_URL}/diagnostics#test-example`,
 			});
 		});
 
@@ -120,7 +124,64 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "warning",
 				code: "test.example",
 				message: "it contributes nothing.",
+				url: `${DOCS_URL}/diagnostics#test-example`,
 			});
+		});
+
+		it("should give each fix's paths as native paths, and leave fixes out when there are none", () => {
+			const fixed = warningDiagnostic(
+				"test.example",
+				{ resource: "/repo/default.rogen.json" },
+				"",
+				[
+					{
+						rename: {
+							from: "/repo/src/A@sever.luau",
+							to: "/repo/src/A@server.luau",
+						},
+					},
+				]
+			);
+
+			expect(diagnosticToJson(fixed).fixes).toEqual([
+				{
+					rename: {
+						from: path.normalize("/repo/src/A@sever.luau"),
+						to: path.normalize("/repo/src/A@server.luau"),
+					},
+				},
+			]);
+			expect(
+				diagnosticToJson(
+					warningDiagnostic("test.example", { resource: "/repo" }, "")
+				)
+			).not.toHaveProperty("fixes");
+		});
+
+		it("should leave fixes out of the rendered line", () => {
+			const fixed = warningDiagnostic(
+				"test.example",
+				{ resource: "/repo/a.json" },
+				"near miss.",
+				[{ rename: { from: "/repo/a", to: "/repo/b" } }]
+			);
+
+			expect(renderDiagnostic(fixed)).toBe(
+				`${path.normalize("/repo/a.json")} - warning: near miss.`
+			);
+		});
+
+		it("should anchor the url at the code in lower case, with the dot as a hyphen", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "route.dotRoute",
+				message: "",
+				resource: "/repo/src",
+			};
+
+			expect(diagnosticToJson(diagnostic).url).toBe(
+				`${DOCS_URL}/diagnostics#route-dotroute`
+			);
 		});
 	});
 });

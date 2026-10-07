@@ -75,81 +75,89 @@ export interface BuildSummary {
 	readonly displaced: number;
 }
 
-/** What a run did for one config: `failed` is a config whose build, write or set check went wrong; `notWritten` built, but another config's failure stopped the run first. */
-export type BuildOutcome = "wrote" | "unchanged" | "notWritten" | "failed";
+/** What a run did for one config: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
+export type ConfigBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
 
-/** What a run did for one config: the one record the build, the watch and every presenter read. */
-export class ConfigBuild {
-	private constructor(
+/** What every kind of config build holds. */
+abstract class AbstractConfigBuild {
+	constructor(
 		readonly config: ResolvedConfig,
-		readonly outcome: BuildOutcome,
-		readonly warnings: readonly Diagnostic[],
-		/** What the sync dir check found for this version of the config, whether this build checked it or the previous one did; `undefined` while unknown. */
-		readonly syncWarnings: readonly Diagnostic[] | undefined,
-		/** Why the config failed; empty for any other outcome. */
-		readonly errors: readonly Diagnostic[],
-		/** What the build placed; absent when it failed. */
-		readonly summary: BuildSummary | undefined,
-		/** The files whose contents the build read, which a change to must rebuild it; absent when it failed. */
-		readonly readFiles: readonly string[] | undefined
+		private readonly findings: BuildFindings
 	) {}
 
-	static built(
-		config: ResolvedConfig,
-		outcome: "wrote" | "unchanged" | "notWritten",
-		said: BuildFindings,
-		summary: BuildSummary,
-		readFiles: readonly string[]
-	): ConfigBuild {
-		return new ConfigBuild(
-			config,
-			outcome,
-			said.warnings,
-			said.syncWarnings,
-			[],
-			summary,
-			readFiles
-		);
+	get warnings(): readonly Diagnostic[] {
+		return this.findings.warnings;
 	}
 
-	/** A config whose build, write or set check went wrong; `said` is what its build found before that. */
-	static failed(
-		config: ResolvedConfig,
-		errors: readonly Diagnostic[],
-		said: BuildFindings = { warnings: [], syncWarnings: undefined }
-	): ConfigBuild {
-		return new ConfigBuild(
-			config,
-			"failed",
-			said.warnings,
-			said.syncWarnings,
-			errors,
-			undefined,
-			undefined
-		);
+	/** What the sync dir check found for this version of the config, whether this build checked it or the previous one did; `undefined` while unknown. */
+	get syncWarnings(): readonly Diagnostic[] | undefined {
+		return this.findings.syncWarnings;
 	}
 
-	/** The same build, as written (or found unchanged) after all. */
-	withOutcome(outcome: "wrote" | "unchanged"): ConfigBuild {
-		return new ConfigBuild(
-			this.config,
-			outcome,
-			this.warnings,
-			this.syncWarnings,
-			this.errors,
-			this.summary,
-			this.readFiles
-		);
-	}
-
-	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, errors. */
+	/** Everything the build has to say, in the order it is printed: warnings, then sync dir warnings. */
 	get diagnostics(): readonly Diagnostic[] {
-		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
+		return [...this.warnings, ...(this.syncWarnings ?? [])];
+	}
+}
+
+/** A config built and written, or found unchanged on disk. */
+export class WrittenBuild extends AbstractConfigBuild {
+	constructor(
+		config: ResolvedConfig,
+		readonly outcome: "wrote" | "unchanged",
+		findings: BuildFindings,
+		/** What the build placed. */
+		readonly summary: BuildSummary,
+		/** The files whose contents the build read, which a change to must rebuild it. */
+		readonly readFiles: readonly string[]
+	) {
+		super(config, findings);
 	}
 
-	/** What a document says of the project file, which a failed config left as it was. */
-	get documentOutcome(): "wrote" | "unchanged" | "notWritten" {
-		return this.outcome === "failed" ? "notWritten" : this.outcome;
+	get documentOutcome(): "wrote" | "unchanged" {
+		return this.outcome;
+	}
+}
+
+/** A config that built cleanly, but whose run stopped before writing it because the configs in `blockedBy` failed. */
+export class UnwrittenBuild extends AbstractConfigBuild {
+	readonly outcome = "notWritten";
+
+	constructor(
+		config: ResolvedConfig,
+		findings: BuildFindings,
+		readonly summary: BuildSummary,
+		readonly readFiles: readonly string[],
+		readonly blockedBy: readonly ResolvedConfig[]
+	) {
+		super(config, findings);
+	}
+
+	get documentOutcome(): "notWritten" {
+		return this.outcome;
+	}
+}
+
+/** A config whose build, write or set check went wrong; `findings` is what its build found before that. */
+export class FailedBuild extends AbstractConfigBuild {
+	readonly outcome = "failed";
+
+	constructor(
+		config: ResolvedConfig,
+		readonly errors: readonly Diagnostic[],
+		findings: BuildFindings = { warnings: [], syncWarnings: undefined }
+	) {
+		super(config, findings);
+	}
+
+	/** Warnings, sync dir warnings, then the errors that failed it. */
+	override get diagnostics(): readonly Diagnostic[] {
+		return [...super.diagnostics, ...this.errors];
+	}
+
+	/** A failed config left its project file as it was. */
+	get documentOutcome(): "notWritten" {
+		return "notWritten";
 	}
 }
 
@@ -173,6 +181,8 @@ export interface PlacedLocation extends Located {
 	readonly routeMatch: RouteMatch;
 	/** The active variants the file carries. */
 	readonly variants: readonly VariantMatch[];
+	/** A `^` on its name or a folder's took it straight to the route's target. */
+	readonly hoisted?: boolean;
 }
 
 export interface UnplacedLocation extends Located {

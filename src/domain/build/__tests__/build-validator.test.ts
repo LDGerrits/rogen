@@ -1,3 +1,4 @@
+import { toPosix } from "../../../base/path.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -68,6 +69,7 @@ describe("BuildValidator", () => {
 });
 
 describe("BuildValidator rules", () => {
+	const at = (...segments: string[]) => toPosix(abs(...segments));
 	const ROUTES = {
 		ReplicatedFirst: "ReplicatedFirst",
 		server: "ServerScriptService",
@@ -149,11 +151,11 @@ describe("BuildValidator rules", () => {
 			});
 
 			it("should warn about a marker file named like a route in different case", async () => {
-				await write("src/Inventory/.SERVER", "src/Inventory/Save.luau");
+				await write("src/Inventory/@SERVER", "src/Inventory/Save.luau");
 
 				const [warning] = await caseWarnings();
 
-				expect(warning.resource).toBe(abs("src/Inventory/.SERVER"));
+				expect(warning.resource).toBe(abs("src/Inventory/@SERVER"));
 				expect(warning.message).toContain('route "server"');
 			});
 
@@ -166,7 +168,7 @@ describe("BuildValidator rules", () => {
 			it("should warn once per mismatched name", async () => {
 				await write(
 					"src/SERVER/A.luau",
-					"src/Inventory/.CLIENT",
+					"src/Inventory/@CLIENT",
 					"src/CLIENT/B.luau"
 				);
 
@@ -175,7 +177,7 @@ describe("BuildValidator rules", () => {
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
 					[
 						abs("src/CLIENT"),
-						abs("src/Inventory/.CLIENT"),
+						abs("src/Inventory/@CLIENT"),
 						abs("src/SERVER"),
 					]
 				);
@@ -184,7 +186,7 @@ describe("BuildValidator rules", () => {
 			it("should not warn about a name that only differs in its first letter", async () => {
 				await write(
 					"src/Server/Save.luau",
-					"src/Inventory/.Client",
+					"src/Inventory/@Client",
 					"src/Inventory/Load@Server.luau"
 				);
 
@@ -272,6 +274,63 @@ describe("BuildValidator rules", () => {
 				await write("src/server/Net/Save@client.luau");
 
 				expect(await strayWarnings()).toEqual([]);
+			});
+
+			it("should fix each name by renaming it to the closest route, a folder as a folder", async () => {
+				await write(
+					"src/Inventory/Save@sever.luau",
+					"src/(Queue@clent)/Load.luau"
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/(Queue@clent)"),
+							to: at("src/(Queue@client)"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/Inventory/Save@sever.luau"),
+							to: at("src/Inventory/Save@server.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should give no fix when two routes are as close", async () => {
+				await write("src/Save@serer.luau");
+
+				const [warning] = (
+					await route({ routes: { ...ROUTES, sever: "Workspace" } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.strayAt");
+
+				expect(warning.fixes).toBeUndefined();
+			});
+
+			it("should give no fix for a declared route that isn't at the end", async () => {
+				await write("src/Save@server.bak.luau");
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toBeUndefined();
+			});
+
+			it("should fix every name, not only those the message lists", async () => {
+				await write(
+					...Array.from(
+						{ length: 12 },
+						(_, index) => `src/Save${index}@sever.luau`
+					)
+				);
+
+				const [warning] = await strayWarnings();
+
+				expect(warning.fixes).toHaveLength(12);
 			});
 		});
 
@@ -430,6 +489,214 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("route keys after a dot", () => {
+			const SHARED = { ...ROUTES, shared: "ReplicatedStorage/shared" };
+			const warningsOf = async (code: string) =>
+				(await route({ routes: SHARED, variants: { mock: false } }))
+					.unwrap()
+					.warnings.filter((warning) => warning.code === code);
+
+			it("should warn once for a dot-file and dot parts that spell a route, naming each @ form", async () => {
+				await write(
+					"src/Inventory/.server",
+					"src/Inventory/Save.luau",
+					"src/Inventory/Types.shared.luau",
+					"src/Net.shared/A.luau",
+					"src/Net.server/B.luau",
+					"src/Boot.server.luau"
+				);
+
+				const [warning, ...others] = await warningsOf("route.dotRoute");
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("4 names write a route key");
+				expect(warning.message).toContain(
+					`${at("src/Inventory/.server")} (write "@server")`
+				);
+				expect(warning.message).toContain(
+					`${at("src/Inventory/Types.shared.luau")} (write "Types@shared.luau")`
+				);
+				expect(warning.message).toContain(`(write "Net@shared")`);
+				expect(warning.message).toContain(`(write "Net@server")`);
+				expect(warning.message).not.toContain("Boot");
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Net.server"),
+						to: at("src/Net@server"),
+					},
+				});
+			});
+
+			it("should leave a dot-file's folder and a dot part's name to the route above", async () => {
+				await write(
+					"src/Inventory/.server",
+					"src/Inventory/Save.luau",
+					"src/Types.shared.luau"
+				);
+
+				const files = (await route({ routes: SHARED }))
+					.unwrap()
+					.routed.map(({ entry, instancePath }) => [
+						entry.source,
+						instancePath.join("/"),
+					]);
+
+				expect(files).toEqual(
+					expect.arrayContaining([
+						[
+							at("src/Inventory/Save.luau"),
+							"ReplicatedStorage/shared/Inventory/Save",
+						],
+						[
+							at("src/Types.shared.luau"),
+							"ReplicatedStorage/shared/Types.shared",
+						],
+					])
+				);
+			});
+
+			it("should name a variant's dot form for an @ that spells a variant, in a marker, a name or a folder", async () => {
+				await write(
+					"src/Experimental/@mock",
+					"src/Experimental/A.luau",
+					"src/Analytics@mock.luau",
+					"src/Net@mock/B.luau"
+				);
+
+				const [warning] = await warningsOf("route.strayAt");
+
+				expect(warning.message).toContain("3 names have");
+				expect(warning.message).toContain(
+					`${at("src/Experimental/@mock")} (did you mean ".mock"?)`
+				);
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Analytics@mock.luau"),
+						to: at("src/Analytics.mock.luau"),
+					},
+				});
+			});
+
+			it("should warn about an @ marker an outer route outranks, and one that nearly spells a route", async () => {
+				await write(
+					"src/server/Ui/@client",
+					"src/server/Ui/A.luau",
+					"src/Ui/@sever",
+					"src/Ui/B.luau"
+				);
+
+				const warnings = (await route({ routes: SHARED })).unwrap()
+					.warnings;
+
+				expect(warnings).toContainEqual(
+					expect.objectContaining({
+						code: "route.ignoredAt",
+						resource: at("src/server/Ui/@client"),
+					})
+				);
+				expect(
+					warnings.find(({ code }) => code === "route.strayAt")
+						?.message
+				).toContain(`${at("src/Ui/@sever")} (did you mean "@server"?)`);
+			});
+		});
+
+		describe("instances no variant gives", () => {
+			const missing = async (
+				variants: Record<string, boolean>,
+				rootDirs?: readonly string[]
+			) =>
+				(await route({ variants }, rootDirs))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "variant.noneActive"
+					);
+
+			it("should warn once, naming the instance and the variants that give it, when all are off", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau",
+					"src/Analytics/Other.luau"
+				);
+
+				const [warning, ...others] = await missing({
+					dev: false,
+					prod: false,
+				});
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/Analytics/Service (dev, prod)"
+				);
+			});
+
+			it("should not warn when one of them is on", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau"
+				);
+
+				expect(await missing({ dev: true, prod: false })).toEqual([]);
+			});
+
+			it("should name a folder two variant folders give, not each file inside", async () => {
+				await write(
+					"src/Analytics.mock/Service.luau",
+					"src/Analytics.prod/Service.luau"
+				);
+
+				const [warning] = await missing({ mock: false, prod: false });
+
+				expect(warning.message).toContain("1 instance is missing");
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/Analytics (mock, prod)"
+				);
+			});
+
+			it("should not count a folder's files as alternatives of the folder", async () => {
+				await write(
+					"src/Tools/Debug.dev.luau",
+					"src/Tools/Profiler.prof.luau",
+					"src/Kit/.dev",
+					"src/Kit/Y.luau",
+					"src/Kit/X.prof.luau"
+				);
+
+				expect(await missing({ dev: false, prof: false })).toEqual([]);
+			});
+
+			it("should name the file two variant folders give, not the folder above them", async () => {
+				await write("src/W/dev/Svc.luau", "src/W/prod/Svc.luau");
+
+				const [warning] = await missing({ dev: false, prod: false });
+
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/W/Svc (dev, prod)"
+				);
+			});
+
+			it("should not warn for a lone variant", async () => {
+				await write("src/DebugPanel.dev.luau");
+
+				expect(await missing({ dev: false })).toEqual([]);
+			});
+
+			it("should not warn when a plain file in a later root dir gives the instance", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau",
+					"lib/Analytics/Service.luau"
+				);
+
+				expect(
+					await missing({ dev: false, prod: false }, [
+						abs("src"),
+						abs("lib"),
+					])
+				).toEqual([]);
+			});
+		});
+
 		describe("variant typos", () => {
 			const typos = async () =>
 				(await route({ variants: { mock: true } }))
@@ -451,6 +718,33 @@ describe("BuildValidator rules", () => {
 					`${abs("src/Analytics.mok.luau")} (did you mean ".mock" for ".mok"?)`
 				);
 				expect(warning.message).not.toContain("spec");
+			});
+
+			it("should fix the name by renaming it to the variant", async () => {
+				await write("src/Analytics.mok.luau");
+
+				const [warning] = await typos();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/Analytics.mok.luau"),
+							to: at("src/Analytics.mock.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should give no fix when two variants are one edit away", async () => {
+				await write("src/Analytics.mok.luau");
+
+				const [warning] = (
+					await route({ variants: { mock: true, mook: false } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "variant.typo");
+
+				expect(warning.fixes).toBeUndefined();
 			});
 		});
 

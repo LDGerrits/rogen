@@ -1,5 +1,10 @@
 import { DeclaredKeys } from "../../config/config.js";
-import { NameReader } from "../name-reader.js";
+import {
+	Misspelling,
+	MisspellingKind,
+	MisspellingOf,
+	NameReader,
+} from "../name-reader.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
@@ -11,12 +16,46 @@ const matchMarkerKey = (fileName: string, keys: DeclaredKeys) =>
 const matchSuffixKeys = (stem: string, keys: ReadonlySet<string>) =>
 	readerOf(new DeclaredKeys(keys, [])).suffixes(stem);
 const unwrapInvisibleFolder = NameReader.unwrapInvisibleFolder;
+const misspelt = <K extends MisspellingKind>(
+	read: { readonly misspellings: readonly Misspelling[] },
+	kind: K
+) =>
+	read.misspellings.find(
+		(misspelling): misspelling is MisspellingOf<K> =>
+			misspelling.kind === kind
+	);
 const readFolderName = (folderName: string, keys: DeclaredKeys) =>
 	readerOf(keys).folder(folderName);
 
 describe("NameReader marker", () => {
-	it("matches a marker file named after a declared key", () => {
-		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
+	it("should match a route marker written with @", () => {
+		expect(matchMarkerKey("@server", ROUTE_KEYS)).toBe("server");
+	});
+
+	it("should read a dot-file that spells a route as no marker, and note its @ form", () => {
+		const read = readerOf(ROUTE_KEYS).marker(".server");
+
+		expect(read.key).toBeUndefined();
+		expect(misspelt(read, "dotRoute")).toEqual({
+			kind: "dotRoute",
+			text: "server",
+			key: "server",
+			respelling: { start: 0, written: ".server", spelling: "@server" },
+		});
+	});
+
+	it("should read an @ followed by a variant as no marker, and note its dot form", () => {
+		const read = readerOf(ALL_KEYS).marker("@mock");
+
+		expect(read.key).toBeUndefined();
+		expect(misspelt(read, "strayAt")?.suggestion).toBe(".mock");
+	});
+
+	it("should note an @ marker that nearly spells a route", () => {
+		expect(
+			misspelt(readerOf(ROUTE_KEYS).marker("@sever"), "strayAt")
+				?.suggestion
+		).toBe("@server");
 	});
 
 	it("matches a variant marker", () => {
@@ -24,14 +63,19 @@ describe("NameReader marker", () => {
 	});
 
 	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey(".Server", ROUTE_KEYS)).toBe("server");
+		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("does not match any other difference in case", () => {
-		expect(matchMarkerKey(".SERVER", ROUTE_KEYS)).toBeUndefined();
+		expect(matchMarkerKey("@SERVER", ROUTE_KEYS)).toBeUndefined();
+		expect(readerOf(ROUTE_KEYS).marker("@SERVER")).toEqual({
+			key: undefined,
+			nearMissKey: "server",
+			misspellings: [],
+		});
 	});
 
-	it("ignores a name that doesn't start with a dot", () => {
+	it("ignores a name that doesn't start with a sign", () => {
 		expect(matchMarkerKey("server", ROUTE_KEYS)).toBeUndefined();
 	});
 
@@ -130,9 +174,10 @@ describe("NameReader suffixes", () => {
 	it("does not route @key when a dot part that isn't a variant follows it", () => {
 		const result = readerOf(ALL_KEYS).suffixes("Foo@server.bak");
 		expect(result.matchedKeys.size).toBe(0);
-		expect(result.strayAt).toEqual({
+		expect(misspelt(result, "strayAt")).toEqual({
+			kind: "strayAt",
 			text: "server",
-			closestKey: "server",
+			suggestion: "@server",
 			notLast: true,
 		});
 	});
@@ -140,18 +185,19 @@ describe("NameReader suffixes", () => {
 
 describe("NameReader variant typo", () => {
 	const typoOf = (stem: string) =>
-		readerOf(ALL_KEYS).suffixes(stem).variantTypo;
+		misspelt(readerOf(ALL_KEYS).suffixes(stem), "variantTypo");
 
 	it("names the declared variant a trailing dot part is one edit from", () => {
-		expect(typoOf("Analytics.mok")).toEqual({
+		expect(typoOf("Analytics.mok")).toMatchObject({
 			text: "mok",
 			variant: "mock",
+			respelling: { start: 9, written: ".mok", spelling: ".mock" },
 		});
-		expect(typoOf("Analytics.mcok")).toEqual({
+		expect(typoOf("Analytics.mcok")).toMatchObject({
 			text: "mcok",
 			variant: "mock",
 		});
-		expect(typoOf("Analytics.MOCK")).toEqual({
+		expect(typoOf("Analytics.MOCK")).toMatchObject({
 			text: "MOCK",
 			variant: "mock",
 		});
@@ -167,6 +213,33 @@ describe("NameReader variant typo", () => {
 		expect(typoOf("Foo.beta")).toBeUndefined();
 	});
 
+	it("should respell to the closest variant when another is a further edit away", () => {
+		expect(
+			misspelt(
+				readerOf(new DeclaredKeys(ROUTES, ["mocks", "mock"])).suffixes(
+					"Analytics.MOCK"
+				),
+				"variantTypo"
+			)
+		).toEqual({
+			kind: "variantTypo",
+			text: "MOCK",
+			variant: "mock",
+			respelling: { start: 9, written: ".MOCK", spelling: ".mock" },
+		});
+	});
+
+	it("should give no respelling when two variants are one edit away", () => {
+		expect(
+			misspelt(
+				readerOf(new DeclaredKeys(ROUTES, ["mock", "mook"])).suffixes(
+					"Analytics.mok"
+				),
+				"variantTypo"
+			)
+		).toEqual({ kind: "variantTypo", text: "mok", variant: "mock" });
+	});
+
 	it("reports nothing for a matched variant, a name without a dot or a Rojo suffix", () => {
 		expect(typoOf("Analytics.mock")).toBeUndefined();
 		expect(typoOf("Analytics")).toBeUndefined();
@@ -176,17 +249,36 @@ describe("NameReader variant typo", () => {
 
 describe("NameReader stray @", () => {
 	it("names the closest declared route for an @ that matches none", () => {
-		expect(matchSuffixKeys("Save@sever", ROUTES).strayAt).toEqual({
+		expect(
+			misspelt(matchSuffixKeys("Save@sever", ROUTES), "strayAt")
+		).toEqual({
+			kind: "strayAt",
 			text: "sever",
-			closestKey: "server",
+			suggestion: "@server",
+			notLast: false,
+			respelling: { start: 4, written: "@sever", spelling: "@server" },
+		});
+	});
+
+	it("should give no respelling when another route is as close", () => {
+		expect(
+			misspelt(
+				matchSuffixKeys("Save@serer", new Set(["server", "sever"])),
+				"strayAt"
+			)
+		).toEqual({
+			kind: "strayAt",
+			text: "serer",
+			suggestion: "@server",
 			notLast: false,
 		});
 	});
 
 	it("suggests the route for an @ that only differs in case", () => {
-		expect(matchSuffixKeys("Save@SERVER", ROUTES).strayAt?.closestKey).toBe(
-			"server"
-		);
+		expect(
+			misspelt(matchSuffixKeys("Save@SERVER", ROUTES), "strayAt")
+				?.suggestion
+		).toBe("@server");
 	});
 
 	it("reports nothing for an @ that is no near miss of a route, such as a package name", () => {
@@ -195,32 +287,50 @@ describe("NameReader stray @", () => {
 			"Signal@rbxts",
 			"sleitnick_knit@1.5.1",
 		])
-			expect(matchSuffixKeys(stem, ROUTES).strayAt).toBeUndefined();
+			expect(
+				misspelt(matchSuffixKeys(stem, ROUTES), "strayAt")
+			).toBeUndefined();
 	});
 
 	it("is no near miss of a variant, only of a route", () => {
 		expect(
-			readerOf(new DeclaredKeys(ROUTES, ["mock"])).suffixes("Save@mok")
-				.strayAt?.closestKey
+			misspelt(
+				readerOf(new DeclaredKeys(ROUTES, ["mock"])).suffixes(
+					"Save@mok"
+				),
+				"strayAt"
+			)?.suggestion
 		).toBeUndefined();
 	});
 
 	it("reports nothing for a name without an @, or a matched one", () => {
-		expect(matchSuffixKeys("Save", ROUTES).strayAt).toBeUndefined();
-		expect(matchSuffixKeys("Save@server", ROUTES).strayAt).toBeUndefined();
+		expect(
+			misspelt(matchSuffixKeys("Save", ROUTES), "strayAt")
+		).toBeUndefined();
+		expect(
+			misspelt(matchSuffixKeys("Save@server", ROUTES), "strayAt")
+		).toBeUndefined();
 	});
 
 	it("reports a leading @ only when it nearly spells a route", () => {
-		expect(matchSuffixKeys("@sever", ROUTES).strayAt).toMatchObject({
+		expect(
+			misspelt(matchSuffixKeys("@sever", ROUTES), "strayAt")
+		).toMatchObject({
 			text: "sever",
-			closestKey: "server",
+			suggestion: "@server",
 		});
-		expect(matchSuffixKeys("@rbxts", ROUTES).strayAt).toBeUndefined();
-		expect(matchSuffixKeys("@server", ROUTES).strayAt).toBeUndefined();
+		expect(
+			misspelt(matchSuffixKeys("@rbxts", ROUTES), "strayAt")
+		).toBeUndefined();
+		expect(
+			misspelt(matchSuffixKeys("@server", ROUTES), "strayAt")
+		).toBeUndefined();
 	});
 
 	it("reports nothing for a trailing @", () => {
-		expect(matchSuffixKeys("Save@", ROUTES).strayAt).toBeUndefined();
+		expect(
+			misspelt(matchSuffixKeys("Save@", ROUTES), "strayAt")
+		).toBeUndefined();
 	});
 });
 
@@ -254,19 +364,23 @@ describe("NameReader folder", () => {
 	it("should read a folder named after a route as that route, spelled without an @, keeping no name", () => {
 		expect(read("Server")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			route: "server",
 			variants: [],
 			outrankedName: "Server",
+			misspellings: [],
 		});
 	});
 
 	it("should read a folder named after a variant as that variant, keeping no name", () => {
 		expect(read("mock")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: ["mock"],
 			outrankedName: "mock",
+			misspellings: [],
 		});
 	});
 
@@ -281,27 +395,32 @@ describe("NameReader folder", () => {
 		expect(read("(server)")).toMatchObject({
 			route: "server",
 			invisible: true,
+			hoisted: false,
 		});
 	});
 
 	it("should read Name@key as a route folder that keeps Name", () => {
 		expect(read("Matchmaking@server")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: true,
 			route: "server",
 			variants: [],
 			keptName: "Matchmaking",
 			outrankedName: "Matchmaking@server",
+			misspellings: [],
 		});
 	});
 
 	it("should read Name.variant as a variant folder that keeps Name", () => {
 		expect(read("Analytics.mock")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: ["mock"],
 			keptName: "Analytics",
 			outrankedName: "Analytics",
+			misspellings: [],
 		});
 	});
 
@@ -312,6 +431,7 @@ describe("NameReader folder", () => {
 				variants: ["mock"],
 				keptName: "Net",
 				outrankedName: "Net@server",
+				misspellings: [],
 			});
 	});
 
@@ -324,8 +444,9 @@ describe("NameReader folder", () => {
 
 	it("should read -server, .server and Rojo's script class as ordinary names", () => {
 		for (const name of ["Queue-server", "Queue.server", "QueueServer"])
-			expect(read(name)).toEqual({
+			expect(read(name)).toMatchObject({
 				invisible: false,
+				hoisted: false,
 				at: false,
 				variants: [],
 				keptName: name,
@@ -333,31 +454,66 @@ describe("NameReader folder", () => {
 			});
 	});
 
+	it("should note a route key after a folder's dot as a misspelling", () => {
+		expect(
+			misspelt(new NameReader(ALL_KEYS).folder("Queue.server"), "dotRoute")
+		).toMatchObject({ key: "server" });
+	});
+
+	it("should note each misspelling of a name once", () => {
+		expect(
+			readerOf(ALL_KEYS)
+				.suffixes("Save@sever.mok")
+				.misspellings.map(({ kind }) => kind)
+		).toEqual(["strayAt", "variantTypo"]);
+	});
+
 	it("should report the @ of a folder that matches no route", () => {
 		expect(
-			new NameReader(ALL_KEYS).folderStrayAt("Queue@sever")
-		).toMatchObject({ text: "sever", closestKey: "server" });
-		expect(new NameReader(ALL_KEYS).folderStrayAt("@sever")).toMatchObject({
-			closestKey: "server",
+			misspelt(new NameReader(ALL_KEYS).folder("Queue@sever"), "strayAt")
+		).toMatchObject({ text: "sever", suggestion: "@server" });
+		expect(
+			misspelt(new NameReader(ALL_KEYS).folder("@sever"), "strayAt")
+		).toMatchObject({
+			suggestion: "@server",
 		});
 		expect(
-			new NameReader(ALL_KEYS).folderStrayAt("@rbxts")
+			misspelt(new NameReader(ALL_KEYS).folder("@rbxts"), "strayAt")
 		).toBeUndefined();
 	});
 
 	it("should report a dot part one edit from a variant", () => {
 		expect(
-			new NameReader(ALL_KEYS).folderVariantTypo("Analytics.mok")
-		).toEqual({ text: "mok", variant: "mock" });
+			misspelt(
+				new NameReader(ALL_KEYS).folder("Analytics.mok"),
+				"variantTypo"
+			)
+		).toEqual({
+			kind: "variantTypo",
+			text: "mok",
+			variant: "mock",
+			respelling: { start: 9, written: ".mok", spelling: ".mock" },
+		});
+	});
+
+	it("should measure a respelling on the whole name of an invisible folder", () => {
+		expect(
+			misspelt(
+				new NameReader(ALL_KEYS).folder("(Queue@sever)"),
+				"strayAt"
+			)?.respelling
+		).toEqual({ start: 6, written: "@sever", spelling: "@server" });
 	});
 
 	it("should read any other folder as plain, keeping its name", () => {
 		expect(read("Inventory")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: [],
 			keptName: "Inventory",
 			outrankedName: "Inventory",
+			misspellings: [],
 		});
 	});
 });

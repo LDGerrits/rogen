@@ -44,6 +44,8 @@
 		"lint": "eslint .",
 		"generate:schema": "tsx scripts/generate-schema.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
+		"generate:help": "tsx scripts/generate-help.ts",
+		"generate:agent-block": "tsx scripts/generate-agent-block.ts",
 		"lint:fix": "eslint . --fix",
 		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen"
 	},

@@ -1,5 +1,11 @@
 import path from "path";
-import { BuildSummary, ConfigBuild } from "../../../domain/build/build.js";
+import {
+	BuildSummary,
+	ConfigBuild,
+	FailedBuild,
+	UnwrittenBuild,
+	WrittenBuild,
+} from "../../../domain/build/build.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	Diagnostic,
@@ -35,22 +41,21 @@ const debugLines = (
 const failedOf = (
 	errors: readonly Diagnostic[] = [],
 	config: ResolvedConfig = mockConfig()
-): ConfigBuild => ConfigBuild.failed(config, errors);
+): ConfigBuild => new FailedBuild(config, errors);
 
 const failed = failedOf();
 
 const builtOf = (
 	summary: BuildSummary,
 	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
-	config: ResolvedConfig = mockConfig()
-): ConfigBuild =>
-	ConfigBuild.built(
-		config,
-		outcome,
-		{ warnings: [], syncWarnings: [] },
-		summary,
-		[]
-	);
+	config: ResolvedConfig = mockConfig(),
+	blockedBy: readonly ResolvedConfig[] = [mockConfig()]
+): ConfigBuild => {
+	const findings = { warnings: [], syncWarnings: [] };
+	return outcome === "notWritten"
+		? new UnwrittenBuild(config, findings, summary, [], blockedBy)
+		: new WrittenBuild(config, outcome, findings, summary, []);
+};
 
 const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({ file: path.join(cwd, "match.rogen.json"), ...spec });
@@ -189,7 +194,7 @@ describe("BuildLog.outcome", () => {
 
 	const lines = (
 		build: ConfigBuild,
-		diagnostics: ConfigBuild["errors"] = [],
+		diagnostics: ConfigBuild["diagnostics"] = [],
 		note?: string
 	) => {
 		const logService = new MockLogService();
@@ -238,5 +243,48 @@ describe("BuildLog.outcome", () => {
 			"error",
 			"default.project.json · not written · see above",
 		]);
+	});
+});
+
+describe("BuildLog report", () => {
+	const configNamed = (label: string) =>
+		mockConfig({
+			file: path.join(cwd, `${label}.rogen.json`),
+			outFile: path.join(cwd, `${label}.project.json`),
+		});
+
+	const report = (builds: readonly ConfigBuild[]) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(builds);
+		return logService.entries
+			.filter(({ kind }) => kind === "error" || kind === "success")
+			.map(({ text }) => text);
+	};
+
+	it("should say a clean config wasn't written because another failed", () => {
+		expect(
+			report([
+				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+					configNamed("match"),
+				]),
+				failedOf([], configNamed("match")),
+			])
+		).toEqual([
+			"lobby.project.json · not written · match failed",
+			"match.project.json · not written",
+		]);
+	});
+
+	it("should name every config that failed", () => {
+		expect(
+			report([
+				failedOf([], configNamed("arena")),
+				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+					configNamed("arena"),
+					configNamed("match"),
+				]),
+				failedOf([], configNamed("match")),
+			])[1]
+		).toBe("lobby.project.json · not written · arena and match failed");
 	});
 });

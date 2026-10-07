@@ -78,13 +78,17 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 `init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
 
+A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
+
 ### `list [config…]`
 
 Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
-### `help [command]`
+### `help [name]`
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
+
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
 
 ## Options
 
@@ -118,7 +122,7 @@ An override changes a config value for one run. Anything you want every time bel
 
 `--json` prints exactly one JSON document on stdout, even when the command fails or the command line itself is wrong. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
 
-Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file.
+Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file. `url` points at the code's section on the [Diagnostics](/docs/v2/diagnostics) page.
 
 ```json
 {
@@ -127,8 +131,17 @@ Diagnostics look like this. Match on `code`, since the wording of `message` can 
 	"column": 2,
 	"severity": "error",
 	"code": "config.unknownField",
-	"message": "unknown field \"outDir\"."
+	"message": "unknown field \"outDir\".",
+	"url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
 }
+```
+
+A warning whose fix is one rename also has `fixes`, a rename for every name it covers, including names the message leaves out. Rogen never applies them: after a rename, update the requires and imports that name the file.
+
+```json
+"fixes": [
+	{ "rename": { "from": "/repo/src/Inventory/Save@sever.luau", "to": "/repo/src/Inventory/Save@server.luau" } }
+]
 ```
 
 If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
@@ -156,7 +169,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 
 | `status` | Fields |
 |---|---|
-| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `variants` |
+| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `variants`, and `hoisted: true` for a `^` name |
 | `pruned` | `variants`, the dormant ones |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
@@ -172,6 +185,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 ```json
 {
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
+	"appended": [],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -182,7 +196,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 }
 ```
 
-`files` lists what was written, in order, and `notes` what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 

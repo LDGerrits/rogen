@@ -1,0 +1,22 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Shop.luau -> ReplicatedStorage/shared/Shop · route * (fallback)
+  src/_Draft.luau -> excluded · matches **/_*
+  src/_Drafts -> excluded · matches **/_*
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shop: ModuleScript  <- src/Shop.luau

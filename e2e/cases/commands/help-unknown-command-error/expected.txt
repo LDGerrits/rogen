@@ -1,9 +1,9 @@
 $ rogen help deploy
 exit 2
 stderr:
-  error: Unknown command "deploy". Run 'rogen help' to see available commands.
+  error: Unknown command or topic "deploy". Run 'rogen help' to see the commands and topics.
 
 $ rogen help wacth
 exit 2
 stderr:
-  error: Unknown command "wacth". Did you mean 'rogen help watch'?
+  error: Unknown command or topic "wacth". Did you mean 'rogen help watch'?

@@ -1,4 +1,3 @@
-import { formatJsonDocument } from "../../base/json.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
@@ -27,7 +26,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given. Every config here is read.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -61,10 +60,7 @@ registerCommand(
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			if (line.options.json) {
-				logService.print(formatJsonDocument(report.json()));
-				return ok(undefined);
-			}
+			if (line.options.json) return this.printJson(logService, report.json());
 			const lines = report.lines();
 			if (lines.length > 0) logService.print(lines.join("\n"));
 			return ok(undefined);

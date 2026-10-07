@@ -11,7 +11,7 @@ import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
-export type Addition = "place" | "extending" | "separate";
+export type Addition = "place" | "extending" | "separate" | "agent";
 
 export interface NameQuestion {
 	readonly message: string;
@@ -42,11 +42,11 @@ export class InitQuestions {
 	/** `interactive` is false for a run that may not ask, even in a terminal. */
 	constructor(
 		private readonly promptService: PromptService,
-		readonly interactive = promptService.isInteractive
+		readonly interactive: boolean
 	) {}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
-	async whatToAdd(): Promise<Addition | undefined> {
+	async whatToAdd(agentFile?: string): Promise<Addition | undefined> {
 		if (!this.interactive) return "place";
 		return this.promptService.select<Addition>({
 			message: `${ConfigSet.DEFAULT_FILE} exists. What do you want to add?`,
@@ -66,8 +66,28 @@ export class InitQuestions {
 					label: "A separate config",
 					hint: "answers every question again",
 				},
+				...(agentFile
+					? [
+							{
+								value: "agent" as const,
+								label: "Agent instructions",
+								hint: `Rogen's rules for coding agents, in ${agentFile}`,
+							},
+						]
+					: []),
 			],
 			initialValue: "place",
+		});
+	}
+
+	/** Whether to add Rogen's rules to the agent file; a run that can't ask adds them, as Enter does. */
+	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {
+		if (!this.interactive) return true;
+		return this.promptService.confirm({
+			message: `Add Rogen's rules for coding agents to ${fileName}?`,
+			description:
+				"About 10 lines, read by every agent that opens this repo.",
+			initialValue: true,
 		});
 	}
 
@@ -340,7 +360,7 @@ export class InitQuestions {
 		const { extension } = language;
 		const routes = await this.promptService.multiSelect<RouteId>({
 			message: "Routes",
-			description: `Where code goes. A ${server} folder, a .server marker file or a Foo@server.${extension} suffix all send code to ServerScriptService.`,
+			description: `Where code goes. A ${server} folder, an @server marker file or a Foo@server.${extension} suffix all send code to ServerScriptService.`,
 			choices: starting.options.map(({ id, key, target, hint }) => ({
 				value: id,
 				label: key,

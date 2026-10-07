@@ -4,6 +4,8 @@ stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
+stderr:
+  src/server/@client - warning: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
 
 written:
   default.project.json

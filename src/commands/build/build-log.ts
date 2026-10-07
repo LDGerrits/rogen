@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
+import { joinedWithAnd, plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -79,12 +79,15 @@ export class BuildLog {
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.config);
 			// A config's errors end the run, so the failure prints them last.
-			this.outcome(build, [
-				...build.warnings,
-				...(build.syncWarnings ?? []),
-			]);
+			this.outcome(
+				build,
+				[...build.warnings, ...(build.syncWarnings ?? [])],
+				build.outcome === "notWritten"
+					? `${joinedWithAnd(build.blockedBy.map(({ label }) => label))} failed`
+					: undefined
+			);
 		}
-		if (builds.every(({ errors }) => errors.length === 0))
+		if (builds.every(({ outcome }) => outcome !== "failed"))
 			this.end(builds.length);
 	}
 
@@ -110,9 +113,12 @@ export class BuildLog {
 				this.details(build.config, build.summary);
 				break;
 			case "notWritten":
-			case "failed":
 				this.logService.error(line("not written"));
 				this.details(build.config, build.summary);
+				break;
+			case "failed":
+				this.logService.error(line("not written"));
+				this.details(build.config);
 				break;
 		}
 		this.diagnostics(diagnostics);

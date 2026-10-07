@@ -11,7 +11,7 @@ import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
-import { PlaceChoices, PlaceSetup } from "./place-setup.js";
+import { PlaceChoices, PlacePlan } from "./place-plan.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 
@@ -188,7 +188,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		}
 
-		const placeSetup = new PlaceSetup(this.directory, this.questions);
 		const places = choices.places.map((place): PlaceChoices => ({
 			name: place,
 			folder: ConfigSet.placeFolderOf(place),
@@ -196,7 +195,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			darklua,
 			base: { rootDirs, ...(syncDir && { syncDir }) },
 		}));
-		for (const place of places) placeSetup.planFiles(place, builder);
+		for (const place of places)
+			new PlacePlan(this.directory, place).planFiles(builder);
 
 		// The first place's commands stand for all of them.
 		const [first, ...others] = places;
@@ -214,7 +214,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
 			ConfigSet.variantsStep(language, configFileName(name))
 		);
-		if (first) placeSetup.planSteps(first, builder);
+		if (first) new PlacePlan(this.directory, first).planSteps(builder);
 		else this.planSteps(builder, choices, configSet);
 	}
 

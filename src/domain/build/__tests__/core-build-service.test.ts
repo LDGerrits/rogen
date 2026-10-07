@@ -61,9 +61,9 @@ describe("CoreBuildService", () => {
 				await buildServiceOfFs().build(selectionOf(configOf()))
 			).unwrap();
 
-			expect(build.summary?.roots).toMatchObject([
-				{ rootDir: abs("src"), files: 1 },
-			]);
+			expect(build).toMatchObject({
+				summary: { roots: [{ rootDir: abs("src"), files: 1 }] },
+			});
 		});
 
 		it("should write every config's project file and say what each did", async () => {
@@ -101,7 +101,12 @@ describe("CoreBuildService", () => {
 				[abs("default.rogen.json"), "notWritten"],
 				[abs("lobby.rogen.json"), "failed"],
 			]);
-			expect(result[1].errors).not.toEqual([]);
+			expect(result[1]).toMatchObject({
+				errors: expect.arrayContaining([
+					expect.objectContaining({ code: "meta.invalidSyntax" }),
+				]),
+			});
+			expect(result[0]).toMatchObject({ blockedBy: [result[1].config] });
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
@@ -127,7 +132,7 @@ describe("CoreBuildService", () => {
 			expect(result[1]).toMatchObject({
 				errors: [{ code: "output.writeFailed" }],
 			});
-			expect(result[2]).toMatchObject({ errors: [] });
+			expect(result[2]).toMatchObject({ blockedBy: [result[1].config] });
 			expect(await fs.exists(abs("arena.project.json"))).toBe(false);
 		});
 

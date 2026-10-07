@@ -4,6 +4,7 @@ import { joinPosix } from "../../base/path.js";
 import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
+	DiagnosticFix,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
@@ -14,15 +15,34 @@ import {
 	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { instanceKey } from "../rojo/rojo-project.js";
+import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
+import {
+	MisspellingKind,
+	MisspellingOf,
+	NotedName,
+} from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 const DIAGNOSED_PATHS = 10;
 
-/** Reports on a finished build and decides nothing. */
+const isSamePath = (a: readonly string[], b: readonly string[]) =>
+	instanceKey(a) === instanceKey(b);
+
+/** A rename for every noted name that has one, not only the names a message lists. */
+function renames(
+	noted: ReadonlyMap<string, NotedName<unknown>>
+): DiagnosticFix[] {
+	return [...noted]
+		.sort(([a], [b]) => compareStrings(a, b))
+		.flatMap(([from, { renamedTo }]) =>
+			renamedTo ? [{ rename: { from, to: renamedTo } }] : []
+		);
+}
+
+/** Reports on a finished build. It works out what to say from what the phases hold, but never re-decides what they decided. */
 export class BuildValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;
@@ -40,7 +60,9 @@ export class BuildValidator {
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
+			...this.dotRoute(),
 			...this.variantTypo(),
+			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.ignoredAt(),
@@ -110,50 +132,139 @@ export class BuildValidator {
 
 	/** An `@` means nothing else, so one that routes nowhere is a typo or a misplaced suffix. */
 	private strayAt(): Diagnostic[] {
-		const { strayAts } = this.placement.readings;
-		if (strayAts.size === 0) return [];
-		const listed = this.listed(
-			[...strayAts],
-			([resource, { text, closestKey, notLast }]) => {
+		return this.misspelt(
+			"route.strayAt",
+			"strayAt",
+			(count) =>
+				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
+			(resource, { text, suggestion, notLast }) => {
 				const hint = notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
-					: `did you mean "@${closestKey}"?`;
+					: `did you mean "${suggestion}"?`;
 				return `${resource} (${hint})`;
 			}
 		);
-		const count = strayAts.size === 1 ? "name has" : "names have";
+	}
+
+	/** A route key after a dot routes nothing, so what it names falls through to the route above it. */
+	private dotRoute(): Diagnostic[] {
+		return this.misspelt(
+			"route.dotRoute",
+			"dotRoute",
+			(count) =>
+				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
+			(resource, { renamedTo }) =>
+				`${resource} (write "${path.posix.basename(renamedTo ?? resource)}")`
+		);
+	}
+
+	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
+	private variantTypo(): Diagnostic[] {
+		return this.misspelt(
+			"variant.typo",
+			"variantTypo",
+			(count) =>
+				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+			(resource, { text, variant }) =>
+				`${resource} (did you mean ".${variant}" for ".${text}"?)`
+		);
+	}
+
+	/** One warning for every name with a misspelling of `kind`: `headline` for how many, then a line for each, and the renames that fix them. */
+	private misspelt<K extends MisspellingKind>(
+		code: string,
+		kind: K,
+		headline: (count: number) => string,
+		line: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
+	): Diagnostic[] {
+		const noted = this.placement.readings.misspelt(kind);
+		if (noted.size === 0) return [];
 		return [
 			warningDiagnostic(
-				"route.strayAt",
+				code,
 				{ resource: this.config.file },
 				[
-					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
-					...listed,
+					headline(noted.size),
+					...this.listed([...noted], ([resource, misspelt]) =>
+						line(resource, misspelt)
+					),
+				].join("\n"),
+				renames(noted)
+			),
+		];
+	}
+
+	/** Variants are independent switches, so turning off every alternative of an instance leaves nothing where code expects it. */
+	private noneActive(): Diagnostic[] {
+		const missing = this.missingInstances();
+		if (missing.length === 0) return [];
+		const many = missing.length > 1;
+		return [
+			warningDiagnostic(
+				"variant.noneActive",
+				{ resource: this.config.file },
+				[
+					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
+					...this.listed(
+						missing,
+						({ instance, variants }) =>
+							`${instance} (${variants.join(", ")})`
+					),
+					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
 				].join("\n")
 			),
 		];
 	}
 
-	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
-	private variantTypo(): Diagnostic[] {
-		const { variantTypos } = this.placement.readings;
-		if (variantTypos.size === 0) return [];
-		const listed = this.listed(
-			[...variantTypos],
-			([resource, { text, variant }]) =>
-				`${resource} (did you mean ".${variant}" for ".${text}"?)`
-		);
-		const many = variantTypos.size > 1;
-		return [
-			warningDiagnostic(
-				"variant.typo",
-				{ resource: this.config.file },
-				[
-					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-					...listed,
-				].join("\n")
-			),
-		];
+	/** The outermost instances that two or more sets of variants claim and no file is left to give, sorted. */
+	private missingInstances(): {
+		readonly instance: string;
+		readonly variants: readonly string[];
+	}[] {
+		const givers = new InstanceMap<RoutedFile[]>();
+		for (const file of this.placement.routed)
+			for (const node of [
+				...file.folderNodes.map(({ instancePath }) => instancePath),
+				file.instancePath,
+			])
+				givers.set(node, [...(givers.get(node) ?? []), file]);
+
+		const missing: (readonly string[])[] = [];
+		const result: { instance: string; variants: string[] }[] = [];
+		for (const [node, files] of [...givers].sort(
+			([a], [b]) => a.length - b.length
+		)) {
+			const underMissing = missing.some((outer) =>
+				outer.every((segment, index) => node[index] === segment)
+			);
+			if (
+				underMissing ||
+				files.some(({ variants }) =>
+					this.config.allVariantsOn(variants)
+				)
+			)
+				continue;
+			const claims = files.map((file) =>
+				file.variants
+					.filter((_, index) =>
+						isSamePath(file.variantNodes[index], node)
+					)
+					.map(({ variant }) => variant)
+					.sort()
+			);
+			const alternatives = new Set(
+				claims
+					.filter((variants) => variants.length > 0)
+					.map((variants) => variants.join("."))
+			);
+			if (alternatives.size < 2) continue;
+			missing.push(node);
+			result.push({
+				instance: instanceKey(node),
+				variants: [...new Set(claims.flat())].sort(compareStrings),
+			});
+		}
+		return result.sort((a, b) => compareStrings(a.instance, b.instance));
 	}
 
 	private unrouted(): Diagnostic[] {
@@ -199,9 +310,18 @@ export class BuildValidator {
 		>();
 		for (const file of this.placement.files) {
 			if (shipped.has(file.entry.source)) continue;
-			for (const { key, dir } of file.ignoredAts) {
+			for (const { key, dir, marker } of file.ignoredAts) {
 				const { route } = file;
-				if (dir === undefined)
+				if (marker !== undefined)
+					ignored.set(
+						joinPosix(file.entry.rootDir, dir ?? "", marker),
+						{
+							key,
+							route,
+							kind: "folder",
+						}
+					);
+				else if (dir === undefined)
 					ignored.set(file.entry.source, {
 						key,
 						route,

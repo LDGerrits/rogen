@@ -11,6 +11,48 @@ stderr:
     src/Inventory/Save@sever.luau (did you mean "@server"?)
     src/Queue@clent (did you mean "@client"?)
 
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "4 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/@sever (did you mean \"@server\"?)\n  <dir>/src/Inventory/Report@server.bak.luau (\"@server\" must end the name, or be followed only by a variant)\n  <dir>/src/Inventory/Save@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Queue@clent (did you mean \"@client\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/@sever",
+                  "to": "<dir>/src/@server"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Save@sever.luau",
+                  "to": "<dir>/src/Inventory/Save@server.luau"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Queue@clent",
+                  "to": "<dir>/src/Queue@client"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
 written:
   default.project.json
 

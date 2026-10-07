@@ -8,6 +8,7 @@ import {
 	defaultOutFileName,
 } from "../config/config.js";
 import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
+import { AgentFile } from "./agent-file.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
@@ -24,13 +25,18 @@ export class InitPlanBuilder {
 	private template: PlannedFile | undefined;
 	private readonly configs: PlannedFile[] = [];
 	private readonly compilerConfigs: PlannedFile[] = [];
+	private agentFile: PlannedFile | undefined;
+	private agentStep: string | undefined;
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
 	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
 
-	constructor(private readonly directory: InitDirectory) {}
+	constructor(
+		private readonly directory: InitDirectory,
+		private readonly asked: boolean
+	) {}
 
 	setTemplate(file: PlannedFile): void {
 		this.template = file;
@@ -47,6 +53,12 @@ export class InitPlanBuilder {
 	/** A compiler's own per-place config, written after every config. */
 	addCompilerFile(file: PlannedFile): void {
 		this.compilerConfigs.push(file);
+	}
+
+	/** Rogen's rules for agents, written last; the one existing file `init` adds to. */
+	addAgentFile(file: AgentFile): void {
+		this.agentFile = file.planned;
+		this.agentStep = file.nextStep;
 	}
 
 	addNote(note: string): void {
@@ -93,13 +105,22 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
-			files: [...(this.template ? [this.template] : []), ...written],
+			asked: this.asked,
+			files: [
+				...(this.template ? [this.template] : []),
+				...written,
+				...(this.agentFile ? [this.agentFile] : []),
+			],
 			notes: [...this.notes],
 			nextSteps: {
 				setup: [...this.setup],
 				run: [...this.run],
 				darklua: [...this.darklua],
-				edits: [...this.edits],
+				// Before the edits that always come last.
+				edits: [
+					...(this.agentStep ? [this.agentStep] : []),
+					...this.edits,
+				],
 			},
 		});
 	}

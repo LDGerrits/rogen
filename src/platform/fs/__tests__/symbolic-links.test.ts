@@ -167,26 +167,11 @@ describe.each(fixtures)("%s: symbolic links", (_name, create) => {
 		});
 	});
 
-	describe("realPath", () => {
-		it("should resolve a link to the same path as its target", async () => {
-			await fixture.fileSystem.writeFile(at("shared/a.luau"), "");
-			await fixture.link(at("shared"), at("src/Shared"));
-
-			expect(await fixture.fileSystem.realPath(at("src/Shared"))).toBe(
-				await fixture.fileSystem.realPath(at("shared"))
-			);
-			expect(
-				await fixture.fileSystem.realPath(at("src/Shared/a.luau"))
-			).toBe(await fixture.fileSystem.realPath(at("shared/a.luau")));
-		});
-
+	describe("resolving a link", () => {
 		it("should resolve a relative link against the directory it is in", async () => {
 			await fixture.fileSystem.writeFile(at("shared/a.luau"), "");
 			await fixture.link(at("shared"), at("src/deep/Shared"), true);
 
-			expect(
-				await fixture.fileSystem.realPath(at("src/deep/Shared"))
-			).toBe(await fixture.fileSystem.realPath(at("shared")));
 			expect(
 				await fixture.fileSystem.readFile(at("src/deep/Shared/a.luau"))
 			).toBe("");
@@ -196,32 +181,13 @@ describe.each(fixtures)("%s: symbolic links", (_name, create) => {
 		});
 
 		it("should follow a chain of links", async () => {
-			await fixture.fileSystem.createDirectory(at("shared"));
+			await fixture.fileSystem.writeFile(at("shared/a.luau"), "x");
 			await fixture.link(at("shared"), at("one"));
 			await fixture.link(at("one"), at("two"));
 
-			expect(await fixture.fileSystem.realPath(at("two"))).toBe(
-				await fixture.fileSystem.realPath(at("shared"))
+			expect(await fixture.fileSystem.readFile(at("two/a.luau"))).toBe(
+				"x"
 			);
-		});
-
-		it("should reject with ENOENT for a link to nothing", async () => {
-			await fixture.fileSystem.createDirectory(at("src"));
-			await fixture.link(at("missing"), at("src/Broken"));
-
-			await expect(
-				fixture.fileSystem.realPath(at("src/Broken"))
-			).rejects.toMatchObject({ code: "ENOENT" });
-		});
-
-		it("should reject with ELOOP for links that point at each other", async () => {
-			await fixture.fileSystem.createDirectory(at("src"));
-			await fixture.link(at("src/B"), at("src/A"));
-			await fixture.link(at("src/A"), at("src/B"));
-
-			await expect(
-				fixture.fileSystem.realPath(at("src/A"))
-			).rejects.toMatchObject({ code: "ELOOP" });
 		});
 	});
 

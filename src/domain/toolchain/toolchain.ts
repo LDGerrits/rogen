@@ -63,6 +63,8 @@ export const PLACES_DIR = "places";
 export interface PlannedFile {
 	readonly fileName: string;
 	readonly content: string;
+	/** The file exists, and `content` is its text with more added at the end. */
+	readonly appends?: boolean;
 }
 
 /** A folder placed in the game as it is, never scanned or routed. */

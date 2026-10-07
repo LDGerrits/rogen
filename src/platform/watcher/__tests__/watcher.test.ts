@@ -24,7 +24,7 @@ describe("MemoryWatcher", () => {
 	it("should stop reporting once disposed", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
-		await watcher.watch([{ path: "src", recursive: true }]);
+		await watcher.watch(["src"]);
 
 		watcher[Symbol.dispose]();
 		await memoryFs.writeFile("src/init.lua", "");
@@ -37,7 +37,7 @@ describe("MemoryWatcher", () => {
 		watcher.onDidChangeFile(listener);
 
 		await memoryFs.createDirectory("src");
-		await watcher.watch([{ path: "src", recursive: true }]);
+		await watcher.watch(["src"]);
 
 		await memoryFs.writeFile("src/init.lua", "-- added");
 		await memoryFs.writeFile("src/init.lua", "-- updated");
@@ -66,7 +66,7 @@ describe("MemoryWatcher", () => {
 		await memoryFs.writeFile("src/components/card.lua", "");
 
 		watcher.onDidChangeFile(listener);
-		await watcher.watch([{ path: "src", recursive: true }]);
+		await watcher.watch(["src"]);
 
 		await memoryFs.delete("src/components", true);
 
@@ -94,11 +94,11 @@ describe("MemoryWatcher", () => {
 		]);
 	});
 
-	it("should respect non-recursive watch requests", async () => {
+	it("should report only a watched file's own changes", async () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
-		await watcher.watch([{ path: "package.json", recursive: false }]);
+		await watcher.watch(["package.json"]);
 		await memoryFs.writeFile("package.json", "{}");
 
 		expect(listener).toHaveBeenCalledTimes(1);
@@ -118,8 +118,8 @@ describe("MemoryWatcher", () => {
 		await memoryFs.createDirectory("src");
 		await memoryFs.createDirectory("tests");
 		await watcher.watch([
-			{ path: "src", recursive: true },
-			{ path: "tests", recursive: true },
+			"src",
+			"tests",
 		]);
 
 		await memoryFs.writeFile("src/main.ts", "");
@@ -133,7 +133,7 @@ describe("MemoryWatcher", () => {
 		const listener = jest.fn();
 		watcher.onDidChangeFile(listener);
 
-		await watcher.watch([{ path: "src", recursive: true }]);
+		await watcher.watch(["src"]);
 		await watcher.stop();
 
 		await memoryFs.writeFile("src/should-be-ignored.ts", "");
@@ -146,7 +146,7 @@ describe("MemoryWatcher", () => {
 		watcher.onDidChangeFile(listener);
 
 		await memoryFs.createDirectory("src");
-		await watcher.watch([{ path: "src", recursive: true }], {
+		await watcher.watch(["src"], {
 			ignored: ["src/out", "src/a.project.json"],
 		});
 
@@ -162,7 +162,7 @@ describe("MemoryWatcher", () => {
 		watcher.onDidChangeFile(listener);
 
 		await memoryFs.createDirectory("src");
-		await watcher.watch([{ path: "src", recursive: true }], {
+		await watcher.watch(["src"], {
 			ignored: [/^src\/a\.project\.json\.[^/]+\.tmp$/],
 		});
 

@@ -50,6 +50,9 @@ export const GlobalOptions = [
 	},
 ] as const satisfies readonly OptionDescriptor[];
 
+/** The command that answers `--help`, `--version` and a bare line. */
+export const HELP_COMMAND = "help";
+
 /** For the commands whose answer a program reads. */
 export const JsonOption = {
 	name: "json",
@@ -92,14 +95,24 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
-/** The command a line runs, and whether its first positional named it. `help` answers `--help`, `--version` and a bare `rogen`. */
+/** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
 	positionals: readonly string[]
-): { readonly command: string; readonly named: boolean } {
-	if (values.version || values.help || positionals.length === 0)
-		return { command: "help", named: false };
-	return { command: positionals[0].toLowerCase(), named: true };
+): {
+	readonly runs: string;
+	readonly names: string;
+	readonly consumesWord: boolean;
+} {
+	const named = positionals[0]?.toLowerCase();
+	if (named === undefined)
+		return { runs: HELP_COMMAND, names: HELP_COMMAND, consumesWord: false };
+	const redirected = Boolean(values.version || values.help);
+	return {
+		runs: redirected ? HELP_COMMAND : named,
+		names: named,
+		consumesWord: !redirected,
+	};
 }
 
 function unknownOption(
@@ -108,7 +121,7 @@ function unknownOption(
 	owners: readonly string[],
 	command: string
 ): string {
-	const help = `Run 'rogen help ${command}' to see what ${command} accepts.`;
+	const help = `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`;
 	if (owners.length > 0)
 		return `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${owners.length === 1 ? "does" : "do"}.`;
 	const suggestion = rawName.startsWith("--")
@@ -150,7 +163,7 @@ function findOptionProblem(
 
 /**
  * Finds the command with every known option (`optionsFor(undefined)`), then
- * checks the line against the options that command accepts. A line for a
+ * checks the line against the options of the command it names. A line for a
  * command that doesn't exist is returned unchecked, for the command service to
  * report.
  */
@@ -168,14 +181,14 @@ export function parseArgs(
 				)
 				.sort();
 		const { values, positionals, tokens } = tokenize(args, allOptions);
-		const { command, named } = commandOf(values, positionals);
+		const { runs, names, consumesWord } = commandOf(values, positionals);
 
-		if (commands.includes(command)) {
+		if (commands.includes(names)) {
 			const problem = findOptionProblem(
 				tokens ?? [],
-				optionsFor(command),
+				optionsFor(names),
 				ownersOf,
-				command
+				names
 			);
 			if (problem) return err(new UsageError(problem));
 		}
@@ -185,9 +198,9 @@ export function parseArgs(
 			);
 		}
 		return ok({
-			command,
+			command: runs,
 			line: {
-				positionals: named ? positionals.slice(1) : positionals,
+				positionals: consumesWord ? positionals.slice(1) : positionals,
 				options: values as CommandLine["options"],
 			},
 		});
@@ -196,8 +209,13 @@ export function parseArgs(
 	}
 }
 
-/** Whether `flag` was typed before any `--`, however the rest of the line parses. */
-export function hasFlag(argv: readonly string[], flag: string): boolean {
+/** Whether `option` was typed by its long name before any `--`, however the rest of the line parses. */
+export function hasFlag(
+	argv: readonly string[],
+	option: OptionDescriptor
+): boolean {
 	const end = argv.indexOf("--");
-	return (end === -1 ? argv : argv.slice(0, end)).includes(flag);
+	return (end === -1 ? argv : argv.slice(0, end)).includes(
+		`--${option.name}`
+	);
 }

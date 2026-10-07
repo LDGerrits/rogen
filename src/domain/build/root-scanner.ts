@@ -237,7 +237,7 @@ export class RootScanner {
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 			} else {
-				// A key can't contain a dot, so a dot-file with a file type is never a marker.
+				// A key can't contain a dot, so a file with a type (`@Foo.luau`, `.eslintrc.json`) is never a marker.
 				const file = new RojoFile(name);
 				if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
@@ -248,7 +248,7 @@ export class RootScanner {
 						relativePath: relativeTo(name),
 						source: joinPosix(dir, name),
 					});
-				} else if (name.startsWith(".")) {
+				} else if (name.startsWith(".") || name.startsWith("@")) {
 					walk.markers.push(relativeTo(name));
 				}
 			}

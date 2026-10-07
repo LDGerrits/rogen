@@ -30,7 +30,7 @@ const askInitChoices = async (
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
 		directoryOf({ ...context, givenName: name }),
-		new InitQuestions(prompts),
+		new InitQuestions(prompts, prompts.isInteractive),
 		fileSystem
 	);
 	return setup.ask();
@@ -673,7 +673,7 @@ describe("InitQuestions askProject", () => {
 			);
 			expect(choices[2].hint).toContain("ReplicatedStorage/Shared");
 			expect(description).toBe(
-				"Where code goes. A Server folder, a .server marker file or a Foo@server.luau suffix all send code to ServerScriptService."
+				"Where code goes. A Server folder, an @server marker file or a Foo@server.luau suffix all send code to ServerScriptService."
 			);
 		});
 
@@ -688,7 +688,7 @@ describe("InitQuestions askProject", () => {
 			]);
 			expect(choices[2].hint).toContain("ReplicatedStorage/shared");
 			expect(description).toContain(
-				"A server folder, a .server marker file or a Foo@server.ts suffix"
+				"A server folder, an @server marker file or a Foo@server.ts suffix"
 			);
 		});
 
@@ -973,5 +973,18 @@ describe("InitQuestions askProject template", () => {
 
 		expect(initial).toBe("new");
 		expect(prompts.asked).toContain("Packages");
+	});
+});
+
+describe("InitQuestions addAgentInstructions", () => {
+	it("should add them on Enter, as a run that can't ask does", async () => {
+		const asked = new InitQuestions(
+			new MockPromptService([ACCEPT_DEFAULT]),
+			true
+		);
+		const unasked = new InitQuestions(new MockPromptService([], false), false);
+
+		expect(await asked.addAgentInstructions("AGENTS.md")).toBe(true);
+		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);
 	});
 });

@@ -8,7 +8,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
-import { Watcher, WatchRequest } from "../../platform/watcher/watcher.js";
+import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet, ConfigBuild } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
@@ -52,12 +52,12 @@ class WatchedConfig {
 			build.diagnostics
 		);
 		this.latest = build;
-		if (build.readFiles) this.readFiles = new Set(build.readFiles);
+		if (build.outcome !== "failed") this.readFiles = new Set(build.readFiles);
 		return {
 			build,
 			unreported,
 			repeatedFailure:
-				build.errors.length > 0 && !unreported.some(isError),
+				build.outcome === "failed" && !unreported.some(isError),
 		};
 	}
 }
@@ -255,27 +255,21 @@ export class CoreWatchSession
 		);
 	}
 
-	private watchRequests(): WatchRequest[] {
-		return [
-			...[...this.selection.files].map((file) => ({
-				path: file,
-				recursive: false,
-			})),
-			...this.plan.roots.map((dir) => ({ path: dir, recursive: true })),
-		];
+	private watchPaths(): string[] {
+		return [...this.selection.files, ...this.plan.roots];
 	}
 
 	// JSON.stringify drops a RegExp's source, so patterns are stringified explicitly.
 	private watchKey(): string {
 		return JSON.stringify([
-			this.watchRequests(),
+			this.watchPaths(),
 			this.plan.ignored.map(String),
 		]);
 	}
 
 	private async watchPlan(): Promise<void> {
 		this.activeWatch = this.watchKey();
-		await this.watcher.watch(this.watchRequests(), {
+		await this.watcher.watch(this.watchPaths(), {
 			ignored: [...this.plan.ignored],
 		});
 		this.listing = await this.indexService.list(this.plan.roots);

@@ -23,6 +23,8 @@ export interface InitPlan {
 	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;
+	/** Whether the run asked its questions, rather than taking every default. */
+	readonly asked: boolean;
 }
 
 export interface InitOptions {
@@ -43,7 +45,7 @@ export interface InitService {
 	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
 	write(
 		plan: InitPlan,
-		onWritten: (fileName: string) => void
+		onWritten: (file: PlannedFile) => void
 	): Promise<Result<void, Error>>;
 }
 

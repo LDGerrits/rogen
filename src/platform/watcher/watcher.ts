@@ -3,11 +3,6 @@ import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
-export interface WatchRequest {
-	readonly path: string;
-	readonly recursive: boolean;
-}
-
 export type IgnoredPath = string | RegExp;
 
 export interface WatchOptions {
@@ -19,10 +14,9 @@ export interface Watcher {
 	readonly _serviceBrand: undefined;
 
 	readonly onDidChangeFile: Event<FileChange[]>;
-	readonly onDidError: Event<Error>;
 
-	/** Resolves once changes under `requests` are being reported. */
-	watch(requests: WatchRequest[], options?: WatchOptions): Promise<void>;
+	/** Resolves once changes to `paths` are being reported: a file's own, and everything under a directory. */
+	watch(paths: readonly string[], options?: WatchOptions): Promise<void>;
 	stop(): Promise<void>;
 }
 

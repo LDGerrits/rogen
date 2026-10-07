@@ -64,6 +64,26 @@ describe("LocationReport", () => {
 			);
 		});
 
+		it("should say a ^ name was hoisted", () => {
+			expect(
+				describe1({
+					status: "placed",
+					source: "/repo/src/Player/^Animate.client.luau",
+					instancePath: [
+						"StarterPlayer",
+						"StarterCharacterScripts",
+						"Animate",
+					],
+					route: "character",
+					routeMatch: "marker",
+					variants: [],
+					hoisted: true,
+				})
+			).toBe(
+				"src/Player/^Animate.client.luau -> StarterPlayer/StarterCharacterScripts/Animate · route character (marker) · hoisted by ^"
+			);
+		});
+
 		it("should list the other nodes a copied init script is", () => {
 			expect(
 				describe1({

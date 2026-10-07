@@ -17,7 +17,7 @@ src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 
 ## Init Folders
 
-Rojo treats a folder with an `init` or `index` script as a single instance, so Rogen routes it as a whole and leaves its contents alone.
+A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed and varied like any other file, so a folder split across routes gets a copy of its init ModuleScript in each. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
 
 ## Data Files
 
@@ -52,6 +52,27 @@ Rogen warns about metadata with nothing to apply to, such as an `init.meta.json`
 ```
 
 To sync a vendored library exactly as it is, [mount it in the template](/docs/v2/core-concepts/output#template) instead.
+
+### Leaving Out `_` Files
+
+Rogen gives a leading `_` no meaning, since ordinary Roblox names start with it too (Wally's `Packages/_Index`). If your project uses `_` for drafts and scratch files, exclude them:
+
+```json
+{ "exclude": ["**/_*"] }
+```
+
+An excluded folder isn't walked, so this covers `_Drafts/` and everything in it, and `rogen where` names the glob for each file it leaves out:
+
+```
+$ rogen where src
+src/Shop.luau -> ReplicatedStorage/Shared/Shop · route * (fallback)
+src/_Draft.luau -> excluded · matches **/_*
+src/_Drafts -> excluded · matches **/_*
+```
+
+<Callout type="warn" title="Excluded means missing">
+	An excluded file isn't in the game, so a `require` of a `_` module fails at runtime.
+</Callout>
 
 ## Linked Directories
 

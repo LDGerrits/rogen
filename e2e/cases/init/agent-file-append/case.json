@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "-y"], ["init", "-y", "lobby"]],
+	"show": ["AGENTS.md"],
+	"rojo": false
+}

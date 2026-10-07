@@ -137,7 +137,7 @@ describe("SyncDirCheck", () => {
 				});
 
 				it("should ignore dotfiles such as marker files", async () => {
-					await fs.writeFile(abs("src/.server"), "");
+					await fs.writeFile(abs("src/@server"), "");
 					await fs.writeFile(abs("src/Inventory/A.luau"), "");
 					await fs.writeFile(abs("out/Inventory/A.luau"), "");
 

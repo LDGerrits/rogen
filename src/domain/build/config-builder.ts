@@ -14,6 +14,7 @@ import { TreeAssembler } from "./tree-assembler.js";
 
 /** One config built in memory, which the run goes on to write. */
 export interface BuiltConfig {
+	readonly config: ResolvedConfig;
 	readonly tree: RojoTree;
 	readonly findings: BuildFindings;
 	readonly summary: BuildSummary;
@@ -55,6 +56,7 @@ export class ConfigBuilder {
 		const assembly = this.assembler.assemble(placement.value, meta.value);
 		if (assembly.isErr()) return err(new DiagnosticsError(assembly.error));
 		return ok({
+			config,
 			tree: assembly.value.tree,
 			summary: placement.value.summary(),
 			findings: {
