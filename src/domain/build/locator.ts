@@ -21,6 +21,8 @@ import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
 /** What `where` asked about: the paths, resolved, and the instances. */
 interface Targets {
 	readonly paths: readonly string[];
+	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
+	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
 }
 
@@ -57,7 +59,7 @@ export class Locator {
 
 	private async locateIn(
 		config: ResolvedConfig,
-		{ paths, instances }: Targets
+		{ paths, folders, instances }: Targets
 	): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		let files: FileLocation[] = [];
 		let diagnostics: readonly Diagnostic[] = [];
@@ -73,7 +75,7 @@ export class Locator {
 				await this.existence(index, paths)
 			);
 			if (planned.isErr()) return err(planned.error);
-			files = planned.value.locator.locate(paths);
+			files = planned.value.locator.locate(paths, folders);
 			diagnostics = planned.value.diagnostics;
 			if (instances.length === 0)
 				return ok({ config, files, instances: [], diagnostics });
@@ -146,6 +148,7 @@ export class Locator {
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
 	private async classify(query?: LocateTargets): Promise<Targets> {
 		const paths: string[] = [];
+		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
 		for (const arg of query?.args ?? []) {
 			const reference = InstanceReference.parse(arg);
@@ -156,8 +159,12 @@ export class Locator {
 				))
 			)
 				instances.push(reference);
-			else paths.push(path.resolve(query!.cwd, arg));
+			else {
+				const resolved = path.resolve(query!.cwd, arg);
+				paths.push(resolved);
+				if (/[\\/]$/.test(arg)) folders.add(toPosix(resolved));
+			}
 		}
-		return { paths, instances };
+		return { paths, folders, instances };
 	}
 }

@@ -68,7 +68,9 @@ registerCommand(
 			if (line.options.json)
 				return this.printJson(logService, report.json(), failure);
 			const lines = report.lines();
+			const empty = report.emptyLine();
 			if (lines.length > 0) logService.print(lines.join("\n"));
+			else if (empty) logService.print(empty);
 			return failure ? err(failure) : ok(undefined);
 		}
 	}

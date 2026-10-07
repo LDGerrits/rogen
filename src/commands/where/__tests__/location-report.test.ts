@@ -177,7 +177,11 @@ describe("LocationReport", () => {
 				"src/Save.luau -> displaced · the template defines ServerScriptService/Save",
 			],
 			[
-				{ status: "unrouted", source: "/repo/src/U.luau", exists: true },
+				{
+					status: "unrouted",
+					source: "/repo/src/U.luau",
+					exists: true,
+				},
 				"src/U.luau -> unrouted · no route matches it",
 			],
 			[
@@ -320,6 +324,65 @@ describe("LocationReport", () => {
 		});
 	});
 
+	describe("a missing folder", () => {
+		it("should say how to ask about a folder that doesn't exist", () => {
+			expect(
+				describe1({
+					status: "missing",
+					source: "/repo/src/Combat",
+					exists: false,
+					folder: true,
+				})
+			).toBe(
+				"src/Combat -> does not exist · name a file in it to see where it would land"
+			);
+		});
+
+		it("should leave a missing file as it is", () => {
+			expect(
+				describe1({
+					status: "missing",
+					source: "/repo/src/Hit.luau",
+					exists: false,
+				})
+			).toBe("src/Hit.luau -> does not exist");
+		});
+	});
+
+	describe("emptyLine", () => {
+		it("should name the root dirs of every config once, relative to the working directory", () => {
+			const report = new LocationReport("/repo", {
+				everyFile: true,
+				errors: [],
+				configs: [
+					{
+						config: mockConfig({
+							rootDirs: ["/repo/src", "/repo/places/lobby"],
+						}),
+						files: [],
+						instances: [],
+						diagnostics: [],
+					},
+					{
+						config: mockConfig({ rootDirs: ["/repo/src"] }),
+						files: [],
+						instances: [],
+						diagnostics: [],
+					},
+				],
+			});
+
+			expect(report.lines()).toEqual([]);
+			expect(report.emptyLine()).toBe(
+				"No files in the root dirs (src, places/lobby)."
+			);
+		});
+
+		it("should say nothing when no config answered", () => {
+			expect(reportOf([]).emptyLine()).toBeUndefined();
+		});
+	});
+
 	describe("diagnostics", () => {
 		const source = "/repo/src/Save@sever.luau";
 		const placed = (at: string): FileLocation => ({
@@ -428,7 +491,13 @@ describe("LocationReport", () => {
 				["default", [placed("/repo/src/U.luau")], [], [own]],
 				[
 					"lobby",
-					[{ status: "unrouted", source: "/repo/src/U.luau", exists: true }],
+					[
+						{
+							status: "unrouted",
+							source: "/repo/src/U.luau",
+							exists: true,
+						},
+					],
 					[],
 					[own],
 				],
@@ -594,12 +663,31 @@ describe("LocationReport", () => {
 				},
 				{ pattern: "/repo/**/*.spec.luau" },
 			],
-			[{ status: "unrouted", source: "/repo/src/U.luau", exists: true }, {}],
-			[{ status: "outside", source: "/repo/src/U.luau", exists: true }, {}],
-			[{ status: "ignored", source: "/repo/src/U.luau", exists: true }, {}],
-			[{ status: "missing", source: "/repo/src/U.luau", exists: true }, {}],
+			[
+				{
+					status: "unrouted",
+					source: "/repo/src/U.luau",
+					exists: true,
+				},
+				{},
+			],
+			[
+				{ status: "outside", source: "/repo/src/U.luau", exists: true },
+				{},
+			],
+			[
+				{ status: "ignored", source: "/repo/src/U.luau", exists: true },
+				{},
+			],
+			[
+				{ status: "missing", source: "/repo/src/U.luau", exists: true },
+				{},
+			],
 			[{ status: "empty", source: "/repo/src/U.luau", exists: true }, {}],
-			[{ status: "skipped", source: "/repo/src/U.luau", exists: true }, {}],
+			[
+				{ status: "skipped", source: "/repo/src/U.luau", exists: true },
+				{},
+			],
 		])("should give the fields %j carries", (location, fields) => {
 			expect(jsonOf(location)).toEqual([
 				{
@@ -664,7 +752,10 @@ describe("LocationReport", () => {
 
 		it("should keep a config's outside entry when another config places the path", () => {
 			const report = reportOf([
-				["default", [{ status: "outside", source: "/repo/a", exists: true }]],
+				[
+					"default",
+					[{ status: "outside", source: "/repo/a", exists: true }],
+				],
 				[
 					"lobby",
 					[

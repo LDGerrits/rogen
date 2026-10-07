@@ -16,6 +16,6 @@ An entry that is a config has `config` (the name every command takes, `lobby` fo
 
 Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file. A warning about several files has `related`: `[{ "file", "message" }]`, one for every file, uncapped (the text stops at ten). A diagnostic is about a file when its `file` is that file or `related[].file` includes it.
 
-`rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build. It prints the warnings a build would raise about each path under its line, except the sync dir's.
+`rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build. It prints the warnings a build would raise about each path under its line, except the sync dir's. With nothing in the root dirs it says so, and a missing folder says to name a file in it.
 
 `rogen build` is safe beside a running `rogen watch`: it writes only bytes that changed.

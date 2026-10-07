@@ -23,12 +23,16 @@ export class FileLocator {
 	}
 
 	/** Where each of `paths` lands, or every scanned path without `paths`. A directory stands for what's in it. */
-	locate(paths?: readonly string[]): FileLocation[] {
+	locate(
+		paths?: readonly string[],
+		/** The paths among `paths` that were asked about as folders, which can't be told apart once resolved. */
+		folders: ReadonlySet<string> = new Set()
+	): FileLocation[] {
 		if (!paths) return [...this.scanned.values()].sort(this.bySource);
 
 		const found = new Map<string, FileLocation>();
 		for (const target of paths.map(toPosix))
-			for (const location of this.locatePath(target))
+			for (const location of this.locatePath(target, folders))
 				found.set(location.source, location);
 		return [...found.values()];
 	}
@@ -75,7 +79,10 @@ export class FileLocator {
 		};
 	}
 
-	private locatePath(target: string): FileLocation[] {
+	private locatePath(
+		target: string,
+		folders: ReadonlySet<string>
+	): FileLocation[] {
 		const { index } = this;
 		const { roots } = this.placement;
 		const below = [...this.scanned.values()]
@@ -118,11 +125,15 @@ export class FileLocator {
 			path.posix.dirname(target),
 			path.posix.basename(target)
 		);
+		const folder =
+			!exists &&
+			(folders.has(target) || !path.posix.basename(target).includes("."));
 		return [
 			{
 				status: exists ? "ignored" : "missing",
 				source: target,
 				exists: this.exists(target),
+				...(folder && { folder: true as const }),
 			},
 		];
 	}

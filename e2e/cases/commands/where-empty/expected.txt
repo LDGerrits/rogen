@@ -1,0 +1,12 @@
+$ rogen where
+exit 0
+stdout:
+  No files in the root dirs (src).
+
+$ rogen where --json
+exit 0
+stdout:
+  {
+    "locations": [],
+    "diagnostics": []
+  }

@@ -59,6 +59,8 @@ A directory stands for the files inside it, and no path at all means every file 
 
 A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants. Otherwise the line says why it isn't placed: `pruned`, `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
 
+With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and names a folder (`src/Combat/`, or a name with no extension) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed.
+
 Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
 
 ```

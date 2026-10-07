@@ -98,7 +98,9 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 		case "ignored":
 			return "not an instance";
 		case "missing":
-			return "does not exist";
+			return location.folder
+				? "does not exist · name a file in it to see where it would land"
+				: "does not exist";
 		case "empty":
 			return "empty · no file in it places";
 	}
@@ -158,6 +160,7 @@ export class LocationReport {
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
 	private readonly configs: number;
+	private readonly rootDirs: readonly string[];
 	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
 	private readonly sorted: boolean;
 
@@ -166,6 +169,7 @@ export class LocationReport {
 		{ everyFile, configs, errors }: Locations
 	) {
 		this.errors = errors;
+		this.rootDirs = configs.flatMap(({ config }) => config.rootDirs);
 		this.configs = configs.length;
 		this.sorted = everyFile;
 		this.answers = configs.flatMap((located) => this.answersOf(located));
@@ -209,6 +213,18 @@ export class LocationReport {
 				...this.noted(answer),
 			]);
 		});
+	}
+
+	/** What to say when there is nothing to list because no root dir holds a file; `undefined` when no config answered at all. */
+	emptyLine(): string | undefined {
+		const rootDirs = [
+			...new Set(
+				this.rootDirs.map((rootDir) => relativeTo(this.cwd, rootDir))
+			),
+		];
+		return rootDirs.length > 0
+			? `No files in the root dirs (${rootDirs.join(", ")}).`
+			: undefined;
 	}
 
 	/** One entry per config and path, in the order `lines` puts the paths, under `locations`. */

@@ -42,7 +42,9 @@ describe("CoreBuildService.locate", () => {
 		const config = configOf(overrides);
 		return (
 			await locateIn(buildService(), config, {
-				args: paths?.map((p) => abs(p)) ?? [],
+				args:
+					paths?.map((p) => abs(p) + (p.endsWith("/") ? "/" : "")) ??
+					[],
 				cwd: abs(),
 			})
 		).unwrap().files;
@@ -265,7 +267,12 @@ describe("CoreBuildService.locate", () => {
 
 		expect(located).toEqual([
 			{ status: "unrouted", source: abs("src/Util.luau"), exists: true },
-			{ status: "excluded", source: abs("src/Specs"), pattern: glob, exists: true },
+			{
+				status: "excluded",
+				source: abs("src/Specs"),
+				pattern: glob,
+				exists: true,
+			},
 			{
 				status: "excluded",
 				source: abs("src/Specs/deep/B.luau"),
@@ -354,6 +361,31 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
+		it("should mark a missing path named as a folder, by a trailing separator or by having no file type", async () => {
+			await write("src/Other.luau");
+
+			const located = [
+				...(await locate(["src/Combat/"])),
+				...(await locate(["src/Fight"])),
+				...(await locate(["src/Combat/Hit.luau"])),
+			];
+
+			expect(located).toMatchObject([
+				{ status: "missing", folder: true },
+				{ status: "missing", folder: true },
+				{ status: "placed" },
+			]);
+			expect(located[2]).not.toHaveProperty("folder");
+		});
+
+		it("should not mark an existing folder", async () => {
+			await write("src/Combat/Hit.luau");
+
+			expect(await locate(["src/Combat/"])).toMatchObject([
+				{ status: "placed" },
+			]);
+		});
+
 		it("should replace a file that does exist", async () => {
 			await write("src/Analytics.luau");
 
@@ -411,7 +443,11 @@ describe("CoreBuildService.locate", () => {
 			await write("src/Other.luau");
 
 			expect(await locate(["src/Notes.md"])).toEqual([
-				{ status: "missing", source: abs("src/Notes.md"), exists: false },
+				{
+					status: "missing",
+					source: abs("src/Notes.md"),
+					exists: false,
+				},
 			]);
 		});
 	});
@@ -427,8 +463,17 @@ describe("CoreBuildService.locate", () => {
 
 		expect(located).toEqual([
 			{ status: "outside", source: abs("README.md"), exists: true },
-			{ status: "ignored", source: abs("src/Save.meta.json"), exists: true },
-			{ status: "missing", source: abs("src/Nowhere"), exists: false },
+			{
+				status: "ignored",
+				source: abs("src/Save.meta.json"),
+				exists: true,
+			},
+			{
+				status: "missing",
+				source: abs("src/Nowhere"),
+				exists: false,
+				folder: true,
+			},
 		]);
 	});
 
@@ -457,7 +502,9 @@ describe("CoreBuildService.locate", () => {
 						cwd: abs(),
 					})
 				).unwrap().files
-			).toEqual([{ status: "ignored", source: abs("src/Pipe.md"), exists: true }]);
+			).toEqual([
+				{ status: "ignored", source: abs("src/Pipe.md"), exists: true },
+			]);
 		});
 
 		it("should not be replaced by a planned file", async () => {

@@ -232,6 +232,8 @@ export interface PlacedLocation extends Located {
 export interface UnplacedLocation extends Located {
 	/** `ignored` exists but isn't an instance. */
 	readonly status: "outside" | "ignored" | "missing" | "empty";
+	/** A `missing` path that is named as a folder: it ends in a separator, or has no file type to be placed by. */
+	readonly folder?: true;
 }
 
 /** Where a path lands in the tree, or why it lands nowhere. */

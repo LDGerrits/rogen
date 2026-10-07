@@ -238,6 +238,27 @@ describe("where command", () => {
 		);
 	});
 
+	it("should say there are no files rather than print nothing", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		const result = await run({});
+
+		expect(result.isOk()).toBe(true);
+		expect(printed()).toEqual(["No files in the root dirs (src)."]);
+	});
+
+	it("should hint at a folder that doesn't exist, with or without the trailing slash", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		await run({ _: ["src/Combat/", "src/Combat"] });
+
+		expect(printed()).toEqual([
+			"src/Combat -> does not exist · name a file in it to see where it would land",
+		]);
+	});
+
 	describe("with --json", () => {
 		const document = () =>
 			(
