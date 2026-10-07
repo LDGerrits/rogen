@@ -91,11 +91,24 @@ export function parseJsonc(text: string): JsoncDocument {
 	return {
 		root,
 		value,
-		errors: errors.map((error) => ({
-			message: describeSyntaxError(error.error),
-			...positionAt(source, error.offset),
-		})),
+		errors: withoutRepeats(
+			errors.map((error) => ({
+				message: describeSyntaxError(error.error),
+				...positionAt(source, error.offset),
+			}))
+		),
 	};
+}
+
+/** The parser reports one close-brace error per object still open at the end of the text. */
+function withoutRepeats(errors: readonly JsoncError[]): JsoncError[] {
+	const seen = new Set<string>();
+	return errors.filter(({ message, line, column }) => {
+		const key = `${line}:${column}:${message}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 function toJsoncNode(node: Node, source: string): JsoncNode {

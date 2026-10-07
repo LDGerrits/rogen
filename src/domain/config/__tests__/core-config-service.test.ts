@@ -657,6 +657,24 @@ describe("domain/config/core-config-service", () => {
 			expect(diagnostic.message).toContain("/repo/missing.rogen.json");
 		});
 
+		it("should report a config cut off inside a nested object once", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"variants": { "mock": false`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.invalidSyntax",
+					message: "invalid JSONC: expected '}'.",
+					position: { line: 2, column: 29 },
+				},
+			]);
+		});
+
 		it("should report the diagnostics of an invalid ancestor against that file", async () => {
 			await write("/repo/base.rogen.json", { bogus: true });
 			await write("/repo/default.rogen.json", {

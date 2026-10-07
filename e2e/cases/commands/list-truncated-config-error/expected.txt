@@ -1,0 +1,9 @@
+$ rogen list
+exit 1
+stdout:
+  rogen list
+  default.rogen.json
+  list failed.
+stderr:
+  default.rogen.json:3:29 - error: invalid JSONC: expected '}'.
+  error: 1 of 1 configs have errors.

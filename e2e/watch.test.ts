@@ -104,12 +104,19 @@ describeWithRojo("end to end watch", () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
-		writeProjectFile(project.dir, "default.rogen.json", "{ bad");
+		writeProjectFile(
+			project.dir,
+			"default.rogen.json",
+			'{ "variants": { "mock": false'
+		);
 		await eventually(() => {
 			expect(running.output).toContain(
 				"Still building from the last valid"
 			);
 		});
+		expect(
+			running.output.split("invalid JSONC: expected '}'")
+		).toHaveLength(2);
 
 		writeProjectFile(project.dir, "src/B.luau");
 		await eventually(async () => {

@@ -1,4 +1,4 @@
-import { parse } from "../jsonc.js";
+import { parse, parseJsonc } from "../jsonc.js";
 
 describe("parse", () => {
 	it("should return the value of a plain JSON document", () => {
@@ -40,5 +40,24 @@ describe("parse", () => {
 	it("should return an error for an empty document", () => {
 		expect(parse("").isErr()).toBe(true);
 		expect(parse("  // only a comment").isErr()).toBe(true);
+	});
+});
+
+describe("parseJsonc", () => {
+	it("should report one error for every object still open at the end", () => {
+		const { errors } = parseJsonc('{ "a": { "b": 1');
+
+		expect(errors).toEqual([
+			{ message: "expected '}'", line: 1, column: 16 },
+		]);
+	});
+
+	it("should keep different errors at one position", () => {
+		const { errors } = parseJsonc('{ "a": [ { "b": 1');
+
+		expect(errors.map((error) => error.message)).toEqual([
+			"expected '}'",
+			"expected ']'",
+		]);
 	});
 });
