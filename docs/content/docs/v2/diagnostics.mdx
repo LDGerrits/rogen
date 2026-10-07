@@ -225,7 +225,7 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing:
@@ -247,7 +247,7 @@ Delete the marker you don't want, or move part of the folder into a subfolder wi
 
 ### `route.ignoredAt` [#route-ignoredat]
 
-Warning. A name or marker file has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.
+Warning. A name or marker file has an `@key` inside a folder that another route already governs, or before another `@key` in the same name (`Net@client@server/`). Only the outermost route acts, and in one name only the last `@key` routes, so this one does nothing and stays in the name.
 
 ```
 src/server/Util@client.luau - warning: "@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route's files.

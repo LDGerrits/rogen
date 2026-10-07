@@ -467,6 +467,10 @@ export class Router {
 						key: folder.route,
 						dir: folder.dir,
 					});
+				for (const key of folder.innerRoutes) {
+					claims.claimRoute(key, "folder");
+					claims.ignoredAts.push({ key, dir: folder.dir });
+				}
 			}
 			const name = governs ? folder.keptName : folder.outrankedName;
 			const named = name !== undefined && !folder.invisible;

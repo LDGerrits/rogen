@@ -14,6 +14,8 @@ export interface FolderReading {
 	readonly route?: string;
 	/** Whether its route is spelled `@key`: a bare `server` may only be a name, but an `@` means to route. */
 	readonly at: boolean;
+	/** Route keys its name spells before the one it routes by, which that one outranks. */
+	readonly innerRoutes: readonly string[];
 	/** Its whole name, or `.variant` parts at its end. */
 	readonly variants: readonly string[];
 	/** Its name with its keys off; none for a folder named after a key alone, which exists only to declare it. */
@@ -160,6 +162,7 @@ export class NameReader {
 				hoisted,
 				route,
 				at: bareRoute === undefined,
+				innerRoutes: [],
 				variants: [],
 				outrankedName: name,
 				misspellings: [],
@@ -171,6 +174,7 @@ export class NameReader {
 				invisible,
 				hoisted,
 				at: false,
+				innerRoutes: [],
 				variants: [variant],
 				outrankedName: name,
 				misspellings: NameReader.inFolderName(
@@ -185,6 +189,7 @@ export class NameReader {
 				invisible,
 				hoisted,
 				at: false,
+				innerRoutes: [],
 				variants: [],
 				keptName: name,
 				outrankedName: name,
@@ -203,7 +208,9 @@ export class NameReader {
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
-		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
+		const [routeSpan, ...innerRouteSpans] = spans.filter(
+			({ key }) => !this.keys.isVariant(key)
+		);
 		const keptName = NameReader.withoutSpans(
 			name,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
@@ -213,6 +220,7 @@ export class NameReader {
 			hoisted,
 			...(routeSpan && { route: routeSpan.key }),
 			at: routeSpan !== undefined,
+			innerRoutes: innerRouteSpans.map(({ key }) => key),
 			variants: variantSpans.map(({ key }) => key),
 			...(keptName !== "" && { keptName }),
 			outrankedName: NameReader.withoutSpans(name, variantSpans),
@@ -306,10 +314,11 @@ export class NameReader {
 		const matched = new Set<string>();
 		const spans: SuffixSpan[] = [];
 
+		const routed = () => spans.some(({ key }) => !this.keys.isVariant(key));
 		for (
-			let span = this.trailingSpan(remaining, dotRoutes);
+			let span = this.trailingSpan(remaining, dotRoutes, routed());
 			span;
-			span = this.trailingSpan(remaining, dotRoutes)
+			span = this.trailingSpan(remaining, dotRoutes, routed())
 		) {
 			matched.add(span.key);
 			remaining = remaining.slice(0, span.start);
@@ -323,38 +332,52 @@ export class NameReader {
 			misspellings: NameReader.present([
 				this.strayAt(remaining),
 				this.variantTypo(remaining),
-				this.dotRoute(remaining),
+				this.dotRoute(remaining, dotRoutes),
 			]),
 		};
 	}
 
 	/** Only `@` routes, and Rojo's `.server`/`.client` on a script, which `suffixes` already took. */
-	private dotRoute(remaining: string): DotRoute | undefined {
+	private dotRoute(remaining: string, script: boolean): DotRoute | undefined {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
-		const key = this.keys.resolveRoute(text);
-		return key ? NameReader.dotRouteOf(text, key, dot) : undefined;
+		const key = this.dotRouteKey(text);
+		return key ? NameReader.dotRouteOf(text, key, dot, script) : undefined;
 	}
 
-	/** `.text` at `start`, which spells the route `key`, respelt with its `@`. */
+	/** The route a dot part spells in any letter case: the dot is already the slip, so the case is fixed with it. */
+	private dotRouteKey(text: string): string | undefined {
+		const nearMiss = this.keys.nearMiss(text);
+		return (
+			this.keys.resolveRoute(text) ??
+			(nearMiss && !this.keys.isVariant(nearMiss) ? nearMiss : undefined)
+		);
+	}
+
+	/** `.text` at `start`, which spells the route `key`, respelt with its `@`; on a script, Rojo's own `.server`/`.client` in another case is respelt as Rojo reads it. */
 	private static dotRouteOf(
 		text: string,
 		key: string,
-		start: number
+		start: number,
+		script = false
 	): DotRoute {
+		const rojo = text.toLowerCase();
+		const spelling =
+			script && DOT_ROUTE_KEYS.has(rojo) ? `.${rojo}` : `@${key}`;
 		return {
 			kind: "dotRoute",
 			text,
 			key,
-			respelling: { start, written: `.${text}`, spelling: `@${key}` },
+			respelling: { start, written: `.${text}`, spelling },
 		};
 	}
 
 	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */
 	private trailingSpan(
 		remaining: string,
-		dotRoutes: boolean
+		dotRoutes: boolean,
+		routed: boolean
 	): SuffixSpan | undefined {
 		const dot = remaining.lastIndexOf(".");
 		const at = remaining.lastIndexOf("@");
@@ -369,8 +392,9 @@ export class NameReader {
 				? { key, start: dot, length: remaining.length - dot }
 				: undefined;
 		}
+		// A bare `@key` names nothing alone, but before another route it is one more route the name spells.
 		const key = this.keys.resolveRoute(remaining.slice(at + 1));
-		return at > 0 && key
+		return (at > 0 || (at === 0 && routed)) && key
 			? { key, start: at, length: remaining.length - at }
 			: undefined;
 	}
@@ -380,14 +404,14 @@ export class NameReader {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
-		if (DOT_ROUTE_KEYS.has(text) || this.keys.resolveRoute(text))
+		if (DOT_ROUTE_KEYS.has(text) || this.dotRouteKey(text))
 			return undefined;
 		return this.variantTypoOf(text, dot);
 	}
 
 	/** A dot-file or dot-folder `.text` that isn't a variant: a route key written with a dot, or a variant's near miss. */
 	private dotNameMisspelling(text: string): Misspelling | undefined {
-		const route = this.keys.resolveRoute(text);
+		const route = this.dotRouteKey(text);
 		return route
 			? NameReader.dotRouteOf(text, route, 0)
 			: this.dotNameTypo(text);

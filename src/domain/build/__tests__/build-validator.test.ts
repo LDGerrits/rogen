@@ -256,6 +256,37 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
+			it("should report a route before another route in one name, on a folder as on a file, bare or not", async () => {
+				await write(
+					"src/Net@client@server/A.luau",
+					"src/@client@server/B.luau",
+					"src/Foo@client@server.luau",
+					"src/@client@server.luau"
+				);
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.warnings.map(({ code, resource }) => [code, resource])
+				).toEqual(
+					expect.arrayContaining([
+						["route.ignoredAt", abs("src/Net@client@server")],
+						["route.ignoredAt", abs("src/@client@server")],
+						["route.ignoredAt", abs("src/Foo@client@server.luau")],
+						["route.ignoredAt", abs("src/@client@server.luau")],
+					])
+				);
+				expect(result.warnings).toHaveLength(4);
+				expect(
+					result.routed.map(({ instancePath }) => instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/@client",
+					"ServerScriptService/@client/B",
+					"ServerScriptService/Foo@client",
+					"ServerScriptService/Net@client/A",
+				]);
+			});
+
 			it("should list the first few and count the rest", async () => {
 				await write(
 					...Array.from(
@@ -547,6 +578,45 @@ describe("BuildValidator rules", () => {
 						to: at("src/Gun@server.model.json"),
 					},
 				});
+			});
+
+			it("should warn about a route key after a dot in any letter case, renaming a script's to Rojo's own spelling", async () => {
+				await write(
+					"src/.SERVER/A.luau",
+					"src/C/.SERVER",
+					"src/C/B.luau",
+					"src/Net.SHARED/D.luau",
+					"src/Types.SHARED.luau",
+					"src/Data.Server.json",
+					"src/Boot.Server.luau",
+					"src/Hud.CLIENT.luau",
+					"src/Lib.SHARED.luau"
+				);
+
+				const [warning, ...others] = await warningsOf("route.dotRoute");
+				const renamed = Object.fromEntries(
+					(warning.fixes ?? []).map(({ rename: { from, to } }) => [
+						from.slice(at("src").length + 1),
+						to.slice(at("src").length + 1),
+					])
+				);
+
+				expect(others).toEqual([]);
+				expect(renamed).toEqual({
+					".SERVER": "@server",
+					"C/.SERVER": "C/@server",
+					"Net.SHARED": "Net@shared",
+					"Types.SHARED.luau": "Types@shared.luau",
+					"Data.Server.json": "Data@server.json",
+					"Boot.Server.luau": "Boot.server.luau",
+					"Hud.CLIENT.luau": "Hud.client.luau",
+					"Lib.SHARED.luau": "Lib@shared.luau",
+				});
+				expect(
+					(await route({ routes: SHARED }))
+						.unwrap()
+						.warnings.filter(({ code }) => code === "route.caseMismatch")
+				).toEqual([]);
 			});
 
 			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
