@@ -31,6 +31,8 @@ export interface RebuildReport {
 	readonly build: LoadedBuild;
 	/** The diagnostics of `build` its previous rebuild didn't have, in print order. */
 	readonly unreported: readonly Diagnostic[];
+	/** The diagnostics of `build` that the block leaves out because the previous rebuild had them too. */
+	readonly repeated: readonly Diagnostic[];
 	/** It failed with the same errors as the previous rebuild. */
 	readonly repeatedFailure: boolean;
 }

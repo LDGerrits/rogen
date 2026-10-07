@@ -56,6 +56,9 @@ class WatchedConfig {
 		return {
 			build,
 			unreported,
+			repeated: build.diagnostics.filter(
+				(diagnostic) => !unreported.includes(diagnostic)
+			),
 			repeatedFailure:
 				build.outcome === "failed" && !unreported.some(isError),
 		};

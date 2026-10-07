@@ -33,7 +33,12 @@ A config reloads when it, its `extends` chain or its template changes, and CLI o
 │
 ◇  12:05:02 · default.rogen.json changed · reloaded
 │  ✔ default.project.json · unchanged
+│
+◇  12:06:10 · 1 file changed
+│  ✔ default.project.json · wrote · 3 warnings as before
 ```
+
+A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there.
 
 It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
 
