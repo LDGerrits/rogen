@@ -173,6 +173,8 @@ export interface PlacedLocation extends Located {
 	readonly routeMatch: RouteMatch;
 	/** The active variants the file carries. */
 	readonly variants: readonly VariantMatch[];
+	/** A `^` on its name or a folder's took it straight to the route's target. */
+	readonly hoisted?: boolean;
 }
 
 export interface UnplacedLocation extends Located {

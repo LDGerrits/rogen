@@ -140,6 +140,32 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		expect(placed(storage!)).toEqual(rojo);
 	});
 
+	it("should give a hoisted file the class and meta Rojo gives it in its own folder", async () => {
+		writeFiles({
+			"Inv/^Animate.client.luau": "",
+			"Inv/^Animate.meta.json": '{"attributes":{"a":1}}',
+			"Inv/Other.luau": "",
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src/Inv" } })
+		);
+		await rogenTree();
+
+		const classOf = (node: SourcemapNode | undefined, name: string) =>
+			node?.children?.find((child) => child.name === name)?.className;
+		const storage = sourcemap(dir, "ours.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(classOf(storage, "Animate")).toBe(
+			classOf(sourcemap(dir, "rojo.project.json"), "^Animate")
+		);
+		expect(metaApplied(storage!)).toContain(
+			"Animate <- src/Inv/^Animate.meta.json"
+		);
+	});
+
 	it("should keep each file's meta under every name Rogen gives it", async () => {
 		const meta = '{"attributes":{"a":1}}';
 		writeFiles({

@@ -36,7 +36,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 			const alsoAt = location.alsoAt
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${alsoAt}`;
+			const hoisted = location.hoisted ? " · hoisted by ^" : "";
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${hoisted}${alsoAt}`;
 		}
 		case "pruned":
 			return `pruned · variant ${location.variants[0].variant} is off (${location.variants[0].form})`;
@@ -77,6 +78,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 					variant,
 					form,
 				})),
+				...(location.hoisted && { hoisted: true }),
 			};
 		case "pruned":
 			return {

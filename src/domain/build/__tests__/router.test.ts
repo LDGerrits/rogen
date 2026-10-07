@@ -65,6 +65,104 @@ describe("Router", () => {
 			store[Symbol.dispose]();
 		});
 
+		describe("hoisted names", () => {
+			const CHARACTER = {
+				...ROUTES,
+				character: "StarterPlayer/StarterCharacterScripts",
+			};
+
+			it("should land a ^ name at its route's target, dropping every folder between", async () => {
+				await write(
+					"src/Character/@character",
+					"src/Character/^Animate.client.luau",
+					"src/Util/^Signal.luau",
+					"src/Ui/^Hud/Health.luau",
+					"src/Ui/Bar.luau"
+				);
+
+				expect((await paths({ routes: CHARACTER })).sort()).toEqual([
+					"ReplicatedStorage/shared/Hud/Health",
+					"ReplicatedStorage/shared/Signal",
+					"ReplicatedStorage/shared/Ui/Bar",
+					"StarterPlayer/StarterCharacterScripts/Animate",
+				]);
+			});
+
+			it("should hoist under a routing folder, a suffix and *, dropping folders above the route too", async () => {
+				await write(
+					"src/A/server/B/^C.luau",
+					"src/A/B/^D@server.luau",
+					"src/A@server/B/^E.luau"
+				);
+
+				expect((await paths()).sort()).toEqual([
+					"ServerScriptService/C",
+					"ServerScriptService/D",
+					"ServerScriptService/E",
+				]);
+			});
+
+			it("should leave an unrouted ^ name unrouted", async () => {
+				await write("src/A/^B.luau");
+
+				expect(
+					(
+						await route({
+							routes: { server: "ServerScriptService" },
+						})
+					).unwrap().unrouted
+				).toEqual([abs("src/A/^B.luau")]);
+			});
+
+			it("should land a ^ name inside a ^ folder at the target, and an invisible ^ folder's contents there", async () => {
+				await write("src/A/^B/C/^D.luau", "src/A/(^E)/F.luau");
+
+				expect((await paths()).sort()).toEqual([
+					"ReplicatedStorage/shared/D",
+					"ReplicatedStorage/shared/F",
+				]);
+			});
+
+			it("should say a file was hoisted", async () => {
+				await write("src/A/^B.luau", "src/A/C.luau");
+
+				const routed = (await route()).unwrap().routed;
+
+				expect(
+					routed.find(
+						({ entry }) => entry.source === abs("src/A/^B.luau")
+					)?.hoisted
+				).toBe(true);
+				expect(
+					routed.find(
+						({ entry }) => entry.source === abs("src/A/C.luau")
+					)?.hoisted
+				).toBeUndefined();
+			});
+
+			it("should refuse a ^ on an init script, pointing at its folder", async () => {
+				await write("src/Net/^init.luau", "src/Net/A.luau");
+
+				const result = await route();
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{ code: "tree.hoistedInit", resource: abs("src/Net") },
+				]);
+			});
+
+			it("should warn when two ^ names land on one instance", async () => {
+				await write("src/A/^C.luau", "src/B/^C.luau");
+
+				const { warnings } = (await route()).unwrap();
+
+				expect(warnings).toContainEqual(
+					expect.objectContaining({ code: "tree.instanceClash" })
+				);
+			});
+		});
+
 		describe("folder nodes", () => {
 			it("should pair each node a folder names with that folder, skipping routing, variant and invisible folders", async () => {
 				await write("src/Combat/(group)/server/dev/Moves/Punch.luau");

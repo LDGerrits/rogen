@@ -16,7 +16,13 @@ import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader, NameReadings } from "./name-reader.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { InitToCopy, InitWithoutFolder, RoutedFile, Router } from "./router.js";
+import {
+	HoistedInit,
+	InitToCopy,
+	InitWithoutFolder,
+	RoutedFile,
+	Router,
+} from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
@@ -212,13 +218,15 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, toCopy, unrouted, withoutFolder } = new Router(
-			this.config,
-			readings,
-			this.layout.initNames
-		).route(roots);
-		const withoutFolderErrors = this.withoutFolderErrors(withoutFolder);
-		if (withoutFolderErrors.length > 0) return err(withoutFolderErrors);
+		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
+			new Router(this.config, readings, this.layout.initNames).route(
+				roots
+			);
+		const initErrors = [
+			...this.withoutFolderErrors(withoutFolder),
+			...this.hoistedInitErrors(hoistedInits),
+		];
+		if (initErrors.length > 0) return err(initErrors);
 		const routedNodes = this.withCopies(routed, toCopy);
 		const applied = this.applyVariants(routedNodes);
 		if (applied.isErr()) return applied;
@@ -276,6 +284,22 @@ export class Placer {
 					`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
 				)
 			);
+	}
+
+	/** The script is its folder, so a `^` on it hoists nothing the folder couldn't. */
+	private hoistedInitErrors(
+		hoistedInits: readonly HoistedInit[]
+	): Diagnostic[] {
+		return hoistedInits
+			.filter(({ variants }) => this.config.allVariantsOn(variants))
+			.map(({ source }) => {
+				const folder = path.posix.dirname(source);
+				return errorDiagnostic(
+					"tree.hoistedInit",
+					{ resource: folder },
+					`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
+				);
+			});
 	}
 
 	/** Each root dir's routed files, then the copies of its init scripts. */

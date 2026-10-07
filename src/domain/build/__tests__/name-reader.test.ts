@@ -309,6 +309,7 @@ describe("NameReader folder", () => {
 	it("should read a folder named after a route as that route, spelled without an @, keeping no name", () => {
 		expect(read("Server")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			route: "server",
 			variants: [],
@@ -319,6 +320,7 @@ describe("NameReader folder", () => {
 	it("should read a folder named after a variant as that variant, keeping no name", () => {
 		expect(read("mock")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: ["mock"],
 			outrankedName: "mock",
@@ -336,12 +338,14 @@ describe("NameReader folder", () => {
 		expect(read("(server)")).toMatchObject({
 			route: "server",
 			invisible: true,
+			hoisted: false,
 		});
 	});
 
 	it("should read Name@key as a route folder that keeps Name", () => {
 		expect(read("Matchmaking@server")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: true,
 			route: "server",
 			variants: [],
@@ -353,6 +357,7 @@ describe("NameReader folder", () => {
 	it("should read Name.variant as a variant folder that keeps Name", () => {
 		expect(read("Analytics.mock")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: ["mock"],
 			keptName: "Analytics",
@@ -381,6 +386,7 @@ describe("NameReader folder", () => {
 		for (const name of ["Queue-server", "Queue.server", "QueueServer"])
 			expect(read(name)).toEqual({
 				invisible: false,
+				hoisted: false,
 				at: false,
 				variants: [],
 				keptName: name,
@@ -419,6 +425,7 @@ describe("NameReader folder", () => {
 	it("should read any other folder as plain, keeping its name", () => {
 		expect(read("Inventory")).toEqual({
 			invisible: false,
+			hoisted: false,
 			at: false,
 			variants: [],
 			keptName: "Inventory",

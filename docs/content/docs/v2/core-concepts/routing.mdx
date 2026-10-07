@@ -167,6 +167,30 @@ Without it, those files are **unrouted**: Rogen leaves them out and warns about 
 	`*` only catches leftovers. You still need the `shared` key for `shared/` to act as a routing folder and for `@shared` to route, otherwise both keep their names in the game.
 </Callout>
 
+## Hoisted Names
+
+A file lands at its route's target, followed by every folder above it. A name that starts with `^` lands **directly at the target** instead, and every folder in between is dropped:
+
+```
+routes: character -> "StarterPlayer/StarterCharacterScripts"
+        *         -> "ReplicatedStorage/Shared"
+
+src/Player/@character
+src/Player/^Animate.client.luau  ->  StarterCharacterScripts/Animate
+src/Player/Sprint.client.luau    ->  StarterCharacterScripts/Player/Sprint
+src/Ui/^Hud/Health.luau          ->  ReplicatedStorage/Shared/Hud/Health
+```
+
+It's for instances Roblox only reads at the top of a container, such as an `Animate` or `Health` script in `StarterCharacterScripts`, or a `PlayerModule` in `StarterPlayerScripts`. An invisible folder hoists everything in it; `^` hoists one name and leaves the feature folder whole.
+
+- The target stays whole: `^` only drops folders from disk, never the ones a target creates, so `ReplicatedStorage/Shared` keeps `Shared`.
+- Every folder in between goes, including a `Name@key/` folder and the folders above the governing route. It works under any route, `*` included, and an unrouted file stays unrouted.
+- A folder takes it too: `^Hud/` lands `Hud` at the target, with its contents nested as usual. `(^Name)/` puts its contents at the target.
+- The `^` comes off the name, so `^Animate.client.luau` is `Animate`. Its meta file is `^Animate.meta.json`.
+- An init script can't take it, since the script is its folder: `^init.luau` is an error. Put the `^` on the folder.
+
+Shells treat `^` specially (cmd.exe as an escape, zsh with `EXTENDED_GLOB` as negation), so quote it: `touch '^Animate.client.luau'`. `rogen where` marks a hoisted file with `hoisted by ^`.
+
 ## Targets
 
 A target is a path. `"ServerScriptService"` puts files at the service's root, and `"ReplicatedStorage/Shared"` wraps them in a `Shared` folder. The first segment has to be a supported service (such as `ServerScriptService`, `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui` or `TextChatService`), which catches typos. Write `StarterPlayer/StarterPlayerScripts` in full, since Rogen doesn't know a service's children.

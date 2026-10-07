@@ -8,6 +8,8 @@ import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 /** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
 export interface FolderReading {
 	readonly invisible: boolean;
+	/** Written `^Name`: it lands at its route's target, and the folders above it are dropped. */
+	readonly hoisted: boolean;
 	/** Its whole name, or an `@key` at its end. */
 	readonly route?: string;
 	/** Whether its route is spelled `@key`: a bare `server` may only be a name, but an `@` means to route. */
@@ -104,10 +106,37 @@ export class NameReader {
 			: { name: inner, invisible: true };
 	}
 
+	/** A name that starts with `^` is hoisted to its route's target; the `^` comes off it. */
+	static unhoisted(name: string): {
+		readonly name: string;
+		readonly hoisted: boolean;
+	} {
+		return name.length > 1 && name.startsWith("^")
+			? { name: name.slice(1), hoisted: true }
+			: { name, hoisted: false };
+	}
+
+	/** A folder's name with its parentheses, then its `^`, off; `offset` is where that name starts in the folder's. */
+	private static readFolderName(folderName: string): {
+		readonly name: string;
+		readonly invisible: boolean;
+		readonly hoisted: boolean;
+		readonly offset: number;
+	} {
+		const unwrapped = NameReader.unwrapInvisibleFolder(folderName);
+		const { name, hoisted } = NameReader.unhoisted(unwrapped.name);
+		return {
+			name,
+			invisible: unwrapped.invisible,
+			hoisted,
+			offset: (unwrapped.invisible ? 1 : 0) + (hoisted ? 1 : 0),
+		};
+	}
+
 	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
 	folder(folderName: string): FolderReading {
-		const { name, invisible } =
-			NameReader.unwrapInvisibleFolder(folderName);
+		const { name, invisible, hoisted } =
+			NameReader.readFolderName(folderName);
 		const bareRoute = this.keys.resolveRoute(name);
 		const route =
 			bareRoute ??
@@ -117,6 +146,7 @@ export class NameReader {
 		if (route)
 			return {
 				invisible,
+				hoisted,
 				route,
 				at: bareRoute === undefined,
 				variants: [],
@@ -128,6 +158,7 @@ export class NameReader {
 		if (variant)
 			return {
 				invisible,
+				hoisted,
 				at: false,
 				variants: [variant],
 				outrankedName: name,
@@ -140,6 +171,7 @@ export class NameReader {
 		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
 		return {
 			invisible,
+			hoisted,
 			...(routeSpan && { route: routeSpan.key }),
 			at: routeSpan !== undefined,
 			variants: variantSpans.map(({ key }) => key),
@@ -153,41 +185,38 @@ export class NameReader {
 
 	/** A dot part at the end of a folder name that is one edit from a declared variant. */
 	folderVariantTypo(folderName: string): VariantTypo | undefined {
-		const { name, invisible } =
-			NameReader.unwrapInvisibleFolder(folderName);
+		const { name, offset } = NameReader.readFolderName(folderName);
 		return NameReader.inFolderName(
 			this.suffixes(name, false).variantTypo,
-			invisible
+			offset
 		);
 	}
 
 	/** The `@` in a folder name that no declared route follows. */
 	folderStrayAt(folderName: string): StrayAt | undefined {
-		const { name, invisible } =
-			NameReader.unwrapInvisibleFolder(folderName);
-		return NameReader.inFolderName(this.strayAt(name), invisible);
+		const { name, offset } = NameReader.readFolderName(folderName);
+		return NameReader.inFolderName(this.strayAt(name), offset);
 	}
 
 	/** A route key after a dot at the end of a folder name, which only `@` routes. */
 	folderDotRoute(folderName: string): DotRoute | undefined {
-		const { name, invisible } =
-			NameReader.unwrapInvisibleFolder(folderName);
+		const { name, offset } = NameReader.readFolderName(folderName);
 		return NameReader.inFolderName(
 			this.suffixes(name, false).dotRoute,
-			invisible
+			offset
 		);
 	}
 
-	/** A misspelling read inside `(name)`, with its respelling measured on the folder's whole name. */
+	/** A misspelling read in a folder's name, with its respelling measured on the folder's whole name. */
 	private static inFolderName<T extends { readonly respelling?: Respelling }>(
 		misspelt: T | undefined,
-		invisible: boolean
+		offset: number
 	): T | undefined {
-		if (!misspelt?.respelling || !invisible) return misspelt;
+		if (!misspelt?.respelling || offset === 0) return misspelt;
 		const { respelling } = misspelt;
 		return {
 			...misspelt,
-			respelling: { ...respelling, start: respelling.start + 1 },
+			respelling: { ...respelling, start: respelling.start + offset },
 		};
 	}
 

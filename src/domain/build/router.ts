@@ -6,6 +6,7 @@ import { RouteMatch, VariantMatch } from "./build.js";
 import {
 	EntryRead,
 	InstancelessFolder,
+	NameReader,
 	NameReadings,
 	SuffixSpan,
 } from "./name-reader.js";
@@ -36,6 +37,8 @@ export interface RoutedFile {
 	readonly ignoredAts: readonly IgnoredAt[];
 	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
 	readonly init?: InitFolders;
+	/** A `^` on its name or a folder's dropped the folders above that name. */
+	readonly hoisted?: boolean;
 }
 
 /** The two folders of an init script, which differ when a variant folder sits between them. */
@@ -52,6 +55,12 @@ export interface IgnoredAt {
 	readonly dir?: string;
 	/** The marker file that spells it. */
 	readonly marker?: string;
+}
+
+/** An init script written `^init`: the script is its folder, so only the folder can take the `^`. */
+export interface HoistedInit {
+	readonly source: string;
+	readonly variants: readonly VariantMatch[];
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
@@ -89,9 +98,10 @@ class Claims {
 	}
 }
 
-/** The file's own name, as Rojo reads it once the suffixes its route and variants claimed are off. */
+/** The file's own name, as Rojo reads it once the suffixes its route and variants claimed are off, and its `^`. */
 interface LeafName {
 	readonly name: string;
+	readonly hoisted: boolean;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
@@ -100,11 +110,13 @@ interface LeafName {
 /** A file's path, claimed up to its route: what claimed it, the folders that name its nodes, and its own name. */
 interface ClaimedPath {
 	readonly claims: Claims;
+	/** Only those below the innermost `^`, which drops the ones above it. */
 	readonly folders: readonly {
 		readonly name: string;
 		readonly dir: string;
 	}[];
 	readonly leaf: LeafName;
+	readonly hoisted: boolean;
 }
 
 /** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
@@ -142,16 +154,25 @@ export class Router {
 		toCopy: InitToCopy[];
 		unrouted: string[];
 		withoutFolder: InitWithoutFolder[];
+		hoistedInits: HoistedInit[];
 	} {
 		const routed: RoutedFile[] = [];
 		const toCopy: InitToCopy[] = [];
 		const unrouted: string[] = [];
 		const withoutFolder: InitWithoutFolder[] = [];
+		const hoistedInits: HoistedInit[] = [];
 		for (const root of roots) {
 			const markers = root.markersByDir();
 			const initRoutes = this.initRoutesOf(root);
 			for (const entry of root.entries) {
 				const claimed = this.claim(entry, markers, initRoutes);
+				if (claimed.leaf.isInit && claimed.leaf.hoisted) {
+					hoistedInits.push({
+						source: entry.source,
+						variants: claimed.claims.variants,
+					});
+					continue;
+				}
 				if (claimed.leaf.isInit && claimed.folders.length === 0) {
 					if (this.config.routes.has(claimed.claims.routeKey))
 						withoutFolder.push({
@@ -175,7 +196,7 @@ export class Router {
 					});
 			}
 		}
-		return { routed, toCopy, unrouted, withoutFolder };
+		return { routed, toCopy, unrouted, withoutFolder, hoistedInits };
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
@@ -220,14 +241,20 @@ export class Router {
 	): ClaimedPath {
 		const read = this.readings.entryAt(entry.source);
 		const claims = new Claims();
-		const folders = this.claimFolders(
+		const { folders, hoistAt } = this.claimFolders(
 			entry,
 			read,
 			markers,
 			initRoutes,
 			claims
 		);
-		return { claims, folders, leaf: this.claimLeaf(read, claims) };
+		const leaf = this.claimLeaf(read, claims);
+		return {
+			claims,
+			folders: folders.slice(leaf.hoisted ? folders.length : hoistAt),
+			leaf,
+			hoisted: leaf.hoisted || hoistAt !== undefined,
+		};
 	}
 
 	private place(
@@ -256,6 +283,7 @@ export class Router {
 			buriedScriptSuffix: leaf.buriedScriptSuffix,
 			ignoredAts: claims.ignoredAts,
 			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
+			...(claimed.hoisted && { hoisted: true }),
 		};
 	}
 
@@ -285,7 +313,14 @@ export class Router {
 		markers: ReadonlyMap<string, string[]>,
 		initRoutes: InitRoutes,
 		claims: Claims
-	): { readonly name: string; readonly dir: string }[] {
+	): {
+		readonly folders: readonly {
+			readonly name: string;
+			readonly dir: string;
+		}[];
+		/** Where the folders below the innermost `^` folder start; none without one. */
+		readonly hoistAt: number | undefined;
+	} {
 		const applyDirClaims = (dir: string) => {
 			for (const fileName of markers.get(dir) ?? []) {
 				const key = this.readings.markers.get(
@@ -304,7 +339,9 @@ export class Router {
 
 		applyDirClaims("");
 		const folders: { name: string; dir: string }[] = [];
+		let hoistAt: number | undefined;
 		for (const folder of read.folders) {
+			if (folder.hoisted) hoistAt = folders.length;
 			for (const variant of folder.variants)
 				claims.claimVariant({ variant, form: "folder" });
 			let governs = true;
@@ -321,7 +358,7 @@ export class Router {
 				folders.push({ name, dir: folder.dir });
 			applyDirClaims(folder.dir);
 		}
-		return folders;
+		return { folders, hoistAt };
 	}
 
 	/** Reads the suffixes of a file into `claims` and returns its instance name. */
@@ -350,9 +387,12 @@ export class Router {
 			stem,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
+		const { name, hoisted } = NameReader.unhoisted(
+			kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
+		);
 		return {
-			name:
-				kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped,
+			name,
+			hoisted,
 			scriptSuffix,
 			buriedScriptSuffix,
 			isInit: this.isInitEntry(read),
@@ -364,7 +404,9 @@ export class Router {
 		return (
 			kind === "script" &&
 			this.initNames.has(
-				RojoFile.scriptNameOf(this.stripSpans(stem, match.spans))
+				NameReader.unhoisted(
+					RojoFile.scriptNameOf(this.stripSpans(stem, match.spans))
+				).name
 			)
 		);
 	}

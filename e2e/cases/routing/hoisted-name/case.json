@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["build"],
+		["where", "src/Player/^Animate.client.luau", "src/Ui"],
+		["where", "src/Player/^Animate.client.luau", "--json"]
+	]
+}

@@ -332,6 +332,16 @@ src/server/init.server.luau - error: an init script becomes the folder it sits i
 
 Move the script into a folder of its own, or rename it so it isn't an init script. See [Init Folders](/docs/v2/core-concepts/project-layout#init-folders).
 
+### `tree.hoistedInit` [#tree-hoistedinit]
+
+Error. An init script's name starts with `^`. The script is its folder, so it can't be hoisted on its own; the folder can.
+
+```
+src/Net - error: ^init.luau starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^Net.
+```
+
+Rename the script back to `init.luau` and the folder to `^Net`. See [Hoisted Names](/docs/v2/core-concepts/routing#hoisted-names).
+
 ### `tree.deadScript` [#tree-deadscript]
 
 Warning. A Script or LocalScript lands in a service where Roblox never runs it, such as a LocalScript in `ServerScriptService`. One warning lists every such script.

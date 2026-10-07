@@ -1,0 +1,8 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.project.json · not written
+  src/Net - error: ^init.luau starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^Net.
