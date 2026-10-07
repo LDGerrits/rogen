@@ -224,6 +224,7 @@ export class LocationReport {
 					? {
 							source: toNative(answer.location.source),
 							status: answer.location.status,
+							exists: answer.location.exists,
 							...locationFields(answer.location),
 							diagnostics:
 								answer.diagnostics.map(diagnosticToJson),

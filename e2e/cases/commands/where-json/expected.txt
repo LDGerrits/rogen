@@ -7,6 +7,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Combat",
@@ -22,6 +23,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Combat",
@@ -36,6 +38,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Inventory/Server/Save.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Inventory",
@@ -50,6 +53,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Net/Http.mock.luau",
         "status": "pruned",
+        "exists": true,
         "variants": [
           {
             "variant": "mock",
@@ -62,6 +66,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Net/Http@client.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "StarterPlayer",
           "StarterPlayerScripts",
@@ -77,6 +82,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Net/Types.lua",
         "status": "replaced",
+        "exists": true,
         "by": "<dir>/src/Net/Types.luau",
         "diagnostics": [
           {
@@ -92,6 +98,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Net/Types.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "Shared",
@@ -107,6 +114,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Specs",
         "status": "excluded",
+        "exists": true,
         "pattern": "<dir>/src/Specs",
         "diagnostics": []
       }
@@ -123,6 +131,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Net/Http.mock.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "Shared",
@@ -152,6 +161,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Combat",
@@ -167,6 +177,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Combat",

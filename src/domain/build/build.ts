@@ -212,6 +212,8 @@ export interface BuildFindings {
 interface Located {
 	/** An absolute POSIX path. */
 	readonly source: string;
+	/** Whether the path is there now, rather than only placed as it would be once created. */
+	readonly exists: boolean;
 }
 
 export interface PlacedLocation extends Located {

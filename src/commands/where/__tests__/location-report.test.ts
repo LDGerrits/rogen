@@ -42,6 +42,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "placed",
 					source: "/repo/src/Net/Http@client.luau",
+					exists: true,
 					instancePath: [
 						"StarterPlayer",
 						"StarterPlayerScripts",
@@ -61,6 +62,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "placed",
 					source: "/repo/src/A.luau",
+					exists: true,
 					instancePath: ["ReplicatedStorage", "A"],
 					route: "*",
 					routeMatch: "fallback",
@@ -80,6 +82,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "placed",
 					source: "/repo/src/Player/^Animate.client.luau",
+					exists: true,
 					instancePath: [
 						"StarterPlayer",
 						"StarterCharacterScripts",
@@ -100,6 +103,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "placed",
 					source: "/repo/src/Net/init.luau",
+					exists: true,
 					instancePath: ["ServerScriptService", "Net"],
 					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
 					route: "server",
@@ -116,6 +120,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "pruned",
 					source: "/repo/src/Http.mock.luau",
+					exists: true,
 					variants: [
 						{
 							variant: "mock",
@@ -133,6 +138,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "mounted",
 					source: "/repo/src/Vendor/Lib.luau",
+					exists: true,
 					node: ["ReplicatedStorage", "Vendor"],
 				})
 			).toBe(
@@ -145,6 +151,7 @@ describe("LocationReport", () => {
 				describe1({
 					status: "excluded",
 					source: "/repo/src/A.spec.luau",
+					exists: true,
 					pattern: "/repo/**/*.spec.luau",
 				})
 			).toBe("src/A.spec.luau -> excluded · matches **/*.spec.luau");
@@ -155,6 +162,7 @@ describe("LocationReport", () => {
 				{
 					status: "replaced",
 					source: "/repo/src/T.lua",
+					exists: true,
 					by: "/repo/src/T.luau",
 				},
 				"src/T.lua -> replaced by src/T.luau",
@@ -163,32 +171,33 @@ describe("LocationReport", () => {
 				{
 					status: "displaced",
 					source: "/repo/src/Save.luau",
+					exists: true,
 					node: ["ServerScriptService", "Save"],
 				},
 				"src/Save.luau -> displaced · the template defines ServerScriptService/Save",
 			],
 			[
-				{ status: "unrouted", source: "/repo/src/U.luau" },
+				{ status: "unrouted", source: "/repo/src/U.luau", exists: true },
 				"src/U.luau -> unrouted · no route matches it",
 			],
 			[
-				{ status: "outside", source: "/repo/README.md" },
+				{ status: "outside", source: "/repo/README.md", exists: true },
 				"README.md -> outside the root dirs",
 			],
 			[
-				{ status: "ignored", source: "/repo/src/N.md" },
+				{ status: "ignored", source: "/repo/src/N.md", exists: true },
 				"src/N.md -> not an instance",
 			],
 			[
-				{ status: "missing", source: "/repo/src/X" },
+				{ status: "missing", source: "/repo/src/X", exists: true },
 				"src/X -> does not exist",
 			],
 			[
-				{ status: "empty", source: "/repo/src/E" },
+				{ status: "empty", source: "/repo/src/E", exists: true },
 				"src/E -> empty · no file in it places",
 			],
 			[
-				{ status: "skipped", source: "/repo/src/L" },
+				{ status: "skipped", source: "/repo/src/L", exists: true },
 				"src/L -> skipped · the link loops or points at nothing",
 			],
 		])("should describe %j", (location, line) => {
@@ -200,10 +209,12 @@ describe("LocationReport", () => {
 		const outside = (name: string): FileLocation => ({
 			status: "outside",
 			source: `/repo/${name}`,
+			exists: true,
 		});
 		const missing = (name: string): FileLocation => ({
 			status: "missing",
 			source: `/repo/${name}`,
+			exists: true,
 		});
 		const report = reportOf;
 
@@ -225,6 +236,7 @@ describe("LocationReport", () => {
 		const placed = (name: string, at: string): FileLocation => ({
 			status: "placed",
 			source: `/repo/${name}`,
+			exists: true,
 			instancePath: ["ReplicatedStorage", at],
 			route: "*",
 			routeMatch: "fallback",
@@ -313,6 +325,7 @@ describe("LocationReport", () => {
 		const placed = (at: string): FileLocation => ({
 			status: "placed",
 			source: at,
+			exists: true,
 			instancePath: ["ReplicatedStorage", "Save"],
 			route: "*",
 			routeMatch: "fallback",
@@ -415,7 +428,7 @@ describe("LocationReport", () => {
 				["default", [placed("/repo/src/U.luau")], [], [own]],
 				[
 					"lobby",
-					[{ status: "unrouted", source: "/repo/src/U.luau" }],
+					[{ status: "unrouted", source: "/repo/src/U.luau", exists: true }],
 					[],
 					[own],
 				],
@@ -498,6 +511,7 @@ describe("LocationReport", () => {
 				jsonOf({
 					status: "placed",
 					source: "/repo/src/Net/Http@client.luau",
+					exists: true,
 					instancePath: [
 						"StarterPlayer",
 						"StarterPlayerScripts",
@@ -511,6 +525,7 @@ describe("LocationReport", () => {
 				{
 					config: "default",
 					source: "/repo/src/Net/Http@client.luau",
+					exists: true,
 					status: "placed",
 					instancePath: [
 						"StarterPlayer",
@@ -530,6 +545,7 @@ describe("LocationReport", () => {
 				jsonOf({
 					status: "placed",
 					source: "/repo/src/Net/init.luau",
+					exists: true,
 					instancePath: ["ServerScriptService", "Net"],
 					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
 					route: "server",
@@ -546,6 +562,7 @@ describe("LocationReport", () => {
 				{
 					status: "pruned",
 					source: "/repo/src/Http.mock.luau",
+					exists: true,
 					variants: [{ variant: "mock", form: "suffix" }],
 				},
 				{ variants: [{ variant: "mock", form: "suffix" }] },
@@ -554,6 +571,7 @@ describe("LocationReport", () => {
 				{
 					status: "replaced",
 					source: "/repo/src/T.lua",
+					exists: true,
 					by: "/repo/src/T.luau",
 				},
 				{ by: "/repo/src/T.luau" },
@@ -562,6 +580,7 @@ describe("LocationReport", () => {
 				{
 					status: "displaced",
 					source: "/repo/src/Save.luau",
+					exists: true,
 					node: ["ServerScriptService", "Save"],
 				},
 				{ node: ["ServerScriptService", "Save"] },
@@ -570,22 +589,24 @@ describe("LocationReport", () => {
 				{
 					status: "excluded",
 					source: "/repo/src/A.spec.luau",
+					exists: true,
 					pattern: "/repo/**/*.spec.luau",
 				},
 				{ pattern: "/repo/**/*.spec.luau" },
 			],
-			[{ status: "unrouted", source: "/repo/src/U.luau" }, {}],
-			[{ status: "outside", source: "/repo/src/U.luau" }, {}],
-			[{ status: "ignored", source: "/repo/src/U.luau" }, {}],
-			[{ status: "missing", source: "/repo/src/U.luau" }, {}],
-			[{ status: "empty", source: "/repo/src/U.luau" }, {}],
-			[{ status: "skipped", source: "/repo/src/U.luau" }, {}],
+			[{ status: "unrouted", source: "/repo/src/U.luau", exists: true }, {}],
+			[{ status: "outside", source: "/repo/src/U.luau", exists: true }, {}],
+			[{ status: "ignored", source: "/repo/src/U.luau", exists: true }, {}],
+			[{ status: "missing", source: "/repo/src/U.luau", exists: true }, {}],
+			[{ status: "empty", source: "/repo/src/U.luau", exists: true }, {}],
+			[{ status: "skipped", source: "/repo/src/U.luau", exists: true }, {}],
 		])("should give the fields %j carries", (location, fields) => {
 			expect(jsonOf(location)).toEqual([
 				{
 					config: "default",
 					source: location.source,
 					status: location.status,
+					exists: location.exists,
 					...fields,
 					diagnostics: [],
 				},
@@ -596,6 +617,7 @@ describe("LocationReport", () => {
 			const placed: FileLocation = {
 				status: "placed",
 				source: "/repo/src/Save.luau",
+				exists: true,
 				instancePath: ["ServerScriptService", "Save"],
 				route: "Server",
 				routeMatch: "folder",
@@ -629,6 +651,7 @@ describe("LocationReport", () => {
 			).toEqual([
 				expect.objectContaining({
 					source: "/repo/src/Save.luau",
+					exists: true,
 					status: "placed",
 				}),
 				{
@@ -641,13 +664,14 @@ describe("LocationReport", () => {
 
 		it("should keep a config's outside entry when another config places the path", () => {
 			const report = reportOf([
-				["default", [{ status: "outside", source: "/repo/a" }]],
+				["default", [{ status: "outside", source: "/repo/a", exists: true }]],
 				[
 					"lobby",
 					[
 						{
 							status: "placed",
 							source: "/repo/a",
+							exists: true,
 							instancePath: ["ReplicatedStorage", "A"],
 							route: "*",
 							routeMatch: "fallback",
@@ -671,7 +695,7 @@ describe("LocationReport", () => {
 			const report = reportOf(
 				["default", "lobby"].map((label) => [
 					label,
-					[{ status: "outside", source: "/repo/a" }],
+					[{ status: "outside", source: "/repo/a", exists: true }],
 				])
 			);
 
@@ -682,8 +706,8 @@ describe("LocationReport", () => {
 
 		it("should sort the sources when every file was asked about, and keep the order given otherwise", () => {
 			const files: FileLocation[] = [
-				{ status: "missing", source: "/repo/b" },
-				{ status: "missing", source: "/repo/a" },
+				{ status: "missing", source: "/repo/b", exists: true },
+				{ status: "missing", source: "/repo/a", exists: true },
 			];
 
 			expect(

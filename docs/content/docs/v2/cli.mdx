@@ -208,6 +208,8 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` instead of `source`: no file places an instance you asked about |
 
+Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
+
 Every entry also has `diagnostics`, last: the diagnostics about its path (the ones whose `file` is the path, or whose `related` lists it), empty for a clean path. A grouped diagnostic is narrowed to the path: its `message` is the `related` message about this path and `fixes` holds only the renames of this path. A `noFile` entry has none.
 
 `routeMatch` is `folder`, `marker`, `suffix` or `fallback`. Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.

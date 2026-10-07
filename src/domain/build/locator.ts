@@ -1,4 +1,5 @@
 import path from "path";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -61,9 +62,15 @@ export class Locator {
 		let files: FileLocation[] = [];
 		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
+			const index = new PlannedFilesIndex(
+				this.listing,
+				config.rootDirs,
+				paths
+			);
 			const planned = await this.locatorOf(
-				new PlannedFilesIndex(this.listing, config.rootDirs, paths),
-				config
+				index,
+				config,
+				await this.existence(index, paths)
 			);
 			if (planned.isErr()) return err(planned.error);
 			files = planned.value.locator.locate(paths);
@@ -94,7 +101,8 @@ export class Locator {
 	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */
 	private async locatorOf(
 		index: IndexReader,
-		config: ResolvedConfig
+		config: ResolvedConfig,
+		exists?: (source: string) => boolean
 	): Promise<
 		Result<
 			{
@@ -110,9 +118,29 @@ export class Locator {
 			this.tools
 		).examine(config);
 		return examined.map(({ placement, diagnostics }) => ({
-			locator: new FileLocator(placement, index),
+			locator: new FileLocator(placement, index, exists),
 			diagnostics,
 		}));
+	}
+
+	/** Whether each of `paths` is there now: not one the index only plans, and in the listing or on disk. Any other path the locator names is a file the scan found. */
+	private async existence(
+		index: PlannedFilesIndex,
+		paths: readonly string[]
+	): Promise<(source: string) => boolean> {
+		const known = new Map<string, boolean>();
+		for (const target of paths) {
+			known.set(
+				toPosix(target),
+				!index.isPlanned(target) &&
+					(this.listing.hasEntry(
+						path.dirname(target),
+						path.basename(target)
+					) ||
+						(await this.fileSystemService.exists(target)))
+			);
+		}
+		return (source) => known.get(source) ?? !index.isPlanned(source);
 	}
 
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */

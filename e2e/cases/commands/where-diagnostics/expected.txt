@@ -18,6 +18,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Inventory/Save@sever.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
@@ -49,6 +50,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Shared/Server/Secret.server.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
@@ -72,6 +74,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Inventory/New@sever.luau",
         "status": "placed",
+        "exists": false,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
@@ -103,6 +106,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Inventory/Clean.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "shared",

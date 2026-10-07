@@ -85,6 +85,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "placed",
 				source: abs("src/Inventory/Server/Save.luau"),
+				exists: true,
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
@@ -93,6 +94,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "placed",
 				source: abs("src/Net/Http@client.luau"),
+				exists: true,
 				instancePath: [
 					"StarterPlayer",
 					"StarterPlayerScripts",
@@ -105,11 +107,13 @@ describe("CoreBuildService.locate", () => {
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Socket.client.luau"),
+				exists: true,
 				routeMatch: "suffix",
 			}),
 			{
 				status: "placed",
 				source: abs("src/Anti/Check.luau"),
+				exists: true,
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
@@ -118,6 +122,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "placed",
 				source: abs("src/Util.luau"),
+				exists: true,
 				instancePath: ["ReplicatedStorage", "Shared", "Util"],
 				route: "*",
 				routeMatch: "fallback",
@@ -140,15 +145,18 @@ describe("CoreBuildService.locate", () => {
 		expect(located).toEqual([
 			expect.objectContaining({
 				source: abs("src/Net/DataMock.luau"),
+				exists: true,
 				status: "placed",
 			}),
 			{
 				status: "pruned",
 				source: abs("src/Net/Http.mock.luau"),
+				exists: true,
 				variants: [{ variant: "mock", form: "suffix" }],
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Store.dev.luau"),
+				exists: true,
 				instancePath: ["ReplicatedStorage", "Shared", "Net", "Store"],
 				variants: [{ variant: "dev", form: "suffix" }],
 			}),
@@ -177,6 +185,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "mounted",
 				source: abs("src/Vendor/Lib/Init.luau"),
+				exists: true,
 				node: ["ReplicatedStorage", "Vendor"],
 			},
 		]);
@@ -189,6 +198,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "replaced",
 				source: abs("src/Types.lua"),
+				exists: true,
 				by: abs("src/Types.luau"),
 			},
 		]);
@@ -216,6 +226,7 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "placed",
 				source: abs("src/Kept.luau"),
+				exists: true,
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
 				route: "*",
 				routeMatch: "fallback",
@@ -224,11 +235,13 @@ describe("CoreBuildService.locate", () => {
 			{
 				status: "displaced",
 				source: abs("src/Packages/A.luau"),
+				exists: true,
 				node: ["ReplicatedStorage", "Shared", "Packages"],
 			},
 			{
 				status: "displaced",
 				source: abs("src/Save.luau"),
+				exists: true,
 				node: ["ReplicatedStorage", "Shared", "Save"],
 			},
 		]);
@@ -251,11 +264,12 @@ describe("CoreBuildService.locate", () => {
 		);
 
 		expect(located).toEqual([
-			{ status: "unrouted", source: abs("src/Util.luau") },
-			{ status: "excluded", source: abs("src/Specs"), pattern: glob },
+			{ status: "unrouted", source: abs("src/Util.luau"), exists: true },
+			{ status: "excluded", source: abs("src/Specs"), pattern: glob, exists: true },
 			{
 				status: "excluded",
 				source: abs("src/Specs/deep/B.luau"),
+				exists: true,
 				pattern: glob,
 			},
 		]);
@@ -302,8 +316,8 @@ describe("CoreBuildService.locate", () => {
 		await fs.createDirectory(abs("src/Empty"));
 
 		expect(await locate(["src/Empty", "src/Docs"])).toEqual([
-			{ status: "empty", source: abs("src/Empty") },
-			{ status: "empty", source: abs("src/Docs") },
+			{ status: "empty", source: abs("src/Empty"), exists: true },
+			{ status: "empty", source: abs("src/Docs"), exists: true },
 		]);
 	});
 
@@ -320,6 +334,24 @@ describe("CoreBuildService.locate", () => {
 				}),
 			]);
 			expect(await fs.exists(abs("src/Combat"))).toBe(false);
+		});
+
+		it("should say it doesn't exist, in a folder that does and in one that doesn't", async () => {
+			await write("src/Combat/Server/Other.luau", "src/Here.luau");
+
+			const located = await locate([
+				"src/Combat/Server/Hit.luau",
+				"src/Nope/Deep/X.luau",
+				"src/Here.luau",
+			]);
+
+			expect(
+				located.map(({ source, exists }) => [source, exists])
+			).toEqual([
+				[abs("src/Combat/Server/Hit.luau"), false],
+				[abs("src/Nope/Deep/X.luau"), false],
+				[abs("src/Here.luau"), true],
+			]);
 		});
 
 		it("should replace a file that does exist", async () => {
@@ -379,7 +411,7 @@ describe("CoreBuildService.locate", () => {
 			await write("src/Other.luau");
 
 			expect(await locate(["src/Notes.md"])).toEqual([
-				{ status: "missing", source: abs("src/Notes.md") },
+				{ status: "missing", source: abs("src/Notes.md"), exists: false },
 			]);
 		});
 	});
@@ -394,9 +426,9 @@ describe("CoreBuildService.locate", () => {
 		]);
 
 		expect(located).toEqual([
-			{ status: "outside", source: abs("README.md") },
-			{ status: "ignored", source: abs("src/Save.meta.json") },
-			{ status: "missing", source: abs("src/Nowhere") },
+			{ status: "outside", source: abs("README.md"), exists: true },
+			{ status: "ignored", source: abs("src/Save.meta.json"), exists: true },
+			{ status: "missing", source: abs("src/Nowhere"), exists: false },
 		]);
 	});
 
@@ -425,7 +457,7 @@ describe("CoreBuildService.locate", () => {
 						cwd: abs(),
 					})
 				).unwrap().files
-			).toEqual([{ status: "ignored", source: abs("src/Pipe.md") }]);
+			).toEqual([{ status: "ignored", source: abs("src/Pipe.md"), exists: true }]);
 		});
 
 		it("should not be replaced by a planned file", async () => {
@@ -472,6 +504,7 @@ describe("CoreBuildService.locate", () => {
 			expect(asked).toEqual(everything);
 			expect(everything[3]).toMatchObject({
 				source: abs("src/Combat/Server/Moves/init.luau"),
+				exists: true,
 				route: "Server",
 				routeMatch: "folder",
 			});
@@ -496,6 +529,7 @@ describe("CoreBuildService.locate", () => {
 				{
 					status: "ignored",
 					source: abs("src/Combat/Server/Moves/Notes.md"),
+					exists: true,
 				},
 			]);
 		});
@@ -518,11 +552,13 @@ describe("CoreBuildService.locate", () => {
 					status: "excluded",
 					pattern: abs("**/Punch.luau"),
 					source: abs("src/Combat/Server/Moves/Punch.luau"),
+					exists: true,
 				},
 				{
 					status: "excluded",
 					pattern: abs("**/Heavy"),
 					source: abs("src/Combat/Server/Moves/Heavy/Slam.luau"),
+					exists: true,
 				},
 			]);
 			expect(instancePaths(everything)).toEqual([
@@ -574,6 +610,7 @@ describe("CoreBuildService.locate", () => {
 				{
 					status: "placed",
 					source: abs("src/Net/init.luau"),
+					exists: true,
 					instancePath: ["ReplicatedStorage", "Shared", "Net"],
 					alsoAt: [
 						["StarterPlayer", "StarterPlayerScripts", "Net"],
@@ -602,7 +639,7 @@ describe("CoreBuildService.locate", () => {
 		);
 
 		expect(located.unwrap().files).toMatchObject([
-			{ status: "placed", source: abs("src/A.luau") },
+			{ status: "placed", source: abs("src/A.luau"), exists: true },
 		]);
 	});
 

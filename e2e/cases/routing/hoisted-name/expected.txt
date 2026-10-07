@@ -20,6 +20,7 @@ stdout:
         "config": "default",
         "source": "<dir>/src/Player/^Animate.client.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "StarterPlayer",
           "StarterCharacterScripts",

@@ -20,12 +20,14 @@ stdout:
         "config": "default",
         "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
         "status": "outside",
+        "exists": true,
         "diagnostics": []
       },
       {
         "config": "lobby",
         "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
         "status": "placed",
+        "exists": true,
         "instancePath": [
           "ServerScriptService",
           "Lobby",

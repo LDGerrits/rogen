@@ -15,7 +15,9 @@ export class FileLocator {
 
 	constructor(
 		private readonly placement: Placement,
-		private readonly index: IndexReader
+		private readonly index: IndexReader,
+		/** Whether the path is there now, which `index` can't say once it holds paths that don't exist yet. */
+		private readonly exists: (source: string) => boolean = () => true
 	) {
 		this.scanned = this.locateScanned();
 	}
@@ -50,7 +52,8 @@ export class FileLocator {
 		const add = (location: FileLocation) =>
 			all.set(location.source, location);
 
-		for (const [source, why] of leftOut) add({ ...why, source });
+		for (const [source, why] of leftOut)
+			add({ ...why, source, exists: this.exists(source) });
 		for (const file of files) add(this.placedAt(file));
 		return all;
 	}
@@ -60,6 +63,7 @@ export class FileLocator {
 		return {
 			status: "placed",
 			source: file.entry.source,
+			exists: this.exists(file.entry.source),
 			instancePath: file.instancePath,
 			...(others.length > 0 && {
 				alsoAt: others.map(({ instancePath }) => instancePath),
@@ -82,20 +86,45 @@ export class FileLocator {
 		if (below.length > 0) return below;
 
 		if (!roots.some((root) => contains(toPosix(root.rootDir), target)))
-			return [{ status: "outside", source: target }];
+			return [
+				{
+					status: "outside",
+					source: target,
+					exists: this.exists(target),
+				},
+			];
 
 		for (const dir of ancestors(target)) {
 			const enclosing = this.scanned.get(dir);
-			if (enclosing) return [{ ...enclosing, source: target }];
+			if (enclosing)
+				return [
+					{
+						...enclosing,
+						source: target,
+						exists: this.exists(target),
+					},
+				];
 		}
 
 		if (index.getEntries(target))
-			return [{ status: "empty", source: target }];
+			return [
+				{
+					status: "empty",
+					source: target,
+					exists: this.exists(target),
+				},
+			];
 		const exists = index.hasEntry(
 			path.posix.dirname(target),
 			path.posix.basename(target)
 		);
-		return [{ status: exists ? "ignored" : "missing", source: target }];
+		return [
+			{
+				status: exists ? "ignored" : "missing",
+				source: target,
+				exists: this.exists(target),
+			},
+		];
 	}
 
 	private bySource(a: FileLocation, b: FileLocation): number {
@@ -128,6 +157,15 @@ export class PlannedFilesIndex implements IndexReader {
 				this.add(dir, FileType.Directory);
 			}
 		}
+	}
+
+	/** Whether `target` is one of the paths added on top of the index, which doesn't exist. */
+	isPlanned(target: string): boolean {
+		return (
+			this.added
+				.get(toPosix(path.dirname(target)))
+				?.has(path.basename(target)) === true
+		);
 	}
 
 	getEntries(dir: string): ReadonlyMap<string, FileType> | undefined {
