@@ -9,8 +9,19 @@ permissions:
     contents: write
 
 jobs:
+    check-version:
+        name: Check Tag Matches Package Version
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Compare
+              run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+
     build:
         name: Build Binaries
+        needs: check-version
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
@@ -115,3 +126,33 @@ jobs:
                   prerelease: ${{ contains(github.ref_name, '-') }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Last, since npm never accepts a version twice, while a failed GitHub release can be run again.
+    npm:
+        name: Publish to npm
+        needs: publish
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+                  registry-url: "https://registry.npmjs.org"
+
+            # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+            - name: Update npm
+              run: npm install -g npm@11
+
+            - name: Install Dependencies
+              run: npm ci
+
+            # A pre-release goes to `next`, so `npm install` keeps giving the stable release.
+            - name: Publish
+              run: npm publish --tag ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}

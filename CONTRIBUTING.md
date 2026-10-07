@@ -69,6 +69,33 @@ npm run lint
 npm run lint:fix
 ```
 
+## Releasing
+
+`package.json` holds the version. Bump it with `npm version`, which also updates
+the schema URL in `src/domain/config/config.ts` and, for a stable release, the
+Rokit pin in the install docs, then commits and tags:
+
+```bash
+npm version 2.0.0          # a stable release
+npm version 2.1.0-beta.1   # a pre-release
+npm version prerelease     # 2.1.0-beta.1 -> 2.1.0-beta.2
+git push --follow-tags
+```
+
+If the bump fails, nothing is committed or tagged, but `package.json` and
+`package-lock.json` already hold the new version: restore them with
+`git checkout -- package.json package-lock.json` before trying again.
+
+Pushing the tag publishes the JSON schema, builds the binaries into a GitHub
+release, and then publishes the npm package. A tag that doesn't match
+`package.json` publishes nothing. A version with a `-` is a pre-release: GitHub
+marks it so, and npm publishes it under the `next` tag, leaving `latest` on the
+newest stable release.
+
+npm accepts the publish through trusted publishing, so there's no token to
+keep. It's set on npmjs.com under the package's Settings → Trusted Publisher:
+GitHub Actions, user `LDGerrits`, repository `rogen`, workflow `release.yml`.
+
 ## Building Release Binaries
 
 Rogen bundles source code with `esbuild` and packages standalone executables for Windows, Linux, and macOS using `pkg`.
