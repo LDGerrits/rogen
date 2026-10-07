@@ -322,8 +322,13 @@ export class InitQuestions {
 		const startsTicked = offered
 			.filter(({ ticked }) => ticked)
 			.map(({ path }) => path);
+		// With no package manager and no package folder there is nothing to ask about, and Enter would tick nothing.
+		const nothingToMount =
+			directory.workspace.packageManager === undefined &&
+			!offered.some(({ installed }) => installed);
 		if (
 			offered.length === 0 ||
+			nothingToMount ||
 			directory.has(TEMPLATE_FILE) ||
 			!this.interactive
 		) {
