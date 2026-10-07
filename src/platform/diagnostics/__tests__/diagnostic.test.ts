@@ -1,3 +1,4 @@
+import { DOCS_URL } from "../../product/product-service.js";
 import path from "path";
 import {
 	Diagnostic,
@@ -106,7 +107,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "error",
 				code: "test.example",
 				message: 'unknown field "outDir".',
-				url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-example",
+				url: `${DOCS_URL}/diagnostics#test-example`,
 			});
 		});
 
@@ -123,7 +124,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "warning",
 				code: "test.example",
 				message: "it contributes nothing.",
-				url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-example",
+				url: `${DOCS_URL}/diagnostics#test-example`,
 			});
 		});
 
@@ -179,7 +180,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			};
 
 			expect(diagnosticToJson(diagnostic).url).toBe(
-				"https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute"
+				`${DOCS_URL}/diagnostics#route-dotroute`
 			);
 		});
 	});

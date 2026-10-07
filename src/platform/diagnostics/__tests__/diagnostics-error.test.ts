@@ -1,3 +1,4 @@
+import { DOCS_URL } from "../../product/product-service.js";
 import { errorDiagnostic } from "../diagnostic.js";
 import { DiagnosticsError, failureToJson } from "../diagnostics-error.js";
 
@@ -63,7 +64,7 @@ describe("platform/diagnostics/diagnostics-error", () => {
 						severity: "error",
 						code: "test.first",
 						message: "first.",
-						url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-first",
+						url: `${DOCS_URL}/diagnostics#test-first`,
 					},
 				],
 			});

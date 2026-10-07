@@ -42,20 +42,23 @@ export interface StrayAt {
 	readonly closestKey: string;
 	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
 	readonly notLast: boolean;
-	/** Where the `@` sits in the name read. */
-	readonly start: number;
-	/** No other route key is as close as `closestKey`. */
-	readonly onlyClosest: boolean;
+	/** The one rename that fixes it: none when another key is as close, or `notLast`. */
+	readonly respelling?: Respelling;
 }
 
 /** A trailing dot part that is one edit from a declared variant. */
 export interface VariantTypo {
 	readonly text: string;
 	readonly variant: string;
-	/** Where the dot sits in the name read. */
+	/** The one rename that fixes it: none when another variant is one edit away too. */
+	readonly respelling?: Respelling;
+}
+
+/** Part of a name, written at `start`, and how to spell it instead. */
+export interface Respelling {
 	readonly start: number;
-	/** No other variant is one edit from `text`. */
-	readonly onlyClosest: boolean;
+	readonly written: string;
+	readonly spelling: string;
 }
 
 /** A misspelled name as the readings note it, with the path it's renamed to when one rename fixes it. */
@@ -141,14 +144,32 @@ export class NameReader {
 
 	/** A dot part at the end of a folder name that is one edit from a declared variant. */
 	folderVariantTypo(folderName: string): VariantTypo | undefined {
-		const { name } = NameReader.unwrapInvisibleFolder(folderName);
-		return this.suffixes(name, false).variantTypo;
+		const { name, invisible } =
+			NameReader.unwrapInvisibleFolder(folderName);
+		return NameReader.inFolderName(
+			this.suffixes(name, false).variantTypo,
+			invisible
+		);
 	}
 
 	/** The `@` in a folder name that no declared route follows. */
 	folderStrayAt(folderName: string): StrayAt | undefined {
-		const { name } = NameReader.unwrapInvisibleFolder(folderName);
-		return this.strayAt(name);
+		const { name, invisible } =
+			NameReader.unwrapInvisibleFolder(folderName);
+		return NameReader.inFolderName(this.strayAt(name), invisible);
+	}
+
+	/** A misspelling read inside `(name)`, with its respelling measured on the folder's whole name. */
+	private static inFolderName<T extends { readonly respelling?: Respelling }>(
+		misspelt: T | undefined,
+		invisible: boolean
+	): T | undefined {
+		if (!misspelt?.respelling || !invisible) return misspelt;
+		const { respelling } = misspelt;
+		return {
+			...misspelt,
+			respelling: { ...respelling, start: respelling.start + 1 },
+		};
 	}
 
 	/** The declared key a marker file spells, `.server` for `server`. */
@@ -220,14 +241,19 @@ export class NameReader {
 		const variants = [...this.keys.variantKeys].filter(
 			(key) => editDistance(text.toLowerCase(), key.toLowerCase()) <= 1
 		);
-		return variants.length > 0
-			? {
-					text,
-					variant: variants[0],
+		if (variants.length === 0) return undefined;
+		const [variant] = variants;
+		return {
+			text,
+			variant,
+			...(variants.length === 1 && {
+				respelling: {
 					start: dot,
-					onlyClosest: variants.length === 1,
-				}
-			: undefined;
+					written: `.${text}`,
+					spelling: `.${variant}`,
+				},
+			}),
+		};
 	}
 
 	/** Spans start past the first character, so a name never loses all of it. */
@@ -254,12 +280,19 @@ export class NameReader {
 		const notLast = this.keys.resolveRoute(text) !== undefined;
 		// Package names use `@` too (`@rbxts`, `owner_name@1.5.1`), so only a near miss of a route is a typo.
 		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
+		const [closestKey] = closest;
 		return {
 			text,
-			closestKey: closest[0],
+			closestKey,
 			notLast,
-			start: at,
-			onlyClosest: closest.length === 1,
+			...(closest.length === 1 &&
+				!notLast && {
+					respelling: {
+						start: at,
+						written: `@${text}`,
+						spelling: `@${closestKey}`,
+					},
+				}),
 		};
 	}
 }
@@ -343,14 +376,20 @@ export class NameReadings {
 				});
 				for (const folder of folders) {
 					const resource = joinPosix(root.rootDir, folder.dir);
-					// The parentheses come off before a folder's name is read.
-					const offset = folder.invisible ? 1 : 0;
 					this.noteNearMiss(resource, folder.nearMissKey);
-					this.noteStrayAt(resource, offset, folder.strayAt);
-					this.noteVariantTypo(resource, offset, folder.variantTypo);
+					NameReadings.note(this.strayAts, resource, folder.strayAt);
+					NameReadings.note(
+						this.variantTypos,
+						resource,
+						folder.variantTypo
+					);
 				}
-				this.noteStrayAt(entry.source, 0, match.strayAt);
-				this.noteVariantTypo(entry.source, 0, match.variantTypo);
+				NameReadings.note(this.strayAts, entry.source, match.strayAt);
+				NameReadings.note(
+					this.variantTypos,
+					entry.source,
+					match.variantTypo
+				);
 			}
 		}
 	}
@@ -377,53 +416,25 @@ export class NameReadings {
 			this.nearMisses.set(resource, key);
 	}
 
-	private noteVariantTypo(
+	/** Notes the first misspelling found at `resource`, with the path it's renamed to. */
+	private static note<T extends { readonly respelling?: Respelling }>(
+		noted: Map<string, NotedName<T>>,
 		resource: string,
-		offset: number,
-		typo: VariantTypo | undefined
+		misspelt: T | undefined
 	): void {
-		if (!typo || this.variantTypos.has(resource)) return;
-		const { start, text, variant, onlyClosest } = typo;
-		this.variantTypos.set(resource, {
-			...typo,
-			...(onlyClosest && {
-				renamedTo: NameReadings.respelled(
-					resource,
-					offset + start,
-					`.${text}`,
-					`.${variant}`
-				),
+		if (!misspelt || noted.has(resource)) return;
+		const { respelling } = misspelt;
+		noted.set(resource, {
+			...misspelt,
+			...(respelling && {
+				renamedTo: NameReadings.respelled(resource, respelling),
 			}),
 		});
 	}
 
-	private noteStrayAt(
-		resource: string,
-		offset: number,
-		strayAt: StrayAt | undefined
-	): void {
-		if (!strayAt || this.strayAts.has(resource)) return;
-		const { start, text, closestKey, notLast, onlyClosest } = strayAt;
-		this.strayAts.set(resource, {
-			...strayAt,
-			...(onlyClosest &&
-				!notLast && {
-					renamedTo: NameReadings.respelled(
-						resource,
-						offset + start,
-						`@${text}`,
-						`@${closestKey}`
-					),
-				}),
-		});
-	}
-
-	/** `resource` with `written`, which starts at `start` of its base name, spelt `spelling`. */
 	private static respelled(
 		resource: string,
-		start: number,
-		written: string,
-		spelling: string
+		{ start, written, spelling }: Respelling
 	): string {
 		const name = path.posix.basename(resource);
 		return joinPosix(

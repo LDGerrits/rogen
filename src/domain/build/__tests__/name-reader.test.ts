@@ -134,8 +134,6 @@ describe("NameReader suffixes", () => {
 			text: "server",
 			closestKey: "server",
 			notLast: true,
-			start: 3,
-			onlyClosest: true,
 		});
 	});
 });
@@ -148,8 +146,7 @@ describe("NameReader variant typo", () => {
 		expect(typoOf("Analytics.mok")).toMatchObject({
 			text: "mok",
 			variant: "mock",
-			start: 9,
-			onlyClosest: true,
+			respelling: { start: 9, written: ".mok", spelling: ".mock" },
 		});
 		expect(typoOf("Analytics.mcok")).toMatchObject({
 			text: "mcok",
@@ -171,12 +168,15 @@ describe("NameReader variant typo", () => {
 		expect(typoOf("Foo.beta")).toBeUndefined();
 	});
 
-	it("reports nothing for a matched variant, a name without a dot or a Rojo suffix", () => {
+	it("should give no respelling when two variants are one edit away", () => {
 		expect(
 			readerOf(new DeclaredKeys(ROUTES, ["mock", "mook"])).suffixes(
 				"Analytics.mok"
-			).variantTypo?.onlyClosest
-		).toBe(false);
+			).variantTypo
+		).toEqual({ text: "mok", variant: "mock" });
+	});
+
+	it("reports nothing for a matched variant, a name without a dot or a Rojo suffix", () => {
 		expect(typoOf("Analytics.mock")).toBeUndefined();
 		expect(typoOf("Analytics")).toBeUndefined();
 		expect(typoOf("Main.client")).toBeUndefined();
@@ -189,16 +189,14 @@ describe("NameReader stray @", () => {
 			text: "sever",
 			closestKey: "server",
 			notLast: false,
-			start: 4,
-			onlyClosest: true,
+			respelling: { start: 4, written: "@sever", spelling: "@server" },
 		});
 	});
 
-	it("should say when another route is as close", () => {
+	it("should give no respelling when another route is as close", () => {
 		expect(
 			matchSuffixKeys("Save@serer", new Set(["server", "sever"])).strayAt
-				?.onlyClosest
-		).toBe(false);
+		).toEqual({ text: "serer", closestKey: "server", notLast: false });
 	});
 
 	it("suggests the route for an @ that only differs in case", () => {
@@ -369,9 +367,14 @@ describe("NameReader folder", () => {
 		).toEqual({
 			text: "mok",
 			variant: "mock",
-			start: 9,
-			onlyClosest: true,
+			respelling: { start: 9, written: ".mok", spelling: ".mock" },
 		});
+	});
+
+	it("should measure a respelling on the whole name of an invisible folder", () => {
+		expect(
+			new NameReader(ALL_KEYS).folderStrayAt("(Queue@sever)")?.respelling
+		).toEqual({ start: 6, written: "@sever", spelling: "@server" });
 	});
 
 	it("should read any other folder as plain, keeping its name", () => {
