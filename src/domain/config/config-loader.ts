@@ -13,7 +13,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	failureReason,
+	isMissingPath,
+} from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
@@ -121,6 +125,8 @@ export class ConfigLoader {
 		const layers: ConfigFile[] = [];
 		let current = file;
 		let referrer: DiagnosticLocation | undefined;
+		/** The target as the config wrote it. */
+		let written = "";
 
 		for (;;) {
 			const cycleStart = files.indexOf(current);
@@ -142,7 +148,7 @@ export class ConfigLoader {
 			files.push(current);
 			const loaded = await this.reader.read(current);
 			if (loaded.isErr()) {
-				const { kind, diagnostics } = loaded.error;
+				const { kind, diagnostics, missing, reason } = loaded.error;
 				return {
 					files,
 					layers,
@@ -152,7 +158,9 @@ export class ConfigLoader {
 									errorDiagnostic(
 										"config.extendsUnreadable",
 										referrer,
-										`"extends" target "${current}": ${diagnostics[0].message}`
+										missing
+											? `"extends" target "${written}" does not exist (looked for ${current}). Paths are relative to this config.`
+											: `"extends" target "${written}" could not be read: ${reason}.`
 									),
 								]
 							: kind === "invalid"
@@ -168,6 +176,7 @@ export class ConfigLoader {
 			layers.push(layer);
 			const parent = layer.model.getValue<string>("extends");
 			if (parent === undefined) return { files, layers, diagnostics: [] };
+			written = parent;
 
 			referrer = {
 				resource: layer.file,
@@ -203,7 +212,9 @@ export class ConfigLoader {
 				errorDiagnostic(
 					"config.templateUnreadable",
 					location,
-					`the template could not be read: ${text.error.message}.`
+					isMissingPath(text.error)
+						? `the template does not exist (looked for ${file}). Paths are relative to the config that sets them.`
+						: `the template could not be read: ${failureReason(text.error)}.`
 				),
 			]);
 		}

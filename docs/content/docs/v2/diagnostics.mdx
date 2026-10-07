@@ -11,13 +11,14 @@ An error stops every config in the run from being written. A warning never does,
 
 ### `config.unreadable` [#config-unreadable]
 
-Error. The config file exists, but Rogen couldn't read it from disk.
+Error. The config file isn't there, or is there but Rogen couldn't read it from disk. A missing file says where Rogen looked, and an unreadable one says why.
 
 ```
-default.rogen.json - error: the config could not be read: EACCES: permission denied.
+default.rogen.json - error: the config does not exist (looked for default.rogen.json).
+default.rogen.json - error: the config could not be read: permission denied.
 ```
 
-Fix the file's permissions, or check that it's a file and not a folder. See [Configuration](/docs/v2/configuration).
+Fix the path or the file's permissions, or check that it's a file and not a folder. See [Configuration](/docs/v2/configuration).
 
 ### `config.invalidSyntax` [#config-invalidsyntax]
 
@@ -81,10 +82,11 @@ Remove `extends` from one config in the loop. See [Extending Configs](/docs/v2/c
 
 ### `config.extendsUnreadable` [#config-extendsunreadable]
 
-Error. The config that `extends` names doesn't exist or can't be read. The path is relative to the config that writes it.
+Error. The config that `extends` names doesn't exist or can't be read. The path is relative to the config that writes it. A missing target says where Rogen looked, and an unreadable one says why.
 
 ```
-default.rogen.json:2:13 - error: "extends" target "nowhere.rogen.json": the config could not be read: ENOENT: no such file or directory.
+default.rogen.json:2:13 - error: "extends" target "./nowhere.rogen.json" does not exist (looked for nowhere.rogen.json). Paths are relative to this config.
+default.rogen.json:2:13 - error: "extends" target "./base.rogen.json" could not be read: permission denied.
 ```
 
 Fix the path, or create the parent config. See [Extending Configs](/docs/v2/configuration#extending-configs).
@@ -94,7 +96,8 @@ Fix the path, or create the parent config. See [Extending Configs](/docs/v2/conf
 Error. The `template` project file doesn't exist or can't be read.
 
 ```
-default.rogen.json:5:14 - error: the template could not be read: ENOENT: no such file or directory.
+default.rogen.json:5:14 - error: the template does not exist (looked for nope.project.json). Paths are relative to the config that sets them.
+default.rogen.json:5:14 - error: the template could not be read: permission denied.
 ```
 
 Fix the path, which is relative to the config that sets it, or create the file. See [Template](/docs/v2/core-concepts/output#template).
@@ -411,13 +414,14 @@ Mount a folder inside the root directory, such as a vendored package, or remove 
 
 ### `meta.unreadable` [#meta-unreadable]
 
-Error. A `.meta.json` file exists, but Rogen couldn't read it from disk.
+Error. A `.meta.json` file was found when Rogen scanned but couldn't be read from disk: it lacks the permissions, is a folder, or was removed while the build ran.
 
 ```
-src/Combat/init.meta.json - error: the meta file could not be read: EACCES: permission denied.
+src/Combat/init.meta.json - error: the meta file could not be read: permission denied.
+src/Combat/init.meta.json - error: the meta file does not exist any more; it was there when the build scanned and was removed while it ran.
 ```
 
-Fix the file's permissions. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+Fix the file's permissions, or run the build again. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
 
 ### `meta.invalidSyntax` [#meta-invalidsyntax]
 
@@ -672,7 +676,8 @@ Pick a folder of its own, such as `places/lobby`. See [Multi-Place](/docs/v2/set
 Error. `init` found a hand-written project file to keep as the template, but couldn't read it to copy it.
 
 ```
-default.project.json - error: couldn't read this file to copy it: EACCES: permission denied
+default.project.json - error: couldn't read this file to copy it: permission denied.
+default.project.json - error: this file does not exist, so it can't be copied.
 ```
 
 Fix the file's permissions, or move it out of the way. See [Template](/docs/v2/core-concepts/output#template).

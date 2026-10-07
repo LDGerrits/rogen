@@ -1425,6 +1425,28 @@ describe("ConfigSet.parseName", () => {
 			{
 				code: "init.templateUnreadable",
 				resource: path.join(directory, "default.project.json"),
+				message: "this file does not exist, so it can't be copied.",
+			},
+		]);
+	});
+
+	it("should give the reason, without a Node code, when the file it would copy is a directory", async () => {
+		const fileSystem = new MemoryFileSystemService();
+		await fileSystem.createDirectory(
+			path.join(directory, "default.project.json")
+		);
+		const setup = new ProjectSetup(
+			directoryOf({ existing: ["default.project.json"] }),
+			new InitQuestions(new MockPromptService([], false), false),
+			fileSystem
+		);
+
+		const asked = await setup.ask();
+
+		expect(asked.isErr() && asked.error).toMatchObject([
+			{
+				message:
+					"couldn't read this file to copy it: illegal operation on a directory.",
 			},
 		]);
 	});

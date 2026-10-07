@@ -7,7 +7,11 @@ import {
 	DiagnosticPosition,
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import { FileSystemService } from "../fs/file-system-service.js";
+import {
+	FileSystemService,
+	failureReason,
+	isMissingPath,
+} from "../fs/file-system-service.js";
 import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
@@ -22,6 +26,10 @@ export interface ConfigFileFailure {
 	/** `unreadable` when the file couldn't be read at all, `invalid` when what it holds is wrong. */
 	readonly kind: "unreadable" | "invalid";
 	readonly diagnostics: readonly Diagnostic[];
+	/** When `unreadable`: the file isn't there, rather than there and unreadable. */
+	readonly missing?: boolean;
+	/** When `unreadable`: why, without a Node error code. */
+	readonly reason?: string;
 }
 
 /** Reads config files and checks them against `schema`. */
@@ -42,12 +50,16 @@ export class ConfigFileReader {
 			this.fileSystemService.readFile(file)
 		);
 		if (text.isErr()) {
+			const missing = isMissingPath(text.error);
+			const reason = failureReason(text.error);
 			return err({
 				kind: "unreadable",
+				missing,
+				reason,
 				diagnostics: [
 					unreadable(
 						{ resource: file, position: { line: 1, column: 1 } },
-						text.error.message
+						missing ? undefined : reason
 					),
 				],
 			});
@@ -98,9 +110,12 @@ function positionIn(
 	return node && { line: node.line, column: node.column };
 }
 
-const unreadable = (location: DiagnosticLocation, detail: string) =>
+/** `reason` is why it could not be read; none when the file does not exist. */
+const unreadable = (location: DiagnosticLocation, reason?: string) =>
 	errorDiagnostic(
 		"config.unreadable",
 		location,
-		`the config could not be read: ${detail}.`
+		reason === undefined
+			? `the config does not exist (looked for ${location.resource}).`
+			: `the config could not be read: ${reason}.`
 	);

@@ -51,5 +51,17 @@ export function fileSystemError(
 	return Object.assign(new Error(message, { cause }), { code });
 }
 
+/** Whether `error` says the path isn't there, by its code and not its wording. */
+export function isMissingPath(error: Error): boolean {
+	return (error as { code?: unknown }).code === "ENOENT";
+}
+
+/** Why a file system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
+export function failureReason(error: Error): string {
+	return error.message
+		.replace(/^[A-Z][A-Z0-9]+: /, "")
+		.replace(/, [a-z]+( '.*')?$/, "");
+}
+
 export const FileSystemService =
 	createServiceIdentifier<FileSystemService>("fileSystemService");

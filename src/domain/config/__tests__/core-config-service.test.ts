@@ -675,6 +675,63 @@ describe("domain/config/core-config-service", () => {
 			]);
 		});
 
+		it("should say a missing extends target does not exist, where it looked, and that paths are relative to the config", async () => {
+			await write("/repo/default.rogen.json", {
+				extends: "./missing.rogen.json",
+			});
+
+			await start();
+
+			expect(errors(0)[0].message).toBe(
+				'"extends" target "./missing.rogen.json" does not exist (looked for /repo/missing.rogen.json). Paths are relative to this config.'
+			);
+		});
+
+		it("should give the reason for an extends target that is a directory", async () => {
+			await fs.createDirectory("/repo/dir.rogen.json");
+			await write("/repo/default.rogen.json", {
+				extends: "./dir.rogen.json",
+			});
+
+			await start();
+
+			expect(errors(0)[0].message).toBe(
+				'"extends" target "./dir.rogen.json" could not be read: illegal operation on a directory.'
+			);
+		});
+
+		it("should give the reason for a template that is a directory", async () => {
+			await fs.createDirectory("/repo/t.project.json");
+			await write("/repo/default.rogen.json", {
+				template: "t.project.json",
+			});
+
+			await start();
+
+			expect(errors(0)[0].message).toBe(
+				"the template could not be read: illegal operation on a directory."
+			);
+		});
+
+		it("should never print a Node error code in a message about a file it could not read", async () => {
+			await fs.createDirectory("/repo/dir.rogen.json");
+			await fs.createDirectory("/repo/t.project.json");
+			const cases: Record<string, unknown>[] = [
+				{ extends: "./missing.rogen.json" },
+				{ extends: "./dir.rogen.json" },
+				{ template: "missing.project.json" },
+				{ template: "t.project.json" },
+			];
+
+			for (const config of cases) {
+				await write("/repo/default.rogen.json", config);
+				await start();
+				expect(errors(0)[0].message).not.toMatch(
+					/\b(ENOENT|EISDIR|EACCES|ENOTDIR|ELOOP)\b/
+				);
+			}
+		});
+
 		it("should report the diagnostics of an invalid ancestor against that file", async () => {
 			await write("/repo/base.rogen.json", { bogus: true });
 			await write("/repo/default.rogen.json", {
@@ -1021,8 +1078,8 @@ describe("domain/config/core-config-service", () => {
 }`);
 
 				expect(problems).toHaveLength(1);
-				expect(problems[0][0]).toContain(
-					"the template could not be read"
+				expect(problems[0][0]).toBe(
+					"the template does not exist (looked for /repo/missing.project.json). Paths are relative to the config that sets them."
 				);
 				expect(problems[0].slice(1)).toEqual([
 					"/repo/default.rogen.json",
