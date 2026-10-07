@@ -2,12 +2,12 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { DOCS_URL } from "../../platform/product/product-service.js";
 import { FailedConfigFile } from "../config/config-service.js";
 
 /** A config written for Rogen 1, which v2 doesn't read. All knowledge of v1 sits in this module. */
 export class LegacyConfig {
-	static readonly MIGRATION_URL =
-		"https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1";
+	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
 	private static readonly KEYS = ["source", "aliases", "globIgnorePaths"];
 	private static readonly MODE_KEYS = ["output", "build"];

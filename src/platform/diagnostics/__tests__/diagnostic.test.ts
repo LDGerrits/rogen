@@ -88,7 +88,7 @@ describe("platform/diagnostics/diagnostic", () => {
 	});
 
 	describe("diagnosticToJson", () => {
-		it("should name the file, position, severity, code and message", () => {
+		it("should name the file, position, severity, code, message and the code's docs", () => {
 			const diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Error,
 				code: "test.example",
@@ -104,6 +104,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "error",
 				code: "test.example",
 				message: 'unknown field "outDir".',
+				url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-example",
 			});
 		});
 
@@ -120,7 +121,21 @@ describe("platform/diagnostics/diagnostic", () => {
 				severity: "warning",
 				code: "test.example",
 				message: "it contributes nothing.",
+				url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-example",
 			});
+		});
+
+		it("should anchor the url at the code in lower case, with the dot as a hyphen", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "route.dotRoute",
+				message: "",
+				resource: "/repo/src",
+			};
+
+			expect(diagnosticToJson(diagnostic).url).toBe(
+				"https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute"
+			);
 		});
 	});
 });

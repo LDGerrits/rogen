@@ -63,6 +63,7 @@ describe("platform/diagnostics/diagnostics-error", () => {
 						severity: "error",
 						code: "test.first",
 						message: "first.",
+						url: "https://rogen-playfully.vercel.app/docs/v2/diagnostics#test-first",
 					},
 				],
 			});

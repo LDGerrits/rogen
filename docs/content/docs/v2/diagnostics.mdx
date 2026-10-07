@@ -1,0 +1,612 @@
+---
+title: Diagnostics
+description: Every error and warning Rogen reports, why it fires and how to fix it.
+---
+
+Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints it as `file:line:col - severity: message`, and `--json` adds the code, a `url` pointing at its section on this page, and, for some warnings, the `fixes` that resolve it. `rogen help <code>` prints the same section from the version you have installed.
+
+An error stops every config in the run from being written. A warning never does, but it always names something to fix.
+
+## Config
+
+### `config.unreadable` [#config-unreadable]
+
+Error. The config file exists, but Rogen couldn't read it from disk.
+
+```
+default.rogen.json - error: the config could not be read: EACCES: permission denied.
+```
+
+Fix the file's permissions, or check that it's a file and not a folder. See [Configuration](/docs/v2/configuration).
+
+### `config.invalidSyntax` [#config-invalidsyntax]
+
+Error. The config isn't valid JSONC. Comments and trailing commas are fine, but brackets and quotes have to match.
+
+```
+default.rogen.json:4:1 - error: invalid JSONC: expected '}'.
+```
+
+Fix the syntax at the line and column shown. See [Configuration](/docs/v2/configuration).
+
+### `config.notAnObject` [#config-notanobject]
+
+Error. The config holds a JSON value that isn't an object, such as an array or a string.
+
+```
+default.rogen.json:1:1 - error: a config must be a JSON object.
+```
+
+Wrap the fields in `{ }`. See [Configuration](/docs/v2/configuration#fields).
+
+### `config.wrongType` [#config-wrongtype]
+
+Error. A field holds the wrong kind of value, such as a string where `rootDirs` needs an array.
+
+```
+default.rogen.json:2:14 - error: "rootDirs": expected an array, found a string.
+```
+
+Give the field the type the message names. See [Configuration](/docs/v2/configuration#fields).
+
+### `config.unknownField` [#config-unknownfield]
+
+Error. The config has a field Rogen doesn't know, often a typo or a field from Rogen 1.
+
+```
+default.rogen.json:4:2 - error: unknown field "exlude". Did you mean "exclude"?
+```
+
+Rename it to the field suggested, or remove it. A config with v1 fields also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration#fields).
+
+### `config.unnamed` [#config-unnamed]
+
+Error. The file is called just `.rogen.json`. Every config needs a name, because commands select it by that name.
+
+```
+.rogen.json - error: a config file needs a name before ".rogen.json". Rename it to <name>.rogen.json, such as default.rogen.json.
+```
+
+Rename it, usually to `default.rogen.json`. See [Configuration](/docs/v2/configuration#finding-configs).
+
+### `config.extendsCycle` [#config-extendscycle]
+
+Error. Following `extends` leads back to a config already in the chain.
+
+```
+c.rogen.json:2:13 - error: extends cycle: a.rogen.json -> b.rogen.json -> c.rogen.json -> a.rogen.json.
+```
+
+Remove `extends` from one config in the loop. See [Extending Configs](/docs/v2/configuration#extending-configs).
+
+### `config.extendsUnreadable` [#config-extendsunreadable]
+
+Error. The config that `extends` names doesn't exist or can't be read. The path is relative to the config that writes it.
+
+```
+default.rogen.json:2:13 - error: "extends" target "nowhere.rogen.json": the config could not be read: ENOENT: no such file or directory.
+```
+
+Fix the path, or create the parent config. See [Extending Configs](/docs/v2/configuration#extending-configs).
+
+### `config.templateUnreadable` [#config-templateunreadable]
+
+Error. The `template` project file doesn't exist or can't be read.
+
+```
+default.rogen.json:5:14 - error: the template could not be read: ENOENT: no such file or directory.
+```
+
+Fix the path, which is relative to the config that sets it, or create the file. See [Template](/docs/v2/core-concepts/output#template).
+
+### `config.templateInvalid` [#config-templateinvalid]
+
+Error. The `template` file isn't a valid Rojo project file.
+
+```
+default.rogen.json:5:14 - error: the template is not a valid Rojo project file: "tree" must be an object.
+```
+
+Fix the project file so Rojo would accept it: a `name` and a `tree` object. See [Template](/docs/v2/core-concepts/output#template).
+
+### `config.outFileIsTemplate` [#config-outfileistemplate]
+
+Error. The project file the config writes is also its template, so every build would overwrite the template.
+
+```
+default.rogen.json:11:14 - error: the output file default.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.
+```
+
+Rename the template to `template.project.json`, or set `outFile` to another path. See [Template](/docs/v2/core-concepts/output#template).
+
+### `config.duplicateRootDir` [#config-duplicaterootdir]
+
+Error. One directory appears twice in `rootDirs`, so every file in it would belong to both entries.
+
+```
+default.rogen.json:4:3 - error: root dir "src" is listed twice; a file under it would belong to both. Remove one.
+```
+
+Remove one entry. With `extends`, check the parent's list too. See [Several Root Directories](/docs/v2/core-concepts/project-layout#several-root-directories).
+
+### `config.nestedRootDir` [#config-nestedrootdir]
+
+Error. One root directory sits inside another, so the files in it would belong to both.
+
+```
+default.rogen.json:4:3 - error: root dir "src/shared" is inside root dir "src"; a file under it would belong to both. Remove one.
+```
+
+Remove the inner one, or move it out of the outer one. See [Several Root Directories](/docs/v2/core-concepts/project-layout#several-root-directories).
+
+### `config.invalidRouteKey` [#config-invalidroutekey]
+
+Error. A route key has characters other than letters and digits, or starts with a digit. Keys appear in folder and file names, so they have to match exactly.
+
+```
+default.rogen.json:6:14 - error: route key "ser-ver" is invalid: use letters and digits only, starting with a letter.
+```
+
+Rename the key, for example `server`. See [Routing](/docs/v2/core-concepts/routing).
+
+### `config.invalidVariantName` [#config-invalidvariantname]
+
+Error. A variant name has characters other than letters and digits, or starts with a digit.
+
+```
+default.rogen.json:12:17 - error: variant "my-variant" is invalid: use letters and digits only, starting with a letter.
+```
+
+Rename the variant, for example `myVariant`. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
+
+### `config.variantClashesWithRoute` [#config-variantclasheswithroute]
+
+Error. A variant has the same name as a route key, so a folder or marker with that name could mean either.
+
+```
+default.rogen.json:12:13 - error: variant "server" has the same name as a route key; rename one of them.
+```
+
+Rename the variant or the route. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
+
+### `config.ambiguousKey` [#config-ambiguouskey]
+
+Error. Two declared keys differ only in the case of their first letter. A name matches a key with its first letter in either case, so both would match the same folders.
+
+```
+default.rogen.json:7:13 - error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.
+```
+
+Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
+
+## Routes
+
+### `roblox.unsupportedService` [#roblox-unsupportedservice]
+
+Error. A route's target doesn't start with a Roblox service Rojo can write to.
+
+```
+default.rogen.json:7:13 - error: "StarterPlayerScripts" is not a supported service. Did you mean "StarterPlayer/StarterPlayerScripts"?
+```
+
+Start the target with a service, then any folders: `"StarterPlayer/StarterPlayerScripts"`, `"ReplicatedStorage/Shared"`. See [Targets](/docs/v2/core-concepts/routing#targets).
+
+### `route.noRoutes` [#route-noroutes]
+
+Error. The config declares no `routes`, so no file can be placed. Rogen never picks a destination on its own.
+
+```
+default.rogen.json - error: no routes declared, so nothing can be placed.
+```
+
+Add a `routes` map. `rogen init` writes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
+
+### `route.unrouted` [#route-unrouted]
+
+Warning. No route matches the file and there's no `*` route, so it's left out of the project file.
+
+```
+src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+```
+
+Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"` route. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
+
+### `route.strayAt` [#route-strayat]
+
+Warning. A name has an `@` that matches no declared route, so the `@` stays in the instance name. It's usually a typo, a wrong case, or a variant written with `@` instead of a dot. One warning lists every such name.
+
+```
+default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
+  src/Inventory/Load@SERVER.luau (did you mean "@server"?)
+```
+
+Rename the file to the key suggested, or declare the route. In `--json`, `fixes` holds the rename when there's exactly one closest key. See [The `@` Sign](/docs/v2/core-concepts/routing).
+
+### `route.ignoredAt` [#route-ignoredat]
+
+Warning. A name has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.
+
+```
+src/server/Util@client.luau - warning: "@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route's files.
+```
+
+Remove the suffix, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+
+### `route.caseMismatch` [#route-casemismatch]
+
+Warning. A folder or marker matches a declared key except for letter case beyond the first letter, so it's read as an ordinary name.
+
+```
+src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written.
+```
+
+Rename it to the key, or declare it as written if it's meant to route. `SHARED/` may also just be a folder name, so there's no automatic fix. See [Matching](/docs/v2/core-concepts/routing#matching).
+
+### `route.serverCodeShipped` [#route-servercodeshipped]
+
+Warning. A file sits under a server route that an outer route outranks, so the outer route, which replicates to clients, places it. Server code under `Shared/` ships to every client.
+
+```
+default.rogen.json - warning: 1 file under a "server" route ships to clients, because "shared" governs it:
+  src/Shared/(Server)/Datastore.luau -> ReplicatedStorage/shared/Datastore
+Move it out of the "shared" route's files if it's server code.
+```
+
+Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`. See [Server Code Under a Replicating Route](/docs/v2/core-concepts/routing#server-code-under-a-replicating-route).
+
+## Variants
+
+### `variant.typo` [#variant-typo]
+
+Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. One warning lists every such name.
+
+```
+default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
+  src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
+```
+
+Rename the file to the variant suggested. In `--json`, `fixes` holds the rename when there's exactly one closest variant. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
+
+### `variant.activeClash` [#variant-activeclash]
+
+Error. Two files with active variants become the same instance, so Rogen can't tell which one to use.
+
+```
+src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file.
+```
+
+Turn one of the variants off, in the config or with `--no-variant`, or rename one of the files. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+
+### `variant.buriedScriptSuffix` [#variant-buriedscriptsuffix]
+
+Warning. Rojo's `.server` or `.client` isn't the file's last suffix, so once the variant comes off, Rojo reads the file as a ModuleScript.
+
+```
+src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau.
+```
+
+Put the script suffix last: `Save.mock.server.luau`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
+
+## Tree
+
+### `tree.instanceClash` [#tree-instanceclash]
+
+Warning. Two plain files become the same instance, such as `Types.lua` and `Types.luau`. One takes the instance and the other is left out.
+
+```
+src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both.
+```
+
+Rename or delete one of them. `rogen where` shows the left-out file as `replaced by`. See [Variants](/docs/v2/core-concepts/variants).
+
+### `tree.templateClash` [#tree-templateclash]
+
+Warning. The template defines a node at the same instance path as a file or folder, so the template's node is kept and the file is left out.
+
+```
+src/Save.server.luau - warning: the template defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both.
+```
+
+Rename the file, or remove the node from the template. See [Template](/docs/v2/core-concepts/output#template).
+
+### `tree.initWithoutFolder` [#tree-initwithoutfolder]
+
+Error. An init script becomes the folder it sits in, but that folder never becomes an instance. That's a root directory, a plain routing folder, a variant folder or an invisible folder.
+
+```
+src/server/init.server.luau - error: an init script becomes the folder it sits in, but it sits in a routing folder, which never becomes an instance. Move it into a folder of its own, or rename it.
+```
+
+Move the script into a folder of its own, or rename it so it isn't an init script. See [Init Folders](/docs/v2/core-concepts/project-layout#init-folders).
+
+### `tree.deadScript` [#tree-deadscript]
+
+Warning. A Script or LocalScript lands in a service where Roblox never runs it, such as a LocalScript in `ServerScriptService`. One warning lists every such script.
+
+```
+default.rogen.json - warning: 1 script will never run where it lands:
+  src/Shared/Secret.server.luau -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)
+A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
+```
+
+Move the script under a route whose target runs it, or drop `.server`/`.client` to make it a ModuleScript. See [Scripts That Never Run](/docs/v2/core-concepts/routing#scripts-that-never-run).
+
+### `tree.runContextTarget` [#tree-runcontexttarget]
+
+Warning. The template sets `emitLegacyScripts: false`, but a route targets `StarterPlayerScripts` or `StarterCharacterScripts`, where RunContext scripts don't run as LocalScripts.
+
+```
+default.project.json - warning: emitLegacyScripts: false in the template isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from the template.
+```
+
+Remove `emitLegacyScripts` from the template, or route client code elsewhere, such as `ReplicatedStorage` with RunContext Client. See [Template](/docs/v2/core-concepts/output#template).
+
+### `template.mountsRootDir` [#template-mountsrootdir]
+
+Error. A `$path` in the template mounts a root directory, or a folder that holds one, so Rojo would read the whole directory and Rogen could place nothing in it.
+
+```
+template.project.json - error: "ReplicatedStorage/All" mounts the root dir src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the root dir, or remove the root dir from "rootDirs".
+```
+
+Mount a folder inside the root directory, such as a vendored package, or remove the root directory from `rootDirs`. See [Template](/docs/v2/core-concepts/output#template).
+
+## Metadata
+
+### `meta.unreadable` [#meta-unreadable]
+
+Error. A `.meta.json` file exists, but Rogen couldn't read it from disk.
+
+```
+src/Combat/init.meta.json - error: the meta file could not be read: EACCES: permission denied.
+```
+
+Fix the file's permissions. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.invalidSyntax` [#meta-invalidsyntax]
+
+Error. A `.meta.json` file isn't valid JSONC.
+
+```
+src/Combat/init.meta.json:3:1 - error: invalid JSONC: expected '}'.
+```
+
+Fix the syntax at the line and column shown. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.notAnObject` [#meta-notanobject]
+
+Error. A `.meta.json` file holds a JSON value that isn't an object.
+
+```
+src/Combat/init.meta.json:1:1 - error: a meta file must be a JSON object.
+```
+
+Wrap the fields in `{ }`. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.wrongType` [#meta-wrongtype]
+
+Error. A field in a `.meta.json` file holds the wrong kind of value.
+
+```
+src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found an array.
+```
+
+Give the field the type the message names, as Rojo's meta format expects. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.unknownField` [#meta-unknownfield]
+
+Error. A `.meta.json` file has a field Rojo doesn't read, often a typo.
+
+```
+src/Combat/init.meta.json:2:2 - error: unknown field "classname". Did you mean "className"?
+```
+
+Rename it to the field suggested, or remove it. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.unclaimed` [#meta-unclaimed]
+
+Warning. A `.meta.json` file belongs to no file, so Rojo ignores it. A file's meta is named after the name Rojo gives the file, without `.server`, `.client` or `.plugin`.
+
+```
+src/Inventory/Save.server.meta.json - warning: belongs to no file, so Rojo ignores it. Rojo reads Save.meta.json.
+```
+
+Rename it to the name the message gives, or delete it. A folder's meta is `init.meta.json` inside the folder. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.appliesToNothing` [#meta-appliestonothing]
+
+Warning. An `init.meta.json` sits in a folder that never becomes an instance, such as a routing folder, a variant folder or an invisible folder.
+
+```
+src/Combat/server/init.meta.json - warning: applies to nothing, because a routing folder never becomes an instance. Move the meta into the folder that should get it.
+```
+
+Move it into the feature folder that should get it. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.sharedWithScript` [#meta-sharedwithscript]
+
+Warning. A folder's `init.meta.json` would apply to an instance that a script defines, because the folder and the script become the same instance. Rojo reads the script there, so the folder's meta applies to nothing.
+
+```
+src/Net/init.meta.json - warning: this folder shares "ServerScriptService/Net" with Net.server.luau, which is what Rojo reads there, so its meta applies to nothing. Put it in Net.meta.json beside the script, or turn the folder into an init folder.
+```
+
+Put the fields in the script's own meta file, as the message names, or make the folder an init folder. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.templatePath` [#meta-templatepath]
+
+Warning. The template gives the folder's instance its own `$path`, so Rogen can't copy the folder's meta there.
+
+```
+src/Combat/init.meta.json - warning: the template gives "ServerScriptService/Combat" its own $path, so this meta isn't copied there. Set the fields on the template's node instead.
+```
+
+Set `$className`, `$properties` or `$attributes` on the template's node. See [Template](/docs/v2/core-concepts/output#template).
+
+### `meta.templateClass` [#meta-templateclass]
+
+Warning. The template and a folder's meta give one instance different classes. The template wins.
+
+```
+src/Combat/init.meta.json - warning: the template makes "ServerScriptService/Combat" a Model, so its class is kept over this meta's Actor.
+```
+
+Remove `$className` from the template's node, or `className` from the meta. See [Template](/docs/v2/core-concepts/output#template).
+
+### `meta.sameNode` [#meta-samenode]
+
+Error. Two folders in one root directory become the same instance, such as `src/Combat/` and `src/server/Combat/`, and both have an `init.meta.json`. Neither ranks above the other.
+
+```
+src/Combat/init.meta.json - error: src/Combat/init.meta.json and src/server/Combat/init.meta.json both apply to "ServerScriptService/Combat" from one root dir, and neither ranks above the other. Keep one of them.
+```
+
+Merge them into one meta file. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.idOnSeveralNodes` [#meta-idonseveralnodes]
+
+Error. A folder's meta sets an `id`, but its files are split across services, so the meta would be copied onto several instances. A Rojo ref id must be unique.
+
+```
+src/Combat/init.meta.json - error: id "combat" would be copied onto 2 instances (ServerScriptService/Combat, ReplicatedStorage/Combat), but a ref must be unique. Remove the id, or keep the folder's files in one service.
+```
+
+Remove the `id`, or keep the folder's files in one service. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.runContextOnModule` [#meta-runcontextonmodule]
+
+Error. A meta file sets `RunContext` on a ModuleScript, which has none, so Rojo refuses the meta.
+
+```
+src/Net/init.meta.json - error: sets a RunContext, but init.luau is a ModuleScript, which has none, so Rojo refuses this meta. Name the script .server or .client to make it a Script, or remove RunContext.
+```
+
+Name the script `.server` or `.client`, or remove `RunContext`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
+
+## Scanning
+
+### `scan.missingRootDir` [#scan-missingrootdir]
+
+Warning. A directory in `rootDirs` doesn't exist, so it contributes nothing.
+
+```
+later - warning: this root dir does not exist, so it contributes nothing.
+```
+
+Create it, or remove it from `rootDirs`. The path is relative to the config that sets it. See [Configuration](/docs/v2/configuration#fields).
+
+### `scan.unresolvedLink` [#scan-unresolvedlink]
+
+Warning. A symlink or junction inside a root directory points at nothing, or back at a directory that contains it.
+
+```
+src/Missing - warning: this link points at nothing, or back at a directory that contains it, so it contributes nothing.
+```
+
+Fix the link's target, or remove the link. See [Linked Directories](/docs/v2/core-concepts/project-layout#linked-directories).
+
+## Output
+
+### `output.sameOutFile` [#output-sameoutfile]
+
+Error. Two configs in one run write the same project file.
+
+```
+game.project.json - error: "a.rogen.json" and "b.rogen.json" write the same file, game.project.json. Give each its own "outFile".
+```
+
+Give each config its own `outFile`. `outFile` isn't inherited through `extends`, so this usually comes from setting it by hand. See [Output](/docs/v2/core-concepts/output#output).
+
+### `output.writeFailed` [#output-writefailed]
+
+Error. The project file couldn't be written to disk.
+
+```
+default.project.json - error: the project file could not be written: EACCES: permission denied
+```
+
+Check that the directory exists and is writable, and that no other program locks the file. See [Output](/docs/v2/core-concepts/output#output).
+
+### `output.nothingEmitted` [#output-nothingemitted]
+
+Warning. The config has a `syncDir`, but nothing the compiler or processor should have written for a root directory exists there. Rojo would find nothing to sync.
+
+```
+src - warning: nothing emitted for root dir "src" exists under "out". The nearest path that exists is "." — has the compiler run?
+```
+
+Run the compiler or processor first. If the message finds the files elsewhere, point `syncDir` at the folder that mirrors the root directories. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).
+
+### `output.metaNotSynced` [#output-metanotsynced]
+
+Warning. `.meta.json` files have no copy in the sync directory, so Rojo doesn't apply them. Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
+
+```
+default.project.json - warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way.
+```
+
+Copy the `.meta.json` files unchanged into the sync directory after the compiler or processor runs. See [Data Files](/docs/v2/setups/darklua#data-files).
+
+### `output.dataFileConverted` [#output-datafileconverted]
+
+Warning. A processor turned data files such as `.json` or `.txt` into Lua modules in the sync directory, so Rojo doesn't find them at the path the build expects.
+
+```
+default.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the sync dir after it runs, or require them as modules.
+```
+
+Copy the data files unchanged into the sync directory after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
+
+## Init
+
+### `init.configExists` [#init-configexists]
+
+Error. The config `init` would write already exists, and `init` never overwrites one. Without a terminal, `init` beside an existing `default.rogen.json` adds a place, which needs a name.
+
+```
+default.rogen.json - error: this config already exists. To add a place beside it, run 'rogen init <name>'.
+```
+
+Give a new name, such as `rogen init lobby`, or delete the config to start over. See [CLI](/docs/v2/cli).
+
+### `init.fileExists` [#init-fileexists]
+
+Error. A file `init` would write, such as the template or a roblox-ts `tsconfig`, already exists.
+
+```
+template.project.json - error: this file already exists, and init never overwrites one. Pick another name.
+```
+
+Pick another config name, or move the file out of the way. See [CLI](/docs/v2/cli).
+
+### `init.invalidPlaceFolder` [#init-invalidplacefolder]
+
+Error. The folder given for a new place can't hold it: it overlaps one of `default`'s root directories, is outside the project, or isn't a relative path.
+
+```
+src/lobby - error: src/lobby overlaps src, one of default's root dirs. Pick a folder outside it.
+```
+
+Pick a folder of its own, such as `places/lobby`. See [Multi-Place](/docs/v2/setups/multi-place).
+
+### `init.templateUnreadable` [#init-templateunreadable]
+
+Error. `init` found a hand-written project file to keep as the template, but couldn't read it to copy it.
+
+```
+default.project.json - error: couldn't read this file to copy it: EACCES: permission denied
+```
+
+Fix the file's permissions, or move it out of the way. See [Template](/docs/v2/core-concepts/output#template).
+
+## Migration
+
+### `legacy.config` [#legacy-config]
+
+Warning. A config that failed to load has fields from Rogen 1, such as `source`, `aliases` or modes. v2 doesn't read v1 configs.
+
+```
+default.rogen.json - warning: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it.
+```
+
+Rewrite the config in v2's shape. See [Migrating from v1](/docs/v2/migrating-from-v1).

@@ -1,5 +1,6 @@
 import path from "path";
 import { relativeTo, toNative, toPosix } from "../../base/path.js";
+import { DOCS_URL } from "../product/product-service.js";
 
 export enum DiagnosticSeverity {
 	Error,
@@ -108,7 +109,13 @@ export interface DiagnosticJson {
 	readonly severity: "error" | "warning";
 	readonly code: string;
 	readonly message: string;
+	/** The code's section on the diagnostics page. */
+	readonly url: string;
 }
+
+/** The anchor of `code`'s section on the diagnostics page: `route.dotRoute` is `route-dotroute`. */
+const diagnosticAnchor = (code: string): string =>
+	code.replace(".", "-").toLowerCase();
 
 /** The form a `--json` run prints; the code is here and not in the text, since only a program matches on it. */
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
@@ -119,6 +126,7 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 		severity: SEVERITY_LABELS[severity],
 		code,
 		message,
+		url: `${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`,
 	};
 }
 

@@ -29,7 +29,8 @@ stdout:
         "file": "<dir>/default.rogen.json",
         "severity": "error",
         "code": "init.configExists",
-        "message": "this config already exists. To add a place beside it, run 'rogen init <name>'."
+        "message": "this config already exists. To add a place beside it, run 'rogen init <name>'.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"
       }
     ]
   }
