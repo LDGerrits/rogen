@@ -53,6 +53,17 @@ describe("CoreInitService", () => {
 			).toHaveProperty("server");
 		});
 
+		it("should take every default without asking when it may not ask, even in a terminal", async () => {
+			const interactive = new MockPromptService([], true);
+
+			const plan = (
+				await serviceFor(interactive).plan([], { ask: false })
+			).unwrap();
+			const unasked = (await serviceFor().plan([])).unwrap();
+
+			expect(plan?.files).toEqual(unasked?.files);
+		});
+
 		it("should write the config named on the command line", async () => {
 			const plan = (await serviceFor().plan(["lobby"])).unwrap();
 

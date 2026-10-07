@@ -83,7 +83,7 @@ describe("CoreCommandService", () => {
 			);
 		});
 
-		it("should point a command named like a global flag at the flag", async () => {
+		it("should point the old version command at the flag", async () => {
 			const result = await commandService.executeCommand("version", {
 				positionals: [],
 				options: {},

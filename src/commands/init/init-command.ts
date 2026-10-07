@@ -73,10 +73,12 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
-			const { isInteractive } = accessor.get(PromptService);
+			// A JSON document is read by a program, which can't answer a question.
+			const ask = !line.options.yes && !line.options.json;
+			const asked = ask && accessor.get(PromptService).isInteractive;
 
 			if (!line.options.json) logService.intro("rogen init");
-			const planned = await initService.plan(line.positionals);
+			const planned = await initService.plan(line.positionals, { ask });
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
@@ -87,7 +89,7 @@ registerCommand(
 						initService,
 						logService,
 						plan,
-						isInteractive
+						asked
 					);
 		}
 

@@ -11,7 +11,7 @@ import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
-import { InitPlan, InitService } from "./init-service.js";
+import { InitOptions, InitPlan, InitService } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
 import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
@@ -20,24 +20,25 @@ import { ExtendingConfigSetup } from "./extending-config-setup.js";
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly questions: InitQuestions;
-
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService
-	) {
-		this.questions = new InitQuestions(promptService);
-	}
+	) {}
 
 	async plan(
-		names: readonly string[]
+		names: readonly string[],
+		{ ask = true }: InitOptions = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const directory = await this.prepare(names);
 		if (directory.isErr()) return directory;
-		return this.planIn(directory.value);
+		const interactive = ask && this.promptService.isInteractive;
+		return this.planIn(
+			directory.value,
+			new InitQuestions(this.promptService, interactive)
+		);
 	}
 
 	private async prepare(
@@ -78,13 +79,14 @@ export class CoreInitService implements InitService {
 	}
 
 	private async planIn(
-		directory: InitDirectory
+		directory: InitDirectory,
+		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
 		// A run that can't ask never gets to pick another name, so the one it has must be free.
 		const knownName =
 			directory.givenName ??
-			(this.promptService.isInteractive ? undefined : directory.name);
-		const unnamed = this.promptService.isInteractive
+			(questions.interactive ? undefined : directory.name);
+		const unnamed = questions.interactive
 			? []
 			: directory.checkPlaceNamed();
 		if (unnamed.length > 0) return err(new DiagnosticsError(unnamed));
@@ -98,23 +100,23 @@ export class CoreInitService implements InitService {
 			this.planWith(
 				new ProjectSetup(
 					directory,
-					this.questions,
+					questions,
 					this.fileSystemService
 				),
 				directory
 			);
 		if (!directory.hasDefaultConfig) return project();
-		switch (await this.questions.whatToAdd()) {
+		switch (await questions.whatToAdd()) {
 			case undefined:
 				return ok(undefined);
 			case "place":
 				return this.planWith(
-					new PlaceSetup(directory, this.questions),
+					new PlaceSetup(directory, questions),
 					directory
 				);
 			case "extending":
 				return this.planWith(
-					new ExtendingConfigSetup(directory, this.questions),
+					new ExtendingConfigSetup(directory, questions),
 					directory
 				);
 			case "separate":

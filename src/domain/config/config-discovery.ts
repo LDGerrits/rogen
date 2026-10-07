@@ -15,7 +15,7 @@ import {
 } from "./config.js";
 
 /** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
-export function isConfigPath(ref: string): boolean {
+function isConfigPath(ref: string): boolean {
 	return ref.includes("/") || ref.includes("\\") || ref.endsWith(".json");
 }
 

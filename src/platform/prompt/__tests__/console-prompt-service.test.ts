@@ -36,10 +36,10 @@ describe("ConsolePromptService", () => {
 			expect(piped.isInteractive).toBe(false);
 		});
 
-		it("should be false when the run can't ask", () => {
+		it("should be false when the environment says no one can answer", () => {
 			const declined = new ConsolePromptService({
 				...terminal,
-				canAsk: false,
+				interactive: false,
 			});
 			expect(declined.isInteractive).toBe(false);
 		});

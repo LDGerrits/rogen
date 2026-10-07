@@ -3,7 +3,7 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ConfigOptionValues } from "./config.js";
+import { ConfigOptionValues, OutFileOption } from "./config.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
@@ -61,7 +61,7 @@ export class CoreConfigService implements ConfigService {
 			const found = refs.length > 0 ? "were named" : "are here";
 			return err(
 				new UsageError(
-					`-o targets a single config, but ${count} configs ${found}. Name one config, or set outFile in the file.`
+					`-${OutFileOption.short} targets a single config, but ${count} configs ${found}. Name one config, or set outFile in the file.`
 				)
 			);
 		}

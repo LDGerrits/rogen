@@ -40,8 +40,8 @@ registerCommand(
 					options: BuildOptions,
 					examples: [
 						"rogen build",
-						"rogen build lobby --variant mock",
-						"rogen build places/lobby.rogen.json -o out.project.json",
+						"rogen build places/lobby.rogen.json --variant mock",
+						"rogen build --json",
 					],
 				},
 			});

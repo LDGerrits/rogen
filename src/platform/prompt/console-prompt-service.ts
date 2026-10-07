@@ -101,8 +101,8 @@ interface PromptStreams {
 }
 
 interface PromptSession extends PromptStreams {
-	/** Whether the run may ask at all; the environment and the command line decide. */
-	readonly canAsk?: boolean;
+	/** Whether a person can answer; by default, whether both streams are terminals. */
+	readonly interactive?: boolean;
 }
 
 export class ConsolePromptService implements PromptService {
@@ -114,10 +114,10 @@ export class ConsolePromptService implements PromptService {
 	constructor({
 		input = process.stdin,
 		output = process.stdout,
-		canAsk = true,
+		interactive = Boolean(input.isTTY && output.isTTY),
 	}: PromptSession = {}) {
 		this.streams = { input, output };
-		this.isInteractive = canAsk && Boolean(input.isTTY && output.isTTY);
+		this.isInteractive = interactive;
 	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {

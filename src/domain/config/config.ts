@@ -45,14 +45,16 @@ export const ConfigSelectionOptions = [
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];
 
+export const OutFileOption = {
+	name: "out-file",
+	short: "o",
+	type: "string",
+	description: "Overrides outFile.",
+} as const satisfies OptionDescriptor;
+
 /** The flags that override the configs a command builds. */
 export const ConfigOptions = [
-	{
-		name: "out-file",
-		short: "o",
-		type: "string",
-		description: "Overrides outFile.",
-	},
+	OutFileOption,
 	VariantOption,
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];

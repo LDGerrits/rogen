@@ -1,4 +1,4 @@
-import { ConfigDiscovery, isConfigPath } from "../config-discovery.js";
+import { ConfigDiscovery } from "../config-discovery.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { UsageError } from "../../../base/errors.js";
@@ -7,25 +7,6 @@ import { Result, ResultError } from "../../../base/result.js";
 function errorOf(result: Result<unknown, Error>): Error {
 	return (result as ResultError<Error>).error;
 }
-
-describe("isConfigPath", () => {
-	it.each([
-		"places/lobby.rogen.json",
-		"../shared.rogen.json",
-		"places\\lobby.rogen.json",
-		"lobby.rogen.json",
-		"odd.json",
-	])("should read %s as a path", (ref) => {
-		expect(isConfigPath(ref)).toBe(true);
-	});
-
-	it.each(["lobby", "default", "lobby.sync"])(
-		"should read %s as a name",
-		(ref) => {
-			expect(isConfigPath(ref)).toBe(false);
-		}
-	);
-});
 
 describe("ConfigDiscovery", () => {
 	let fs: MemoryFileSystemService;
@@ -129,6 +110,37 @@ describe("ConfigDiscovery", () => {
 			expect(result.unwrap()).toEqual([
 				"/repo/places/lobby/default.rogen.json",
 			]);
+		});
+
+		it.each([
+			"places/lobby.rogen.json",
+			"places\\lobby.rogen.json",
+			"../repo/places/lobby.rogen.json",
+		])("should read %s as a path", async (ref) => {
+			await fs.createDirectory("/repo/places");
+			await fs.writeFile("/repo/places/lobby.rogen.json", "{}");
+
+			const result = await discovery.discover([ref]);
+
+			expect(result.isOk() || errorOf(result).message).toBe(true);
+		});
+
+		it("should read a name ending in .json as a path, not as <name>.rogen.json", async () => {
+			await fs.writeFile("/repo/odd.json.rogen.json", "{}");
+
+			const result = await discovery.discover(["odd.json"]);
+
+			expect(errorOf(result).message).toBe(
+				"Config file not found: /repo/odd.json"
+			);
+		});
+
+		it("should read a name with a dot but no separator or .json as a name", async () => {
+			await fs.writeFile("/repo/lobby.sync.rogen.json", "{}");
+
+			const result = await discovery.discover(["lobby.sync"]);
+
+			expect(result.unwrap()).toEqual(["/repo/lobby.sync.rogen.json"]);
 		});
 
 		it("should mix with names, in the order given", async () => {

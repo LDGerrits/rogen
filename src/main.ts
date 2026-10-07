@@ -80,8 +80,8 @@ async function main(): Promise<void> {
 		const json = hasFlag(rawArgs, "--json");
 		const logService: LogService =
 			json || environment.isPlain
-				? new PlainLogService(process.cwd())
-				: new TerminalLogService(process.cwd());
+				? new PlainLogService(environment.cwd)
+				: new TerminalLogService(environment.cwd);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -90,9 +90,8 @@ async function main(): Promise<void> {
 			return;
 		}
 		const { command, line } = argsResult.value;
-		// A JSON document is read by a program, which can't answer a prompt.
 		const promptService = new ConsolePromptService({
-			canAsk: environment.isInteractive && !json && line.options.yes !== true,
+			interactive: environment.isInteractive,
 		});
 
 		// Logging levels
