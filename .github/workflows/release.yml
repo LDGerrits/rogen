@@ -129,7 +129,7 @@ jobs:
 
     # Last, since npm never accepts a version twice, while a failed GitHub release can be run again.
     npm:
-        name: Publish to npm
+        name: Stage on npm
         needs: publish
         runs-on: ubuntu-latest
         permissions:
@@ -146,7 +146,7 @@ jobs:
                   cache: "npm"
                   registry-url: "https://registry.npmjs.org"
 
-            # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+            # Staged publishing needs npm 11.15 or later; Node 22 ships npm 10.
             - name: Update npm
               run: npm install -g npm@11
 
@@ -154,5 +154,5 @@ jobs:
               run: npm ci
 
             # A pre-release goes to `next`, so `npm install` keeps giving the stable release.
-            - name: Publish
-              run: npm publish --tag ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}
+            - name: Stage
+              run: npm stage publish --provenance --tag ${{ contains(github.ref_name, '-') && 'next' || 'latest' }}

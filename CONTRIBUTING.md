@@ -87,14 +87,27 @@ If the bump fails, nothing is committed or tagged, but `package.json` and
 `git checkout -- package.json package-lock.json` before trying again.
 
 Pushing the tag publishes the JSON schema, builds the binaries into a GitHub
-release, and then publishes the npm package. A tag that doesn't match
+release, and then stages the npm package. A tag that doesn't match
 `package.json` publishes nothing. A version with a `-` is a pre-release: GitHub
-marks it so, and npm publishes it under the `next` tag, leaving `latest` on the
+marks it so, and npm stages it under the `next` tag, leaving `latest` on the
 newest stable release.
 
-npm accepts the publish through trusted publishing, so there's no token to
-keep. It's set on npmjs.com under the package's Settings → Trusted Publisher:
-GitHub Actions, user `LDGerrits`, repository `rogen`, workflow `release.yml`.
+A staged version isn't public until you approve it, with 2FA: on npmjs.com in the
+package's **Staged Packages** tab, or from the CLI:
+
+```bash
+npm stage list @ldgerrits/rogen
+npm stage view <stage-id>      # or `npm stage download <stage-id>` for the tarball
+npm stage approve <stage-id>
+```
+
+`npm stage reject <stage-id>` drops it instead.
+
+npm accepts the staged upload through trusted publishing, so there's no token
+to keep. It's set on npmjs.com under the package's Settings → Trusted
+Publisher: GitHub Actions, user `LDGerrits`, repository `rogen`, workflow
+`release.yml`, with **Allow npm publish** left unchecked so every version goes
+through staging.
 
 ## Building Release Binaries
 
