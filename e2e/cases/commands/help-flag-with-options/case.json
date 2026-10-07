@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["build", "--variant", "mock", "--help"],
+		["build", "--json", "--help"]
+	],
+	"rojo": false
+}
