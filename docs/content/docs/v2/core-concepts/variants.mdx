@@ -67,6 +67,16 @@ src/Analytics/prod/Service.luau  ->  pruned              (prod dormant)
 
 Within one root directory, a variant quietly replaces the plain file of the same name. Two active variants claiming the same name are an error, and two plain files get a warning. Across root directories, the last one wins.
 
+Variants are independent switches, but a set of alternatives like `dev/Service.luau` and `prod/Service.luau` is meant to have one of them on. With both off, `Service` is missing and whatever requires it fails in Studio, so Rogen warns:
+
+```
+default.rogen.json - warning: 1 instance is missing, because none of the variants that give it is on:
+  ReplicatedStorage/shared/Analytics/Service (dev, prod)
+Turn one of its variants on, or add a plain file.
+```
+
+A lone variant, like `DebugPanel.dev.luau`, doesn't warn: disappearing when it's off is the point.
+
 ## Turning Variants On and Off
 
 Override the config for a single run from the CLI. Both flags can be repeated:

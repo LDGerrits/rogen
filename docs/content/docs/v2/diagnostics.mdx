@@ -280,6 +280,18 @@ default.rogen.json - warning: 1 name ends in a dot part that is one edit from a 
 
 Rename the file to the variant suggested. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
 
+### `variant.noneActive` [#variant-noneactive]
+
+Warning. Two or more variants give one instance, a file or a folder, no plain file does, and none of the variants is on, so the instance is missing. Whatever requires it fails at runtime. A lone variant (`DebugPanel.dev.luau`) is silent, and a plain file in a later root directory gives the instance. One warning lists every missing instance.
+
+```
+default.rogen.json - warning: 1 instance is missing, because none of the variants that give it is on:
+  ReplicatedStorage/shared/Analytics/Service (dev, prod)
+Turn one of its variants on, or add a plain file.
+```
+
+Turn one of the variants on in the config or with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+
 ### `variant.activeClash` [#variant-activeclash]
 
 Error. Two files with active variants become the same instance, so Rogen can't tell which one to use.

@@ -55,6 +55,7 @@ export class BuildValidator {
 			...this.strayAt(),
 			...this.dotRoute(),
 			...this.variantTypo(),
+			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.ignoredAt(),
@@ -191,6 +192,69 @@ export class BuildValidator {
 					...listed,
 				].join("\n"),
 				renames(variantTypos)
+			),
+		];
+	}
+
+	/** Variants are independent switches, so turning off every alternative of an instance leaves nothing where code expects it. */
+	private noneActive(): Diagnostic[] {
+		const claimants = new Map<string, RoutedFile[]>();
+		for (const file of this.placement.routed)
+			for (const node of [
+				...file.folderNodes.map(({ instancePath }) => instancePath),
+				file.instancePath,
+			]) {
+				const key = instanceKey(node);
+				claimants.set(key, [...(claimants.get(key) ?? []), file]);
+			}
+
+		const missing: [string, string[]][] = [];
+		const outermostFirst = [...claimants].sort(
+			([a], [b]) => a.split("/").length - b.split("/").length
+		);
+		for (const [instance, files] of outermostFirst) {
+			if (missing.some(([outer]) => instance.startsWith(`${outer}/`)))
+				continue;
+			if (
+				files.some(({ variants }) =>
+					this.config.allVariantsOn(variants)
+				)
+			)
+				continue;
+			const alternatives = new Set(
+				files.map(({ variants }) =>
+					variants
+						.map(({ variant }) => variant)
+						.sort()
+						.join(".")
+				)
+			);
+			if (alternatives.size < 2) continue;
+			const variants = [
+				...new Set(
+					files.flatMap(({ variants }) =>
+						variants.map(({ variant }) => variant)
+					)
+				),
+			].sort(compareStrings);
+			missing.push([instance, variants]);
+		}
+		if (missing.length === 0) return [];
+
+		const many = missing.length > 1;
+		return [
+			warningDiagnostic(
+				"variant.noneActive",
+				{ resource: this.config.file },
+				[
+					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
+					...this.listed(
+						missing.sort(([a], [b]) => compareStrings(a, b)),
+						([instance, variants]) =>
+							`${instance} (${variants.join(", ")})`
+					),
+					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
+				].join("\n")
 			),
 		];
 	}

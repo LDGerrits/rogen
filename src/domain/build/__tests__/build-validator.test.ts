@@ -601,6 +601,80 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("instances no variant gives", () => {
+			const missing = async (
+				variants: Record<string, boolean>,
+				rootDirs?: readonly string[]
+			) =>
+				(await route({ variants }, rootDirs))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "variant.noneActive"
+					);
+
+			it("should warn once, naming the instance and the variants that give it, when all are off", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau",
+					"src/Analytics/Other.luau"
+				);
+
+				const [warning, ...others] = await missing({
+					dev: false,
+					prod: false,
+				});
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/Analytics/Service (dev, prod)"
+				);
+			});
+
+			it("should not warn when one of them is on", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau"
+				);
+
+				expect(await missing({ dev: true, prod: false })).toEqual([]);
+			});
+
+			it("should name a folder two variant folders give, not each file inside", async () => {
+				await write(
+					"src/Analytics.mock/Service.luau",
+					"src/Analytics.prod/Service.luau"
+				);
+
+				const [warning] = await missing({ mock: false, prod: false });
+
+				expect(warning.message).toContain("1 instance is missing");
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/Analytics (mock, prod)"
+				);
+			});
+
+			it("should not warn for a lone variant", async () => {
+				await write("src/DebugPanel.dev.luau");
+
+				expect(await missing({ dev: false })).toEqual([]);
+			});
+
+			it("should not warn when a plain file in a later root dir gives the instance", async () => {
+				await write(
+					"src/Analytics/dev/Service.luau",
+					"src/Analytics/prod/Service.luau",
+					"lib/Analytics/Service.luau"
+				);
+
+				expect(
+					await missing({ dev: false, prod: false }, [
+						abs("src"),
+						abs("lib"),
+					])
+				).toEqual([]);
+			});
+		});
+
 		describe("variant typos", () => {
 			const typos = async () =>
 				(await route({ variants: { mock: true } }))
