@@ -38,6 +38,7 @@ registerCommand(
 						},
 					],
 					options: BuildOptions,
+					unknownWordOffer: "To build a config",
 					examples: [
 						"rogen build",
 						"rogen build places/lobby.rogen.json --variant mock",

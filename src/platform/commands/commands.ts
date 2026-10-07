@@ -46,6 +46,8 @@ export interface CommandMetadata<
 	readonly options?: O;
 	/** Two or three command lines that show the command at work, as help prints them. */
 	readonly examples?: readonly string[];
+	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
+	readonly unknownWordOffer?: string;
 }
 
 export interface CommandRegistry {
