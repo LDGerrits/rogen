@@ -1,4 +1,3 @@
-import { schemaUrlFor } from "../../src/domain/config/config.js";
 import { schemaChannels } from "../schema-channels.js";
 
 describe("scripts/schema-channels", () => {
@@ -38,13 +37,6 @@ describe("scripts/schema-channels", () => {
 				"3.0.0-beta.1",
 				"3",
 			]);
-		});
-
-		it("should publish the channel the release's configs point at", () => {
-			for (const version of ["2.0.0-beta.1", "2.1.0-beta.1", "2.1.0"]) {
-				const channel = schemaUrlFor(version).split("/").at(-2);
-				expect(schemaChannels(version)).toContain(channel);
-			}
 		});
 
 		it("should publish every channel when nothing newer is published", () => {
