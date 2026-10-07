@@ -72,9 +72,15 @@ describe("domain/config/config", () => {
 			);
 		});
 
-		it("should point a pre-release at its exact version", () => {
+		it("should point a new major's pre-release at its major", () => {
 			expect(schemaUrlFor("2.0.0-beta.1")).toBe(
-				"https://ldgerrits.github.io/rogen/schema/2.0.0-beta.1/rogen.json"
+				"https://ldgerrits.github.io/rogen/schema/2/rogen.json"
+			);
+		});
+
+		it("should point a later pre-release at its exact version", () => {
+			expect(schemaUrlFor("2.1.0-beta.1")).toBe(
+				"https://ldgerrits.github.io/rogen/schema/2.1.0-beta.1/rogen.json"
 			);
 		});
 
