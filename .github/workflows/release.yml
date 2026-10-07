@@ -9,8 +9,19 @@ permissions:
     contents: write
 
 jobs:
+    check-version:
+        name: Check Tag Matches Package Version
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Compare
+              run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+
     build:
         name: Build Binaries
+        needs: check-version
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
@@ -116,9 +127,10 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    # Last, since npm never accepts a version twice, while a failed GitHub release can be run again.
     npm:
         name: Publish to npm
-        needs: build
+        needs: publish
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -140,9 +152,6 @@ jobs:
 
             - name: Install Dependencies
               run: npm ci
-
-            - name: Check Tag Matches Package Version
-              run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
 
             # A pre-release goes to `next`, so `npm install` keeps giving the stable release.
             - name: Publish

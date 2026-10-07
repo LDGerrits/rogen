@@ -82,9 +82,14 @@ npm version prerelease     # 2.1.0-beta.1 -> 2.1.0-beta.2
 git push --follow-tags
 ```
 
-Pushing the tag builds the binaries and publishes the GitHub release, the JSON
-schema and the npm package. A version with a `-` is a pre-release: GitHub marks
-it so, and npm publishes it under the `next` tag, leaving `latest` on the
+If the bump fails, nothing is committed or tagged, but `package.json` and
+`package-lock.json` already hold the new version: restore them with
+`git checkout -- package.json package-lock.json` before trying again.
+
+Pushing the tag publishes the JSON schema, builds the binaries into a GitHub
+release, and then publishes the npm package. A tag that doesn't match
+`package.json` publishes nothing. A version with a `-` is a pre-release: GitHub
+marks it so, and npm publishes it under the `next` tag, leaving `latest` on the
 newest stable release.
 
 npm accepts the publish through trusted publishing, so there's no token to
