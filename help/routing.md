@@ -13,7 +13,7 @@ Route with folders. Give each feature one folder per side, named after the confi
 A key routes a file in four ways:
 
 - Routing folder: `Server/` (the key's name) sends everything inside to the key's target and leaves no folder.
-- Suffix: `Combat@server.luau` routes one file, and `@server` comes off the name. `Matchmaking@server/` routes a folder and keeps its name; a bare `@server/` routes and leaves no folder. `@` never changes the script class, so `Combat@server.luau` is a ModuleScript in ServerScriptService.
+- Suffix: `Combat@server.luau` routes one file, and `@server` comes off the name. `Matchmaking@server/` routes a folder and keeps its name; a bare `@server/`, or one named by keys alone (`.mock@server/`), routes and leaves no folder. `@` never changes the script class, so `Combat@server.luau` is a ModuleScript in ServerScriptService.
 - Marker file: an empty `@server` routes its directory and everything below, and the directory keeps its name. A dot-file like `.server` routes nothing and warns; only variant markers (`.mock`) take a dot.
 - Rojo's `.server` and `.client` at the end of a script name set its class (Script, LocalScript), and also route when a key of that name is declared. No other key routes through a dot, and nothing but a script does: `Types.shared.luau` is named `Types.shared` and `Config.server.json` is `Config.server`, and both warn; write `Types@shared.luau` and `Config@server.json`.
 

@@ -209,22 +209,29 @@ export class NameReader {
 				outrankedName: name,
 				misspellings: NameReader.inFolderName([dotNameTypo], offset),
 			};
-		const { spans, misspellings } = this.suffixes(name, false);
+		const suffixed = this.suffixes(name, false);
+		const { misspellings } = suffixed;
+		const leading =
+			suffixed.spans.length > 0
+				? this.leadingKey(suffixed.baseName, suffixed.spans)
+				: undefined;
+		const spans = leading ? [...suffixed.spans, leading] : suffixed.spans;
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
 		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
 		const plain = routeSpan === undefined && variantSpans.length === 0;
+		const keptName = NameReader.withoutSpans(
+			name,
+			routeSpan ? [...variantSpans, routeSpan] : variantSpans
+		);
 		return {
 			invisible,
 			hoisted,
 			...(routeSpan && { route: routeSpan.key }),
 			at: routeSpan !== undefined,
 			variants: variantSpans.map(({ key }) => key),
-			keptName: NameReader.withoutSpans(
-				name,
-				routeSpan ? [...variantSpans, routeSpan] : variantSpans
-			),
+			...(keptName !== "" && { keptName }),
 			outrankedName: NameReader.withoutSpans(name, variantSpans),
 			misspellings: NameReader.inFolderName(
 				[
@@ -236,6 +243,19 @@ export class NameReader {
 				offset
 			),
 		};
+	}
+
+	/** What is left of a folder's name once its suffixes are off, when that is one more signed key (`.mock` in `.mock@server`), so the folder is named by keys alone and leaves no name, as `@server/` does. */
+	private leadingKey(
+		baseName: string,
+		spans: readonly SuffixSpan[]
+	): SuffixSpan | undefined {
+		const text = baseName.slice(1);
+		const key = baseName.startsWith("@")
+			? !spans.some((span) => this.keys.routeKeys.has(span.key)) &&
+				this.keys.resolveRoute(text)
+			: baseName.startsWith(".") && this.keys.resolveVariant(text);
+		return key ? { key, start: 0, length: baseName.length } : undefined;
 	}
 
 	/** Misspellings read in a folder's name, with their respellings measured on the folder's whole name. */
@@ -415,7 +435,7 @@ export class NameReader {
 		};
 	}
 
-	/** Spans start past the first character, so a name never loses all of it. */
+	/** Only a folder named by keys alone loses all of its name. */
 	static withoutSpans(
 		name: string,
 		spans: readonly SuffixSpan[]

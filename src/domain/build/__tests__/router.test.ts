@@ -791,6 +791,66 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should apply every key of a folder named by keys alone, in either order, and leave no folder", async () => {
+				await write(
+					"src/D/.mock@server/A.luau",
+					"src/E/@server.mock/B.luau",
+					"src/F/.mock.dev/C.luau",
+					"src/G/mock@server/D.luau"
+				);
+				const placed = async (variants: Record<string, boolean>) =>
+					(await route({ variants }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"));
+
+				expect(await placed({ mock: true, dev: true })).toEqual([
+					"ServerScriptService/D/A",
+					"ServerScriptService/E/B",
+					"ReplicatedStorage/shared/F/C",
+					"ServerScriptService/G/mock/D",
+				]);
+				expect(await placed({ mock: false, dev: true })).toEqual([
+					"ServerScriptService/G/mock/D",
+				]);
+			});
+
+			it("should keep only the route of an outranked key-only folder, and hoist one that takes a ^", async () => {
+				await write(
+					"src/server/.mock@client/A.luau",
+					"src/Feature/^.mock@server/B.luau",
+					"src/Other/(.mock@server)/C.luau"
+				);
+
+				const result = (await route({ variants: { mock: true } })).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/B",
+					"ServerScriptService/Other/C",
+					"ServerScriptService/@client/A",
+				]);
+				expect(result.warnings.map(({ code }) => code)).toContain(
+					"route.ignoredAt"
+				);
+			});
+
+			it("should make an init script in a key-only folder the folder above, and refuse one with no folder above", async () => {
+				await write("src/Net/.mock@server/init.luau");
+
+				expect(await paths({ variants: { mock: true } })).toEqual([
+					"ServerScriptService/Net",
+				]);
+
+				await write("src/.mock@server/init.luau");
+				const result = await route({ variants: { mock: true } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code }) => code)
+				).toEqual(["tree.initWithoutFolder"]);
+			});
+
 			it("should remove a variant folder from the path", async () => {
 				await write("src/Analytics/mock/Service.luau");
 
