@@ -1,0 +1,120 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  src/F01.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F02.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F03.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F04.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F05.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F06.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F07.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F08.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F09.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/F10.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. 2 more like it aren't listed.
+
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/F01.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F02.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F03.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F04.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F05.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F06.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F07.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F08.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F09.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F10.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F11.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          },
+          {
+            "file": "<dir>/src/F12.luau",
+            "severity": "warning",
+            "code": "route.unrouted",
+            "message": "matched no route, so it is left out. Add a \"*\" route, or move it into a routing folder.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+          }
+        ]
+      }
+    ]
+  }
+
+written:
+  default.project.json

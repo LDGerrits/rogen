@@ -534,23 +534,11 @@ export class BuildValidator {
 			: lines;
 	}
 
-	/** One diagnostic per path, up to a cap; the last one says how many more went unlisted. */
+	/** One diagnostic per path. */
 	private diagnosePaths<T>(
 		paths: readonly (readonly [string, T])[],
 		diagnose: (path: string, item: T) => Diagnostic
 	): Diagnostic[] {
-		const diagnosed = paths
-			.slice(0, DIAGNOSED_PATHS)
-			.map(([path, item]) => diagnose(path, item));
-		const unlisted = paths.length - diagnosed.length;
-		if (unlisted === 0) return diagnosed;
-		const last = diagnosed[diagnosed.length - 1];
-		return [
-			...diagnosed.slice(0, -1),
-			{
-				...last,
-				message: `${last.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
-			},
-		];
+		return paths.map(([path, item]) => diagnose(path, item));
 	}
 }

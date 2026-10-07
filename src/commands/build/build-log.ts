@@ -4,9 +4,41 @@ import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import {
 	Diagnostic,
+	DiagnosticSeverity,
 	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+
+/** How many warnings of one code a config prints before the rest are counted. */
+const LISTED_PER_CODE = 10;
+
+/** At most `LISTED_PER_CODE` warnings of one code; the last one printed says how many more there were. Errors always print, since the build stops on them. */
+function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+	const totals = new Map<string, number>();
+	const warnings = diagnostics.filter(
+		({ severity }) => severity === DiagnosticSeverity.Warning
+	);
+	for (const { code } of warnings)
+		totals.set(code, (totals.get(code) ?? 0) + 1);
+	const seen = new Map<string, number>();
+	return diagnostics.flatMap((diagnostic) => {
+		if (diagnostic.severity !== DiagnosticSeverity.Warning)
+			return [diagnostic];
+		const { code } = diagnostic;
+		const position = (seen.get(code) ?? 0) + 1;
+		seen.set(code, position);
+		if (position > LISTED_PER_CODE) return [];
+		const unlisted = (totals.get(code) ?? 0) - LISTED_PER_CODE;
+		return position === LISTED_PER_CODE && unlisted > 0
+			? [
+					{
+						...diagnostic,
+						message: `${diagnostic.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
+					},
+				]
+			: [diagnostic];
+	});
+}
 
 /** The `extends` chain and skipped variant flags of a config. */
 function describeConfig(config: ResolvedConfig, cwd: string): string[] {
@@ -157,7 +189,7 @@ export class BuildLog {
 	}
 
 	diagnostics(diagnostics: readonly Diagnostic[]): void {
-		for (const diagnostic of diagnostics)
+		for (const diagnostic of capped(diagnostics))
 			this.logService.diagnostic(diagnostic);
 	}
 

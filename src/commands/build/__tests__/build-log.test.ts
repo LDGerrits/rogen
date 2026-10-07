@@ -10,6 +10,7 @@ import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
+	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
@@ -361,5 +362,54 @@ describe("BuildLog report", () => {
 				"outro: build failed.",
 			]);
 		});
+	});
+});
+
+describe("BuildLog.diagnostics", () => {
+	const warnings = (count: number, code = "route.unrouted") =>
+		Array.from({ length: count }, (_, n) =>
+			warningDiagnostic(
+				code,
+				{ resource: `/repo/src/F${n}.luau` },
+				"bad."
+			)
+		);
+
+	const printed = (diagnostics: readonly Diagnostic[]) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).diagnostics(diagnostics);
+		return logService.entries.map(({ text }) => text);
+	};
+
+	it("should print at most ten warnings of one code, the tenth saying how many more there are", () => {
+		const lines = printed(warnings(12));
+
+		expect(lines).toHaveLength(10);
+		expect(lines[9]).toContain("bad. 2 more like it aren't listed.");
+		expect(lines[8]).not.toContain("more like it");
+	});
+
+	it("should say 'isn't' for one more", () => {
+		expect(printed(warnings(11))[9]).toContain(
+			"1 more like it isn't listed."
+		);
+	});
+
+	it("should print exactly ten without a note", () => {
+		expect(printed(warnings(10))[9]).not.toContain("more like it");
+	});
+
+	it("should cap each code on its own and never an error", () => {
+		const errors = Array.from({ length: 12 }, (_, n) =>
+			errorDiagnostic("x.err", { resource: `/repo/e${n}` }, "boom.")
+		);
+
+		const lines = printed([
+			...warnings(11, "a.code"),
+			...warnings(11, "b.code"),
+			...errors,
+		]);
+
+		expect(lines).toHaveLength(32);
 	});
 });
