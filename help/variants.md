@@ -1,6 +1,6 @@
 # Variants
 
-A variant swaps a file at build time. Declare every variant in `variants` with whether it is on: `"variants": { "mock": false }`. An undeclared dot part is just part of the name (`Save.spec.luau`), but one a single edit from a declared variant (`Analytics.mok.luau`) warns. Variants are not Roblox instance Tags.
+A variant swaps a file at build time. Declare every variant in `variants` with whether it is on: `"variants": { "mock": false }`. An undeclared dot part is just part of the name (`Save.spec.luau`), but one a single edit from a declared variant warns, in a name, a folder or a marker file (`Analytics.mok.luau`, `.mok/`, `.mok`). Variants are not Roblox instance Tags.
 
 - `Analytics.mock.luau` becomes `Analytics` while `mock` is on, replacing the plain file, and is left out while it is off. It combines with a route in either order (`Analytics.mock@server.luau`); Rojo's `.server` or `.client` stays last.
 - A variant folder (`mock/`) or marker file (`.mock`) marks everything inside. `dev/Service.luau` beside `prod/Service.luau` lets the active variant pick which file becomes `Service`. With both off, `Service` is missing, and Rogen warns.

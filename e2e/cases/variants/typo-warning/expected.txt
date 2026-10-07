@@ -5,7 +5,9 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
+  default.rogen.json - warning: 3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:
+    src/Experimental/.mok (did you mean ".mock" for ".mok"?)
+    src/.mok (did you mean ".mock" for ".mok"?)
     src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
 
 $ rogen build --json
@@ -22,13 +24,25 @@ stdout:
             "file": "<dir>/default.rogen.json",
             "severity": "warning",
             "code": "variant.typo",
-            "message": "1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\" for \".mok\"?)",
+            "message": "3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:\n  <dir>/src/Experimental/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/.mok (did you mean \".mock\" for \".mok\"?)\n  <dir>/src/Analytics.mok.luau (did you mean \".mock\" for \".mok\"?)",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
             "fixes": [
               {
                 "rename": {
+                  "from": "<dir>/src/.mok",
+                  "to": "<dir>/src/.mock"
+                }
+              },
+              {
+                "rename": {
                   "from": "<dir>/src/Analytics.mok.luau",
                   "to": "<dir>/src/Analytics.mock.luau"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Experimental/.mok",
+                  "to": "<dir>/src/Experimental/.mock"
                 }
               }
             ]
@@ -45,7 +59,11 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      .mok: Folder
+        Fake: ModuleScript  <- src/.mok/Fake.luau
       Analytics: ModuleScript  <- src/Analytics.luau
       Analytics.mok: ModuleScript  <- src/Analytics.mok.luau
+      Experimental: Folder
+        Flags: ModuleScript  <- src/Experimental/Flags.luau
       Net: ModuleScript  <- src/Net.Mock.luau
       Save: ModuleScript  <- src/Save.mock.luau

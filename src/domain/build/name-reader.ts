@@ -196,6 +196,19 @@ export class NameReader {
 				),
 			};
 
+		const dotNameTypo = name.startsWith(".")
+			? this.dotNameTypo(name.slice(1))
+			: undefined;
+		if (dotNameTypo)
+			return {
+				invisible,
+				hoisted,
+				at: false,
+				variants: [],
+				keptName: name,
+				outrankedName: name,
+				misspellings: NameReader.inFolderName([dotNameTypo], offset),
+			};
 		const { spans, misspellings } = this.suffixes(name, false);
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
@@ -276,7 +289,9 @@ export class NameReader {
 				nearMiss && this.keys.isVariant(nearMiss)
 					? nearMiss
 					: undefined,
-			misspellings: route ? [NameReader.dotRouteOf(text, route, 0)] : [],
+			misspellings: route
+				? [NameReader.dotRouteOf(text, route, 0)]
+				: NameReader.present([this.dotNameTypo(text)]),
 		};
 	}
 
@@ -362,6 +377,18 @@ export class NameReader {
 		const text = remaining.slice(dot + 1);
 		if (DOT_ROUTE_KEYS.has(text) || this.keys.resolveRoute(text))
 			return undefined;
+		return this.variantTypoOf(text, dot);
+	}
+
+	/** A dot-file or dot-folder `.text` that declares nothing: its dot is a variant's sign, so a near miss is reported, and one that differs in letter case alone gets the letter-case warning instead. */
+	private dotNameTypo(text: string): VariantTypo | undefined {
+		if (this.keys.resolve(text) !== undefined || this.keys.nearMiss(text))
+			return undefined;
+		return this.variantTypoOf(text, 0);
+	}
+
+	/** `.text`, written at `start`, as a typo of the closest declared variant one edit away, if any. */
+	private variantTypoOf(text: string, start: number): VariantTypo | undefined {
 		const distances = [...this.keys.variantKeys]
 			.map((key) => ({
 				key,
@@ -380,7 +407,7 @@ export class NameReader {
 			variant,
 			...(variants.length === 1 && {
 				respelling: {
-					start: dot,
+					start,
 					written: `.${text}`,
 					spelling: `.${variant}`,
 				},
@@ -613,12 +640,20 @@ export class NameReadings {
 				segment,
 				dir,
 				nearMissKey: plain
-					? this.keys.nearMiss(reading.outrankedName)
+					? this.nearMissOf(reading.outrankedName)
 					: undefined,
 			};
 			this.folders.set(key, read);
 		}
 		return read;
+	}
+
+	/** The key a folder's name spells in another letter case; a dot-folder is a variant's, as a dot-file marker is. */
+	private nearMissOf(name: string): string | undefined {
+		const nearMiss = this.keys.nearMiss(name);
+		if (nearMiss || !name.startsWith(".")) return nearMiss;
+		const dotted = this.keys.nearMiss(name.slice(1));
+		return dotted && this.keys.isVariant(dotted) ? dotted : undefined;
 	}
 
 	private readFoldersAbove(

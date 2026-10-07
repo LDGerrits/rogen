@@ -776,6 +776,70 @@ describe("BuildValidator rules", () => {
 				]);
 			});
 
+			it("should warn about a dot-file marker and a dot-folder one edit from a variant, and leave their files unmarked", async () => {
+				await write(
+					"src/M/.mok",
+					"src/M/A.luau",
+					"src/.mok/B.luau",
+					"src/mok/C.luau",
+					"src/.gitkeep",
+					"src/.luaurc",
+					"src/.spec"
+				);
+
+				const [warning, ...others] = await typos();
+				const result = (await route({ variants: { mock: true } })).unwrap();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("2 names");
+				expect(warning.fixes).toEqual([
+					{ rename: { from: at("src/.mok"), to: at("src/.mock") } },
+					{ rename: { from: at("src/M/.mok"), to: at("src/M/.mock") } },
+				]);
+				expect(
+					result.routed.map(({ instancePath, variants }) => [
+						instancePath.join("/"),
+						variants.length,
+					])
+				).toEqual([
+					["ReplicatedStorage/shared/.mok/B", 0],
+					["ReplicatedStorage/shared/M/A", 0],
+					["ReplicatedStorage/shared/mok/C", 0],
+				]);
+			});
+
+			it("should give a dot-file or dot-folder that differs in letter case the letter-case warning, and leave a dot near a route silent", async () => {
+				await write(
+					"src/A/.MOCK",
+					"src/A/X.luau",
+					"src/.MOCK/Y.luau",
+					"src/B/.sever",
+					"src/B/Z.luau"
+				);
+
+				const warnings = (
+					await route({ variants: { mock: true } })
+				).unwrap().warnings;
+
+				expect(warnings.map(({ code, resource }) => [code, resource])).toEqual([
+					["route.caseMismatch", abs("src/A/.MOCK")],
+					["route.caseMismatch", abs("src/.MOCK")],
+				]);
+			});
+
+			it("should give a dot-file no fix when two variants are one edit away", async () => {
+				await write("src/A/.mok", "src/A/X.luau");
+
+				const [warning] = (
+					await route({ variants: { mock: true, mob: false } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "variant.typo");
+
+				expect(warning.message).toContain(`${abs("src/A/.mok")}`);
+				expect(warning.fixes).toBeUndefined();
+			});
+
 			it("should give no fix when two variants are one edit away", async () => {
 				await write("src/Analytics.mok.luau");
 
