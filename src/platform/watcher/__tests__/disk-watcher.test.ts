@@ -42,7 +42,7 @@ describe("DiskWatcher", () => {
 			const changes: FileChange[] = [];
 			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
 
-			await watcher.watch([{ path: dir, recursive: true }]);
+			await watcher.watch([dir]);
 			await fs.writeFile(path.join(dir, "a.luau"), "");
 
 			const added = (c: FileChange) =>
@@ -60,7 +60,7 @@ describe("DiskWatcher", () => {
 			const skippedFile = path.join(dir, "a.project.json");
 			await fs.mkdir(skippedDir);
 
-			await watcher.watch([{ path: dir, recursive: true }], {
+			await watcher.watch([dir], {
 				ignored: [skippedDir, skippedFile],
 			});
 			await fs.writeFile(path.join(skippedDir, "B.luau"), "");
@@ -85,7 +85,7 @@ describe("DiskWatcher", () => {
 			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
 			const staged = path.join(dir, "a.project.json.abc.tmp");
 
-			await watcher.watch([{ path: dir, recursive: true }], {
+			await watcher.watch([dir], {
 				ignored: [/a\.project\.json\.[^/]+\.tmp$/],
 			});
 			await fs.writeFile(staged, "");
@@ -125,7 +125,7 @@ describe("DiskWatcher", () => {
 
 		it("should report an edit inside a linked target that is outside the watched directory", async () => {
 			await fs.symlink(outside, path.join(root, "Shared"), "junction");
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.writeFile(path.join(outside, "Util.luau"), "v2");
 			await fs.writeFile(path.join(outside, "deep", "New.luau"), "");
@@ -142,7 +142,7 @@ describe("DiskWatcher", () => {
 		});
 
 		it("should report a link added later, and what is under it, at the link path", async () => {
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.symlink(outside, path.join(root, "Shared"), "junction");
 
@@ -158,7 +158,7 @@ describe("DiskWatcher", () => {
 
 		it("should report a link removed, without touching its target", async () => {
 			await fs.symlink(outside, path.join(root, "Shared"), "junction");
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.rm(path.join(root, "Shared"), { recursive: true });
 
@@ -171,7 +171,7 @@ describe("DiskWatcher", () => {
 		});
 
 		it("should report a link to its own parent added later, without following it", async () => {
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.symlink(root, path.join(root, "Loop"), "junction");
 
@@ -183,7 +183,7 @@ describe("DiskWatcher", () => {
 		});
 
 		it("should report a link to nothing added later, and its removal", async () => {
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.symlink(
 				path.join(dir, "missing"),
@@ -201,7 +201,7 @@ describe("DiskWatcher", () => {
 
 		it("should not follow a link that points at its own parent", async () => {
 			await fs.symlink(root, path.join(root, "Loop"), "junction");
-			await watcher.watch([{ path: root, recursive: true }]);
+			await watcher.watch([root]);
 
 			await fs.writeFile(path.join(root, "a.luau"), "");
 

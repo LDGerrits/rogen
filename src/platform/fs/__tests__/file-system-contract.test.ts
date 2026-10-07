@@ -105,6 +105,31 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			).rejects.toMatchObject({ code: "ENOTDIR" });
 		});
 	});
+
+	describe("rename", () => {
+		it("should move a file, creating the destination's parents", async () => {
+			await fixture.fileSystem.writeFile(at("a.json"), "x");
+
+			await fixture.fileSystem.rename(at("a.json"), at("out/b.json"));
+
+			expect(await fixture.fileSystem.readFile(at("out/b.json"))).toBe(
+				"x"
+			);
+			expect(await fixture.fileSystem.exists(at("a.json"))).toBe(false);
+		});
+
+		it("should refuse to replace a file unless told to overwrite", async () => {
+			await fixture.fileSystem.writeFile(at("a.json"), "new");
+			await fixture.fileSystem.writeFile(at("b.json"), "old");
+
+			await expect(
+				fixture.fileSystem.rename(at("a.json"), at("b.json"))
+			).rejects.toMatchObject({ code: "EEXIST" });
+			await fixture.fileSystem.rename(at("a.json"), at("b.json"), true);
+
+			expect(await fixture.fileSystem.readFile(at("b.json"))).toBe("new");
+		});
+	});
 });
 
 describe("MemoryFileSystemService: events", () => {

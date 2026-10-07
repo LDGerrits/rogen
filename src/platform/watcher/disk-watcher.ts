@@ -5,7 +5,7 @@ import { FileType } from "../fs/file-system-service.js";
 import { toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
-import { isIgnored, WatchOptions, WatchRequest } from "./watcher.js";
+import { isIgnored, WatchOptions } from "./watcher.js";
 
 export class DiskWatcher extends AbstractWatcher {
 	private watcher: chokidar.FSWatcher | null = null;
@@ -14,18 +14,16 @@ export class DiskWatcher extends AbstractWatcher {
 	private ready = false;
 
 	protected async startWatching(
-		requests: WatchRequest[],
+		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
 		await this.stop();
 
-		const targetPaths = requests.map((r) => r.path);
 		const ignored = options.ignored ?? [];
 
-		this.watcher = chokidar.watch(targetPaths, {
+		this.watcher = chokidar.watch([...paths], {
 			ignoreInitial: true,
 			persistent: true,
-			depth: requests.some((r) => r.recursive) ? undefined : 0,
 			followSymlinks: true,
 			ignored: (target: string) =>
 				isIgnored(target, ignored) || this.skipUnfollowable(target),
@@ -50,10 +48,9 @@ export class DiskWatcher extends AbstractWatcher {
 		// A link nothing descends into is never watched, so any activity rechecks the ones seen.
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
-		this.watcher.on("error", (error) => {
-			this.logService.error(`DiskWatcher crashed: ${error.message}`);
-			this.fireError(error);
-		});
+		this.watcher.on("error", (error) =>
+			this.logService.error(`DiskWatcher crashed: ${error.message}`)
+		);
 
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;

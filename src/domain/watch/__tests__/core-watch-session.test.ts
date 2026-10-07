@@ -456,6 +456,9 @@ describe("CoreWatchSession", () => {
 		expect(errors).toEqual([]);
 	});
 	describe("watching", () => {
+		const rootsOf = (paths: readonly string[]) =>
+			paths.filter((watched) => !watched.endsWith(".rogen.json"));
+
 		it("should watch two configs that share a root through one watcher call and one directory", async () => {
 			await write("/repo/source.rogen.json", config());
 			const watch = jest.spyOn(watcher, "watch");
@@ -463,10 +466,8 @@ describe("CoreWatchSession", () => {
 			await start(["default", "source"]);
 
 			expect(watch).toHaveBeenCalledTimes(1);
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/src", recursive: true },
-			]);
+			const [paths] = watch.mock.calls[0];
+			expect(rootsOf(paths)).toEqual(["/repo/src"]);
 		});
 
 		it("should drop a root that lies inside another", async () => {
@@ -478,10 +479,8 @@ describe("CoreWatchSession", () => {
 
 			await start(["default", "lobby"]);
 
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/src", recursive: true },
-			]);
+			const [paths] = watch.mock.calls[0];
+			expect(rootsOf(paths)).toEqual(["/repo/src"]);
 		});
 
 		it("should not watch the parent that two roots share", async () => {
@@ -493,10 +492,10 @@ describe("CoreWatchSession", () => {
 
 			await start();
 
-			const [requests] = watch.mock.calls[0];
-			expect(requests.filter((r) => r.recursive)).toEqual([
-				{ path: "/repo/places/a", recursive: true },
-				{ path: "/repo/places/b", recursive: true },
+			const [paths] = watch.mock.calls[0];
+			expect(rootsOf(paths)).toEqual([
+				"/repo/places/a",
+				"/repo/places/b",
 			]);
 		});
 
