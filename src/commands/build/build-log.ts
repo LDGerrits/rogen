@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
+import { joinedWithAnd, plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -76,16 +76,28 @@ export class BuildLog {
 			"build",
 			builds.map(({ config }) => config)
 		);
+		const blocked = BuildLog.blockedBy(builds);
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.config);
 			// A config's errors end the run, so the failure prints them last.
-			this.outcome(build, [
-				...build.warnings,
-				...(build.syncWarnings ?? []),
-			]);
+			this.outcome(
+				build,
+				[...build.warnings, ...(build.syncWarnings ?? [])],
+				build.outcome === "notWritten" ? blocked : undefined
+			);
 		}
 		if (builds.every(({ errors }) => errors.length === 0))
 			this.end(builds.length);
+	}
+
+	/** Why a config that built cleanly wasn't written: the configs whose errors stopped the run. */
+	private static blockedBy(builds: readonly ConfigBuild[]): string | undefined {
+		const failed = builds
+			.filter(({ outcome }) => outcome === "failed")
+			.map(({ config }) => config.label);
+		return failed.length > 0
+			? `${joinedWithAnd(failed)} failed`
+			: undefined;
 	}
 
 	/** Heads the lines about one config, when a run builds several. */

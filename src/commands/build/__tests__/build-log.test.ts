@@ -240,3 +240,41 @@ describe("BuildLog.outcome", () => {
 		]);
 	});
 });
+
+describe("BuildLog report", () => {
+	const configNamed = (label: string) =>
+		mockConfig({
+			file: path.join(cwd, `${label}.rogen.json`),
+			outFile: path.join(cwd, `${label}.project.json`),
+		});
+
+	const report = (builds: readonly ConfigBuild[]) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(builds);
+		return logService.entries
+			.filter(({ kind }) => kind === "error" || kind === "success")
+			.map(({ text }) => text);
+	};
+
+	it("should say a clean config wasn't written because another failed", () => {
+		expect(
+			report([
+				builtOf(summaryOf(), "notWritten", configNamed("lobby")),
+				failedOf([], configNamed("match")),
+			])
+		).toEqual([
+			"lobby.project.json · not written · match failed",
+			"match.project.json · not written",
+		]);
+	});
+
+	it("should name every config that failed", () => {
+		expect(
+			report([
+				failedOf([], configNamed("arena")),
+				builtOf(summaryOf(), "notWritten", configNamed("lobby")),
+				failedOf([], configNamed("match")),
+			])[1]
+		).toBe("lobby.project.json · not written · arena and match failed");
+	});
+});
