@@ -67,10 +67,22 @@ registerCommand(
 					: undefined;
 			if (line.options.json)
 				return this.printJson(logService, report.json(), failure);
-			const lines = report.lines();
+			const blocks = report.blocks();
 			const empty = report.emptyLine();
-			if (lines.length > 0) logService.print(lines.join("\n"));
-			else if (empty) logService.print(empty);
+			if (blocks.length === 0) {
+				if (empty) logService.print(empty);
+			} else if (line.options.verbose) {
+				// A dimmed line under each placement says how to require it.
+				for (const block of blocks) {
+					logService.print(block.lines.join("\n"));
+					for (const expression of block.requires)
+						logService.debug(`require: ${expression}`);
+				}
+			} else {
+				logService.print(
+					blocks.flatMap(({ lines }) => lines).join("\n")
+				);
+			}
 			return failure ? err(failure) : ok(undefined);
 		}
 	}

@@ -324,6 +324,108 @@ describe("LocationReport", () => {
 		});
 	});
 
+	describe("require", () => {
+		const placedAt = (
+			source: string,
+			instancePath: string[]
+		): FileLocation => ({
+			status: "placed",
+			source,
+			exists: true,
+			instancePath,
+			route: "*",
+			routeMatch: "fallback",
+			variants: [],
+		});
+		const entry = (location: FileLocation) =>
+			reportOf([["default", [location]]]).json().locations[0];
+
+		it("should give a placed Luau module the expression that reaches it, after its instance path", () => {
+			const module = entry(
+				placedAt("/repo/src/Inventory/Types.luau", [
+					"ReplicatedStorage",
+					"Shared",
+					"Inventory",
+					"Types",
+				])
+			);
+
+			expect(module.require).toBe(
+				'game:GetService("ReplicatedStorage").Shared.Inventory.Types'
+			);
+			expect(Object.keys(module).slice(3, 6)).toEqual([
+				"exists",
+				"instancePath",
+				"require",
+			]);
+		});
+
+		it("should write names that aren't identifiers as indexes", () => {
+			expect(
+				entry(
+					placedAt("/repo/src/Foo Bar/end.luau", [
+						"ReplicatedStorage",
+						"Foo Bar",
+						"end",
+					])
+				).require
+			).toBe('game:GetService("ReplicatedStorage")["Foo Bar"]["end"]');
+		});
+
+		it.each([
+			[
+				"a Script",
+				"/repo/src/Hit.server.luau",
+				["ServerScriptService", "Hit"],
+			],
+			[
+				"a roblox-ts source",
+				"/repo/src/Hit.ts",
+				["ReplicatedStorage", "Hit"],
+			],
+			[
+				"a module in StarterPlayerScripts",
+				"/repo/src/Http.luau",
+				["StarterPlayer", "StarterPlayerScripts", "Http"],
+			],
+			[
+				"a data file",
+				"/repo/src/Data.json",
+				["ReplicatedStorage", "Data"],
+			],
+		])("should give none for %s", (_, source, instancePath) => {
+			expect(entry(placedAt(source, instancePath))).not.toHaveProperty(
+				"require"
+			);
+		});
+
+		it("should give none for a location that isn't placed", () => {
+			expect(
+				entry({
+					status: "pruned",
+					source: "/repo/src/Http.mock.luau",
+					exists: true,
+					variants: [{ variant: "mock", form: "suffix" }],
+				})
+			).not.toHaveProperty("require");
+		});
+
+		it("should hold the expressions of a path beside its lines, once", () => {
+			const location = placedAt("/repo/src/Util.luau", [
+				"ReplicatedStorage",
+				"Util",
+			]);
+			const [block] = reportOf([
+				["default", [location]],
+				["lobby", [location]],
+			]).blocks();
+
+			expect(block.requires).toEqual([
+				'game:GetService("ReplicatedStorage").Util',
+			]);
+		});
+	});
+
 	describe("a missing folder", () => {
 		it("should say how to ask about a folder that doesn't exist", () => {
 			expect(

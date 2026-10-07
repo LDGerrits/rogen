@@ -25,6 +25,7 @@ stdout:
           "Inventory",
           "Save@sever"
         ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save@sever\"]",
         "route": "*",
         "routeMatch": "fallback",
         "variants": [],
@@ -81,6 +82,7 @@ stdout:
           "Inventory",
           "New@sever"
         ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New@sever\"]",
         "route": "*",
         "routeMatch": "fallback",
         "variants": [],
@@ -113,6 +115,7 @@ stdout:
           "Inventory",
           "Clean"
         ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory.Clean",
         "route": "*",
         "routeMatch": "fallback",
         "variants": [],

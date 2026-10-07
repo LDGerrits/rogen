@@ -6,6 +6,8 @@ import {
 	FileLocation,
 	Locations,
 } from "../../domain/build/build.js";
+import { requireExpression } from "../../domain/roblox/roblox.js";
+import { RojoFile } from "../../domain/rojo/rojo.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
@@ -106,12 +108,21 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	}
 }
 
+/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
+function requireOf(location: FileLocation): string | undefined {
+	return location.status === "placed" &&
+		new RojoFile(path.posix.basename(location.source)).isLuauModule
+		? requireExpression(location.instancePath)
+		: undefined;
+}
+
 /** The fields a location adds to its source and status in the JSON form. */
 function locationFields(location: FileLocation): Record<string, unknown> {
 	switch (location.status) {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
+				...(requireOf(location) && { require: requireOf(location) }),
 				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
@@ -200,18 +211,38 @@ export class LocationReport {
 
 	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Under each, a line for every diagnostic a build raises about the path. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
-		return this.bySource().flatMap((all) => {
+		return this.blocks().flatMap(({ lines }) => lines);
+	}
+
+	/** The lines of each path, with the Luau expressions that require its module, which a person only asks to see. */
+	blocks(): { lines: string[]; requires: string[] }[] {
+		return this.bySource().map((all) => {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
 				answers.length === this.configs &&
 				lines.every((line) => line === lines[0]);
+			const requires = [
+				...new Set(
+					answers.flatMap((answer) =>
+						"location" in answer
+							? (requireOf(answer.location) ?? [])
+							: []
+					)
+				),
+			];
 			if (agreed || this.configs === 1)
-				return [lines[0], ...this.sharedNotes(answers)];
-			return answers.flatMap((answer, index) => [
-				`${answer.label}: ${lines[index]}`,
-				...this.noted(answer),
-			]);
+				return {
+					lines: [lines[0], ...this.sharedNotes(answers)],
+					requires,
+				};
+			return {
+				lines: answers.flatMap((answer, index) => [
+					`${answer.label}: ${lines[index]}`,
+					...this.noted(answer),
+				]),
+				requires,
+			};
 		});
 	}
 

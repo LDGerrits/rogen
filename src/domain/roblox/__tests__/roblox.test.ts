@@ -4,6 +4,7 @@ import {
 	Target,
 	WHERE_SCRIPTS_RUN,
 	containerClassName,
+	requireExpression,
 	scriptFate,
 } from "../roblox.js";
 
@@ -239,6 +240,64 @@ describe("WHERE_SCRIPTS_RUN", () => {
 	it("should name every service where each kind of script runs", () => {
 		expect(WHERE_SCRIPTS_RUN).toBe(
 			"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see."
+		);
+	});
+});
+
+describe("requireExpression", () => {
+	it("should reach a service with GetService and the rest by name", () => {
+		expect(
+			requireExpression([
+				"ReplicatedStorage",
+				"Shared",
+				"Inventory",
+				"Types",
+			])
+		).toBe('game:GetService("ReplicatedStorage").Shared.Inventory.Types');
+	});
+
+	it("should write a name that isn't an identifier as an index", () => {
+		expect(
+			requireExpression(["ReplicatedStorage", "Foo Bar", "3D", "a.b"])
+		).toBe('game:GetService("ReplicatedStorage")["Foo Bar"]["3D"]["a.b"]');
+	});
+
+	it("should write a reserved word as an index", () => {
+		expect(requireExpression(["ReplicatedStorage", "end"])).toBe(
+			'game:GetService("ReplicatedStorage")["end"]'
+		);
+		expect(requireExpression(["ReplicatedStorage", "ending"])).toBe(
+			'game:GetService("ReplicatedStorage").ending'
+		);
+	});
+
+	it("should escape a quote in a name", () => {
+		expect(requireExpression(["ReplicatedStorage", 'a"b'])).toBe(
+			'game:GetService("ReplicatedStorage")["a\\"b"]'
+		);
+	});
+
+	it("should reach a service itself", () => {
+		expect(requireExpression(["ReplicatedStorage"])).toBe(
+			'game:GetService("ReplicatedStorage")'
+		);
+	});
+
+	it.each([
+		["StarterPlayer", "StarterPlayerScripts", "Net", "Http"],
+		["StarterPlayer", "StarterCharacterScripts", "Animate"],
+		["StarterGui", "Hud"],
+		["StarterPack", "Tool"],
+	])(
+		"should give none under %s, which Roblox clones at runtime",
+		(...path) => {
+			expect(requireExpression(path)).toBeUndefined();
+		}
+	);
+
+	it("should still reach the rest of StarterPlayer", () => {
+		expect(requireExpression(["StarterPlayer", "Shared", "X"])).toBe(
+			'game:GetService("StarterPlayer").Shared.X'
 		);
 	});
 });

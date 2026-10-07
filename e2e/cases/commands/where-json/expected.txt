@@ -14,6 +14,7 @@ stdout:
           "Moves",
           "Punch"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],
@@ -29,6 +30,7 @@ stdout:
           "Combat",
           "Moves"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],
@@ -44,6 +46,7 @@ stdout:
           "Inventory",
           "Save"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Inventory.Save",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],
@@ -105,6 +108,7 @@ stdout:
           "Net",
           "Types"
         ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Types",
         "route": "*",
         "routeMatch": "fallback",
         "variants": [],
@@ -138,6 +142,7 @@ stdout:
           "Net",
           "Http"
         ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Http",
         "route": "*",
         "routeMatch": "fallback",
         "variants": [
@@ -168,6 +173,7 @@ stdout:
           "Moves",
           "Punch"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],
@@ -183,6 +189,7 @@ stdout:
           "Combat",
           "Moves"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],

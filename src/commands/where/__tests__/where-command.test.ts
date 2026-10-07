@@ -12,7 +12,7 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogService } from "../../../platform/log/log-service.js";
+import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import {
@@ -259,6 +259,41 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should print the require expression of a module under --verbose, dimmed under its line", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Util.luau", "src/Inventory/Server/Hit.server.luau");
+		logService.setLevel(LogLevel.Debug);
+
+		await run({
+			_: ["src/Util.luau", "src/Inventory/Server/Hit.server.luau"],
+			verbose: true,
+		});
+
+		expect(
+			logService.entries
+				.filter(({ kind }) => kind === "print" || kind === "debug")
+				.map(({ kind, text }) => [kind, text])
+		).toEqual([
+			["print", expect.stringContaining("src/Util.luau ->")],
+			[
+				"debug",
+				'require: game:GetService("ReplicatedStorage").Shared.Util',
+			],
+			["print", expect.stringContaining("Hit.server.luau ->")],
+		]);
+	});
+
+	it("should not print the expression without --verbose", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Util.luau");
+
+		await run({ _: ["src/Util.luau"] });
+
+		expect(
+			logService.entries.filter(({ kind }) => kind === "debug")
+		).toEqual([]);
+	});
+
 	describe("with --json", () => {
 		const document = () =>
 			(
@@ -297,6 +332,8 @@ describe("where command", () => {
 					status: "placed",
 					exists: true,
 					instancePath: ["ServerScriptService", "Inventory", "Save"],
+					require:
+						'game:GetService("ServerScriptService").Inventory.Save',
 					route: "Server",
 					routeMatch: "folder",
 					variants: [],
@@ -316,6 +353,8 @@ describe("where command", () => {
 					status: "placed",
 					exists: false,
 					instancePath: ["ReplicatedStorage", "Shared", "Nowhere"],
+					require:
+						'game:GetService("ReplicatedStorage").Shared.Nowhere',
 					route: "*",
 					routeMatch: "fallback",
 					variants: [],

@@ -141,6 +141,61 @@ export class Target {
 	}
 }
 
+/** Luau's reserved words, which can't be written after a dot. */
+const RESERVED_WORDS: ReadonlySet<string> = new Set([
+	"and",
+	"break",
+	"do",
+	"else",
+	"elseif",
+	"end",
+	"false",
+	"for",
+	"function",
+	"if",
+	"in",
+	"local",
+	"nil",
+	"not",
+	"or",
+	"repeat",
+	"return",
+	"then",
+	"true",
+	"until",
+	"while",
+]);
+
+/** The containers whose contents Roblox clones into the player or character at runtime, so their edit-time path is not where the code that runs finds them. */
+const CLONED_AT_RUNTIME: readonly (readonly string[])[] = [
+	["StarterPlayer", "StarterPlayerScripts"],
+	["StarterPlayer", "StarterCharacterScripts"],
+	["StarterGui"],
+	["StarterPack"],
+];
+
+/** The Luau expression that reaches the instance at `instancePath`, as `game:GetService("ReplicatedStorage").Shared.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is reserved. `undefined` under the containers cloned at runtime, where that path names the template and not the copy. */
+export function requireExpression(
+	instancePath: readonly string[]
+): string | undefined {
+	const [service, ...names] = instancePath;
+	if (
+		service === undefined ||
+		CLONED_AT_RUNTIME.some((container) =>
+			container.every((name, index) => instancePath[index] === name)
+		)
+	)
+		return undefined;
+	return [
+		`game:GetService("${service}")`,
+		...names.map((name) =>
+			/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && !RESERVED_WORDS.has(name)
+				? `.${name}`
+				: `[${JSON.stringify(name)}]`
+		),
+	].join("");
+}
+
 /** The class of a node Rogen creates to hold children: services and StarterPlayer's script containers keep their own, the rest are folders. */
 export function containerClassName(instancePath: readonly string[]): string {
 	const [service, child] = instancePath;

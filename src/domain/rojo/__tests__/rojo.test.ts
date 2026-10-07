@@ -40,6 +40,27 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("isLuauModule", () => {
+			it.each(["Save.luau", "Save.lua", "init.luau", "Hit.mock.luau"])(
+				"should be true for %s",
+				(name) => {
+					expect(new RojoFile(name).isLuauModule).toBe(true);
+				}
+			);
+
+			it.each([
+				"Save.server.luau",
+				"Hud.client.lua",
+				"Tool.plugin.luau",
+				"Save.ts",
+				"Hud.tsx",
+				"Data.json",
+				"Model.rbxm",
+			])("should be false for %s", (name) => {
+				expect(new RojoFile(name).isLuauModule).toBe(false);
+			});
+		});
+
 		describe("isMeta", () => {
 			it("should accept a meta file in any case and reject other JSON", () => {
 				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);

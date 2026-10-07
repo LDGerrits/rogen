@@ -33,6 +33,7 @@ stdout:
           "Lobby",
           "Queue"
         ],
+        "require": "game:GetService(\"ServerScriptService\").Lobby.Queue",
         "route": "Server",
         "routeMatch": "folder",
         "variants": [],
