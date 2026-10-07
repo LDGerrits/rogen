@@ -63,7 +63,7 @@ export interface WatchSession extends Disposable {
 export interface WatchService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails as a build would when a config is broken or the configs can't be built together. The session reloads `selection` as its files change; the caller starts it, stops it and disposes it. */
+	/** Fails as a build would when a config is broken or the configs can't be built together. The session reloads `selection` as its files change; the caller starts it, stops it and disposes it. Run one session at a time: sessions share the process's watcher, so a second replaces what the first watches. */
 	watch(selection: ConfigSelection): Result<WatchSession, DiagnosticsError>;
 }
 
