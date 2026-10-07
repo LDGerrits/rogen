@@ -1,4 +1,4 @@
-import { CommandLine } from "./args.js";
+import { LogLevel } from "../log/log-service.js";
 import { EnvironmentService } from "./environment-service.js";
 
 type Variables = Readonly<Record<string, string | undefined>>;
@@ -42,23 +42,33 @@ const nativeProcess = (): ProcessContext => ({
 	isTerminal: Boolean(process.stdin.isTTY && process.stdout.isTTY),
 });
 
+/** The flags that say how a run prints, read even from a line that fails to parse. */
+export interface OutputFlags {
+	readonly json?: boolean;
+	readonly verbose?: boolean;
+	readonly quiet?: boolean;
+}
+
 export class NativeEnvironmentService implements EnvironmentService {
 	declare readonly _serviceBrand: undefined;
 
-	readonly verbose: boolean;
-	readonly quiet: boolean;
+	readonly logLevel: LogLevel;
 	readonly isInteractive: boolean;
 	readonly isPlain: boolean;
 
 	constructor(
-		options: CommandLine["options"],
+		{ json, verbose, quiet }: OutputFlags,
 		readonly cwd: string,
 		{ env, isTerminal }: ProcessContext = nativeProcess()
 	) {
-		this.verbose = options.verbose === true;
-		this.quiet = options.quiet === true;
+		this.logLevel = quiet
+			? LogLevel.Error
+			: verbose
+				? LogLevel.Debug
+				: LogLevel.Info;
 		this.isInteractive =
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
-		this.isPlain = !this.isInteractive || isSet(env.NO_COLOR);
+		this.isPlain =
+			json === true || !this.isInteractive || isSet(env.NO_COLOR);
 	}
 }

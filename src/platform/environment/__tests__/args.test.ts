@@ -2,6 +2,7 @@ import { UsageError } from "../../../base/errors.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
+	JsonOption,
 	hasFlag,
 	parseArgs,
 } from "../args.js";
@@ -204,14 +205,14 @@ describe("parseArgs", () => {
 
 describe("hasFlag", () => {
 	it("should see a flag next to one the parser rejects", () => {
-		expect(hasFlag(["build", "--json", "--bogus"], "--json")).toBe(true);
+		expect(hasFlag(["build", "--json", "--bogus"], JsonOption)).toBe(true);
 	});
 
 	it("should not see a flag after --", () => {
-		expect(hasFlag(["build", "--", "--json"], "--json")).toBe(false);
+		expect(hasFlag(["build", "--", "--json"], JsonOption)).toBe(false);
 	});
 
 	it("should not see a flag that is absent", () => {
-		expect(hasFlag(["build", "lobby"], "--json")).toBe(false);
+		expect(hasFlag(["build", "lobby"], JsonOption)).toBe(false);
 	});
 });

@@ -105,13 +105,14 @@ export class CoreInitService implements InitService {
 			this.fileSystemService
 		);
 		if (!directory.hasDefaultConfig && directory.hasConfigs)
-			return this.planWith(directory, projectSetup);
+			return this.planWith(directory, questions, projectSetup);
 		const read = await this.agentFileIn(directory);
 		if (read.isErr()) return read;
 		const agentFile = read.value;
 		if (!directory.hasDefaultConfig)
 			return this.planWith(
 				directory,
+				questions,
 				projectSetup,
 				new AgentSetup(agentFile, questions)
 			);
@@ -122,18 +123,21 @@ export class CoreInitService implements InitService {
 			case "place":
 				return this.planWith(
 					directory,
+					questions,
 					new PlaceSetup(directory, questions)
 				);
 			case "extending":
 				return this.planWith(
 					directory,
+					questions,
 					new ExtendingConfigSetup(directory, questions)
 				);
 			case "separate":
-				return this.planWith(directory, projectSetup);
+				return this.planWith(directory, questions, projectSetup);
 			case "agent":
 				return this.planWith(
 					directory,
+					questions,
 					new AgentSetup(agentFile, questions, true)
 				);
 		}
@@ -142,6 +146,7 @@ export class CoreInitService implements InitService {
 	/** Asks each setup its questions in turn, then plans what the answers write. */
 	private async planWith(
 		directory: InitDirectory,
+		questions: InitQuestions,
 		...setups: readonly Setup<unknown>[]
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answers: unknown[] = [];
@@ -152,7 +157,7 @@ export class CoreInitService implements InitService {
 			answers.push(asked.value);
 		}
 
-		const builder = new InitPlanBuilder(directory);
+		const builder = new InitPlanBuilder(directory, questions.interactive);
 		setups.forEach((setup, index) => setup.plan(answers[index], builder));
 		const plan = builder.build();
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;

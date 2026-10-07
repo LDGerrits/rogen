@@ -1,19 +1,26 @@
+import { LogLevel } from "../../log/log-service.js";
 import { NativeEnvironmentService } from "../native-environment-service.js";
 
 const inTerminal = (env: Record<string, string | undefined>) =>
 	new NativeEnvironmentService({}, "/mock/cwd", { env, isTerminal: true });
 
 describe("NativeEnvironmentService", () => {
-	it("should expose the working directory and the logging flags", () => {
-		const env = new NativeEnvironmentService(
-			{ verbose: true, quiet: false },
-			"/mock/cwd",
-			{ env: {}, isTerminal: false }
-		);
+	it("should expose the working directory", () => {
+		expect(inTerminal({}).cwd).toBe("/mock/cwd");
+	});
 
-		expect(env.cwd).toBe("/mock/cwd");
-		expect(env.verbose).toBe(true);
-		expect(env.quiet).toBe(false);
+	it.each([
+		[{}, LogLevel.Info],
+		[{ verbose: true }, LogLevel.Debug],
+		[{ quiet: true }, LogLevel.Error],
+		[{ verbose: true, quiet: true }, LogLevel.Error],
+	])("should read the log level from %j", (flags, level) => {
+		const env = new NativeEnvironmentService(flags, "/mock/cwd", {
+			env: {},
+			isTerminal: true,
+		});
+
+		expect(env.logLevel).toBe(level);
 	});
 
 	describe("isInteractive", () => {
@@ -82,6 +89,15 @@ describe("NativeEnvironmentService", () => {
 
 		it("should print plain lines when an agent runs it", () => {
 			expect(inTerminal({ CLAUDECODE: "1" }).isPlain).toBe(true);
+		});
+
+		it("should print plain lines under --json in a terminal", () => {
+			const env = new NativeEnvironmentService({ json: true }, "/mock/cwd", {
+				env: {},
+				isTerminal: true,
+			});
+
+			expect(env.isPlain).toBe(true);
 		});
 	});
 });

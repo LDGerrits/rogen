@@ -23,6 +23,8 @@ export interface InitPlan {
 	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;
+	/** Whether the run asked its questions, rather than taking every default. */
+	readonly asked: boolean;
 }
 
 export interface InitOptions {

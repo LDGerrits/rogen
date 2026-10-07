@@ -30,7 +30,7 @@ const askInitChoices = async (
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
 		directoryOf({ ...context, givenName: name }),
-		new InitQuestions(prompts),
+		new InitQuestions(prompts, prompts.isInteractive),
 		fileSystem
 	);
 	return setup.ask();
@@ -979,9 +979,10 @@ describe("InitQuestions askProject template", () => {
 describe("InitQuestions addAgentInstructions", () => {
 	it("should add them on Enter, as a run that can't ask does", async () => {
 		const asked = new InitQuestions(
-			new MockPromptService([ACCEPT_DEFAULT])
+			new MockPromptService([ACCEPT_DEFAULT]),
+			true
 		);
-		const unasked = new InitQuestions(new MockPromptService([], false));
+		const unasked = new InitQuestions(new MockPromptService([], false), false);
 
 		expect(await asked.addAgentInstructions("AGENTS.md")).toBe(true);
 		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);

@@ -181,7 +181,7 @@ describe("ConfigSet planning", () => {
 	const own = { rootDirs: ["src"], routes: { "*": "ReplicatedStorage" } };
 
 	const planned = (plan: (builder: InitPlanBuilder) => void) => {
-		const builder = new InitPlanBuilder(target);
+		const builder = new InitPlanBuilder(target, false);
 		plan(builder);
 		return builder.build().unwrap();
 	};

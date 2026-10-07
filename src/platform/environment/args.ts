@@ -202,8 +202,13 @@ export function parseArgs(
 	}
 }
 
-/** Whether `flag` was typed before any `--`, however the rest of the line parses. */
-export function hasFlag(argv: readonly string[], flag: string): boolean {
+/** Whether `option` was typed by its long name before any `--`, however the rest of the line parses. */
+export function hasFlag(
+	argv: readonly string[],
+	option: OptionDescriptor
+): boolean {
 	const end = argv.indexOf("--");
-	return (end === -1 ? argv : argv.slice(0, end)).includes(flag);
+	return (end === -1 ? argv : argv.slice(0, end)).includes(
+		`--${option.name}`
+	);
 }

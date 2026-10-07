@@ -8,7 +8,7 @@ describe("ConsolePromptService", () => {
 
 	beforeEach(() => {
 		terminal = new ScriptedTerminal();
-		service = new ConsolePromptService({ ...terminal });
+		service = new ConsolePromptService({ ...terminal, interactive: true });
 	});
 
 	afterEach(() => {
@@ -16,24 +16,8 @@ describe("ConsolePromptService", () => {
 	});
 
 	describe("isInteractive", () => {
-		it("should be true when both streams are terminals", () => {
+		it("should be true when the environment says a person can answer", () => {
 			expect(service.isInteractive).toBe(true);
-		});
-
-		it("should be false when the input is not a terminal", () => {
-			const piped = new ConsolePromptService({
-				input: Object.assign(terminal.input, { isTTY: false }),
-				output: terminal.output,
-			});
-			expect(piped.isInteractive).toBe(false);
-		});
-
-		it("should be false when the output is not a terminal", () => {
-			const piped = new ConsolePromptService({
-				input: terminal.input,
-				output: Object.assign(terminal.output, { isTTY: false }),
-			});
-			expect(piped.isInteractive).toBe(false);
 		});
 
 		it("should be false when the environment says no one can answer", () => {

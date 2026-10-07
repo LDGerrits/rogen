@@ -10,7 +10,11 @@ import {
 	exitCodeOf,
 } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { hasFlag, parseArgs } from "./platform/environment/args.js";
+import {
+	JsonOption,
+	hasFlag,
+	parseArgs,
+} from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -21,7 +25,7 @@ import { LifecycleService } from "./platform/lifecycle/lifecycle-service.js";
 import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-service.js";
 import { Registry } from "./platform/registry/registry.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
-import { LogLevel, LogService } from "./platform/log/log-service.js";
+import { LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
@@ -72,16 +76,16 @@ async function main(): Promise<void> {
 			[...commandRegistry.getCommands().keys()]
 		);
 
+		// Read from the raw line, so a parse error is reported the way the flags ask.
+		const json = hasFlag(rawArgs, JsonOption);
 		const environment = new NativeEnvironmentService(
-			argsResult.isOk() ? argsResult.value.line.options : {},
+			{ ...(argsResult.isOk() && argsResult.value.line.options), json },
 			process.cwd()
 		);
-		// Read from the raw line, so a parse error is reported the way the flags ask.
-		const json = hasFlag(rawArgs, "--json");
-		const logService: LogService =
-			json || environment.isPlain
-				? new PlainLogService(environment.cwd)
-				: new TerminalLogService(environment.cwd);
+		const logService: LogService = environment.isPlain
+			? new PlainLogService(environment.cwd)
+			: new TerminalLogService(environment.cwd);
+		logService.setLevel(environment.logLevel);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -93,10 +97,6 @@ async function main(): Promise<void> {
 		const promptService = new ConsolePromptService({
 			interactive: environment.isInteractive,
 		});
-
-		// Logging levels
-		if (environment.quiet) logService.setLevel(LogLevel.Error);
-		else if (environment.verbose) logService.setLevel(LogLevel.Debug);
 
 		// Default handler throws async, which would crash `watch`.
 		setUnexpectedErrorHandler((error) => logService.error(error));

@@ -5,7 +5,7 @@ import { directory, directoryOf } from "./init-fixtures.js";
 describe("domain/init/init-plan-builder", () => {
 	describe("InitPlanBuilder", () => {
 		const builderFor = (existing: readonly string[] = []) =>
-			new InitPlanBuilder(directoryOf({ existing }));
+			new InitPlanBuilder(directoryOf({ existing }), false);
 
 		it("should write the template, then the configs, then the compiler's files, whatever order they were added in", () => {
 			const builder = builderFor();

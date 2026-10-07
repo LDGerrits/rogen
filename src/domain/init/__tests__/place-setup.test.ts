@@ -35,7 +35,7 @@ const plan = (
 	return planOf(
 		new PlaceSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false))
+			new InitQuestions(new MockPromptService([], false), false)
 		),
 		{
 			...choices,
