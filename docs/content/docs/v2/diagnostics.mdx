@@ -600,8 +600,17 @@ Check that the directory exists and is writable, and that no other program locks
 
 Warning. The config has a `syncDir`, but nothing the compiler or processor should have written for a root directory exists there. Rojo would find nothing to sync.
 
+When the sync directory itself doesn't exist, which is the case before the compiler or processor has run once, there is one warning for the config, whatever the number of root directories:
+
 ```
-src - warning: nothing emitted for root dir "src" exists under "out". The nearest path that exists is "." — has the compiler run?
+out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first.
+```
+
+When it exists and a root directory's part of it is missing, the warning names that root directory, the nearest path that does exist, and where the output was found if it is rooted one level off:
+
+```
+src - warning: nothing emitted for root dir "src" exists under "out/src". The nearest path that exists is "out" — has your compiler or processor run?
+core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently?
 ```
 
 Run the compiler or processor first. If the message finds the files elsewhere, point `syncDir` at the folder that mirrors the root directories. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).

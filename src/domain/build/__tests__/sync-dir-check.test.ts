@@ -81,8 +81,29 @@ describe("SyncDirCheck", () => {
 					expect(await check(fs, emittedConfigOf())).toEqual([]);
 				});
 
-				it("should warn when the sync dir does not exist, pointing at the nearest path that does", async () => {
+				it("should warn once on the sync dir when it does not exist, whatever the root dirs", async () => {
 					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.writeFile(abs("tests/Inventory.spec.ts"), "");
+
+					const warnings = await check(
+						fs,
+						emittedConfigOf({
+							rootDirs: [abs("src"), abs("tests")],
+						})
+					);
+
+					expect(warnings).toHaveLength(1);
+					expect(warnings[0]).toMatchObject({
+						code: "output.nothingEmitted",
+						resource: abs("out"),
+						message:
+							'the sync dir "out" doesn\'t exist yet, so Rojo has nothing to sync. Run your compiler or processor first.',
+					});
+				});
+
+				it("should keep the nearest path that exists when the sync dir does", async () => {
+					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.createDirectory(abs("out"));
 
 					const warnings = await check(fs, emittedConfigOf());
 
@@ -94,7 +115,7 @@ describe("SyncDirCheck", () => {
 					expect(warnings[0].message).toContain('root dir "src"');
 					expect(warnings[0].message).toContain('under "out"');
 					expect(warnings[0].message).toContain(
-						'nearest path that exists is "."'
+						'nearest path that exists is "out" — has your compiler or processor run?'
 					);
 				});
 
@@ -132,7 +153,7 @@ describe("SyncDirCheck", () => {
 					expect(warnings).toHaveLength(1);
 					expect(warnings[0].message).toContain('under "out"');
 					expect(warnings[0].message).toContain(
-						'Found "out/src/Inventory"'
+						'Found "out/src/Inventory" — is the output of your compiler or processor rooted differently?'
 					);
 				});
 

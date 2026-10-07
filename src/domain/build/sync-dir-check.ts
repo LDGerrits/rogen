@@ -61,6 +61,19 @@ export class SyncDirCheck {
 			layout.relativeToProject(target) || ".";
 		const warnings: Diagnostic[] = [];
 
+		// Without the sync dir every root dir would warn alike, and the nearest path that exists says nothing.
+		if (
+			!(await this.fileSystemService.isDirectory(syncDir)) &&
+			[...emittedTops.values()].some(({ paths }) => paths.length > 0)
+		)
+			return [
+				warningDiagnostic(
+					"output.nothingEmitted",
+					{ resource: syncDir },
+					`the sync dir "${shown(syncDir)}" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first.`
+				),
+			];
+
 		for (const rootDir of config.rootDirs) {
 			const tops = emittedTops.get(rootDir);
 			if (!tops || tops.paths.length === 0 || tops.synced) continue;
@@ -72,8 +85,8 @@ export class SyncDirCheck {
 			);
 			const found = await this.findShifted(syncDir, emitted[0]);
 			const nearest = found
-				? `Found "${shown(found)}" — is the compiler's output rooted differently?`
-				: `The nearest path that exists is "${shown(await this.nearestExisting(expected))}" — has the compiler run?`;
+				? `Found "${shown(found)}" — is the output of your compiler or processor rooted differently?`
+				: `The nearest path that exists is "${shown(await this.nearestExisting(expected))}" — has your compiler or processor run?`;
 			warnings.push(
 				warningDiagnostic(
 					"output.nothingEmitted",
@@ -127,7 +140,7 @@ export class SyncDirCheck {
 		const them = missing.length === 1 ? "it" : "them";
 		const cause = conversion
 			? `The processor turned ${converted === missing.length ? them : `${converted} of them`} into ${conversion.suffix}, which Rojo syncs as a ModuleScript instead of applying. ${conversion.note}`
-			: "Have the compiler copy .meta.json files into its output.";
+			: "Have the compiler or processor copy .meta.json files into its output.";
 		return [
 			warningDiagnostic(
 				"output.metaNotSynced",

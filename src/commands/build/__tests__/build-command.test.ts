@@ -271,7 +271,7 @@ describe("build command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
-			[{ message: expect.stringContaining("nothing emitted") }],
+			[{ message: expect.stringContaining("doesn't exist yet") }],
 			[{ code: "meta.wrongType" }],
 		]);
 	});
@@ -337,7 +337,7 @@ describe("build command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(diagnostic).toHaveBeenCalledWith(
 			expect.objectContaining({
-				message: expect.stringContaining("nothing emitted"),
+				message: expect.stringContaining("doesn't exist yet"),
 			})
 		);
 	});
