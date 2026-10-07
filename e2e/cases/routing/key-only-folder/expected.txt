@@ -18,6 +18,12 @@ stdout:
   src/Net/.mock@server/FakeStore.luau -> pruned · variant mock is off (folder)
   src/Net/@server.mock/Probe.luau -> pruned · variant mock is off (folder)
 
+$ rogen where src/Net/.mock@server/FakeStore.luau src/Net/@server.mock/Probe.luau --variant mock
+exit 0
+stdout:
+  src/Net/.mock@server/FakeStore.luau -> ServerScriptService/Net/FakeStore · route server (folder) · variant mock (folder)
+  src/Net/@server.mock/Probe.luau -> ServerScriptService/Net/Probe · route server (folder) · variant mock (folder)
+
 written:
   mocked.project.json
   plain.project.json

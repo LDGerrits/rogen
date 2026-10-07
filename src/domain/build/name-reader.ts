@@ -164,25 +164,8 @@ export class NameReader {
 				outrankedName: name,
 				misspellings: [],
 			};
-		const dotRoute = name.startsWith(".")
-			? this.keys.resolveRoute(name.slice(1))
-			: undefined;
-		if (dotRoute)
-			return {
-				invisible,
-				hoisted,
-				at: false,
-				variants: [],
-				keptName: name,
-				outrankedName: name,
-				misspellings: NameReader.inFolderName(
-					[NameReader.dotRouteOf(name.slice(1), dotRoute, 0)],
-					offset
-				),
-			};
-		const variant = this.keys.resolveVariant(
-			name.startsWith(".") ? name.slice(1) : name
-		);
+		const dotted = name.startsWith(".") ? name.slice(1) : undefined;
+		const variant = this.keys.resolveVariant(dotted ?? name);
 		if (variant)
 			return {
 				invisible,
@@ -196,10 +179,8 @@ export class NameReader {
 				),
 			};
 
-		const dotNameTypo = name.startsWith(".")
-			? this.dotNameTypo(name.slice(1))
-			: undefined;
-		if (dotNameTypo)
+		const dotName = dotted !== undefined && this.dotNameMisspelling(dotted);
+		if (dotName)
 			return {
 				invisible,
 				hoisted,
@@ -207,20 +188,22 @@ export class NameReader {
 				variants: [],
 				keptName: name,
 				outrankedName: name,
-				misspellings: NameReader.inFolderName([dotNameTypo], offset),
+				misspellings: NameReader.inFolderName([dotName], offset),
 			};
 		const suffixed = this.suffixes(name, false);
-		const { misspellings } = suffixed;
 		const leading =
 			suffixed.spans.length > 0
 				? this.leadingKey(suffixed.baseName, suffixed.spans)
+				: undefined;
+		const leadingTypo =
+			!leading && suffixed.baseName.startsWith(".")
+				? this.dotNameTypo(suffixed.baseName.slice(1))
 				: undefined;
 		const spans = leading ? [...suffixed.spans, leading] : suffixed.spans;
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
 		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
-		const plain = routeSpan === undefined && variantSpans.length === 0;
 		const keptName = NameReader.withoutSpans(
 			name,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
@@ -236,25 +219,28 @@ export class NameReader {
 			misspellings: NameReader.inFolderName(
 				[
 					...(routeSpan ? [] : NameReader.present([this.strayAt(name)])),
-					...(plain
-						? misspellings.filter(({ kind }) => kind !== "strayAt")
-						: []),
+					...suffixed.misspellings.filter(
+						({ kind }) => kind !== "strayAt"
+					),
+					...NameReader.present([leadingTypo]),
 				],
 				offset
 			),
 		};
 	}
 
-	/** What is left of a folder's name once its suffixes are off, when that is one more signed key (`.mock` in `.mock@server`), so the folder is named by keys alone and leaves no name, as `@server/` does. */
+	/** The rest of a folder's name once its suffixes are off, when that is one more signed key (`.mock` in `.mock@server`): the folder then leaves no name. */
 	private leadingKey(
 		baseName: string,
 		spans: readonly SuffixSpan[]
 	): SuffixSpan | undefined {
 		const text = baseName.slice(1);
-		const key = baseName.startsWith("@")
-			? !spans.some((span) => this.keys.routeKeys.has(span.key)) &&
-				this.keys.resolveRoute(text)
-			: baseName.startsWith(".") && this.keys.resolveVariant(text);
+		const routed = spans.some(({ key }) => !this.keys.isVariant(key));
+		let key: string | undefined;
+		if (baseName.startsWith("@") && !routed)
+			key = this.keys.resolveRoute(text);
+		else if (baseName.startsWith("."))
+			key = this.keys.resolveVariant(text);
 		return key ? { key, start: 0, length: baseName.length } : undefined;
 	}
 
@@ -302,16 +288,15 @@ export class NameReader {
 			};
 		}
 		const key = this.keys.resolveVariant(text);
-		const route = key === undefined && this.keys.resolveRoute(text);
 		return {
 			key,
 			nearMissKey:
 				nearMiss && this.keys.isVariant(nearMiss)
 					? nearMiss
 					: undefined,
-			misspellings: route
-				? [NameReader.dotRouteOf(text, route, 0)]
-				: NameReader.present([this.dotNameTypo(text)]),
+			misspellings: NameReader.present([
+				key === undefined ? this.dotNameMisspelling(text) : undefined,
+			]),
 		};
 	}
 
@@ -400,7 +385,15 @@ export class NameReader {
 		return this.variantTypoOf(text, dot);
 	}
 
-	/** A dot-file or dot-folder `.text` that declares nothing: its dot is a variant's sign, so a near miss is reported, and one that differs in letter case alone gets the letter-case warning instead. */
+	/** A dot-file or dot-folder `.text` that isn't a variant: a route key written with a dot, or a variant's near miss. */
+	private dotNameMisspelling(text: string): Misspelling | undefined {
+		const route = this.keys.resolveRoute(text);
+		return route
+			? NameReader.dotRouteOf(text, route, 0)
+			: this.dotNameTypo(text);
+	}
+
+	/** A dot is a variant's sign, so a near miss is reported; one that differs in letter case alone gets the letter-case warning instead. */
 	private dotNameTypo(text: string): VariantTypo | undefined {
 		if (this.keys.resolve(text) !== undefined || this.keys.nearMiss(text))
 			return undefined;

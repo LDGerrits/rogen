@@ -501,17 +501,46 @@ describe("Router", () => {
 					"src/C/X.luau",
 					"src/D/@server",
 					"src/D/init.prod@client.luau",
-					"src/D/Y.luau"
+					"src/D/Y.luau",
+					"src/E/@server",
+					"src/E/@Server",
+					"src/E/Z.luau"
 				);
 
+				const result = (
+					await route({ variants: { mock: true, dev: true, prod: false } })
+				).unwrap();
+
 				expect(
-					(await route({ variants: { mock: true, dev: true, prod: false } }))
-						.unwrap()
-						.files.map((file) => file.instancePath.join("/"))
+					result.files.map((file) => file.instancePath.join("/"))
 				).toEqual([
 					"ServerScriptService/C/X",
 					"ServerScriptService/C",
 					"ServerScriptService/D/Y",
+					"ServerScriptService/E/Z",
+				]);
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should let an active variant's init script route its folder, since the plain one it replaces can't be placed", async () => {
+				await write(
+					"src/C/init@server.luau",
+					"src/C/init.mock@client.luau",
+					"src/C/X.luau"
+				);
+
+				const placed = async (mock: boolean) =>
+					(await route({ variants: { mock } }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"));
+
+				expect(await placed(true)).toEqual([
+					"StarterPlayer/StarterPlayerScripts/C/X",
+					"StarterPlayer/StarterPlayerScripts/C",
+				]);
+				expect(await placed(false)).toEqual([
+					"ServerScriptService/C/X",
+					"ServerScriptService/C",
 				]);
 			});
 

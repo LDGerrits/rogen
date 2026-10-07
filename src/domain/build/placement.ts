@@ -1,6 +1,7 @@
 import { groupBy } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import path from "path";
 import {
 	Diagnostic,
@@ -283,14 +284,13 @@ export class Placer {
 	private markerClashErrors(
 		markerClashes: readonly MarkerClash[]
 	): Diagnostic[] {
-		return markerClashes.map(({ dir, names }) => {
-			const quoted = names.map((name) => `"${name}"`);
-			return errorDiagnostic(
+		return markerClashes.map(({ dir, names }) =>
+			errorDiagnostic(
 				"route.markerClash",
 				{ resource: dir },
-				`${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]} route this folder to different places, and nothing decides between them. Keep one.`
-			);
-		});
+				`${joinedWithAnd(names.map((name) => `"${name}"`))} route this folder to different places, and nothing decides between them. Keep one.`
+			)
+		);
 	}
 
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */

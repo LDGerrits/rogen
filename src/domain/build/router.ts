@@ -84,7 +84,14 @@ export interface InitWithoutFolder {
 
 /** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
 class Claims {
-	route: { readonly key: string; readonly match: RouteMatch } | undefined;
+	/** `dir` is set for a marker or init script, which claim at their directory's level. */
+	route:
+		| {
+				readonly key: string;
+				readonly match: RouteMatch;
+				readonly dir?: string;
+		  }
+		| undefined;
 	readonly ignoredRoutes: string[] = [];
 	readonly ignoredAts: IgnoredAt[] = [];
 	readonly variants: VariantMatch[] = [];
@@ -97,13 +104,18 @@ class Claims {
 	}
 
 	/** Whether the route governs; a later one is ignored whole. */
-	claimRoute(key: string, match: RouteMatch): boolean {
+	claimRoute(key: string, match: RouteMatch, dir?: string): boolean {
 		if (this.route) {
 			this.ignoredRoutes.push(key);
 			return false;
 		}
-		this.route = { key, match };
+		this.route = { key, match, ...(dir !== undefined && { dir }) };
 		return true;
+	}
+
+	/** The same route claimed again at the level that governs is harmless, so it isn't reported. */
+	repeats(key: string, dir: string): boolean {
+		return this.route?.key === key && this.route.dir === dir;
 	}
 
 	claimVariant(variant: VariantMatch, level: number): void {
@@ -226,6 +238,16 @@ export class Router {
 		};
 	}
 
+	/** The declared key the marker `fileName` in `dir` spells, if any. */
+	private markerKeyAt(
+		rootDir: string,
+		dir: string,
+		fileName: string
+	): string | undefined {
+		return this.readings.markers.get(joinPosix(rootDir, dir, fileName))
+			?.key;
+	}
+
 	/** Markers in one directory all sit at one level, so no order could choose between two routes; claiming them in scan order would pick one silently. */
 	private markerClashesOf(
 		root: ScannedRoot,
@@ -236,10 +258,8 @@ export class Router {
 		for (const dir of new Set([...markers.keys(), ...initRoutes.keys()])) {
 			const claims = [
 				...(markers.get(dir) ?? []).flatMap((fileName) => {
-					const key = this.readings.markers.get(
-						joinPosix(root.rootDir, dir, fileName)
-					)?.key;
-					return key !== undefined && this.keys.routeKeys.has(key)
+					const key = this.markerKeyAt(root.rootDir, dir, fileName);
+					return key !== undefined && !this.keys.isVariant(key)
 						? [{ key, name: fileName }]
 						: [];
 				}),
@@ -270,9 +290,12 @@ export class Router {
 		return folder;
 	}
 
-	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, so it gives none. */
+	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, and a plain one an active variant's replaces isn't, so neither gives one. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
-		const routes = new Map<string, { key: string; source: string }[]>();
+		const placeable = new Map<
+			string,
+			{ spans: readonly SuffixSpan[]; source: string; varied: boolean }[]
+		>();
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitEntry(read)) continue;
@@ -282,12 +305,24 @@ export class Router {
 				.map((span) => this.asVariantMatch(span));
 			if (!this.config.allVariantsOn(variants)) continue;
 			const dir = dirnamePosix(entry.relativePath);
-			for (const { key } of spans)
-				if (this.keys.routeKeys.has(key)) {
-					const inDir = routes.get(dir) ?? [];
-					inDir.push({ key, source: entry.source });
-					routes.set(dir, inDir);
-				}
+			placeable.set(dir, [
+				...(placeable.get(dir) ?? []),
+				{ spans, source: entry.source, varied: variants.length > 0 },
+			]);
+		}
+		const routes = new Map<string, { key: string; source: string }[]>();
+		for (const [dir, inits] of placeable) {
+			const varied = inits.some((init) => init.varied);
+			routes.set(
+				dir,
+				inits
+					.filter((init) => init.varied || !varied)
+					.flatMap(({ spans, source }) =>
+						spans
+							.filter(({ key }) => this.keys.routeKeys.has(key))
+							.map(({ key }) => ({ key, source }))
+					)
+			);
 		}
 		return routes;
 	}
@@ -306,7 +341,12 @@ export class Router {
 			initRoutes,
 			claims
 		);
-		const leaf = this.claimLeaf(read, claims, folders.length);
+		const leaf = this.claimLeaf(
+			read,
+			claims,
+			folders.length,
+			dirnamePosix(entry.relativePath)
+		);
 		// An init script is its folder, so its own `^` hoists nothing.
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
@@ -391,21 +431,22 @@ export class Router {
 	} {
 		const applyDirClaims = (dir: string, level: number) => {
 			for (const fileName of markers.get(dir) ?? []) {
-				const key = this.readings.markers.get(
-					joinPosix(entry.rootDir, dir, fileName)
-				)?.key;
+				const key = this.markerKeyAt(entry.rootDir, dir, fileName);
 				if (key === undefined) continue;
 				if (this.keys.isVariant(key))
 					claims.claimVariant(
 						{ variant: key, form: "marker" },
 						level
 					);
-				else if (!claims.claimRoute(key, "marker"))
+				else if (
+					!claims.claimRoute(key, "marker", dir) &&
+					!claims.repeats(key, dir)
+				)
 					claims.ignoredAts.push({ key, dir, marker: fileName });
 			}
 			// An init script claims its own suffix as any file does.
 			for (const { key, source } of initRoutes.get(dir) ?? [])
-				if (source !== entry.source) claims.claimRoute(key, "init");
+				if (source !== entry.source) claims.claimRoute(key, "init", dir);
 		};
 
 		applyDirClaims("", 0);
@@ -442,7 +483,8 @@ export class Router {
 	private claimLeaf(
 		read: EntryRead,
 		claims: Claims,
-		level: number
+		level: number,
+		dir: string
 	): LeafName {
 		const { kind, stem, match, scriptSuffix } = read;
 		const variantSpans = match.spans.filter((span) =>
@@ -450,11 +492,15 @@ export class Router {
 		);
 		for (const span of variantSpans)
 			claims.claimVariant(this.asVariantMatch(span), level);
+		const isInit = this.isInitEntry(read);
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
 			if (!this.keys.routeKeys.has(span.key)) continue;
 			if (claims.claimRoute(span.key, "suffix")) routeSpan = span;
-			else if (stem[span.start] === "@")
+			else if (
+				stem[span.start] === "@" &&
+				!(isInit && claims.repeats(span.key, dir))
+			)
 				claims.ignoredAts.push({ key: span.key });
 		}
 
@@ -474,7 +520,7 @@ export class Router {
 			hoisted,
 			scriptSuffix,
 			buriedScriptSuffix,
-			isInit: this.isInitEntry(read),
+			isInit,
 		};
 	}
 

@@ -140,6 +140,35 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		expect(placed(storage!)).toEqual(rojo);
 	});
 
+	it("should name a data file or model with .server or .client as Rojo does, since only a script has a class", async () => {
+		writeFiles({
+			"Data.server.json": "{}",
+			"Notes.client.txt": "text",
+			"Gun.server.model.json": '{"className":"Folder"}',
+			"Boot.server.luau": "",
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src" } })
+		);
+		await rogenTree({
+			routes: {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			},
+		});
+
+		const rojo = placed(sourcemap(dir, "rojo.project.json")).filter(
+			(line) => !line.startsWith("Boot")
+		);
+		const storage = sourcemap(dir, "ours.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(placed(storage!)).toEqual(rojo);
+	});
+
 	it("should give a hoisted file the class and meta Rojo gives it in its own folder", async () => {
 		writeFiles({
 			"Inv/^Animate.client.luau": "",

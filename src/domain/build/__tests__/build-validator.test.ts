@@ -840,6 +840,27 @@ describe("BuildValidator rules", () => {
 				expect(warning.fixes).toBeUndefined();
 			});
 
+			it("should warn about a variant's near miss in a folder that also routes", async () => {
+				await write("src/K.mok@server/A.luau", "src/.mok@server/B.luau");
+
+				const [warning] = await typos();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/.mok@server"),
+							to: at("src/.mock@server"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/K.mok@server"),
+							to: at("src/K.mock@server"),
+						},
+					},
+				]);
+			});
+
 			it("should give no fix when two variants are one edit away", async () => {
 				await write("src/Analytics.mok.luau");
 
