@@ -219,6 +219,35 @@ describe("domain/rojo/rojo", () => {
 				]);
 			});
 		});
+
+		describe("fieldsUnder", () => {
+			it("should let the project's fields win, and merge properties with the project's winning", () => {
+				expect(
+					RojoMeta.fieldsUnder(
+						{
+							className: "Actor",
+							properties: { A: 1, B: 1 },
+							attributes: { X: 1 },
+							id: "meta",
+						},
+						{
+							$className: "Folder",
+							$properties: { B: 2 },
+							$id: "node",
+						}
+					)
+				).toEqual({
+					$properties: { A: 1, B: 2 },
+					$attributes: { X: 1 },
+				});
+			});
+
+			it("should add nothing for an empty meta", () => {
+				expect(
+					RojoMeta.fieldsUnder({}, { $className: "Folder" })
+				).toEqual({});
+			});
+		});
 	});
 
 	describe("scriptRunOf", () => {

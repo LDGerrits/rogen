@@ -42,12 +42,6 @@ describe("MemoryFileSystemService: core operations", () => {
 			expect(entries).toContainEqual(["index.ts", FileType.File]);
 			expect(entries).toContainEqual(["components", FileType.Directory]);
 		});
-
-		it("should successfully copy a file to a new destination", async () => {
-			await memFs.writeFile("src.txt", "data");
-			await memFs.copy("src.txt", "dest.txt");
-			expect(await memFs.readFile("dest.txt")).toBe("data");
-		});
 	});
 
 	describe("Renames", () => {
@@ -172,18 +166,6 @@ describe("MemoryFileSystemService: core operations", () => {
 			).rejects.toMatchObject({
 				code: "EEXIST",
 			});
-		});
-
-		it("should throw EEXIST when overwriting files during copy only if overwrite is false", async () => {
-			await memFs.writeFile("source.txt", "v1");
-			await memFs.writeFile("dest.txt", "old");
-
-			await expect(
-				memFs.copy("source.txt", "dest.txt")
-			).rejects.toMatchObject({ code: "EEXIST" });
-
-			await memFs.copy("source.txt", "dest.txt", true);
-			expect(await memFs.readFile("dest.txt")).toBe("v1");
 		});
 
 		it("should throw ENOENT when reading a non-existent file", async () => {

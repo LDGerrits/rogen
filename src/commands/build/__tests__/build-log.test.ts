@@ -1,5 +1,11 @@
 import path from "path";
-import { BuildSummary, ConfigBuild } from "../../../domain/build/build.js";
+import {
+	BuildSummary,
+	ConfigBuild,
+	FailedBuild,
+	UnwrittenBuild,
+	WrittenBuild,
+} from "../../../domain/build/build.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	Diagnostic,
@@ -35,22 +41,21 @@ const debugLines = (
 const failedOf = (
 	errors: readonly Diagnostic[] = [],
 	config: ResolvedConfig = mockConfig()
-): ConfigBuild => ConfigBuild.failed(config, errors);
+): ConfigBuild => new FailedBuild(config, errors);
 
 const failed = failedOf();
 
 const builtOf = (
 	summary: BuildSummary,
 	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
-	config: ResolvedConfig = mockConfig()
-): ConfigBuild =>
-	ConfigBuild.built(
-		config,
-		outcome,
-		{ warnings: [], syncWarnings: [] },
-		summary,
-		[]
-	);
+	config: ResolvedConfig = mockConfig(),
+	blockedBy: readonly ResolvedConfig[] = [mockConfig()]
+): ConfigBuild => {
+	const findings = { warnings: [], syncWarnings: [] };
+	return outcome === "notWritten"
+		? new UnwrittenBuild(config, findings, summary, [], blockedBy)
+		: new WrittenBuild(config, outcome, findings, summary, []);
+};
 
 const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({ file: path.join(cwd, "match.rogen.json"), ...spec });
@@ -189,7 +194,7 @@ describe("BuildLog.outcome", () => {
 
 	const lines = (
 		build: ConfigBuild,
-		diagnostics: ConfigBuild["errors"] = [],
+		diagnostics: ConfigBuild["diagnostics"] = [],
 		note?: string
 	) => {
 		const logService = new MockLogService();
@@ -259,7 +264,9 @@ describe("BuildLog report", () => {
 	it("should say a clean config wasn't written because another failed", () => {
 		expect(
 			report([
-				builtOf(summaryOf(), "notWritten", configNamed("lobby")),
+				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+					configNamed("match"),
+				]),
 				failedOf([], configNamed("match")),
 			])
 		).toEqual([
@@ -272,7 +279,10 @@ describe("BuildLog report", () => {
 		expect(
 			report([
 				failedOf([], configNamed("arena")),
-				builtOf(summaryOf(), "notWritten", configNamed("lobby")),
+				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+					configNamed("arena"),
+					configNamed("match"),
+				]),
 				failedOf([], configNamed("match")),
 			])[1]
 		).toBe("lobby.project.json · not written · arena and match failed");

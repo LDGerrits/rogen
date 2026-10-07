@@ -1,5 +1,8 @@
 import { DisposableStore } from "../../../base/disposable.js";
-import { ok } from "../../../base/result.js";
+import { ReportedError, UsageError } from "../../../base/errors.js";
+import { ResultError, ok } from "../../../base/result.js";
+import { MockLogService } from "../../log/__tests__/mock-log-service.js";
+import { exitCodeOf } from "../command-failure.js";
 import { Registry } from "../../registry/registry.js";
 import {
 	AbstractCommand,
@@ -268,5 +271,46 @@ describe("registerCommand", () => {
 		registerCommand(EchoCommand)[Symbol.dispose]();
 
 		expect(registry.getCommand("echo")).toBeUndefined();
+	});
+});
+
+describe("AbstractCommand", () => {
+	class JsonCommand extends AbstractCommand {
+		constructor() {
+			super({ id: "json", metadata: { description: "Prints JSON." } });
+		}
+
+		async run() {
+			return ok(undefined);
+		}
+
+		print(logService: MockLogService, failure?: Error) {
+			return this.printJson(logService, { done: !failure }, failure);
+		}
+	}
+
+	describe("printJson", () => {
+		it("should print the document once and succeed", () => {
+			const logService = new MockLogService();
+
+			const result = new JsonCommand().print(logService);
+
+			expect(result.isOk()).toBe(true);
+			expect(logService.entries.map(({ text }) => text)).toEqual([
+				'{\n  "done": true\n}',
+			]);
+		});
+
+		it("should fail as reported, keeping the failure's exit code", () => {
+			const logService = new MockLogService();
+			const failure = new UsageError("bad line");
+
+			const result = new JsonCommand().print(logService, failure);
+			const error = (result as ResultError<Error>).error;
+
+			expect(error).toBeInstanceOf(ReportedError);
+			expect(exitCodeOf(error)).toBe(2);
+			expect(logService.entries).toHaveLength(1);
+		});
 	});
 });

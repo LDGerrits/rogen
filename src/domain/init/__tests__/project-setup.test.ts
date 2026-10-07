@@ -57,7 +57,7 @@ const defaultProjectChoices = async (
 			existing: [...existingFiles],
 			givenName: name === "default" ? undefined : name,
 		}),
-		new InitQuestions(new MockPromptService([], false)),
+		new InitQuestions(new MockPromptService([], false), false),
 		fileSystem
 	);
 	const choices = (await setup.ask()).unwrap() as ProjectChoices;
@@ -82,7 +82,7 @@ const planProject = ({
 	return planOf(
 		new ProjectSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false)),
+			new InitQuestions(new MockPromptService([], false), false),
 			new MemoryFileSystemService()
 		),
 		{ ...choices, ...(copiedTemplate !== undefined && { copiedTemplate }) },
@@ -1379,7 +1379,7 @@ describe("ConfigSet.parseName", () => {
 	it("should fail when the file it would copy to the template can't be read", async () => {
 		const setup = new ProjectSetup(
 			directoryOf({ existing: ["default.project.json"] }),
-			new InitQuestions(new MockPromptService([], false)),
+			new InitQuestions(new MockPromptService([], false), false),
 			new MemoryFileSystemService()
 		);
 

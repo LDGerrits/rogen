@@ -99,10 +99,6 @@ export class DiskFileSystemService implements FileSystemService {
 		return FileType.SymbolicLink;
 	}
 
-	async realPath(filePath: string): Promise<string> {
-		return fs.promises.realpath(filePath);
-	}
-
 	async createDirectory(filePath: string): Promise<void> {
 		await fs.promises.mkdir(filePath, { recursive: true });
 	}
@@ -121,16 +117,6 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		await fs.promises.rm(filePath, { recursive, force: true });
-	}
-
-	async copy(
-		source: string,
-		destination: string,
-		overwrite: boolean = false
-	): Promise<void> {
-		const flags = overwrite ? 0 : fs.constants.COPYFILE_EXCL;
-		await this.createDirectory(path.dirname(destination));
-		await fs.promises.copyFile(source, destination, flags);
 	}
 
 	async rename(

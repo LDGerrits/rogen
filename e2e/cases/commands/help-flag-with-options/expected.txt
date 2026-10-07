@@ -1,0 +1,77 @@
+$ rogen build --variant mock --help
+exit 0
+stdout:
+  Writes the project file of each config here, or of the named ones.
+  
+  Usage:
+    rogen build [config...] [options]
+  
+  Arguments:
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
+  
+  Options:
+    -o, --out-file <value>    Overrides outFile, for one config.
+        --variant <value>     Turns a variant on. (repeatable)
+        --no-variant <value>  Turns a variant off. (repeatable)
+        --json                Print one JSON document instead of text.
+  
+  Examples:
+    rogen build
+    rogen build places/lobby.rogen.json --variant mock
+    rogen build --json
+  
+  Global options:
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen build --json --help
+exit 0
+stdout:
+  Writes the project file of each config here, or of the named ones.
+  
+  Usage:
+    rogen build [config...] [options]
+  
+  Arguments:
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
+  
+  Options:
+    -o, --out-file <value>    Overrides outFile, for one config.
+        --variant <value>     Turns a variant on. (repeatable)
+        --no-variant <value>  Turns a variant off. (repeatable)
+        --json                Print one JSON document instead of text.
+  
+  Examples:
+    rogen build
+    rogen build places/lobby.rogen.json --variant mock
+    rogen build --json
+  
+  Global options:
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
+
+$ rogen help --help
+exit 0
+stdout:
+  Prints usage, a command's details, a topic, or what a diagnostic code means.
+  
+  Usage:
+    rogen help [name] [options]
+  
+  Arguments:
+    name  A command, a topic, or a diagnostic code such as route.strayAt.
+  
+  Examples:
+    rogen help where
+    rogen help routing
+    rogen help route.strayAt
+  
+  Global options:
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.

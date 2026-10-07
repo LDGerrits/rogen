@@ -201,8 +201,10 @@ describe("NameReadings", () => {
 				const { entries } = await read();
 
 				expect(
-					entries.get(at("src/Save@sever.luau"))?.match.strayAt
-				).toMatchObject({ text: "sever", suggestion: "@server" });
+					entries.get(at("src/Save@sever.luau"))?.match.misspellings
+				).toMatchObject([
+					{ kind: "strayAt", text: "sever", suggestion: "@server" },
+				]);
 			});
 
 			it("should read a data file without its .json suffix", async () => {

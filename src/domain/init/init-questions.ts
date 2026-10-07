@@ -42,7 +42,7 @@ export class InitQuestions {
 	/** `interactive` is false for a run that may not ask, even in a terminal. */
 	constructor(
 		private readonly promptService: PromptService,
-		readonly interactive = promptService.isInteractive
+		readonly interactive: boolean
 	) {}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */

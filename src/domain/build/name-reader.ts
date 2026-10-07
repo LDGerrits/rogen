@@ -20,6 +20,8 @@ export interface FolderReading {
 	readonly keptName?: string;
 	/** The name it keeps when an outer route outranks its own: only its variants come off. */
 	readonly outrankedName: string;
+	/** What its name misspells, measured on the folder's whole name: an `@` when it declares no route, a dot part only when it declares nothing. */
+	readonly misspellings: readonly Misspelling[];
 }
 
 /** A folder that never becomes an instance, as a warning names it. */
@@ -38,6 +40,7 @@ export interface SuffixSpan {
 
 /** An `@` followed by a near miss of a declared route, by a route that isn't at the end of the name, or by a declared variant, which takes a dot. */
 export interface StrayAt {
+	readonly kind: "strayAt";
 	/** The name after the `@`, up to the next dot. */
 	readonly text: string;
 	/** What to write instead: the closest route key's `@` form, or a variant's dot form. */
@@ -50,6 +53,7 @@ export interface StrayAt {
 
 /** A declared route key after a dot, where only `@` routes: a dot-file, or a dot part of a name. */
 export interface DotRoute {
+	readonly kind: "dotRoute";
 	readonly text: string;
 	readonly key: string;
 	readonly respelling: Respelling;
@@ -57,11 +61,22 @@ export interface DotRoute {
 
 /** A trailing dot part that is one edit from a declared variant. */
 export interface VariantTypo {
+	readonly kind: "variantTypo";
 	readonly text: string;
 	readonly variant: string;
 	/** The one rename that fixes it: none when another variant is as close. */
 	readonly respelling?: Respelling;
 }
+
+/** A name that looks like a slip in spelling a declared key. */
+export type Misspelling = StrayAt | DotRoute | VariantTypo;
+
+export type MisspellingKind = Misspelling["kind"];
+
+export type MisspellingOf<K extends MisspellingKind> = Extract<
+	Misspelling,
+	{ readonly kind: K }
+>;
 
 /** Part of a name, written at `start`, and how to spell it instead. */
 export interface Respelling {
@@ -78,12 +93,8 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	/** An `@` left in the base name that doesn't route. */
-	readonly strayAt?: StrayAt;
-	/** An undeclared dot part left at the end of the base name that looks like a mistyped variant. */
-	readonly variantTypo?: VariantTypo;
-	/** A route key left after a dot at the end of the base name, where it doesn't route. */
-	readonly dotRoute?: DotRoute;
+	/** What the base name misspells: an `@` that doesn't route, a dot part one edit from a variant, or a route key after a dot. */
+	readonly misspellings: readonly Misspelling[];
 }
 
 /** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
@@ -135,7 +146,7 @@ export class NameReader {
 
 	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
 	folder(folderName: string): FolderReading {
-		const { name, invisible, hoisted } =
+		const { name, invisible, hoisted, offset } =
 			NameReader.readFolderName(folderName);
 		const bareRoute = this.keys.resolveRoute(name);
 		const route =
@@ -151,6 +162,7 @@ export class NameReader {
 				at: bareRoute === undefined,
 				variants: [],
 				outrankedName: name,
+				misspellings: [],
 			};
 		const variant = this.keys.resolveVariant(
 			name.startsWith(".") ? name.slice(1) : name
@@ -162,13 +174,18 @@ export class NameReader {
 				at: false,
 				variants: [variant],
 				outrankedName: name,
+				misspellings: NameReader.inFolderName(
+					NameReader.present([this.strayAt(name)]),
+					offset
+				),
 			};
 
-		const { spans } = this.suffixes(name, false);
+		const { spans, misspellings } = this.suffixes(name, false);
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
 		const routeSpan = spans.find(({ key }) => !this.keys.isVariant(key));
+		const plain = routeSpan === undefined && variantSpans.length === 0;
 		return {
 			invisible,
 			hoisted,
@@ -180,44 +197,40 @@ export class NameReader {
 				routeSpan ? [...variantSpans, routeSpan] : variantSpans
 			),
 			outrankedName: NameReader.withoutSpans(name, variantSpans),
+			misspellings: NameReader.inFolderName(
+				[
+					...(routeSpan ? [] : NameReader.present([this.strayAt(name)])),
+					...(plain
+						? misspellings.filter(({ kind }) => kind !== "strayAt")
+						: []),
+				],
+				offset
+			),
 		};
 	}
 
-	/** A dot part at the end of a folder name that is one edit from a declared variant. */
-	folderVariantTypo(folderName: string): VariantTypo | undefined {
-		const { name, offset } = NameReader.readFolderName(folderName);
-		return NameReader.inFolderName(
-			this.suffixes(name, false).variantTypo,
-			offset
-		);
-	}
-
-	/** The `@` in a folder name that no declared route follows. */
-	folderStrayAt(folderName: string): StrayAt | undefined {
-		const { name, offset } = NameReader.readFolderName(folderName);
-		return NameReader.inFolderName(this.strayAt(name), offset);
-	}
-
-	/** A route key after a dot at the end of a folder name, which only `@` routes. */
-	folderDotRoute(folderName: string): DotRoute | undefined {
-		const { name, offset } = NameReader.readFolderName(folderName);
-		return NameReader.inFolderName(
-			this.suffixes(name, false).dotRoute,
-			offset
-		);
-	}
-
-	/** A misspelling read in a folder's name, with its respelling measured on the folder's whole name. */
-	private static inFolderName<T extends { readonly respelling?: Respelling }>(
-		misspelt: T | undefined,
+	/** Misspellings read in a folder's name, with their respellings measured on the folder's whole name. */
+	private static inFolderName(
+		misspellings: readonly Misspelling[],
 		offset: number
-	): T | undefined {
-		if (!misspelt?.respelling || offset === 0) return misspelt;
-		const { respelling } = misspelt;
-		return {
-			...misspelt,
-			respelling: { ...respelling, start: respelling.start + offset },
-		};
+	): Misspelling[] {
+		return misspellings.map((misspelt) =>
+			!misspelt.respelling || offset === 0
+				? misspelt
+				: {
+						...misspelt,
+						respelling: {
+							...misspelt.respelling,
+							start: misspelt.respelling.start + offset,
+						},
+					}
+		);
+	}
+
+	private static present(
+		misspellings: readonly (Misspelling | undefined)[]
+	): Misspelling[] {
+		return misspellings.filter((misspelt) => misspelt !== undefined);
 	}
 
 	/** The declared key a marker file spells with its sign: `@server` for a route, `.mock` for a variant. */
@@ -233,8 +246,10 @@ export class NameReader {
 						? nearMiss
 						: undefined,
 				// A case-only miss gets the letter-case warning instead.
-				...(key === undefined &&
-					!nearMiss && { strayAt: this.strayAt(fileName) }),
+				misspellings:
+					key === undefined && !nearMiss
+						? NameReader.present([this.strayAt(fileName)])
+						: [],
 			};
 		}
 		const key = this.keys.resolveVariant(text);
@@ -245,7 +260,7 @@ export class NameReader {
 				nearMiss && this.keys.isVariant(nearMiss)
 					? nearMiss
 					: undefined,
-			...(route && { dotRoute: NameReader.dotRouteOf(text, route, 0) }),
+			misspellings: route ? [NameReader.dotRouteOf(text, route, 0)] : [],
 		};
 	}
 
@@ -269,9 +284,11 @@ export class NameReader {
 			baseName: remaining,
 			matchedKeys: matched,
 			spans,
-			strayAt: this.strayAt(remaining),
-			variantTypo: this.variantTypo(remaining),
-			dotRoute: this.dotRoute(remaining),
+			misspellings: NameReader.present([
+				this.strayAt(remaining),
+				this.variantTypo(remaining),
+				this.dotRoute(remaining),
+			]),
 		};
 	}
 
@@ -291,6 +308,7 @@ export class NameReader {
 		start: number
 	): DotRoute {
 		return {
+			kind: "dotRoute",
 			text,
 			key,
 			respelling: { start, written: `.${text}`, spelling: `@${key}` },
@@ -341,6 +359,7 @@ export class NameReader {
 		if (variants.length === 0) return undefined;
 		const [variant] = variants;
 		return {
+			kind: "variantTypo",
 			text,
 			variant,
 			...(variants.length === 1 && {
@@ -354,7 +373,7 @@ export class NameReader {
 	}
 
 	/** Spans start past the first character, so a name never loses all of it. */
-	private static withoutSpans(
+	static withoutSpans(
 		name: string,
 		spans: readonly SuffixSpan[]
 	): string {
@@ -378,6 +397,7 @@ export class NameReader {
 		if (variant) {
 			const suggestion = `.${variant}`;
 			return {
+				kind: "strayAt",
 				text,
 				suggestion,
 				notLast: false,
@@ -390,6 +410,7 @@ export class NameReader {
 		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
 		const suggestion = `@${closest[0]}`;
 		return {
+			kind: "strayAt",
 			text,
 			suggestion,
 			notLast,
@@ -407,17 +428,14 @@ export type FolderRead = FolderReading & {
 	/** The folder relative to the root dir. */
 	readonly dir: string;
 	readonly nearMissKey?: string;
-	readonly strayAt?: StrayAt;
-	readonly variantTypo?: VariantTypo;
-	readonly dotRoute?: DotRoute;
 };
 
 export interface MarkerRead {
 	/** The declared route or variant key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;
-	readonly strayAt?: StrayAt;
-	readonly dotRoute?: DotRoute;
+	/** An `@` that doesn't route, or a route key after the dot of a variant marker. */
+	readonly misspellings: readonly Misspelling[];
 }
 
 /** An entry read once: its folders and the suffixes on its name. */
@@ -442,12 +460,11 @@ export class NameReadings {
 	readonly entries = new Map<string, EntryRead>();
 	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
 	readonly nearMisses = new Map<string, string>();
-	/** Each folder above an entry, or entry, with an `@` that doesn't route; first found first. */
-	readonly strayAts = new Map<string, NotedName<StrayAt>>();
-	/** Each folder above an entry, or entry, whose name ends in a dot part one edit from a declared variant; first found first. */
-	readonly variantTypos = new Map<string, NotedName<VariantTypo>>();
-	/** Each dot-file, folder above an entry, or entry, that writes a declared route key after a dot; first found first. */
-	readonly dotRoutes = new Map<string, NotedName<DotRoute>>();
+	/** Each marker, folder above an entry, or entry whose name misspells a key; first found first. */
+	private readonly misspellings = new Map<
+		string,
+		readonly NotedName<Misspelling>[]
+	>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -461,8 +478,7 @@ export class NameReadings {
 				const read = this.reader.marker(path.posix.basename(marker));
 				this.markers.set(resource, read);
 				this.noteNearMiss(resource, read.nearMissKey);
-				NameReadings.note(this.strayAts, resource, read.strayAt);
-				NameReadings.note(this.dotRoutes, resource, read.dotRoute);
+				this.noteMisspellings(resource, read.misspellings);
 			}
 			for (const metaFile of root.metaFiles)
 				this.readFoldersAbove(root.rootDir, metaFile);
@@ -488,25 +504,9 @@ export class NameReadings {
 				for (const folder of folders) {
 					const resource = joinPosix(root.rootDir, folder.dir);
 					this.noteNearMiss(resource, folder.nearMissKey);
-					NameReadings.note(this.strayAts, resource, folder.strayAt);
-					NameReadings.note(
-						this.variantTypos,
-						resource,
-						folder.variantTypo
-					);
-					NameReadings.note(
-						this.dotRoutes,
-						resource,
-						folder.dotRoute
-					);
+					this.noteMisspellings(resource, folder.misspellings);
 				}
-				NameReadings.note(this.strayAts, entry.source, match.strayAt);
-				NameReadings.note(
-					this.variantTypos,
-					entry.source,
-					match.variantTypo
-				);
-				NameReadings.note(this.dotRoutes, entry.source, match.dotRoute);
+				this.noteMisspellings(entry.source, match.misspellings);
 			}
 		}
 	}
@@ -528,25 +528,49 @@ export class NameReadings {
 		return folder?.variants.length ? "a variant folder" : undefined;
 	}
 
+	/** Each resource whose name has a misspelling of `kind`, with it; first found first. */
+	misspelt<K extends MisspellingKind>(
+		kind: K
+	): ReadonlyMap<string, NotedName<MisspellingOf<K>>> {
+		const misspelt = new Map<string, NotedName<MisspellingOf<K>>>();
+		for (const [resource, noted] of this.misspellings)
+			for (const misspelling of noted)
+				if (NameReadings.isKind(misspelling, kind))
+					misspelt.set(resource, misspelling);
+		return misspelt;
+	}
+
+	private static isKind<K extends MisspellingKind>(
+		misspelling: NotedName<Misspelling>,
+		kind: K
+	): misspelling is NotedName<MisspellingOf<K>> {
+		return misspelling.kind === kind;
+	}
+
 	private noteNearMiss(resource: string, key: string | undefined): void {
 		if (key && !this.nearMisses.has(resource))
 			this.nearMisses.set(resource, key);
 	}
 
-	/** Notes the first misspelling found at `resource`, with the path it's renamed to. */
-	private static note<T extends { readonly respelling?: Respelling }>(
-		noted: Map<string, NotedName<T>>,
+	/** Notes what the name at `resource` misspells, with the path one rename fixes it to; a resource is read once, so the first noting holds. */
+	private noteMisspellings(
 		resource: string,
-		misspelt: T | undefined
+		misspellings: readonly Misspelling[]
 	): void {
-		if (!misspelt || noted.has(resource)) return;
-		const { respelling } = misspelt;
-		noted.set(resource, {
-			...misspelt,
-			...(respelling && {
-				renamedTo: NameReadings.respelled(resource, respelling),
-			}),
-		});
+		if (misspellings.length === 0 || this.misspellings.has(resource))
+			return;
+		this.misspellings.set(
+			resource,
+			misspellings.map((misspelt) => ({
+				...misspelt,
+				...(misspelt.respelling && {
+					renamedTo: NameReadings.respelled(
+						resource,
+						misspelt.respelling
+					),
+				}),
+			}))
+		);
 	}
 
 	private static respelled(
@@ -574,16 +598,6 @@ export class NameReadings {
 				dir,
 				nearMissKey: plain
 					? this.keys.nearMiss(reading.outrankedName)
-					: undefined,
-				strayAt:
-					reading.route === undefined
-						? this.reader.folderStrayAt(segment)
-						: undefined,
-				variantTypo: plain
-					? this.reader.folderVariantTypo(segment)
-					: undefined,
-				dotRoute: plain
-					? this.reader.folderDotRoute(segment)
 					: undefined,
 			};
 			this.folders.set(key, read);

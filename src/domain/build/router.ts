@@ -410,9 +410,9 @@ export class Router {
 			kind === "script" &&
 			variantSpans.length > 0 &&
 			!RojoFile.scriptSuffixOf(stem)
-				? RojoFile.scriptSuffixOf(this.stripSpans(stem, variantSpans))
+				? RojoFile.scriptSuffixOf(NameReader.withoutSpans(stem, variantSpans))
 				: undefined;
-		const stripped = this.stripSpans(
+		const stripped = NameReader.withoutSpans(
 			stem,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
@@ -431,7 +431,7 @@ export class Router {
 		return (
 			kind === "script" &&
 			this.initNames.has(
-				this.leafName(kind, this.stripSpans(stem, match.spans)).name
+				this.leafName(kind, NameReader.withoutSpans(stem, match.spans)).name
 			)
 		);
 	}
@@ -448,18 +448,5 @@ export class Router {
 
 	private asVariantMatch(span: SuffixSpan): VariantMatch {
 		return { variant: span.key, form: "suffix" };
-	}
-
-	/** Keeps the stem whole rather than return an empty name. */
-	private stripSpans(stem: string, spans: readonly SuffixSpan[]): string {
-		const stripped = [...spans]
-			.sort((a, b) => b.start - a.start)
-			.reduce(
-				(name, span) =>
-					name.slice(0, span.start) +
-					name.slice(span.start + span.length),
-				stem
-			);
-		return stripped || stem;
 	}
 }

@@ -76,28 +76,19 @@ export class BuildLog {
 			"build",
 			builds.map(({ config }) => config)
 		);
-		const blocked = BuildLog.blockedBy(builds);
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.config);
 			// A config's errors end the run, so the failure prints them last.
 			this.outcome(
 				build,
 				[...build.warnings, ...(build.syncWarnings ?? [])],
-				build.outcome === "notWritten" ? blocked : undefined
+				build.outcome === "notWritten"
+					? `${joinedWithAnd(build.blockedBy.map(({ label }) => label))} failed`
+					: undefined
 			);
 		}
-		if (builds.every(({ errors }) => errors.length === 0))
+		if (builds.every(({ outcome }) => outcome !== "failed"))
 			this.end(builds.length);
-	}
-
-	/** Why a config that built cleanly wasn't written: the configs whose errors stopped the run. */
-	private static blockedBy(builds: readonly ConfigBuild[]): string | undefined {
-		const failed = builds
-			.filter(({ outcome }) => outcome === "failed")
-			.map(({ config }) => config.label);
-		return failed.length > 0
-			? `${joinedWithAnd(failed)} failed`
-			: undefined;
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
@@ -122,9 +113,12 @@ export class BuildLog {
 				this.details(build.config, build.summary);
 				break;
 			case "notWritten":
-			case "failed":
 				this.logService.error(line("not written"));
 				this.details(build.config, build.summary);
+				break;
+			case "failed":
+				this.logService.error(line("not written"));
+				this.details(build.config);
 				break;
 		}
 		this.diagnostics(diagnostics);

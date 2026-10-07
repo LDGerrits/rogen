@@ -13,7 +13,7 @@ describe("ExtendingConfigSetup", () => {
 		const target = directoryOf({ givenName: "prod", existing, workspace });
 		const setup = new ExtendingConfigSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false))
+			new InitQuestions(new MockPromptService([], false), false)
 		);
 		return { asked: await setup.ask(), setup, target };
 	};

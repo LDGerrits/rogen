@@ -17,7 +17,11 @@ import {
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
-import { NotedName } from "./name-reader.js";
+import {
+	MisspellingKind,
+	MisspellingOf,
+	NotedName,
+} from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
@@ -38,7 +42,7 @@ function renames(
 		);
 }
 
-/** Reports on a finished build and decides nothing. */
+/** Reports on a finished build. It works out what to say from what the phases hold, but never re-decides what they decided. */
 export class BuildValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;
@@ -128,73 +132,64 @@ export class BuildValidator {
 
 	/** An `@` means nothing else, so one that routes nowhere is a typo or a misplaced suffix. */
 	private strayAt(): Diagnostic[] {
-		const { strayAts } = this.placement.readings;
-		if (strayAts.size === 0) return [];
-		const listed = this.listed(
-			[...strayAts],
-			([resource, { text, suggestion, notLast }]) => {
+		return this.misspelt(
+			"route.strayAt",
+			"strayAt",
+			(count) =>
+				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
+			(resource, { text, suggestion, notLast }) => {
 				const hint = notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
 					: `did you mean "${suggestion}"?`;
 				return `${resource} (${hint})`;
 			}
 		);
-		const count = strayAts.size === 1 ? "name has" : "names have";
-		return [
-			warningDiagnostic(
-				"route.strayAt",
-				{ resource: this.config.file },
-				[
-					`${strayAts.size} ${count} an "@" that routes nowhere, so ${strayAts.size === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
-					...listed,
-				].join("\n"),
-				renames(strayAts)
-			),
-		];
 	}
 
 	/** A route key after a dot routes nothing, so what it names falls through to the route above it. */
 	private dotRoute(): Diagnostic[] {
-		const { dotRoutes } = this.placement.readings;
-		if (dotRoutes.size === 0) return [];
-		const listed = this.listed(
-			[...dotRoutes],
-			([resource, { renamedTo }]) =>
+		return this.misspelt(
+			"route.dotRoute",
+			"dotRoute",
+			(count) =>
+				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
+			(resource, { renamedTo }) =>
 				`${resource} (write "${path.posix.basename(renamedTo ?? resource)}")`
 		);
-		const many = dotRoutes.size > 1;
-		return [
-			warningDiagnostic(
-				"route.dotRoute",
-				{ resource: this.config.file },
-				[
-					`${dotRoutes.size} ${many ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${many ? "they route" : "it routes"} nothing:`,
-					...listed,
-				].join("\n"),
-				renames(dotRoutes)
-			),
-		];
 	}
 
 	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
 	private variantTypo(): Diagnostic[] {
-		const { variantTypos } = this.placement.readings;
-		if (variantTypos.size === 0) return [];
-		const listed = this.listed(
-			[...variantTypos],
-			([resource, { text, variant }]) =>
+		return this.misspelt(
+			"variant.typo",
+			"variantTypo",
+			(count) =>
+				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+			(resource, { text, variant }) =>
 				`${resource} (did you mean ".${variant}" for ".${text}"?)`
 		);
-		const many = variantTypos.size > 1;
+	}
+
+	/** One warning for every name with a misspelling of `kind`: `headline` for how many, then a line for each, and the renames that fix them. */
+	private misspelt<K extends MisspellingKind>(
+		code: string,
+		kind: K,
+		headline: (count: number) => string,
+		line: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
+	): Diagnostic[] {
+		const noted = this.placement.readings.misspelt(kind);
+		if (noted.size === 0) return [];
 		return [
 			warningDiagnostic(
-				"variant.typo",
+				code,
 				{ resource: this.config.file },
 				[
-					`${variantTypos.size} ${many ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${many ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-					...listed,
+					headline(noted.size),
+					...this.listed([...noted], ([resource, misspelt]) =>
+						line(resource, misspelt)
+					),
 				].join("\n"),
-				renames(variantTypos)
+				renames(noted)
 			),
 		];
 	}

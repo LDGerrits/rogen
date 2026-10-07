@@ -2,6 +2,7 @@ import { UsageError } from "../../../base/errors.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
+	JsonOption,
 	hasFlag,
 	parseArgs,
 } from "../args.js";
@@ -143,6 +144,40 @@ describe("parseArgs", () => {
 		);
 	});
 
+	it("should check a --help or --version line against the command it names", () => {
+		expect(parse(["build", "--variant", "a", "--help"]).unwrap()).toEqual({
+			command: "help",
+			line: {
+				positionals: ["build"],
+				options: { variant: ["a"], help: true },
+			},
+		});
+		expect(parse(["build", "--variant", "a", "-V"]).isOk()).toBe(true);
+	});
+
+	it("should ask help about help itself for 'help --help'", () => {
+		expect(parse(["help", "--help"]).unwrap()).toMatchObject({
+			command: "help",
+			line: { positionals: ["help"] },
+		});
+	});
+
+	it("should refuse a --help line with an option the named command doesn't take", () => {
+		const result = parse(["watch", "--variant", "a", "--help"]);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"watch doesn't take '--variant'. build does."
+		);
+	});
+
+	it("should check a bare --help line against help", () => {
+		const result = parse(["--help", "--variant", "a"]);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"help doesn't take '--variant'. build does."
+		);
+	});
+
 	it("should leave an unknown command to the command service", () => {
 		const parsed = parse(["deploy", "--variant", "x"]).unwrap();
 
@@ -177,14 +212,14 @@ describe("parseArgs", () => {
 
 describe("hasFlag", () => {
 	it("should see a flag next to one the parser rejects", () => {
-		expect(hasFlag(["build", "--json", "--bogus"], "--json")).toBe(true);
+		expect(hasFlag(["build", "--json", "--bogus"], JsonOption)).toBe(true);
 	});
 
 	it("should not see a flag after --", () => {
-		expect(hasFlag(["build", "--", "--json"], "--json")).toBe(false);
+		expect(hasFlag(["build", "--", "--json"], JsonOption)).toBe(false);
 	});
 
 	it("should not see a flag that is absent", () => {
-		expect(hasFlag(["build", "lobby"], "--json")).toBe(false);
+		expect(hasFlag(["build", "lobby"], JsonOption)).toBe(false);
 	});
 });

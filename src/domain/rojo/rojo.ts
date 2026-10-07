@@ -9,6 +9,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ScriptRun } from "../roblox/roblox.js";
+import { RojoNode } from "./rojo-project.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -160,6 +161,28 @@ export class RojoMeta {
 					.map((key) => [key, value[key]])
 			) as RojoMetaFields
 		);
+	}
+
+	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */
+	static fieldsUnder(
+		meta: RojoMetaFields,
+		node: RojoNode
+	): Partial<RojoNode> {
+		const fields: Partial<RojoNode> = {};
+		if (meta.className !== undefined && node.$className === undefined)
+			fields.$className = meta.className;
+		if (meta.properties !== undefined)
+			fields.$properties = { ...meta.properties, ...node.$properties };
+		if (meta.attributes !== undefined && node.$attributes === undefined)
+			fields.$attributes = { ...meta.attributes };
+		if (
+			meta.ignoreUnknownInstances !== undefined &&
+			node.$ignoreUnknownInstances === undefined
+		)
+			fields.$ignoreUnknownInstances = meta.ignoreUnknownInstances;
+		if (meta.id !== undefined && node.$id === undefined)
+			fields.$id = meta.id;
+		return fields;
 	}
 }
 

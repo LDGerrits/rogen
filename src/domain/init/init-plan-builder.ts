@@ -33,7 +33,10 @@ export class InitPlanBuilder {
 	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
 
-	constructor(private readonly directory: InitDirectory) {}
+	constructor(
+		private readonly directory: InitDirectory,
+		private readonly asked: boolean
+	) {}
 
 	setTemplate(file: PlannedFile): void {
 		this.template = file;
@@ -102,6 +105,7 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
+			asked: this.asked,
 			files: [
 				...(this.template ? [this.template] : []),
 				...written,

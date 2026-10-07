@@ -94,14 +94,36 @@ describe("CoreCommandService", () => {
 			);
 		});
 
-		it("should suggest building a config named like the unknown command", async () => {
+		it("should offer the command that takes an unknown word", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "build",
+					metadata: {
+						description: "build",
+						unknownWordOffer: "To build a config",
+					},
+					handler: async () => ok(undefined),
+				})
+			);
+
 			const result = await commandService.executeCommand("prod", {
 				positionals: ["prod"],
 				options: {},
 			});
 
-			expect((result as ResultError<Error>).error.message).toContain(
-				"rogen build prod"
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"prod\". To build a config, run 'rogen build prod'; run 'rogen help' to see the commands."
+			);
+		});
+
+		it("should point at help when no command takes an unknown word", async () => {
+			const result = await commandService.executeCommand("prod", {
+				positionals: ["prod"],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"prod\". Run 'rogen help' to see the commands."
 			);
 		});
 

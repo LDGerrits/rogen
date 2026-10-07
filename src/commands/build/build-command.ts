@@ -1,5 +1,3 @@
-import { ReportedError } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
@@ -38,6 +36,7 @@ registerCommand(
 						},
 					],
 					options: BuildOptions,
+					unknownWordOffer: "To build a config",
 					examples: [
 						"rogen build",
 						"rogen build places/lobby.rogen.json --variant mock",
@@ -65,7 +64,9 @@ registerCommand(
 			const builds = await buildService.build(selection.value);
 			if (builds.isErr()) return builds;
 
-			const errors = builds.value.flatMap((build) => build.errors);
+			const errors = builds.value.flatMap((build) =>
+				build.outcome === "failed" ? build.errors : []
+			);
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors)
 				: this.report(new BuildLog(logService, cwd), builds.value, errors);
@@ -90,10 +91,11 @@ registerCommand(
 			const report = new BuildReport();
 			for (const build of builds) report.add(build);
 
-			logService.print(formatJsonDocument(report.json()));
-			return errors.length > 0
-				? err(new ReportedError(new DiagnosticsError(errors)))
-				: ok(undefined);
+			return this.printJson(
+				logService,
+				report.json(),
+				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+			);
 		}
 	}
 );

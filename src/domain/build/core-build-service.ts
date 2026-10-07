@@ -8,9 +8,12 @@ import { ConfigSelection } from "../config/config-service.js";
 import {
 	BuildSet,
 	ConfigBuild,
+	FailedBuild,
 	Locations,
 	OutputFile,
 	SyncTool,
+	UnwrittenBuild,
+	WrittenBuild,
 } from "./build.js";
 import { BuildService, LocateTargets } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
@@ -61,7 +64,7 @@ export class CoreBuildService implements BuildService {
 			previous?.config === config ? previous.syncWarnings : undefined;
 		const blocked = set.blocking(file);
 		if (blocked.length > 0)
-			return ConfigBuild.failed(config, blocked, {
+			return new FailedBuild(config, blocked, {
 				warnings: [],
 				syncWarnings,
 			});
@@ -86,7 +89,7 @@ export class CoreBuildService implements BuildService {
 		).locate(configs.value, targets);
 	}
 
-	/** Builds every config from `listing`, then writes them in order. */
+	/** Builds every config from `listing`, then writes them in order unless one failed. */
 	private async run(
 		configs: readonly {
 			readonly config: ResolvedConfig;
@@ -95,51 +98,73 @@ export class CoreBuildService implements BuildService {
 		listing: IndexReader
 	): Promise<ConfigBuild[]> {
 		const builder = this.builderOf(listing);
-		const builds: ConfigBuild[] = [];
-		const built: BuiltConfig[] = [];
+		const attempts: (BuiltConfig | FailedBuild)[] = [];
 		for (const { config, syncWarnings } of configs) {
 			const result = await builder.build(config, syncWarnings);
-			if (result.isErr()) {
-				builds.push(
-					ConfigBuild.failed(config, result.error.diagnostics, {
-						warnings: [],
-						syncWarnings,
-					})
-				);
-				continue;
-			}
-			built.push(result.value);
-			builds.push(
-				ConfigBuild.built(
-					config,
-					"notWritten",
-					result.value.findings,
-					result.value.summary,
-					result.value.readFiles
-				)
+			attempts.push(
+				result.isOk()
+					? result.value
+					: new FailedBuild(config, result.error.diagnostics, {
+							warnings: [],
+							syncWarnings,
+						})
 			);
 		}
-		if (builds.some(({ outcome }) => outcome === "failed")) return builds;
+		const failed = attempts.flatMap((attempt) =>
+			attempt instanceof FailedBuild ? [attempt.config] : []
+		);
+		if (failed.length === 0)
+			return this.writeInOrder(attempts as BuiltConfig[]);
+		return attempts.map((attempt) =>
+			attempt instanceof FailedBuild
+				? attempt
+				: CoreBuildService.unwritten(attempt, failed)
+		);
+	}
 
-		for (const [index, { tree, findings }] of built.entries()) {
-			const { config } = builds[index];
+	/** Writes each config in turn; one that fails to write leaves the rest unwritten. */
+	private async writeInOrder(
+		built: readonly BuiltConfig[]
+	): Promise<ConfigBuild[]> {
+		const builds: ConfigBuild[] = [];
+		let failed: ResolvedConfig | undefined;
+		for (const attempt of built) {
+			const { config, tree, findings, summary, readFiles } = attempt;
+			if (failed) {
+				builds.push(CoreBuildService.unwritten(attempt, [failed]));
+				continue;
+			}
 			const written = await this.writer.write(
 				new OutputFile(config.outFile),
 				tree
 			);
-			if (written.isErr()) {
-				builds[index] = ConfigBuild.failed(
-					config,
-					written.error.diagnostics,
-					findings
-				);
-				break;
-			}
-			builds[index] = builds[index].withOutcome(
-				written.value ? "wrote" : "unchanged"
+			if (written.isErr()) failed = config;
+			builds.push(
+				written.isErr()
+					? new FailedBuild(config, written.error.diagnostics, findings)
+					: new WrittenBuild(
+							config,
+							written.value ? "wrote" : "unchanged",
+							findings,
+							summary,
+							readFiles
+						)
 			);
 		}
 		return builds;
+	}
+
+	private static unwritten(
+		{ config, findings, summary, readFiles }: BuiltConfig,
+		blockedBy: readonly ResolvedConfig[]
+	): UnwrittenBuild {
+		return new UnwrittenBuild(
+			config,
+			findings,
+			summary,
+			readFiles,
+			blockedBy
+		);
 	}
 
 	private builderOf(index: IndexReader): ConfigBuilder {

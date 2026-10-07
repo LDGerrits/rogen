@@ -30,20 +30,12 @@ export interface FileSystemService {
 	writeFile(filePath: string, content: string): Promise<void>;
 
 	delete(filePath: string, recursive?: boolean): Promise<void>;
-	copy(
-		source: string,
-		destination: string,
-		overwrite?: boolean
-	): Promise<void>;
 
 	rename(
 		source: string,
 		destination: string,
 		overwrite?: boolean
 	): Promise<void>;
-
-	/** Rejects with ENOENT for a link to nothing and ELOOP for links that only point at each other. */
-	realPath(filePath: string): Promise<string>;
 }
 
 export const FileSystemService =

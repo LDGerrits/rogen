@@ -4,7 +4,11 @@ import {
 	RebuildReport,
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
-import { ConfigBuild } from "../../../domain/build/build.js";
+import {
+	ConfigBuild,
+	FailedBuild,
+	WrittenBuild,
+} from "../../../domain/build/build.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -156,7 +160,7 @@ describe("WatchLog.update", () => {
 
 		it("should print only the diagnostics the session hadn't reported", () => {
 			const { log, logService } = session();
-			const built = ConfigBuild.built(
+			const built = new WrittenBuild(
 				entry.config,
 				"unchanged",
 				{ warnings: [warning("a"), warning("b")], syncWarnings: [] },
@@ -189,7 +193,7 @@ describe("WatchLog.update", () => {
 				{ resource: entry.file },
 				"bad."
 			);
-			const failed = ConfigBuild.failed(entry.config, [error]);
+			const failed = new FailedBuild(entry.config, [error]);
 
 			log.update(updateOf({ reports: [reportOf(failed, [error])] }));
 			log.update(updateOf({ reports: [reportOf(failed, [], true)] }));

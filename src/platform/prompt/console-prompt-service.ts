@@ -96,13 +96,13 @@ const errorFooter = (error: string) => [
 ];
 
 interface PromptStreams {
-	readonly input?: Readable & { readonly isTTY?: boolean };
-	readonly output?: Writable & { readonly isTTY?: boolean };
+	readonly input?: Readable;
+	readonly output?: Writable;
 }
 
 interface PromptSession extends PromptStreams {
-	/** Whether a person can answer; by default, whether both streams are terminals. */
-	readonly interactive?: boolean;
+	/** Whether a person can answer, as the environment decides (`EnvironmentService.isInteractive`). */
+	readonly interactive: boolean;
 }
 
 export class ConsolePromptService implements PromptService {
@@ -114,8 +114,8 @@ export class ConsolePromptService implements PromptService {
 	constructor({
 		input = process.stdin,
 		output = process.stdout,
-		interactive = Boolean(input.isTTY && output.isTTY),
-	}: PromptSession = {}) {
+		interactive,
+	}: PromptSession) {
 		this.streams = { input, output };
 		this.isInteractive = interactive;
 	}

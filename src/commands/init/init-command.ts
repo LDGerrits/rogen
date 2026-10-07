@@ -1,6 +1,5 @@
 import path from "path";
-import { CancelledError, ReportedError } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
+import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import {
@@ -15,7 +14,6 @@ import {
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { PromptService } from "../../platform/prompt/prompt-service.js";
 
 const InitOptions = [
 	{
@@ -75,7 +73,6 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			// A JSON document is read by a program, which can't answer a question.
 			const ask = !line.options.yes && !line.options.json;
-			const asked = ask && accessor.get(PromptService).isInteractive;
 
 			if (!line.options.json) logService.intro("rogen init");
 			const planned = await initService.plan(line.positionals, { ask });
@@ -85,22 +82,16 @@ registerCommand(
 
 			return line.options.json
 				? this.writeAsJson(initService, logService, plan)
-				: this.writeAsText(
-						initService,
-						logService,
-						plan,
-						asked
-					);
+				: this.writeAsText(initService, logService, plan);
 		}
 
 		private async writeAsText(
 			initService: InitService,
 			logService: LogService,
-			plan: InitPlan,
-			interactive: boolean
+			plan: InitPlan
 		): Promise<Result<void, Error>> {
 			// A blank gutter line sets the results apart from the last answer.
-			if (interactive) logService.info("");
+			if (plan.asked) logService.info("");
 			for (const note of plan.notes) logService.info(note);
 			const written = await initService.write(
 				plan,
@@ -135,25 +126,18 @@ registerCommand(
 					if (appends) appended.push(file);
 				}
 			);
-			if (written.isErr()) {
-				logService.print(
-					formatJsonDocument({
-						files,
-						appended,
-						error: written.error.message,
-					})
+			if (written.isErr())
+				return this.printJson(
+					logService,
+					{ files, appended, error: written.error.message },
+					written.error
 				);
-				return err(new ReportedError(written.error));
-			}
-			logService.print(
-				formatJsonDocument({
-					files,
-					appended,
-					notes: plan.notes,
-					nextSteps: plan.nextSteps,
-				})
-			);
-			return ok(undefined);
+			return this.printJson(logService, {
+				files,
+				appended,
+				notes: plan.notes,
+				nextSteps: plan.nextSteps,
+			});
 		}
 	}
 );

@@ -11,6 +11,7 @@ import {
 import {
 	CommandLine,
 	GlobalOptions,
+	HELP_COMMAND,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
@@ -163,7 +164,7 @@ registerCommand(
 	class HelpCommand extends AbstractCommand {
 		constructor() {
 			super({
-				id: "help",
+				id: HELP_COMMAND,
 				metadata: {
 					description:
 						"Prints usage, a command's details, a topic, or what a diagnostic code means.",

@@ -3,15 +3,10 @@ import { containsPosix, toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
-import {
-	IgnoredPath,
-	isIgnored,
-	WatchOptions,
-	WatchRequest,
-} from "./watcher.js";
+import { IgnoredPath, isIgnored, WatchOptions } from "./watcher.js";
 
 export class MemoryWatcher extends AbstractWatcher {
-	private activeRequests: WatchRequest[] = [];
+	private watched: readonly string[] = [];
 	private ignored: readonly IgnoredPath[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
@@ -23,14 +18,11 @@ export class MemoryWatcher extends AbstractWatcher {
 	}
 
 	protected async startWatching(
-		requests: WatchRequest[],
+		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
 		this.ignored = options.ignored ?? [];
-		this.activeRequests = requests.map((req) => ({
-			...req,
-			path: toPosix(req.path),
-		}));
+		this.watched = paths.map(toPosix);
 
 		if (!this.watchDisposables) {
 			this.watchDisposables = new DisposableStore();
@@ -39,10 +31,8 @@ export class MemoryWatcher extends AbstractWatcher {
 				const normalizedChangePath = toPosix(change.path);
 				if (isIgnored(normalizedChangePath, this.ignored)) return;
 
-				const isWatched = this.activeRequests.some((req) =>
-					req.recursive
-						? containsPosix(req.path, normalizedChangePath)
-						: normalizedChangePath === req.path
+				const isWatched = this.watched.some((watched) =>
+					containsPosix(watched, normalizedChangePath)
 				);
 
 				if (isWatched) {
@@ -61,7 +51,7 @@ export class MemoryWatcher extends AbstractWatcher {
 			this.watchDisposables[Symbol.dispose]();
 			this.watchDisposables = null;
 		}
-		this.activeRequests = [];
+		this.watched = [];
 		this.ignored = [];
 	}
 }

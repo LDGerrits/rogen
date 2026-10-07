@@ -1,5 +1,6 @@
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -19,6 +20,20 @@ import { BaseConfigReader } from "./base-config-reader.js";
 import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
 import { ExtendingConfigSetup } from "./extending-config-setup.js";
+
+/** A setup's questions, whose answers come back bound to the setup that plans them; `undefined` when the user cancelled. */
+type Asking = () => Promise<
+	Result<((builder: InitPlanBuilder) => void) | undefined, Diagnostic[]>
+>;
+
+function asking<C>(setup: Setup<C>): Asking {
+	return async () =>
+		(await setup.ask()).map((choices) =>
+			choices === undefined
+				? undefined
+				: (builder: InitPlanBuilder) => setup.plan(choices, builder)
+		);
+}
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -104,16 +119,18 @@ export class CoreInitService implements InitService {
 			questions,
 			this.fileSystemService
 		);
-		if (!directory.hasDefaultConfig && directory.hasConfigs)
-			return this.planWith(directory, projectSetup);
+		const { base } = directory;
+		if (!base && directory.hasConfigs)
+			return this.planWith(directory, questions, asking(projectSetup));
 		const read = await this.agentFileIn(directory);
 		if (read.isErr()) return read;
 		const agentFile = read.value;
-		if (!directory.hasDefaultConfig)
+		if (!base)
 			return this.planWith(
 				directory,
-				projectSetup,
-				new AgentSetup(agentFile, questions)
+				questions,
+				asking(projectSetup),
+				asking(new AgentSetup(agentFile, questions))
 			);
 		const offered = agentFile.hasBlock ? undefined : agentFile.fileName;
 		switch (await questions.whatToAdd(offered)) {
@@ -122,19 +139,26 @@ export class CoreInitService implements InitService {
 			case "place":
 				return this.planWith(
 					directory,
-					new PlaceSetup(directory, questions)
+					questions,
+					asking(new PlaceSetup(directory, base, questions))
 				);
 			case "extending":
 				return this.planWith(
 					directory,
-					new ExtendingConfigSetup(directory, questions)
+					questions,
+					asking(new ExtendingConfigSetup(directory, questions))
 				);
 			case "separate":
-				return this.planWith(directory, projectSetup);
+				return this.planWith(
+					directory,
+					questions,
+					asking(projectSetup)
+				);
 			case "agent":
 				return this.planWith(
 					directory,
-					new AgentSetup(agentFile, questions, true)
+					questions,
+					asking(new AgentSetup(agentFile, questions, true))
 				);
 		}
 	}
@@ -142,18 +166,19 @@ export class CoreInitService implements InitService {
 	/** Asks each setup its questions in turn, then plans what the answers write. */
 	private async planWith(
 		directory: InitDirectory,
-		...setups: readonly Setup<unknown>[]
+		questions: InitQuestions,
+		...setups: readonly Asking[]
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const answers: unknown[] = [];
-		for (const setup of setups) {
-			const asked = await setup.ask();
+		const plans: ((builder: InitPlanBuilder) => void)[] = [];
+		for (const ask of setups) {
+			const asked = await ask();
 			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
 			if (asked.value === undefined) return ok(undefined);
-			answers.push(asked.value);
+			plans.push(asked.value);
 		}
 
-		const builder = new InitPlanBuilder(directory);
-		setups.forEach((setup, index) => setup.plan(answers[index], builder));
+		const builder = new InitPlanBuilder(directory, questions.interactive);
+		for (const plan of plans) plan(builder);
 		const plan = builder.build();
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}

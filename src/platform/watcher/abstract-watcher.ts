@@ -3,9 +3,9 @@ import { onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
 import { LogService } from "../log/log-service.js";
-import { WatchOptions, WatchRequest, Watcher } from "./watcher.js";
+import { WatchOptions, Watcher } from "./watcher.js";
 
-/** The events and disposal every watcher shares; a subclass reports what it sees through `fireChange` and `fireError`. */
+/** The events and disposal every watcher shares; a subclass reports what it sees through `fireChange`. */
 export abstract class AbstractWatcher
 	extends AbstractDisposable
 	implements Watcher
@@ -17,37 +17,28 @@ export abstract class AbstractWatcher
 	);
 	readonly onDidChangeFile: Event<FileChange[]> = this._onDidChangeFile.event;
 
-	private readonly _onDidError = this._register(new Emitter<Error>());
-	readonly onDidError: Event<Error> = this._onDidError.event;
-
 	constructor(protected readonly logService: LogService) {
 		super();
 	}
 
 	/** Replaces whatever was being watched. */
 	async watch(
-		requests: WatchRequest[],
+		paths: readonly string[],
 		options: WatchOptions = {}
 	): Promise<void> {
-		this.logService.debug(
-			`Started watching paths: ${requests.map(({ path }) => path).join(", ")}`
-		);
-		await this.startWatching(requests, options);
+		this.logService.debug(`Started watching paths: ${paths.join(", ")}`);
+		await this.startWatching(paths, options);
 	}
 
 	abstract stop(): Promise<void>;
 
 	protected abstract startWatching(
-		requests: WatchRequest[],
+		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void>;
 
 	protected fireChange(change: FileChange): void {
 		this._onDidChangeFile.fire([change]);
-	}
-
-	protected fireError(error: Error): void {
-		this._onDidError.fire(error);
 	}
 
 	override [Symbol.dispose](): void {
