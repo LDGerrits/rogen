@@ -1,0 +1,1 @@
+{ "steps": [["where", "src/A.luau"], ["where", "src/A.luau", "--json"]], "rojo": false }

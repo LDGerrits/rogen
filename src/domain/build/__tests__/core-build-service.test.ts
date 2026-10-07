@@ -310,6 +310,51 @@ describe("CoreBuildService", () => {
 			).toMatchObject([{ code: "route.noRoutes" }]);
 		});
 
+		it("should answer from the configs that load and return the errors of one that doesn't", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const errors = [
+				errorDiagnostic(
+					"config.invalidSyntax",
+					{ resource: abs("broken.rogen.json") },
+					"not JSON"
+				),
+			];
+
+			const result = (
+				await buildServiceOfFs().locate(
+					new MockConfigSelection([
+						brokenEntry(errors, abs("broken.rogen.json")),
+						mockEntry(
+							{
+								rootDirs: [abs("src")],
+								routes: { "*": "ReplicatedStorage" },
+							},
+							abs("default.rogen.json")
+						),
+					]),
+					{ args: [], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(result.configs.map(({ config }) => config.label)).toEqual([
+				"default",
+			]);
+			expect(result.errors).toEqual(errors);
+		});
+
+		it("should answer nothing when no config loads", async () => {
+			const result = (
+				await buildServiceOfFs().locate(
+					new MockConfigSelection([
+						brokenEntry([], abs("broken.rogen.json")),
+					]),
+					{ args: [], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(result.configs).toEqual([]);
+		});
+
 		it("should name every config that declares no routes", async () => {
 			const result = await buildServiceOfFs().locate(
 				selectionOf(

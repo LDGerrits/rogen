@@ -1,4 +1,4 @@
-import { Result, ok } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
@@ -6,6 +6,7 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
@@ -60,10 +61,15 @@ registerCommand(
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			if (line.options.json) return this.printJson(logService, report.json());
+			const failure =
+				report.errors.length > 0
+					? new DiagnosticsError(report.errors)
+					: undefined;
+			if (line.options.json)
+				return this.printJson(logService, report.json(), failure);
 			const lines = report.lines();
 			if (lines.length > 0) logService.print(lines.join("\n"));
-			return ok(undefined);
+			return failure ? err(failure) : ok(undefined);
 		}
 	}
 );

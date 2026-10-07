@@ -7,6 +7,11 @@ import {
 	Locations,
 } from "../../domain/build/build.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
+import {
+	Diagnostic,
+	DiagnosticJson,
+	diagnosticToJson,
+} from "../../platform/diagnostics/diagnostic.js";
 
 /** What one config says: where a path lands, or that no file places an instance. */
 type Answer =
@@ -116,14 +121,17 @@ function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 /** Where files land, one line per path however many configs answered. */
 export class LocationReport {
 	private readonly answers: Answer[];
+	/** Why the configs that didn't load did not answer. */
+	readonly errors: readonly Diagnostic[];
 	private readonly configs: number;
 	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
 	private readonly sorted: boolean;
 
 	constructor(
 		private readonly cwd: string,
-		{ everyFile, configs }: Locations
+		{ everyFile, configs, errors }: Locations
 	) {
+		this.errors = errors;
 		this.configs = configs.length;
 		this.sorted = everyFile;
 		this.answers = configs.flatMap((located) => this.answersOf(located));
@@ -167,7 +175,10 @@ export class LocationReport {
 	}
 
 	/** One entry per config and path, in the order `lines` puts the paths, under `locations`. */
-	json(): { locations: Record<string, unknown>[] } {
+	json(): {
+		locations: Record<string, unknown>[];
+		diagnostics: DiagnosticJson[];
+	} {
 		const locations = this.bySource()
 			.flat()
 			.map((answer) => ({
@@ -180,7 +191,10 @@ export class LocationReport {
 						}
 					: { instance: answer.instance, status: "noFile" }),
 			}));
-		return { locations };
+		return {
+			locations,
+			diagnostics: this.errors.map(diagnosticToJson),
+		};
 	}
 
 	private bySource(): Answer[][] {

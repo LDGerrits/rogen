@@ -1,6 +1,10 @@
 import { FileLocation, InstanceLocation } from "../../../domain/build/build.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { LocationReport } from "../location-report.js";
 
 /** A report of what each labelled config said; `everyFile` when no path was asked about. */
@@ -10,10 +14,12 @@ const reportOf = (
 		files: FileLocation[],
 		instances?: InstanceLocation[],
 	][],
-	everyFile = false
+	everyFile = false,
+	errors: Diagnostic[] = []
 ) =>
 	new LocationReport("/repo", {
 		everyFile,
+		errors,
 		configs: configs.map(([label, files, instances = []]) => ({
 			config: mockConfig({ file: `/repo/${label}.rogen.json` }),
 			files,
@@ -301,6 +307,27 @@ describe("LocationReport", () => {
 		const jsonOf = (location: FileLocation) => {
 			return reportOf([["default", [location]]]).json().locations;
 		};
+
+		it("should hold the errors of the configs that didn't load beside the locations", () => {
+			const error = errorDiagnostic(
+				"config.invalidSyntax",
+				{ resource: "/repo/broken.rogen.json" },
+				"bad."
+			);
+
+			const document = reportOf([], false, [error]).json();
+
+			expect(document).toMatchObject({
+				locations: [],
+				diagnostics: [
+					{
+						file: "/repo/broken.rogen.json",
+						code: "config.invalidSyntax",
+					},
+				],
+			});
+			expect(Object.keys(document)).toEqual(["locations", "diagnostics"]);
+		});
 
 		it("should give the config, the source, the instance path, the route and how it matched", () => {
 			expect(

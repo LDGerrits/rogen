@@ -94,7 +94,8 @@ stdout:
         "status": "excluded",
         "pattern": "<dir>/src/Specs"
       }
-    ]
+    ],
+    "diagnostics": []
   }
 
 $ rogen where --json src/Net/Http.mock.luau --variant mock
@@ -121,7 +122,8 @@ stdout:
           }
         ]
       }
-    ]
+    ],
+    "diagnostics": []
   }
 
 $ rogen where --json ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
@@ -161,5 +163,6 @@ stdout:
         "instance": "ReplicatedStorage/Shared/Nope",
         "status": "noFile"
       }
-    ]
+    ],
+    "diagnostics": []
   }

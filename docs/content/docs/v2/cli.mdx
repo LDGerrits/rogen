@@ -68,6 +68,8 @@ $ rogen where places/lobby/Lobby/Server/Queue.luau
 lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
 ```
 
+A config that doesn't load answers nothing: `where` prints the answers of the configs that do, then the broken config's errors, and exits 1.
+
 `where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
 
 ### `init [name]`
@@ -170,7 +172,7 @@ A config that doesn't load is an entry like the others: `outFile` is `null`, `ou
 
 ### `where --json`
 
-An object with a `locations` array: one entry per config and path, each with `config`, `status` and `source`, plus:
+An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of any config that didn't load (the exit code is then 1) and is empty otherwise. `locations` has one entry per config that loaded and path, each with `config`, `status` and `source`, plus:
 
 | `status` | Fields |
 |---|---|

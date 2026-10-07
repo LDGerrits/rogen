@@ -49,6 +49,7 @@ export class Locator {
 			everyFile:
 				targets.paths.length === 0 && targets.instances.length === 0,
 			configs: located,
+			errors: [],
 		});
 	}
 

@@ -101,17 +101,26 @@ export class CoreBuildService implements BuildService {
 		selection: ConfigSelection,
 		targets?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
-		const configs = selection.requireValid();
-		if (configs.isErr()) return configs;
+		const errors = selection.entries.flatMap((entry) =>
+			entry.status === "broken" ? entry.errors : []
+		);
+		const configs = selection.entries.flatMap((entry) =>
+			entry.status === "valid" ? [entry.config] : []
+		);
 
 		const listing = await this.indexService.list(
-			configs.value.flatMap(({ rootDirs }) => rootDirs)
+			configs.flatMap(({ rootDirs }) => rootDirs)
 		);
-		return new Locator(
+		const located = await new Locator(
 			this.fileSystemService,
 			listing,
 			this.syncTools
-		).locate(configs.value, targets);
+		).locate(configs, targets);
+		if (located.isErr())
+			return err(
+				new DiagnosticsError([...errors, ...located.error.diagnostics])
+			);
+		return ok({ ...located.value, errors });
 	}
 
 	/** Builds every config from `listing`, then writes them in order unless one failed or `unloaded` names a config that didn't load. */

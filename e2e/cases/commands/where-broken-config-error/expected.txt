@@ -1,0 +1,38 @@
+$ rogen where src/A.luau
+exit 1
+stdout:
+  src/A.luau -> ReplicatedStorage/shared/A · route * (fallback)
+stderr:
+  broken.rogen.json:3:29 - error: invalid JSONC: expected '}'.
+
+$ rogen where src/A.luau --json
+exit 1
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/A.luau",
+        "status": "placed",
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "A"
+        ],
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": []
+      }
+    ],
+    "diagnostics": [
+      {
+        "file": "<dir>/broken.rogen.json",
+        "line": 3,
+        "column": 29,
+        "severity": "error",
+        "code": "config.invalidSyntax",
+        "message": "invalid JSONC: expected '}'.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+      }
+    ]
+  }

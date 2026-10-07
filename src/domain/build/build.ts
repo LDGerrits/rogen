@@ -285,7 +285,10 @@ export interface SyncTool {
 export interface Locations {
 	/** No path or instance was asked about, so `files` holds every file. */
 	readonly everyFile: boolean;
+	/** The configs that load; each answers for itself. */
 	readonly configs: readonly ConfigLocations[];
+	/** Why the configs that didn't load did not answer. */
+	readonly errors: readonly Diagnostic[];
 }
 
 /** The project file a config writes, and the staging files its writes go through. */

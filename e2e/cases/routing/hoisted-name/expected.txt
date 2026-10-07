@@ -30,7 +30,8 @@ stdout:
         "variants": [],
         "hoisted": true
       }
-    ]
+    ],
+    "diagnostics": []
   }
 
 written:

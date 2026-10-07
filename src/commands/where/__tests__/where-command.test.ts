@@ -223,6 +223,21 @@ describe("where command", () => {
 		expect(printed()).toEqual([]);
 	});
 
+	it("should print the answers, then the errors of a config that doesn't load, and fail", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await writeConfig("broken.rogen.json", { routes: ROUTES, bogus: 1 });
+		await write("src/Util.luau");
+
+		const result = await run({ _: ["src/Util.luau"] });
+
+		expect(printed()).toEqual([
+			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+		]);
+		expect(result.isErr() && result.error.message).toContain(
+			"/repo/broken.rogen.json:1:"
+		);
+	});
+
 	describe("with --json", () => {
 		const document = () =>
 			(
@@ -336,16 +351,34 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should fail without printing when the config is broken, for the caller to report", async () => {
-			await writeConfig("default.rogen.json", {
+		it("should answer from the configs that load and print the errors of one that doesn't", async () => {
+			await writeConfig("broken.rogen.json", {
 				routes: ROUTES,
 				bogus: 1,
 			});
 
-			const result = await run({ json: true });
+			const result = await run({
+				_: ["src/Inventory/Server/Save.luau"],
+				json: true,
+			});
 
 			expect(result.isErr()).toBe(true);
-			expect(printed()).toEqual([]);
+			const { locations, diagnostics } = JSON.parse(
+				printed().join("\n")
+			) as { locations: { config: string }[]; diagnostics: unknown[] };
+			expect(locations.map(({ config }) => config)).toEqual(["default"]);
+			expect(diagnostics).toMatchObject([
+				{
+					file: "/repo/broken.rogen.json",
+					code: "config.unknownField",
+				},
+			]);
+		});
+
+		it("should print an empty list of diagnostics when every config loads", async () => {
+			await run({ json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
 		});
 	});
 

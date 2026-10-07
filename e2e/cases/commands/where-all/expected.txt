@@ -34,5 +34,6 @@ stdout:
         "routeMatch": "folder",
         "variants": []
       }
-    ]
+    ],
+    "diagnostics": []
   }
