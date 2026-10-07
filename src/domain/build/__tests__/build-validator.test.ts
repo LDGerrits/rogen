@@ -187,7 +187,7 @@ describe("BuildValidator rules", () => {
 				await write(
 					"src/Server/Save.luau",
 					"src/Inventory/@Client",
-					"src/Inventory/Load@Server.luau"
+					"src/Inventory/Load@Client.luau"
 				);
 
 				expect(await caseWarnings()).toEqual([]);
@@ -256,37 +256,6 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
-			it("should report a route before another route in one name, on a folder as on a file, bare or not", async () => {
-				await write(
-					"src/Net@client@server/A.luau",
-					"src/@client@server/B.luau",
-					"src/Foo@client@server.luau",
-					"src/@client@server.luau"
-				);
-
-				const result = (await route()).unwrap();
-
-				expect(
-					result.warnings.map(({ code, resource }) => [code, resource])
-				).toEqual(
-					expect.arrayContaining([
-						["route.ignoredAt", abs("src/Net@client@server")],
-						["route.ignoredAt", abs("src/@client@server")],
-						["route.ignoredAt", abs("src/Foo@client@server.luau")],
-						["route.ignoredAt", abs("src/@client@server.luau")],
-					])
-				);
-				expect(result.warnings).toHaveLength(4);
-				expect(
-					result.routed.map(({ instancePath }) => instancePath.join("/"))
-				).toEqual([
-					"ServerScriptService/@client",
-					"ServerScriptService/@client/B",
-					"ServerScriptService/Foo@client",
-					"ServerScriptService/Net@client/A",
-				]);
-			});
-
 			it("should list the first few and count the rest", async () => {
 				await write(
 					...Array.from(
@@ -301,8 +270,8 @@ describe("BuildValidator rules", () => {
 				expect(warning.message).toContain("2 more like it");
 			});
 
-			it("should not warn for a route that an outer route ignores", async () => {
-				await write("src/server/Net/Save@client.luau");
+			it("should not warn for a route that restates the outer one", async () => {
+				await write("src/server/Net/Save@server.luau");
 
 				expect(await strayWarnings()).toEqual([]);
 			});
@@ -502,7 +471,7 @@ describe("BuildValidator rules", () => {
 			it("should not warn about a ModuleScript or a script that is pruned", async () => {
 				await write(
 					"src/server/Hud.client.mock.luau",
-					"src/server/Save@client.luau"
+					"src/server/Save@server.luau"
 				);
 
 				expect(await dead({ variants: { mock: false } })).toEqual([]);
@@ -694,23 +663,12 @@ describe("BuildValidator rules", () => {
 				});
 			});
 
-			it("should warn about an @ marker an outer route outranks, and one that nearly spells a route", async () => {
-				await write(
-					"src/server/Ui/@client",
-					"src/server/Ui/A.luau",
-					"src/Ui/@sever",
-					"src/Ui/B.luau"
-				);
+			it("should warn about an @ marker that nearly spells a route", async () => {
+				await write("src/Ui/@sever", "src/Ui/B.luau");
 
 				const warnings = (await route({ routes: SHARED })).unwrap()
 					.warnings;
 
-				expect(warnings).toContainEqual(
-					expect.objectContaining({
-						code: "route.ignoredAt",
-						resource: at("src/server/Ui/@client"),
-					})
-				);
 				expect(
 					warnings.find(({ code }) => code === "route.strayAt")
 						?.message
@@ -958,10 +916,10 @@ describe("BuildValidator rules", () => {
 						({ code }) => code === "route.serverCodeShipped"
 					);
 
-			it("should warn once, naming each file, the route it sits under and the one that governs it", async () => {
+			it("should warn once, naming each file, the route it sits under, the one that governs it and the marker that keeps it", async () => {
 				await write(
 					"src/ReplicatedFirst/server/Datastore.luau",
-					"src/ReplicatedFirst/Other@server/Save.luau",
+					"src/ReplicatedFirst/(server)/Save.luau",
 					"src/server/Net/Fine.luau"
 				);
 
@@ -973,20 +931,82 @@ describe("BuildValidator rules", () => {
 				expect(warning.message).toBe(
 					[
 						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',
-						`  ${abs("src/ReplicatedFirst/Other@server/Save.luau")} -> ReplicatedFirst/Other@server/Save`,
+						`  ${abs("src/ReplicatedFirst/(server)/Save.luau")} -> ReplicatedFirst/Save`,
 						`  ${abs("src/ReplicatedFirst/server/Datastore.luau")} -> ReplicatedFirst/server/Datastore`,
-						"Move them out of the \"ReplicatedFirst\" route's files if they're server code.",
+						'Move them out of the "ReplicatedFirst" route\'s files if they\'re server code, or keep them there with a "@ReplicatedFirst" marker file in their folder.',
 					].join("\n")
 				);
 			});
 
-			it("should warn for a data file and a suffix that an outer route ignores", async () => {
+			it("should warn for a data file and a model in the folder", async () => {
 				await write(
-					"src/ReplicatedFirst/Config@server.json",
-					"src/ReplicatedFirst/Rules@server.luau"
+					"src/ReplicatedFirst/server/Config.json",
+					"src/ReplicatedFirst/server/Rig.rbxm"
 				);
 
 				expect((await shipped())[0].message).toContain("2 files");
+			});
+
+			it("should not warn about files a sign restating the governing route covers, at or below the folder", async () => {
+				await write(
+					"src/ReplicatedFirst/server/@ReplicatedFirst",
+					"src/ReplicatedFirst/server/Secret.luau",
+					"src/ReplicatedFirst/server/Deep/More.luau",
+					"src/ReplicatedFirst/(server)/@ReplicatedFirst",
+					"src/ReplicatedFirst/(server)/Hidden.luau",
+					"src/ReplicatedFirst/Net/server/Inner@ReplicatedFirst/Ok.luau",
+					"src/ReplicatedFirst/Net/server/Kept@ReplicatedFirst.luau",
+					"src/ReplicatedFirst/Net/server/Other.luau"
+				);
+
+				const [warning, ...others] = await shipped();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("1 file ");
+				expect(warning.message).toContain(
+					abs("src/ReplicatedFirst/Net/server/Other.luau")
+				);
+			});
+
+			it("should warn about the files beside an init script whose Rojo suffix an outer route outranks", async () => {
+				await write(
+					"src/ReplicatedFirst/Store/init.server.luau",
+					"src/ReplicatedFirst/Store/Data.luau"
+				);
+
+				const [warning, ...others] = await shipped();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("1 file ");
+				expect(warning.message).toContain(
+					abs("src/ReplicatedFirst/Store/Data.luau")
+				);
+			});
+
+			it("should name a marker per route when several govern the files", async () => {
+				await write(
+					"src/ReplicatedFirst/server/A.luau",
+					"src/client/server/B.luau"
+				);
+
+				const [warning] = await shipped();
+
+				expect(warning.message).toContain(
+					'or keep them there with a marker file that restates their route ("@ReplicatedFirst" or "@client") in their folder.'
+				);
+			});
+
+			it("should still warn about a server folder below the one a marker covers", async () => {
+				await write(
+					"src/ReplicatedFirst/server/@ReplicatedFirst",
+					"src/ReplicatedFirst/server/Deep/server/Leak.luau"
+				);
+
+				const [warning] = await shipped();
+
+				expect(warning.message).toContain(
+					abs("src/ReplicatedFirst/server/Deep/server/Leak.luau")
+				);
 			});
 
 			it("should not warn when the governing route is server-only too", async () => {
@@ -1033,60 +1053,6 @@ describe("BuildValidator rules", () => {
 						))();
 
 				expect(warning).toBeUndefined();
-			});
-		});
-
-		describe("an @ an outer route outranks", () => {
-			const ignoredAts = async () =>
-				(await route())
-					.unwrap()
-					.warnings.filter(({ code }) => code === "route.ignoredAt");
-
-			it("should warn per file that the suffix does nothing and stays in the name", async () => {
-				await write(
-					"src/server/Util@client.luau",
-					"src/client/Hud@client.luau"
-				);
-
-				const warnings = await ignoredAts();
-
-				expect(warnings.map(({ resource }) => resource)).toEqual([
-					abs("src/client/Hud@client.luau"),
-					abs("src/server/Util@client.luau"),
-				]);
-				expect(warnings[1].message).toBe(
-					'"@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route\'s files.'
-				);
-			});
-
-			it("should leave a file that ships to clients to that warning", async () => {
-				await write("src/client/Save@server.luau");
-
-				expect(await ignoredAts()).toEqual([]);
-			});
-
-			it("should warn once per folder whose @ does nothing, where it stays in the name", async () => {
-				await write(
-					"src/server/Ui@client/Hud.luau",
-					"src/server/Ui@client/Bar.luau",
-					"src/server/@client/Probe.luau"
-				);
-
-				const warnings = await ignoredAts();
-
-				expect(warnings.map(({ resource }) => resource)).toEqual([
-					abs("src/server/@client"),
-					abs("src/server/Ui@client"),
-				]);
-				expect(warnings[1].message).toBe(
-					'"@client" does nothing here, because the "server" route already governs this folder, so it stays in the name (Ui@client). Remove it, or move the folder out of the "server" route\'s files.'
-				);
-			});
-
-			it("should not warn about a folder named after a route that an outer route outranks", async () => {
-				await write("src/server/client/Bar.luau");
-
-				expect(await ignoredAts()).toEqual([]);
 			});
 		});
 	});

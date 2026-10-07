@@ -1,16 +1,8 @@
 $ rogen build
-exit 0
+exit 1
 stdout:
   rogen build · default
-  default.project.json · wrote
-  Built 1 config.
+  build failed.
 stderr:
-  src/server/@client - warning: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-
-written:
-  default.project.json
-
-$ rojo sourcemap default.project.json
-project: DataModel
-  ServerScriptService: ServerScriptService
-    Save: ModuleScript  <- src/server/Save.luau
+  error: default.project.json · not written
+  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.

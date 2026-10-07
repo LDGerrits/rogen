@@ -121,6 +121,8 @@ src/Inventory/Hud.client.luau         ->  StarterPlayer/StarterPlayerScripts/Inv
 src/server/Inventory/Hud.client.luau  ->  ServerScriptService/Inventory/Hud
 ```
 
+An `@` below the governing route is an error, since it would do nothing while its name says the file goes elsewhere: `server/Util@client.luau`, `server/Ui@client/` and a `server/Ui/@client` marker each stop the build. An `@` that restates the governing route is fine, and comes off the name like any route: `Shared/Net/Remote@Shared.luau` lands as `Remote`.
+
 ### Server Code Under a Replicating Route
 
 This means a `Server/` folder inside `Shared/` is just a folder, and its code ships to every client:
@@ -130,13 +132,15 @@ src/Shared/Server/Datastore.luau    ->  ReplicatedStorage/Shared/Server/Datastor
 src/Shared/(Server)/Datastore.luau  ->  ReplicatedStorage/Shared/Datastore
 ```
 
-Rogen warns when an ignored route points at `ServerScriptService` or `ServerStorage` but the file lands somewhere that replicates:
+Rogen warns when such a folder's route points at `ServerScriptService` or `ServerStorage` but the file lands somewhere that replicates:
 
 ```
 default.rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it:
   src/Shared/Server/Datastore.luau -> ReplicatedStorage/Shared/Server/Datastore
-Move it out of the "Shared" route's files if it's server code.
+Move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder.
 ```
+
+If the folder is meant to replicate, say so where it is: a `Shared/Server/@Shared` marker restates the governing route, and Rogen stops warning about every file below it. There's no ignore list in the config.
 
 ### Scripts That Never Run
 

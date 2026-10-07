@@ -65,7 +65,6 @@ export class BuildValidator {
 			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
-			...this.ignoredAt(),
 			...this.deadScript(),
 			...this.buriedScriptSuffix(),
 			...this.instanceClash(),
@@ -279,11 +278,11 @@ export class BuildValidator {
 		);
 	}
 
-	/** The files a server route names but a replicating one governs, with the server routes ignored. */
+	/** The files a bare server routing folder holds but a replicating route governs, with the server routes ignored. */
 	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
 		return this.placement.files.flatMap((file) => {
-			const ignored = [...new Set(file.ignoredRoutes)].filter((key) => {
+			const ignored = [...new Set(file.outrankedFolderRoutes)].filter((key) => {
 				const service = routes.get(key)?.service;
 				return service !== undefined && isServerOnlyService(service);
 			});
@@ -299,58 +298,7 @@ export class BuildValidator {
 		});
 	}
 
-	/** An `@` an outer route outranks does nothing, once per file or folder that spells it; the files it ships to clients are reported as such instead. */
-	private ignoredAt(): Diagnostic[] {
-		const shipped = new Set(
-			this.shipped().map(({ file }) => file.entry.source)
-		);
-		const ignored = new Map<
-			string,
-			{ key: string; route: string; kind: string; name?: string }
-		>();
-		for (const file of this.placement.files) {
-			if (shipped.has(file.entry.source)) continue;
-			for (const { key, dir, marker } of file.ignoredAts) {
-				const { route } = file;
-				if (marker !== undefined)
-					ignored.set(
-						joinPosix(file.entry.rootDir, dir ?? "", marker),
-						{
-							key,
-							route,
-							kind: "folder",
-						}
-					);
-				else if (dir === undefined)
-					ignored.set(file.entry.source, {
-						key,
-						route,
-						kind: "file",
-						name: file.init ? undefined : file.instancePath.at(-1),
-					});
-				else
-					ignored.set(joinPosix(file.entry.rootDir, dir), {
-						key,
-						route,
-						kind: "folder",
-						name: file.folderNodes
-							.find((node) => node.dir === dir)
-							?.instancePath.at(-1),
-					});
-			}
-		}
-		return this.diagnosePaths(
-			[...ignored].sort(([a], [b]) => compareStrings(a, b)),
-			(resource, { key, route, kind, name }) =>
-				warningDiagnostic(
-					"route.ignoredAt",
-					{ resource },
-					`"@${key}" does nothing here, because the "${route}" route already governs this ${kind}${name === undefined ? "" : `, so it stays in the name (${name})`}. Remove it, or move the ${kind} out of the "${route}" route's files.`
-				)
-		);
-	}
-
-	/** A route that an outer route outranks is ignored, which sends a server route's modules to clients when the outer one replicates. */
+	/** A bare server routing folder that an outer route outranks is an ordinary folder, which sends its modules to clients when the outer route replicates. */
 	private serverCodeShipped(): Diagnostic[] {
 		const shipped = this.shipped();
 		if (shipped.length === 0) return [];
@@ -358,13 +306,18 @@ export class BuildValidator {
 		const quoted = (keys: Iterable<string>) =>
 			joinedWithAnd([...new Set(keys)].map((key) => `"${key}"`));
 		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
-		const governing = quoted(shipped.map(({ file }) => file.route));
+		const routeKeys = [...new Set(shipped.map(({ file }) => file.route))];
+		const governing = quoted(routeKeys);
 		const listed = this.listed(
 			shipped,
 			({ file }) =>
 				`${file.entry.source} -> ${instanceKey(file.instancePath)}`
 		);
 		const many = shipped.length > 1;
+		const marker =
+			routeKeys.length === 1
+				? `a "@${routeKeys[0]}" marker file`
+				: `a marker file that restates their route (${routeKeys.map((key) => `"@${key}"`).join(" or ")})`;
 		return [
 			warningDiagnostic(
 				"route.serverCodeShipped",
@@ -372,7 +325,7 @@ export class BuildValidator {
 				[
 					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
 					...listed,
-					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code.`,
+					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
 				].join("\n")
 			),
 		];

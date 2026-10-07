@@ -1,0 +1,25 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Bar: Folder
+        Health: ModuleScript  <- src/Shared/Bar/Health.luau
+      Net: Folder
+        Remote: ModuleScript  <- src/Shared/Net/Remote@shared.luau
+      Store: ModuleScript  <- src/Shared/Store/init@shared.luau
+        Cart: ModuleScript  <- src/Shared/Store/Cart.luau
+      Ui: Folder
+        Hud: ModuleScript  <- src/Shared/Ui@shared/Hud.luau
+  ServerScriptService: ServerScriptService
+    Net: Folder
+      Queue: ModuleScript  <- src/Net@server/Queue.luau

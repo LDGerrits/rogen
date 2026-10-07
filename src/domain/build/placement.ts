@@ -1,4 +1,4 @@
-import { groupBy } from "../../base/collections.js";
+import { compareStrings, groupBy } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -230,17 +230,23 @@ export class Placer {
 		} = new Router(this.config, readings, this.layout.initNames).route(
 			roots
 		);
-		const routeErrors = [
-			...this.markerClashErrors(markerClashes),
+		const clashErrors = this.markerClashErrors(markerClashes);
+		const initErrors = [
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
 		];
-		if (routeErrors.length > 0) return err(routeErrors);
 		const routedNodes = this.withCopies(routed, toCopy);
 		const applied = this.applyVariants(routedNodes);
-		if (applied.isErr()) return applied;
+		if (applied.isErr())
+			return err([...clashErrors, ...initErrors, ...applied.error]);
 		const nodes = this.withoutLoneInits(applied.value.nodes);
 		const templating = this.yieldToTemplate(nodes);
+		const routeErrors = [
+			...clashErrors,
+			...this.ignoredAtErrors(templating.nodes, markerClashes),
+			...initErrors,
+		];
+		if (routeErrors.length > 0) return err(routeErrors);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
@@ -291,6 +297,51 @@ export class Placer {
 				`${joinedWithAnd(names.map((name) => `"${name}"`))} route this folder to different places, and nothing decides between them. Keep one.`
 			)
 		);
+	}
+
+	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, among the files that land. A marker in a clash is that error's. */
+	private ignoredAtErrors(
+		nodes: readonly RoutedFile[],
+		markerClashes: readonly MarkerClash[]
+	): Diagnostic[] {
+		const clashing = new Set(
+			markerClashes.flatMap(({ dir, names }) =>
+				names.map((name) => joinPosix(dir, name))
+			)
+		);
+		const ignored = new Map<
+			string,
+			{ keys: Set<string>; route: string; kind: string }
+		>();
+		for (const { entry, route, ignoredAts } of nodes)
+			for (const { key, dir, marker } of ignoredAts) {
+				const resource =
+					dir === undefined
+						? entry.source
+						: joinPosix(entry.rootDir, dir, marker ?? "");
+				if (clashing.has(resource)) continue;
+				const kind = dir === undefined ? "file" : "folder";
+				const found = ignored.get(resource) ?? {
+					keys: new Set<string>(),
+					route,
+					kind,
+				};
+				found.keys.add(key);
+				ignored.set(resource, found);
+			}
+		return [...ignored]
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([resource, { keys, route, kind }]) => {
+				const many = keys.size > 1;
+				const quoted = joinedWithAnd(
+					[...keys].sort(compareStrings).map((key) => `"@${key}"`)
+				);
+				return errorDiagnostic(
+					"route.ignoredAt",
+					{ resource },
+					`${quoted} ${many ? "do" : "does"} nothing here, because the "${route}" route already governs this ${kind}. Remove ${many ? "them" : "it"}, or move the ${kind} out of the "${route}" route's files.`
+				);
+			});
 	}
 
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
@@ -372,7 +423,7 @@ export class Placer {
 						routeMatch: "copy",
 						instancePath,
 						folderNodes: file.folderNodes.slice(0, at + 1),
-						ignoredRoutes: [],
+						outrankedFolderRoutes: [],
 						ignoredAts: [],
 						variants,
 						variantNodes: variants.map(() => instancePath),

@@ -28,15 +28,15 @@ export interface RoutedFile {
 	readonly instancePath: readonly string[];
 	/** Routing, variant and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
 	readonly folderNodes: readonly FolderNode[];
-	/** The route keys that name the file but sit under the governing route, so they changed nothing. */
-	readonly ignoredRoutes: readonly string[];
+	/** The route keys of bare routing folders above the file that the governing route outranks, unless a sign restating that route sits at or below them. */
+	readonly outrankedFolderRoutes: readonly string[];
 	/** Variant folders and suffixes are already out of `instancePath`; the variant stage decides what they mean. */
 	readonly variants: readonly VariantMatch[];
 	/** The instance each of `variants` gives an alternative of: the node of the folder or marker that carries it, or the file's own. */
 	readonly variantNodes: readonly (readonly string[])[];
 	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
 	readonly buriedScriptSuffix?: RojoScriptSuffix;
-	/** The `@key`s in its name and its folders' that an outer route outranks, which therefore stay in the names. */
+	/** The `@key`s in its name, its folders' and its markers that an outer route outranks and that don't restate it. */
 	readonly ignoredAts: readonly IgnoredAt[];
 	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
 	readonly init?: InitFolders;
@@ -82,21 +82,20 @@ export interface InitWithoutFolder {
 	readonly folder: InstancelessFolder;
 }
 
+/** How many folders deep a directory relative to the root dir is. */
+const depthOf = (dir: string) => (dir === "" ? 0 : dir.split("/").length);
+
 /** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
 class Claims {
-	/** `dir` is set for a marker or init script, which claim at their directory's level. */
-	route:
-		| {
-				readonly key: string;
-				readonly match: RouteMatch;
-				readonly dir?: string;
-		  }
-		| undefined;
-	readonly ignoredRoutes: string[] = [];
+	route: { readonly key: string; readonly match: RouteMatch } | undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
 	readonly variants: VariantMatch[] = [];
 	/** For each of `variants`, the index of the node it claims among the folders that name one, the file's own last. */
 	readonly variantLevels: number[] = [];
+	/** The bare routing folders the governing route outranks, by how deep they are. */
+	private readonly outrankedFolders: { key: string; depth: number }[] = [];
+	/** The depth of the deepest sign that restates the governing route. */
+	private restatedDepth = -1;
 
 	/** The governing route key, or `*`. */
 	get routeKey(): string {
@@ -104,24 +103,32 @@ class Claims {
 	}
 
 	/** Whether the route governs; a later one is ignored whole. */
-	claimRoute(key: string, match: RouteMatch, dir?: string): boolean {
-		if (this.route) {
-			this.ignoredRoutes.push(key);
-			return false;
-		}
-		this.route = { key, match, ...(dir !== undefined && { dir }) };
+	claimRoute(key: string, match: RouteMatch): boolean {
+		if (this.route) return false;
+		this.route = { key, match };
 		return true;
 	}
 
-	/** A route its own name outranks, which stays in the name. */
-	ignoreRoute(key: string, dir: string): void {
-		this.ignoredRoutes.push(key);
-		this.ignoredAts.push({ key, dir });
+	/** The routes of the bare routing folders the governing route outranks that no sign restating it covers, at or below them. */
+	get outrankedFolderRoutes(): string[] {
+		return this.outrankedFolders
+			.filter(({ depth }) => depth > this.restatedDepth)
+			.map(({ key }) => key);
 	}
 
-	/** The same route claimed again at the level that governs is harmless, so it isn't reported. */
-	repeats(key: string, dir: string): boolean {
-		return this.route?.key === key && this.route.dir === dir;
+	/** An `@key` the governing route outranks, at `depth`. One that restates it agrees, so it comes off the name and covers the bare routing folders at or above it; any other is reported at `at`. Returns whether it restates. */
+	outrankSigned(key: string, depth: number, at?: IgnoredAt): boolean {
+		if (this.route?.key === key) {
+			this.restatedDepth = Math.max(this.restatedDepth, depth);
+			return true;
+		}
+		if (at) this.ignoredAts.push(at);
+		return false;
+	}
+
+	/** A bare name of a route the governing one outranks, which may only be a name. */
+	outrankBare(key: string, depth: number): void {
+		if (this.route?.key !== key) this.outrankedFolders.push({ key, depth });
 	}
 
 	claimVariant(variant: VariantMatch, level: number): void {
@@ -162,10 +169,14 @@ export interface InitToCopy extends Pick<
 	readonly placed: RoutedFile | undefined;
 }
 
-/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir. */
+/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, and whether it's spelled `@key`. */
 type InitRoutes = ReadonlyMap<
 	string,
-	readonly { readonly key: string; readonly source: string }[]
+	readonly {
+		readonly key: string;
+		readonly source: string;
+		readonly at: boolean;
+	}[]
 >;
 
 /** Finds each scanned file's governing route and instance path. */
@@ -300,12 +311,17 @@ export class Router {
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
 		const placeable = new Map<
 			string,
-			{ spans: readonly SuffixSpan[]; source: string; varied: boolean }[]
+			{
+				stem: string;
+				spans: readonly SuffixSpan[];
+				source: string;
+				varied: boolean;
+			}[]
 		>();
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitEntry(read)) continue;
-			const spans = read.match.spans;
+			const { stem, match: { spans } } = read;
 			const variants = spans
 				.filter(({ key }) => this.keys.isVariant(key))
 				.map((span) => this.asVariantMatch(span));
@@ -313,10 +329,13 @@ export class Router {
 			const dir = dirnamePosix(entry.relativePath);
 			placeable.set(dir, [
 				...(placeable.get(dir) ?? []),
-				{ spans, source: entry.source, varied: variants.length > 0 },
+				{ stem, spans, source: entry.source, varied: variants.length > 0 },
 			]);
 		}
-		const routes = new Map<string, { key: string; source: string }[]>();
+		const routes = new Map<
+			string,
+			{ key: string; source: string; at: boolean }[]
+		>();
 		for (const [dir, inits] of placeable) {
 			const varied = inits.some((init) => init.varied);
 			// Only the last `@key` of a name routes; the ones before it are outranked.
@@ -324,11 +343,19 @@ export class Router {
 				dir,
 				inits
 					.filter((init) => init.varied || !varied)
-					.flatMap(({ spans, source }) => {
+					.flatMap(({ stem, spans, source }) => {
 						const governing = spans.find(({ key }) =>
 							this.keys.isRoute(key)
 						);
-						return governing ? [{ key: governing.key, source }] : [];
+						return governing
+							? [
+									{
+										key: governing.key,
+										source,
+										at: stem[governing.start] === "@",
+									},
+								]
+							: [];
 					})
 			);
 		}
@@ -349,12 +376,7 @@ export class Router {
 			initRoutes,
 			claims
 		);
-		const leaf = this.claimLeaf(
-			read,
-			claims,
-			folders.length,
-			dirnamePosix(entry.relativePath)
-		);
+		const leaf = this.claimLeaf(read, claims, folders.length);
 		// An init script is its folder, so its own `^` hoists nothing.
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
@@ -389,7 +411,7 @@ export class Router {
 			routeMatch: claims.route?.match ?? "fallback",
 			instancePath,
 			folderNodes,
-			ignoredRoutes: claims.ignoredRoutes,
+			outrankedFolderRoutes: claims.outrankedFolderRoutes,
 			variants: claims.variants,
 			variantNodes: claims.variantLevels.map(
 				(level) =>
@@ -438,6 +460,7 @@ export class Router {
 		readonly hoistAt: number | undefined;
 	} {
 		const applyDirClaims = (dir: string, level: number) => {
+			const depth = depthOf(dir);
 			for (const fileName of markers.get(dir) ?? []) {
 				const key = this.markerKeyAt(entry.rootDir, dir, fileName);
 				if (key === undefined) continue;
@@ -446,15 +469,20 @@ export class Router {
 						{ variant: key, form: "marker" },
 						level
 					);
-				else if (
-					!claims.claimRoute(key, "marker", dir) &&
-					!claims.repeats(key, dir)
-				)
-					claims.ignoredAts.push({ key, dir, marker: fileName });
+				else if (!claims.claimRoute(key, "marker"))
+					claims.outrankSigned(key, depth, {
+						key,
+						dir,
+						marker: fileName,
+					});
 			}
-			// An init script claims its own suffix as any file does.
-			for (const { key, source } of initRoutes.get(dir) ?? [])
-				if (source !== entry.source) claims.claimRoute(key, "init", dir);
+			// An init script claims its own suffix as any file does, and reports its own `@`; a Rojo suffix like `init.server` is bare, as a folder's name is.
+			for (const { key, source, at } of initRoutes.get(dir) ?? []) {
+				if (source === entry.source || claims.claimRoute(key, "init"))
+					continue;
+				if (at) claims.outrankSigned(key, depth);
+				else claims.outrankBare(key, depth);
+			}
 		};
 
 		applyDirClaims("", 0);
@@ -467,18 +495,21 @@ export class Router {
 					{ variant, form: "folder" },
 					folders.length
 				);
-			let governs = true;
+			let routes = true;
 			if (folder.route !== undefined) {
-				governs = claims.claimRoute(folder.route, "folder");
-				if (!governs && folder.at)
-					claims.ignoredAts.push({
-						key: folder.route,
-						dir: folder.dir,
+				const { route, dir } = folder;
+				const depth = depthOf(dir);
+				routes = claims.claimRoute(route, "folder");
+				if (!routes && folder.at)
+					routes = claims.outrankSigned(route, depth, {
+						key: route,
+						dir,
 					});
+				else if (!routes) claims.outrankBare(route, depth);
 				for (const key of folder.innerRoutes)
-					claims.ignoreRoute(key, folder.dir);
+					claims.outrankSigned(key, depth, { key, dir });
 			}
-			const name = governs ? folder.keptName : folder.outrankedName;
+			const name = routes ? folder.keptName : folder.outrankedName;
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
 			applyDirClaims(
@@ -493,8 +524,7 @@ export class Router {
 	private claimLeaf(
 		read: EntryRead,
 		claims: Claims,
-		level: number,
-		dir: string
+		level: number
 	): LeafName {
 		const { kind, stem, match, scriptSuffix } = read;
 		const variantSpans = match.spans.filter((span) =>
@@ -505,13 +535,13 @@ export class Router {
 		const isInit = this.isInitEntry(read);
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
-			if (!this.keys.isRoute(span.key)) continue;
-			if (claims.claimRoute(span.key, "suffix")) routeSpan = span;
-			else if (
-				stem[span.start] === "@" &&
-				!(isInit && claims.repeats(span.key, dir))
-			)
-				claims.ignoredAts.push({ key: span.key });
+			const { key, start } = span;
+			if (!this.keys.isRoute(key)) continue;
+			const routes =
+				claims.claimRoute(key, "suffix") ||
+				(stem[start] === "@" &&
+					claims.outrankSigned(key, Infinity, { key }));
+			if (routes) routeSpan ??= span;
 		}
 
 		const buriedScriptSuffix =

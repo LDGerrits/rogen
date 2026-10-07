@@ -21,7 +21,7 @@ A key routes a file in four ways:
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
 
-The governing route is the first one found walking down from the root directory. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name, and a nested suffix stays in the name. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients, and when a Script or LocalScript lands where it never runs.
+The governing route is the first one found walking down from the root directory. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
 
 `*` is the fallback for files no route matched. Without it those files are left out, with a warning.
 

@@ -7,7 +7,7 @@ stdout:
 stderr:
   default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it:
     src/client/Inventory/server/Save.luau -> StarterPlayer/StarterPlayerScripts/Inventory/server/Save
-  Move it out of the "client" route's files if it's server code.
+  Move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder.
   default.rogen.json - warning: 1 script will never run where it lands:
     src/server/Inventory/Hud.client.luau -> ServerScriptService/Inventory/Hud (a LocalScript, placed by the "server" route)
   A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.

@@ -354,27 +354,10 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ReplicatedFirst/client/main"]);
 			});
 
-			it("should keep a nested Name@key folder under its written name", async () => {
-				await write("src/ReplicatedFirst/Queue@client/main.luau");
-
-				expect(await paths()).toEqual([
-					"ReplicatedFirst/Queue@client/main",
-				]);
-			});
-
 			it("should still hide a nested invisible routing folder", async () => {
 				await write("src/ReplicatedFirst/(server)/main.luau");
 
 				expect(await paths()).toEqual(["ReplicatedFirst/main"]);
-			});
-
-			it("should let only the governing marker act", async () => {
-				await write(
-					"src/ReplicatedFirst/Net/@server",
-					"src/ReplicatedFirst/Net/main.luau"
-				);
-
-				expect(await paths()).toEqual(["ReplicatedFirst/Net/main"]);
 			});
 
 			it("should ignore a suffix under an outer routing folder", async () => {
@@ -444,22 +427,16 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});
 
-			it("should let an outer marker beat a nested marker", async () => {
+			it("should let an outer marker beat a nested marker that restates it", async () => {
 				await write(
 					"src/Inventory/@server",
-					"src/Inventory/inner/@client",
+					"src/Inventory/inner/@server",
 					"src/Inventory/inner/Hud.luau"
 				);
 
 				expect(await paths()).toEqual([
 					"ServerScriptService/Inventory/inner/Hud",
 				]);
-			});
-
-			it("should let a folder's name beat its own marker", async () => {
-				await write("src/server/@client", "src/server/Save.luau");
-
-				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});
 
 			it("should refuse two markers that route one folder differently, an init script's suffix among them", async () => {
@@ -547,13 +524,16 @@ describe("Router", () => {
 			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
 				await write("src/I/init@client@server.luau", "src/I/X.luau");
 
-				const result = (await route()).unwrap();
+				const result = await route();
 
 				expect(
-					result.files.map((file) => file.instancePath.join("/"))
-				).toEqual(["ServerScriptService/I/X", "ServerScriptService/I"]);
-				expect(result.warnings.map(({ code }) => code)).toEqual([
-					"route.ignoredAt",
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+				).toEqual([
+					["route.ignoredAt", abs("src/I/init@client@server.luau")],
 				]);
 			});
 
@@ -563,6 +543,189 @@ describe("Router", () => {
 				expect(await paths()).toEqual([
 					"ReplicatedStorage/shared/Save",
 				]);
+			});
+		});
+
+		describe("an @ an outer route outranks", () => {
+			const errors = async (overrides: ResolvedConfigSpec = {}) => {
+				const result = await route(overrides);
+				return result.isErr()
+					? result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+					: [];
+			};
+
+			it("should refuse it once per file or folder that spells it, on a suffix, a folder, a marker and an init script", async () => {
+				await write(
+					"src/server/Util@client.luau",
+					"src/server/Ui@client/Hud.luau",
+					"src/server/Ui@client/Bar.luau",
+					"src/server/@client/Probe.luau",
+					"src/server/Net/@client",
+					"src/server/Net/Remote.luau",
+					"src/server/Store/init@client.luau",
+					"src/ReplicatedFirst/Queue@client/main.luau"
+				);
+
+				expect(await errors()).toEqual([
+					["route.ignoredAt", abs("src/ReplicatedFirst/Queue@client")],
+					["route.ignoredAt", abs("src/server/@client")],
+					["route.ignoredAt", abs("src/server/Net/@client")],
+					["route.ignoredAt", abs("src/server/Store/init@client.luau")],
+					["route.ignoredAt", abs("src/server/Ui@client")],
+					["route.ignoredAt", abs("src/server/Util@client.luau")],
+				]);
+			});
+
+			it("should refuse a route before another in one name, on a folder as on a file, bare or not", async () => {
+				await write(
+					"src/Net@client@server/A.luau",
+					"src/@client@server/B.luau",
+					"src/Foo@client@server.luau",
+					"src/@client@server.luau"
+				);
+
+				expect(await errors()).toEqual([
+					["route.ignoredAt", abs("src/@client@server")],
+					["route.ignoredAt", abs("src/@client@server.luau")],
+					["route.ignoredAt", abs("src/Foo@client@server.luau")],
+					["route.ignoredAt", abs("src/Net@client@server")],
+				]);
+			});
+
+			it("should name the route that governs and both fixes", async () => {
+				await write(
+					"src/server/Util@client.luau",
+					"src/server/Ui@client/Hud.luau",
+					"src/server/Net/@client",
+					"src/server/Net/Remote.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ message }) => message)
+				).toEqual([
+					'"@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
+					'"@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
+					'"@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
+				]);
+			});
+
+			it("should name every outranked key a name spells in one error", async () => {
+				await write(
+					"src/server/Util@client@ReplicatedFirst.luau",
+					"src/server/Net@client@ReplicatedFirst/A.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ resource, message }) => [
+							resource,
+							message,
+						])
+				).toEqual([
+					[
+						abs("src/server/Net@client@ReplicatedFirst"),
+						'"@ReplicatedFirst" and "@client" do nothing here, because the "server" route already governs this folder. Remove them, or move the folder out of the "server" route\'s files.',
+					],
+					[
+						abs("src/server/Util@client@ReplicatedFirst.luau"),
+						'"@ReplicatedFirst" and "@client" do nothing here, because the "server" route already governs this file. Remove them, or move the file out of the "server" route\'s files.',
+					],
+				]);
+			});
+
+			it("should report it beside a marker clash, leaving the clashing markers to that error", async () => {
+				await write(
+					"src/server/Util@client.luau",
+					"src/C/@server",
+					"src/C/@client",
+					"src/C/X.luau"
+				);
+
+				expect(await errors()).toEqual([
+					["route.markerClash", abs("src/C")],
+					["route.ignoredAt", abs("src/server/Util@client.luau")],
+				]);
+			});
+
+			it("should not report a file the template displaces", async () => {
+				await write(
+					"src/server/Net/@client",
+					"src/server/Net/Remote.luau"
+				);
+
+				expect(
+					await errors({
+						template: {
+							file: abs("template.project.json"),
+							project: {
+								name: "game",
+								tree: {
+									$className: "DataModel",
+									ServerScriptService: {
+										Net: { $path: "vendor/Net" },
+									},
+								},
+							},
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not report a file a dormant variant prunes", async () => {
+				await write("src/server/Util.mock@client.luau");
+
+				expect(await errors({ variants: { mock: false } })).toEqual([]);
+				expect(await errors({ variants: { mock: true } })).toEqual([
+					["route.ignoredAt", abs("src/server/Util.mock@client.luau")],
+				]);
+			});
+
+			it("should take an @ that restates the governing route at any depth as that route, silently", async () => {
+				await write(
+					"src/client/Net/Remote@client.luau",
+					"src/client/Ui@client/Hud.luau",
+					"src/client/Bar/@client",
+					"src/client/Bar/Health.luau",
+					"src/client/Store/init@client.luau",
+					"src/client/Store/Cart.luau",
+					"src/client/@client/Probe.luau",
+					"src/Net@server/@server",
+					"src/Net@server/Remote.luau"
+				);
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/Net/Remote",
+					"StarterPlayer/StarterPlayerScripts/Probe",
+					"StarterPlayer/StarterPlayerScripts/Bar/Health",
+					"StarterPlayer/StarterPlayerScripts/Net/Remote",
+					"StarterPlayer/StarterPlayerScripts/Store/Cart",
+					"StarterPlayer/StarterPlayerScripts/Store",
+					"StarterPlayer/StarterPlayerScripts/Ui/Hud",
+				]);
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should keep a bare folder named after an outranked route as an ordinary folder, silently", async () => {
+				await write("src/server/client/Bar.luau");
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual(["ServerScriptService/client/Bar"]);
+				expect(result.warnings).toEqual([]);
 			});
 		});
 
@@ -870,10 +1033,10 @@ describe("Router", () => {
 				).toEqual([]);
 			});
 
-			it("should route and vary a folder named with both, and keep its route in the name when an outer route outranks it", async () => {
+			it("should route and vary a folder named with both, and take a route that restates an outer one off its name", async () => {
 				await write(
 					"src/Net.mock@server/Remote.luau",
-					"src/client/Hud.mock@server/Bar.luau"
+					"src/client/Hud.mock@client/Bar.luau"
 				);
 
 				expect(
@@ -882,7 +1045,7 @@ describe("Router", () => {
 						.files.map((file) => file.instancePath.join("/"))
 				).toEqual([
 					"ServerScriptService/Net/Remote",
-					"StarterPlayer/StarterPlayerScripts/Hud@server/Bar",
+					"StarterPlayer/StarterPlayerScripts/Hud/Bar",
 				]);
 			});
 
@@ -909,9 +1072,9 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should keep only the route of an outranked key-only folder, and hoist one that takes a ^", async () => {
+			it("should leave no folder for a key-only folder that restates its route, and hoist one that takes a ^", async () => {
 				await write(
-					"src/server/.mock@client/A.luau",
+					"src/server/.mock@server/A.luau",
 					"src/Feature/^.mock@server/B.luau",
 					"src/Other/(.mock@server)/C.luau"
 				);
@@ -923,11 +1086,23 @@ describe("Router", () => {
 				).toEqual([
 					"ServerScriptService/B",
 					"ServerScriptService/Other/C",
-					"ServerScriptService/@client/A",
+					"ServerScriptService/A",
 				]);
-				expect(result.warnings.map(({ code }) => code)).toContain(
-					"route.ignoredAt"
-				);
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should refuse a key-only folder whose route an outer route outranks", async () => {
+				await write("src/server/.mock@client/A.luau");
+
+				const result = await route({ variants: { mock: true } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+				).toEqual([["route.ignoredAt", abs("src/server/.mock@client")]]);
 			});
 
 			it("should make an init script in a key-only folder the folder above, and refuse one with no folder above", async () => {
