@@ -1,0 +1,1 @@
+{ "steps": [["build", "-o", "plain.project.json"], ["build", "-o", "mocked.project.json", "--variant", "mock"], ["where", "src/Net/.mock@server/FakeStore.luau", "src/Net/@server.mock/Probe.luau"], ["where", "src/Net/.mock@server/FakeStore.luau", "src/Net/@server.mock/Probe.luau", "--variant", "mock"]] }

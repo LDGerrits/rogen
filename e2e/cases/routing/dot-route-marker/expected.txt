@@ -5,10 +5,14 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 stderr:
-  default.rogen.json - warning: 3 names write a route key after a dot, where only "@" routes, so they route nothing:
+  default.rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing:
     src/Inventory/.server (write "@server")
+    src/Tools/.SERVER (write "@server")
+    src/.server (write "@server")
+    src/Config.server.json (write "Config@server.json")
     src/Inventory/Types.shared.luau (write "Types@shared.luau")
     src/Net.shared (write "Net@shared")
+    src/Start.Server.luau (write "Start.server.luau")
 
 $ rogen build --json
 exit 0
@@ -24,9 +28,21 @@ stdout:
             "file": "<dir>/default.rogen.json",
             "severity": "warning",
             "code": "route.dotRoute",
-            "message": "3 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")",
+            "message": "7 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Tools/.SERVER (write \"@server\")\n  <dir>/src/.server (write \"@server\")\n  <dir>/src/Config.server.json (write \"Config@server.json\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")\n  <dir>/src/Start.Server.luau (write \"Start.server.luau\")",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/.server",
+                  "to": "<dir>/src/@server"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Config.server.json",
+                  "to": "<dir>/src/Config@server.json"
+                }
+              },
               {
                 "rename": {
                   "from": "<dir>/src/Inventory/.server",
@@ -44,6 +60,18 @@ stdout:
                   "from": "<dir>/src/Net.shared",
                   "to": "<dir>/src/Net@shared"
                 }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Start.Server.luau",
+                  "to": "<dir>/src/Start.server.luau"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Tools/.SERVER",
+                  "to": "<dir>/src/Tools/@server"
+                }
               }
             ]
           }
@@ -59,10 +87,16 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      .server: Folder
+        Tool: ModuleScript  <- src/.server/Tool.luau
+      Config.server: ModuleScript  <- src/Config.server.json
       Inventory: Folder
         Save: ModuleScript  <- src/Inventory/Save.luau
         Types.shared: ModuleScript  <- src/Inventory/Types.shared.luau
       Net.shared: Folder
         Remotes: ModuleScript  <- src/Net.shared/Remotes.luau
+      Start.Server: ModuleScript  <- src/Start.Server.luau
+      Tools: Folder
+        Wrench: ModuleScript  <- src/Tools/Wrench.luau
   ServerScriptService: ServerScriptService
     Boot: Script  <- src/Boot.server.luau

@@ -256,6 +256,37 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
+			it("should report a route before another route in one name, on a folder as on a file, bare or not", async () => {
+				await write(
+					"src/Net@client@server/A.luau",
+					"src/@client@server/B.luau",
+					"src/Foo@client@server.luau",
+					"src/@client@server.luau"
+				);
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.warnings.map(({ code, resource }) => [code, resource])
+				).toEqual(
+					expect.arrayContaining([
+						["route.ignoredAt", abs("src/Net@client@server")],
+						["route.ignoredAt", abs("src/@client@server")],
+						["route.ignoredAt", abs("src/Foo@client@server.luau")],
+						["route.ignoredAt", abs("src/@client@server.luau")],
+					])
+				);
+				expect(result.warnings).toHaveLength(4);
+				expect(
+					result.routed.map(({ instancePath }) => instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/@client",
+					"ServerScriptService/@client/B",
+					"ServerScriptService/Foo@client",
+					"ServerScriptService/Net@client/A",
+				]);
+			});
+
 			it("should list the first few and count the rest", async () => {
 				await write(
 					...Array.from(
@@ -527,6 +558,92 @@ describe("BuildValidator rules", () => {
 				});
 			});
 
+			it("should warn about Rojo's .server and .client on a data file or model, which has no script class", async () => {
+				await write(
+					"src/Data.server.json",
+					"src/Hud.client.rbxmx",
+					"src/Gun.server.model.json",
+					"src/Boot.client.luau"
+				);
+
+				const [warning] = await warningsOf("route.dotRoute");
+
+				expect(warning.message).toContain("3 names write a route key");
+				expect(warning.message).toContain(`(write "Data@server.json")`);
+				expect(warning.message).toContain(`(write "Hud@client.rbxmx")`);
+				expect(warning.message).not.toContain("Boot");
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Gun.server.model.json"),
+						to: at("src/Gun@server.model.json"),
+					},
+				});
+			});
+
+			it("should warn about a route key after a dot in any letter case, renaming a script's to Rojo's own spelling", async () => {
+				await write(
+					"src/.SERVER/A.luau",
+					"src/C/.SERVER",
+					"src/C/B.luau",
+					"src/Net.SHARED/D.luau",
+					"src/Types.SHARED.luau",
+					"src/Data.Server.json",
+					"src/Boot.Server.luau",
+					"src/Hud.CLIENT.luau",
+					"src/Lib.SHARED.luau"
+				);
+
+				const [warning, ...others] = await warningsOf("route.dotRoute");
+				const renamed = Object.fromEntries(
+					(warning.fixes ?? []).map(({ rename: { from, to } }) => [
+						from.slice(at("src").length + 1),
+						to.slice(at("src").length + 1),
+					])
+				);
+
+				expect(others).toEqual([]);
+				expect(renamed).toEqual({
+					".SERVER": "@server",
+					"C/.SERVER": "C/@server",
+					"Net.SHARED": "Net@shared",
+					"Types.SHARED.luau": "Types@shared.luau",
+					"Data.Server.json": "Data@server.json",
+					"Boot.Server.luau": "Boot.server.luau",
+					"Hud.CLIENT.luau": "Hud.client.luau",
+					"Lib.SHARED.luau": "Lib@shared.luau",
+				});
+			});
+
+			it("should leave the letter-case warning to bare names when a dot route key differs in case", async () => {
+				await write("src/.SERVER/A.luau", "src/C/.SERVER", "src/SERVER/B.luau");
+
+				const mismatched = (await route({ routes: SHARED }))
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.caseMismatch")
+					.map(({ resource }) => resource);
+
+				expect(mismatched).toEqual([abs("src/SERVER")]);
+			});
+
+			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
+				await write("src/.server/A.luau", "src/.Server/B.luau");
+
+				const [warning] = await warningsOf("route.dotRoute");
+				const paths = (await route({ routes: SHARED }))
+					.unwrap()
+					.routed.map(({ instancePath }) => instancePath.join("/"));
+
+				expect(warning.message).toContain("2 names write a route key");
+				expect(warning.fixes).toEqual([
+					{ rename: { from: at("src/.Server"), to: at("src/@server") } },
+					{ rename: { from: at("src/.server"), to: at("src/@server") } },
+				]);
+				expect(paths).toEqual([
+					"ReplicatedStorage/shared/.Server/B",
+					"ReplicatedStorage/shared/.server/A",
+				]);
+			});
+
 			it("should leave a dot-file's folder and a dot part's name to the route above", async () => {
 				await write(
 					"src/Inventory/.server",
@@ -730,6 +847,91 @@ describe("BuildValidator rules", () => {
 						rename: {
 							from: at("src/Analytics.mok.luau"),
 							to: at("src/Analytics.mock.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should warn about a dot-file marker and a dot-folder one edit from a variant, and leave their files unmarked", async () => {
+				await write(
+					"src/M/.mok",
+					"src/M/A.luau",
+					"src/.mok/B.luau",
+					"src/mok/C.luau",
+					"src/.gitkeep",
+					"src/.luaurc",
+					"src/.spec"
+				);
+
+				const [warning, ...others] = await typos();
+				const result = (await route({ variants: { mock: true } })).unwrap();
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("2 names");
+				expect(warning.fixes).toEqual([
+					{ rename: { from: at("src/.mok"), to: at("src/.mock") } },
+					{ rename: { from: at("src/M/.mok"), to: at("src/M/.mock") } },
+				]);
+				expect(
+					result.routed.map(({ instancePath, variants }) => [
+						instancePath.join("/"),
+						variants.length,
+					])
+				).toEqual([
+					["ReplicatedStorage/shared/.mok/B", 0],
+					["ReplicatedStorage/shared/M/A", 0],
+					["ReplicatedStorage/shared/mok/C", 0],
+				]);
+			});
+
+			it("should give a dot-file or dot-folder that differs in letter case the letter-case warning, and leave a dot near a route silent", async () => {
+				await write(
+					"src/A/.MOCK",
+					"src/A/X.luau",
+					"src/.MOCK/Y.luau",
+					"src/B/.sever",
+					"src/B/Z.luau"
+				);
+
+				const warnings = (
+					await route({ variants: { mock: true } })
+				).unwrap().warnings;
+
+				expect(warnings.map(({ code, resource }) => [code, resource])).toEqual([
+					["route.caseMismatch", abs("src/A/.MOCK")],
+					["route.caseMismatch", abs("src/.MOCK")],
+				]);
+			});
+
+			it("should give a dot-file no fix when two variants are one edit away", async () => {
+				await write("src/A/.mok", "src/A/X.luau");
+
+				const [warning] = (
+					await route({ variants: { mock: true, mob: false } })
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "variant.typo");
+
+				expect(warning.message).toContain(`${abs("src/A/.mok")}`);
+				expect(warning.fixes).toBeUndefined();
+			});
+
+			it("should warn about a variant's near miss in a folder that also routes", async () => {
+				await write("src/K.mok@server/A.luau", "src/.mok@server/B.luau");
+
+				const [warning] = await typos();
+
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/.mok@server"),
+							to: at("src/.mock@server"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/K.mok@server"),
+							to: at("src/K.mock@server"),
 						},
 					},
 				]);

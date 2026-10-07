@@ -462,6 +462,101 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});
 
+			it("should refuse two markers that route one folder differently, an init script's suffix among them", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/@client",
+					"src/C/X.luau",
+					"src/D/@server",
+					"src/D/init@client.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(
+							({ code, resource, message }) => [code, resource, message]
+						)
+				).toEqual([
+					[
+						"route.markerClash",
+						abs("src/C"),
+						'"@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.',
+					],
+					[
+						"route.markerClash",
+						abs("src/D"),
+						'"@server" and "init@client.luau" route this folder to different places, and nothing decides between them. Keep one.',
+					],
+				]);
+			});
+
+			it("should let markers that agree, variant markers and a dormant init script's route stand together", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/init@server.luau",
+					"src/C/.mock",
+					"src/C/.dev",
+					"src/C/X.luau",
+					"src/D/@server",
+					"src/D/init.prod@client.luau",
+					"src/D/Y.luau",
+					"src/E/@server",
+					"src/E/@Server",
+					"src/E/Z.luau"
+				);
+
+				const result = (
+					await route({ variants: { mock: true, dev: true, prod: false } })
+				).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/C/X",
+					"ServerScriptService/C",
+					"ServerScriptService/D/Y",
+					"ServerScriptService/E/Z",
+				]);
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should let an active variant's init script route its folder, since the plain one it replaces can't be placed", async () => {
+				await write(
+					"src/C/init@server.luau",
+					"src/C/init.mock@client.luau",
+					"src/C/X.luau"
+				);
+
+				const placed = async (mock: boolean) =>
+					(await route({ variants: { mock } }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"));
+
+				expect(await placed(true)).toEqual([
+					"StarterPlayer/StarterPlayerScripts/C/X",
+					"StarterPlayer/StarterPlayerScripts/C",
+				]);
+				expect(await placed(false)).toEqual([
+					"ServerScriptService/C/X",
+					"ServerScriptService/C",
+				]);
+			});
+
+			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
+				await write("src/I/init@client@server.luau", "src/I/X.luau");
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual(["ServerScriptService/I/X", "ServerScriptService/I"]);
+				expect(result.warnings.map(({ code }) => code)).toEqual([
+					"route.ignoredAt",
+				]);
+			});
+
 			it("should ignore dot-files that aren't declared routes", async () => {
 				await write("src/.gitkeep", "src/.mock", "src/Save.luau");
 
@@ -678,8 +773,8 @@ describe("Router", () => {
 				).toEqual([["ServerScriptService", "Foo"]]);
 			});
 
-			it("should route models and data files by suffix and strip it", async () => {
-				await write("src/Gun.server.rbxm", "src/Data.client.json");
+			it("should route models and data files by an @ suffix and strip it", async () => {
+				await write("src/Gun@server.rbxm", "src/Data@client.json");
 
 				expect(await paths()).toEqual([
 					"StarterPlayer/StarterPlayerScripts/Data",
@@ -687,8 +782,17 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should leave Rojo's .server and .client in a model's or data file's name, since only a script has a class", async () => {
+				await write("src/Gun.server.rbxm", "src/Data.client.json");
+
+				expect(await paths()).toEqual([
+					"ReplicatedStorage/shared/Data.client",
+					"ReplicatedStorage/shared/Gun.server",
+				]);
+			});
+
 			it("should route a .model.json file by a suffix before .model", async () => {
-				await write("src/Gun.server.model.json");
+				await write("src/Gun@server.model.json");
 
 				expect(await paths()).toEqual(["ServerScriptService/Gun"]);
 			});
@@ -780,6 +884,66 @@ describe("Router", () => {
 					"ServerScriptService/Net/Remote",
 					"StarterPlayer/StarterPlayerScripts/Hud@server/Bar",
 				]);
+			});
+
+			it("should apply every key of a folder named by keys alone, in either order, and leave no folder", async () => {
+				await write(
+					"src/D/.mock@server/A.luau",
+					"src/E/@server.mock/B.luau",
+					"src/F/.mock.dev/C.luau",
+					"src/G/mock@server/D.luau"
+				);
+				const placed = async (variants: Record<string, boolean>) =>
+					(await route({ variants }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"));
+
+				expect(await placed({ mock: true, dev: true })).toEqual([
+					"ServerScriptService/D/A",
+					"ServerScriptService/E/B",
+					"ReplicatedStorage/shared/F/C",
+					"ServerScriptService/G/mock/D",
+				]);
+				expect(await placed({ mock: false, dev: true })).toEqual([
+					"ServerScriptService/G/mock/D",
+				]);
+			});
+
+			it("should keep only the route of an outranked key-only folder, and hoist one that takes a ^", async () => {
+				await write(
+					"src/server/.mock@client/A.luau",
+					"src/Feature/^.mock@server/B.luau",
+					"src/Other/(.mock@server)/C.luau"
+				);
+
+				const result = (await route({ variants: { mock: true } })).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/B",
+					"ServerScriptService/Other/C",
+					"ServerScriptService/@client/A",
+				]);
+				expect(result.warnings.map(({ code }) => code)).toContain(
+					"route.ignoredAt"
+				);
+			});
+
+			it("should make an init script in a key-only folder the folder above, and refuse one with no folder above", async () => {
+				await write("src/Net/.mock@server/init.luau");
+
+				expect(await paths({ variants: { mock: true } })).toEqual([
+					"ServerScriptService/Net",
+				]);
+
+				await write("src/.mock@server/init.luau");
+				const result = await route({ variants: { mock: true } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code }) => code)
+				).toEqual(["tree.initWithoutFolder"]);
 			});
 
 			it("should remove a variant folder from the path", async () => {

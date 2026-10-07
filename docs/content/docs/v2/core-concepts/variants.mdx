@@ -50,7 +50,7 @@ Variants are marked the same three ways as [routes](/docs/v2/core-concepts/routi
   </Tab>
 </Tabs>
 
-Since variants are declared, other dotted names like `Button.spec.luau` are left alone. Rogen only speaks up when a name is one letter off a variant, like `Analytics.mok.luau`. Only the dot counts: `AnalyticsMock.luau` is an ordinary name.
+Since variants are declared, other dotted names like `Button.spec.luau` are left alone. Rogen only speaks up when a dot is followed by one letter off a variant, like `Analytics.mok.luau`, a `.mok/` folder or a `.mok` marker file. Only the dot counts: `AnalyticsMock.luau` is an ordinary name.
 
 Put the variant before an `@` route and Rojo's suffix last: `Analytics.mock@server.luau`, `Save.mock.server.luau`. Rogen warns about `Save.server.mock.luau`, which Rojo would read as a `ModuleScript`.
 

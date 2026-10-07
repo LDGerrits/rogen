@@ -1,6 +1,7 @@
 import { groupBy } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import path from "path";
 import {
 	Diagnostic,
@@ -20,6 +21,7 @@ import {
 	HoistedInit,
 	InitToCopy,
 	InitWithoutFolder,
+	MarkerClash,
 	RoutedFile,
 	Router,
 } from "./router.js";
@@ -218,15 +220,22 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
-			new Router(this.config, readings, this.layout.initNames).route(
-				roots
-			);
-		const initErrors = [
+		const {
+			routed,
+			toCopy,
+			unrouted,
+			withoutFolder,
+			hoistedInits,
+			markerClashes,
+		} = new Router(this.config, readings, this.layout.initNames).route(
+			roots
+		);
+		const routeErrors = [
+			...this.markerClashErrors(markerClashes),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
 		];
-		if (initErrors.length > 0) return err(initErrors);
+		if (routeErrors.length > 0) return err(routeErrors);
 		const routedNodes = this.withCopies(routed, toCopy);
 		const applied = this.applyVariants(routedNodes);
 		if (applied.isErr()) return applied;
@@ -269,6 +278,19 @@ export class Placer {
 			this.template.mounts
 		);
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
+	}
+
+	/** Two routes at one level of a folder leave nothing to decide between them. */
+	private markerClashErrors(
+		markerClashes: readonly MarkerClash[]
+	): Diagnostic[] {
+		return markerClashes.map(({ dir, names }) =>
+			errorDiagnostic(
+				"route.markerClash",
+				{ resource: dir },
+				`${joinedWithAnd(names.map((name) => `"${name}"`))} route this folder to different places, and nothing decides between them. Keep one.`
+			)
+		);
 	}
 
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */

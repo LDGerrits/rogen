@@ -70,7 +70,7 @@ Matchmaking@server/Queue.luau           ->  ServerScriptService/Matchmaking/Queu
 Inventory/@server/Save.luau             ->  ServerScriptService/Inventory/Save
 ```
 
-On a file, `@server` routes just that file and never changes its class, so `InventoryService@server.luau` is still a `ModuleScript`. On a folder, it routes everything inside and keeps the folder's name. A bare `@server/` has no name, so it works like a plain routing folder.
+On a file, `@server` routes just that file and never changes its class, so `InventoryService@server.luau` is still a `ModuleScript`. On a folder, it routes everything inside and keeps the folder's name. A bare `@server/` has no name, so it works like a plain routing folder. The same goes for a folder named by keys alone, such as `.mock@server/`: it applies the variant and the route, and leaves no folder.
 
 An `@` that nearly spells a route key gets a warning, so `Save@sever.luau` gets `did you mean "@Server"?`. So does an `@` followed by a variant (`Analytics@mock.luau`), since variants use a dot. Any other `@` stays in the name, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`).
 
@@ -83,7 +83,7 @@ src/Anti-cheat/@server
 src/Anti-cheat/Check.luau  ->  ServerScriptService/Anti-cheat/Check
 ```
 
-Create one with `touch @server`, or `New-Item '@server'` in PowerShell, where an unquoted `@` means something else. A dot-file like `.server` isn't a route marker, because only `@` routes; Rogen warns about it and names the `@` form. [Variant markers](/docs/v2/core-concepts/variants#marking-files) keep the dot (`.mock`).
+Create one with `touch @server`, or `New-Item '@server'` in PowerShell, where an unquoted `@` means something else. A dot-file like `.server` isn't a route marker, because only `@` routes; Rogen warns about it and names the `@` form. [Variant markers](/docs/v2/core-concepts/variants#marking-files) keep the dot (`.mock`). A folder takes one route: two route markers in it, or one beside an init script with a different route suffix, are an error.
 
 ## Rojo's Script Suffixes
 
@@ -94,7 +94,7 @@ src/Inventory/Bootstrap.server.luau  ->  ServerScriptService/Inventory/Bootstrap
 src/Inventory/Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud   (a LocalScript)
 ```
 
-No other key routes through a dot. `Types.shared.luau` is just an instance called `Types.shared`, and Rogen warns about it; write `Types@shared.luau` to route it. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
+No other key routes through a dot, and nothing but a script does. `Types.shared.luau` is just an instance called `Types.shared`, and `Config.server.json` one called `Config.server`, since a data file or model has no script class; Rogen warns about each. Write `Types@shared.luau` and `Config@server.json` to route them. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
 
 ## Matching
 

@@ -208,13 +208,25 @@ describe("NameReadings", () => {
 			});
 
 			it("should read a data file without its .json suffix", async () => {
+				await write("src/Config@server.json");
+
+				const { entries } = await read();
+				const entry = entries.get(at("src/Config@server.json"));
+
+				expect(entry?.kind).toBe("data");
+				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
+			});
+
+			it("should read Rojo's .server on a data file as a misspelt @, since only a script has a class", async () => {
 				await write("src/Config.server.json");
 
 				const { entries } = await read();
 				const entry = entries.get(at("src/Config.server.json"));
 
-				expect(entry?.kind).toBe("data");
-				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
+				expect(entry?.match.matchedKeys).toEqual(new Set());
+				expect(entry?.match.misspellings).toMatchObject([
+					{ kind: "dotRoute", key: "server" },
+				]);
 			});
 		});
 	});

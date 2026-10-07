@@ -225,7 +225,7 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. Rojo's `.server` and `.client` at the end of a script still route and are never reported. One warning lists every such name.
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing:
@@ -233,11 +233,21 @@ default.rogen.json - warning: 2 names write a route key after a dot, where only 
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
 
-Rename each to its `@` form: a marker file is `@server`, and a name is `Types@shared.luau`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+
+### `route.markerClash` [#route-markerclash]
+
+Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
+
+```
+src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.
+```
+
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
-Warning. A name or marker file has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.
+Warning. A name or marker file has an `@key` inside a folder that another route already governs, or before another `@key` in the same name (`Net@client@server/`). Only the outermost route acts, and in one name only the last `@key` routes, so this one does nothing and stays in the name.
 
 ```
 src/server/Util@client.luau - warning: "@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route's files.
@@ -271,14 +281,14 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 ### `variant.typo` [#variant-typo]
 
-Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. One warning lists every such name.
+Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A plain `mok/` isn't reported, since without a dot it may just be a name. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
   src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
 ```
 
-Rename the file to the variant suggested. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
+Rename the file or folder to the variant suggested. A dot-file that really is something else, such as a `.lock` next to a `mock` variant, can be renamed or left out with `exclude`. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
 
 ### `variant.noneActive` [#variant-noneactive]
 

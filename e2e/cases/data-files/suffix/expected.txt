@@ -13,8 +13,8 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Config: Folder
       Notes: StringValue  <- src/Config/Notes@server.txt
-      Rates: ModuleScript  <- src/Config/Rates.server.toml
-      Token: ModuleScript  <- src/Config/Token.server.json
+      Rates: ModuleScript  <- src/Config/Rates@server.toml
+      Token: ModuleScript  <- src/Config/Token@server.json
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Config: Folder

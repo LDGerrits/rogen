@@ -366,6 +366,7 @@ describe("NameReader folder", () => {
 			invisible: false,
 			hoisted: false,
 			at: false,
+			innerRoutes: [],
 			route: "server",
 			variants: [],
 			outrankedName: "Server",
@@ -378,6 +379,7 @@ describe("NameReader folder", () => {
 			invisible: false,
 			hoisted: false,
 			at: false,
+			innerRoutes: [],
 			variants: ["mock"],
 			outrankedName: "mock",
 			misspellings: [],
@@ -404,6 +406,7 @@ describe("NameReader folder", () => {
 			invisible: false,
 			hoisted: false,
 			at: true,
+			innerRoutes: [],
 			route: "server",
 			variants: [],
 			keptName: "Matchmaking",
@@ -417,6 +420,7 @@ describe("NameReader folder", () => {
 			invisible: false,
 			hoisted: false,
 			at: false,
+			innerRoutes: [],
 			variants: ["mock"],
 			keptName: "Analytics",
 			outrankedName: "Analytics",
@@ -448,6 +452,7 @@ describe("NameReader folder", () => {
 				invisible: false,
 				hoisted: false,
 				at: false,
+				innerRoutes: [],
 				variants: [],
 				keptName: name,
 				outrankedName: name,
@@ -510,10 +515,67 @@ describe("NameReader folder", () => {
 			invisible: false,
 			hoisted: false,
 			at: false,
+			innerRoutes: [],
 			variants: [],
 			keptName: "Inventory",
 			outrankedName: "Inventory",
 			misspellings: [],
+		});
+	});
+});
+
+describe("NameReader routes in one name", () => {
+	it("should route a folder by its last @key and keep the earlier ones as routes it outranks", () => {
+		expect(readFolderName("Net@client@server", ALL_KEYS)).toMatchObject({
+			route: "server",
+			innerRoutes: ["client"],
+			keptName: "Net@client",
+		});
+		expect(readFolderName("@client@server", ALL_KEYS)).toMatchObject({
+			route: "server",
+			innerRoutes: ["client"],
+			keptName: "@client",
+		});
+	});
+
+	it("should read a bare @key before another as a route, and alone as a name", () => {
+		expect(
+			[...readerOf(ALL_KEYS).suffixes("@client@server").matchedKeys]
+		).toEqual(["server", "client"]);
+		expect(
+			[...readerOf(ALL_KEYS).suffixes("@server").matchedKeys]
+		).toEqual([]);
+	});
+});
+
+describe("NameReader dot routes", () => {
+	const dotRoute = (stem: string, script: boolean) =>
+		misspelt(readerOf(ALL_KEYS).suffixes(stem, script), "dotRoute")
+			?.respelling;
+
+	it("should read a route key after a dot in any letter case", () => {
+		expect(dotRoute("Types.SHARED", false)).toEqual({
+			start: 5,
+			written: ".SHARED",
+			spelling: "@shared",
+		});
+	});
+
+	it("should respell Rojo's suffix on a script in Rojo's case, moved past any variant", () => {
+		expect(dotRoute("Boot.Server", true)).toEqual({
+			start: 4,
+			written: ".Server",
+			spelling: ".server",
+		});
+		expect(dotRoute("Boot.Server.mock", true)).toEqual({
+			start: 4,
+			written: ".Server.mock",
+			spelling: ".mock.server",
+		});
+		expect(dotRoute("Data.Server.mock", false)).toEqual({
+			start: 4,
+			written: ".Server",
+			spelling: "@server",
 		});
 	});
 });
