@@ -116,7 +116,18 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
-		await fs.promises.rm(filePath, { recursive, force: true });
+		try {
+			await fs.promises.rm(filePath, { recursive, force: true });
+		} catch (error) {
+			// Node reports this one with its own code, not the system's.
+			if (ErrorUtils.hasCode(error, "ERR_FS_EISDIR"))
+				throw fsError(
+					"EISDIR",
+					`EISDIR: illegal operation on a directory, rm '${filePath}'`,
+					error
+				);
+			throw error;
+		}
 	}
 
 	async rename(
@@ -124,15 +135,27 @@ export class DiskFileSystemService implements FileSystemService {
 		destination: string,
 		overwrite: boolean = false
 	): Promise<void> {
-		if (!overwrite && (await this.exists(destination))) {
-			throw Object.assign(
-				new Error(
-					`EEXIST: file already exists, rename '${source}' -> '${destination}'`
-				),
-				{ code: "EEXIST" }
+		const existing = await fs.promises
+			.stat(destination)
+			.catch(() => undefined);
+		if (existing && !overwrite) {
+			throw fsError(
+				"EEXIST",
+				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+			);
+		}
+		// Refused outright: the system would move a directory onto an empty one, but not onto a full one.
+		if (existing?.isDirectory()) {
+			throw fsError(
+				"EISDIR",
+				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
 			);
 		}
 		await this.createDirectory(path.dirname(destination));
 		await fs.promises.rename(source, destination);
 	}
+}
+
+function fsError(code: string, message: string, cause?: unknown): Error {
+	return Object.assign(new Error(message, { cause }), { code });
 }
