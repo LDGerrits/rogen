@@ -23,7 +23,7 @@ To suggest an improvement or new feature:
 
 ### Submitting Code Changes
 
-Fork the repository, create a feature branch, and write unit tests for any changes. Ensure that `npm test` and `npm run lint` pass before opening a Pull Request against `main`.
+Fork the repository, create a feature branch, and write unit tests for any changes. Ensure that `npm test` and `npm run lint` pass before opening a Pull Request against `main`. Leave the version alone: it changes only when a release is cut.
 
 ## Local Development
 
@@ -31,25 +31,38 @@ Follow these steps to set up Rogen locally and make changes.
 
 ### 1. Prerequisites
 
-Install Node.js on the system.
+- Node.js 22.18 or newer. The scripts run TypeScript files directly, which older versions can't.
+- [Rokit](https://github.com/rojo-rbx/rokit), for the Rojo version that `rokit.toml` pins. The tests that check output against Rojo are skipped without it.
 
 ### 2. Setup
 
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/Playfully/rogen.git
+git clone https://github.com/LDGerrits/rogen.git
 cd rogen
 npm install
+rokit install
 ```
 
 ### 3. Building
 
-Compile the TypeScript source code:
+Compile the TypeScript source code, which also type-checks it:
 
 ```bash
 npm run build
 ```
+
+To try the CLI, bundle it into `dist/bundle.cjs` and run that:
+
+```bash
+npm run bundle
+node dist/bundle.cjs help
+```
+
+To try it on a Roblox project, run `node <path to rogen>/dist/bundle.cjs build` in that project.
+
+`npm run release:local` turns the bundle into a standalone executable at `releases/rogen`, a Node single executable application. It builds for the platform it runs on.
 
 ### 4. Running Tests and Linter
 
@@ -68,67 +81,3 @@ npm run lint
 # Fix linting errors automatically
 npm run lint:fix
 ```
-
-## Releasing
-
-`package.json` holds the version. Bump it with `npm version`, which also updates
-the schema URL in `src/domain/config/config.ts` and, for a stable release, the
-Rokit pin in the install docs, then commits and tags:
-
-```bash
-npm version 2.0.0          # a stable release
-npm version 2.1.0-beta.1   # a pre-release
-npm version prerelease     # 2.1.0-beta.1 -> 2.1.0-beta.2
-git push --follow-tags
-```
-
-If the bump fails, nothing is committed or tagged, but `package.json` and
-`package-lock.json` already hold the new version: restore them with
-`git checkout -- package.json package-lock.json` before trying again.
-
-Pushing the tag publishes the JSON schema, builds the binaries into a GitHub
-release, and then stages the npm package. A tag that doesn't match
-`package.json` publishes nothing. A version with a `-` is a pre-release: GitHub
-marks it so, and npm stages it under the `next` tag, leaving `latest` on the
-newest stable release.
-
-A staged version isn't public until you approve it, with 2FA: on npmjs.com in the
-package's **Staged Packages** tab, or from the CLI:
-
-```bash
-npm stage list @ldgerrits/rogen
-npm stage view <stage-id>      # or `npm stage download <stage-id>` for the tarball
-npm stage approve <stage-id>
-```
-
-`npm stage reject <stage-id>` drops it instead.
-
-npm accepts the staged upload through trusted publishing, so there's no token
-to keep. It's set on npmjs.com under the package's Settings → Trusted
-Publisher: GitHub Actions, user `LDGerrits`, repository `rogen`, workflow
-`release.yml`, with **Allow npm publish** left unchecked so every version goes
-through staging.
-
-## Building Release Binaries
-
-Rogen bundles source code with `esbuild` and packages standalone executables for Windows, Linux, and macOS using `pkg`.
-
-### Creating a Local Release Build
-
-To build binaries locally:
-
-```bash
-npm run release:local
-```
-
-This generates `dist/bundle.cjs` and outputs executables for all platforms into the `releases/` directory.
-
-### Bundling Without Packaging
-
-To generate only the JavaScript bundle without compiling binaries:
-
-```bash
-npm run bundle
-```
-
-This outputs `dist/bundle.cjs`.
