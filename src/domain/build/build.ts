@@ -249,6 +249,8 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	/** One per instance argument. */
 	readonly instances: readonly InstanceLocation[];
+	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
+	readonly diagnostics: readonly Diagnostic[];
 }
 
 /** What a sync tool writes in place of a `.meta.json`. */

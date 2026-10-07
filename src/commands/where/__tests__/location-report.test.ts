@@ -24,6 +24,7 @@ const reportOf = (
 			config: mockConfig({ file: `/repo/${label}.rogen.json` }),
 			files,
 			instances,
+			diagnostics: [],
 		})),
 	});
 

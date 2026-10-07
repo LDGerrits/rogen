@@ -1,5 +1,6 @@
 import path from "path";
 import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -13,8 +14,8 @@ import {
 	missingRoutes,
 } from "./build.js";
 import { LocateTargets } from "./build-service.js";
+import { ConfigBuilder } from "./config-builder.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
-import { Placer } from "./placement.js";
 
 /** What `where` asked about: the paths, resolved, and the instances. */
 interface Targets {
@@ -41,7 +42,7 @@ export class Locator {
 		const targets = await this.classify(query);
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
-			const locations = this.locateIn(config, targets);
+			const locations = await this.locateIn(config, targets);
 			if (locations.isErr()) return locations;
 			located.push(locations.value);
 		}
@@ -53,46 +54,65 @@ export class Locator {
 		});
 	}
 
-	private locateIn(
+	private async locateIn(
 		config: ResolvedConfig,
 		{ paths, instances }: Targets
-	): Result<ConfigLocations, DiagnosticsError> {
+	): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		let files: FileLocation[] = [];
+		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
-			const planned = this.locatorOf(
+			const planned = await this.locatorOf(
 				new PlannedFilesIndex(this.listing, config.rootDirs, paths),
 				config
 			);
 			if (planned.isErr()) return err(planned.error);
-			files = planned.value.locate(paths);
+			files = planned.value.locator.locate(paths);
+			diagnostics = planned.value.diagnostics;
 			if (instances.length === 0)
-				return ok({ config, files, instances: [] });
+				return ok({ config, files, instances: [], diagnostics });
 		}
 
 		// A planned file can move the files that exist, and an instance is only ever made by those.
-		const existing = this.locatorOf(this.listing, config);
+		const existing = await this.locatorOf(this.listing, config);
 		if (existing.isErr()) return err(existing.error);
+		const { locator } = existing.value;
 		return ok({
 			config,
 			files:
 				paths.length > 0 || instances.length > 0
 					? files
-					: existing.value.locate(),
+					: locator.locate(),
 			instances: instances.map((reference) => ({
 				reference,
-				files: existing.value.locateInstance(reference),
+				files: locator.locateInstance(reference),
 			})),
+			diagnostics:
+				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});
 	}
 
-	private locatorOf(
+	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */
+	private async locatorOf(
 		index: IndexReader,
 		config: ResolvedConfig
-	): Result<FileLocator, DiagnosticsError> {
-		const placement = new Placer(index, config, this.tools).place();
-		return placement.isErr()
-			? err(new DiagnosticsError(placement.error))
-			: ok(new FileLocator(placement.value, index));
+	): Promise<
+		Result<
+			{
+				readonly locator: FileLocator;
+				readonly diagnostics: readonly Diagnostic[];
+			},
+			DiagnosticsError
+		>
+	> {
+		const examined = await new ConfigBuilder(
+			this.fileSystemService,
+			index,
+			this.tools
+		).examine(config);
+		return examined.map(({ placement, diagnostics }) => ({
+			locator: new FileLocator(placement, index),
+			diagnostics,
+		}));
 	}
 
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */

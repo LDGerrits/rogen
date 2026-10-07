@@ -355,6 +355,46 @@ describe("CoreBuildService", () => {
 			expect(result.configs).toEqual([]);
 		});
 
+		it("should still place a file when a folder meta beside it is invalid, and keep the error", async () => {
+			await fs.writeFile(abs("src/Combat/A.luau"), "");
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{ nope");
+
+			const result = (
+				await locate(configOf(), abs("src/Combat/A.luau"))
+			).unwrap();
+
+			expect(result.files).toMatchObject([
+				{
+					status: "placed",
+					instancePath: ["ReplicatedStorage", "Combat", "A"],
+				},
+			]);
+			expect(result.diagnostics.length).toBeGreaterThan(0);
+			expect(
+				result.diagnostics.every(
+					({ code }) => code === "meta.invalidSyntax"
+				)
+			).toBe(true);
+		});
+
+		it("should keep the warnings a build raises about the files it was asked about", async () => {
+			const result = (
+				await locate(
+					configOf({
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					}),
+					abs("src/Save@sever.luau")
+				)
+			).unwrap();
+
+			expect(result.diagnostics).toMatchObject([
+				{ code: "route.strayAt" },
+			]);
+		});
+
 		it("should name every config that declares no routes", async () => {
 			const result = await buildServiceOfFs().locate(
 				selectionOf(
