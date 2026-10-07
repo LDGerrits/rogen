@@ -5,12 +5,6 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigOptionValues, ResolvedConfig } from "./config.js";
 
-/** How a command reads a line that names no config. */
-export interface ConfigScope {
-	/** What naming none reads: the default config, or every config here. */
-	readonly unnamed?: "default" | "all";
-}
-
 interface ConfigEntryFields {
 	readonly file: string;
 	/** The configs it extends, the nearest first, as far as the chain could be read. */
@@ -59,8 +53,6 @@ export interface ConfigReload {
 /** The configs one invocation picked. The caller owns it, and only `reload` changes it. */
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** The config files in the working dir it didn't pick, as sorted absolute paths. */
-	readonly unselected: readonly string[];
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
 
@@ -87,11 +79,10 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs a command line picks by `names`, `-c` and `--all`, with the overrides its `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, each a name or a path, or every config in the working directory when it names none, with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
-		names: readonly string[],
-		options: ConfigOptionValues,
-		scope?: ConfigScope
+		refs: readonly string[],
+		options: ConfigOptionValues
 	): Promise<Result<ConfigSelection, Error>>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */
 	read(file: string): Promise<ConfigEntry>;

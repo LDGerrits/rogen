@@ -2,7 +2,6 @@ $ rogen build lobby lobby-sync match match-sync
 exit 0
 stdout:
   rogen build · lobby, lobby-sync, match, match-sync
-  Not building: core.rogen.json.
   lobby
     lobby.project.json · wrote
   lobby-sync

@@ -2,7 +2,6 @@ $ rogen build c
 exit 0
 stdout:
   rogen build · c
-  Not building: a.rogen.json, b.rogen.json.
   c.project.json · wrote
   Built 1 config.
 

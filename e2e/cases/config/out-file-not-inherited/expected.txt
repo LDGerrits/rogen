@@ -2,7 +2,6 @@ $ rogen build child
 exit 0
 stdout:
   rogen build · child
-  Not building: base.rogen.json.
   child.project.json · wrote
   Built 1 config.
 

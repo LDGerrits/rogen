@@ -9,16 +9,16 @@ import {
 import { DiagnosticLocation } from "../../platform/diagnostics/diagnostic.js";
 import { configDefaults } from "./config-schema.js";
 
-/** The fields that hold a path, which resolve against the file that sets them and the command line overrides. */
-export const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
-
-export type PathField = (typeof PATH_FIELDS)[number];
+/** The fields that hold a path, which resolve against the file that sets them. */
+const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
 
 /** Per-invocation values that sit above every layer of a config's chain. */
-export type ConfigOverrides = Readonly<Partial<Record<PathField, string>>> & {
+export interface ConfigOverrides {
+	/** Resolved against the working directory. */
+	readonly outFile?: string;
 	/** Variant name to whether it is on. */
 	readonly variants: Readonly<Record<string, boolean>>;
-};
+}
 
 /** A config's chain merged with the defaults and the command line, with each value traceable to the file that set it. */
 export class LayeredConfig {
@@ -90,9 +90,7 @@ export class LayeredConfig {
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
-		for (const key of PATH_FIELDS) {
-			if (overrides[key] !== undefined) contents[key] = overrides[key];
-		}
+		if (overrides.outFile !== undefined) contents.outFile = overrides.outFile;
 		if (declaredVariants.length > 0) {
 			contents.variants = Object.fromEntries(
 				declaredVariants.map((variant) => [

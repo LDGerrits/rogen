@@ -1,4 +1,4 @@
-$ rogen init --no-input
+$ rogen init -y
 exit 0
 stdout:
   rogen init

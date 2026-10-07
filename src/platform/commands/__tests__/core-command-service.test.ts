@@ -1,3 +1,4 @@
+import { UsageError } from "../../../base/errors.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError, err, ok } from "../../../base/result.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
@@ -74,9 +75,22 @@ describe("CoreCommandService", () => {
 				options: {},
 			});
 
-			expect(result.isErr()).toBe(true);
+			expect((result as ResultError<Error>).error).toBeInstanceOf(
+				UsageError
+			);
 			expect((result as ResultError<Error>).error.message).toMatch(
 				/Unknown command "prod"/
+			);
+		});
+
+		it("should point the old version command at the flag", async () => {
+			const result = await commandService.executeCommand("version", {
+				positionals: [],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"version\". Did you mean 'rogen --version'?"
 			);
 		});
 

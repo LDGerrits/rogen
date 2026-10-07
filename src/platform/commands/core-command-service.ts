@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { CommandLine } from "../environment/args.js";
@@ -23,20 +24,20 @@ export class CoreCommandService implements CommandService {
 		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 		const command = registry.getCommand(commandId);
 
-		if (!command) {
-			const suggestion = closestMatch(
-				commandId,
-				registry.getCommands().keys()
-			);
-			return err(
-				new Error(
-					suggestion
-						? `Unknown command "${commandId}". Did you mean 'rogen ${suggestion}'?`
-						: `Unknown command "${commandId}". To build a config, run 'rogen build ${commandId}'; run 'rogen help' to see the commands.`
-				)
-			);
-		}
+		if (!command)
+			return err(new UsageError(unknownCommand(commandId, registry)));
 
 		return command.handler(this.accessor, line);
 	}
+}
+
+/** What to say of `commandId`: the version flag, the command it's closest to, or that a config is built by `build`. */
+function unknownCommand(commandId: string, registry: CommandRegistry): string {
+	const prefix = `Unknown command "${commandId}".`;
+	// `version` was a command once; the flag does its job now.
+	if (commandId === "version") return `${prefix} Did you mean 'rogen --version'?`;
+	const suggestion = closestMatch(commandId, registry.getCommands().keys());
+	return suggestion
+		? `${prefix} Did you mean 'rogen ${suggestion}'?`
+		: `${prefix} To build a config, run 'rogen build ${commandId}'; run 'rogen help' to see the commands.`;
 }

@@ -108,14 +108,6 @@ describe("ConfigSet naming", () => {
 		expect(ConfigSet.placeFolderOf("lobby")).toBe("places/lobby");
 	});
 
-	it("should watch default without naming it, and any other set by its stems", () => {
-		expect(ConfigSet.watchCommand(["default"])).toBe("rogen watch");
-		expect(ConfigSet.watchCommand(["lobby"])).toBe("rogen watch lobby");
-		expect(ConfigSet.watchCommand(["lobby", "lobby-sync"])).toBe(
-			"rogen watch lobby lobby-sync"
-		);
-	});
-
 	it("should point at where variants of a script are swapped in", () => {
 		expect(ConfigSet.variantsStep(luau, "default.rogen.json")).toBe(
 			'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.'
@@ -265,14 +257,14 @@ describe("ConfigSet planning", () => {
 				steps(new ConfigSet("game", luau, undefined), "rbxtsc -w").run
 			).toEqual([
 				"rbxtsc -w",
-				"rogen watch game",
+				"rogen watch",
 				"rojo serve game.project.json",
 			]);
 		});
 
 		it("should have no compile command for plain Luau", () => {
 			expect(steps(new ConfigSet("game", luau, undefined)).run).toEqual([
-				"rogen watch game",
+				"rogen watch",
 				"rojo serve game.project.json",
 			]);
 		});
@@ -281,7 +273,7 @@ describe("ConfigSet planning", () => {
 			const { run } = steps(new ConfigSet("game", luau, darklua));
 
 			expect(run.slice(0, 2)).toEqual([
-				"rogen watch game game-sync",
+				"rogen watch",
 				"rojo serve game-sync.project.json",
 			]);
 		});

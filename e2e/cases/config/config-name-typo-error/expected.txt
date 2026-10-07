@@ -1,4 +1,11 @@
 $ rogen build lobyy
-exit 1
+exit 2
 stderr:
   error: Config "lobyy" not found: looked for <dir>/lobyy.rogen.json. Did you mean "lobby"?
+
+$ rogen build lobyy --json
+exit 2
+stdout:
+  {
+    "error": "Config \"lobyy\" not found: looked for <dir>/lobyy.rogen.json. Did you mean \"lobby\"?"
+  }

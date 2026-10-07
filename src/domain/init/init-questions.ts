@@ -39,11 +39,11 @@ const splitList = (value: string): string[] =>
 
 /** The questions `init` asks; each owns its default, which a run that can't ask takes without prompting. */
 export class InitQuestions {
-	constructor(private readonly promptService: PromptService) {}
-
-	private get interactive(): boolean {
-		return this.promptService.isInteractive;
-	}
+	/** `interactive` is false for a run that may not ask, even in a terminal. */
+	constructor(
+		private readonly promptService: PromptService,
+		readonly interactive = promptService.isInteractive
+	) {}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
 	async whatToAdd(): Promise<Addition | undefined> {

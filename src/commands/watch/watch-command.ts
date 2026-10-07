@@ -26,13 +26,15 @@ registerCommand(
 						"Builds, then rebuilds whenever sources or configs change.",
 					args: [
 						{
-							name: "name",
-							description: "A config to watch.",
+							name: "config",
+							description:
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
 					],
 					options: ConfigOptions,
+					examples: ["rogen watch", "rogen watch lobby --variant dev"],
 				},
 			});
 		}
@@ -59,10 +61,7 @@ registerCommand(
 			const watched = watchService.watch(selection.value);
 			if (watched.isErr()) return watched;
 			// The watch started, so every config is valid.
-			log.begin(
-				selection.value.requireValid().unwrap(),
-				selection.value.unselected
-			);
+			log.begin(selection.value.requireValid().unwrap());
 
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();

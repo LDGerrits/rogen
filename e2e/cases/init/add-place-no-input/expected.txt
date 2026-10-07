@@ -5,7 +5,7 @@ stdout:
   Created lobby.rogen.json.
   Next steps
     Run each in its own terminal:
-      rogen watch lobby
+      rogen watch
       rojo serve lobby.project.json
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
   Wrote 1 file.

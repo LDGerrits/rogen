@@ -1,4 +1,4 @@
-$ rogen build lobby match --verbose
+$ rogen build lobby match -v
 exit 0
 stdout:
   rogen build · lobby, match

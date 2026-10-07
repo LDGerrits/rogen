@@ -1,9 +1,3 @@
 {
-	"steps": [
-		[
-			"build",
-			"-c",
-			"configs/lobby.rogen.json"
-		]
-	]
+	"steps": [["build", "configs/lobby.rogen.json"]]
 }

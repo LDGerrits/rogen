@@ -1,4 +1,4 @@
-$ rogen build -c configs/lobby.rogen.json
+$ rogen build configs/lobby.rogen.json
 exit 0
 stdout:
   rogen build · lobby

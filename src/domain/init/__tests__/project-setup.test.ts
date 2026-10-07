@@ -354,13 +354,13 @@ describe("ProjectSetup plan", () => {
 
 		it("should watch both configs and serve the synced one", async () => {
 			expect((await planFor("luau", true)).nextSteps.run).toEqual([
-				"rogen watch default sync",
+				"rogen watch",
 				"rojo serve sync.project.json",
 			]);
 			expect(
 				(await planFor("luau", true, "lobby")).nextSteps.run
 			).toEqual([
-				"rogen watch lobby lobby-sync",
+				"rogen watch",
 				"rojo serve lobby-sync.project.json",
 				"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
 			]);
@@ -428,7 +428,7 @@ describe("ProjectSetup plan", () => {
 				).nextSteps
 			).toEqual({
 				setup: [],
-				run: ["rogen watch lobby", "rojo serve lobby.project.json"],
+				run: ["rogen watch", "rojo serve lobby.project.json"],
 				darklua: [],
 				edits: [
 					'Add your own routes under "routes" in lobby.rogen.json.',

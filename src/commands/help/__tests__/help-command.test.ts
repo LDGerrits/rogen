@@ -2,9 +2,9 @@ import { jest } from "@jest/globals";
 import "../../build/build-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
-import "../../version/version-command.js";
 import "../../watch/watch-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
+import { UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
@@ -18,6 +18,7 @@ import {
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
+import { ProductService } from "../../../platform/product/product-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
 describe("help command", () => {
@@ -38,6 +39,10 @@ describe("help command", () => {
 		info = jest.spyOn(logService, "print");
 		const services = new ServiceCollection();
 		services.set(LogService, logService);
+		services.set(ProductService, {
+			_serviceBrand: undefined,
+			getVersion: async () => "2.3.4",
+		});
 		commandService = new CoreCommandService(services, logService);
 	});
 
@@ -63,14 +68,45 @@ describe("help command", () => {
 				expect(printed()).toContain(`--${option.name}`);
 			}
 		});
+
+		it("should end with the exit codes", async () => {
+			await help();
+
+			expect(printed().split("\n").at(-1)).toBe(
+				"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong."
+			);
+		});
+
+		it("should print the version for --version, whatever the command", async () => {
+			await commandService.executeCommand("help", {
+				positionals: ["build"],
+				options: { version: true, help: true },
+			});
+
+			expect(printed()).toBe("rogen 2.3.4");
+		});
 	});
 
 	describe("rogen help <command>", () => {
 		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
-			expect(printed()).toContain("rogen build [name...] [options]");
-			expect(printed()).toContain("A config to build.");
+			expect(printed()).toContain("rogen build [config...] [options]");
+			expect(printed()).toContain("A config's name");
+		});
+
+		it("should give every command examples, after its options", async () => {
+			for (const command of registry.getCommands().values()) {
+				info.mockClear();
+				await help(command.id);
+
+				const text = printed();
+				expect(command.metadata.examples?.length).toBeGreaterThanOrEqual(2);
+				expect(text).toContain(`Examples:\n  ${command.metadata.examples?.[0]}`);
+				expect(text.indexOf("Examples:")).toBeGreaterThan(
+					text.indexOf("Arguments:")
+				);
+			}
 		});
 
 		it("should resolve the command from --help as well", async () => {
@@ -85,6 +121,9 @@ describe("help command", () => {
 		it("should return an error naming an unknown command", async () => {
 			const result = await help("prod");
 
+			expect((result as ResultError<Error>).error).toBeInstanceOf(
+				UsageError
+			);
 			expect((result as ResultError<Error>).error.message).toContain(
 				'Unknown command "prod"'
 			);

@@ -1,12 +1,14 @@
 $ rogen build
 exit 1
 stderr:
+  .rogen.json - error: a config file needs a name before ".rogen.json". Rename it to <name>.rogen.json, such as default.rogen.json.
+  .rogen.json - warning: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it.
   default.rogen.json:2:2 - error: unknown field "source".
   default.rogen.json:3:2 - error: unknown field "aliases".
   default.rogen.json:4:2 - error: unknown field "project".
   default.rogen.json - warning: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it.
 
-$ rogen build -c .rogen.json
+$ rogen build .rogen.json
 exit 1
 stderr:
   .rogen.json - error: a config file needs a name before ".rogen.json". Rename it to <name>.rogen.json, such as default.rogen.json.

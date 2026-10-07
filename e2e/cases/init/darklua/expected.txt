@@ -6,7 +6,7 @@ stdout:
   Created sync.rogen.json.
   Next steps
     Run each in its own terminal:
-      rogen watch default sync
+      rogen watch
       rojo serve sync.project.json
     Have Darklua process your code into the sync dir:
       darklua process src dist

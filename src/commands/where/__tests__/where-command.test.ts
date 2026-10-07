@@ -145,7 +145,7 @@ describe("where command", () => {
 		]);
 	});
 
-	it("should read the config -c names, with variant flags applied", async () => {
+	it("should read every config here, with variant flags applied", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await writeConfig("mocked.rogen.json", {
 			routes: ROUTES,
@@ -153,14 +153,11 @@ describe("where command", () => {
 		});
 		await write("src/Http.mock.luau");
 
-		await run({
-			_: ["src/Http.mock.luau"],
-			config: ["mocked.rogen.json"],
-			variant: ["mock"],
-		});
+		await run({ _: ["src/Http.mock.luau"], variant: ["mock"] });
 
 		expect(printed()).toEqual([
-			"src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · variant mock (suffix)",
+			"default: src/Http.mock.luau -> ReplicatedStorage/Shared/Http.mock · route * (fallback)",
+			"mocked: src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · variant mock (suffix)",
 		]);
 	});
 
@@ -174,21 +171,20 @@ describe("where command", () => {
 			await write("src/Util.luau", "places/lobby/Queue.luau");
 		});
 
-		it("should print a line once when the configs agree and head each config's line when they differ", async () => {
+		it("should print a line once when the configs agree, and only the placing config's line for a place's file", async () => {
 			await run({
-				_: ["src/Util.luau", "places/lobby/Queue.luau"],
-				all: true,
+				_: ["src/Util.luau", "places/lobby/Queue.luau", "README.md"],
 			});
 
 			expect(printed()).toEqual([
 				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-				"default: places/lobby/Queue.luau -> outside the root dirs",
 				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
+				"README.md -> outside the root dirs",
 			]);
 		});
 
 		it("should head only the lines that some configs lack in the whole tree, sorted", async () => {
-			await run({ all: true });
+			await run({});
 
 			expect(printed()).toEqual([
 				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
@@ -356,14 +352,11 @@ describe("where command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept the config-picking flags, but not the output overrides", () => {
+		it("should accept the variant flags, but not the output overrides", () => {
 			expect(
 				parse(
 					"where",
 					"src",
-					"--all",
-					"-c",
-					"a.rogen.json",
 					"--variant",
 					"mock",
 					"--no-variant",
@@ -372,7 +365,7 @@ describe("where command", () => {
 			).toBe(true);
 			expect(parse("where", "--json").isOk()).toBe(true);
 			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
-			expect(parse("where", "-s", "dist").isErr()).toBe(true);
+			expect(parse("where", "-c", "a.rogen.json").isErr()).toBe(true);
 		});
 	});
 });

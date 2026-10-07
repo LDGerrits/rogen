@@ -7,6 +7,12 @@ import { LogService } from "../../platform/log/log-service.js";
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
+/** Every variant the config declares, with its state, in the order declared. */
+const variantStates = ({ variants }: ResolvedConfig): string[] =>
+	Object.entries(variants).map(
+		([variant, on]) => `${variant} ${on ? "on" : "off"}`
+	);
+
 /** The configs a run read: as lines relative to the working dir, or as one JSON document keyed by config file. */
 export class ConfigReport {
 	constructor(private readonly entries: readonly ConfigEntry[]) {}
@@ -32,7 +38,7 @@ export class ConfigReport {
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
-					`variants: ${listed(config.enabledVariants)}`,
+					`variants: ${listed(variantStates(config))}`,
 				].join("\n")
 			);
 		}

@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
@@ -14,7 +15,11 @@ import {
 } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { ProductService } from "../../platform/product/product-service.js";
 import { Registry } from "../../platform/registry/registry.js";
+
+const EXIT_CODES =
+	"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.";
 
 function usageArgs(command: Command): string {
 	return (command.metadata.args ?? [])
@@ -61,6 +66,8 @@ function formatHelp(
 		...formatColumns(globalOptions.map(formatOption)),
 		"",
 		"Run 'rogen help <command>' for details on a command.",
+		"",
+		EXIT_CODES,
 	].join("\n");
 }
 
@@ -68,7 +75,12 @@ function formatCommandHelp(
 	command: Command,
 	globalOptions: readonly OptionDescriptor[]
 ): string {
-	const { description, args = [], options = [] } = command.metadata;
+	const {
+		description,
+		args = [],
+		options = [],
+		examples = [],
+	} = command.metadata;
 	const usage = ["rogen", command.id, usageArgs(command), "[options]"]
 		.filter(Boolean)
 		.join(" ");
@@ -91,6 +103,10 @@ function formatCommandHelp(
 			"Options:",
 			...formatColumns(options.map(formatOption))
 		);
+	}
+
+	if (examples.length > 0) {
+		sections.push("", "Examples:", ...examples.map((line) => `  ${line}`));
 	}
 
 	sections.push(
@@ -116,6 +132,7 @@ registerCommand(
 							isOptional: true,
 						},
 					],
+					examples: ["rogen help", "rogen help where"],
 				},
 			});
 		}
@@ -126,6 +143,12 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 			const logService = accessor.get(LogService);
+
+			if (line.options.version) {
+				const version = await accessor.get(ProductService).getVersion();
+				logService.print(`rogen ${version}`);
+				return ok(undefined);
+			}
 
 			// `rogen build --help` and `rogen help build` both name the command.
 			const [target] = line.positionals;
@@ -144,7 +167,7 @@ registerCommand(
 					registry.getCommands().keys()
 				);
 				return err(
-					new Error(
+					new UsageError(
 						suggestion
 							? `Unknown command "${target}". Did you mean 'rogen help ${suggestion}'?`
 							: `Unknown command "${target}". Run 'rogen help' to see available commands.`

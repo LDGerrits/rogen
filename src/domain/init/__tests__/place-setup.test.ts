@@ -107,7 +107,7 @@ describe("PlaceSetup", () => {
 				written(plan(luau, { rootDirs: ["src"] })).nextSteps
 			).toEqual({
 				setup: [],
-				run: ["rogen watch lobby", "rojo serve lobby.project.json"],
+				run: ["rogen watch", "rojo serve lobby.project.json"],
 				darklua: [],
 				edits: [
 					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.',
@@ -140,7 +140,7 @@ describe("PlaceSetup", () => {
 			expect(written(plan(darklua, base)).nextSteps).toEqual({
 				setup: [],
 				run: [
-					"rogen watch lobby lobby-sync",
+					"rogen watch",
 					"rojo serve lobby-sync.project.json",
 					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
 				],
@@ -234,7 +234,7 @@ describe("PlaceSetup", () => {
 				setup: [],
 				run: [
 					"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-					"rogen watch lobby",
+					"rogen watch",
 					"rojo serve lobby.project.json",
 				],
 				darklua: [],

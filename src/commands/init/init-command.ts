@@ -17,7 +17,16 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 
-const InitOptions = [JsonOption] as const;
+const InitOptions = [
+	{
+		name: "yes",
+		short: "y",
+		type: "boolean",
+		description:
+			"Write the defaults without asking, as a run without a terminal does.",
+	},
+	JsonOption,
+] as const;
 
 const indent = (line: string) => `  ${line}`;
 
@@ -53,6 +62,7 @@ registerCommand(
 						},
 					],
 					options: InitOptions,
+					examples: ["rogen init", "rogen init lobby", "rogen init -y"],
 				},
 			});
 		}
@@ -63,10 +73,12 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
-			const { isInteractive } = accessor.get(PromptService);
+			// A JSON document is read by a program, which can't answer a question.
+			const ask = !line.options.yes && !line.options.json;
+			const asked = ask && accessor.get(PromptService).isInteractive;
 
 			if (!line.options.json) logService.intro("rogen init");
-			const planned = await initService.plan(line.positionals);
+			const planned = await initService.plan(line.positionals, { ask });
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
@@ -77,7 +89,7 @@ registerCommand(
 						initService,
 						logService,
 						plan,
-						isInteractive
+						asked
 					);
 		}
 

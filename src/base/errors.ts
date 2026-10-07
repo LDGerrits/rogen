@@ -41,6 +41,11 @@ export class CancelledError extends Error {
 	override readonly name = "CancelledError";
 }
 
+/** The command line is wrong rather than the project: an unknown command, option or name, or a combination that isn't allowed. */
+export class UsageError extends Error {
+	override readonly name = "UsageError";
+}
+
 /** A failure already reported in full; only the exit code is left to set. */
 export class ReportedError extends Error {
 	override readonly name = "ReportedError";

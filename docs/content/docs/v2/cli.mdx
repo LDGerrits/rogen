@@ -9,17 +9,15 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [name…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` runs `build`. Whatever follows is a config name, so `rogen build lobby` builds `lobby.rogen.json`. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints usage. Whatever follows names configs: `rogen build lobby` builds `lobby.rogen.json`, and a name with a `/` or ending in `.json` is a path, as in `rogen build places/lobby.rogen.json`. With no names, a command reads every `*.rogen.json` in the folder. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
-### `build [name…]`
+### `build [config…]`
 
-Writes the project file for each named config, and is the default command. You can build several configs at once, as long as no two write the same file. `--all` builds every config in the folder.
+Writes the project file of every config in the folder, or of the ones you name. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
-`build` also lists any `*.rogen.json` you didn't ask for, which helps in a Darklua setup where it's easy to forget one of the two configs.
-
-### `watch [name…]`
+### `watch [config…]`
 
 Builds, then rebuilds whenever files or configs change. Only names matter, so editing inside a script never triggers a rebuild.
 
@@ -63,49 +61,62 @@ $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
-Unlike other commands, `where` takes paths, not config names. It reads the default config unless you pass `-c` or `--all`, and accepts `--variant`, `--no-variant` and `--json`.
+Unlike other commands, `where` takes paths, not config names, so it reads every config in the folder. A file every config places the same way prints one line. Otherwise each config's line starts with its name, and `outside the root dirs` is left out when another config places the file, so a place's file prints only the place's line:
+
+```
+$ rogen where places/lobby/Lobby/Server/Queue.luau
+lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+```
+
+`where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
 
 ### `init [name]`
 
 Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config. Without a terminal, or with `--json`, it takes the defaults, so `rogen init lobby` adds a place in `places/lobby`.
+In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`.
 
 `init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
 
-### `list [name…]`
+### `list [config…]`
 
-Lists every config in the folder with its root directories, sync directory, project file and active variants. It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
-### `help [command]` and `version`
+### `help [command]`
 
-Print usage and the installed version.
+Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
 ## Options
 
-An override changes a config value for one run. Anything you want every time belongs in the file. `where` and `list` only take `--all`, `-c`, `--variant` and `--no-variant`.
+An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where` and `list` only take `--variant` and `--no-variant`.
 
 | Flag | Effect |
 |---|---|
-| `--all` | Every `*.rogen.json` in the folder. Can't be combined with names or `-c`. |
-| `-c, --config <path>` | A config file by path. Repeatable. |
 | `-o, --out-file <path>` | Overrides `outFile`. |
-| `-s, --sync-dir <path>` | Overrides `syncDir`. |
-| `--template <path>` | Overrides `template`. |
 | `--variant <name>` | Turns a variant on. Repeatable. |
 | `--no-variant <name>` | Turns a variant off. Repeatable. |
-| `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. |
+| `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. On `init` it implies `--yes`. |
+| `-y, --yes` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
-| `-v, --version` | Prints the version. |
-| `--verbose` | Prints debug output. |
+| `-V, --version` | Prints the version. |
+| `-v, --verbose` | Prints debug output. |
 | `-q, --quiet` | Prints errors only, plus anything you explicitly asked for. |
-| `--no-input` | Never asks questions, and prints plain lines. |
 
-`-o`, `-s` and `--template` change a single config, so you can't use them when building several. A variant flag applies to every config that declares the variant, and is only an error if none do.
+`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | The command did its job, warnings included. |
+| `1` | The project is wrong: an invalid config, build errors, a failed write, or a cancelled `init`. |
+| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`), or a name that doesn't exist (a config, a variant or a help topic). |
+
+`--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
 
 ## JSON output
 
-`--json` prints exactly one JSON document on stdout, even when the command fails or the command line itself is wrong. The exit code is unchanged. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
+`--json` prints exactly one JSON document on stdout, even when the command fails or the command line itself is wrong. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
 
 Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file.
 
@@ -133,12 +144,11 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 			"outcome": "wrote",
 			"diagnostics": []
 		}
-	],
-	"notBuilding": ["/repo/lobby.rogen.json"]
+	]
 }
 ```
 
-`outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written. `notBuilding` lists the configs you didn't ask for.
+`outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
 ### `where --json`
 
@@ -165,7 +175,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
-		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen watch lobby", "rojo serve lobby.project.json"],
+		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen watch", "rojo serve lobby.project.json"],
 		"darklua": [],
 		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts."]
 	}
@@ -180,6 +190,8 @@ An object keyed by each config's absolute path. Every value has `extends` (neare
 
 ## Output
 
-In a terminal, Rogen draws a framed layout. In CI, pipes and redirects, or with `--no-input`, `TERM=dumb` or a truthy `CI` variable, it prints plain lines and never asks questions. Use `--no-input` when a tool runs Rogen in a pseudo-terminal.
+In a terminal, Rogen draws a framed layout. It prints plain lines instead in pipes and redirects, with `NO_COLOR` or `TERM=dumb`, and when CI or a coding agent runs it.
 
-Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A failed command exits with 1.
+Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `-y` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
+
+Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them.

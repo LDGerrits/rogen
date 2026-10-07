@@ -25,13 +25,19 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 }
 
+export interface InitOptions {
+	/** Whether `init` may ask at all; it asks only in a terminal a person can answer. */
+	readonly ask?: boolean;
+}
+
 /** Writes a starter config into the working directory in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
-	/** Asks what to write and writes nothing; `ok(undefined)` means the user cancelled. */
+	/** Asks what to write and writes nothing; `ok(undefined)` means the user cancelled. With `ask` false it takes every default, as a run without a terminal does. */
 	plan(
-		names: readonly string[]
+		names: readonly string[],
+		options?: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>>;
 
 	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */

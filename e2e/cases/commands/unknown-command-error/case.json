@@ -2,6 +2,8 @@
 	"steps": [
 		["prod"],
 		["deploy", "--variant", "x"],
-		["biuld"]
+		["biuld"],
+		["version"],
+		["prod", "--json"]
 	]
 }

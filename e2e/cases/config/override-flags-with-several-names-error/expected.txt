@@ -1,14 +1,32 @@
 $ rogen build a b -o x.project.json
-exit 1
+exit 2
 stderr:
-  error: -o targets a single config, but several were named. Name one config, or set it in the file.
+  error: -o targets a single config, but 2 configs were named. Name one config, or set outFile in the file.
 
-$ rogen build a b -s out
-exit 1
+$ rogen build -o x.project.json
+exit 2
 stderr:
-  error: -s targets a single config, but several were named. Name one config, or set it in the file.
+  error: -o targets a single config, but 2 configs are here. Name one config, or set outFile in the file.
 
-$ rogen build a b --template t.project.json
-exit 1
-stderr:
-  error: --template targets a single config, but several were named. Name one config, or set it in the file.
+$ rogen build -o x.project.json --json
+exit 2
+stdout:
+  {
+    "error": "-o targets a single config, but 2 configs are here. Name one config, or set outFile in the file."
+  }
+
+$ rogen build a -o x.project.json
+exit 0
+stdout:
+  rogen build · a
+  x.project.json · wrote
+  Built 1 config.
+
+written:
+  x.project.json
+
+$ rojo sourcemap x.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

@@ -7,7 +7,7 @@ stdout:
   Created match.rogen.json.
   Next steps
     Run each in its own terminal:
-      rogen watch lobby
+      rogen watch
       rojo serve lobby.project.json
     Swap lobby for match to work on another place.
     Add your own routes under "routes" in default.rogen.json.

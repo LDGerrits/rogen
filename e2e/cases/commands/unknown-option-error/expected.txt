@@ -1,34 +1,41 @@
 $ rogen build --nope
-exit 1
+exit 2
 stderr:
   error: Unknown option '--nope'. Run 'rogen help build' to see what build accepts.
 
 $ rogen build --root-dir src
-exit 1
+exit 2
 stderr:
   error: Unknown option '--root-dir'. Run 'rogen help build' to see what build accepts.
 
 $ rogen watch -w
-exit 1
+exit 2
 stderr:
   error: Unknown option '-w'. Run 'rogen help watch' to see what watch accepts.
 
 $ rogen build --variant
-exit 1
+exit 2
 stderr:
   error: Option '--variant' needs a value.
 
 $ rogen build --json=yes
-exit 1
+exit 2
 stderr:
   error: Option '--json' is a flag and takes no value.
 
 $ rogen build --jsno
-exit 1
+exit 2
 stderr:
   error: Unknown option '--jsno'. Did you mean '--json'?
 
 $ rogen init --variant x
-exit 1
+exit 2
 stderr:
   error: init doesn't take '--variant'. build, list, watch and where do.
+
+$ rogen build --nope --json
+exit 2
+stdout:
+  {
+    "error": "Unknown option '--nope'. Run 'rogen help build' to see what build accepts."
+  }

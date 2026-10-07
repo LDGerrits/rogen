@@ -203,13 +203,6 @@ describe("domain/config/config", () => {
 			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
 		});
 
-		it("should list the variants that are on", () => {
-			expect(
-				mockConfig({ variants: { mock: true, debug: false } })
-					.enabledVariants
-			).toEqual(["mock"]);
-		});
-
 		it("should pick out the variants a file carries that are off", () => {
 			const config = mockConfig({ variants: { mock: true, dev: false } });
 

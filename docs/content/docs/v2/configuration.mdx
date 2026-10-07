@@ -90,7 +90,7 @@ A child can add or replace values but never remove them. To drop something, flip
 
 ## Finding Configs
 
-`rogen build lobby` reads `lobby.rogen.json`. With no name, Rogen uses `default.rogen.json`, or the only config in the folder, or lists the candidates. `-c <path>` points at a file directly.
+`rogen build lobby` reads `lobby.rogen.json`, and `rogen build places/lobby.rogen.json` reads that file: a name with a `/` or ending in `.json` is a path. With no name, Rogen reads every `*.rogen.json` in the folder.
 
 A file called just `.rogen.json` is an error, since every config needs a name. That was v1's file name, so Rogen also links to [Migrating from v1](/docs/v2/migrating-from-v1).
 

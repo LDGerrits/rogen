@@ -38,14 +38,15 @@ registerCommand(
 						"Lists every config here with its root dirs, sync dir, project file and variants.",
 					args: [
 						{
-							name: "name",
+							name: "config",
 							description:
-								"A config to list. Every config here when none is given.",
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
 					],
 					options: ListOptions,
+					examples: ["rogen list", "rogen list --json"],
 				},
 			});
 		}
@@ -60,8 +61,7 @@ registerCommand(
 
 			const selection = await configService.select(
 				line.positionals,
-				line.options,
-				{ unnamed: "all" }
+				line.options
 			);
 			if (selection.isErr()) return selection;
 			const { entries } = selection.value;

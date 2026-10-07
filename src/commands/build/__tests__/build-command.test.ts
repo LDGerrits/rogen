@@ -372,38 +372,6 @@ describe("build command", () => {
 		);
 	});
 
-	it("should name the configs here that it was not asked to build", async () => {
-		const logService = new NullLogService();
-		const info = jest.spyOn(logService, "info");
-
-		await run(
-			new MockConfigService(
-				[buildable()],
-				[
-					"/repo/base.rogen.json",
-					"/repo/default.rogen.json",
-					"/repo/source.rogen.json",
-				]
-			),
-			logService
-		);
-
-		expect(info).toHaveBeenCalledWith(
-			"Not building: base.rogen.json, source.rogen.json."
-		);
-	});
-
-	it("should print no such line when every config here is built", async () => {
-		const logService = new NullLogService();
-		const info = jest.spyOn(logService, "info");
-
-		await run(new MockConfigService([buildable()]), logService);
-
-		expect(info).not.toHaveBeenCalledWith(
-			expect.stringContaining("Not building")
-		);
-	});
-
 	describe("--json", () => {
 		const buildJson = async (
 			configService: MockConfigService,
@@ -424,14 +392,11 @@ describe("build command", () => {
 			};
 		};
 
-		it("should print what each config wrote, and the configs it did not build", async () => {
+		it("should print what each config wrote", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
 			const { result, document } = await buildJson(
-				new MockConfigService(
-					[buildable()],
-					["/repo/default.rogen.json", "/repo/other.rogen.json"]
-				)
+				new MockConfigService([buildable()])
 			);
 
 			expect(result.isOk()).toBe(true);
@@ -444,7 +409,6 @@ describe("build command", () => {
 						diagnostics: [],
 					},
 				],
-				notBuilding: ["/repo/other.rogen.json"],
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
@@ -609,16 +573,9 @@ describe("build command", () => {
 			const { command, line } = parse(
 				"build",
 				"lobby",
-				"-c",
-				"a.rogen.json",
-				"--config",
-				"b.rogen.json",
+				"places/a.rogen.json",
 				"-o",
 				"out.project.json",
-				"-s",
-				"dist",
-				"--template",
-				"base.project.json",
 				"--variant",
 				"mock",
 				"--variant",
@@ -629,12 +586,9 @@ describe("build command", () => {
 			).unwrap();
 
 			expect(command).toBe("build");
-			expect(line.positionals).toEqual(["lobby"]);
+			expect(line.positionals).toEqual(["lobby", "places/a.rogen.json"]);
 			expect(line.options).toEqual({
-				config: ["a.rogen.json", "b.rogen.json"],
 				"out-file": "out.project.json",
-				"sync-dir": "dist",
-				template: "base.project.json",
 				variant: ["mock", "dev"],
 				"no-variant": ["prod"],
 				json: true,
@@ -663,13 +617,14 @@ describe("build command", () => {
 			expect(parse("build", "-T", "mock").isErr()).toBe(true);
 		});
 
-		it("should accept --all", () => {
-			expect(parse("build", "--all").unwrap().line.options.all).toBe(
-				true
-			);
-		});
-
 		it.each([
+			"--all",
+			"-c",
+			"--config",
+			"-s",
+			"--sync-dir",
+			"--template",
+			"--no-input",
 			"--profile",
 			"--env",
 			"--mode",

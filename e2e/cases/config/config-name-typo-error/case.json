@@ -1,6 +1,14 @@
 {
 	"steps": [
-		["build", "lobyy"]
+		[
+			"build",
+			"lobyy"
+		],
+		[
+			"build",
+			"lobyy",
+			"--json"
+		]
 	],
 	"rojo": false
 }

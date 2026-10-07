@@ -103,10 +103,7 @@ export function selectionOf(
 export class MockConfigSelection implements ConfigSelection {
 	readonly files: ReadonlySet<string>;
 
-	constructor(
-		readonly entries: readonly ConfigEntry[] = [mockEntry()],
-		readonly unselected: readonly string[] = []
-	) {
+	constructor(readonly entries: readonly ConfigEntry[] = [mockEntry()]) {
 		this.files = new Set(entries.map(({ file }) => file));
 	}
 
@@ -127,21 +124,10 @@ export class MockConfigSelection implements ConfigSelection {
 export class MockConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
 
-	constructor(
-		public entries: readonly ConfigEntry[] = [mockEntry()],
-		public configFiles: readonly string[] = entries.map(
-			(entry) => entry.file
-		)
-	) {}
+	constructor(public entries: readonly ConfigEntry[] = [mockEntry()]) {}
 
 	async select(): Promise<Result<ConfigSelection, Error>> {
-		const selected = new Set(this.entries.map(({ file }) => file));
-		return ok(
-			new MockConfigSelection(
-				this.entries,
-				this.configFiles.filter((file) => !selected.has(file))
-			)
-		);
+		return ok(new MockConfigSelection(this.entries));
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

@@ -1,12 +1,36 @@
-$ rogen where --all
+$ rogen where
 exit 0
 stdout:
   lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
 
-$ rogen where --all places/lobby/Lobby/Server/Queue.luau src/Inventory
+$ rogen where places/lobby/Lobby/Server/Queue.luau src/Inventory README.md
 exit 0
 stdout:
-  default: places/lobby/Lobby/Server/Queue.luau -> outside the root dirs
   lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
+  README.md -> outside the root dirs
+
+$ rogen where places/lobby/Lobby/Server/Queue.luau --json
+exit 0
+stdout:
+  [
+    {
+      "config": "default",
+      "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
+      "status": "outside"
+    },
+    {
+      "config": "lobby",
+      "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
+      "status": "placed",
+      "instancePath": [
+        "ServerScriptService",
+        "Lobby",
+        "Queue"
+      ],
+      "route": "Server",
+      "routeMatch": "folder",
+      "variants": []
+    }
+  ]

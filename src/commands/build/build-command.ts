@@ -26,16 +26,23 @@ registerCommand(
 			super({
 				id: "build",
 				metadata: {
-					description: "Writes each named config's project file.",
+					description:
+						"Writes the project file of each config here, or of the named ones.",
 					args: [
 						{
-							name: "name",
-							description: "A config to build.",
+							name: "config",
+							description:
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
 					],
 					options: BuildOptions,
+					examples: [
+						"rogen build",
+						"rogen build places/lobby.rogen.json --variant mock",
+						"rogen build --json",
+					],
 				},
 			});
 		}
@@ -59,29 +66,17 @@ registerCommand(
 			if (builds.isErr()) return builds;
 
 			const errors = builds.value.flatMap((build) => build.errors);
-			const { unselected } = selection.value;
 			return line.options.json
-				? this.reportAsJson(
-						logService,
-						builds.value,
-						errors,
-						unselected
-					)
-				: this.report(
-						new BuildLog(logService, cwd),
-						builds.value,
-						errors,
-						unselected
-					);
+				? this.reportAsJson(logService, builds.value, errors)
+				: this.report(new BuildLog(logService, cwd), builds.value, errors);
 		}
 
 		private report(
 			log: BuildLog,
 			builds: readonly ConfigBuild[],
-			errors: readonly Diagnostic[],
-			unselected: readonly string[]
+			errors: readonly Diagnostic[]
 		): Result<void, Error> {
-			log.report(builds, unselected);
+			log.report(builds);
 			return errors.length > 0
 				? err(new DiagnosticsError(errors))
 				: ok(undefined);
@@ -90,13 +85,12 @@ registerCommand(
 		private reportAsJson(
 			logService: LogService,
 			builds: readonly ConfigBuild[],
-			errors: readonly Diagnostic[],
-			unselected: readonly string[]
+			errors: readonly Diagnostic[]
 		): Result<void, Error> {
 			const report = new BuildReport();
 			for (const build of builds) report.add(build);
 
-			logService.print(formatJsonDocument(report.json(unselected)));
+			logService.print(formatJsonDocument(report.json()));
 			return errors.length > 0
 				? err(new ReportedError(new DiagnosticsError(errors)))
 				: ok(undefined);

@@ -2,17 +2,18 @@ $ rogen build lobby
 exit 0
 stdout:
   rogen build · lobby
-  Not building: default.rogen.json.
   lobby.project.json · wrote
   Built 1 config.
 
 $ rogen build
 exit 0
 stdout:
-  rogen build · default
-  Not building: lobby.rogen.json.
-  default.project.json · wrote
-  Built 1 config.
+  rogen build · default, lobby
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · unchanged
+  Built 2 configs.
 
 written:
   default.project.json

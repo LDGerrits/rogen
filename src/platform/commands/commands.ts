@@ -44,6 +44,8 @@ export interface CommandMetadata<
 		readonly isVariadic?: boolean;
 	}[];
 	readonly options?: O;
+	/** Two or three command lines that show the command at work, as help prints them. */
+	readonly examples?: readonly string[];
 }
 
 export interface CommandRegistry {

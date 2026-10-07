@@ -33,6 +33,11 @@ registerCommand(
 						},
 					],
 					options: WhereOptions,
+					examples: [
+						"rogen where src/Inventory/Server/Save.luau",
+						"rogen where ServerScriptService.Inventory.Save:12",
+						"rogen where src --json",
+					],
 				},
 			});
 		}
@@ -46,7 +51,7 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			// The positionals are paths, so only the flags pick configs.
+			// The positionals are paths, so every config here is read.
 			const selection = await configService.select([], line.options);
 			if (selection.isErr()) return selection;
 			const located = await buildService.locate(selection.value, {

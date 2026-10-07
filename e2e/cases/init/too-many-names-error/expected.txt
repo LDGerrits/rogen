@@ -1,5 +1,5 @@
 $ rogen init a b
-exit 1
+exit 2
 stdout:
   rogen init
   init failed.

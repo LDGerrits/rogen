@@ -87,12 +87,9 @@ export class WatchLog {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
 
-	/** Opens the output: the configs it watches and the ones it leaves out. */
-	begin(
-		configs: readonly ResolvedConfig[],
-		unselected: readonly string[]
-	): void {
-		this.buildLog.begin("watch", configs, unselected);
+	/** Opens the output: the configs it watches. */
+	begin(configs: readonly ResolvedConfig[]): void {
+		this.buildLog.begin("watch", configs);
 	}
 
 	end(): void {

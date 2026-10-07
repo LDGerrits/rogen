@@ -1,4 +1,4 @@
 $ rogen build --verbose --quiet
-exit 1
+exit 2
 stderr:
   error: --verbose can't be combined with --quiet.

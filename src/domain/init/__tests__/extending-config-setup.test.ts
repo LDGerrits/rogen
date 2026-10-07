@@ -34,7 +34,7 @@ describe("ExtendingConfigSetup", () => {
 		});
 		expect(plan.nextSteps).toEqual({
 			setup: [],
-			run: ["rogen watch prod", "rojo serve prod.project.json"],
+			run: ["rogen watch", "rojo serve prod.project.json"],
 			darklua: [],
 			edits: [
 				'Turn variants on or off under "variants", or add "exclude", in prod.rogen.json.',
@@ -71,7 +71,7 @@ describe("ExtendingConfigSetup", () => {
 			],
 		]);
 		expect(plan.nextSteps.run).toEqual([
-			"rogen watch prod prod-sync",
+			"rogen watch",
 			"rojo serve prod-sync.project.json",
 		]);
 	});

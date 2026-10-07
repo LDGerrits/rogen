@@ -1,4 +1,5 @@
 import path from "path";
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -9,20 +10,14 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import {
 	CONFIG_SUFFIX,
-	DEFAULT_CONFIG_STEM,
 	configFileName,
 	configLabel,
 } from "./config.js";
 
-/** Which config files one invocation names. */
-export interface ConfigRefs {
-	readonly names: readonly string[];
-	readonly paths?: readonly string[];
-	/** Every config in the working directory, instead of names or paths. */
-	readonly all?: boolean;
+/** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
+function isConfigPath(ref: string): boolean {
+	return ref.includes("/") || ref.includes("\\") || ref.endsWith(".json");
 }
-
-const DEFAULT_CONFIG_NAME = configFileName(DEFAULT_CONFIG_STEM);
 
 /** Finds which config files a command reads, in the working directory. */
 export class ConfigDiscovery {
@@ -31,47 +26,31 @@ export class ConfigDiscovery {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files `refs` names, or the default config when it names none, or every config when it asks for all. */
-	async discover({
-		names,
-		paths: explicitPaths = [],
-		all,
-	}: ConfigRefs): Promise<Result<string[], Error>> {
-		if (all) return this.find();
+	/** The config files `refs` names, each a name or a path, or every config here when it names none. */
+	async discover(refs: readonly string[]): Promise<Result<string[], Error>> {
+		if (refs.length === 0) return this.find();
 
 		const cwd = this.environmentService.cwd;
 		const resolved: string[] = [];
-
-		if (names.length === 0 && explicitPaths.length === 0) {
-			const defaultResult = await this.resolveDefault();
-			if (defaultResult.isErr()) return defaultResult;
-			resolved.push(defaultResult.unwrap());
-		} else {
-			for (const name of names) {
-				const candidate = path.join(cwd, configFileName(name));
-				if (!(await this.fileSystemService.exists(candidate))) {
-					return err(await this.notFound(name, candidate));
-				}
-				resolved.push(candidate);
+		for (const ref of refs) {
+			const isPath = isConfigPath(ref);
+			const candidate = isPath
+				? path.resolve(cwd, ref)
+				: path.join(cwd, configFileName(ref));
+			if (!(await this.fileSystemService.exists(candidate))) {
+				return err(
+					isPath
+						? new UsageError(`Config file not found: ${candidate}`)
+						: await this.notFound(ref, candidate)
+				);
 			}
-
-			for (const explicitPath of explicitPaths) {
-				const candidate = path.resolve(cwd, explicitPath);
-				if (!(await this.fileSystemService.exists(candidate))) {
-					return err(
-						new Error(
-							`Specified config file not found: ${candidate}`
-						)
-					);
-				}
-				resolved.push(candidate);
-			}
+			resolved.push(candidate);
 		}
 
 		const duplicate = findDuplicate(resolved);
 		if (duplicate) {
 			return err(
-				new Error(
+				new UsageError(
 					`"${duplicate}" was named more than once; each config can ` +
 						`only be built once per invocation.`
 				)
@@ -101,9 +80,7 @@ export class ConfigDiscovery {
 		if (candidates.length === 0) {
 			return err(
 				new Error(
-					`No config file found in ${cwd}. Looked for ` +
-						`${DEFAULT_CONFIG_NAME} or any *${CONFIG_SUFFIX}. Run ` +
-						`"rogen init" to create one.`
+					`No *${CONFIG_SUFFIX} found in ${cwd}. Run "rogen init" to create one.`
 				)
 			);
 		}
@@ -118,32 +95,9 @@ export class ConfigDiscovery {
 			name,
 			found.isOk() ? found.value.map(configLabel) : []
 		);
-		return new Error(
+		return new UsageError(
 			`Config "${name}" not found: looked for ${candidate}` +
 				(suggestion ? `. Did you mean "${suggestion}"?` : "")
-		);
-	}
-
-	private async resolveDefault(): Promise<Result<string, Error>> {
-		const cwd = this.environmentService.cwd;
-		const defaultPath = path.join(cwd, DEFAULT_CONFIG_NAME);
-		if (await this.fileSystemService.exists(defaultPath)) {
-			return ok(defaultPath);
-		}
-
-		const found = await this.find();
-		if (found.isErr()) return found;
-
-		if (found.value.length === 1) {
-			return ok(found.value[0]);
-		}
-
-		return err(
-			new Error(
-				`Several config files found in ${cwd} and none is named ` +
-					`${DEFAULT_CONFIG_NAME}: ${found.value.map((file) => path.basename(file)).join(", ")}. Run ` +
-					`"rogen build <name>" or pass -c to pick one.`
-			)
 		);
 	}
 }

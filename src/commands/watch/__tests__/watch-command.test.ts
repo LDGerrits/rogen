@@ -137,13 +137,13 @@ describe("watch command", () => {
 			expect(await built("default")).toEqual(["A"]);
 		});
 
-		it("should name the configs here that it was not asked to watch", async () => {
+		it("should watch every config here when none is named", async () => {
 			await write("/repo/source.rogen.json", config());
-			void startWatch(["default"]);
+			void startWatch([]);
 			await settle();
 
-			expect(logService.lines).toContain(
-				"info: Not building: source.rogen.json."
+			expect(logService.lines[0]).toBe(
+				"intro: rogen watch · default, source"
 			);
 		});
 
@@ -554,15 +554,13 @@ describe("watch command", () => {
 
 		it("should accept the override flags, but not --json", () => {
 			expect(
-				parse("watch", "--variant", "mock", "-c", "a.rogen.json").isOk()
+				parse("watch", "a.rogen.json", "--variant", "mock", "-o", "x").isOk()
 			).toBe(true);
 			expect(parse("watch", "--json").isErr()).toBe(true);
 		});
 
-		it("should accept --all", () => {
-			expect(parse("watch", "--all").unwrap().line.options.all).toBe(
-				true
-			);
+		it("should reject --all", () => {
+			expect(parse("watch", "--all").isErr()).toBe(true);
 		});
 	});
 });

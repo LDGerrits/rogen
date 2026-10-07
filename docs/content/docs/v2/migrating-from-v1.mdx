@@ -194,14 +194,15 @@ Each v2 config is one tree and one output, so a second mode becomes a second con
 | v1 | v2 |
 |---|---|
 | `-m, --mode <mode>` | a config name: `rogen build prod` |
-| `-b, --build <path>` | `-s, --sync-dir <path>` |
+| `-b, --build <path>` | removed. Set `syncDir` in another config |
 | `-s, --source <path>` | removed. Set `rootDirs` in another config |
 | `-o, --output <path>` | `-o, --out-file <path>` |
-| `-p, --project <path>` | `--template <path>` |
+| `-p, --project <path>` | removed. Set `template` in another config |
 | `-t, --tag <tag>` | `--variant <name>`, plus `--no-variant <name>` |
+| `-v, --version` | `-V, --version` |
 
-<Callout type="warn" title="-s changed meaning">
-	In v1, `-s` set the source directory. In v2 it sets the sync directory, so check any scripts that call Rogen.
+<Callout type="warn" title="-v changed meaning">
+	In v1, `-v` printed the version. In v2 it's `--verbose`, and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Check any scripts that call Rogen.
 </Callout>
 
 v2 also adds `extends`, `rogen list`, `rogen where`, `--json`, JSONC configs, building several configs at once, and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.
