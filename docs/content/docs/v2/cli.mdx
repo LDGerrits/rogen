@@ -82,9 +82,11 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
-### `help [command]`
+### `help [name]`
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
+
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
 
 ## Options
 

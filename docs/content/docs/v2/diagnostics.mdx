@@ -3,7 +3,7 @@ title: Diagnostics
 description: Every error and warning Rogen reports, why it fires and how to fix it.
 ---
 
-Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints it as `file:line:col - severity: message`, and `--json` adds the code, a `url` pointing at its section on this page, and, for some warnings, the `fixes` that resolve it.
+Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints it as `file:line:col - severity: message`, and `--json` adds the code, a `url` pointing at its section on this page, and, for some warnings, the `fixes` that resolve it. `rogen help <code>` prints a code's section from the version you have installed, offline.
 
 An error stops every config in the run from being written. A warning never does, but it always names something to fix.
 

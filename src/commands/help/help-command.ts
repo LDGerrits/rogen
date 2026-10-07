@@ -17,6 +17,40 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { ProductService } from "../../platform/product/product-service.js";
 import { Registry } from "../../platform/registry/registry.js";
+import { helpTexts } from "./help-texts.js";
+
+/** A section of the reference, by name; its text ships in the binary. */
+interface HelpTopic {
+	readonly name: string;
+	readonly description: string;
+}
+
+const TOPICS: readonly HelpTopic[] = [
+	{
+		name: "routing",
+		description:
+			"How folders and names place a file, and what that means for requires.",
+	},
+	{
+		name: "variants",
+		description: "Files that swap in when a variant is on.",
+	},
+	{
+		name: "config",
+		description: "Config fields, extends, places, templates and sync dirs.",
+	},
+	{
+		name: "layout",
+		description: "Invisible folders, init scripts and .meta.json files.",
+	},
+	{
+		name: "output",
+		description: "Diagnostics, exit codes, --json, fixes and docs links.",
+	},
+];
+
+/** A diagnostic code has a dot, which no command or topic does. */
+const isCode = (name: string) => name.includes(".");
 
 const EXIT_CODES =
 	"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.";
@@ -52,6 +86,10 @@ function formatHelp(
 		[command.id, usageArgs(command)].filter(Boolean).join(" "),
 		command.metadata.description,
 	]);
+	const topics = TOPICS.map(({ name, description }): [string, string] => [
+		name,
+		description,
+	]);
 
 	return [
 		"Rogen - Feature-based architecture for Roblox",
@@ -62,10 +100,13 @@ function formatHelp(
 		"Commands:",
 		...formatColumns(rows),
 		"",
+		"Topics:",
+		...formatColumns(topics),
+		"",
 		"Options:",
 		...formatColumns(globalOptions.map(formatOption)),
 		"",
-		"Run 'rogen help <command>' for details on a command.",
+		"Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
 		"",
 		EXIT_CODES,
 	].join("\n");
@@ -124,15 +165,21 @@ registerCommand(
 			super({
 				id: "help",
 				metadata: {
-					description: "Prints usage, or details for one command.",
+					description:
+						"Prints usage, a command's details, a topic, or what a diagnostic code means.",
 					args: [
 						{
-							name: "command",
-							description: "The command to describe.",
+							name: "name",
+							description:
+								"A command, a topic, or a diagnostic code such as route.strayAt.",
 							isOptional: true,
 						},
 					],
-					examples: ["rogen help", "rogen help where"],
+					examples: [
+						"rogen help where",
+						"rogen help routing",
+						"rogen help route.strayAt",
+					],
 				},
 			});
 		}
@@ -160,23 +207,40 @@ registerCommand(
 				return ok(undefined);
 			}
 
-			const command = registry.getCommand(target.toLowerCase());
-			if (!command) {
-				const suggestion = closestMatch(
-					target,
-					registry.getCommands().keys()
-				);
-				return err(
-					new UsageError(
-						suggestion
-							? `Unknown command "${target}". Did you mean 'rogen help ${suggestion}'?`
-							: `Unknown command "${target}". Run 'rogen help' to see available commands.`
-					)
-				);
-			}
-
-			logService.print(formatCommandHelp(command, GlobalOptions));
+			const text = this.textOf(target, registry);
+			if (text === undefined) return err(this.unknown(target, registry));
+			logService.print(text);
 			return ok(undefined);
+		}
+
+		private textOf(
+			target: string,
+			registry: CommandRegistry
+		): string | undefined {
+			if (isCode(target)) return helpTexts.diagnostics[target];
+			const name = target.toLowerCase();
+			const command = registry.getCommand(name);
+			return command
+				? formatCommandHelp(command, GlobalOptions)
+				: helpTexts.topics[name];
+		}
+
+		private unknown(target: string, registry: CommandRegistry): Error {
+			const names = isCode(target)
+				? Object.keys(helpTexts.diagnostics)
+				: [
+						...registry.getCommands().keys(),
+						...TOPICS.map(({ name }) => name),
+					];
+			const what = isCode(target)
+				? "diagnostic code"
+				: "command or topic";
+			const suggestion = closestMatch(target, names);
+			return new UsageError(
+				suggestion
+					? `Unknown ${what} "${target}". Did you mean 'rogen help ${suggestion}'?`
+					: `Unknown ${what} "${target}". Run 'rogen help' to see the commands and topics.`
+			);
 		}
 	}
 );

@@ -61,7 +61,7 @@ stdout:
     rogen init [name] [options]
   
   Arguments:
-    name  The config to write. Defaults to default.
+    name  The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place in places/<name>.
   
   Options:
     -y, --yes   Write the defaults without asking, as a run without a terminal does.
@@ -81,7 +81,7 @@ stdout:
 $ rogen help list
 exit 0
 stdout:
-  Lists every config here with its root dirs, sync dir, project file and variants.
+  Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
   
   Usage:
     rogen list [config...] [options]

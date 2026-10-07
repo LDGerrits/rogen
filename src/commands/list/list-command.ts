@@ -35,7 +35,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, sync dir, project file and variants.",
+						"Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.",
 					args: [
 						{
 							name: "config",

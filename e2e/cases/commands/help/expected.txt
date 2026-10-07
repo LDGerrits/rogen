@@ -8,11 +8,18 @@ stdout:
   
   Commands:
     build [config...]  Writes the project file of each config here, or of the named ones.
-    help [command]     Prints usage, or details for one command.
+    help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
-    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants.
+    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why.
+  
+  Topics:
+    routing   How folders and names place a file, and what that means for requires.
+    variants  Files that swap in when a variant is on.
+    config    Config fields, extends, places, templates and sync dirs.
+    layout    Invisible folders, init scripts and .meta.json files.
+    output    Diagnostics, exit codes, --json, fixes and docs links.
   
   Options:
     -h, --help     Print help.
@@ -20,7 +27,7 @@ stdout:
     -v, --verbose  Print debug output.
     -q, --quiet    Only print errors.
   
-  Run 'rogen help <command>' for details on a command.
+  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
 
@@ -34,11 +41,18 @@ stdout:
   
   Commands:
     build [config...]  Writes the project file of each config here, or of the named ones.
-    help [command]     Prints usage, or details for one command.
+    help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
-    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants.
+    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why.
+  
+  Topics:
+    routing   How folders and names place a file, and what that means for requires.
+    variants  Files that swap in when a variant is on.
+    config    Config fields, extends, places, templates and sync dirs.
+    layout    Invisible folders, init scripts and .meta.json files.
+    output    Diagnostics, exit codes, --json, fixes and docs links.
   
   Options:
     -h, --help     Print help.
@@ -46,7 +60,7 @@ stdout:
     -v, --verbose  Print debug output.
     -q, --quiet    Only print errors.
   
-  Run 'rogen help <command>' for details on a command.
+  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
 
@@ -60,11 +74,18 @@ stdout:
   
   Commands:
     build [config...]  Writes the project file of each config here, or of the named ones.
-    help [command]     Prints usage, or details for one command.
+    help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
-    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants.
+    list [config...]   Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why.
+  
+  Topics:
+    routing   How folders and names place a file, and what that means for requires.
+    variants  Files that swap in when a variant is on.
+    config    Config fields, extends, places, templates and sync dirs.
+    layout    Invisible folders, init scripts and .meta.json files.
+    output    Diagnostics, exit codes, --json, fixes and docs links.
   
   Options:
     -h, --help     Print help.
@@ -72,6 +93,6 @@ stdout:
     -v, --verbose  Print debug output.
     -q, --quiet    Only print errors.
   
-  Run 'rogen help <command>' for details on a command.
+  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.

@@ -27,7 +27,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given. Every config here is read.",
 							isOptional: true,
 							isVariadic: true,
 						},

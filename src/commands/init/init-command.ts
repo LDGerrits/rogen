@@ -57,7 +57,7 @@ registerCommand(
 						{
 							name: "name",
 							description:
-								"The config to write. Defaults to default.",
+								"The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place in places/<name>.",
 							isOptional: true,
 						},
 					],

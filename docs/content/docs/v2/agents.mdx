@@ -66,7 +66,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
 - Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read https://rogen-playfully.vercel.app/docs/v2.
+For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, run `rogen help`.
 ````
 
 The snippet covers the mistakes agents tend to make. For everything else, Rogen's diagnostics say what to change. Tools that drive Rogen can use [`--json`](/docs/v2/cli#json-output) instead of parsing text.

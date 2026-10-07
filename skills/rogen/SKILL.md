@@ -42,4 +42,4 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 - The `syncDir` (`out`, `dist`) is compiler output: edit the sources in the root directories.
 - Add a place with `rogen init <name> --json` rather than by hand: it writes the place's config and the extra files Darklua or roblox-ts need for it. Make every edit in its `nextSteps.setup`, such as roblox-ts's `include`.
 
-For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, read [REFERENCE.md](REFERENCE.md).
+For variants (`Foo.mock.luau`), marker files, suffixes, `.meta.json`, extra configs and CLI flags, run `rogen help`.
