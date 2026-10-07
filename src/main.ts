@@ -158,7 +158,12 @@ async function main(): Promise<void> {
 		const commandService = new CoreCommandService(services, logService);
 		services.set(CommandService, commandService);
 
-		const result = await commandService.executeCommand(command, line);
+		const result = await commandService
+			.executeCommand(command, line)
+			.catch((error: unknown) => {
+				failure.crashed(error);
+				throw error;
+			});
 
 		if (result.isErr()) {
 			failure.report(result.error, command);

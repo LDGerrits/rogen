@@ -1,5 +1,6 @@
 import {
 	CancelledError,
+	ErrorUtils,
 	ReportedError,
 	UsageError,
 } from "../../base/errors.js";
@@ -35,6 +36,14 @@ export class CommandFailure {
 			this.logService.error(error.message);
 		}
 		if (command) this.logService.closeFrame(`${command} failed.`);
+	}
+
+	/** Keeps `--json`'s one document when the run threw; the stack is still the caller's to print, on stderr. */
+	crashed(error: unknown): void {
+		if (!this.json) return;
+		this.logService.print(
+			formatJsonDocument(failureToJson(ErrorUtils.fromUnknown(error)))
+		);
 	}
 }
 

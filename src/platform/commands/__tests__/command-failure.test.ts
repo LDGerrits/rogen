@@ -109,6 +109,28 @@ describe("CommandFailure", () => {
 			]);
 		});
 	});
+
+	describe("crashed", () => {
+		it("should print the message of a crash as a JSON document", () => {
+			new CommandFailure(logService, true).crashed(
+				new TypeError("x is undefined")
+			);
+
+			expect(printed()).toEqual([{ error: "x is undefined" }]);
+		});
+
+		it("should print a JSON document for a thrown value that isn't an error", () => {
+			new CommandFailure(logService, true).crashed("boom");
+
+			expect(printed()).toEqual([{ error: "boom" }]);
+		});
+
+		it("should print nothing without --json", () => {
+			new CommandFailure(logService, false).crashed(new Error("x"));
+
+			expect(logService.entries).toEqual([]);
+		});
+	});
 });
 
 describe("exitCodeOf", () => {
