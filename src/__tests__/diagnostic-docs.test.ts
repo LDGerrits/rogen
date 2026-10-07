@@ -10,7 +10,7 @@ const SRC = path.resolve(import.meta.dirname, "..");
 const PAGE = path.resolve(SRC, "../docs/content/docs/v2/diagnostics.mdx");
 
 const CALL =
-	/(?:errorDiagnostic|warningDiagnostic|\.error|\.warning)\(\s*"([A-Za-z.]+)"/g;
+	/(?:errorDiagnostic|warningDiagnostic|\.error|\.warning|\.misspelt)\(\s*"([A-Za-z.]+)"/g;
 const CODE = /^[a-z]+\.[a-z][A-Za-z]+$/;
 const READER = "platform/jsonc/jsonc-document-reader.ts";
 const PREFIX = /codePrefix: "([a-z]+)"/g;
