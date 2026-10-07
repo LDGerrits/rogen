@@ -653,6 +653,28 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
+			it("should not count a folder's files as alternatives of the folder", async () => {
+				await write(
+					"src/Tools/Debug.dev.luau",
+					"src/Tools/Profiler.prof.luau",
+					"src/Kit/.dev",
+					"src/Kit/Y.luau",
+					"src/Kit/X.prof.luau"
+				);
+
+				expect(await missing({ dev: false, prof: false })).toEqual([]);
+			});
+
+			it("should name the file two variant folders give, not the folder above them", async () => {
+				await write("src/W/dev/Svc.luau", "src/W/prod/Svc.luau");
+
+				const [warning] = await missing({ dev: false, prod: false });
+
+				expect(warning.message).toContain(
+					"ReplicatedStorage/shared/W/Svc (dev, prod)"
+				);
+			});
+
 			it("should not warn for a lone variant", async () => {
 				await write("src/DebugPanel.dev.luau");
 

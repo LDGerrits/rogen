@@ -353,8 +353,10 @@ export class Placer {
 						ignoredRoutes: [],
 						ignoredAts: [],
 						variants,
+						variantNodes: variants.map(() => instancePath),
 						buriedScriptSuffix,
 						init,
+						...(file.hoisted && { hoisted: true }),
 					});
 				}
 				return copies;

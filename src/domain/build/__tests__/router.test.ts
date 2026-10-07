@@ -164,6 +164,21 @@ describe("Router", () => {
 				).toBe("pruned");
 			});
 
+			it("should say a copied init script of a ^ folder was hoisted", async () => {
+				await write(
+					"src/K/^Net/init.luau",
+					"src/K/^Net/server/A.luau",
+					"src/K/^Net/client/B.luau"
+				);
+
+				const copies = (await route())
+					.unwrap()
+					.files.filter(({ routeMatch }) => routeMatch === "copy");
+
+				expect(copies.length).toBeGreaterThan(0);
+				expect(copies.every(({ hoisted }) => hoisted)).toBe(true);
+			});
+
 			it("should warn when two ^ names land on one instance", async () => {
 				await write("src/A/^C.luau", "src/B/^C.luau");
 

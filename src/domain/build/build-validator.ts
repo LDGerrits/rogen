@@ -24,6 +24,9 @@ import { Assembly } from "./tree-assembler.js";
 
 const DIAGNOSED_PATHS = 10;
 
+const isSamePath = (a: readonly string[], b: readonly string[]) =>
+	instanceKey(a) === instanceKey(b);
+
 /** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
 	noted: ReadonlyMap<string, NotedName<unknown>>
@@ -218,7 +221,7 @@ export class BuildValidator {
 		];
 	}
 
-	/** The outermost instances that two or more sets of variants give and no file is left to give, sorted. */
+	/** The outermost instances that two or more sets of variants claim and no file is left to give, sorted. */
 	private missingInstances(): {
 		readonly instance: string;
 		readonly variants: readonly string[];
@@ -246,25 +249,24 @@ export class BuildValidator {
 				)
 			)
 				continue;
+			const claims = files.map((file) =>
+				file.variants
+					.filter((_, index) =>
+						isSamePath(file.variantNodes[index], node)
+					)
+					.map(({ variant }) => variant)
+					.sort()
+			);
 			const alternatives = new Set(
-				files.map(({ variants }) =>
-					variants
-						.map(({ variant }) => variant)
-						.sort()
-						.join(".")
-				)
+				claims
+					.filter((variants) => variants.length > 0)
+					.map((variants) => variants.join("."))
 			);
 			if (alternatives.size < 2) continue;
 			missing.push(node);
 			result.push({
 				instance: instanceKey(node),
-				variants: [
-					...new Set(
-						files.flatMap(({ variants }) =>
-							variants.map(({ variant }) => variant)
-						)
-					),
-				].sort(compareStrings),
+				variants: [...new Set(claims.flat())].sort(compareStrings),
 			});
 		}
 		return result.sort((a, b) => compareStrings(a.instance, b.instance));

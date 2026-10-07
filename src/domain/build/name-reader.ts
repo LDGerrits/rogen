@@ -232,7 +232,9 @@ export class NameReader {
 					nearMiss && !this.keys.isVariant(nearMiss)
 						? nearMiss
 						: undefined,
-				...(key === undefined && { strayAt: this.strayAt(fileName) }),
+				// A case-only miss gets the letter-case warning instead.
+				...(key === undefined &&
+					!nearMiss && { strayAt: this.strayAt(fileName) }),
 			};
 		}
 		const key = this.keys.resolveVariant(text);

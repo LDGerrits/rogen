@@ -53,9 +53,10 @@ describe("NameReader marker", () => {
 
 	it("does not match any other difference in case", () => {
 		expect(matchMarkerKey("@SERVER", ROUTE_KEYS)).toBeUndefined();
-		expect(readerOf(ROUTE_KEYS).marker("@SERVER").nearMissKey).toBe(
-			"server"
-		);
+		expect(readerOf(ROUTE_KEYS).marker("@SERVER")).toEqual({
+			key: undefined,
+			nearMissKey: "server",
+		});
 	});
 
 	it("ignores a name that doesn't start with a sign", () => {
