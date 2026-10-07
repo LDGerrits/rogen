@@ -47,7 +47,8 @@
 		"generate:help": "tsx scripts/generate-help.ts",
 		"generate:agent-block": "tsx scripts/generate-agent-block.ts",
 		"lint:fix": "eslint . --fix",
-		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen"
+		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen",
+		"version": "tsx scripts/sync-version.ts"
 	},
 	"main": "dist/index.js",
 	"bin": {
