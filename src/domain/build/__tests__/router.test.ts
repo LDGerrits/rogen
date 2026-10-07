@@ -544,6 +544,19 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
+				await write("src/I/init@client@server.luau", "src/I/X.luau");
+
+				const result = (await route()).unwrap();
+
+				expect(
+					result.files.map((file) => file.instancePath.join("/"))
+				).toEqual(["ServerScriptService/I/X", "ServerScriptService/I"]);
+				expect(result.warnings.map(({ code }) => code)).toEqual([
+					"route.ignoredAt",
+				]);
+			});
+
 			it("should ignore dot-files that aren't declared routes", async () => {
 				await write("src/.gitkeep", "src/.mock", "src/Save.luau");
 

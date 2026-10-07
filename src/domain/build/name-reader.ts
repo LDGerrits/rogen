@@ -209,7 +209,7 @@ export class NameReader {
 			this.keys.isVariant(key)
 		);
 		const [routeSpan, ...innerRouteSpans] = spans.filter(
-			({ key }) => !this.keys.isVariant(key)
+			({ key }) => this.keys.isRoute(key)
 		);
 		const keptName = NameReader.withoutSpans(
 			name,
@@ -243,7 +243,7 @@ export class NameReader {
 		spans: readonly SuffixSpan[]
 	): SuffixSpan | undefined {
 		const text = baseName.slice(1);
-		const routed = spans.some(({ key }) => !this.keys.isVariant(key));
+		const routed = spans.some(({ key }) => this.keys.isRoute(key));
 		let key: string | undefined;
 		if (baseName.startsWith("@") && !routed)
 			key = this.keys.resolveRoute(text);
@@ -314,7 +314,7 @@ export class NameReader {
 		const matched = new Set<string>();
 		const spans: SuffixSpan[] = [];
 
-		const routed = () => spans.some(({ key }) => !this.keys.isVariant(key));
+		const routed = () => spans.some(({ key }) => this.keys.isRoute(key));
 		for (
 			let span = this.trailingSpan(remaining, dotRoutes, routed());
 			span;
@@ -332,18 +332,24 @@ export class NameReader {
 			misspellings: NameReader.present([
 				this.strayAt(remaining),
 				this.variantTypo(remaining),
-				this.dotRoute(remaining, dotRoutes),
+				this.dotRoute(remaining, dotRoutes, stem),
 			]),
 		};
 	}
 
 	/** Only `@` routes, and Rojo's `.server`/`.client` on a script, which `suffixes` already took. */
-	private dotRoute(remaining: string, script: boolean): DotRoute | undefined {
+	private dotRoute(
+		remaining: string,
+		script: boolean,
+		stem: string
+	): DotRoute | undefined {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
 		const key = this.dotRouteKey(text);
-		return key ? NameReader.dotRouteOf(text, key, dot, script) : undefined;
+		return key
+			? NameReader.dotRouteOf(text, key, dot, script ? stem : undefined)
+			: undefined;
 	}
 
 	/** The route a dot part spells in any letter case: the dot is already the slip, so the case is fixed with it. */
@@ -355,22 +361,21 @@ export class NameReader {
 		);
 	}
 
-	/** `.text` at `start`, which spells the route `key`, respelt with its `@`; on a script, Rojo's own `.server`/`.client` in another case is respelt as Rojo reads it. */
+	/** `.text` at `start`, which spells the route `key`, respelt with its `@`. In a script's `stem`, Rojo's own suffix is respelt as Rojo reads it: lower case, and last. */
 	private static dotRouteOf(
 		text: string,
 		key: string,
 		start: number,
-		script = false
+		stem?: string
 	): DotRoute {
 		const rojo = text.toLowerCase();
-		const spelling =
-			script && DOT_ROUTE_KEYS.has(rojo) ? `.${rojo}` : `@${key}`;
-		return {
-			kind: "dotRoute",
-			text,
-			key,
-			respelling: { start, written: `.${text}`, spelling },
-		};
+		const after =
+			stem?.slice(start + text.length + 1) ?? "";
+		const respelling =
+			stem !== undefined && DOT_ROUTE_KEYS.has(rojo)
+				? { start, written: `.${text}${after}`, spelling: `${after}.${rojo}` }
+				: { start, written: `.${text}`, spelling: `@${key}` };
+		return { kind: "dotRoute", text, key, respelling };
 	}
 
 	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */

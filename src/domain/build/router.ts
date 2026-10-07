@@ -113,6 +113,12 @@ class Claims {
 		return true;
 	}
 
+	/** A route its own name outranks, which stays in the name. */
+	ignoreRoute(key: string, dir: string): void {
+		this.ignoredRoutes.push(key);
+		this.ignoredAts.push({ key, dir });
+	}
+
 	/** The same route claimed again at the level that governs is harmless, so it isn't reported. */
 	repeats(key: string, dir: string): boolean {
 		return this.route?.key === key && this.route.dir === dir;
@@ -259,7 +265,7 @@ export class Router {
 			const claims = [
 				...(markers.get(dir) ?? []).flatMap((fileName) => {
 					const key = this.markerKeyAt(root.rootDir, dir, fileName);
-					return key !== undefined && !this.keys.isVariant(key)
+					return key !== undefined && this.keys.isRoute(key)
 						? [{ key, name: fileName }]
 						: [];
 				}),
@@ -313,15 +319,17 @@ export class Router {
 		const routes = new Map<string, { key: string; source: string }[]>();
 		for (const [dir, inits] of placeable) {
 			const varied = inits.some((init) => init.varied);
+			// Only the last `@key` of a name routes; the ones before it are outranked.
 			routes.set(
 				dir,
 				inits
 					.filter((init) => init.varied || !varied)
-					.flatMap(({ spans, source }) =>
-						spans
-							.filter(({ key }) => this.keys.routeKeys.has(key))
-							.map(({ key }) => ({ key, source }))
-					)
+					.flatMap(({ spans, source }) => {
+						const governing = spans.find(({ key }) =>
+							this.keys.isRoute(key)
+						);
+						return governing ? [{ key: governing.key, source }] : [];
+					})
 			);
 		}
 		return routes;
@@ -467,10 +475,8 @@ export class Router {
 						key: folder.route,
 						dir: folder.dir,
 					});
-				for (const key of folder.innerRoutes) {
-					claims.claimRoute(key, "folder");
-					claims.ignoredAts.push({ key, dir: folder.dir });
-				}
+				for (const key of folder.innerRoutes)
+					claims.ignoreRoute(key, folder.dir);
 			}
 			const name = governs ? folder.keptName : folder.outrankedName;
 			const named = name !== undefined && !folder.invisible;
@@ -499,7 +505,7 @@ export class Router {
 		const isInit = this.isInitEntry(read);
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
-			if (!this.keys.routeKeys.has(span.key)) continue;
+			if (!this.keys.isRoute(span.key)) continue;
 			if (claims.claimRoute(span.key, "suffix")) routeSpan = span;
 			else if (
 				stem[span.start] === "@" &&

@@ -612,11 +612,17 @@ describe("BuildValidator rules", () => {
 					"Hud.CLIENT.luau": "Hud.client.luau",
 					"Lib.SHARED.luau": "Lib@shared.luau",
 				});
-				expect(
-					(await route({ routes: SHARED }))
-						.unwrap()
-						.warnings.filter(({ code }) => code === "route.caseMismatch")
-				).toEqual([]);
+			});
+
+			it("should leave the letter-case warning to bare names when a dot route key differs in case", async () => {
+				await write("src/.SERVER/A.luau", "src/C/.SERVER", "src/SERVER/B.luau");
+
+				const mismatched = (await route({ routes: SHARED }))
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.caseMismatch")
+					.map(({ resource }) => resource);
+
+				expect(mismatched).toEqual([abs("src/SERVER")]);
 			});
 
 			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {

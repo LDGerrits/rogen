@@ -167,6 +167,10 @@ export class DeclaredKeys {
 		return this.variantKeys.has(key);
 	}
 
+	isRoute(key: string): boolean {
+		return this.routeKeys.has(key);
+	}
+
 	/** The key `name` spells, exactly or with the first letter in the other case. */
 	resolve(name: string): string | undefined {
 		return this.resolveIn(name, this.all);
