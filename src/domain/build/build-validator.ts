@@ -15,7 +15,7 @@ import {
 	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { instanceKey } from "../rojo/rojo-project.js";
+import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { NotedName } from "./name-reader.js";
 import { Placement } from "./placement.js";
@@ -198,24 +198,49 @@ export class BuildValidator {
 
 	/** Variants are independent switches, so turning off every alternative of an instance leaves nothing where code expects it. */
 	private noneActive(): Diagnostic[] {
-		const claimants = new Map<string, RoutedFile[]>();
+		const missing = this.missingInstances();
+		if (missing.length === 0) return [];
+		const many = missing.length > 1;
+		return [
+			warningDiagnostic(
+				"variant.noneActive",
+				{ resource: this.config.file },
+				[
+					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
+					...this.listed(
+						missing,
+						({ instance, variants }) =>
+							`${instance} (${variants.join(", ")})`
+					),
+					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
+				].join("\n")
+			),
+		];
+	}
+
+	/** The outermost instances that two or more sets of variants give and no file is left to give, sorted. */
+	private missingInstances(): {
+		readonly instance: string;
+		readonly variants: readonly string[];
+	}[] {
+		const givers = new InstanceMap<RoutedFile[]>();
 		for (const file of this.placement.routed)
 			for (const node of [
 				...file.folderNodes.map(({ instancePath }) => instancePath),
 				file.instancePath,
-			]) {
-				const key = instanceKey(node);
-				claimants.set(key, [...(claimants.get(key) ?? []), file]);
-			}
+			])
+				givers.set(node, [...(givers.get(node) ?? []), file]);
 
-		const missing: [string, string[]][] = [];
-		const outermostFirst = [...claimants].sort(
-			([a], [b]) => a.split("/").length - b.split("/").length
-		);
-		for (const [instance, files] of outermostFirst) {
-			if (missing.some(([outer]) => instance.startsWith(`${outer}/`)))
-				continue;
+		const missing: (readonly string[])[] = [];
+		const result: { instance: string; variants: string[] }[] = [];
+		for (const [node, files] of [...givers].sort(
+			([a], [b]) => a.length - b.length
+		)) {
+			const underMissing = missing.some((outer) =>
+				outer.every((segment, index) => node[index] === segment)
+			);
 			if (
+				underMissing ||
 				files.some(({ variants }) =>
 					this.config.allVariantsOn(variants)
 				)
@@ -230,33 +255,19 @@ export class BuildValidator {
 				)
 			);
 			if (alternatives.size < 2) continue;
-			const variants = [
-				...new Set(
-					files.flatMap(({ variants }) =>
-						variants.map(({ variant }) => variant)
-					)
-				),
-			].sort(compareStrings);
-			missing.push([instance, variants]);
-		}
-		if (missing.length === 0) return [];
-
-		const many = missing.length > 1;
-		return [
-			warningDiagnostic(
-				"variant.noneActive",
-				{ resource: this.config.file },
-				[
-					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
-					...this.listed(
-						missing.sort(([a], [b]) => compareStrings(a, b)),
-						([instance, variants]) =>
-							`${instance} (${variants.join(", ")})`
+			missing.push(node);
+			result.push({
+				instance: instanceKey(node),
+				variants: [
+					...new Set(
+						files.flatMap(({ variants }) =>
+							variants.map(({ variant }) => variant)
+						)
 					),
-					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
-				].join("\n")
-			),
-		];
+				].sort(compareStrings),
+			});
+		}
+		return result.sort((a, b) => compareStrings(a.instance, b.instance));
 	}
 
 	private unrouted(): Diagnostic[] {

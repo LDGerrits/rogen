@@ -15,11 +15,11 @@ const readFolderName = (folderName: string, keys: DeclaredKeys) =>
 	readerOf(keys).folder(folderName);
 
 describe("NameReader marker", () => {
-	it("matches a route marker written with @", () => {
+	it("should match a route marker written with @", () => {
 		expect(matchMarkerKey("@server", ROUTE_KEYS)).toBe("server");
 	});
 
-	it("reads a dot-file that spells a route as no marker, and notes its @ form", () => {
+	it("should read a dot-file that spells a route as no marker, and note its @ form", () => {
 		const read = readerOf(ROUTE_KEYS).marker(".server");
 
 		expect(read.key).toBeUndefined();
@@ -30,14 +30,14 @@ describe("NameReader marker", () => {
 		});
 	});
 
-	it("reads an @ followed by a variant as no marker, and notes its dot form", () => {
+	it("should read an @ followed by a variant as no marker, and note its dot form", () => {
 		const read = readerOf(ALL_KEYS).marker("@mock");
 
 		expect(read.key).toBeUndefined();
 		expect(read.strayAt?.suggestion).toBe(".mock");
 	});
 
-	it("notes an @ marker that nearly spells a route", () => {
+	it("should note an @ marker that nearly spells a route", () => {
 		expect(readerOf(ROUTE_KEYS).marker("@sever").strayAt?.suggestion).toBe(
 			"@server"
 		);

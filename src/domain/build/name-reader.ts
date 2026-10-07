@@ -243,17 +243,7 @@ export class NameReader {
 				nearMiss && this.keys.isVariant(nearMiss)
 					? nearMiss
 					: undefined,
-			...(route && {
-				dotRoute: {
-					text,
-					key: route,
-					respelling: {
-						start: 0,
-						written: `.${text}`,
-						spelling: `@${route}`,
-					},
-				},
-			}),
+			...(route && { dotRoute: NameReader.dotRouteOf(text, route, 0) }),
 		};
 	}
 
@@ -289,17 +279,20 @@ export class NameReader {
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
 		const key = this.keys.resolveRoute(text);
-		return key
-			? {
-					text,
-					key,
-					respelling: {
-						start: dot,
-						written: `.${text}`,
-						spelling: `@${key}`,
-					},
-				}
-			: undefined;
+		return key ? NameReader.dotRouteOf(text, key, dot) : undefined;
+	}
+
+	/** `.text` at `start`, which spells the route `key`, respelt with its `@`. */
+	private static dotRouteOf(
+		text: string,
+		key: string,
+		start: number
+	): DotRoute {
+		return {
+			text,
+			key,
+			respelling: { start, written: `.${text}`, spelling: `@${key}` },
+		};
 	}
 
 	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */

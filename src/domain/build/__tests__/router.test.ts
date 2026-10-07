@@ -152,6 +152,18 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should prune a ^ init script whose variant is off, rather than refuse it", async () => {
+				await write("src/Net/^init.mock.luau", "src/Net/A.luau");
+
+				const { leftOut } = (
+					await route({ variants: { mock: false } })
+				).unwrap();
+
+				expect(
+					leftOut.get(abs("src/Net/^init.mock.luau"))?.status
+				).toBe("pruned");
+			});
+
 			it("should warn when two ^ names land on one instance", async () => {
 				await write("src/A/^C.luau", "src/B/^C.luau");
 

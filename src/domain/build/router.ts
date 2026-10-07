@@ -1,7 +1,7 @@
 import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
-import { RojoFile, RojoScriptSuffix } from "../rojo/rojo.js";
+import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import { RouteMatch, VariantMatch } from "./build.js";
 import {
 	EntryRead,
@@ -167,11 +167,10 @@ export class Router {
 			for (const entry of root.entries) {
 				const claimed = this.claim(entry, markers, initRoutes);
 				if (claimed.leaf.isInit && claimed.leaf.hoisted) {
-					hoistedInits.push({
-						source: entry.source,
-						variants: claimed.claims.variants,
-					});
-					continue;
+					const { variants } = claimed.claims;
+					hoistedInits.push({ source: entry.source, variants });
+					// A dormant one is pruned like any other file, so `where` still accounts for it.
+					if (this.config.allVariantsOn(variants)) continue;
 				}
 				if (claimed.leaf.isInit && claimed.folders.length === 0) {
 					if (this.config.routes.has(claimed.claims.routeKey))
@@ -249,11 +248,13 @@ export class Router {
 			claims
 		);
 		const leaf = this.claimLeaf(read, claims);
+		// An init script is its folder, so its own `^` hoists nothing.
+		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		return {
 			claims,
-			folders: folders.slice(leaf.hoisted ? folders.length : hoistAt),
+			folders: folders.slice(hoistsLeaf ? folders.length : hoistAt),
 			leaf,
-			hoisted: leaf.hoisted || hoistAt !== undefined,
+			hoisted: hoistsLeaf || hoistAt !== undefined,
 		};
 	}
 
@@ -387,9 +388,7 @@ export class Router {
 			stem,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
-		const { name, hoisted } = NameReader.unhoisted(
-			kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
-		);
+		const { name, hoisted } = this.leafName(kind, stripped);
 		return {
 			name,
 			hoisted,
@@ -404,10 +403,18 @@ export class Router {
 		return (
 			kind === "script" &&
 			this.initNames.has(
-				NameReader.unhoisted(
-					RojoFile.scriptNameOf(this.stripSpans(stem, match.spans))
-				).name
+				this.leafName(kind, this.stripSpans(stem, match.spans)).name
 			)
+		);
+	}
+
+	/** The name Rojo gives a stem with its keys off, then with its `^` off. */
+	private leafName(
+		kind: RojoFileKind,
+		stripped: string
+	): { readonly name: string; readonly hoisted: boolean } {
+		return NameReader.unhoisted(
+			kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
 		);
 	}
 
