@@ -4,6 +4,7 @@ stdout:
   rogen init
   Created lobby.rogen.json.
   Created lobby-sync.rogen.json.
+  Created AGENTS.md.
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -13,9 +14,10 @@ stdout:
       darklua process src dist
     Add your own routes under "routes" in lobby.rogen.json.
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
-  Wrote 2 files.
+  Wrote 3 files.
 
 written:
+  AGENTS.md
   lobby-sync.rogen.json
   lobby.rogen.json
 

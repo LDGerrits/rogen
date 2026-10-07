@@ -5,6 +5,7 @@ stdout:
   Syncing from out, where roblox-ts compiles to.
   Created template.project.json.
   Created default.rogen.json.
+  Created AGENTS.md.
   Next steps
     Run each in its own terminal:
       rbxtsc -w
@@ -12,9 +13,10 @@ stdout:
       rojo serve default.project.json
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.ts.
-  Wrote 2 files.
+  Wrote 3 files.
 
 written:
+  AGENTS.md
   default.rogen.json
   template.project.json
 

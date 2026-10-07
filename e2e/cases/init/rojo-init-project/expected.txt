@@ -6,13 +6,14 @@ stdout:
   Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
   Created template.project.json.
   Created default.rogen.json.
+  Created AGENTS.md.
   Next steps
     Run each in its own terminal:
       rogen watch
       rojo serve default.project.json
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
-  Wrote 2 files.
+  Wrote 3 files.
 
 $ rogen build
 exit 0
@@ -22,6 +23,7 @@ stdout:
   Built 1 config.
 
 written:
+  AGENTS.md
   default.project.json
   default.rogen.json
   template.project.json

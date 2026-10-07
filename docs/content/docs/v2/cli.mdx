@@ -78,6 +78,8 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 `init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
 
+A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
+
 ### `list [config…]`
 
 Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
@@ -183,6 +185,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 ```json
 {
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
+	"appended": [],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -193,7 +196,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 }
 ```
 
-`files` lists what was written, in order, and `notes` what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 

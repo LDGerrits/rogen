@@ -975,3 +975,15 @@ describe("InitQuestions askProject template", () => {
 		expect(prompts.asked).toContain("Packages");
 	});
 });
+
+describe("InitQuestions addAgentInstructions", () => {
+	it("should add them on Enter, as a run that can't ask does", async () => {
+		const asked = new InitQuestions(
+			new MockPromptService([ACCEPT_DEFAULT])
+		);
+		const unasked = new InitQuestions(new MockPromptService([], false));
+
+		expect(await asked.addAgentInstructions("AGENTS.md")).toBe(true);
+		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);
+	});
+});

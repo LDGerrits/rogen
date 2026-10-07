@@ -1,0 +1,73 @@
+$ rogen init -y
+exit 0
+stdout:
+  rogen init
+  Created default.rogen.json.
+  Added Rogen's rules to AGENTS.md.
+  Next steps
+    Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules.
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
+  Wrote 2 files.
+
+$ rogen init -y lobby
+exit 0
+stdout:
+  rogen init
+  Created lobby.rogen.json.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve lobby.project.json
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
+  Wrote 1 file.
+
+written:
+  AGENTS.md
+  default.rogen.json
+  lobby.rogen.json
+
+AGENTS.md:
+# Team rules
+
+Run the linter before committing.
+
+<!-- rogen -->
+## Rogen
+
+Rogen writes the Rojo project file from the folders and names under each `*.rogen.json`'s `rootDirs`. Folders decide where code runs, so the disk path is not the instance path.
+
+- Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
+- Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
+- Run `rogen where <path>` to see where a file lands, before or after it exists.
+- After adding, moving or renaming files, run `rogen build` and fix each warning that names them.
+- Leave `rogen watch` and `rojo serve` to the user: they never exit.
+- Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
+<!-- /rogen -->
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}

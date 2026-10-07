@@ -43,7 +43,7 @@ export interface InitService {
 	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
 	write(
 		plan: InitPlan,
-		onWritten: (fileName: string) => void
+		onWritten: (file: PlannedFile) => void
 	): Promise<Result<void, Error>>;
 }
 

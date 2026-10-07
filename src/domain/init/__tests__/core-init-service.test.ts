@@ -1,3 +1,5 @@
+import { agentBlock } from "../agent-block.js";
+import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
@@ -48,9 +50,12 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan([])).unwrap();
 
-			expect(
-				JSON.parse(plan?.files.at(-1)?.content ?? "{}").routes
-			).toHaveProperty("server");
+			const config = plan?.files.find(
+				({ fileName }) => fileName === "default.rogen.json"
+			);
+			expect(JSON.parse(config?.content ?? "{}").routes).toHaveProperty(
+				"server"
+			);
 		});
 
 		it("should take every default without asking when it may not ask, even in a terminal", async () => {
@@ -69,6 +74,7 @@ describe("CoreInitService", () => {
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"lobby.rogen.json",
+				"AGENTS.md",
 			]);
 		});
 
@@ -88,12 +94,98 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("agent instructions", () => {
+		const agentFile = async (prompts?: PromptService) => {
+			const plan = (await serviceFor(prompts).plan([])).unwrap();
+			return plan?.files.find(({ fileName }) => fileName.endsWith(".md"));
+		};
+
+		it("should write a new AGENTS.md with the block when there is neither file", async () => {
+			const file = await agentFile();
+
+			expect(file).toEqual({
+				fileName: "AGENTS.md",
+				content: agentBlock,
+			});
+		});
+
+		it("should append to AGENTS.md after a blank line, keeping every byte", async () => {
+			await write("AGENTS.md", "# Team rules\n\nBe kind.");
+			await write("CLAUDE.md", "@AGENTS.md\n");
+
+			const file = await agentFile();
+
+			expect(file).toEqual({
+				fileName: "AGENTS.md",
+				content: `# Team rules\n\nBe kind.\n\n${agentBlock}`,
+				appends: true,
+			});
+		});
+
+		it("should append to a lone CLAUDE.md", async () => {
+			await write("CLAUDE.md", "Use tabs.\n");
+
+			expect(await agentFile()).toEqual({
+				fileName: "CLAUDE.md",
+				content: `Use tabs.\n\n${agentBlock}`,
+				appends: true,
+			});
+		});
+
+		it("should leave a file that holds the block alone, and not ask", async () => {
+			await write("AGENTS.md", `${agentBlock}`);
+
+			expect(
+				await agentFile(
+					new MockPromptService(Array(8).fill(ACCEPT_DEFAULT))
+				)
+			).toBeUndefined();
+		});
+
+		it("should say to import AGENTS.md when CLAUDE.md doesn't", async () => {
+			await write("AGENTS.md", "");
+			await write("CLAUDE.md", "Use tabs.\n");
+
+			const plan = (await serviceFor().plan([])).unwrap();
+
+			expect(plan?.nextSteps.setup).toContain(
+				"Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules."
+			);
+		});
+
+		it("should not ask, or write it, in an init that isn't the first", async () => {
+			await write("lobby.rogen.json", "{}");
+
+			const plan = (await serviceFor().plan(["arena"])).unwrap();
+
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"arena.rogen.json",
+			]);
+		});
+
+		it("should offer it beside default.rogen.json, and write only it", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ routes: { "*": "ReplicatedStorage" } })
+			);
+
+			const plan = (
+				await serviceFor(new MockPromptService(["agent"])).plan([])
+			).unwrap();
+
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"AGENTS.md",
+			]);
+		});
+	});
+
 	describe("plan", () => {
 		it("should take every default when it can't ask", async () => {
 			const plan = (await serviceFor().plan([])).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"default.rogen.json",
+				"AGENTS.md",
 			]);
 			expect(plan?.nextSteps.run).toEqual([
 				"rogen watch",
@@ -382,15 +474,17 @@ describe("CoreInitService", () => {
 		});
 
 		it("should report each file as it is written", async () => {
-			const onWritten = jest.fn<(fileName: string) => void>();
+			const onWritten = jest.fn<(file: PlannedFile) => void>();
 
 			await serviceFor().write(await planned(), onWritten);
 
-			expect(onWritten).toHaveBeenCalledWith("default.rogen.json");
+			expect(onWritten).toHaveBeenCalledWith(
+				expect.objectContaining({ fileName: "default.rogen.json" })
+			);
 		});
 
 		it("should stop at the file it can't write and name it", async () => {
-			const onWritten = jest.fn<(fileName: string) => void>();
+			const onWritten = jest.fn<(file: PlannedFile) => void>();
 			jest.spyOn(fileSystem, "writeFile").mockRejectedValue(
 				new Error("disk full")
 			);

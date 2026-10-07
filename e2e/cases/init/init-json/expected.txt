@@ -3,8 +3,10 @@ exit 0
 stdout:
   {
     "files": [
-      "<dir>/default.rogen.json"
+      "<dir>/default.rogen.json",
+      "<dir>/AGENTS.md"
     ],
+    "appended": [],
     "notes": [],
     "nextSteps": {
       "setup": [],
@@ -36,6 +38,7 @@ stdout:
   }
 
 written:
+  AGENTS.md
   default.rogen.json
 
 default.rogen.json:

@@ -102,8 +102,14 @@ registerCommand(
 			// A blank gutter line sets the results apart from the last answer.
 			if (interactive) logService.info("");
 			for (const note of plan.notes) logService.info(note);
-			const written = await initService.write(plan, (fileName) =>
-				logService.success(`Created ${fileName}.`)
+			const written = await initService.write(
+				plan,
+				({ fileName, appends }) =>
+					logService.success(
+						appends
+							? `Added Rogen's rules to ${fileName}.`
+							: `Created ${fileName}.`
+					)
 			);
 			if (written.isErr()) return written;
 
@@ -120,18 +126,29 @@ registerCommand(
 			plan: InitPlan
 		): Promise<Result<void, Error>> {
 			const files: string[] = [];
-			const written = await initService.write(plan, (fileName) =>
-				files.push(path.join(plan.directory, fileName))
+			const appended: string[] = [];
+			const written = await initService.write(
+				plan,
+				({ fileName, appends }) => {
+					const file = path.join(plan.directory, fileName);
+					files.push(file);
+					if (appends) appended.push(file);
+				}
 			);
 			if (written.isErr()) {
 				logService.print(
-					formatJsonDocument({ files, error: written.error.message })
+					formatJsonDocument({
+						files,
+						appended,
+						error: written.error.message,
+					})
 				);
 				return err(new ReportedError(written.error));
 			}
 			logService.print(
 				formatJsonDocument({
 					files,
+					appended,
 					notes: plan.notes,
 					nextSteps: plan.nextSteps,
 				})

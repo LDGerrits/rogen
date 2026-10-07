@@ -1,1 +1,2 @@
 src/commands/help/help-texts.ts
+src/domain/init/agent-block.ts
