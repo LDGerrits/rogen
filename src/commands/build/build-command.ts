@@ -66,7 +66,9 @@ registerCommand(
 			if (builds.isErr()) return builds;
 
 			const errors = builds.value.flatMap((build) =>
-				build.outcome === "failed" ? build.errors : []
+				build.outcome === "failed" || build.outcome === "notLoaded"
+					? build.errors
+					: []
 			);
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors)

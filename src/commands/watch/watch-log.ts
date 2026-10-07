@@ -89,7 +89,10 @@ export class WatchLog {
 
 	/** Opens the output: the configs it watches. */
 	begin(configs: readonly ResolvedConfig[]): void {
-		this.buildLog.begin("watch", configs);
+		this.buildLog.begin(
+			"watch",
+			configs.map(({ label }) => label)
+		);
 	}
 
 	end(): void {

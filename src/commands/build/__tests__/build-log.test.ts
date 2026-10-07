@@ -49,7 +49,7 @@ const builtOf = (
 	summary: BuildSummary,
 	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
-	blockedBy: readonly ResolvedConfig[] = [mockConfig()]
+	blockedBy: readonly string[] = ["match"]
 ): ConfigBuild => {
 	const findings = { warnings: [], syncWarnings: [] };
 	return outcome === "notWritten"
@@ -265,7 +265,7 @@ describe("BuildLog report", () => {
 		expect(
 			report([
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					configNamed("match"),
+					"match",
 				]),
 				failedOf([], configNamed("match")),
 			])
@@ -280,8 +280,8 @@ describe("BuildLog report", () => {
 			report([
 				failedOf([], configNamed("arena")),
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					configNamed("arena"),
-					configNamed("match"),
+					"arena",
+					"match",
 				]),
 				failedOf([], configNamed("match")),
 			])[1]

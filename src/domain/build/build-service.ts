@@ -3,7 +3,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { BuildSet, ConfigBuild, Locations } from "./build.js";
+import { BuildSet, ConfigBuild, LoadedBuild, Locations } from "./build.js";
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateTargets {
@@ -15,7 +15,7 @@ export interface LocateTargets {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails when a config is broken or the configs can't be built together. Otherwise builds every config, checking its sync dir, then writes them in order; any build failure writes nothing, and a failed write leaves the rest unwritten. */
+	/** Fails when the configs that load can't be built together. Otherwise returns one build per selected config, in order: builds each one that loads, checking its sync dir, then writes them in order. A build failure, or a config that doesn't load, writes nothing, and a failed write leaves the rest unwritten. */
 	build(
 		selection: ConfigSelection
 	): Promise<Result<ConfigBuild[], DiagnosticsError>>;
@@ -25,8 +25,8 @@ export interface BuildService {
 		set: BuildSet,
 		file: string,
 		listing: IndexReader,
-		previous?: ConfigBuild
-	): Promise<ConfigBuild>;
+		previous?: LoadedBuild
+	): Promise<LoadedBuild>;
 
 	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. Fails when a config is broken or declares no routes. */
 	locate(

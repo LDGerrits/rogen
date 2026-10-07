@@ -7,11 +7,15 @@ export class BuildReport {
 	private readonly configs: Record<string, unknown>[] = [];
 
 	add(build: ConfigBuild): void {
+		const loaded = build.outcome !== "notLoaded";
 		this.configs.push({
-			config: build.config.label,
-			file: toNative(build.config.file),
-			outFile: toNative(build.config.outFile),
+			config: build.label,
+			file: toNative(loaded ? build.config.file : build.file),
+			outFile: loaded ? toNative(build.config.outFile) : null,
 			outcome: build.documentOutcome,
+			...(build.outcome === "notWritten" && {
+				blockedBy: build.blockedBy,
+			}),
 			diagnostics: build.diagnostics.map(diagnosticToJson),
 		});
 	}

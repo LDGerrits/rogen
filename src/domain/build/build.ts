@@ -7,7 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
@@ -75,8 +75,11 @@ export interface BuildSummary {
 	readonly displaced: number;
 }
 
-/** What a run did for one config: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
-export type ConfigBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+/** What a run did for a config that loaded: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
+export type LoadedBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+
+/** What a run did for one selected config; one that didn't load has no `config`. */
+export type ConfigBuild = LoadedBuild | UnloadedBuild;
 
 /** What every kind of config build holds. */
 abstract class AbstractConfigBuild {
@@ -84,6 +87,11 @@ abstract class AbstractConfigBuild {
 		readonly config: ResolvedConfig,
 		private readonly findings: BuildFindings
 	) {}
+
+	/** What the config is asked for by. */
+	get label(): string {
+		return this.config.label;
+	}
 
 	get warnings(): readonly Diagnostic[] {
 		return this.findings.warnings;
@@ -119,7 +127,40 @@ export class WrittenBuild extends AbstractConfigBuild {
 	}
 }
 
-/** A config that built cleanly, but whose run stopped before writing it because the configs in `blockedBy` failed. */
+/** A config that didn't load, so there was nothing to build; `errors` is why. */
+export class UnloadedBuild {
+	readonly outcome = "notLoaded";
+
+	constructor(
+		/** The config file. */
+		readonly file: string,
+		readonly errors: readonly Diagnostic[]
+	) {}
+
+	/** What the config is asked for by. */
+	get label(): string {
+		return configLabel(this.file);
+	}
+
+	/** An unloaded config has no project file to write. */
+	get documentOutcome(): "notWritten" {
+		return "notWritten";
+	}
+
+	get warnings(): readonly Diagnostic[] {
+		return [];
+	}
+
+	get syncWarnings(): undefined {
+		return undefined;
+	}
+
+	get diagnostics(): readonly Diagnostic[] {
+		return this.errors;
+	}
+}
+
+/** A config that built cleanly, but whose run stopped before writing it because the configs named in `blockedBy` failed or didn't load. */
 export class UnwrittenBuild extends AbstractConfigBuild {
 	readonly outcome = "notWritten";
 
@@ -128,7 +169,8 @@ export class UnwrittenBuild extends AbstractConfigBuild {
 		findings: BuildFindings,
 		readonly summary: BuildSummary,
 		readonly readFiles: readonly string[],
-		readonly blockedBy: readonly ResolvedConfig[]
+		/** The labels of those configs. */
+		readonly blockedBy: readonly string[]
 	) {
 		super(config, findings);
 	}

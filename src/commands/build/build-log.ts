@@ -67,48 +67,53 @@ export class BuildLog {
 	) {}
 
 	/** Opens the output: the command and the configs it builds. */
-	begin(command: string, configs: readonly ResolvedConfig[]): void {
-		this.logService.intro(
-			`rogen ${command} · ${configs.map(({ label }) => label).join(", ")}`
-		);
+	begin(command: string, labels: readonly string[]): void {
+		this.logService.intro(`rogen ${command} · ${labels.join(", ")}`);
 	}
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(builds: readonly ConfigBuild[]): void {
 		this.begin(
 			"build",
-			builds.map(({ config }) => config)
+			builds.map(({ label }) => label)
 		);
 		const printedBy = new Map<string, string>();
 		for (const build of builds) {
-			if (builds.length > 1) this.heading(build.config);
-			const errors = build.outcome === "failed" ? build.errors : [];
+			if (builds.length > 1) this.heading(build.label);
+			const errors =
+				build.outcome === "failed" || build.outcome === "notLoaded"
+					? build.errors
+					: [];
 			const shared = new Set<string>();
 			const fresh = errors.filter((error) => {
 				const key = renderDiagnostic(error);
 				const owner = printedBy.get(key);
 				if (owner !== undefined) shared.add(owner);
-				else printedBy.set(key, build.config.label);
+				else printedBy.set(key, build.label);
 				return owner === undefined;
 			});
 			this.outcome(
 				build,
 				[...build.warnings, ...(build.syncWarnings ?? []), ...fresh],
 				build.outcome === "notWritten"
-					? `${joinedWithAnd(build.blockedBy.map(({ label }) => label))} failed`
+					? `${joinedWithAnd(build.blockedBy)} failed`
 					: errors.length > 0 && fresh.length === 0
 						? `same errors as ${joinedWithAnd([...shared])}`
 						: undefined
 			);
 		}
-		if (builds.some(({ outcome }) => outcome === "failed"))
+		if (
+			builds.some(
+				({ outcome }) => outcome === "failed" || outcome === "notLoaded"
+			)
+		)
 			this.logService.closeFrame("build failed.");
 		else this.end(builds.length);
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
-	heading(config: ResolvedConfig): void {
-		this.logService.step(config.label);
+	heading(label: string): void {
+		this.logService.step(label);
 	}
 
 	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
@@ -118,7 +123,16 @@ export class BuildLog {
 		note?: string
 	): void {
 		const line = (outcome: string) =>
-			[relativeTo(this.cwd, build.config.outFile), outcome, note]
+			[
+				relativeTo(
+					this.cwd,
+					build.outcome === "notLoaded"
+						? build.file
+						: build.config.outFile
+				),
+				outcome,
+				note,
+			]
 				.filter((part) => part !== undefined)
 				.join(" · ");
 		switch (build.outcome) {
@@ -134,6 +148,9 @@ export class BuildLog {
 			case "failed":
 				this.logService.error(line("not written"));
 				this.details(build.config);
+				break;
+			case "notLoaded":
+				this.logService.error(line("not loaded"));
 				break;
 		}
 		this.diagnostics(diagnostics);

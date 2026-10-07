@@ -5,7 +5,7 @@ import {
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
 import {
-	ConfigBuild,
+	LoadedBuild,
 	FailedBuild,
 	WrittenBuild,
 } from "../../../domain/build/build.js";
@@ -147,7 +147,7 @@ describe("WatchLog.update", () => {
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			build: ConfigBuild,
+			build: LoadedBuild,
 			unreported: readonly Diagnostic[],
 			repeatedFailure = false
 		): RebuildReport => ({ build, unreported, repeatedFailure });
