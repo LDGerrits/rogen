@@ -27,6 +27,7 @@ export class InitPlanBuilder {
 	private readonly compilerConfigs: PlannedFile[] = [];
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
+	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
@@ -59,6 +60,11 @@ export class InitPlanBuilder {
 	addAgentFile(file: AgentFile): void {
 		this.agentFile = file.planned;
 		this.agentStep = file.nextStep;
+	}
+
+	/** A root dir this run chose, which `write` creates if it isn't there. */
+	addDirectory(directory: string): void {
+		this.directories.add(directory);
 	}
 
 	addNote(note: string): void {
@@ -111,6 +117,7 @@ export class InitPlanBuilder {
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),
 			],
+			directories: [...this.directories],
 			notes: [...this.notes],
 			nextSteps: {
 				setup: [...this.setup],

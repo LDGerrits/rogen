@@ -9,7 +9,7 @@ Plain lines (in pipes, CI and under an agent) put results on stdout and warnings
 - `build --json`: `{ "configs": [{ "config", "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`. A config that doesn't load is an entry too, with `"outFile": null` and its errors in `diagnostics`; a config not written because others failed or didn't load has `blockedBy`, their names.
 - `where --json`: `{ "locations": [...], "diagnostics": [...] }` (`diagnostics` holds the errors of a config that didn't load), one entry per config and path, with `config`, `source` and `status`; a placed file adds `instancePath`, `route`, `routeMatch` and `variants`.
 - `list --json`: `{ "configs": [...] }`, one entry per config with `config`, `file`, `status` (`valid` or `broken`), `extends`, then the resolved values (`projectName` is the Rojo project's name) with every default and absolute path, and `diagnostics`.
-- `init --json`: the files it wrote, its notes, and its `nextSteps`.
+- `init --json`: the `files` it wrote, the `directories` it created (root dirs that didn't exist), its notes, and its `nextSteps`.
 - A command that fails before it has anything else to show prints `{ "diagnostics": [...] }` or `{ "error": "..." }`.
 
 An entry that is a config has `config` (the name every command takes, `lobby` for `lobby.rogen.json`) and `file` (its absolute path); an entry that belongs to a config has `config`. Identity comes first and `diagnostics` last.

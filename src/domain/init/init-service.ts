@@ -20,12 +20,19 @@ export interface InitPlan {
 	readonly directory: string;
 	/** In the order they are written. */
 	readonly files: readonly PlannedFile[];
+	/** Root dirs the configs name that `init` creates when they don't exist yet, relative to `directory`. Never one a config only inherits. */
+	readonly directories: readonly string[];
 	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;
 	/** Whether the run asked its questions, rather than taking every default. */
 	readonly asked: boolean;
 }
+
+/** What `write` has just put on disk: a file, or a directory that did not exist. */
+export type InitWritten =
+	| { readonly kind: "file"; readonly file: PlannedFile }
+	| { readonly kind: "directory"; readonly directory: string };
 
 export interface InitOptions {
 	/** Whether `init` may ask at all; it asks only in a terminal a person can answer. */
@@ -42,10 +49,10 @@ export interface InitService {
 		options?: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>>;
 
-	/** Writes the plan's files, calling `onWritten` after each and stopping at the first that fails. */
+	/** Writes the plan's files, then creates the directories that don't exist yet, calling `onWritten` after each and stopping at the first that fails. A directory that exists is left alone and not reported. */
 	write(
 		plan: InitPlan,
-		onWritten: (file: PlannedFile) => void
+		onWritten: (written: InitWritten) => void
 	): Promise<Result<void, Error>>;
 }
 

@@ -179,6 +179,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		};
 
 		if (template.file) builder.setTemplate(template.file);
+		for (const rootDir of rootDirs) builder.addDirectory(rootDir);
 		configSet.planConfigs(builder, starter, syncDir);
 
 		for (const note of template.notes) builder.addNote(note);

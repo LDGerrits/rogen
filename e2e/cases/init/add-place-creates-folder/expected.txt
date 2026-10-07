@@ -1,0 +1,102 @@
+$ rogen init lobby
+exit 0
+stdout:
+  rogen init
+  Created lobby.rogen.json.
+  Created places/lobby/.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve lobby.project.json
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
+  Wrote 1 file.
+
+$ rogen build default lobby
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · wrote
+  Built 2 configs.
+
+$ rogen init match --json
+exit 0
+stdout:
+  {
+    "files": [
+      "<dir>/match.rogen.json"
+    ],
+    "appended": [],
+    "directories": [
+      "<dir>/places/match"
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [],
+      "run": [
+        "rogen watch",
+        "rojo serve match.project.json"
+      ],
+      "darklua": [],
+      "edits": [
+        "Declare variants under \"variants\" in match.rogen.json to swap in files like Analytics.mock.luau."
+      ]
+    }
+  }
+
+$ rogen build match
+exit 0
+stdout:
+  rogen build · match
+  match.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+  lobby.project.json
+  lobby.rogen.json
+  match.project.json
+  match.rogen.json
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/lobby"
+	]
+}
+
+match.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"src",
+		"places/match"
+	]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Types.luau

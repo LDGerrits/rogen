@@ -18,6 +18,7 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  Created places/lobby/.
   Next steps
     Run each in its own terminal:
       rogen watch

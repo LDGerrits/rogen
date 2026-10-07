@@ -193,6 +193,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 {
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
 	"appended": [],
+	"directories": ["/repo/places/lobby"],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -203,7 +204,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 
