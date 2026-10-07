@@ -170,11 +170,11 @@ describe("parseArgs", () => {
 		);
 	});
 
-	it("should check a bare --help line against help", () => {
+	it("should check a line without a command against help, and say an option goes after a command", () => {
 		const result = parse(["--help", "--variant", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"help doesn't take '--variant'. build does."
+			"'--variant' goes after a command: build takes it."
 		);
 	});
 
