@@ -116,6 +116,97 @@ describe("BuildValidator rules", () => {
 			store[Symbol.dispose]();
 		});
 
+		describe("a root dir named after a key", () => {
+			const named = async (
+				rootDirs: string[],
+				overrides: ResolvedConfigSpec = {}
+			) =>
+				(
+					await route(
+						overrides,
+						rootDirs.map((dir) => abs(dir))
+					)
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "scan.rootDirNamedAfterKey"
+					);
+
+			beforeEach(async () => {
+				await write(
+					"server/Save.luau",
+					"client/Hud.luau",
+					"src/server/Net.luau",
+					"mock/Fake.luau"
+				);
+			});
+
+			it("should warn once for every root dir at the project root, with the move-them fix", async () => {
+				const [warning] = await named(["server", "client"]);
+
+				expect(warning).toMatchObject({
+					severity: DiagnosticSeverity.Warning,
+					resource: abs("default.rogen.json"),
+					related: [
+						{
+							resource: abs("server"),
+							message: 'named after the "server" route',
+						},
+						{
+							resource: abs("client"),
+							message: 'named after the "client" route',
+						},
+					],
+				});
+				expect(warning.message.split("\n")).toEqual([
+					"2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing:",
+					'  server ("server" route)',
+					'  client ("client" route)',
+					'Move them into one folder, such as src/server and src/client, and use "rootDirs": ["src"].',
+				]);
+			});
+
+			it("should say to use the parent when the root dir sits inside the project", async () => {
+				const [warning] = await named(["src/server"]);
+
+				expect(warning.message.split("\n")).toEqual([
+					"1 root dir is named after a route key, but routing starts below a root dir, so its name routes nothing:",
+					'  src/server ("server" route)',
+					'Use "src" as the root dir instead, so "server" is read as a key.',
+				]);
+			});
+
+			it("should not warn when the root dir holds a folder named after a key", async () => {
+				expect(await named(["src"])).toEqual([]);
+			});
+
+			it("should read the name with its first letter in either case", async () => {
+				await write("Server/Other.luau");
+
+				const [warning] = await named(["Server"]);
+
+				expect(warning.message).toContain('Server ("server" route)');
+			});
+
+			it("should name a variant a root dir is named after", async () => {
+				const [warning] = await named(["mock"], {
+					variants: { mock: false },
+				});
+
+				expect(warning.message.split("\n")).toEqual([
+					"1 root dir is named after a variant key, but routing starts below a root dir, so its name prunes nothing:",
+					'  mock ("mock" variant)',
+					'Move it into one folder, such as src/mock, and use "rootDirs": ["src"].',
+				]);
+			});
+
+			it("should not stop the build from placing the files", async () => {
+				const result = (await route({}, [abs("server")])).unwrap();
+
+				expect(result.routed.map(({ route }) => route)).toEqual(["*"]);
+			});
+		});
+
 		describe("letter case mismatches", () => {
 			const caseWarnings = async (overrides: ResolvedConfigSpec = {}) =>
 				(await route(overrides))
@@ -596,11 +687,17 @@ describe("BuildValidator rules", () => {
 			});
 
 			it("should leave the letter-case warning to bare names when a dot route key differs in case", async () => {
-				await write("src/.SERVER/A.luau", "src/C/.SERVER", "src/SERVER/B.luau");
+				await write(
+					"src/.SERVER/A.luau",
+					"src/C/.SERVER",
+					"src/SERVER/B.luau"
+				);
 
 				const mismatched = (await route({ routes: SHARED }))
 					.unwrap()
-					.warnings.filter(({ code }) => code === "route.caseMismatch")
+					.warnings.filter(
+						({ code }) => code === "route.caseMismatch"
+					)
 					.map(({ resource }) => resource);
 
 				expect(mismatched).toEqual([abs("src/SERVER")]);
@@ -616,8 +713,18 @@ describe("BuildValidator rules", () => {
 
 				expect(warning.message).toContain("2 names write a route key");
 				expect(warning.fixes).toEqual([
-					{ rename: { from: at("src/.Server"), to: at("src/@server") } },
-					{ rename: { from: at("src/.server"), to: at("src/@server") } },
+					{
+						rename: {
+							from: at("src/.Server"),
+							to: at("src/@server"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/.server"),
+							to: at("src/@server"),
+						},
+					},
 				]);
 				expect(paths).toEqual([
 					"ReplicatedStorage/shared/.Server/B",
@@ -834,13 +941,20 @@ describe("BuildValidator rules", () => {
 				);
 
 				const [warning, ...others] = await typos();
-				const result = (await route({ variants: { mock: true } })).unwrap();
+				const result = (
+					await route({ variants: { mock: true } })
+				).unwrap();
 
 				expect(others).toEqual([]);
 				expect(warning.message).toContain("2 names");
 				expect(warning.fixes).toEqual([
 					{ rename: { from: at("src/.mok"), to: at("src/.mock") } },
-					{ rename: { from: at("src/M/.mok"), to: at("src/M/.mock") } },
+					{
+						rename: {
+							from: at("src/M/.mok"),
+							to: at("src/M/.mock"),
+						},
+					},
 				]);
 				expect(
 					result.routed.map(({ instancePath, variants }) => [
@@ -867,7 +981,9 @@ describe("BuildValidator rules", () => {
 					await route({ variants: { mock: true } })
 				).unwrap().warnings;
 
-				expect(warnings.map(({ code, resource }) => [code, resource])).toEqual([
+				expect(
+					warnings.map(({ code, resource }) => [code, resource])
+				).toEqual([
 					["route.caseMismatch", abs("src/A/.MOCK")],
 					["route.caseMismatch", abs("src/.MOCK")],
 				]);
@@ -887,7 +1003,10 @@ describe("BuildValidator rules", () => {
 			});
 
 			it("should warn about a variant's near miss in a folder that also routes", async () => {
-				await write("src/K.mok@server/A.luau", "src/.mok@server/B.luau");
+				await write(
+					"src/K.mok@server/A.luau",
+					"src/.mok@server/B.luau"
+				);
 
 				const [warning] = await typos();
 

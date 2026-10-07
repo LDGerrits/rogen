@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix } from "../../base/path.js";
+import { joinPosix, toPosix } from "../../base/path.js";
 import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -17,11 +17,7 @@ import {
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
-import {
-	MisspellingKind,
-	MisspellingOf,
-	NotedName,
-} from "./name-reader.js";
+import { MisspellingKind, MisspellingOf, NotedName } from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
@@ -56,6 +52,7 @@ export class BuildValidator {
 	validate(): Diagnostic[] {
 		return [
 			...this.missingRootDir(),
+			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
@@ -86,6 +83,76 @@ export class BuildValidator {
 					"this root dir does not exist, so it contributes nothing."
 				)
 			);
+	}
+
+	/** Routing starts below a root dir, so a root dir named like a key routes or prunes nothing by that name. */
+	private rootDirNamedAfterKey(): Diagnostic[] {
+		const configDir = path.dirname(this.config.file);
+		const named = this.config.rootDirs.flatMap((rootDir) => {
+			const key = this.config.keys.resolve(path.basename(rootDir));
+			if (key === undefined) return [];
+			const parent = path.dirname(rootDir);
+			const relativeParent = toPosix(path.relative(configDir, parent));
+			return [
+				{
+					rootDir,
+					shown: toPosix(path.relative(configDir, rootDir)),
+					key,
+					kind: this.config.keys.isVariant(key)
+						? ("variant" as const)
+						: ("route" as const),
+					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
+					parent:
+						relativeParent !== "" &&
+						!relativeParent.startsWith("..")
+							? relativeParent
+							: undefined,
+				},
+			];
+		});
+		if (named.length === 0) return [];
+
+		const kinds = new Set(named.map(({ kind }) => kind));
+		const many = named.length > 1;
+		const keyKind = kinds.size > 1 ? "route or variant" : [...kinds][0];
+		const effect =
+			kinds.size > 1
+				? "do nothing"
+				: kinds.has("route")
+					? `route${many ? "" : "s"} nothing`
+					: `prune${many ? "" : "s"} nothing`;
+		const inside = named.filter(({ parent }) => parent !== undefined);
+		const atTop = named.filter(({ parent }) => parent === undefined);
+		const fixes = [
+			...(inside.length > 0
+				? [
+						`Use ${joinedWithAnd([...new Set(inside.map(({ parent }) => `"${parent}"`))])} as the root dir instead, so ${joinedWithAnd(inside.map(({ rootDir }) => `"${path.basename(rootDir)}"`))} ${inside.length > 1 ? "are" : "is"} read as ${inside.length > 1 ? "keys" : "a key"}.`,
+					]
+				: []),
+			...(atTop.length > 0
+				? [
+						`Move ${atTop.length > 1 ? "them" : "it"} into one folder, such as ${joinedWithAnd(atTop.map(({ shown }) => `src/${shown}`))}, and use "rootDirs": ["src"].`,
+					]
+				: []),
+		];
+		const items = named.map(({ rootDir, shown, key, kind }) => ({
+			resource: rootDir,
+			message: `named after the "${key}" ${kind}`,
+			line: `  ${shown} ("${key}" ${kind})`,
+		}));
+		return [
+			warningDiagnostic(
+				"scan.rootDirNamedAfterKey",
+				{ resource: this.config.file },
+				[
+					`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
+					...items.map(({ line }) => line),
+					...fixes,
+				].join("\n"),
+				[],
+				items.map(({ resource, message }) => ({ resource, message }))
+			),
+		];
 	}
 
 	private unresolvedLink(): Diagnostic[] {
@@ -171,7 +238,10 @@ export class BuildValidator {
 		code: string,
 		kind: K,
 		headline: (count: number) => string,
-		hint: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
+		hint: (
+			resource: string,
+			misspelt: NotedName<MisspellingOf<K>>
+		) => string
 	): Diagnostic[] {
 		const noted = this.placement.readings.misspelt(kind);
 		if (noted.size === 0) return [];
@@ -284,10 +354,14 @@ export class BuildValidator {
 	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
 		return this.placement.files.flatMap((file) => {
-			const ignored = [...new Set(file.outrankedFolderRoutes)].filter((key) => {
-				const service = routes.get(key)?.service;
-				return service !== undefined && isServerOnlyService(service);
-			});
+			const ignored = [...new Set(file.outrankedFolderRoutes)].filter(
+				(key) => {
+					const service = routes.get(key)?.service;
+					return (
+						service !== undefined && isServerOnlyService(service)
+					);
+				}
+			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
 				this.placement.readings.entryAt(file.entry.source)

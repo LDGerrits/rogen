@@ -4,6 +4,11 @@ stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
+stderr:
+  default.rogen.json - warning: 2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing:
+    server ("server" route)
+    client ("client" route)
+  Move them into one folder, such as src/server and src/client, and use "rootDirs": ["src"].
 
 written:
   default.project.json
