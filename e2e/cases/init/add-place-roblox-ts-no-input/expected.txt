@@ -8,12 +8,12 @@ stdout:
     Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.
     Run each in its own terminal:
       rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
-      rogen watch lobby
+      rogen watch
       rojo serve lobby.project.json
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.
   Wrote 2 files.
 
-$ rogen build --all
+$ rogen build
 exit 0
 stdout:
   rogen build · default, lobby

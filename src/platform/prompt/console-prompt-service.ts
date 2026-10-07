@@ -101,18 +101,8 @@ interface PromptStreams {
 }
 
 interface PromptSession extends PromptStreams {
-	readonly env?: Readonly<Record<string, string | undefined>>;
-	/** Never ask or draw, even in a terminal. */
-	readonly noInput?: boolean;
-}
-
-/** Whether the environment says a program, not a person, is on the other end. */
-function isAutomated(env: PromptSession["env"] = {}): boolean {
-	const ci = env.CI?.toLowerCase();
-	return (
-		(ci !== undefined && ci !== "" && ci !== "0" && ci !== "false") ||
-		env.TERM === "dumb"
-	);
+	/** Whether the run may ask at all; the environment and the command line decide. */
+	readonly canAsk?: boolean;
 }
 
 export class ConsolePromptService implements PromptService {
@@ -124,14 +114,10 @@ export class ConsolePromptService implements PromptService {
 	constructor({
 		input = process.stdin,
 		output = process.stdout,
-		env = process.env,
-		noInput = false,
+		canAsk = true,
 	}: PromptSession = {}) {
 		this.streams = { input, output };
-		this.isInteractive =
-			!noInput &&
-			Boolean(input.isTTY && output.isTTY) &&
-			!isAutomated(env);
+		this.isInteractive = canAsk && Boolean(input.isTTY && output.isTTY);
 	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {

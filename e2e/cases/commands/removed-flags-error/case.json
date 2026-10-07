@@ -1,0 +1,13 @@
+{
+	"steps": [
+		["build", "--sync-dir", "out"],
+		["build", "--template", "other.project.json"],
+		["build", "--all"],
+		["build", "-c", "default.rogen.json"],
+		["list", "--all"],
+		["where", "--all"],
+		["init", "--no-input"],
+		["build", "--all", "--json"]
+	],
+	"rojo": false
+}

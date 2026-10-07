@@ -1,4 +1,3 @@
-import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
@@ -64,31 +63,18 @@ export class BuildLog {
 		private readonly cwd: string
 	) {}
 
-	/** Opens the output: the command, the configs it builds and the ones it leaves out. */
-	begin(
-		command: string,
-		configs: readonly ResolvedConfig[],
-		unselected: readonly string[]
-	): void {
+	/** Opens the output: the command and the configs it builds. */
+	begin(command: string, configs: readonly ResolvedConfig[]): void {
 		this.logService.intro(
 			`rogen ${command} · ${configs.map(({ label }) => label).join(", ")}`
 		);
-		if (unselected.length > 0) {
-			this.logService.info(
-				`Not building: ${unselected.map((file) => path.basename(file)).join(", ")}.`
-			);
-		}
 	}
 
 	/** The whole output of a build: each config's outcome and warnings, then the closing line when none failed. */
-	report(
-		builds: readonly ConfigBuild[],
-		unselected: readonly string[]
-	): void {
+	report(builds: readonly ConfigBuild[]): void {
 		this.begin(
 			"build",
-			builds.map(({ config }) => config),
-			unselected
+			builds.map(({ config }) => config)
 		);
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.config);

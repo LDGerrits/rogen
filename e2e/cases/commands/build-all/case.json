@@ -1,6 +1,3 @@
 {
-	"steps": [
-		["build", "--all"],
-		["build", "--all", "lobby"]
-	]
+	"steps": [["build"], ["build", "lobby"]]
 }

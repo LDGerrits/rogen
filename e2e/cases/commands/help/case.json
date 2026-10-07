@@ -1,10 +1,3 @@
 {
-	"steps": [
-		[
-			"help"
-		],
-		[
-			"--help"
-		]
-	]
+	"steps": [["help"], ["--help"], []]
 }

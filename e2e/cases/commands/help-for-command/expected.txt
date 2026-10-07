@@ -1,30 +1,30 @@
 $ rogen help build
 exit 0
 stdout:
-  Writes each named config's project file.
+  Writes the project file of each config here, or of the named ones.
   
   Usage:
-    rogen build [name...] [options]
+    rogen build [config...] [options]
   
   Arguments:
-    name  A config to build.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-        --all                 Every config in the working directory.
-    -c, --config <value>      An explicit config path. (repeatable)
     -o, --out-file <value>    Overrides outFile.
-    -s, --sync-dir <value>    Overrides syncDir.
-        --template <value>    Overrides template.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
         --json                Print one JSON document instead of text.
   
+  Examples:
+    rogen build
+    rogen build lobby --variant mock
+    rogen build places/lobby.rogen.json -o out.project.json
+  
   Global options:
-    -h, --help      Print help.
-    -v, --version   Print the version.
-        --verbose   Print debug output.
-    -q, --quiet     Only print errors.
-        --no-input  Never ask, and print plain lines.
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
 
 $ rogen help watch
 exit 0
@@ -32,26 +32,25 @@ stdout:
   Builds, then rebuilds whenever sources or configs change.
   
   Usage:
-    rogen watch [name...] [options]
+    rogen watch [config...] [options]
   
   Arguments:
-    name  A config to watch.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-        --all                 Every config in the working directory.
-    -c, --config <value>      An explicit config path. (repeatable)
     -o, --out-file <value>    Overrides outFile.
-    -s, --sync-dir <value>    Overrides syncDir.
-        --template <value>    Overrides template.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
   
+  Examples:
+    rogen watch
+    rogen watch lobby --variant dev
+  
   Global options:
-    -h, --help      Print help.
-    -v, --version   Print the version.
-        --verbose   Print debug output.
-    -q, --quiet     Only print errors.
-        --no-input  Never ask, and print plain lines.
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
 
 $ rogen help init
 exit 0
@@ -65,14 +64,19 @@ stdout:
     name  The config to write. Defaults to default.
   
   Options:
+    -y, --yes   Write the defaults without asking, as a run without a terminal does.
         --json  Print one JSON document instead of text.
   
+  Examples:
+    rogen init
+    rogen init lobby
+    rogen init -y
+  
   Global options:
-    -h, --help      Print help.
-    -v, --version   Print the version.
-        --verbose   Print debug output.
-    -q, --quiet     Only print errors.
-        --no-input  Never ask, and print plain lines.
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
 
 $ rogen help list
 exit 0
@@ -80,49 +84,50 @@ stdout:
   Lists every config here with its root dirs, sync dir, project file and variants.
   
   Usage:
-    rogen list [name...] [options]
+    rogen list [config...] [options]
   
   Arguments:
-    name  A config to list. Every config here when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-        --all                 Every config in the working directory.
-    -c, --config <value>      An explicit config path. (repeatable)
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
         --json                Print one JSON document instead of text.
   
+  Examples:
+    rogen list
+    rogen list --json
+  
   Global options:
-    -h, --help      Print help.
-    -v, --version   Print the version.
-        --verbose   Print debug output.
-    -q, --quiet     Only print errors.
-        --no-input  Never ask, and print plain lines.
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.
 
 $ rogen build --help
 exit 0
 stdout:
-  Writes each named config's project file.
+  Writes the project file of each config here, or of the named ones.
   
   Usage:
-    rogen build [name...] [options]
+    rogen build [config...] [options]
   
   Arguments:
-    name  A config to build.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-        --all                 Every config in the working directory.
-    -c, --config <value>      An explicit config path. (repeatable)
     -o, --out-file <value>    Overrides outFile.
-    -s, --sync-dir <value>    Overrides syncDir.
-        --template <value>    Overrides template.
         --variant <value>     Turns a variant on. (repeatable)
         --no-variant <value>  Turns a variant off. (repeatable)
         --json                Print one JSON document instead of text.
   
+  Examples:
+    rogen build
+    rogen build lobby --variant mock
+    rogen build places/lobby.rogen.json -o out.project.json
+  
   Global options:
-    -h, --help      Print help.
-    -v, --version   Print the version.
-        --verbose   Print debug output.
-    -q, --quiet     Only print errors.
-        --no-input  Never ask, and print plain lines.
+    -h, --help     Print help.
+    -V, --version  Print the version.
+    -v, --verbose  Print debug output.
+    -q, --quiet    Only print errors.

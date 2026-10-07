@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	DEFAULT_CONFIG_STEM,
@@ -16,6 +17,8 @@ export const TEMPLATE_FILE = "template.project.json";
 export class ConfigSet {
 	/** The config a project starts with. */
 	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);
+	/** Watches every config here, so it keeps each config's project file current. */
+	static readonly WATCH_COMMAND = "rogen watch";
 
 	constructor(
 		readonly name: string,
@@ -51,13 +54,6 @@ export class ConfigSet {
 		return `rojo serve ${defaultOutFileName(name)}`;
 	}
 
-	/** The command that watches the configs with these stems. */
-	static watchCommand(stems: readonly string[]): string {
-		return stems.length === 1 && stems[0] === DEFAULT_CONFIG_STEM
-			? "rogen watch"
-			: `rogen watch ${stems.join(" ")}`;
-	}
-
 	/** Says where variants of a script are swapped in, in the words the next steps use. */
 	static variantsStep(language: Language, configFile: string): string {
 		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}.`;
@@ -66,22 +62,22 @@ export class ConfigSet {
 	/** `names` are the positionals after `init`. */
 	static parseName(names: readonly string[]): Result<string, Error> {
 		if (names.length > 1) {
-			return err(new Error("init takes at most one config name."));
+			return err(new UsageError("init takes at most one config name."));
 		}
 		const [name = DEFAULT_CONFIG_STEM] = names;
 		if (name.trim() === "") {
-			return err(new Error("A config name can't be empty."));
+			return err(new UsageError("A config name can't be empty."));
 		}
 		if (name === "." || name === ".." || /[\\/]/.test(name)) {
 			return err(
-				new Error(
+				new UsageError(
 					`"${name}" is not a valid config name: it can't contain path separators.`
 				)
 			);
 		}
 		if (defaultOutFileName(name) === TEMPLATE_FILE) {
 			return err(
-				new Error(
+				new UsageError(
 					`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`
 				)
 			);
@@ -167,8 +163,7 @@ export class ConfigSet {
 		const { darklua } = this;
 		builder.addRun(
 			...(compileCommand ? [compileCommand] : []),
-			// Darklua reads the source-rooted project, so both are kept current.
-			ConfigSet.watchCommand(this.stems),
+			ConfigSet.WATCH_COMMAND,
 			ConfigSet.serveCommand(this.servedStem)
 		);
 		if (darklua && syncDir) {

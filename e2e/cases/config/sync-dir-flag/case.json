@@ -1,9 +1,0 @@
-{
-	"steps": [
-		[
-			"build",
-			"--sync-dir",
-			"out"
-		]
-	]
-}

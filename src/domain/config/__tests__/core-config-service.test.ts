@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
@@ -9,13 +10,10 @@ import { ConfigSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 interface Refs {
+	/** Names or paths; the default config when absent. */
 	readonly names?: string[];
-	readonly paths?: string[];
-	readonly all?: boolean;
 	readonly overrides?: {
 		readonly outFile?: string;
-		readonly syncDir?: string;
-		readonly template?: string;
 		readonly variants: Record<string, boolean>;
 	};
 }
@@ -51,17 +49,13 @@ describe("domain/config/core-config-service", () => {
 
 	/** Selects the configs `refs` names, as the matching command line would. */
 	const start = async (
-		{ names = [], paths, all, overrides }: Refs = {},
+		{ names = ["default"], overrides }: Refs = {},
 		cwd = "/repo"
 	) => {
 		const variants = Object.entries(overrides?.variants ?? {});
 		service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
 		const result = await service.select(names, {
-			config: paths,
-			all,
 			"out-file": overrides?.outFile,
-			"sync-dir": overrides?.syncDir,
-			template: overrides?.template,
 			variant: variants
 				.filter(([, on]) => on)
 				.map(([variant]) => variant),
@@ -90,73 +84,62 @@ describe("domain/config/core-config-service", () => {
 	});
 
 	describe("select", () => {
-		it("should select the configs it loaded, and name the config files here it left out, sorted", async () => {
+		it("should select every config here when none is named, sorted", async () => {
 			await write("/repo/match.rogen.json", {});
-			await write("/repo/default.rogen.json", {});
 			await write("/repo/lobby.rogen.json", {});
 			await fs.writeFile("/repo/README.md", "");
 			await fs.createDirectory("/repo/dir.rogen.json");
 			await write("/repo/nested/other.rogen.json", {});
 
-			const selection = (await start({ names: ["lobby"] })).unwrap();
+			const selection = (await start({ names: [] })).unwrap();
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/lobby.rogen.json",
-			]);
-			expect(selection.unselected).toEqual([
-				"/repo/default.rogen.json",
 				"/repo/match.rogen.json",
 			]);
 		});
 
-		it("should leave out nothing when it loads every config", async () => {
+		it("should select only the configs named, by name or path", async () => {
 			await write("/repo/default.rogen.json", {});
-			await write("/repo/lobby.rogen.json", {});
+			await write("/repo/places/lobby.rogen.json", {});
 
-			const selection = (await start({ all: true })).unwrap();
+			const selection = (
+				await start({ names: ["places/lobby.rogen.json"] })
+			).unwrap();
 
-			expect(selection.unselected).toEqual([]);
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/places/lobby.rogen.json",
+			]);
 		});
 
 		const refusal = async (refs: Refs) => {
 			await write("/repo/lobby.rogen.json", {});
 			await write("/repo/match.rogen.json", {});
 			const result = await start(refs);
-			return result.isErr() ? result.error.message : "";
+			return result.isErr() ? result.error : undefined;
 		};
 
-		it.each([
-			["-o", { outFile: "a.json" }],
-			["-s", { syncDir: "dist" }],
-			["--template", { template: "t.json" }],
-		])("should refuse %s with several configs", async (flag, override) => {
-			expect(
-				await refusal({
-					names: ["lobby", "match"],
-					overrides: { ...override, variants: {} },
-				})
-			).toBe(
-				`${flag} targets a single config, but several were named. Name one config, or set it in the file.`
+		it("should refuse -o with several named configs", async () => {
+			const error = await refusal({
+				names: ["lobby", "match.rogen.json"],
+				overrides: { outFile: "a.json", variants: {} },
+			});
+
+			expect(error).toBeInstanceOf(UsageError);
+			expect(error?.message).toBe(
+				"-o targets a single config, but 2 configs were named. Name one config, or set outFile in the file."
 			);
 		});
 
-		it("should count -c paths towards the several configs", async () => {
-			expect(
-				await refusal({
-					names: ["lobby"],
-					paths: ["match.rogen.json"],
-					overrides: { outFile: "a.json", variants: {} },
-				})
-			).toMatch(/^-o targets a single config/);
-		});
+		it("should refuse -o when none is named and several are here", async () => {
+			const error = await refusal({
+				names: [],
+				overrides: { outFile: "a.json", variants: {} },
+			});
 
-		it("should refuse -o with every config", async () => {
-			expect(
-				await refusal({
-					all: true,
-					overrides: { outFile: "a.json", variants: {} },
-				})
-			).toMatch(/^-o targets a single config/);
+			expect(error?.message).toBe(
+				"-o targets a single config, but 2 configs are here. Name one config, or set outFile in the file."
+			);
 		});
 
 		it("should allow -o with one config", async () => {
@@ -170,13 +153,15 @@ describe("domain/config/core-config-service", () => {
 			expect(result.isOk()).toBe(true);
 		});
 
-		it.each<[string, Refs]>([
-			["a name", { names: ["lobby"] }],
-			["a -c path", { paths: ["lobby.rogen.json"] }],
-		])("should refuse every config with %s", async (_what, refs) => {
-			expect(await refusal({ all: true, ...refs })).toBe(
-				"--all already builds every config here, so it takes no names or -c paths. Drop one or the other."
-			);
+		it("should allow -o when none is named and one is here", async () => {
+			await write("/repo/lobby.rogen.json", {});
+
+			const result = await start({
+				names: [],
+				overrides: { outFile: "a.json", variants: {} },
+			});
+
+			expect(result.isOk()).toBe(true);
 		});
 
 		it("should resolve the default config with defaults applied", async () => {
@@ -270,18 +255,6 @@ describe("domain/config/core-config-service", () => {
 	});
 
 	describe("selection", () => {
-		it("should read every config here for a scope of all when none is named", async () => {
-			await write("/repo/a.rogen.json", {});
-			await write("/repo/b.rogen.json", {});
-
-			const result = await service.select([], {}, { unnamed: "all" });
-
-			expect(result.unwrap().entries.map(({ file }) => file)).toEqual([
-				"/repo/a.rogen.json",
-				"/repo/b.rogen.json",
-			]);
-		});
-
 		it("should return every config when all are valid", async () => {
 			await write("/repo/a.rogen.json", { rootDirs: ["a"] });
 			await write("/repo/b.rogen.json", { rootDirs: ["b"] });
@@ -524,7 +497,7 @@ describe("domain/config/core-config-service", () => {
 				extends: "../shared/core.rogen.json",
 			});
 
-			await start({ paths: ["places/default.rogen.json"] });
+			await start({ names: ["places/default.rogen.json"] });
 
 			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/shared/src"],
@@ -1355,26 +1328,17 @@ describe("domain/config/core-config-service", () => {
 	});
 
 	describe("overrides", () => {
-		it("should apply outFile, syncDir and template against the working directory", async () => {
-			await write("/repo/base.project.json", { name: "Base" });
+		it("should apply outFile against the working directory", async () => {
 			await write("/repo/default.rogen.json", {
 				outFile: "old.project.json",
-				syncDir: "old",
 			});
 
 			await start({
-				overrides: {
-					outFile: "out/new.project.json",
-					syncDir: "dist",
-					template: "base.project.json",
-					variants: {},
-				},
+				overrides: { outFile: "out/new.project.json", variants: {} },
 			});
 
 			expect(resolved(0)).toMatchObject({
 				outFile: "/repo/out/new.project.json",
-				syncDir: "/repo/dist",
-				template: { file: "/repo/base.project.json" },
 			});
 		});
 

@@ -26,7 +26,7 @@ src/Inventory/Shared/InventoryTypes.luau  ->  ReplicatedStorage/Shared/Inventory
 ## After a batch of changes
 
 - Run `rogen where` on the paths you added, moved or renamed, and check each lands where you meant. It also shows files left out without a warning: pruned by a dormant variant, replaced by another file, excluded by a glob, or displaced by a template node.
-- Then run `rogen build --all` once and fix every warning that names your files.
+- Then run `rogen build` once and fix every warning that names your files.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit, and `rogen build` is safe beside them.
 
 ## Requires and imports

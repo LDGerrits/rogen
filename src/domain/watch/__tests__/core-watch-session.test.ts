@@ -67,7 +67,7 @@ describe("CoreWatchSession", () => {
 	const changeUpdates = () =>
 		updates.filter(({ cause }) => cause.kind === "change");
 
-	const start = async (names: string[] = []) => {
+	const start = async (names: string[] = ["default"]) => {
 		selection = (await configService.select(names, {})).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(

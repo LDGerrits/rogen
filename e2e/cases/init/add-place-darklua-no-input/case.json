@@ -1,6 +1,6 @@
 {
 	"steps": [
 		["init", "lobby"],
-		["build", "--all"]
+		["build"]
 	]
 }

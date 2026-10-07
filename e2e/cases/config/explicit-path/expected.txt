@@ -1,4 +1,4 @@
-$ rogen build -c configs/place.rogen.json
+$ rogen build configs/place.rogen.json
 exit 0
 stdout:
   rogen build · place

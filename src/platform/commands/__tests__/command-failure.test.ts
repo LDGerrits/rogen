@@ -1,8 +1,12 @@
-import { CancelledError, ReportedError } from "../../../base/errors.js";
+import {
+	CancelledError,
+	ReportedError,
+	UsageError,
+} from "../../../base/errors.js";
 import { errorDiagnostic } from "../../diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
-import { CommandFailure } from "../command-failure.js";
+import { CommandFailure, exitCodeOf } from "../command-failure.js";
 
 describe("CommandFailure", () => {
 	let logService: MockLogService;
@@ -104,5 +108,22 @@ describe("CommandFailure", () => {
 				"error: unknown option",
 			]);
 		});
+	});
+});
+
+describe("exitCodeOf", () => {
+	it("should be 2 for a wrong command line, reported or not", () => {
+		const usage = new UsageError("Unknown option '--all'.");
+
+		expect(exitCodeOf(usage)).toBe(2);
+		expect(exitCodeOf(new ReportedError(usage))).toBe(2);
+	});
+
+	it("should be 1 for any other failure", () => {
+		expect(exitCodeOf(new Error("write failed"))).toBe(1);
+		expect(exitCodeOf(new CancelledError("init cancelled."))).toBe(1);
+		expect(
+			exitCodeOf(new ReportedError(new DiagnosticsError([])))
+		).toBe(1);
 	});
 });

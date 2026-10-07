@@ -1,0 +1,25 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · lobby, match
+  lobby
+    lobby.project.json · wrote
+  match
+    match.project.json · wrote
+  Built 2 configs.
+
+written:
+  lobby.project.json
+  match.project.json
+
+$ rojo sourcemap lobby.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau
+
+$ rojo sourcemap match.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

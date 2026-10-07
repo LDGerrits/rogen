@@ -8,7 +8,7 @@ describe("ConsolePromptService", () => {
 
 	beforeEach(() => {
 		terminal = new ScriptedTerminal();
-		service = new ConsolePromptService({ ...terminal, env: {} });
+		service = new ConsolePromptService({ ...terminal });
 	});
 
 	afterEach(() => {
@@ -24,7 +24,6 @@ describe("ConsolePromptService", () => {
 			const piped = new ConsolePromptService({
 				input: Object.assign(terminal.input, { isTTY: false }),
 				output: terminal.output,
-				env: {},
 			});
 			expect(piped.isInteractive).toBe(false);
 		});
@@ -33,43 +32,14 @@ describe("ConsolePromptService", () => {
 			const piped = new ConsolePromptService({
 				input: terminal.input,
 				output: Object.assign(terminal.output, { isTTY: false }),
-				env: {},
 			});
 			expect(piped.isInteractive).toBe(false);
 		});
 
-		it.each(["true", "1", "yes"])("should be false when CI is %s", (ci) => {
-			const automated = new ConsolePromptService({
-				...terminal,
-				env: { CI: ci },
-			});
-			expect(automated.isInteractive).toBe(false);
-		});
-
-		it.each([undefined, "", "0", "false", "FALSE"])(
-			"should be true when CI is %p",
-			(ci) => {
-				const local = new ConsolePromptService({
-					...terminal,
-					env: { CI: ci },
-				});
-				expect(local.isInteractive).toBe(true);
-			}
-		);
-
-		it("should be false when the terminal is dumb", () => {
-			const dumb = new ConsolePromptService({
-				...terminal,
-				env: { TERM: "dumb" },
-			});
-			expect(dumb.isInteractive).toBe(false);
-		});
-
-		it("should be false when asked never to prompt", () => {
+		it("should be false when the run can't ask", () => {
 			const declined = new ConsolePromptService({
 				...terminal,
-				env: {},
-				noInput: true,
+				canAsk: false,
 			});
 			expect(declined.isInteractive).toBe(false);
 		});

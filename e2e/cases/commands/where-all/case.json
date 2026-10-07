@@ -1,7 +1,7 @@
 {
 	"steps": [
-		["where", "--all"],
-		["where", "--all", "places/lobby/Lobby/Server/Queue.luau", "src/Inventory"]
+		["where"],
+		["where", "places/lobby/Lobby/Server/Queue.luau", "src/Inventory"]
 	],
 	"rojo": false
 }

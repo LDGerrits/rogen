@@ -60,7 +60,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			configSet.sourced ? configSet.syncDir : undefined
 		);
 		builder.addRun(
-			ConfigSet.watchCommand(configSet.stems),
+			ConfigSet.WATCH_COMMAND,
 			ConfigSet.serveCommand(configSet.servedStem)
 		);
 		builder.addEdit(

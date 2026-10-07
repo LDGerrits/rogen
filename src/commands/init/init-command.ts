@@ -17,7 +17,16 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 
-const InitOptions = [JsonOption] as const;
+const InitOptions = [
+	{
+		name: "yes",
+		short: "y",
+		type: "boolean",
+		description:
+			"Write the defaults without asking, as a run without a terminal does.",
+	},
+	JsonOption,
+] as const;
 
 const indent = (line: string) => `  ${line}`;
 
@@ -53,6 +62,7 @@ registerCommand(
 						},
 					],
 					options: InitOptions,
+					examples: ["rogen init", "rogen init lobby", "rogen init -y"],
 				},
 			});
 		}

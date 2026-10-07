@@ -8,7 +8,7 @@ stdout:
   Created lobby-sync.rogen.json.
   Next steps
     Run each in its own terminal:
-      rogen watch lobby lobby-sync
+      rogen watch
       rojo serve lobby-sync.project.json
       rojo sourcemap lobby.project.json --output sourcemap.json --watch
     Have Darklua process your code into the sync dir:

@@ -1,4 +1,8 @@
-import { CancelledError, ReportedError } from "../../base/errors.js";
+import {
+	CancelledError,
+	ReportedError,
+	UsageError,
+} from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import {
 	DiagnosticsError,
@@ -32,4 +36,10 @@ export class CommandFailure {
 		}
 		if (command) this.logService.closeFrame(`${command} failed.`);
 	}
+}
+
+/** The exit code of a run that failed with `error`: 2 when the command line is wrong, 1 when the project is. */
+export function exitCodeOf(error: Error): number {
+	const cause = error instanceof ReportedError ? error.cause : error;
+	return cause instanceof UsageError ? 2 : 1;
 }

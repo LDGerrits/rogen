@@ -1,4 +1,4 @@
-$ rogen build --all
+$ rogen build
 exit 0
 stdout:
   rogen build · default, lobby
@@ -8,10 +8,12 @@ stdout:
     lobby.project.json · wrote
   Built 2 configs.
 
-$ rogen build --all lobby
-exit 1
-stderr:
-  error: --all already builds every config here, so it takes no names or -c paths. Drop one or the other.
+$ rogen build lobby
+exit 0
+stdout:
+  rogen build · lobby
+  lobby.project.json · unchanged
+  Built 1 config.
 
 written:
   default.project.json

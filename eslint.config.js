@@ -30,7 +30,6 @@ const modules = {
 		help: [],
 		init: [],
 		list: [],
-		version: [],
 		watch: [],
 		where: [],
 	},

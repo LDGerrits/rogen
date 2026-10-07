@@ -15,11 +15,7 @@ export class BuildReport {
 		});
 	}
 
-	/** `notBuilding` are the configs here that the run was not asked to build. */
-	json(notBuilding: readonly string[]): Record<string, unknown> {
-		return {
-			configs: this.configs,
-			notBuilding: notBuilding.map((file) => toNative(file)),
-		};
+	json(): Record<string, unknown> {
+		return { configs: this.configs };
 	}
 }

@@ -1,3 +1,4 @@
+import { UsageError } from "../../../base/errors.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
@@ -6,9 +7,9 @@ import {
 } from "../args.js";
 
 const globals: OptionDescriptor[] = [
-	{ name: "verbose", type: "boolean", description: "" },
+	{ name: "verbose", short: "v", type: "boolean", description: "" },
 	{ name: "help", short: "h", type: "boolean", description: "" },
-	{ name: "version", short: "v", type: "boolean", description: "" },
+	{ name: "version", short: "V", type: "boolean", description: "" },
 	{ name: "quiet", short: "q", type: "boolean", description: "" },
 ];
 
@@ -27,7 +28,7 @@ const optionsFor = (command?: string) =>
 		? [...globals, ...buildOptions]
 		: globals;
 
-const commands = ["build", "watch", "help", "version"];
+const commands = ["build", "watch", "help", "init"];
 
 const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
 
@@ -57,14 +58,19 @@ describe("parseArgs", () => {
 		expect(line.positionals).toEqual(["extra_arg"]);
 	});
 
-	it("should default to build, and let --help and --version win", () => {
-		expect(parse([]).unwrap().command).toBe("build");
-		expect(parse(["--variant", "a"]).unwrap().command).toBe("build");
+	it("should run help for a bare line, and let --help and --version win", () => {
+		expect(parse([]).unwrap().command).toBe("help");
+		expect(parse(["-q"]).unwrap().command).toBe("help");
 		expect(parse(["--help"]).unwrap().command).toBe("help");
-		expect(parse(["build", "-v"]).unwrap().command).toBe("version");
+		expect(parse(["build", "-V"]).unwrap().command).toBe("help");
 	});
 
-	it("should leave the positionals empty for a defaulted command", () => {
+	it("should read -v as --verbose and -V as --version", () => {
+		expect(values(["build", "-v"]).verbose).toBe(true);
+		expect(values(["build", "-V"]).version).toBe(true);
+	});
+
+	it("should leave the positionals empty for a bare line", () => {
 		expect(positionals(["-q"])).toEqual([]);
 	});
 
@@ -74,9 +80,10 @@ describe("parseArgs", () => {
 		expect(positionals(["--version"])).toEqual([]);
 	});
 
-	it("should reject --verbose together with --quiet", () => {
+	it("should reject --verbose together with --quiet as a usage error", () => {
 		const result = parse(["build", "--verbose", "-q"]);
 
+		expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
 		expect(result.isErr() && result.error.message).toContain(
 			"--verbose can't be combined with --quiet"
 		);
@@ -85,6 +92,7 @@ describe("parseArgs", () => {
 	it("should name an unknown option and point at the command's help", () => {
 		const result = parse(["build", "--fake-flag"]);
 
+		expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
 		expect(result.isErr() && result.error.message).toBe(
 			"Unknown option '--fake-flag'. Run 'rogen help build' to see what build accepts."
 		);
@@ -115,7 +123,7 @@ describe("parseArgs", () => {
 		);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"watch doesn't take '--variant'. build, help and version do."
+			"watch doesn't take '--variant'. build, help and init do."
 		);
 	});
 
@@ -153,15 +161,18 @@ describe("parseArgs", () => {
 		expect(result.isErr() && result.error.message).toBe(message);
 	});
 
-	it("should take --no-input on every command", () => {
-		const parsed = parseArgs(
-			["watch", "--no-input"],
-			() => GlobalOptions,
-			commands
-		);
+	it.each([["--no-input"], ["--all"], ["-c", "x"]])(
+		"should reject %s, which no command takes",
+		(...flag) => {
+			const result = parseArgs(
+				["build", ...flag],
+				() => GlobalOptions,
+				commands
+			);
 
-		expect(parsed.unwrap().line.options["no-input"]).toBe(true);
-	});
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+		}
+	);
 });
 
 describe("hasFlag", () => {

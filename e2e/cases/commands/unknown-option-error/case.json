@@ -1,11 +1,39 @@
 {
 	"steps": [
-		["build", "--nope"],
-		["build", "--root-dir", "src"],
-		["watch", "-w"],
-		["build", "--variant"],
-		["build", "--json=yes"],
-		["build", "--jsno"],
-		["init", "--variant", "x"]
+		[
+			"build",
+			"--nope"
+		],
+		[
+			"build",
+			"--root-dir",
+			"src"
+		],
+		[
+			"watch",
+			"-w"
+		],
+		[
+			"build",
+			"--variant"
+		],
+		[
+			"build",
+			"--json=yes"
+		],
+		[
+			"build",
+			"--jsno"
+		],
+		[
+			"init",
+			"--variant",
+			"x"
+		],
+		[
+			"build",
+			"--nope",
+			"--json"
+		]
 	]
 }

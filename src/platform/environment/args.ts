@@ -1,6 +1,6 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
-import { ErrorUtils } from "../../base/errors.js";
+import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 
 export interface OptionDescriptor {
@@ -32,12 +32,13 @@ export const GlobalOptions = [
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
 		name: "version",
-		short: "v",
+		short: "V",
 		type: "boolean",
 		description: "Print the version.",
 	},
 	{
 		name: "verbose",
+		short: "v",
 		type: "boolean",
 		description: "Print debug output.",
 	},
@@ -46,11 +47,6 @@ export const GlobalOptions = [
 		short: "q",
 		type: "boolean",
 		description: "Only print errors.",
-	},
-	{
-		name: "no-input",
-		type: "boolean",
-		description: "Never ask, and print plain lines.",
 	},
 ] as const satisfies readonly OptionDescriptor[];
 
@@ -96,16 +92,14 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
-/** The command a line runs, and whether its first positional named it. */
+/** The command a line runs, and whether its first positional named it. `help` answers `--help`, `--version` and a bare `rogen`. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
 	positionals: readonly string[]
 ): { readonly command: string; readonly named: boolean } {
-	if (values.version) return { command: "version", named: false };
-	if (values.help) return { command: "help", named: false };
-	return positionals.length > 0
-		? { command: positionals[0].toLowerCase(), named: true }
-		: { command: "build", named: false };
+	if (values.version || values.help || positionals.length === 0)
+		return { command: "help", named: false };
+	return { command: positionals[0].toLowerCase(), named: true };
 }
 
 function unknownOption(
@@ -183,10 +177,12 @@ export function parseArgs(
 				ownersOf,
 				command
 			);
-			if (problem) return err(new Error(problem));
+			if (problem) return err(new UsageError(problem));
 		}
 		if (values.verbose && values.quiet) {
-			return err(new Error("--verbose can't be combined with --quiet."));
+			return err(
+				new UsageError("--verbose can't be combined with --quiet.")
+			);
 		}
 		return ok({
 			command,

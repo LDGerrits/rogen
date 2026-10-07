@@ -1,4 +1,5 @@
 import { Sequencer } from "../../base/async.js";
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
@@ -26,10 +27,7 @@ export class CoreConfigSelection implements ConfigSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
 
-	private constructor(
-		private readonly managed: readonly ManagedConfig[],
-		readonly unselected: readonly string[]
-	) {
+	private constructor(private readonly managed: readonly ManagedConfig[]) {
 		this._files = this.readFiles();
 	}
 
@@ -37,8 +35,7 @@ export class CoreConfigSelection implements ConfigSelection {
 	static async load(
 		files: readonly string[],
 		loader: ConfigLoader,
-		overrides: ConfigOverrides,
-		unselected: readonly string[]
+		overrides: ConfigOverrides
 	): Promise<Result<CoreConfigSelection, Error>> {
 		const managed = files.map(
 			(file) => new ManagedConfig(file, loader, overrides)
@@ -47,7 +44,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		const problem = undeclaredVariant(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed, unselected));
+			: ok(new CoreConfigSelection(managed));
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -128,7 +125,7 @@ function undeclaredVariant(
 			Object.keys(buildableConfig(config.entry)?.variants ?? {})
 		);
 		const suggestion = closestMatch(variant, declared);
-		return new Error(
+		return new UsageError(
 			`Variant "${variant}" is not declared by any config being built. ` +
 				(suggestion
 					? `Did you mean "${suggestion}"?`

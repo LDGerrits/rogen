@@ -25,20 +25,6 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
-const AllOption = {
-	name: "all",
-	type: "boolean",
-	description: "Every config in the working directory.",
-} as const satisfies OptionDescriptor;
-
-const ConfigPathOption = {
-	name: "config",
-	short: "c",
-	type: "string",
-	multiple: true,
-	description: "An explicit config path.",
-} as const satisfies OptionDescriptor;
-
 const VariantOption = {
 	name: "variant",
 	type: "string",
@@ -53,34 +39,19 @@ const NoVariantOption = {
 	description: "Turns a variant off.",
 } as const satisfies OptionDescriptor;
 
-/** The flags that pick the configs a command reads and which variants are on in them. */
+/** The flags that say which variants are on in the configs a command reads. */
 export const ConfigSelectionOptions = [
-	AllOption,
-	ConfigPathOption,
 	VariantOption,
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];
 
-/** The flags that pick, or override, the configs a command builds. */
+/** The flags that override the configs a command builds. */
 export const ConfigOptions = [
-	AllOption,
-	ConfigPathOption,
 	{
 		name: "out-file",
 		short: "o",
 		type: "string",
 		description: "Overrides outFile.",
-	},
-	{
-		name: "sync-dir",
-		short: "s",
-		type: "string",
-		description: "Overrides syncDir.",
-	},
-	{
-		name: "template",
-		type: "string",
-		description: "Overrides template.",
 	},
 	VariantOption,
 	NoVariantOption,

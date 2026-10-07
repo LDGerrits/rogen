@@ -1,41 +1,25 @@
 import { Disposable } from "../../base/disposable.js";
+import { UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ConfigOptionValues, ConfigOptions } from "./config.js";
-import { ConfigDiscovery, ConfigRefs } from "./config-discovery.js";
+import { ConfigOptionValues } from "./config.js";
+import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
-import { ConfigOverrides, PathField } from "./layered-config.js";
+import { ConfigOverrides } from "./layered-config.js";
 import {
 	ConfigEntry,
 	ConfigFileCheck,
-	ConfigScope,
 	ConfigSelection,
 	ConfigService,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
 
-/** The flag that overrides each path field; each names one value, which several configs can't share. */
-const PATH_FLAGS: Record<PathField, string> = {
-	outFile: "out-file",
-	syncDir: "sync-dir",
-	template: "template",
-};
-
-/** The flag as a user types it, taken from the option table so the two can't drift. */
-function flagOf(name: string): string {
-	const option = ConfigOptions.find((candidate) => candidate.name === name);
-	const short = option && "short" in option ? option.short : undefined;
-	return short ? `-${short}` : `--${name}`;
-}
-
 /** The overrides the command line's flags set; `--no-variant` beats `--variant` for one variant. */
 function overridesOf(options: ConfigOptionValues): ConfigOverrides {
 	return {
 		outFile: options["out-file"],
-		syncDir: options["sync-dir"],
-		template: options.template,
 		variants: {
 			...Object.fromEntries(
 				(options.variant ?? []).map((variant) => [variant, true])
@@ -45,27 +29,6 @@ function overridesOf(options: ConfigOptionValues): ConfigOverrides {
 			),
 		},
 	};
-}
-
-/** Why `refs` can't be loaded together, before any config is read. */
-function selectionProblem(
-	{ names, paths = [], all }: ConfigRefs,
-	overrides: ConfigOverrides
-): Error | undefined {
-	if (all && names.length + paths.length > 0) {
-		return new Error(
-			"--all already builds every config here, so it takes no names or -c paths. Drop one or the other."
-		);
-	}
-	if (!all && names.length + paths.length <= 1) return undefined;
-	const override = (Object.entries(PATH_FLAGS) as [PathField, string][]).find(
-		([field]) => overrides[field] !== undefined
-	);
-	return override
-		? new Error(
-				`${flagOf(override[1])} targets a single config, but several were named. Name one config, or set it in the file.`
-			)
-		: undefined;
 }
 
 export class CoreConfigService implements ConfigService {
@@ -86,30 +49,27 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async select(
-		names: readonly string[],
-		options: ConfigOptionValues,
-		{ unnamed = "default" }: ConfigScope = {}
+		refs: readonly string[],
+		options: ConfigOptionValues
 	): Promise<Result<ConfigSelection, Error>> {
-		const paths = options.config ?? [];
-		const refs: ConfigRefs = {
-			names,
-			paths,
-			all:
-				options.all === true ||
-				(unnamed === "all" && names.length === 0 && paths.length === 0),
-		};
-		const overrides = overridesOf(options);
-		const problem = selectionProblem(refs, overrides);
-		if (problem) return err(problem);
-
 		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
+
+		const overrides = overridesOf(options);
+		const count = discovered.value.length;
+		if (overrides.outFile !== undefined && count > 1) {
+			const found = refs.length > 0 ? "were named" : "are here";
+			return err(
+				new UsageError(
+					`-o targets a single config, but ${count} configs ${found}. Name one config, or set outFile in the file.`
+				)
+			);
+		}
 
 		return CoreConfigSelection.load(
 			discovered.value,
 			this.loader,
-			overrides,
-			await this.unselected(discovered.value)
+			overrides
 		);
 	}
 
@@ -121,14 +81,5 @@ export class CoreConfigService implements ConfigService {
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
 		return this.loader.registerFileCheck(check);
-	}
-
-	/** The config files in the working dir that aren't `selected`; none when it can't be read. */
-	private async unselected(selected: readonly string[]): Promise<string[]> {
-		const found = await this.discovery.find();
-		const picked = new Set(selected);
-		return found.isOk()
-			? found.value.filter((file) => !picked.has(file))
-			: [];
 	}
 }
