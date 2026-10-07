@@ -1,5 +1,5 @@
 import path from "path";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	WorkspaceSpec,
@@ -35,6 +35,7 @@ const plan = (
 	return planOf(
 		new PlaceSetup(
 			target,
+			ok(base),
 			new InitQuestions(new MockPromptService([], false), false)
 		),
 		{
