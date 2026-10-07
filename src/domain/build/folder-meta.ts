@@ -3,7 +3,7 @@ import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import { RojoMetaFields } from "../rojo/rojo.js";
+import { RojoMeta, RojoMetaFields } from "../rojo/rojo.js";
 import {
 	InstanceMap,
 	RojoNode,
@@ -39,34 +39,6 @@ export class FolderMeta implements RojoMetaFields {
 	/** The folder as an absolute POSIX path. */
 	get folder(): string {
 		return joinPosix(this.rootDir, this.dir);
-	}
-
-	/** Mirrors Rojo's precedence of a project's fields over a folder's meta. */
-	fieldsUnder(templateNode: RojoNode): Partial<RojoNode> {
-		const fields: Partial<RojoNode> = {};
-		if (
-			this.className !== undefined &&
-			templateNode.$className === undefined
-		)
-			fields.$className = this.className;
-		if (this.properties !== undefined)
-			fields.$properties = {
-				...this.properties,
-				...templateNode.$properties,
-			};
-		if (
-			this.attributes !== undefined &&
-			templateNode.$attributes === undefined
-		)
-			fields.$attributes = { ...this.attributes };
-		if (
-			this.ignoreUnknownInstances !== undefined &&
-			templateNode.$ignoreUnknownInstances === undefined
-		)
-			fields.$ignoreUnknownInstances = this.ignoreUnknownInstances;
-		if (this.id !== undefined && templateNode.$id === undefined)
-			fields.$id = this.id;
-		return fields;
 	}
 }
 
@@ -136,7 +108,10 @@ export class FolderMetaApplier {
 		for (const { instancePath, meta, templateNode } of this.copies(
 			outcomes
 		))
-			project.insertNode(instancePath, meta.fieldsUnder(templateNode));
+			project.insertNode(
+				instancePath,
+				RojoMeta.fieldsUnder(meta, templateNode)
+			);
 		return ok(outcomes);
 	}
 
