@@ -34,3 +34,9 @@ stdout:
   src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
   src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
   ReplicatedStorage/Shared/Nope -> no file places it
+
+$ rogen where src/Combat/Server/Moves/Sweep.luau:12 src/Net/Http@client.luau:3:9: unexpected symbol
+exit 0
+stdout:
+  src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)
+  src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)

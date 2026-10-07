@@ -7,6 +7,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import {
 	ConfigLocations,
 	FileLocation,
@@ -145,13 +146,23 @@ export class Locator {
 		return (source) => known.get(source) ?? !index.isPlanned(source);
 	}
 
+	/** `arg` without a `:line` or `:line:col` after the path, and what follows it (`: attempt to index nil`), as a linter or a log prints it. It is only cut when what is left exists or has a file type Rojo reads, so a Windows drive letter or a colon in a name stays. */
+	private async withoutPosition(arg: string, cwd: string): Promise<string> {
+		const head = /^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg)?.[1];
+		if (head === undefined) return arg;
+		return new RojoFile(path.basename(head)).kind !== undefined ||
+			(await this.fileSystemService.exists(path.resolve(cwd, head)))
+			? head
+			: arg;
+	}
+
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
 	private async classify(query?: LocateTargets): Promise<Targets> {
 		const paths: string[] = [];
 		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
-		for (const arg of query?.args ?? []) {
-			const reference = InstanceReference.parse(arg);
+		for (const given of query?.args ?? []) {
+			const reference = InstanceReference.parse(given);
 			if (
 				reference &&
 				!(await this.fileSystemService.exists(
@@ -160,6 +171,7 @@ export class Locator {
 			)
 				instances.push(reference);
 			else {
+				const arg = await this.withoutPosition(given, query!.cwd);
 				const resolved = path.resolve(query!.cwd, arg);
 				paths.push(resolved);
 				if (/[\\/]$/.test(arg)) folders.add(toPosix(resolved));

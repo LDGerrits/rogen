@@ -69,6 +69,8 @@ src/Inventory/Save@sever.luau -> ReplicatedStorage/shared/Inventory/Save@sever Â
   warning: did you mean "@server"? (route.strayAt)
 ```
 
+A path can carry the `:line` or `:line:col` that linters and logs print after it, with or without a message (`src/Net/Http.luau:12:5: unexpected symbol`); Rogen reads it as the path, so you can paste such a line as it is.
+
 `where` also works backwards. An argument that starts with a service is read as an instance, and you can paste an error line straight in:
 
 ```

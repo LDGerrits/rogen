@@ -65,6 +65,57 @@ describe("CoreBuildService.locate", () => {
 		store[Symbol.dispose]();
 	});
 
+	describe("a file with a position after it", () => {
+		const save = "src/Inventory/Server/Save.luau";
+
+		it.each([
+			`${save}:12`,
+			`${save}:12:5`,
+			`${save}:12: attempt to index nil`,
+			`${save}:12:5: attempt to index nil`,
+			`${save}:12:5 - error: bad`,
+		])("should read %j as the file", async (arg) => {
+			await write(save);
+
+			expect(await locate([arg])).toMatchObject([
+				{ status: "placed", source: abs(save) },
+			]);
+		});
+
+		it("should read a position on a file that doesn't exist yet", async () => {
+			await write("src/Other.luau");
+
+			expect(await locate([`${save}:3`])).toMatchObject([
+				{ status: "placed", source: abs(save), exists: false },
+			]);
+		});
+
+		it("should keep a colon that isn't followed by a number", async () => {
+			await write("src/Other.luau");
+
+			expect(await locate(["src/Name:x.luau"])).toMatchObject([
+				{ source: abs("src/Name:x.luau") },
+			]);
+		});
+
+		it("should cut a Windows path at its position and not at its drive letter", async () => {
+			const withDrive = await locate(["C:\\repo\\src\\Save.luau"]);
+			const withLine = await locate(["C:\\repo\\src\\Save.luau:12"]);
+
+			expect(withLine.map(({ source }) => source)).toEqual(
+				withDrive.map(({ source }) => source)
+			);
+		});
+
+		it("should keep a position on something that is neither there nor a file type", async () => {
+			await write("src/Other.luau");
+
+			expect(await locate(["src/Nope:12"])).toMatchObject([
+				{ source: abs("src/Nope:12") },
+			]);
+		});
+	});
+
 	it("should place a file with its route and how the route matched", async () => {
 		await write(
 			"src/Inventory/Server/Save.luau",
