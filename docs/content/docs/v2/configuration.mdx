@@ -57,7 +57,7 @@ There are nine fields, none nested more than one level. Unknown keys and wrong t
 | `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |
 | `variants` | `{}` | Every variant the project uses, and whether it's on. See [Variants](/docs/v2/core-concepts/variants). |
-| `exclude` | `[]` | Globs for files that are never built. |
+| `exclude` | `[]` | Globs for files that are never built. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
 | `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |
