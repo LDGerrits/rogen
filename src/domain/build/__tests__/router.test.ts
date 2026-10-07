@@ -462,6 +462,59 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});
 
+			it("should refuse two markers that route one folder differently, an init script's suffix among them", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/@client",
+					"src/C/X.luau",
+					"src/D/@server",
+					"src/D/init@client.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(
+							({ code, resource, message }) => [code, resource, message]
+						)
+				).toEqual([
+					[
+						"route.markerClash",
+						abs("src/C"),
+						'"@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.',
+					],
+					[
+						"route.markerClash",
+						abs("src/D"),
+						'"@server" and "init@client.luau" route this folder to different places, and nothing decides between them. Keep one.',
+					],
+				]);
+			});
+
+			it("should let markers that agree, variant markers and a dormant init script's route stand together", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/init@server.luau",
+					"src/C/.mock",
+					"src/C/.dev",
+					"src/C/X.luau",
+					"src/D/@server",
+					"src/D/init.prod@client.luau",
+					"src/D/Y.luau"
+				);
+
+				expect(
+					(await route({ variants: { mock: true, dev: true, prod: false } }))
+						.unwrap()
+						.files.map((file) => file.instancePath.join("/"))
+				).toEqual([
+					"ServerScriptService/C/X",
+					"ServerScriptService/C",
+					"ServerScriptService/D/Y",
+				]);
+			});
+
 			it("should ignore dot-files that aren't declared routes", async () => {
 				await write("src/.gitkeep", "src/.mock", "src/Save.luau");
 

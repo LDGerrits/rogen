@@ -235,6 +235,16 @@ default.rogen.json - warning: 2 names write a route key after a dot, where only 
 
 Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
+### `route.markerClash` [#route-markerclash]
+
+Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
+
+```
+src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.
+```
+
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+
 ### `route.ignoredAt` [#route-ignoredat]
 
 Warning. A name or marker file has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.

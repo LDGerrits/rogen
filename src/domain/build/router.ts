@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings } from "../../base/collections.js";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
@@ -63,6 +64,14 @@ export interface IgnoredAt {
 export interface HoistedInit {
 	readonly source: string;
 	readonly variants: readonly VariantMatch[];
+}
+
+/** A directory whose markers, an init script's route suffix among them, route its folder to more than one place. */
+export interface MarkerClash {
+	/** An absolute POSIX path. */
+	readonly dir: string;
+	/** The marker files and init scripts that route it, sorted. */
+	readonly names: readonly string[];
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
@@ -155,22 +164,27 @@ export class Router {
 		this.keys = config.keys;
 	}
 
-	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; and the init scripts with no folder to be. */
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the directories whose markers disagree. */
 	route(roots: readonly ScannedRoot[]): {
 		routed: RoutedFile[];
 		toCopy: InitToCopy[];
 		unrouted: string[];
 		withoutFolder: InitWithoutFolder[];
 		hoistedInits: HoistedInit[];
+		markerClashes: MarkerClash[];
 	} {
 		const routed: RoutedFile[] = [];
 		const toCopy: InitToCopy[] = [];
 		const unrouted: string[] = [];
 		const withoutFolder: InitWithoutFolder[] = [];
 		const hoistedInits: HoistedInit[] = [];
+		const markerClashes: MarkerClash[] = [];
 		for (const root of roots) {
 			const markers = root.markersByDir();
 			const initRoutes = this.initRoutesOf(root);
+			markerClashes.push(
+				...this.markerClashesOf(root, markers, initRoutes)
+			);
 			for (const entry of root.entries) {
 				const claimed = this.claim(entry, markers, initRoutes);
 				if (claimed.leaf.isInit && claimed.leaf.hoisted) {
@@ -202,7 +216,45 @@ export class Router {
 					});
 			}
 		}
-		return { routed, toCopy, unrouted, withoutFolder, hoistedInits };
+		return {
+			routed,
+			toCopy,
+			unrouted,
+			withoutFolder,
+			hoistedInits,
+			markerClashes,
+		};
+	}
+
+	/** Markers in one directory all sit at one level, so no order could choose between two routes; claiming them in scan order would pick one silently. */
+	private markerClashesOf(
+		root: ScannedRoot,
+		markers: ReadonlyMap<string, string[]>,
+		initRoutes: InitRoutes
+	): MarkerClash[] {
+		const clashes: MarkerClash[] = [];
+		for (const dir of new Set([...markers.keys(), ...initRoutes.keys()])) {
+			const claims = [
+				...(markers.get(dir) ?? []).flatMap((fileName) => {
+					const key = this.readings.markers.get(
+						joinPosix(root.rootDir, dir, fileName)
+					)?.key;
+					return key !== undefined && this.keys.routeKeys.has(key)
+						? [{ key, name: fileName }]
+						: [];
+				}),
+				...(initRoutes.get(dir) ?? []).map(({ key, source }) => ({
+					key,
+					name: path.posix.basename(source),
+				})),
+			];
+			if (new Set(claims.map(({ key }) => key)).size > 1)
+				clashes.push({
+					dir: joinPosix(root.rootDir, dir),
+					names: claims.map(({ name }) => name).sort(compareStrings),
+				});
+		}
+		return clashes;
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */

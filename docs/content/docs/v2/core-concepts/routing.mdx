@@ -83,7 +83,7 @@ src/Anti-cheat/@server
 src/Anti-cheat/Check.luau  ->  ServerScriptService/Anti-cheat/Check
 ```
 
-Create one with `touch @server`, or `New-Item '@server'` in PowerShell, where an unquoted `@` means something else. A dot-file like `.server` isn't a route marker, because only `@` routes; Rogen warns about it and names the `@` form. [Variant markers](/docs/v2/core-concepts/variants#marking-files) keep the dot (`.mock`).
+Create one with `touch @server`, or `New-Item '@server'` in PowerShell, where an unquoted `@` means something else. A dot-file like `.server` isn't a route marker, because only `@` routes; Rogen warns about it and names the `@` form. [Variant markers](/docs/v2/core-concepts/variants#marking-files) keep the dot (`.mock`). A folder takes one route: two route markers in it, or one beside an init script with a different route suffix, are an error.
 
 ## Rojo's Script Suffixes
 

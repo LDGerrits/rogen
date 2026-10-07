@@ -1,0 +1,30 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.project.json · not written
+  src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.
+
+$ rogen build --json
+exit 1
+stdout:
+  {
+    "configs": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Inventory",
+            "severity": "error",
+            "code": "route.markerClash",
+            "message": "\"@client\" and \"@server\" route this folder to different places, and nothing decides between them. Keep one.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-markerclash"
+          }
+        ]
+      }
+    ]
+  }

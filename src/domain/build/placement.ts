@@ -20,6 +20,7 @@ import {
 	HoistedInit,
 	InitToCopy,
 	InitWithoutFolder,
+	MarkerClash,
 	RoutedFile,
 	Router,
 } from "./router.js";
@@ -218,15 +219,22 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(new NameReader(keys), keys, roots);
-		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
-			new Router(this.config, readings, this.layout.initNames).route(
-				roots
-			);
-		const initErrors = [
+		const {
+			routed,
+			toCopy,
+			unrouted,
+			withoutFolder,
+			hoistedInits,
+			markerClashes,
+		} = new Router(this.config, readings, this.layout.initNames).route(
+			roots
+		);
+		const routeErrors = [
+			...this.markerClashErrors(markerClashes),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
 		];
-		if (initErrors.length > 0) return err(initErrors);
+		if (routeErrors.length > 0) return err(routeErrors);
 		const routedNodes = this.withCopies(routed, toCopy);
 		const applied = this.applyVariants(routedNodes);
 		if (applied.isErr()) return applied;
@@ -269,6 +277,20 @@ export class Placer {
 			this.template.mounts
 		);
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
+	}
+
+	/** Two routes at one level of a folder leave nothing to decide between them. */
+	private markerClashErrors(
+		markerClashes: readonly MarkerClash[]
+	): Diagnostic[] {
+		return markerClashes.map(({ dir, names }) => {
+			const quoted = names.map((name) => `"${name}"`);
+			return errorDiagnostic(
+				"route.markerClash",
+				{ resource: dir },
+				`${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]} route this folder to different places, and nothing decides between them. Keep one.`
+			);
+		});
 	}
 
 	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
