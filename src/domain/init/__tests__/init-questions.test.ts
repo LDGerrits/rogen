@@ -673,7 +673,7 @@ describe("InitQuestions askProject", () => {
 			);
 			expect(choices[2].hint).toContain("ReplicatedStorage/Shared");
 			expect(description).toBe(
-				"Where code goes. A Server folder, a .server marker file or a Foo@server.luau suffix all send code to ServerScriptService."
+				"Where code goes. A Server folder, an @server marker file or a Foo@server.luau suffix all send code to ServerScriptService."
 			);
 		});
 
@@ -688,7 +688,7 @@ describe("InitQuestions askProject", () => {
 			]);
 			expect(choices[2].hint).toContain("ReplicatedStorage/shared");
 			expect(description).toContain(
-				"A server folder, a .server marker file or a Foo@server.ts suffix"
+				"A server folder, an @server marker file or a Foo@server.ts suffix"
 			);
 		});
 

@@ -143,21 +143,21 @@ describe("NameReadings", () => {
 
 		describe("markers", () => {
 			it("should read the key a marker declares", async () => {
-				await write("src/.server", "src/.mock", "src/.other");
+				await write("src/@server", "src/.mock", "src/.other");
 
 				const { markers } = await read();
 
-				expect(markers.get(at("src/.server"))?.key).toBe("server");
+				expect(markers.get(at("src/@server"))?.key).toBe("server");
 				expect(markers.get(at("src/.mock"))?.key).toBe("mock");
 				expect(markers.get(at("src/.other"))?.key).toBeUndefined();
 			});
 
 			it("should note a marker that only differs from a key in case", async () => {
-				await write("src/.SERVER", "src/Save.luau");
+				await write("src/@SERVER", "src/Save.luau");
 
 				const { markers } = await read();
 
-				expect(markers.get(at("src/.SERVER"))).toEqual({
+				expect(markers.get(at("src/@SERVER"))).toMatchObject({
 					key: undefined,
 					nearMissKey: "server",
 				});
@@ -202,7 +202,7 @@ describe("NameReadings", () => {
 
 				expect(
 					entries.get(at("src/Save@sever.luau"))?.match.strayAt
-				).toMatchObject({ text: "sever", closestKey: "server" });
+				).toMatchObject({ text: "sever", suggestion: "@server" });
 			});
 
 			it("should read a data file without its .json suffix", async () => {

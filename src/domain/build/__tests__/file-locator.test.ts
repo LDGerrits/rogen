@@ -68,7 +68,7 @@ describe("CoreBuildService.locate", () => {
 			"src/Inventory/Server/Save.luau",
 			"src/Net/Http@client.luau",
 			"src/Net/Socket.client.luau",
-			"src/Anti/.server",
+			"src/Anti/@server",
 			"src/Anti/Check.luau",
 			"src/Util.luau"
 		);

@@ -214,18 +214,30 @@ Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name has an `@` that doesn't route, so the `@` stays in the instance name: either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
+Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), it spells one but isn't at the end of the name (`Report@server.bak.luau`), or it's followed by a variant (`Analytics@mock.luau`), which takes a dot. One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
 
 ```
 default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
   src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 ```
 
-Rename the file to the key suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
+Rename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest, and for a variant's dot form. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
+
+### `route.dotRoute` [#route-dotroute]
+
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. Rojo's `.server` and `.client` at the end of a script still route and are never reported. One warning lists every such name.
+
+```
+default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing:
+  src/Inventory/.server (write "@server")
+  src/Inventory/Types.shared.luau (write "Types@shared.luau")
+```
+
+Rename each to its `@` form: a marker file is `@server`, and a name is `Types@shared.luau`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
-Warning. A name has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.
+Warning. A name or marker file has an `@key` inside a folder that another route already governs. Only the outermost route acts, so this one does nothing and stays in the name.
 
 ```
 src/server/Util@client.luau - warning: "@client" does nothing here, because the "server" route already governs this file, so it stays in the name (Util@client). Remove it, or move the file out of the "server" route's files.

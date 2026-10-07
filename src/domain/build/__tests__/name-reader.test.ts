@@ -15,8 +15,32 @@ const readFolderName = (folderName: string, keys: DeclaredKeys) =>
 	readerOf(keys).folder(folderName);
 
 describe("NameReader marker", () => {
-	it("matches a marker file named after a declared key", () => {
-		expect(matchMarkerKey(".server", ROUTE_KEYS)).toBe("server");
+	it("matches a route marker written with @", () => {
+		expect(matchMarkerKey("@server", ROUTE_KEYS)).toBe("server");
+	});
+
+	it("reads a dot-file that spells a route as no marker, and notes its @ form", () => {
+		const read = readerOf(ROUTE_KEYS).marker(".server");
+
+		expect(read.key).toBeUndefined();
+		expect(read.dotRoute).toEqual({
+			text: "server",
+			key: "server",
+			respelling: { start: 0, written: ".server", spelling: "@server" },
+		});
+	});
+
+	it("reads an @ followed by a variant as no marker, and notes its dot form", () => {
+		const read = readerOf(ALL_KEYS).marker("@mock");
+
+		expect(read.key).toBeUndefined();
+		expect(read.strayAt?.suggestion).toBe(".mock");
+	});
+
+	it("notes an @ marker that nearly spells a route", () => {
+		expect(readerOf(ROUTE_KEYS).marker("@sever").strayAt?.suggestion).toBe(
+			"@server"
+		);
 	});
 
 	it("matches a variant marker", () => {
@@ -24,14 +48,17 @@ describe("NameReader marker", () => {
 	});
 
 	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey(".Server", ROUTE_KEYS)).toBe("server");
+		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBe("server");
 	});
 
 	it("does not match any other difference in case", () => {
-		expect(matchMarkerKey(".SERVER", ROUTE_KEYS)).toBeUndefined();
+		expect(matchMarkerKey("@SERVER", ROUTE_KEYS)).toBeUndefined();
+		expect(readerOf(ROUTE_KEYS).marker("@SERVER").nearMissKey).toBe(
+			"server"
+		);
 	});
 
-	it("ignores a name that doesn't start with a dot", () => {
+	it("ignores a name that doesn't start with a sign", () => {
 		expect(matchMarkerKey("server", ROUTE_KEYS)).toBeUndefined();
 	});
 
@@ -132,7 +159,7 @@ describe("NameReader suffixes", () => {
 		expect(result.matchedKeys.size).toBe(0);
 		expect(result.strayAt).toEqual({
 			text: "server",
-			closestKey: "server",
+			suggestion: "@server",
 			notLast: true,
 		});
 	});
@@ -199,7 +226,7 @@ describe("NameReader stray @", () => {
 	it("names the closest declared route for an @ that matches none", () => {
 		expect(matchSuffixKeys("Save@sever", ROUTES).strayAt).toEqual({
 			text: "sever",
-			closestKey: "server",
+			suggestion: "@server",
 			notLast: false,
 			respelling: { start: 4, written: "@sever", spelling: "@server" },
 		});
@@ -208,12 +235,12 @@ describe("NameReader stray @", () => {
 	it("should give no respelling when another route is as close", () => {
 		expect(
 			matchSuffixKeys("Save@serer", new Set(["server", "sever"])).strayAt
-		).toEqual({ text: "serer", closestKey: "server", notLast: false });
+		).toEqual({ text: "serer", suggestion: "@server", notLast: false });
 	});
 
 	it("suggests the route for an @ that only differs in case", () => {
-		expect(matchSuffixKeys("Save@SERVER", ROUTES).strayAt?.closestKey).toBe(
-			"server"
+		expect(matchSuffixKeys("Save@SERVER", ROUTES).strayAt?.suggestion).toBe(
+			"@server"
 		);
 	});
 
@@ -229,7 +256,7 @@ describe("NameReader stray @", () => {
 	it("is no near miss of a variant, only of a route", () => {
 		expect(
 			readerOf(new DeclaredKeys(ROUTES, ["mock"])).suffixes("Save@mok")
-				.strayAt?.closestKey
+				.strayAt?.suggestion
 		).toBeUndefined();
 	});
 
@@ -241,7 +268,7 @@ describe("NameReader stray @", () => {
 	it("reports a leading @ only when it nearly spells a route", () => {
 		expect(matchSuffixKeys("@sever", ROUTES).strayAt).toMatchObject({
 			text: "sever",
-			closestKey: "server",
+			suggestion: "@server",
 		});
 		expect(matchSuffixKeys("@rbxts", ROUTES).strayAt).toBeUndefined();
 		expect(matchSuffixKeys("@server", ROUTES).strayAt).toBeUndefined();
@@ -364,9 +391,9 @@ describe("NameReader folder", () => {
 	it("should report the @ of a folder that matches no route", () => {
 		expect(
 			new NameReader(ALL_KEYS).folderStrayAt("Queue@sever")
-		).toMatchObject({ text: "sever", closestKey: "server" });
+		).toMatchObject({ text: "sever", suggestion: "@server" });
 		expect(new NameReader(ALL_KEYS).folderStrayAt("@sever")).toMatchObject({
-			closestKey: "server",
+			suggestion: "@server",
 		});
 		expect(
 			new NameReader(ALL_KEYS).folderStrayAt("@rbxts")

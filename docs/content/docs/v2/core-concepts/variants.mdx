@@ -25,12 +25,12 @@ A variant that's on is **active**, and one that's off is **dormant**. Files of a
 
 ## Marking Files
 
-Variants are marked the same three ways as [routes](/docs/v2/core-concepts/routing), with the same matching rules. The only difference is that a variant suffix uses a dot instead of `@`.
+Variants are marked the same three ways as [routes](/docs/v2/core-concepts/routing), with the same matching rules. The only difference is the sign: a route is written with `@` and a variant with a dot, in a marker file as in a suffix.
 
 | | Route key | Variant |
 |---|---|---|
 | **Folder** named after it (`server/`, `mock/`, `(mock)/`) | removed from the tree | removed from the tree |
-| **Marker file** (`.server`, `.mock`) | applies below; the folder keeps its name | applies below; the folder keeps its name |
+| **Marker file** (`@server`, `.mock`) | applies below; the folder keeps its name | applies below; the folder keeps its name |
 | **Suffix** (`Combat@server`, `Analytics.mock`) | stripped when governing | stripped when active |
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>

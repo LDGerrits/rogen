@@ -47,6 +47,8 @@ const FILES: Record<string, string> = {
 	".hidden2.server.luau": "",
 	".eslintrc.json": "{}",
 	".gitkeep": "",
+	"@server": "",
+	"Dir/@client": "",
 	"Foo.luau": "",
 	"Foo.meta.json": '{"attributes":{"a":1}}',
 	"Dir/A.luau": "",

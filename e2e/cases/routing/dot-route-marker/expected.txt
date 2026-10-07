@@ -1,0 +1,68 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 3 names write a route key after a dot, where only "@" routes, so they route nothing:
+    src/Inventory/.server (write "@server")
+    src/Inventory/Types.shared.luau (write "Types@shared.luau")
+    src/Net.shared (write "Net@shared")
+
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "3 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/.server",
+                  "to": "<dir>/src/Inventory/@server"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Types.shared.luau",
+                  "to": "<dir>/src/Inventory/Types@shared.luau"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Net.shared",
+                  "to": "<dir>/src/Net@shared"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Save: ModuleScript  <- src/Inventory/Save.luau
+        Types.shared: ModuleScript  <- src/Inventory/Types.shared.luau
+      Net.shared: Folder
+        Remotes: ModuleScript  <- src/Net.shared/Remotes.luau
+  ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot.server.luau

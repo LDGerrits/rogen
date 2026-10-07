@@ -34,16 +34,23 @@ export interface SuffixSpan {
 	readonly length: number;
 }
 
-/** An `@` followed by a near miss of a declared route, or by a route that isn't at the end of the name. */
+/** An `@` followed by a near miss of a declared route, by a route that isn't at the end of the name, or by a declared variant, which takes a dot. */
 export interface StrayAt {
 	/** The name after the `@`, up to the next dot. */
 	readonly text: string;
-	/** The declared route key closest to `text`. */
-	readonly closestKey: string;
+	/** What to write instead: the closest route key's `@` form, or a variant's dot form. */
+	readonly suggestion: string;
 	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
 	readonly notLast: boolean;
 	/** The one rename that fixes it: none when another key is as close, or `notLast`. */
 	readonly respelling?: Respelling;
+}
+
+/** A declared route key after a dot, where only `@` routes: a dot-file, or a dot part of a name. */
+export interface DotRoute {
+	readonly text: string;
+	readonly key: string;
+	readonly respelling: Respelling;
 }
 
 /** A trailing dot part that is one edit from a declared variant. */
@@ -73,6 +80,8 @@ export interface SuffixMatch {
 	readonly strayAt?: StrayAt;
 	/** An undeclared dot part left at the end of the base name that looks like a mistyped variant. */
 	readonly variantTypo?: VariantTypo;
+	/** A route key left after a dot at the end of the base name, where it doesn't route. */
+	readonly dotRoute?: DotRoute;
 }
 
 /** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
@@ -159,6 +168,16 @@ export class NameReader {
 		return NameReader.inFolderName(this.strayAt(name), invisible);
 	}
 
+	/** A route key after a dot at the end of a folder name, which only `@` routes. */
+	folderDotRoute(folderName: string): DotRoute | undefined {
+		const { name, invisible } =
+			NameReader.unwrapInvisibleFolder(folderName);
+		return NameReader.inFolderName(
+			this.suffixes(name, false).dotRoute,
+			invisible
+		);
+	}
+
 	/** A misspelling read inside `(name)`, with its respelling measured on the folder's whole name. */
 	private static inFolderName<T extends { readonly respelling?: Respelling }>(
 		misspelt: T | undefined,
@@ -172,14 +191,40 @@ export class NameReader {
 		};
 	}
 
-	/** The declared key a marker file spells, `.server` for `server`. */
+	/** The declared key a marker file spells with its sign: `@server` for a route, `.mock` for a variant. */
 	marker(fileName: string): MarkerRead {
+		const text = fileName.slice(1);
+		const nearMiss = this.keys.nearMiss(text);
+		if (fileName.startsWith("@")) {
+			const key = this.keys.resolveRoute(text);
+			return {
+				key,
+				nearMissKey:
+					nearMiss && !this.keys.isVariant(nearMiss)
+						? nearMiss
+						: undefined,
+				...(key === undefined && { strayAt: this.strayAt(fileName) }),
+			};
+		}
+		const key = this.keys.resolveVariant(text);
+		const route = key === undefined && this.keys.resolveRoute(text);
 		return {
-			key:
-				fileName.startsWith(".") && fileName.length >= 2
-					? this.keys.resolve(fileName.slice(1))
+			key,
+			nearMissKey:
+				nearMiss && this.keys.isVariant(nearMiss)
+					? nearMiss
 					: undefined,
-			nearMissKey: this.keys.nearMiss(fileName.slice(1)),
+			...(route && {
+				dotRoute: {
+					text,
+					key: route,
+					respelling: {
+						start: 0,
+						written: `.${text}`,
+						spelling: `@${route}`,
+					},
+				},
+			}),
 		};
 	}
 
@@ -205,7 +250,27 @@ export class NameReader {
 			spans,
 			strayAt: this.strayAt(remaining),
 			variantTypo: this.variantTypo(remaining),
+			dotRoute: this.dotRoute(remaining),
 		};
+	}
+
+	/** Only `@` routes, and Rojo's `.server`/`.client` on a script, which `suffixes` already took. */
+	private dotRoute(remaining: string): DotRoute | undefined {
+		const dot = remaining.lastIndexOf(".");
+		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
+		const text = remaining.slice(dot + 1);
+		const key = this.keys.resolveRoute(text);
+		return key
+			? {
+					text,
+					key,
+					respelling: {
+						start: dot,
+						written: `.${text}`,
+						spelling: `@${key}`,
+					},
+				}
+			: undefined;
 	}
 
 	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */
@@ -237,7 +302,8 @@ export class NameReader {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
-		if (DOT_ROUTE_KEYS.has(text)) return undefined;
+		if (DOT_ROUTE_KEYS.has(text) || this.keys.resolveRoute(text))
+			return undefined;
 		const distances = [...this.keys.variantKeys]
 			.map((key) => ({
 				key,
@@ -283,22 +349,29 @@ export class NameReader {
 		if (at < 0) return undefined;
 		const text = name.slice(at + 1).split(".")[0];
 		if (text === "") return undefined;
+		const written = `@${text}`;
+		const variant = this.keys.resolveVariant(text);
+		if (variant) {
+			const suggestion = `.${variant}`;
+			return {
+				text,
+				suggestion,
+				notLast: false,
+				respelling: { start: at, written, spelling: suggestion },
+			};
+		}
 		const closest = closestMatches(text, this.keys.routeKeys);
 		const notLast = this.keys.resolveRoute(text) !== undefined;
 		// Package names use `@` too (`@rbxts`, `owner_name@1.5.1`), so only a near miss of a route is a typo.
 		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
-		const [closestKey] = closest;
+		const suggestion = `@${closest[0]}`;
 		return {
 			text,
-			closestKey,
+			suggestion,
 			notLast,
 			...(closest.length === 1 &&
 				!notLast && {
-					respelling: {
-						start: at,
-						written: `@${text}`,
-						spelling: `@${closestKey}`,
-					},
+					respelling: { start: at, written, spelling: suggestion },
 				}),
 		};
 	}
@@ -312,12 +385,15 @@ export type FolderRead = FolderReading & {
 	readonly nearMissKey?: string;
 	readonly strayAt?: StrayAt;
 	readonly variantTypo?: VariantTypo;
+	readonly dotRoute?: DotRoute;
 };
 
 export interface MarkerRead {
 	/** The declared route or variant key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;
+	readonly strayAt?: StrayAt;
+	readonly dotRoute?: DotRoute;
 }
 
 /** An entry read once: its folders and the suffixes on its name. */
@@ -346,6 +422,8 @@ export class NameReadings {
 	readonly strayAts = new Map<string, NotedName<StrayAt>>();
 	/** Each folder above an entry, or entry, whose name ends in a dot part one edit from a declared variant; first found first. */
 	readonly variantTypos = new Map<string, NotedName<VariantTypo>>();
+	/** Each dot-file, folder above an entry, or entry, that writes a declared route key after a dot; first found first. */
+	readonly dotRoutes = new Map<string, NotedName<DotRoute>>();
 
 	constructor(
 		private readonly reader: NameReader,
@@ -359,6 +437,8 @@ export class NameReadings {
 				const read = this.reader.marker(path.posix.basename(marker));
 				this.markers.set(resource, read);
 				this.noteNearMiss(resource, read.nearMissKey);
+				NameReadings.note(this.strayAts, resource, read.strayAt);
+				NameReadings.note(this.dotRoutes, resource, read.dotRoute);
 			}
 			for (const metaFile of root.metaFiles)
 				this.readFoldersAbove(root.rootDir, metaFile);
@@ -390,6 +470,11 @@ export class NameReadings {
 						resource,
 						folder.variantTypo
 					);
+					NameReadings.note(
+						this.dotRoutes,
+						resource,
+						folder.dotRoute
+					);
 				}
 				NameReadings.note(this.strayAts, entry.source, match.strayAt);
 				NameReadings.note(
@@ -397,6 +482,7 @@ export class NameReadings {
 					entry.source,
 					match.variantTypo
 				);
+				NameReadings.note(this.dotRoutes, entry.source, match.dotRoute);
 			}
 		}
 	}
@@ -471,6 +557,9 @@ export class NameReadings {
 						: undefined,
 				variantTypo: plain
 					? this.reader.folderVariantTypo(segment)
+					: undefined,
+				dotRoute: plain
+					? this.reader.folderDotRoute(segment)
 					: undefined,
 			};
 			this.folders.set(key, read);

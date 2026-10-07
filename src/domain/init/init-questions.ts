@@ -340,7 +340,7 @@ export class InitQuestions {
 		const { extension } = language;
 		const routes = await this.promptService.multiSelect<RouteId>({
 			message: "Routes",
-			description: `Where code goes. A ${server} folder, a .server marker file or a Foo@server.${extension} suffix all send code to ServerScriptService.`,
+			description: `Where code goes. A ${server} folder, an @server marker file or a Foo@server.${extension} suffix all send code to ServerScriptService.`,
 			choices: starting.options.map(({ id, key, target, hint }) => ({
 				value: id,
 				label: key,

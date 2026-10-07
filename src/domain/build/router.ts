@@ -48,8 +48,10 @@ export interface InitFolders {
 
 export interface IgnoredAt {
 	readonly key: string;
-	/** The folder that spells it, relative to the root dir; none for the file's own name. */
+	/** The folder that spells it, or holds the marker that does, relative to the root dir; none for the file's own name. */
 	readonly dir?: string;
+	/** The marker file that spells it. */
+	readonly marker?: string;
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
@@ -292,7 +294,8 @@ export class Router {
 				if (key === undefined) continue;
 				if (this.keys.isVariant(key))
 					claims.claimVariant({ variant: key, form: "marker" });
-				else claims.claimRoute(key, "marker");
+				else if (!claims.claimRoute(key, "marker"))
+					claims.ignoredAts.push({ key, dir, marker: fileName });
 			}
 			// An init script claims its own suffix as any file does.
 			for (const { key, source } of initRoutes.get(dir) ?? [])

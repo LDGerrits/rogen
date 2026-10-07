@@ -72,16 +72,18 @@ Inventory/@server/Save.luau             ->  ServerScriptService/Inventory/Save
 
 On a file, `@server` routes just that file and never changes its class, so `InventoryService@server.luau` is still a `ModuleScript`. On a folder, it routes everything inside and keeps the folder's name. A bare `@server/` has no name, so it works like a plain routing folder.
 
-An `@` that nearly spells a route key gets a warning, so `Save@sever.luau` gets `did you mean "@Server"?`. Any other `@` stays in the name, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`).
+An `@` that nearly spells a route key gets a warning, so `Save@sever.luau` gets `did you mean "@Server"?`. So does an `@` followed by a variant (`Analytics@mock.luau`), since variants use a dot. Any other `@` stays in the name, since package names use it too (`@rbxts/`, `sleitnick_knit@1.5.1`).
 
 ## Marker Files
 
-An empty file named after a route key, like `.server`, routes the folder it sits in and everything below. The folder keeps its name, so you don't have to rename anything.
+An empty file named after a route key with its `@`, like `@server`, routes the folder it sits in and everything below. It works like a bare `@server/` folder, except that the folder keeps its name, so you don't have to rename anything.
 
 ```
-src/Anti-cheat/.server
+src/Anti-cheat/@server
 src/Anti-cheat/Check.luau  ->  ServerScriptService/Anti-cheat/Check
 ```
+
+Create one with `touch @server`, or `New-Item '@server'` in PowerShell, where an unquoted `@` means something else. A dot-file like `.server` isn't a route marker, because only `@` routes; Rogen warns about it and names the `@` form. [Variant markers](/docs/v2/core-concepts/variants#marking-files) keep the dot (`.mock`).
 
 ## Rojo's Script Suffixes
 
@@ -92,7 +94,7 @@ src/Inventory/Bootstrap.server.luau  ->  ServerScriptService/Inventory/Bootstrap
 src/Inventory/Hud.client.luau        ->  StarterPlayer/StarterPlayerScripts/Inventory/Hud   (a LocalScript)
 ```
 
-No other key routes through a dot. `Types.shared.luau` is just an instance called `Types.shared`; write `Types@shared.luau` to route it. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
+No other key routes through a dot. `Types.shared.luau` is just an instance called `Types.shared`, and Rogen warns about it; write `Types@shared.luau` to route it. A dot does mark a [variant](/docs/v2/core-concepts/variants), and the two combine as `Analytics.mock@server.luau`, with Rojo's suffix always last.
 
 ## Matching
 
@@ -101,7 +103,7 @@ A name matches a route key when it spells it exactly, except that the first lett
 | Matches | Doesn't match |
 |---|---|
 | `server/`, `Server/` | `SERVER/`, `sErver/` |
-| `.server`, `.Server` | `.SERVER` |
+| `@server`, `@Server` | `@SERVER` |
 | `Save@server.luau`, `Save@Server.luau` | `Save@SERVER.luau` |
 
 Near misses aren't routed, but `rogen build` warns about them. Route keys other than `*` are letters and digits starting with a letter, and two keys that differ only in their first letter's case are an error.

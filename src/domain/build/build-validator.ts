@@ -53,6 +53,7 @@ export class BuildValidator {
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
+			...this.dotRoute(),
 			...this.variantTypo(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
@@ -127,10 +128,10 @@ export class BuildValidator {
 		if (strayAts.size === 0) return [];
 		const listed = this.listed(
 			[...strayAts],
-			([resource, { text, closestKey, notLast }]) => {
+			([resource, { text, suggestion, notLast }]) => {
 				const hint = notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
-					: `did you mean "@${closestKey}"?`;
+					: `did you mean "${suggestion}"?`;
 				return `${resource} (${hint})`;
 			}
 		);
@@ -144,6 +145,29 @@ export class BuildValidator {
 					...listed,
 				].join("\n"),
 				renames(strayAts)
+			),
+		];
+	}
+
+	/** A route key after a dot routes nothing, so what it names falls through to the route above it. */
+	private dotRoute(): Diagnostic[] {
+		const { dotRoutes } = this.placement.readings;
+		if (dotRoutes.size === 0) return [];
+		const listed = this.listed(
+			[...dotRoutes],
+			([resource, { renamedTo }]) =>
+				`${resource} (write "${path.posix.basename(renamedTo ?? resource)}")`
+		);
+		const many = dotRoutes.size > 1;
+		return [
+			warningDiagnostic(
+				"route.dotRoute",
+				{ resource: this.config.file },
+				[
+					`${dotRoutes.size} ${many ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${many ? "they route" : "it routes"} nothing:`,
+					...listed,
+				].join("\n"),
+				renames(dotRoutes)
 			),
 		];
 	}
@@ -214,9 +238,18 @@ export class BuildValidator {
 		>();
 		for (const file of this.placement.files) {
 			if (shipped.has(file.entry.source)) continue;
-			for (const { key, dir } of file.ignoredAts) {
+			for (const { key, dir, marker } of file.ignoredAts) {
 				const { route } = file;
-				if (dir === undefined)
+				if (marker !== undefined)
+					ignored.set(
+						joinPosix(file.entry.rootDir, dir ?? "", marker),
+						{
+							key,
+							route,
+							kind: "folder",
+						}
+					);
+				else if (dir === undefined)
 					ignored.set(file.entry.source, {
 						key,
 						route,

@@ -6,9 +6,9 @@ Rogen 2. The full docs are at https://rogen-playfully.vercel.app/docs/v2.
 
 `routes` maps a route key to a target, `Service` or `Service/Folder/…`. Only declared keys route, and nothing is built in. Besides a routing folder, a key matches in two ways, which some repos use for a whole feature:
 
-- **Marker file**: an empty `.server` routes its directory and everything below, and that directory keeps its name.
+- **Marker file**: an empty `@server` routes its directory and everything below, and that directory keeps its name. A dot-file like `.server` routes nothing and warns; only variant markers (`.mock`) take a dot.
 - **Suffix**: `Combat@server.luau` routes one file, and `@server` is stripped from the name. A folder written `Matchmaking@server/` routes and keeps its name, and a bare `@server/` routes and leaves no folder. `@` never changes the script class, so `Combat@server.luau` is a ModuleScript in `ServerScriptService`.
-- Rojo's own `.server` and `.client` at the end of a script name set its class (`Script`, `LocalScript`), and also route when a key of that name is declared. No other key routes through a dot: `Types.shared.luau` is named `Types.shared`; write `Types@shared.luau`.
+- Rojo's own `.server` and `.client` at the end of a script name set its class (`Script`, `LocalScript`), and also route when a key of that name is declared. No other key routes through a dot: `Types.shared.luau` is named `Types.shared` and warns; write `Types@shared.luau`.
 - `-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file falls to `*`, and `rogen where` says `route * (fallback)`.
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns about it. An `@` followed by a near miss of a route (`Save@sever.luau`) warns once, naming the route; other `@` names, such as packages, stay silent.

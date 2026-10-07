@@ -198,7 +198,7 @@ describe("Router", () => {
 			it("should match a lower-case folder and marker against a key declared with a capital", async () => {
 				await write(
 					"src/server/A.luau",
-					"src/Inventory/.server",
+					"src/Inventory/@server",
 					"src/Inventory/B.luau"
 				);
 
@@ -245,7 +245,7 @@ describe("Router", () => {
 
 			it("should let only the governing marker act", async () => {
 				await write(
-					"src/ReplicatedFirst/Net/.server",
+					"src/ReplicatedFirst/Net/@server",
 					"src/ReplicatedFirst/Net/main.luau"
 				);
 
@@ -302,7 +302,7 @@ describe("Router", () => {
 		describe("marker files", () => {
 			it("should route a folder and everything below it, keeping the folder name", async () => {
 				await write(
-					"src/Inventory/.server",
+					"src/Inventory/@server",
 					"src/Inventory/Save.luau",
 					"src/Inventory/deep/Load.luau"
 				);
@@ -314,15 +314,15 @@ describe("Router", () => {
 			});
 
 			it("should route everything under a marker in the root dir", async () => {
-				await write("src/.server", "src/Save.luau");
+				await write("src/@server", "src/Save.luau");
 
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});
 
 			it("should let an outer marker beat a nested marker", async () => {
 				await write(
-					"src/Inventory/.server",
-					"src/Inventory/inner/.client",
+					"src/Inventory/@server",
+					"src/Inventory/inner/@client",
 					"src/Inventory/inner/Hud.luau"
 				);
 
@@ -332,7 +332,7 @@ describe("Router", () => {
 			});
 
 			it("should let a folder's name beat its own marker", async () => {
-				await write("src/server/.client", "src/server/Save.luau");
+				await write("src/server/@client", "src/server/Save.luau");
 
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
 			});

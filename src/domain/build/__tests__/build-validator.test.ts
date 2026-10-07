@@ -151,11 +151,11 @@ describe("BuildValidator rules", () => {
 			});
 
 			it("should warn about a marker file named like a route in different case", async () => {
-				await write("src/Inventory/.SERVER", "src/Inventory/Save.luau");
+				await write("src/Inventory/@SERVER", "src/Inventory/Save.luau");
 
 				const [warning] = await caseWarnings();
 
-				expect(warning.resource).toBe(abs("src/Inventory/.SERVER"));
+				expect(warning.resource).toBe(abs("src/Inventory/@SERVER"));
 				expect(warning.message).toContain('route "server"');
 			});
 
@@ -168,7 +168,7 @@ describe("BuildValidator rules", () => {
 			it("should warn once per mismatched name", async () => {
 				await write(
 					"src/SERVER/A.luau",
-					"src/Inventory/.CLIENT",
+					"src/Inventory/@CLIENT",
 					"src/CLIENT/B.luau"
 				);
 
@@ -177,7 +177,7 @@ describe("BuildValidator rules", () => {
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
 					[
 						abs("src/CLIENT"),
-						abs("src/Inventory/.CLIENT"),
+						abs("src/Inventory/@CLIENT"),
 						abs("src/SERVER"),
 					]
 				);
@@ -186,7 +186,7 @@ describe("BuildValidator rules", () => {
 			it("should not warn about a name that only differs in its first letter", async () => {
 				await write(
 					"src/Server/Save.luau",
-					"src/Inventory/.Client",
+					"src/Inventory/@Client",
 					"src/Inventory/Load@Server.luau"
 				);
 
@@ -486,6 +486,118 @@ describe("BuildValidator rules", () => {
 				);
 
 				expect((await dead())[0].message).toContain("2 more like it");
+			});
+		});
+
+		describe("route keys after a dot", () => {
+			const SHARED = { ...ROUTES, shared: "ReplicatedStorage/shared" };
+			const warningsOf = async (code: string) =>
+				(await route({ routes: SHARED, variants: { mock: false } }))
+					.unwrap()
+					.warnings.filter((warning) => warning.code === code);
+
+			it("should warn once for a dot-file and dot parts that spell a route, naming each @ form", async () => {
+				await write(
+					"src/Inventory/.server",
+					"src/Inventory/Save.luau",
+					"src/Inventory/Types.shared.luau",
+					"src/Net.shared/A.luau",
+					"src/Net.server/B.luau",
+					"src/Boot.server.luau"
+				);
+
+				const [warning, ...others] = await warningsOf("route.dotRoute");
+
+				expect(others).toEqual([]);
+				expect(warning.message).toContain("4 names write a route key");
+				expect(warning.message).toContain(
+					`${at("src/Inventory/.server")} (write "@server")`
+				);
+				expect(warning.message).toContain(
+					`${at("src/Inventory/Types.shared.luau")} (write "Types@shared.luau")`
+				);
+				expect(warning.message).toContain(`(write "Net@shared")`);
+				expect(warning.message).toContain(`(write "Net@server")`);
+				expect(warning.message).not.toContain("Boot");
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Net.server"),
+						to: at("src/Net@server"),
+					},
+				});
+			});
+
+			it("should leave a dot-file's folder and a dot part's name to the route above", async () => {
+				await write(
+					"src/Inventory/.server",
+					"src/Inventory/Save.luau",
+					"src/Types.shared.luau"
+				);
+
+				const files = (await route({ routes: SHARED }))
+					.unwrap()
+					.routed.map(({ entry, instancePath }) => [
+						entry.source,
+						instancePath.join("/"),
+					]);
+
+				expect(files).toEqual(
+					expect.arrayContaining([
+						[
+							at("src/Inventory/Save.luau"),
+							"ReplicatedStorage/shared/Inventory/Save",
+						],
+						[
+							at("src/Types.shared.luau"),
+							"ReplicatedStorage/shared/Types.shared",
+						],
+					])
+				);
+			});
+
+			it("should name a variant's dot form for an @ that spells a variant, in a marker, a name or a folder", async () => {
+				await write(
+					"src/Experimental/@mock",
+					"src/Experimental/A.luau",
+					"src/Analytics@mock.luau",
+					"src/Net@mock/B.luau"
+				);
+
+				const [warning] = await warningsOf("route.strayAt");
+
+				expect(warning.message).toContain("3 names have");
+				expect(warning.message).toContain(
+					`${at("src/Experimental/@mock")} (did you mean ".mock"?)`
+				);
+				expect(warning.fixes).toContainEqual({
+					rename: {
+						from: at("src/Analytics@mock.luau"),
+						to: at("src/Analytics.mock.luau"),
+					},
+				});
+			});
+
+			it("should warn about an @ marker an outer route outranks, and one that nearly spells a route", async () => {
+				await write(
+					"src/server/Ui/@client",
+					"src/server/Ui/A.luau",
+					"src/Ui/@sever",
+					"src/Ui/B.luau"
+				);
+
+				const warnings = (await route({ routes: SHARED })).unwrap()
+					.warnings;
+
+				expect(warnings).toContainEqual(
+					expect.objectContaining({
+						code: "route.ignoredAt",
+						resource: at("src/server/Ui/@client"),
+					})
+				);
+				expect(
+					warnings.find(({ code }) => code === "route.strayAt")
+						?.message
+				).toContain(`${at("src/Ui/@sever")} (did you mean "@server"?)`);
 			});
 		});
 

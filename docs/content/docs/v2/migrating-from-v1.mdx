@@ -81,7 +81,10 @@ v1: src/Combat/Combat_Server.luau     v2: src/Combat/Combat@server.luau
 v1: src/Combat/CombatServer.luau      v2: src/Combat/Combat@server.luau
 v1: src/Combat/Types.shared.luau      v2: src/Combat/Types@shared.luau
 v1: src/Combat/Hud.client.luau        v2: unchanged
+v1: src/Combat/.server                v2: src/Combat/@server
 ```
+
+Route marker files now take `@` too: v1's `.server` becomes `@server`. Rogen warns about each dot-file or dot part that spells a route key and names its `@` form, and `--json` lists the renames, so the build output is a checklist.
 
 ### Tags
 
@@ -120,7 +123,7 @@ These kept keywords like the `Client` in `HttpClient`. v2 doesn't strip them in 
 
 ### `.structure`
 
-Put the marker file of the route you want in the folder instead, such as `.shared`. As the outer route, it governs everything below.
+Put the marker file of the route you want in the folder instead, such as `@shared`. As the outer route, it governs everything below.
 
 ### `.sync`
 
