@@ -116,6 +116,166 @@ describe("BuildValidator rules", () => {
 			store[Symbol.dispose]();
 		});
 
+		describe("a folder one edit from a key", () => {
+			const folderTypos = async (overrides: ResolvedConfigSpec = {}) =>
+				(await route({ routes: ROUTES, ...overrides }))
+					.unwrap()
+					.warnings.filter(
+						({ code }) =>
+							code === "route.folderTypo" ||
+							code === "variant.typo"
+					);
+
+			it("should warn about a folder one edit from a route key, with the key and a rename", async () => {
+				await write("src/Inventory/Sever/Save.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(warning).toMatchObject({
+					code: "route.folderTypo",
+					resource: abs("default.rogen.json"),
+					related: [
+						{
+							resource: abs("src/Inventory/Sever"),
+							message: 'did you mean "Server"?',
+						},
+					],
+					fixes: [
+						{
+							rename: {
+								from: at("src/Inventory/Sever"),
+								to: at("src/Inventory/Server"),
+							},
+						},
+					],
+				});
+			});
+
+			it("should name the config's key when the config has the typo", async () => {
+				await write("src/Server/Save.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Sever: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(warning.related?.[0].message).toBe(
+					'did you mean "Sever"?'
+				);
+			});
+
+			it("should keep the folder's own first-letter case in the rename", async () => {
+				await write("src/sever/Save.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(warning.fixes).toEqual([
+					{ rename: { from: at("src/sever"), to: at("src/server") } },
+				]);
+			});
+
+			it("should warn about a variant folder one edit from a variant, without a dot", async () => {
+				await write("src/mokc/Fake.luau");
+
+				const [warning] = await folderTypos({
+					variants: { mock: false },
+				});
+
+				expect(warning).toMatchObject({
+					code: "variant.typo",
+					related: [{ message: 'did you mean "mock"?' }],
+				});
+				expect(warning.message.split("\n")[0]).toBe(
+					"1 name is one edit from a declared variant, so it is read as an ordinary name:"
+				);
+			});
+
+			it("should count two swapped letters as one edit", async () => {
+				await write("src/Sevrer/Save.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(warning.code).toBe("route.folderTypo");
+			});
+
+			it.each([
+				["two edits", "Srvr"],
+				["a plural", "Servers"],
+				["an ordinary name", "Inventory"],
+			])("should not warn about %s", async (_, folder) => {
+				await write(`src/${folder}/Save.luau`);
+
+				expect(
+					await folderTypos({
+						routes: {
+							Server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn about a key shorter than four letters", async () => {
+				await write("src/Gui/Hud.luau");
+
+				expect(
+					await folderTypos({
+						routes: { Guy: "StarterGui", "*": "ReplicatedStorage" },
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn about a declared key, a case-only miss, or the folder a route governs", async () => {
+				await write(
+					"src/Shared/Server/Secret.luau",
+					"src/SERVER/Other.luau"
+				);
+
+				expect(
+					await folderTypos({
+						routes: {
+							Shared: "ReplicatedStorage",
+							Server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should read the name with its parentheses and variant parts off", async () => {
+				await write("src/(Sever)/A.luau", "src/Sever.mock/B.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+					variants: { mock: true },
+				});
+
+				expect(
+					warning.related?.map(({ resource }) => resource)
+				).toEqual([abs("src/(Sever)"), abs("src/Sever.mock")]);
+			});
+		});
+
 		describe("a root dir named after a key", () => {
 			const named = async (
 				rootDirs: string[],
@@ -934,7 +1094,7 @@ describe("BuildValidator rules", () => {
 					"src/M/.mok",
 					"src/M/A.luau",
 					"src/.mok/B.luau",
-					"src/mok/C.luau",
+					"src/modules/C.luau",
 					"src/.gitkeep",
 					"src/.luaurc",
 					"src/.spec"
@@ -964,7 +1124,7 @@ describe("BuildValidator rules", () => {
 				).toEqual([
 					["ReplicatedStorage/shared/.mok/B", 0],
 					["ReplicatedStorage/shared/M/A", 0],
-					["ReplicatedStorage/shared/mok/C", 0],
+					["ReplicatedStorage/shared/modules/C", 0],
 				]);
 			});
 

@@ -59,6 +59,7 @@ export class BuildValidator {
 			...this.strayAt(),
 			...this.dotRoute(),
 			...this.variantTypo(),
+			...this.folderTypo(),
 			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
@@ -222,14 +223,31 @@ export class BuildValidator {
 		);
 	}
 
-	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
+	/** A dot part one edit from a declared variant, or a folder one edit from one, is probably that variant, mistyped. */
 	private variantTypo(): Diagnostic[] {
+		const bare = [
+			...this.placement.readings.misspelt("variantTypo").values(),
+		].some((typo) => typo.bare);
 		return this.misspelt(
 			"variant.typo",
 			"variantTypo",
 			(count) =>
-				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-			(_, { variant }) => `did you mean ".${variant}"?`
+				bare
+					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
+					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+			(_, { variant, bare }) =>
+				`did you mean "${bare ? variant : `.${variant}`}"?`
+		);
+	}
+
+	/** A folder one edit from a declared route key falls through to the route above it, as its files would not if it were spelt right. */
+	private folderTypo(): Diagnostic[] {
+		return this.misspelt(
+			"route.folderTypo",
+			"folderTypo",
+			(count) =>
+				`${count} ${count > 1 ? "folders are" : "folder is"} one edit from a declared route key, so ${count > 1 ? "they are read as ordinary folders" : "it is read as an ordinary folder"}:`,
+			(_, { key }) => `did you mean "${key}"?`
 		);
 	}
 
