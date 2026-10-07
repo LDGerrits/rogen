@@ -115,15 +115,22 @@ function commandOf(
 	};
 }
 
+/** `command` is `undefined` when the line names none. */
 function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
 	owners: readonly string[],
-	command: string
+	command: string | undefined
 ): string {
-	const help = `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`;
-	if (owners.length > 0)
-		return `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${owners.length === 1 ? "does" : "do"}.`;
+	const help = command
+		? `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`
+		: `Run 'rogen ${HELP_COMMAND}' to see the commands.`;
+	if (owners.length > 0) {
+		const many = owners.length > 1;
+		return command
+			? `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${many ? "do" : "does"}.`
+			: `'${rawName}' goes after a command: ${joinedWithAnd(owners)} ${many ? "take" : "takes"} it.`;
+	}
 	const suggestion = rawName.startsWith("--")
 		? closestMatch(
 				name,
@@ -140,7 +147,7 @@ function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
 	ownersOf: (name: string) => string[],
-	command: string
+	command: string | undefined
 ): string | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
@@ -188,7 +195,7 @@ export function parseArgs(
 				tokens ?? [],
 				optionsFor(names),
 				ownersOf,
-				names
+				positionals.length > 0 ? names : undefined
 			);
 			if (problem) return err(new UsageError(problem));
 		}

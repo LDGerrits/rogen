@@ -1,4 +1,8 @@
-import { FileType, FileSystemService } from "./file-system-service.js";
+import {
+	FileType,
+	FileSystemService,
+	fileSystemError,
+} from "./file-system-service.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
@@ -21,8 +25,6 @@ class LinkNode {
 
 type Node = FileNode | DirectoryNode | LinkNode;
 
-type FsErrorCode = "ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP";
-
 interface Walk {
 	readonly node?: Node;
 	readonly realParts: readonly string[];
@@ -30,10 +32,6 @@ interface Walk {
 }
 
 const MAX_LINK_HOPS = 40;
-
-function mockFsError(code: FsErrorCode, message: string): Error {
-	return Object.assign(new Error(message), { code });
-}
 
 const FAILURE_MESSAGES = {
 	ENOENT: "no such file or directory",
@@ -46,7 +44,7 @@ function walkError(
 	syscall: string,
 	filePath: string
 ): Error {
-	return mockFsError(
+	return fileSystemError(
 		failure,
 		`${failure}: ${FAILURE_MESSAGES[failure]}, ${syscall} '${filePath}'`
 	);
@@ -183,7 +181,7 @@ export class MemoryFileSystemService
 	async readDirectory(filePath: string): Promise<[string, FileType][]> {
 		const node = this._lookup(filePath, false);
 		if (node?.type !== FileType.Directory) {
-			throw mockFsError(
+			throw fileSystemError(
 				"ENOTDIR",
 				`ENOTDIR: not a directory, scandir '${filePath}'`
 			);
@@ -241,7 +239,7 @@ export class MemoryFileSystemService
 			if (resolved?.type !== FileType.Directory) {
 				const last = part === parts[parts.length - 1];
 				throw last
-					? mockFsError(
+					? fileSystemError(
 							"EEXIST",
 							`EEXIST: file already exists, mkdir '${currentPath}'`
 						)
@@ -254,7 +252,7 @@ export class MemoryFileSystemService
 	async readFile(filePath: string): Promise<string> {
 		const node = this._lookup(filePath, false);
 		if (node?.type === FileType.Directory) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, read '${filePath}'`
 			);
@@ -277,7 +275,7 @@ export class MemoryFileSystemService
 		const type = node ? FileChangeType.UPDATED : FileChangeType.ADDED;
 
 		if (node && node.type === FileType.Directory) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, write '${filePath}'`
 			);
@@ -300,7 +298,7 @@ export class MemoryFileSystemService
 		if (!target) return;
 
 		if (target.type === FileType.Directory && !recursive) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, rm '${filePath}'`
 			);
@@ -323,13 +321,13 @@ export class MemoryFileSystemService
 
 		const existing = this._lookup(destination, true, false);
 		if (existing && !overwrite) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EEXIST",
 				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
 			);
 		}
 		if (existing?.type === FileType.Directory) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
 			);
@@ -450,7 +448,7 @@ export class MemoryFileSystemService
 		const parent = this._lookupParent(linkPath, true);
 		const name = splitPath(linkPath).pop()!;
 		if (parent.entries.has(name)) {
-			throw mockFsError(
+			throw fileSystemError(
 				"EEXIST",
 				`EEXIST: file already exists, symlink '${target}' -> '${linkPath}'`
 			);

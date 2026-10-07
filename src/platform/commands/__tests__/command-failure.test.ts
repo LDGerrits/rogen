@@ -109,6 +109,28 @@ describe("CommandFailure", () => {
 			]);
 		});
 	});
+
+	describe("reportCrash", () => {
+		it("should print the message of a crash as a JSON document", () => {
+			new CommandFailure(logService, true).reportCrash(
+				new TypeError("x is undefined")
+			);
+
+			expect(printed()).toEqual([{ error: "x is undefined" }]);
+		});
+
+		it("should print a JSON document for a thrown value that isn't an error", () => {
+			new CommandFailure(logService, true).reportCrash("boom");
+
+			expect(printed()).toEqual([{ error: "boom" }]);
+		});
+
+		it("should print nothing without --json", () => {
+			new CommandFailure(logService, false).reportCrash(new Error("x"));
+
+			expect(logService.entries).toEqual([]);
+		});
+	});
 });
 
 describe("exitCodeOf", () => {
@@ -122,8 +144,6 @@ describe("exitCodeOf", () => {
 	it("should be 1 for any other failure", () => {
 		expect(exitCodeOf(new Error("write failed"))).toBe(1);
 		expect(exitCodeOf(new CancelledError("init cancelled."))).toBe(1);
-		expect(
-			exitCodeOf(new ReportedError(new DiagnosticsError([])))
-		).toBe(1);
+		expect(exitCodeOf(new ReportedError(new DiagnosticsError([])))).toBe(1);
 	});
 });

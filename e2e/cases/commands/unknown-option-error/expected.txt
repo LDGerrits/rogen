@@ -39,3 +39,13 @@ stdout:
   {
     "error": "Unknown option '--nope'. Run 'rogen help build' to see what build accepts."
   }
+
+$ rogen --nope
+exit 2
+stderr:
+  error: Unknown option '--nope'. Run 'rogen help' to see the commands.
+
+$ rogen --variant x
+exit 2
+stderr:
+  error: '--variant' goes after a command: build, list, watch and where take it.

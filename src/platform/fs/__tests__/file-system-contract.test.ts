@@ -76,12 +76,12 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			expect(await fixture.fileSystem.exists(at("missing"))).toBe(false);
 		});
 
-		it("should reject for a directory unless recursive", async () => {
+		it("should reject with EISDIR for a directory unless recursive", async () => {
 			await fixture.fileSystem.writeFile(at("src/a.luau"), "");
 
 			await expect(
 				fixture.fileSystem.delete(at("src"))
-			).rejects.toBeDefined();
+			).rejects.toMatchObject({ code: "EISDIR" });
 			expect(await fixture.fileSystem.exists(at("src/a.luau"))).toBe(
 				true
 			);
@@ -128,6 +128,40 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			await fixture.fileSystem.rename(at("a.json"), at("b.json"), true);
 
 			expect(await fixture.fileSystem.readFile(at("b.json"))).toBe("new");
+		});
+
+		it("should leave a directory renamed onto itself as it is", async () => {
+			await fixture.fileSystem.writeFile(at("src/a.luau"), "");
+
+			await fixture.fileSystem.rename(at("src"), at("src"), true);
+
+			expect(await fixture.fileSystem.exists(at("src/a.luau"))).toBe(
+				true
+			);
+		});
+
+		it("should reject with EISDIR to replace a directory, even when told to overwrite", async () => {
+			await fixture.fileSystem.writeFile(at("a.json"), "x");
+			await fixture.fileSystem.writeFile(at("src/a.luau"), "");
+			await fixture.fileSystem.createDirectory(at("empty"));
+			await fixture.fileSystem.createDirectory(at("full/inner"));
+
+			for (const [source, destination] of [
+				["a.json", "empty"],
+				["src", "empty"],
+				["src", "full"],
+			]) {
+				await expect(
+					fixture.fileSystem.rename(at(source), at(destination), true)
+				).rejects.toMatchObject({ code: "EISDIR" });
+			}
+
+			expect(await fixture.fileSystem.exists(at("src/a.luau"))).toBe(
+				true
+			);
+			expect(await fixture.fileSystem.exists(at("full/inner"))).toBe(
+				true
+			);
 		});
 	});
 });

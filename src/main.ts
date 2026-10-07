@@ -10,11 +10,7 @@ import {
 	exitCodeOf,
 } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import {
-	JsonOption,
-	hasFlag,
-	parseArgs,
-} from "./platform/environment/args.js";
+import { JsonOption, hasFlag, parseArgs } from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -158,7 +154,12 @@ async function main(): Promise<void> {
 		const commandService = new CoreCommandService(services, logService);
 		services.set(CommandService, commandService);
 
-		const result = await commandService.executeCommand(command, line);
+		const result = await commandService
+			.executeCommand(command, line)
+			.catch((error: unknown) => {
+				failure.reportCrash(error);
+				throw error;
+			});
 
 		if (result.isErr()) {
 			failure.report(result.error, command);

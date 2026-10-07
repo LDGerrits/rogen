@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ErrorUtils } from "../../base/errors.js";
-import { FileType, FileSystemService } from "./file-system-service.js";
+import {
+	FileType,
+	FileSystemService,
+	fileSystemError,
+} from "./file-system-service.js";
 
 const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
 
@@ -116,7 +120,18 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
-		await fs.promises.rm(filePath, { recursive, force: true });
+		try {
+			await fs.promises.rm(filePath, { recursive, force: true });
+		} catch (error) {
+			// Node reports this one with its own code, not the system's.
+			if (ErrorUtils.hasCode(error, "ERR_FS_EISDIR"))
+				throw fileSystemError(
+					"EISDIR",
+					`EISDIR: illegal operation on a directory, rm '${filePath}'`,
+					error
+				);
+			throw error;
+		}
 	}
 
 	async rename(
@@ -124,12 +139,24 @@ export class DiskFileSystemService implements FileSystemService {
 		destination: string,
 		overwrite: boolean = false
 	): Promise<void> {
-		if (!overwrite && (await this.exists(destination))) {
-			throw Object.assign(
-				new Error(
-					`EEXIST: file already exists, rename '${source}' -> '${destination}'`
-				),
-				{ code: "EEXIST" }
+		if (path.resolve(source) === path.resolve(destination)) return;
+		const existing = await fs.promises
+			.lstat(destination)
+			.catch((error: unknown) => {
+				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
+				throw error;
+			});
+		if (existing && !overwrite) {
+			throw fileSystemError(
+				"EEXIST",
+				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+			);
+		}
+		// Refused outright: the system would move a directory onto an empty one, but not onto a full one.
+		if (existing?.isDirectory()) {
+			throw fileSystemError(
+				"EISDIR",
+				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
 			);
 		}
 		await this.createDirectory(path.dirname(destination));
