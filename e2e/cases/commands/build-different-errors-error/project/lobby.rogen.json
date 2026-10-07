@@ -1,0 +1,4 @@
+{
+	"rootDirs": ["places/lobby"],
+	"routes": { "*": "ReplicatedStorage/shared" }
+}

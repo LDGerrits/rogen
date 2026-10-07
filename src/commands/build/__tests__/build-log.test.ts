@@ -287,4 +287,79 @@ describe("BuildLog report", () => {
 			])[1]
 		).toBe("lobby.project.json · not written · arena and match failed");
 	});
+
+	describe("errors", () => {
+		const all = (builds: readonly ConfigBuild[]) => {
+			const logService = new MockLogService();
+			new BuildLog(logService, cwd).report(builds);
+			return logService.entries
+				.filter(({ kind }) => kind !== "intro")
+				.map(({ kind, text }) => `${kind}: ${text}`);
+		};
+		const shared = errorDiagnostic(
+			"x.shared",
+			{ resource: "/repo/a" },
+			"shared."
+		);
+		const other = errorDiagnostic(
+			"x.other",
+			{ resource: "/repo/b" },
+			"other."
+		);
+
+		it("should print a failed config's errors under its own line", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([other], configNamed("match")),
+				])
+			).toEqual([
+				"step: arena",
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"step: match",
+				"error: match.project.json · not written",
+				"diagnosticError: /repo/b - error: other.",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should print an error a later config shares once and say so on its line", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([shared], configNamed("match")),
+				])
+			).toEqual([
+				"step: arena",
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"step: match",
+				"error: match.project.json · not written · same errors as arena",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should print only the new errors of a config that shares some, with no note", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([shared, other], configNamed("match")),
+				]).slice(3)
+			).toEqual([
+				"step: match",
+				"error: match.project.json · not written",
+				"diagnosticError: /repo/b - error: other.",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should close the frame with the failure and not with the built line", () => {
+			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"outro: build failed.",
+			]);
+		});
+	});
 });

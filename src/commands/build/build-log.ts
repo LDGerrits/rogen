@@ -2,7 +2,10 @@ import { relativeTo } from "../../base/path.js";
 import { joinedWithAnd, plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 
 /** The `extends` chain and skipped variant flags of a config. */
@@ -70,25 +73,37 @@ export class BuildLog {
 		);
 	}
 
-	/** The whole output of a build: each config's outcome and warnings, then the closing line when none failed. */
+	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(builds: readonly ConfigBuild[]): void {
 		this.begin(
 			"build",
 			builds.map(({ config }) => config)
 		);
+		const printedBy = new Map<string, string>();
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.config);
-			// A config's errors end the run, so the failure prints them last.
+			const errors = build.outcome === "failed" ? build.errors : [];
+			const shared = new Set<string>();
+			const fresh = errors.filter((error) => {
+				const key = renderDiagnostic(error);
+				const owner = printedBy.get(key);
+				if (owner !== undefined) shared.add(owner);
+				else printedBy.set(key, build.config.label);
+				return owner === undefined;
+			});
 			this.outcome(
 				build,
-				[...build.warnings, ...(build.syncWarnings ?? [])],
+				[...build.warnings, ...(build.syncWarnings ?? []), ...fresh],
 				build.outcome === "notWritten"
 					? `${joinedWithAnd(build.blockedBy.map(({ label }) => label))} failed`
-					: undefined
+					: errors.length > 0 && fresh.length === 0
+						? `same errors as ${joinedWithAnd([...shared])}`
+						: undefined
 			);
 		}
-		if (builds.every(({ outcome }) => outcome !== "failed"))
-			this.end(builds.length);
+		if (builds.some(({ outcome }) => outcome === "failed"))
+			this.logService.closeFrame("build failed.");
+		else this.end(builds.length);
 	}
 
 	/** Heads the lines about one config, when a run builds several. */

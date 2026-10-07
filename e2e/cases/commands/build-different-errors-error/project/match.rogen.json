@@ -1,0 +1,8 @@
+{
+	"rootDirs": ["places/match"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
+	}
+}

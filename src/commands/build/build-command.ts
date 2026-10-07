@@ -1,3 +1,4 @@
+import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
@@ -79,7 +80,7 @@ registerCommand(
 		): Result<void, Error> {
 			log.report(builds);
 			return errors.length > 0
-				? err(new DiagnosticsError(errors))
+				? err(new ReportedError(new DiagnosticsError(errors)))
 				: ok(undefined);
 		}
 

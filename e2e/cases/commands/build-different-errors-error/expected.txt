@@ -1,0 +1,12 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · lobby, match
+  lobby
+  match
+  build failed.
+stderr:
+  error: lobby.project.json · not written
+  places/lobby/init.luau - error: an init script becomes the folder it sits in, but it sits in a root dir, which never becomes an instance. Move it into a folder of its own, or rename it.
+  error: match.project.json · not written
+  places/match/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.

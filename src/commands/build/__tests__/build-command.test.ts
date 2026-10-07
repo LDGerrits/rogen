@@ -272,6 +272,7 @@ describe("build command", () => {
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
 			[{ message: expect.stringContaining("nothing emitted") }],
+			[{ code: "meta.wrongType" }],
 		]);
 	});
 
