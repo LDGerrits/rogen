@@ -11,6 +11,7 @@ stdout:
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
+        --mode <name>        Picks the mode every config that declares modes builds in.
         --variant <name>     Turns a variant on. (repeatable)
         --no-variant <name>  Turns a variant off. (repeatable)
         --json               Print one JSON document instead of text.
@@ -39,6 +40,7 @@ stdout:
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
+        --mode <name>        Picks the mode every config that declares modes builds in.
         --variant <name>     Turns a variant on. (repeatable)
         --no-variant <name>  Turns a variant off. (repeatable)
   
@@ -90,6 +92,7 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
+        --mode <name>        Picks the mode every config that declares modes builds in.
         --variant <name>     Turns a variant on. (repeatable)
         --no-variant <name>  Turns a variant off. (repeatable)
         --json               Print one JSON document instead of text.
@@ -117,6 +120,7 @@ stdout:
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
+        --mode <name>        Picks the mode every config that declares modes builds in.
         --variant <name>     Turns a variant on. (repeatable)
         --no-variant <name>  Turns a variant off. (repeatable)
         --json               Print one JSON document instead of text.

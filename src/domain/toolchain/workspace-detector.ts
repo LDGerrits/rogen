@@ -7,6 +7,7 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { DarkluaDetector } from "./darklua-detector.js";
 import { PackageManagerDetector } from "./package-manager-detector.js";
+import { TestRunnerDetector } from "./test-runner-detector.js";
 import {
 	Darklua,
 	DetectedWorkspace,
@@ -25,6 +26,7 @@ export class WorkspaceDetector {
 		private readonly darklua: Darklua,
 		private readonly darkluaDetector: DarkluaDetector,
 		private readonly packageDetector: PackageManagerDetector,
+		private readonly testRunnerDetector: TestRunnerDetector,
 		private readonly languages: readonly [
 			LanguageDetector,
 			...LanguageDetector[],
@@ -32,7 +34,7 @@ export class WorkspaceDetector {
 	) {}
 
 	async detect(cwd: string): Promise<DetectedWorkspace> {
-		const [languages, darkluaConfig, packages, hasSrc, places] =
+		const [languages, darkluaConfig, packages, hasSrc, places, testRunner] =
 			await Promise.all([
 				Promise.all(
 					this.languages.map((detector) => detector.detect(cwd))
@@ -41,6 +43,7 @@ export class WorkspaceDetector {
 				this.packageDetector.detect(cwd),
 				this.fileSystemService.exists(path.join(cwd, "src")),
 				this.findPlaces(path.join(cwd, PLACES_DIR)),
+				this.testRunnerDetector.detect(cwd),
 			]);
 		const codeFolders = await this.findCodeFolders(cwd, [
 			...packages.packageDirs,
@@ -57,6 +60,7 @@ export class WorkspaceDetector {
 			packageManager: packages.packageManager,
 			packageDirs: new Set(packages.packageDirs),
 			places,
+			testRunner,
 		});
 	}
 

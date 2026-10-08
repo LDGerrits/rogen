@@ -1,0 +1,57 @@
+$ rogen build --mode prod
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode prod
+  Built 1 config.
+
+$ rogen where src --mode prod
+exit 0
+stdout:
+  src/Analytics.luau -> ReplicatedStorage/Shared/Analytics · route * (fallback)
+  src/Analytics.mock.luau -> pruned · variant mock is off (suffix)
+  src/Lib/Math.luau -> ReplicatedStorage/Shared/Lib/Math · route * (fallback)
+  src/Lib/Math.spec.luau -> excluded · matches **/*.spec.luau
+  src/Net/Http.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · mode prod (marker)
+  src/Service.dev.luau -> pruned · mode is prod, not dev
+  src/Service.prod.luau -> ReplicatedStorage/Shared/Service · route * (fallback) · mode prod (suffix)
+  src/dev/Tools.luau -> pruned · mode is prod, not dev
+  src/prod/Tools.luau -> ReplicatedStorage/Shared/Tools · route * (fallback) · mode prod (folder)
+
+$ rogen where src/Service.dev.luau --mode prod --json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default",
+        "mode": "prod",
+        "source": "<dir>/src/Service.dev.luau",
+        "status": "pruned",
+        "exists": true,
+        "variants": [
+          {
+            "variant": "dev",
+            "form": "suffix"
+          }
+        ],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.luau
+      Lib: Folder
+        Math: ModuleScript  <- src/Lib/Math.luau
+      Net: Folder
+        Http: ModuleScript  <- src/Net/Http.luau
+      Service: ModuleScript  <- src/Service.prod.luau
+      Tools: ModuleScript  <- src/prod/Tools.luau

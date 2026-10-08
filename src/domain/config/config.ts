@@ -13,12 +13,20 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
+/** What a mode changes about a build: which variants are on and which files are left out. */
+export interface ModeConfig {
+	readonly variants?: Record<string, boolean>;
+	readonly exclude?: string[];
+}
+
 export interface RogenConfig {
 	readonly $schema?: string;
 	readonly extends?: string;
 	readonly rootDirs?: string[];
 	readonly routes?: Record<string, string>;
 	readonly variants?: Record<string, boolean>;
+	readonly modes?: Record<string, ModeConfig>;
+	readonly mode?: string;
 	readonly exclude?: string[];
 	readonly template?: string;
 	readonly syncDir?: string;
@@ -41,8 +49,16 @@ const NoVariantOption = {
 	description: "Turns a variant off.",
 } as const satisfies OptionDescriptor;
 
-/** The flags that say which variants are on in the configs a command reads. */
+export const ModeOption = {
+	name: "mode",
+	type: "string",
+	placeholder: "name",
+	description: "Picks the mode every config that declares modes builds in.",
+} as const satisfies OptionDescriptor;
+
+/** The flags that say which mode is active and which variants are on in the configs a command reads. */
 export const ConfigSelectionOptions = [
+	ModeOption,
 	VariantOption,
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];
@@ -58,6 +74,7 @@ export const OutFileOption = {
 /** The flags that override the configs a command builds. */
 export const ConfigOptions = [
 	OutFileOption,
+	ModeOption,
 	VariantOption,
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];
@@ -126,7 +143,7 @@ export function rootDirOverlap(
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
-/** The route and variant keys a config declares; a name spells a key exactly or with its first letter flipped. */
+/** The route, variant and mode keys a config declares; a name spells a key exactly or with its first letter flipped. */
 export class DeclaredKeys {
 	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";
@@ -135,14 +152,21 @@ export class DeclaredKeys {
 
 	/** Every route key but the fallback, which no name can spell. */
 	readonly routeKeys: ReadonlySet<string>;
+	/** The keys that mark a file as one alternative of an instance: variants and modes. */
 	readonly variantKeys: ReadonlySet<string>;
+	readonly modeKeys: ReadonlySet<string>;
 	readonly all: ReadonlySet<string>;
 
-	constructor(routeKeys: Iterable<string>, variantKeys: Iterable<string>) {
+	constructor(
+		routeKeys: Iterable<string>,
+		variantKeys: Iterable<string>,
+		modeKeys: Iterable<string> = []
+	) {
 		this.routeKeys = new Set(
 			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
 		);
-		this.variantKeys = new Set(variantKeys);
+		this.modeKeys = new Set(modeKeys);
+		this.variantKeys = new Set([...variantKeys, ...this.modeKeys]);
 		this.all = new Set([...this.routeKeys, ...this.variantKeys]);
 	}
 
@@ -166,8 +190,13 @@ export class DeclaredKeys {
 		return flipped + name.slice(1);
 	}
 
+	/** Whether `key` marks a file as an alternative, as a variant or a mode does. */
 	isVariant(key: string): boolean {
 		return this.variantKeys.has(key);
+	}
+
+	isMode(key: string): boolean {
+		return this.modeKeys.has(key);
 	}
 
 	isRoute(key: string): boolean {
@@ -222,6 +251,14 @@ export class ResolvedTemplate {
 	}
 }
 
+/** A mode's effect on a config: the variants that are on and the globs left out, as the config reads them in that mode. */
+export interface ModeView {
+	readonly variants: Readonly<Record<string, boolean>>;
+	readonly exclude: readonly string[];
+	/** The globs the mode itself adds, which also drop template nodes. */
+	readonly modeExclude: readonly string[];
+}
+
 export interface ResolvedConfigFields {
 	/** The config file itself, the leaf of its `extends` chain. */
 	readonly file: string;
@@ -233,9 +270,16 @@ export interface ResolvedConfigFields {
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** Variant name to whether it is on. */
+	/** Variant name to whether it is on, in the active mode. */
 	readonly variants: Readonly<Record<string, boolean>>;
+	/** The globs left out in the active mode. */
 	readonly exclude: readonly string[];
+	/** The active mode; none when the config declares no modes. */
+	readonly mode?: string;
+	/** The mode the config picks when the command line doesn't. */
+	readonly defaultMode?: string;
+	/** Every mode the config declares, in declaration order; none by default. */
+	readonly modeViews?: ReadonlyMap<string, ModeView>;
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -251,12 +295,18 @@ export class ResolvedConfig {
 	readonly routes: ReadonlyMap<string, Target>;
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
+	readonly mode?: string;
+	readonly defaultMode?: string;
+	readonly modes: readonly string[];
+	/** The globs the active mode adds to `exclude`. */
+	readonly modeExclude: readonly string[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
 	readonly keys: DeclaredKeys;
+	private readonly switches: Readonly<Record<string, boolean>>;
 
-	constructor(fields: ResolvedConfigFields) {
+	constructor(private readonly fields: ResolvedConfigFields) {
 		this.file = fields.file;
 		this.parents = fields.parents;
 		this.skippedVariants = fields.skippedVariants;
@@ -265,12 +315,39 @@ export class ResolvedConfig {
 		this.routes = fields.routes;
 		this.variants = fields.variants;
 		this.exclude = fields.exclude;
+		this.mode = fields.mode;
+		this.defaultMode = fields.defaultMode;
+		this.modes = [...(fields.modeViews?.keys() ?? [])];
+		this.modeExclude =
+			(fields.mode && fields.modeViews?.get(fields.mode)?.modeExclude) ||
+			[];
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
 		this.keys = new DeclaredKeys(
 			fields.routes.keys(),
-			Object.keys(fields.variants)
+			Object.keys(fields.variants),
+			this.modes
+		);
+		this.switches = {
+			...fields.variants,
+			...Object.fromEntries(
+				this.modes.map((mode) => [mode, mode === fields.mode])
+			),
+		};
+	}
+
+	/** The same config with `mode` active, or `undefined` when it declares no such mode. */
+	inMode(mode: string): ResolvedConfig | undefined {
+		const view = this.fields.modeViews?.get(mode);
+		return (
+			view &&
+			new ResolvedConfig({
+				...this.fields,
+				mode,
+				variants: view.variants,
+				exclude: view.exclude,
+			})
 		);
 	}
 
@@ -291,11 +368,11 @@ export class ResolvedConfig {
 			: undefined;
 	}
 
-	/** The variants among a file's that are off; a file that carries any is pruned. */
+	/** The variants and modes among a file's that are off; a file that carries any is pruned. */
 	dormantVariants<T extends { readonly variant: string }>(
 		matches: readonly T[]
 	): T[] {
-		return matches.filter(({ variant }) => !this.variants[variant]);
+		return matches.filter(({ variant }) => !this.switches[variant]);
 	}
 
 	/** Whether every variant among a file's is on; otherwise it is pruned. */

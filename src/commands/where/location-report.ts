@@ -17,11 +17,18 @@ import {
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
 
+/** The mode a config built in, and every mode it declares. */
+interface ModeContext {
+	readonly active: string | undefined;
+	readonly names: ReadonlySet<string>;
+}
+
 /** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
 type Answer =
 	| {
 			readonly label: string;
 			readonly location: FileLocation;
+			readonly mode: ModeContext;
 			readonly diagnostics: readonly Diagnostic[];
 	  }
 	| {
@@ -63,30 +70,53 @@ const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
 
 /** One line: the path, where it lands, and why. */
-function describeLocation(location: FileLocation, cwd: string): string {
+function describeLocation(
+	location: FileLocation,
+	mode: ModeContext,
+	cwd: string
+): string {
 	const relative = (file: string) => relativeTo(cwd, file);
-	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
+	return `${relative(location.source)} -> ${outcomeOf(location, mode, cwd)}`;
 }
 
-function outcomeOf(location: FileLocation, cwd: string): string {
+/** The variants and modes a file carries, as `variants mock (suffix)`, or with each named when both kinds are there. */
+function carried(
+	matches: readonly { variant: string; form: string }[],
+	mode: ModeContext
+): string {
+	if (matches.length === 0) return "";
+	const kindOf = ({ variant }: { variant: string }) =>
+		mode.names.has(variant) ? "mode" : "variant";
+	const kinds = new Set(matches.map(kindOf));
+	const listed = matches.map(({ variant, form }) => `${variant} (${form})`);
+	if (kinds.size === 1) {
+		const [kind] = kinds;
+		return ` · ${kind}${matches.length === 1 ? "" : "s"} ${listed.join(", ")}`;
+	}
+	return ` · ${matches.map((match, index) => `${kindOf(match)} ${listed[index]}`).join(", ")}`;
+}
+
+function outcomeOf(
+	location: FileLocation,
+	mode: ModeContext,
+	cwd: string
+): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const matches = location.variants.map(
-				({ variant, form }) => `${variant} (${form})`
-			);
-			const variants =
-				matches.length === 0
-					? ""
-					: ` · ${matches.length === 1 ? "variant" : "variants"} ${matches.join(", ")}`;
+			const variants = carried(location.variants, mode);
 			const alsoAt = location.alsoAt
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
 			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${hoisted}${alsoAt}`;
 		}
-		case "pruned":
-			return `pruned · variant ${location.variants[0].variant} is off (${location.variants[0].form})`;
+		case "pruned": {
+			const [first] = location.variants;
+			return mode.names.has(first.variant)
+				? `pruned · mode is ${mode.active}, not ${first.variant}`
+				: `pruned · variant ${first.variant} is off (${first.form})`;
+		}
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
@@ -199,9 +229,14 @@ export class LocationReport {
 		diagnostics,
 	}: ConfigLocations): Answer[] {
 		const { label } = config;
+		const mode: ModeContext = {
+			active: config.mode,
+			names: new Set(config.modes),
+		};
 		const answer = (location: FileLocation): Answer => ({
 			label,
 			location,
+			mode,
 			diagnostics: aboutPath(diagnostics, location.source),
 		});
 		return [
@@ -272,6 +307,9 @@ export class LocationReport {
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
+				...("location" in answer && answer.mode.active
+					? { mode: answer.mode.active }
+					: {}),
 				...("location" in answer
 					? {
 							source: toNative(answer.location.source),
@@ -339,7 +377,7 @@ export class LocationReport {
 
 	private describe(answer: Answer): string {
 		return "location" in answer
-			? describeLocation(answer.location, this.cwd)
+			? describeLocation(answer.location, answer.mode, this.cwd)
 			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders)}`;
 	}
 }

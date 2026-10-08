@@ -8,6 +8,8 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 A **variant** is an alternative version of a file that lives right next to it. When `mock` is on, `Analytics.mock.luau` *becomes* `Analytics`. When it's off, the file is left out. (If you only want to leave files out, use [`exclude`](/docs/v2/core-concepts/project-layout#excluding-files).)
 
+Variants are independent switches: any number can be on, and each is flipped on its own. For one choice with exactly one value, like dev or prod, declare [modes](/docs/v2/core-concepts/modes) instead, and keep variants for the features that combine with them.
+
 ## Declaring Variants
 
 List every variant in the config's `variants` map, along with whether it's on:
@@ -21,7 +23,7 @@ List every variant in the config's `variants` map, along with whether it's on:
 }
 ```
 
-A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key.
+A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key or a [mode](/docs/v2/core-concepts/modes).
 
 ## Marking Files
 
@@ -84,6 +86,8 @@ Override the config for a single run from the CLI. Both flags can be repeated:
 ```bash
 rogen build --variant mock --no-variant dev
 ```
+
+A variant that a mode sets, like `mock` in `"dev": { "variants": { "mock": true } }`, follows the active mode; these flags still win. `--variant dev` for a mode named `dev` is a usage error that points at `--mode dev`.
 
 To keep a combination around, add a config that extends the first and flips the variant. `rogen build mocked` then writes `mocked.project.json`:
 

@@ -1,4 +1,5 @@
 import path from "path";
+import { isMatch } from "../../base/glob.js";
 import { contains, isInside, joinPosix, toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
@@ -81,7 +82,8 @@ export class BuildTemplate {
 	private readonly templateFile: string | undefined;
 
 	constructor(
-		private readonly config: Pick<ResolvedConfig, "name" | "template">,
+		private readonly config: Pick<ResolvedConfig, "name" | "template"> &
+			Partial<Pick<ResolvedConfig, "modeExclude">>,
 		private readonly layout: SyncLayout
 	) {
 		const { template } = config;
@@ -95,6 +97,7 @@ export class BuildTemplate {
 			},
 			generatedContainer
 		);
+		this.project.removeNodes((target) => this.isDropped(target));
 		if (template && this.templateDir !== layout.projectDir) {
 			this.project.mapPaths((target) => this.rebase(target));
 		}
@@ -105,19 +108,30 @@ export class BuildTemplate {
 		return this.config.template?.project.emitLegacyScripts === false;
 	}
 
-	/** Every path the template's own `$path`s mount. Rojo reads these, not Rogen. */
+	/** Whether the active mode's `exclude` drops the node that mounts `target`, a `$path` as the template wrote it. */
+	private isDropped(target: string): boolean {
+		const mounted = toPosix(path.resolve(this.templateDir, target));
+		return (this.config.modeExclude ?? []).some((glob) =>
+			isMatch(mounted, glob)
+		);
+	}
+
+	/** Every path the template's own `$path`s mount, except those the active mode's `exclude` drops. Rojo reads these, not Rogen. */
 	get mounts(): TemplateMounts {
 		const project = this.config.template?.project;
 		return new TemplateMounts(
-			(project?.getPaths() ?? []).map(
-				({ path: rojoPath, instancePath }) => ({
+			(project?.getPaths() ?? [])
+				.filter(
+					({ path: rojoPath }) =>
+						!this.isDropped(rojoPathTarget(rojoPath))
+				)
+				.map(({ path: rojoPath, instancePath }) => ({
 					path: path.resolve(
 						this.templateDir,
 						rojoPathTarget(rojoPath)
 					),
 					node: instancePath,
-				})
-			),
+				})),
 			this.templateFile
 		);
 	}

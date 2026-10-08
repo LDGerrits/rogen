@@ -1,0 +1,31 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default, release
+  default
+    default.project.json · wrote · mode dev
+  release
+    release.project.json · wrote · mode prod
+  Built 2 configs.
+
+written:
+  default.project.json
+  release.project.json
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    DevPackages: Folder
+      TestLib: ModuleScript  <- DevPackages/TestLib.luau
+    Packages: Folder
+      Lib: ModuleScript  <- Packages/Lib.luau
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau
+
+$ rojo sourcemap release.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Lib: ModuleScript  <- Packages/Lib.luau
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau

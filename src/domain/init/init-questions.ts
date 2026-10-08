@@ -194,6 +194,22 @@ export class InitQuestions {
 		});
 	}
 
+	/** Whether the starting config gets dev and prod modes, which a workspace with a test runner has a use for: prod leaves the specs out. */
+	modes(
+		{ workspace }: InitDirectory,
+		language: Language
+	): Promise<boolean | undefined> {
+		const runner = workspace.testRunner;
+		if (runner === undefined) return Promise.resolve(false);
+		if (!this.interactive) return Promise.resolve(true);
+		return this.promptService.confirm({
+			message: "Add dev and prod modes?",
+			description: `prod leaves out specs (${ConfigSet.specGlobOf(language)}), so a release ships without them. Build it with rogen build --mode prod.`,
+			hint: `found ${runner}`,
+			initialValue: true,
+		});
+	}
+
 	async rootDirs(
 		directory: InitDirectory,
 		language: Language,

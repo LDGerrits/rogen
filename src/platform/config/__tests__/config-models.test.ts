@@ -88,6 +88,75 @@ describe("platform/config/config-models", () => {
 			});
 		});
 
+		describe("each policy", () => {
+			const policies = {
+				modes: { each: { variants: "merge", exclude: "append" } },
+			} as const;
+			const of = (layers: Record<string, unknown>[]) =>
+				new Config(
+					new ConfigModel(),
+					layers.map((layer) => new ConfigModel(layer)),
+					new ConfigModel(),
+					policies
+				);
+
+			it("should merge a map by key and each value by its field policies", () => {
+				const config = of([
+					{
+						modes: {
+							dev: { variants: { a: true }, exclude: ["x"] },
+							prod: { exclude: ["y"] },
+						},
+					},
+					{
+						modes: {
+							prod: { variants: { b: false }, exclude: ["z"] },
+							staging: {},
+						},
+					},
+				]);
+
+				expect(config.getValue("modes")).toEqual({
+					dev: { variants: { a: true }, exclude: ["x"] },
+					prod: { exclude: ["y", "z"], variants: { b: false } },
+					staging: {},
+				});
+			});
+
+			it("should keep the order mode names were first declared in", () => {
+				const config = of([
+					{ modes: { b: {}, a: {} } },
+					{ modes: { c: {}, a: {} } },
+				]);
+
+				expect(Object.keys(config.getValue("modes") ?? {})).toEqual([
+					"b",
+					"a",
+					"c",
+				]);
+			});
+
+			it("should name the layer and position that wrote a nested entry", () => {
+				const config = of([
+					{ modes: { prod: { exclude: ["a"] } } },
+					{ modes: { prod: { exclude: ["b"] } } },
+				]);
+
+				expect(config.entries(["modes", "prod", "exclude"])).toEqual([
+					{
+						value: "a",
+						source: { tier: "layer", index: 0 },
+						index: 0,
+					},
+					{
+						value: "b",
+						source: { tier: "layer", index: 1 },
+						index: 0,
+					},
+				]);
+			});
+		});
+
 		it("should let the cli tier override every layer", () => {
 			const config = new Config(
 				new ConfigModel({ value: "default" }),

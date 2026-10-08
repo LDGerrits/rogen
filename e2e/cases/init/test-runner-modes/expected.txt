@@ -1,0 +1,68 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Created template.project.json.
+  Created default.rogen.json.
+  Created AGENTS.md.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Build a release without specs with rogen build --mode prod; default.rogen.json declares the modes.
+    Add your own routes under "routes" in default.rogen.json.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
+  Wrote 3 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode dev
+  Built 1 config.
+
+written:
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"modes": {
+		"dev": {},
+		"prod": {
+			"exclude": [
+				"**/*.spec.luau"
+			]
+		}
+	},
+	"template": "template.project.json"
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau
+      A.spec: ModuleScript  <- src/A.spec.luau
+  ServerScriptService: ServerScriptService
+
+$ rojo sourcemap template.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- Packages/Roact.luau
+  ServerScriptService: ServerScriptService

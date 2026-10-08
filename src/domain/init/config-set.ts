@@ -54,6 +54,11 @@ export class ConfigSet {
 		return `rojo serve ${defaultOutFileName(name)}`;
 	}
 
+	/** The glob that matches a language's spec files. */
+	static specGlobOf(language: Language): string {
+		return `**/*.spec.${language.extension}`;
+	}
+
 	/** Says where variants of a script are swapped in, in the words the next steps use. */
 	static variantsStep(language: Language, configFile: string): string {
 		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}.`;

@@ -1,4 +1,4 @@
-import { mergeDeep } from "../../base/objects.js";
+import { isObject, mergeDeep } from "../../base/objects.js";
 import { safeStringify } from "../../base/json.js";
 
 /** A section is a dotted path, or its segments when a key may itself contain a dot. */
@@ -35,10 +35,11 @@ export type ConfigSource =
 	| { readonly tier: "layer"; readonly index: number }
 	| { readonly tier: "cli" };
 
-/** How a field combines across tiers: `merge` maps by key and scalars by replacing, `replace` takes the last tier whole, `append` adds each tier's list entries to the earlier ones. */
-export type MergePolicy = "merge" | "replace" | "append";
+/** How a field combines across tiers: `merge` maps by key and scalars by replacing, `replace` takes the last tier whole, `append` adds each tier's list entries to the earlier ones, and `each` merges a map by key with the policies for the fields of its values. */
+export type MergePolicy =
+	"merge" | "replace" | "append" | { readonly each: MergePolicies };
 
-/** The policy of each top-level key; a key without one merges. */
+/** The policy of each key of an object; a key without one merges. */
 export type MergePolicies = Readonly<Record<string, MergePolicy>>;
 
 /** One entry of a list that tiers add to, with where it was written. */
@@ -74,22 +75,7 @@ export class Config {
 
 	getConsolidatedModel(): ConfigModel {
 		if (!this.consolidatedModel) {
-			const merged = mergeDeep<Record<string, unknown>>(
-				{},
-				this.defaultConfig.contents,
-				...this.layers.map((layer) => layer.contents),
-				this.cliConfig.contents
-			);
-			for (const key of Object.keys(merged)) {
-				const policy = this.policies[key];
-				if (policy === "append") {
-					merged[key] = this.entries<unknown>([key]).map(
-						({ value }) => value
-					);
-				} else if (policy === "replace") {
-					merged[key] = this.lastValue(key);
-				}
-			}
+			const merged = this.consolidateEach([], this.policies);
 			this.consolidatedModel = new ConfigModel(merged);
 		}
 		return this.consolidatedModel;
@@ -163,13 +149,55 @@ export class Config {
 		return true;
 	}
 
-	private lastValue(key: string): unknown {
-		const tiers = [
-			this.defaultConfig,
-			...this.layers,
-			this.cliConfig,
-		].filter((tier) => tier.getValue(key) !== undefined);
-		return tiers[tiers.length - 1]?.getValue(key);
+	private get tiers(): readonly ConfigModel[] {
+		return [this.defaultConfig, ...this.layers, this.cliConfig];
+	}
+
+	/** The object at `path`, each key combined by its policy in `policies`. */
+	private consolidateEach(
+		path: readonly string[],
+		policies: MergePolicies
+	): Record<string, unknown> {
+		const keys = new Set(
+			this.tiers.flatMap((tier) => {
+				const value =
+					path.length === 0 ? tier.contents : tier.getValue(path);
+				return isObject(value) ? Object.keys(value) : [];
+			})
+		);
+		const result: Record<string, unknown> = {};
+		for (const key of keys) {
+			result[key] = this.consolidate(
+				[...path, key],
+				policies[key] ?? "merge"
+			);
+		}
+		return result;
+	}
+
+	private consolidate(path: readonly string[], policy: MergePolicy): unknown {
+		if (policy === "append") {
+			return this.entries<unknown>(path).map(({ value }) => value);
+		}
+		const values = this.tiers
+			.map((tier) => tier.getValue(path))
+			.filter((value) => value !== undefined);
+		if (typeof policy === "object") {
+			const body = (name: string) =>
+				this.consolidateEach([...path, name], policy.each);
+			const names = new Set(
+				values.flatMap((value) =>
+					isObject(value) ? Object.keys(value) : []
+				)
+			);
+			return Object.fromEntries(
+				[...names].map((name) => [name, body(name)])
+			);
+		}
+		if (policy === "merge" && values.every(isObject)) {
+			return mergeDeep({}, ...values);
+		}
+		return values[values.length - 1];
 	}
 
 	private keys(): string[] {

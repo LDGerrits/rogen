@@ -64,11 +64,20 @@ export interface VariantSummary {
 	readonly files: number;
 }
 
+export interface ModeSummary {
+	readonly mode: string;
+	readonly on: boolean;
+	/** Files placed with the mode when it's the active one, or left out by it when it isn't. */
+	readonly files: number;
+}
+
 export interface BuildSummary {
 	readonly roots: readonly RootSummary[];
 	/** In the order the config declares them. */
 	readonly routes: readonly RouteSummary[];
 	readonly variants: readonly VariantSummary[];
+	/** In the order the config declares them; none without modes. */
+	readonly modes: readonly ModeSummary[];
 	readonly unrouted: number;
 	readonly replaced: number;
 	/** Left out because the template defines their node. */

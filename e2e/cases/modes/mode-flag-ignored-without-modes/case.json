@@ -1,0 +1,9 @@
+{
+	"steps": [
+		[
+			"build",
+			"--mode",
+			"prod"
+		]
+	]
+}

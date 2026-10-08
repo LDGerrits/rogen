@@ -107,6 +107,37 @@ describe("domain/config/config", () => {
 			expect([...keys.all]).toEqual(["server", "mock"]);
 		});
 
+		describe("modes", () => {
+			const keys = new DeclaredKeys(
+				["server"],
+				["mock"],
+				["dev", "prod"]
+			);
+
+			it("should read a mode as a key that marks a file, beside the variants", () => {
+				expect([...keys.modeKeys]).toEqual(["dev", "prod"]);
+				expect([...keys.variantKeys]).toEqual(["mock", "dev", "prod"]);
+				expect([...keys.all]).toEqual([
+					"server",
+					"mock",
+					"dev",
+					"prod",
+				]);
+				expect(keys.isVariant("dev")).toBe(true);
+				expect(keys.isMode("dev")).toBe(true);
+				expect(keys.isMode("mock")).toBe(false);
+			});
+
+			it("should resolve a mode with its first letter in either case", () => {
+				expect(keys.resolveVariant("Prod")).toBe("prod");
+				expect(keys.resolve("prod")).toBe("prod");
+			});
+
+			it("should name a mode a near miss", () => {
+				expect(keys.nearMiss("PROD")).toBe("prod");
+			});
+		});
+
 		describe("resolve", () => {
 			it("should match a name spelled exactly like a declared key", () => {
 				expect(routes.resolve("server")).toBe("server");
@@ -207,6 +238,64 @@ describe("domain/config/config", () => {
 				mockConfig({ rootDirs: ["/repo/a/x", "/repo/a/y"] }).commonRoot
 			).toBe("/repo/a");
 			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
+		});
+
+		describe("modes", () => {
+			const config = mockConfig({
+				variants: { mock: false },
+				exclude: ["/repo/a"],
+				modes: {
+					dev: { variants: { mock: true } },
+					prod: { exclude: ["/repo/b"] },
+				},
+				mode: "prod",
+			});
+
+			it("should hold the declared modes and the active one", () => {
+				expect(config.modes).toEqual(["dev", "prod"]);
+				expect(config.mode).toBe("prod");
+				expect(config.defaultMode).toBe("dev");
+				expect(config.modeExclude).toEqual(["/repo/b"]);
+			});
+
+			it("should count the active mode on and every other off when it prunes", () => {
+				const matches = [
+					{ variant: "dev" },
+					{ variant: "prod" },
+					{ variant: "mock" },
+				];
+
+				expect(config.dormantVariants(matches)).toEqual([
+					{ variant: "dev" },
+					{ variant: "mock" },
+				]);
+				expect(config.allVariantsOn([{ variant: "prod" }])).toBe(true);
+			});
+
+			it("should leave a mode's name out of the variants it lists", () => {
+				expect(config.variants).toEqual({ mock: false });
+			});
+
+			it("should give the same config in another mode", () => {
+				const dev = config.inMode("dev");
+
+				expect(dev).toMatchObject({
+					mode: "dev",
+					variants: { mock: true },
+					exclude: ["/repo/a"],
+					modeExclude: [],
+					file: config.file,
+				});
+				expect(dev?.dormantVariants([{ variant: "prod" }])).toEqual([
+					{ variant: "prod" },
+				]);
+			});
+
+			it("should have no other mode to give", () => {
+				expect(config.inMode("staging")).toBeUndefined();
+				expect(mockConfig().modes).toEqual([]);
+				expect(mockConfig().mode).toBeUndefined();
+			});
 		});
 
 		it("should pick out the variants a file carries that are off", () => {

@@ -26,6 +26,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "mode": null,
+        "modes": [],
         "exclude": [
           "<dir>/**/*.story.luau",
           "<dir>/**/*.spec.luau",

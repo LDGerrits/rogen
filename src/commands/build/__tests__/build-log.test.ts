@@ -65,6 +65,7 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
 	routes: [],
 	variants: [],
+	modes: [],
 	unrouted: 0,
 	replaced: 0,
 	displaced: 0,
@@ -177,6 +178,20 @@ describe("BuildLog build lines", () => {
 		]);
 	});
 
+	it("should say which mode is active and which left files out", () => {
+		expect(
+			describeBuild(
+				summaryOf({
+					modes: [
+						{ mode: "dev", on: false, files: 3 },
+						{ mode: "prod", on: true, files: 1 },
+					],
+				}),
+				cwd
+			)
+		).toEqual(["mode dev off: 3 files left out", "mode prod on: 1 file"]);
+	});
+
 	it("should count what was left out only when something was", () => {
 		expect(describeBuild(summaryOf(), cwd)).toEqual([]);
 		expect(
@@ -229,6 +244,20 @@ describe("BuildLog.outcome", () => {
 		expect(lines(failedOf([error]), [error])).toEqual([
 			["error", "default.project.json · not written"],
 			["diagnosticError", expect.stringContaining("bad.")],
+		]);
+	});
+
+	it("should name the mode a config built in before the note", () => {
+		const config = mockConfig({
+			modes: { dev: {}, prod: {} },
+			mode: "prod",
+		});
+
+		expect(
+			lines(builtOf(summaryOf(), "wrote", config), [], "first build")[0]
+		).toEqual([
+			"success",
+			"default.project.json · wrote · mode prod · first build",
 		]);
 	});
 

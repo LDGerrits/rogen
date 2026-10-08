@@ -28,6 +28,21 @@ describe("CoreToolchainService.detect", () => {
 		await fs.createDirectory(cwd);
 	});
 
+	describe("test runner", () => {
+		it("should name the runner a manifest depends on", async () => {
+			await write(
+				"wally.toml",
+				'[dev-dependencies]\nJest = "jsdotlua/jest@3"\n'
+			);
+
+			expect((await toolchain().detect(cwd)).testRunner).toBe("Jest");
+		});
+
+		it("should find none without one", async () => {
+			expect((await toolchain().detect(cwd)).testRunner).toBeUndefined();
+		});
+	});
+
 	describe("language and darklua", () => {
 		it("should be luau without darklua when nothing is found", async () => {
 			const workspace = await toolchain().detect(cwd);

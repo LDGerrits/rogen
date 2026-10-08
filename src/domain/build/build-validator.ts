@@ -15,17 +15,15 @@ import {
 	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import { MisspellingKind, MisspellingOf, NotedName } from "./name-reader.js";
+import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
 const DIAGNOSED_PATHS = 10;
-
-const isSamePath = (a: readonly string[], b: readonly string[]) =>
-	instanceKey(a) === instanceKey(b);
 
 /** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
@@ -223,18 +221,28 @@ export class BuildValidator {
 		);
 	}
 
-	/** A dot part one edit from a declared variant, or a folder one edit from one, is probably that variant, mistyped. */
+	/** A dot part one edit from a declared variant or mode, or a folder one edit from one, is probably that key, mistyped. */
 	private variantTypo(): Diagnostic[] {
-		const bare = [
+		const typos = [
 			...this.placement.readings.misspelt("variantTypo").values(),
-		].some((typo) => typo.bare);
+		];
+		const bare = typos.some((typo) => typo.bare);
+		const modes = typos.filter(({ variant }) =>
+			this.config.keys.isMode(variant)
+		).length;
+		const noun =
+			modes === 0
+				? "variant"
+				: modes === typos.length
+					? "mode"
+					: "variant or mode";
 		return this.misspelt(
 			"variant.typo",
 			"variantTypo",
 			(count) =>
 				bare
-					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
-					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared ${noun}, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
+					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared ${noun}, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
 			(_, { variant, bare }) =>
 				`did you mean "${bare ? variant : `.${variant}`}"?`
 		);
@@ -285,75 +293,7 @@ export class BuildValidator {
 
 	/** Variants are independent switches, so turning off every alternative of an instance leaves nothing where code expects it. */
 	private noneActive(): Diagnostic[] {
-		const missing = this.missingInstances();
-		if (missing.length === 0) return [];
-		const many = missing.length > 1;
-		return [
-			warningDiagnostic(
-				"variant.noneActive",
-				{ resource: this.config.file },
-				[
-					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
-					...this.listed(
-						missing,
-						({ instance, variants }) =>
-							`${instance} (${variants.join(", ")})`
-					),
-					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
-				].join("\n")
-			),
-		];
-	}
-
-	/** The outermost instances that two or more sets of variants claim and no file is left to give, sorted. */
-	private missingInstances(): {
-		readonly instance: string;
-		readonly variants: readonly string[];
-	}[] {
-		const givers = new InstanceMap<RoutedFile[]>();
-		for (const file of this.placement.routed)
-			for (const node of [
-				...file.folderNodes.map(({ instancePath }) => instancePath),
-				file.instancePath,
-			])
-				givers.set(node, [...(givers.get(node) ?? []), file]);
-
-		const missing: (readonly string[])[] = [];
-		const result: { instance: string; variants: string[] }[] = [];
-		for (const [node, files] of [...givers].sort(
-			([a], [b]) => a.length - b.length
-		)) {
-			const underMissing = missing.some((outer) =>
-				outer.every((segment, index) => node[index] === segment)
-			);
-			if (
-				underMissing ||
-				files.some(({ variants }) =>
-					this.config.allVariantsOn(variants)
-				)
-			)
-				continue;
-			const claims = files.map((file) =>
-				file.variants
-					.filter((_, index) =>
-						isSamePath(file.variantNodes[index], node)
-					)
-					.map(({ variant }) => variant)
-					.sort()
-			);
-			const alternatives = new Set(
-				claims
-					.filter((variants) => variants.length > 0)
-					.map((variants) => variants.join("."))
-			);
-			if (alternatives.size < 2) continue;
-			missing.push(node);
-			result.push({
-				instance: instanceKey(node),
-				variants: [...new Set(claims.flat())].sort(compareStrings),
-			});
-		}
-		return result.sort((a, b) => compareStrings(a.instance, b.instance));
+		return new MissingInstances(this.placement).diagnostics();
 	}
 
 	private unrouted(): Diagnostic[] {

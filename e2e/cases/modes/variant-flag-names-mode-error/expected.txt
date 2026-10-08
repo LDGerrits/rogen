@@ -1,0 +1,4 @@
+$ rogen build --variant prod
+exit 2
+stderr:
+  error: "prod" is a mode, not a variant. Pick it with --mode prod.

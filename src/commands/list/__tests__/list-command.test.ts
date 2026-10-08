@@ -188,6 +188,41 @@ describe("list command", () => {
 		]);
 	});
 
+	it("should list the modes a config declares, marking the one it builds in by default", async () => {
+		await write("default.rogen.json", {
+			variants: { mock: false },
+			modes: { dev: { variants: { mock: true } }, prod: {} },
+		});
+
+		await run({});
+
+		expect(under("default.rogen.json")).toEqual([
+			expect.stringContaining("modes: dev (default), prod"),
+		]);
+	});
+
+	it("should mark the mode a flag picks as active", async () => {
+		await write("default.rogen.json", {
+			modes: { dev: {}, prod: {} },
+		});
+
+		await run({ mode: "prod" });
+
+		expect(under("default.rogen.json")).toEqual([
+			expect.stringContaining("modes: dev (default), prod (active)"),
+		]);
+	});
+
+	it("should leave modes off a config that declares none", async () => {
+		await write("default.rogen.json", {});
+
+		await run({});
+
+		expect(under("default.rogen.json")).toEqual([
+			expect.not.stringContaining("modes:"),
+		]);
+	});
+
 	describe("with --json", () => {
 		const document = () =>
 			JSON.parse(
@@ -231,6 +266,8 @@ describe("list command", () => {
 							"*": "ReplicatedStorage/Shared",
 						},
 						variants: { mock: true },
+						mode: null,
+						modes: [],
 						exclude: ["/repo/**/*.spec.luau"],
 						template: null,
 						syncDir: "/repo/out",
@@ -238,6 +275,25 @@ describe("list command", () => {
 						diagnostics: [],
 					},
 				],
+			});
+		});
+
+		it("should print the active mode and every mode a config declares", async () => {
+			await write("default.rogen.json", {
+				variants: { mock: false },
+				modes: {
+					dev: { variants: { mock: true } },
+					prod: { exclude: ["**/*.spec.luau"] },
+				},
+			});
+
+			await run({ json: true, mode: "prod" });
+
+			expect(entry("default")).toMatchObject({
+				mode: "prod",
+				modes: ["dev", "prod"],
+				variants: { mock: false },
+				exclude: ["/repo/**/*.spec.luau"],
 			});
 		});
 

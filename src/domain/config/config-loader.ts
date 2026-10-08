@@ -35,6 +35,8 @@ export interface LoadedConfig {
 	readonly config?: Config;
 	/** The CLI variants this config doesn't declare; `undefined` when its chain could not be read. */
 	readonly skippedVariants?: readonly string[];
+	/** The modes its chain declares; `undefined` when the chain could not be read. */
+	readonly modes?: readonly string[];
 	readonly resolved: Result<ResolvedConfig, Diagnostic[]>;
 }
 
@@ -102,6 +104,7 @@ export class ConfigLoader {
 			chain: chain.files,
 			files: templateFile ? [...chain.files, templateFile] : chain.files,
 			skippedVariants: layered.skippedVariants,
+			modes: layered.modes,
 		};
 
 		const template = templateFile

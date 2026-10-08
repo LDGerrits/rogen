@@ -1,0 +1,25 @@
+$ rogen build --mode prod
+exit 0
+stdout:
+  rogen build · default, tools
+  default
+    default.project.json · wrote · mode prod
+  tools
+    tools.project.json · wrote
+  Built 2 configs.
+
+written:
+  default.project.json
+  tools.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau
+
+$ rojo sourcemap tools.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      B: ModuleScript  <- tools/B.luau

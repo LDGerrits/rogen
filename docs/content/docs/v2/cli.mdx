@@ -15,7 +15,7 @@ The first word is always the command, and a bare `rogen` prints usage. Whatever 
 
 ### `build [config…]`
 
-Writes the project file of every config in the folder, or of the ones you name. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
+Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in its own mode, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
 ### `watch [config…]`
 
@@ -59,7 +59,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants. Otherwise the line says why it isn't placed: `pruned`, `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -96,7 +96,7 @@ lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue �
 
 A config that doesn't load answers nothing: `where` prints the answers of the configs that do, then the broken config's errors, and exits 1.
 
-`where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
+`where --json` keeps every config's entry, `outside` included. `where` accepts `--mode`, `--variant`, `--no-variant` and `--json`.
 
 ### `init [name]`
 
@@ -112,21 +112,22 @@ A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `
 
 ### `list [config…]`
 
-Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file and every variant it declares, on or off (`variants: dev on, mock off`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file every variant it declares, on or off (`variants: dev on, mock off`), and its modes (`modes: dev (default), prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
 ### `help [name]`
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
 
 ## Options
 
-An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where` and `list` only take `--variant` and `--no-variant`.
+An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where` and `list` only take `--mode`, `--variant` and `--no-variant`.
 
 | Flag | Effect |
 |---|---|
 | `-o, --out-file <path>` | Overrides `outFile`. |
+| `--mode <name>` | Picks the mode every config that declares modes builds in. Strict: a config that declares modes without this one is an error. |
 | `--variant <name>` | Turns a variant on. Repeatable. |
 | `--no-variant <name>` | Turns a variant off. Repeatable. |
 | `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. On `init` it implies `--yes`. |
@@ -136,7 +137,7 @@ An override changes a config value for one run. Anything you want every time bel
 | `-v, --verbose` | Prints debug output. |
 | `-q, --quiet` | Prints errors only, plus anything you explicitly asked for. |
 
-`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do.
+`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--mode` applies to every config that declares modes, ignores the ones that don't, and is an error if none declare any. Naming a mode with `--variant` is an error that points at `--mode`.
 
 ## Exit codes
 
@@ -204,7 +205,7 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 }
 ```
 
-`outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
+`outcome` is `wrote`, `unchanged` or `notWritten`. A config that declares modes also has `mode`, the one it built in. If any config fails, nothing is written.
 
 A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
 
@@ -215,7 +216,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `status` | Fields |
 |---|---|
 | `placed` | `instancePath` (an array of names), `require`, `route`, `routeMatch`, `variants`, and `hoisted: true` for a `^` name |
-| `pruned` | `variants`, the dormant ones |
+| `pruned` | `variants`, the dormant ones, a mode's name among them when another mode is active |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
 | `mounted` | `node`, the template node whose `$path` mounts it |
@@ -223,7 +224,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` instead of `source`: no file places an instance you asked about. `folders` lists where a new file for it goes, when files are placed beside it |
 
-Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
+A config that declares modes adds `mode`, the active one, after `config`. Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
 
 Every entry also has `diagnostics`, last: the diagnostics about its path (the ones whose `file` is the path, or whose `related` lists it), empty for a clean path. A grouped diagnostic is narrowed to the path: its `message` is the `related` message about this path and `fixes` holds only the renames of this path. A `noFile` entry has none.
 
@@ -252,7 +253,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants`, `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. A broken config has only the five. If any config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. `variants` and `exclude` are those of the active mode. A broken config has only the five. If any config has errors, the exit code is 1.
 
 ## Output
 

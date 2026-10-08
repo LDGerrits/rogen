@@ -157,7 +157,7 @@ v1 sent unmatched files to `ReplicatedStorage`, which could leak server code to 
 
 ### Modes and Profiles
 
-Each v2 config is one tree and one output, so a second mode becomes a second config that [`extends`](/docs/v2/configuration#extending-configs) the first. Build it with `rogen build prod`:
+Each v2 config is one tree and one output, so a second v1 mode becomes a second config that [`extends`](/docs/v2/configuration#extending-configs) the first. Build it with `rogen build prod`:
 
 ```json title="prod.rogen.json"
 {
@@ -165,6 +165,10 @@ Each v2 config is one tree and one output, so a second mode becomes a second con
 	"variants": { "dev": false }
 }
 ```
+
+<Callout type="warn" title="v2 modes are not v1 modes">
+	v2 also has `modes` and `--mode`, but they pick an environment within one config, such as dev or prod. See [Modes](/docs/v2/core-concepts/modes). A v1 mode, which chose a toolchain, is a config in v2.
+</Callout>
 
 ## Config Fields
 
@@ -197,7 +201,7 @@ Each v2 config is one tree and one output, so a second mode becomes a second con
 
 | v1 | v2 |
 |---|---|
-| `-m, --mode <mode>` | a config name: `rogen build prod` |
+| `-m, --mode <mode>` | a config name: `rogen build prod`. v2's `--mode <name>` (no `-m`) picks a [mode](/docs/v2/core-concepts/modes) inside configs |
 | `-b, --build <path>` | removed. Set `syncDir` in another config |
 | `-s, --source <path>` | removed. Set `rootDirs` in another config |
 | `-o, --output <path>` | `-o, --out-file <path>` |

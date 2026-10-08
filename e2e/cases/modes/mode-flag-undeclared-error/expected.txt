@@ -1,0 +1,4 @@
+$ rogen build --mode prod
+exit 2
+stderr:
+  error: Mode "prod" is not declared by any config being built. Add it under "modes" in a config, or drop the flag.

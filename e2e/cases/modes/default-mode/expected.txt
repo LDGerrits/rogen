@@ -1,0 +1,33 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode dev
+  Built 1 config.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Analytics.luau -> replaced by src/Analytics.mock.luau
+  src/Analytics.mock.luau -> ReplicatedStorage/Shared/Analytics · route * (fallback) · variant mock (suffix)
+  src/Lib/Math.luau -> ReplicatedStorage/Shared/Lib/Math · route * (fallback)
+  src/Lib/Math.spec.luau -> ReplicatedStorage/Shared/Lib/Math.spec · route * (fallback)
+  src/Net/Http.luau -> pruned · mode is dev, not prod
+  src/Service.dev.luau -> ReplicatedStorage/Shared/Service · route * (fallback) · mode dev (suffix)
+  src/Service.prod.luau -> pruned · mode is dev, not prod
+  src/dev/Tools.luau -> ReplicatedStorage/Shared/Tools · route * (fallback) · mode dev (folder)
+  src/prod/Tools.luau -> pruned · mode is dev, not prod
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.mock.luau
+      Lib: Folder
+        Math: ModuleScript  <- src/Lib/Math.luau
+        Math.spec: ModuleScript  <- src/Lib/Math.spec.luau
+      Service: ModuleScript  <- src/Service.dev.luau
+      Tools: ModuleScript  <- src/dev/Tools.luau

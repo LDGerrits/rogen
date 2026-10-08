@@ -33,6 +33,7 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen build` and fix each warning that names them.
+- A config with `modes` builds in one at a time: run `rogen build --mode <name>` for another, and `rogen list` to see them.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit.
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
 ````
@@ -50,5 +51,5 @@ npx skills add LDGerrits/rogen
 The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
 
 1. **The block**, about 150 tokens: the rules and the commands that check them.
-2. **`rogen help <topic>`**, about 300 tokens a topic, read when needed: `routing`, `variants`, `config`, `layout` and `output`. It matches the installed version and works offline.
+2. **`rogen help <topic>`**, about 300 tokens a topic, read when needed: `routing`, `variants`, `modes`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.

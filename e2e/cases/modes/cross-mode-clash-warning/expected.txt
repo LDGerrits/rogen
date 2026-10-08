@@ -1,0 +1,22 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode dev
+  Built 1 config.
+stderr:
+  src/Net/Net.prod.luau - warning: becomes "ReplicatedStorage/Shared/Net/Net" with an active variant, and so does src/Net/prod/Net.luau. Only one can apply: turn a variant off or rename a file. (in mode "prod")
+  src/Net/prod/Net.luau - warning: becomes "ReplicatedStorage/Shared/Net/Net" with an active variant, and so does src/Net/Net.prod.luau. Only one can apply: turn a variant off or rename a file. (in mode "prod")
+
+$ rogen build --mode prod
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.project.json · not written · mode prod
+  src/Net/Net.prod.luau - error: becomes "ReplicatedStorage/Shared/Net/Net" with an active variant, and so does src/Net/prod/Net.luau. Only one can apply: turn a variant off or rename a file.
+  src/Net/prod/Net.luau - error: becomes "ReplicatedStorage/Shared/Net/Net" with an active variant, and so does src/Net/Net.prod.luau. Only one can apply: turn a variant off or rename a file.
+
+written:
+  default.project.json

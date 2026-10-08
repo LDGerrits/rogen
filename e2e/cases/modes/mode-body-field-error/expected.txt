@@ -1,0 +1,8 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:11:4 - error: unknown field "modes.prod.rootDirs".

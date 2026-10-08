@@ -28,6 +28,37 @@ const variantsSchema: JSONSchema = {
 	additionalProperties: { type: "boolean" },
 };
 
+const modesSchema: JSONSchema = {
+	type: "object",
+	description:
+		"Named environments, exactly one of which is active per build. A " +
+		"mode marks files like a variant does (Service.prod.luau, a prod " +
+		"folder, a .prod marker) and can switch variants and exclude globs, " +
+		'never where files go. "mode" or --mode picks the active one; ' +
+		"the first declared is the default.",
+	additionalProperties: {
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			variants: {
+				type: "object",
+				description:
+					"Variants this mode switches, whether on or off. Each must " +
+					'be declared under "variants".',
+				additionalProperties: { type: "boolean" },
+			},
+			exclude: {
+				type: "array",
+				items: { type: "string" },
+				description:
+					"Globs left out in this mode, relative to this file's " +
+					"directory. They also drop the template's mounts whose " +
+					"$path they match, and add to the config's own exclude.",
+			},
+		},
+	},
+};
+
 interface ConfigField {
 	readonly schema: JSONSchema;
 	/** How a child's value combines with its parent's across `extends`. */
@@ -66,6 +97,19 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	routes: { merge: "merge", schema: routesSchema },
 	variants: { merge: "merge", schema: variantsSchema },
+	modes: {
+		merge: { each: { variants: "merge", exclude: "append" } },
+		schema: modesSchema,
+	},
+	mode: {
+		merge: "replace",
+		schema: {
+			type: "string",
+			description:
+				"The mode this config builds in, unless --mode says " +
+				"otherwise. The first declared mode when left out.",
+		},
+	},
 	exclude: {
 		merge: "append",
 		schema: {

@@ -182,6 +182,66 @@ default.rogen.json:7:13 - error: "Server" and "server" differ only in the case o
 
 Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
 
+### `config.invalidModeName` [#config-invalidmodename]
+
+Error. A mode name has characters other than letters and digits, or starts with a digit.
+
+```
+default.rogen.json:8:3 - error: mode "my-mode" is invalid: use letters and digits only, starting with a letter.
+```
+
+Rename the mode, for example `myMode`. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+
+### `config.modeClashesWithRoute` [#config-modeclasheswithroute]
+
+Error. A mode has the same name as a route key, so a folder or marker with that name could mean either.
+
+```
+default.rogen.json:8:3 - error: mode "server" has the same name as a route key; rename one of them.
+```
+
+Rename the mode or the route. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+
+### `config.modeClashesWithVariant` [#config-modeclasheswithvariant]
+
+Error. A mode has the same name as a variant. Route keys, variants and modes share one namespace, since all three are written the same way in a file name.
+
+```
+default.rogen.json:8:3 - error: mode "prod" has the same name as a variant; a name is either a mode or a variant. Rename one of them.
+```
+
+Rename the mode or the variant. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+
+### `config.undeclaredModeVariant` [#config-undeclaredmodevariant]
+
+Error. A mode switches a variant that `variants` doesn't declare. A variant exists only where `variants` lists it, so a mode can't introduce one.
+
+```
+default.rogen.json:9:36 - error: mode "dev" switches variant "mock", which is not declared under "variants". Declare it there.
+```
+
+Add the variant to `variants`, with the state it has outside the mode. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+
+### `config.unknownMode` [#config-unknownmode]
+
+Error. The config's `mode` field names a mode that no config in its `extends` chain declares.
+
+```
+default.rogen.json:3:11 - error: "mode" is "prod", but this config declares "dev" and "staging". Did you mean "dev"?
+```
+
+Declare the mode under `modes`, or pick one that exists. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
+
+### `config.modeNotDeclared` [#config-modenotdeclared]
+
+Error. `--mode` names a mode that a selected config doesn't declare, although it declares others. `--mode` is strict, so a run for production can never quietly build one place in dev. A selected config that declares no modes at all ignores the flag.
+
+```
+lobby.rogen.json - error: --mode prod names no mode here: this config declares "dev" and "staging".
+```
+
+Declare the mode in that config, or build it on its own without `--mode`. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
+
 ## Routes
 
 ### `roblox.unsupportedService` [#roblox-unsupportedservice]
@@ -335,6 +395,30 @@ src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffi
 ```
 
 Put the script suffix last: `Save.mock.server.luau`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
+
+## Modes
+
+### `mode.missingInstance` [#mode-missinginstance]
+
+Warning. A build in another mode of the config would leave an instance missing: two or more files give it by name for other modes, and none applies there. Every build checks every mode, since Rogen reads names only, so a dev build can warn about prod. The active mode's own gaps are reported the same way. One warning lists every missing instance.
+
+```
+default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
+  ReplicatedStorage/shared/Net (dev, staging)
+Add a file for "prod" to it, or a plain file.
+```
+
+Add a file for the mode, such as `Net.prod.luau`, or a plain file as the default. A lone file for one mode (`DebugPanel.dev.luau`) is silent. See [Checking Every Mode](/docs/v2/core-concepts/modes#checking-every-mode).
+
+### `mode.clash` [#mode-clash]
+
+Warning. A build in another mode would fail: two files that apply there become the same instance, or another rule that is an error in that mode stops it. The message is the error that mode's build would print, followed by the mode.
+
+```
+src/Net/Net.prod.luau - warning: becomes "ReplicatedStorage/shared/Net/Net" with an active variant, and so does src/Net/prod/Net.luau. Only one can apply: turn a variant off or rename a file. (in mode "prod")
+```
+
+Rename one of the files, as the message says. The warning is the preview: `rogen build --mode prod` would fail with the error. See [Checking Every Mode](/docs/v2/core-concepts/modes#checking-every-mode).
 
 ## Tree
 

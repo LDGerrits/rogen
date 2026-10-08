@@ -1,0 +1,9 @@
+{
+	"rootDirs": [
+		"tools"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

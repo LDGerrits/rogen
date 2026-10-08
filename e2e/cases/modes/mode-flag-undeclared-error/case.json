@@ -1,0 +1,10 @@
+{
+	"steps": [
+		[
+			"build",
+			"--mode",
+			"prod"
+		]
+	],
+	"rojo": false
+}
