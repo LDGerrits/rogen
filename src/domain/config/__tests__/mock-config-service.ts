@@ -12,6 +12,7 @@ import {
 	ConfigReload,
 	ConfigSelection,
 	ConfigService,
+	EnclosingConfigs,
 	ValidConfigEntry,
 	buildableConfig,
 } from "../config-service.js";
@@ -102,9 +103,14 @@ export function selectionOf(
 /** A selection of fixed entries; a reload changes nothing. */
 export class MockConfigSelection implements ConfigSelection {
 	readonly files: ReadonlySet<string>;
+	readonly directory = undefined;
 
 	constructor(readonly entries: readonly ConfigEntry[] = [mockEntry()]) {
 		this.files = new Set(entries.map(({ file }) => file));
+	}
+
+	concerns(file: string): boolean {
+		return this.files.has(file);
 	}
 
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError> {
@@ -124,7 +130,14 @@ export class MockConfigSelection implements ConfigSelection {
 export class MockConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
 
-	constructor(public entries: readonly ConfigEntry[] = [mockEntry()]) {}
+	constructor(
+		public entries: readonly ConfigEntry[] = [mockEntry()],
+		public enclosing: EnclosingConfigs | undefined = undefined
+	) {}
+
+	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
+		return this.enclosing;
+	}
 
 	async select(): Promise<Result<ConfigSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries));

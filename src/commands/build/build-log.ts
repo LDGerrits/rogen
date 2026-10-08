@@ -108,6 +108,60 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	];
 }
 
+/** The notes a config's line ends with, in the order given; none when no note applies. */
+export function joinNotes(
+	...notes: readonly (string | undefined)[]
+): string | undefined {
+	return notes.filter((note) => note !== undefined).join(" · ") || undefined;
+}
+
+/** What a config printed of a kind of diagnostic: the new ones, and which earlier configs printed the rest. */
+export class Printed {
+	constructor(
+		readonly fresh: readonly Diagnostic[],
+		private readonly owners: readonly string[],
+		private readonly total: number
+	) {}
+
+	/** The line's note when everything the config has of this kind was printed above, else nothing. */
+	repeatNote(kind: "errors" | "warnings"): string | undefined {
+		return this.total > 0 &&
+			this.fresh.length === 0 &&
+			this.owners.length > 0
+			? `same ${kind} as ${joinedWithAnd(this.owners)}`
+			: undefined;
+	}
+}
+
+/** The diagnostics of one kind a run has printed, so a config that repeats one prints nothing for it. */
+export class PrintedDiagnostics {
+	private readonly printedBy = new Map<string, string>();
+
+	/** With `sameAcrossConfigs`, a diagnostic about a config's own file is the same as another config's about its own, as warnings about a folder two configs read are. Errors about a config's file are its own. */
+	constructor(private readonly sameAcrossConfigs: boolean) {}
+
+	/** Splits `diagnostics` of the config `label` into those not printed yet and those another config did. */
+	take(
+		label: string,
+		configFile: string,
+		diagnostics: readonly Diagnostic[]
+	): Printed {
+		const owners = new Set<string>();
+		const fresh = diagnostics.filter((diagnostic) => {
+			const key = renderDiagnostic(
+				this.sameAcrossConfigs && diagnostic.resource === configFile
+					? { ...diagnostic, resource: "" }
+					: diagnostic
+			);
+			const owner = this.printedBy.get(key);
+			if (owner === undefined) this.printedBy.set(key, label);
+			else if (owner !== label) owners.add(owner);
+			return owner === undefined;
+		});
+		return new Printed(fresh, [...owners], diagnostics.length);
+	}
+}
+
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(
@@ -126,29 +180,30 @@ export class BuildLog {
 			"build",
 			builds.map(({ label }) => label)
 		);
-		const printedBy = new Map<string, string>();
+		const printedErrors = new PrintedDiagnostics(false);
+		const printedWarnings = new PrintedDiagnostics(true);
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.label);
+			const file =
+				build.outcome === "notLoaded" ? build.file : build.config.file;
 			const errors =
 				build.outcome === "failed" || build.outcome === "notLoaded"
-					? build.errors
-					: [];
-			const shared = new Set<string>();
-			const fresh = errors.filter((error) => {
-				const key = renderDiagnostic(error);
-				const owner = printedBy.get(key);
-				if (owner !== undefined) shared.add(owner);
-				else printedBy.set(key, build.label);
-				return owner === undefined;
-			});
+					? printedErrors.take(build.label, file, build.errors)
+					: undefined;
+			const warnings = printedWarnings.take(build.label, file, [
+				...build.warnings,
+				...(build.syncWarnings ?? []),
+			]);
 			this.outcome(
 				build,
-				[...build.warnings, ...(build.syncWarnings ?? []), ...fresh],
-				build.outcome === "notWritten"
-					? `${joinedWithAnd(build.blockedBy)} failed`
-					: errors.length > 0 && fresh.length === 0
-						? `same errors as ${joinedWithAnd([...shared])}`
-						: undefined
+				[...warnings.fresh, ...(errors?.fresh ?? [])],
+				joinNotes(
+					build.outcome === "notWritten"
+						? `${joinedWithAnd(build.blockedBy)} failed`
+						: undefined,
+					errors?.repeatNote("errors"),
+					warnings.repeatNote("warnings")
+				)
 			);
 		}
 		if (

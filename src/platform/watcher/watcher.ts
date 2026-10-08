@@ -1,3 +1,4 @@
+import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
@@ -8,6 +9,8 @@ export type IgnoredPath = string | RegExp;
 export interface WatchOptions {
 	/** Paths to skip; a directory skips everything under it, and a pattern matches whole paths. */
 	readonly ignored?: readonly IgnoredPath[];
+	/** Directories to watch for their own entries only: a change below one of their subfolders is reported only where `paths` also reaches it. */
+	readonly shallow?: readonly string[];
 }
 
 export interface Watcher {
@@ -15,12 +18,31 @@ export interface Watcher {
 
 	readonly onDidChangeFile: Event<FileChange[]>;
 
-	/** Replaces what was watched, in call order with `stop`; resolves once changes to `paths` are reported: a file's own, and everything under a directory. */
+	/** Replaces what was watched, in call order with `stop`; resolves once changes to `paths` are reported: a file's own, and everything under a directory. `options.shallow` adds directories reported for their own entries only. */
 	watch(paths: readonly string[], options?: WatchOptions): Promise<void>;
 	stop(): Promise<void>;
 }
 
 export const Watcher = createServiceIdentifier<Watcher>("watcher");
+
+/** Whether `target` lies below a subfolder of a `shallow` directory and no one of `paths` reaches it, so a watch leaves it out. */
+export function isBeyondShallow(
+	target: string,
+	paths: readonly string[],
+	shallow: readonly string[]
+): boolean {
+	const posixTarget = toPosix(target);
+	if (paths.some((entry) => containsPosix(toPosix(entry), posixTarget)))
+		return false;
+	return shallow.some((dir) => {
+		const posixDir = toPosix(dir);
+		return (
+			containsPosix(posixDir, posixTarget) &&
+			posixTarget !== posixDir &&
+			path.posix.dirname(posixTarget) !== posixDir
+		);
+	});
+}
 
 /** Whether `target` is one of `ignored`, or lies under one; a pattern matches the posix form of the whole path. */
 export function isIgnored(

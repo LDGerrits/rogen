@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [name…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints usage. Whatever follows names configs: `rogen build lobby` builds `lobby.rogen.json`, and a name with a `/` or ending in `.json` is a path, as in `rogen build places/lobby.rogen.json`. With no names, a command reads every `*.rogen.json` in the folder. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints usage. Whatever follows names configs: `rogen build lobby` builds `lobby.rogen.json`, and a name with a `/` or ending in `.json` is a path, as in `rogen build places/lobby.rogen.json`. With no names, a command reads every `*.rogen.json` in the folder, and only that folder: run from a subfolder, a command says which parent folder has the configs. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
@@ -38,7 +38,9 @@ A config reloads when it, its `extends` chain or its template changes, and CLI o
 │  ✔ default.project.json · wrote · 3 warnings as before
 ```
 
-A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there.
+A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there, and what went away since the last block (`1 warning fixed`). Configs that share a root dir find the same warnings, which one block prints once: the next config's line ends `same warnings as default`.
+
+With no config names, `watch` follows the folder: a `*.rogen.json` you add is built from then on, and one you delete is dropped, each with a line saying so. A config you named is the only one it watches.
 
 It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
 
@@ -78,6 +80,13 @@ $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
+When no file places the instance, `where` says where a new one goes, from the files placed beside it:
+
+```
+$ rogen where ServerScriptService.Inventory.Export
+ServerScriptService.Inventory.Export -> no file places it · a new file goes in src/Inventory/Server/
+```
+
 Unlike other commands, `where` takes paths, not config names, so it reads every config in the folder. A file every config places the same way prints one line. Otherwise each config's line starts with its name, and `outside the root dirs` is left out when another config places the file, so a place's file prints only the place's line:
 
 ```
@@ -94,6 +103,8 @@ A config that doesn't load answers nothing: `where` prints the answers of the co
 Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
 In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`.
+
+Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
 `init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
 
@@ -210,7 +221,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `mounted` | `node`, the template node whose `$path` mounts it |
 | `excluded` | `pattern`, the glob that matched |
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
-| `noFile` | `instance` instead of `source`: no file places an instance you asked about |
+| `noFile` | `instance` instead of `source`: no file places an instance you asked about. `folders` lists where a new file for it goes, when files are placed beside it |
 
 Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
 

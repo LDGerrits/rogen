@@ -1,5 +1,7 @@
 import { Sequencer } from "../../base/async.js";
+import { dirnamePosix, toPosix } from "../../base/path.js";
 import { UsageError } from "../../base/errors.js";
+import { compareStrings } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
@@ -7,7 +9,7 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ResolvedConfig } from "./config.js";
+import { CONFIG_SUFFIX, ResolvedConfig } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -22,20 +24,33 @@ import {
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
+/** The folder a selection was picked from, and how to list the configs in it now. */
+export interface PickedFolder {
+	readonly directory: string;
+	/** Absolute, sorted; none when the folder has no config or can't be read. */
+	list(): Promise<readonly string[]>;
+}
+
 /** The configs one invocation picked, each loading and reloading itself. */
 export class CoreConfigSelection implements ConfigSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
 
-	private constructor(private readonly managed: readonly ManagedConfig[]) {
+	private constructor(
+		private managed: readonly ManagedConfig[],
+		private readonly loader: ConfigLoader,
+		private readonly overrides: ConfigOverrides,
+		private readonly folder: PickedFolder | undefined
+	) {
 		this._files = this.readFiles();
 	}
 
-	/** Loads `files` with `overrides`; fails when a variant override is declared by none of them. */
+	/** Loads `files` with `overrides`; fails when a variant override is declared by none of them. A `folder` makes the selection follow the configs added to it. */
 	static async load(
 		files: readonly string[],
 		loader: ConfigLoader,
-		overrides: ConfigOverrides
+		overrides: ConfigOverrides,
+		folder?: PickedFolder
 	): Promise<Result<CoreConfigSelection, Error>> {
 		const managed = files.map(
 			(file) => new ManagedConfig(file, loader, overrides)
@@ -44,7 +59,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		const problem = undeclaredVariant(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed));
+			: ok(new CoreConfigSelection(managed, loader, overrides, folder));
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -53,6 +68,20 @@ export class CoreConfigSelection implements ConfigSelection {
 
 	get files(): ReadonlySet<string> {
 		return this._files;
+	}
+
+	get directory(): string | undefined {
+		return this.folder?.directory;
+	}
+
+	concerns(file: string): boolean {
+		if (this._files.has(file)) return true;
+		const posixFile = toPosix(file);
+		return (
+			this.folder !== undefined &&
+			posixFile.endsWith(CONFIG_SUFFIX) &&
+			dirnamePosix(posixFile) === toPosix(this.folder.directory)
+		);
 	}
 
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError> {
@@ -65,9 +94,14 @@ export class CoreConfigSelection implements ConfigSelection {
 	reload(files: readonly string[]): Promise<ConfigReload> {
 		return this.reloads.queue(async () => {
 			const changedFiles = new Set(files);
+			const membership = await this.followFolder();
 			const reloaded = await Promise.all(
 				this.managed
-					.filter((config) => config.reads(changedFiles))
+					.filter(
+						(config) =>
+							!membership.added.includes(config) &&
+							config.reads(changedFiles)
+					)
 					.map(async (config) => {
 						const before = config.entry;
 						const changed = await config.reload();
@@ -76,13 +110,51 @@ export class CoreConfigSelection implements ConfigSelection {
 					})
 			);
 			this._files = this.readFiles();
+			const added = membership.added.map((config) => ({
+				file: config.file,
+				changed: buildableConfig(config.entry) !== undefined,
+				notice: addedNotice(config.entry),
+			}));
+			const everyChange = [...reloaded, ...added];
 			return {
-				changed: reloaded
-					.filter(({ changed }) => changed)
-					.map(({ file }) => file),
-				notices: reloaded.flatMap(({ notice }) => notice ?? []),
+				changed: this.managed
+					.map(({ file }) => file)
+					.filter((file) =>
+						everyChange.some(
+							(change) => change.file === file && change.changed
+						)
+					),
+				notices: [
+					...membership.removed.map((file): ConfigNotice => ({
+						kind: "removed",
+						file,
+					})),
+					...everyChange.flatMap(({ notice }) => notice ?? []),
+				],
 			};
 		});
+	}
+
+	/** Brings `managed` in line with the configs now in the folder the selection was picked from, loading the ones added. */
+	private async followFolder(): Promise<{
+		added: readonly ManagedConfig[];
+		removed: readonly string[];
+	}> {
+		if (!this.folder) return { added: [], removed: [] };
+		const now = new Set(await this.folder.list());
+		const known = new Set(this.managed.map(({ file }) => file));
+		const added = [...now]
+			.filter((file) => !known.has(file))
+			.map(
+				(file) => new ManagedConfig(file, this.loader, this.overrides)
+			);
+		await Promise.all(added.map((config) => config.load()));
+		const removed = [...known].filter((file) => !now.has(file));
+		this.managed = [
+			...this.managed.filter(({ file }) => now.has(file)),
+			...added,
+		].sort((a, b) => compareStrings(a.file, b.file));
+		return { added, removed };
 	}
 
 	private readFiles(): ReadonlySet<string> {
@@ -101,8 +173,25 @@ function noticeOf(
 			: undefined;
 	const errors = newDiagnostics(errorsOf(before), after.errors);
 	return errors.length > 0
-		? { kind: "broken", file: after.file, errors }
+		? {
+				kind: "broken",
+				file: after.file,
+				errors,
+				keptLastValid: after.lastValid !== undefined,
+			}
 		: undefined;
+}
+
+/** What a user is told of a config that joined the selection. */
+function addedNotice(entry: ConfigEntry): ConfigNotice {
+	return entry.status === "valid"
+		? { kind: "added", file: entry.file }
+		: {
+				kind: "broken",
+				file: entry.file,
+				errors: entry.errors,
+				keptLastValid: false,
+			};
 }
 
 /** A variant override that no config being built declares, as an error. */

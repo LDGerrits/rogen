@@ -365,6 +365,114 @@ describe("BuildLog report", () => {
 	});
 });
 
+describe("BuildLog report, warnings", () => {
+	const configNamed = (label: string) =>
+		mockConfig({
+			file: path.join(cwd, `${label}.rogen.json`),
+			outFile: path.join(cwd, `${label}.project.json`),
+		});
+
+	const writtenWith = (
+		label: string,
+		warnings: readonly Diagnostic[],
+		syncWarnings: readonly Diagnostic[] = []
+	): ConfigBuild =>
+		new WrittenBuild(
+			configNamed(label),
+			"wrote",
+			{ warnings, syncWarnings },
+			summaryOf(),
+			[]
+		);
+
+	const all = (builds: readonly ConfigBuild[]) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(builds);
+		return logService.entries
+			.filter(({ kind }) => kind !== "intro")
+			.map(({ kind, text }) => `${kind}: ${text}`);
+	};
+
+	const aboutSrc = (label: string) =>
+		warningDiagnostic(
+			"x.folder",
+			{ resource: path.join(cwd, `${label}.rogen.json`) },
+			"1 folder is odd:\n  src/Sever"
+		);
+
+	it("should print a warning a later config shares once and say so on its line", () => {
+		expect(
+			all([
+				writtenWith("arena", [aboutSrc("arena")]),
+				writtenWith("match", [aboutSrc("match")]),
+			])
+		).toEqual([
+			"step: arena",
+			"success: arena.project.json · wrote",
+			"diagnosticWarning: /repo/arena.rogen.json - warning: 1 folder is odd:\n  src/Sever",
+			"step: match",
+			"success: match.project.json · wrote · same warnings as arena",
+			"outro: Built 2 configs.",
+		]);
+	});
+
+	it("should print the warnings only a later config has, with no note", () => {
+		const own = warningDiagnostic(
+			"x.own",
+			{ resource: path.join(cwd, "match.rogen.json") },
+			"only here."
+		);
+
+		expect(
+			all([
+				writtenWith("arena", [aboutSrc("arena")]),
+				writtenWith("match", [aboutSrc("match"), own]),
+			]).slice(3)
+		).toEqual([
+			"step: match",
+			"success: match.project.json · wrote",
+			"diagnosticWarning: /repo/match.rogen.json - warning: only here.",
+			"outro: Built 2 configs.",
+		]);
+	});
+
+	it("should treat a warning about a shared file as shared too", () => {
+		const shared = warningDiagnostic(
+			"x.file",
+			{ resource: path.join(cwd, "src/A.luau") },
+			"odd."
+		);
+
+		expect(
+			all([
+				writtenWith("arena", [], [shared]),
+				writtenWith("match", [], [shared]),
+			])[4]
+		).toBe("success: match.project.json · wrote · same warnings as arena");
+	});
+
+	it("should keep both notes when the errors and the warnings are shared", () => {
+		const error = errorDiagnostic(
+			"x.err",
+			{ resource: path.join(cwd, "src/B.luau") },
+			"bad."
+		);
+		const build = (label: string) =>
+			new FailedBuild(configNamed(label), [error], {
+				warnings: [aboutSrc(label)],
+				syncWarnings: [],
+			});
+
+		expect(
+			all([build("arena"), build("match")]).find((line) =>
+				line.startsWith("error: match")
+			)
+		).toBe(
+			"error: match.project.json · not written · same errors as arena · same warnings as arena"
+		);
+	});
+});
+
 describe("BuildLog.diagnostics", () => {
 	const warnings = (count: number, code = "route.unrouted") =>
 		Array.from({ length: count }, (_, n) =>

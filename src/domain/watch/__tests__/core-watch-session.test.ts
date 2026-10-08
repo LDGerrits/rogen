@@ -241,6 +241,121 @@ describe("CoreWatchSession", () => {
 		expect(codes(report?.repeated)).toEqual(["meta.unclaimed"]);
 	});
 
+	it("should hand over a diagnostic that went away as fixed, once", async () => {
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await start();
+		const codes = (list: readonly { code: string }[] | undefined) =>
+			list?.map(({ code }) => code);
+		expect(codes(updates[0].reports[0].fixed)).toEqual([]);
+
+		await fs.delete("/repo/src/Hud.meta.json");
+		await settle();
+		expect(codes(updates.at(-1)?.reports[0].fixed)).toEqual([
+			"meta.unclaimed",
+		]);
+
+		await fs.writeFile("/repo/src/A.luau", "");
+		await settle();
+		expect(codes(updates.at(-1)?.reports[0].fixed)).toEqual([]);
+	});
+
+	describe("watching every config here", () => {
+		it("should build a config added while watching, and say so", async () => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await start([]);
+
+			await writeConfig("/repo/lobby.rogen.json", {});
+			await settle();
+
+			const update = changeUpdates().at(-1);
+			expect(update?.notices).toEqual([
+				{ kind: "added", file: "/repo/lobby.rogen.json" },
+			]);
+			expect(
+				update?.reports.map(({ build }) => build.config.file)
+			).toContain("/repo/lobby.rogen.json");
+			expect(await built("lobby")).toEqual(["A"]);
+		});
+
+		it("should rebuild an added config when its sources change", async () => {
+			await start([]);
+			await writeConfig("/repo/lobby.rogen.json", { rootDirs: ["more"] });
+			await fs.createDirectory("/repo/more");
+			await settle();
+
+			await fs.writeFile("/repo/more/B.luau", "");
+			await settle();
+
+			expect(await built("lobby")).toEqual(["B"]);
+		});
+
+		it("should stop building a config deleted while watching, and say so", async () => {
+			await writeConfig("/repo/lobby.rogen.json", {});
+			await start([]);
+
+			await fs.delete("/repo/lobby.rogen.json");
+			await settle();
+			const before = updates.length;
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(changeUpdates()[0].notices).toEqual([
+				{ kind: "removed", file: "/repo/lobby.rogen.json" },
+			]);
+			expect(
+				updates
+					.slice(before)
+					.flatMap(({ reports }) =>
+						reports.map(({ build }) => build.config.file)
+					)
+			).toEqual(["/repo/default.rogen.json"]);
+		});
+
+		it("should report a config added broken without building it", async () => {
+			await start([]);
+
+			await write("/repo/lobby.rogen.json", "{ broken");
+			await settle();
+
+			const update = changeUpdates().at(-1);
+			expect(update?.notices).toMatchObject([
+				{ kind: "broken", keptLastValid: false },
+			]);
+			expect(
+				update?.reports.map(({ build }) => build.config.file)
+			).not.toContain("/repo/lobby.rogen.json");
+		});
+
+		it("should not look for configs when the run named them", async () => {
+			await start(["default"]);
+
+			await writeConfig("/repo/lobby.rogen.json", {});
+			await settle();
+
+			expect(changeUpdates()).toEqual([]);
+		});
+
+		it("should ignore other files added to the folder", async () => {
+			await start([]);
+
+			await fs.writeFile("/repo/README.md", "");
+			await settle();
+
+			expect(changeUpdates()).toEqual([]);
+		});
+	});
+
+	it("should not call a warning fixed because the build that followed it failed", async () => {
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await start();
+
+		await fs.writeFile("/repo/src/init.luau", "");
+		await settle();
+
+		expect(updates.at(-1)?.reports[0].build.outcome).toBe("failed");
+		expect(updates.at(-1)?.reports[0].fixed).toEqual([]);
+	});
+
 	it("should check the sync dir when the config loads, and not again until it changes", async () => {
 		await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
 		await fs.writeFile("/repo/src/A.luau", "");

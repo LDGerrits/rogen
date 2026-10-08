@@ -12,6 +12,7 @@ import {
 	ConfigFileCheck,
 	ConfigSelection,
 	ConfigService,
+	EnclosingConfigs,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -39,7 +40,7 @@ export class CoreConfigService implements ConfigService {
 
 	constructor(
 		fileSystemService: FileSystemService,
-		environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
 			fileSystemService,
@@ -69,8 +70,19 @@ export class CoreConfigService implements ConfigService {
 		return CoreConfigSelection.load(
 			discovered.value,
 			this.loader,
-			overrides
+			overrides,
+			refs.length === 0
+				? {
+						directory: this.environmentService.cwd,
+						list: async () =>
+							(await this.discovery.find()).unwrapOr([]),
+					}
+				: undefined
 		);
+	}
+
+	findEnclosing(): Promise<EnclosingConfigs | undefined> {
+		return this.discovery.findEnclosing();
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

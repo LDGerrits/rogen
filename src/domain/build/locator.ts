@@ -92,10 +92,15 @@ export class Locator {
 				paths.length > 0 || instances.length > 0
 					? files
 					: locator.locate(),
-			instances: instances.map((reference) => ({
-				reference,
-				files: locator.locateInstance(reference),
-			})),
+			instances: instances.map((reference) => {
+				const files = locator.locateInstance(reference);
+				return {
+					reference,
+					files,
+					folders:
+						files.length === 0 ? locator.foldersFor(reference) : [],
+				};
+			}),
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});

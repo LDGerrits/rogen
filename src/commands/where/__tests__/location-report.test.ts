@@ -1,3 +1,4 @@
+import path from "path";
 import { FileLocation, InstanceLocation } from "../../../domain/build/build.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
@@ -823,12 +824,14 @@ describe("LocationReport", () => {
 								"ServerScriptService.Save"
 							)!,
 							files: [placed],
+							folders: [],
 						},
 						{
 							reference: InstanceReference.parse(
 								"ServerScriptService.Gone"
 							)!,
 							files: [],
+							folders: ["/repo/src/Inventory/Server"],
 						},
 					],
 				],
@@ -847,6 +850,7 @@ describe("LocationReport", () => {
 				{
 					instance: "ServerScriptService.Gone",
 					status: "noFile",
+					folders: [path.normalize("/repo/src/Inventory/Server")],
 					diagnostics: [],
 				},
 			]);

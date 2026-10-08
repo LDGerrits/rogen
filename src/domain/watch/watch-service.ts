@@ -33,6 +33,8 @@ export interface RebuildReport {
 	readonly unreported: readonly Diagnostic[];
 	/** The diagnostics of `build` that the block leaves out because the previous rebuild had them too. */
 	readonly repeated: readonly Diagnostic[];
+	/** The diagnostics of the previous rebuild that `build` no longer has. One that only changed its text, such as a count, is not fixed. */
+	readonly fixed: readonly Diagnostic[];
 	/** It failed with the same errors as the previous rebuild. */
 	readonly repeatedFailure: boolean;
 }

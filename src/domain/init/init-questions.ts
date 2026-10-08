@@ -4,6 +4,7 @@ import {
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -44,6 +45,20 @@ export class InitQuestions {
 		private readonly promptService: PromptService,
 		readonly interactive: boolean
 	) {}
+
+	/** Whether to start a project below `enclosing`'s configs, which would build the new folder into theirs as game code; a run that can't ask never does. */
+	async startNestedProject({
+		directory,
+		fileNames,
+	}: EnclosingConfigs): Promise<boolean | undefined> {
+		if (!this.interactive) return false;
+		return this.promptService.confirm({
+			message: `${directory} already has ${fileNames.join(", ")}. Start a separate project here anyway?`,
+			description:
+				"This folder may already be part of that project, and a project here would then be built twice.",
+			initialValue: false,
+		});
+	}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
 	async whatToAdd(agentFile?: string): Promise<Addition | undefined> {

@@ -119,6 +119,17 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should say where a new file for an instance no file places goes", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Inventory/Server/Save.luau");
+
+		await run({ _: ["ServerScriptService.Inventory.NewThing"] });
+
+		expect(printed()).toEqual([
+			"ServerScriptService.Inventory.NewThing -> no file places it · a new file goes in src/Inventory/Server/",
+		]);
+	});
+
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
 		await writeConfig("default.rogen.json", {
 			rootDirs: ["."],

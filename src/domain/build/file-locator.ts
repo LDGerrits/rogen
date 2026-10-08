@@ -50,6 +50,55 @@ export class FileLocator {
 			.sort(this.bySource);
 	}
 
+	/** Where a file for `reference` would go: the folders of the files placed directly under its nearest parent that has any, sorted. The init script of a folder counts as the folder. */
+	foldersFor(reference: InstanceReference): string[] {
+		const { separator } = reference;
+		const placed = [...this.scanned.values()].filter(
+			(location): location is PlacedLocation =>
+				location.status === "placed"
+		);
+		let parent = reference.text;
+		for (
+			let cut = parent.lastIndexOf(separator);
+			cut > 0;
+			cut = parent.lastIndexOf(separator)
+		) {
+			parent = parent.slice(0, cut);
+			const folders = new Set(
+				placed.flatMap((location) =>
+					[location.instancePath, ...(location.alsoAt ?? [])].flatMap(
+						(instancePath) =>
+							FileLocator.folderBeside(
+								location.source,
+								instancePath.join(separator),
+								parent,
+								separator
+							) ?? []
+					)
+				)
+			);
+			if (folders.size > 0) return [...folders].sort(compareStrings);
+		}
+		return [];
+	}
+
+	/** The folder a file at `key` shows is the one that holds the files placed directly under `parent`; none if it isn't placed directly under it. A folder's init script is placed as the folder, so it shows its parent's folder, or its own for `parent` itself. */
+	private static folderBeside(
+		source: string,
+		key: string,
+		parent: string,
+		separator: string
+	): string | undefined {
+		const isInit = new RojoFile(path.posix.basename(source)).isInit;
+		const folder = path.posix.dirname(source);
+		if (key === parent) return isInit ? folder : undefined;
+		const below = key.startsWith(parent + separator)
+			? key.slice(parent.length + 1)
+			: undefined;
+		if (below === undefined || below.includes(separator)) return undefined;
+		return isInit ? path.posix.dirname(folder) : folder;
+	}
+
 	private locateScanned(): Map<string, FileLocation> {
 		const { files, leftOut } = this.placement;
 		const all = new Map<string, FileLocation>();

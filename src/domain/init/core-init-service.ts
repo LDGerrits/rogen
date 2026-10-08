@@ -57,9 +57,31 @@ export class CoreInitService implements InitService {
 		const directory = await this.prepare(names);
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
-		return this.planIn(
-			directory.value,
-			new InitQuestions(this.promptService, interactive)
+		const questions = new InitQuestions(this.promptService, interactive);
+		const nested = await this.checkNested(directory.value, questions);
+		if (nested.isErr() || nested.value === "cancelled")
+			return nested.map(() => undefined);
+		return this.planIn(directory.value, questions);
+	}
+
+	/** A folder below a config is part of that config's game, so a run that can't ask refuses to start a project there. */
+	private async checkNested(
+		directory: InitDirectory,
+		questions: InitQuestions
+	): Promise<Result<"go" | "cancelled", Error>> {
+		if (directory.hasConfigs) return ok("go");
+		const enclosing = await this.configService.findEnclosing();
+		if (!enclosing) return ok("go");
+		const answer = await questions.startNestedProject(enclosing);
+		if (answer === undefined) return ok("cancelled");
+		if (answer) return ok("go");
+		if (questions.interactive) return ok("cancelled");
+		return err(
+			new Error(
+				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project. ` +
+					`To add to it, run rogen from there: cd ${enclosing.directory} && rogen init <name>. ` +
+					`To start a separate project here anyway, run rogen init without -y in a terminal.`
+			)
 		);
 	}
 

@@ -301,6 +301,26 @@ describe("RootScanner", () => {
 		});
 
 		describe("exclude", () => {
+			it("should leave a Rogen config out, as it is no game data", async () => {
+				await write(
+					"src/Keep.luau",
+					"src/Inventory/default.rogen.json",
+					"src/Inventory/lobby.rogen.json"
+				);
+
+				const { roots } = await scan();
+
+				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+				expect(
+					roots[0].leftOut.get(
+						toPosix(abs("src/Inventory/default.rogen.json"))
+					)
+				).toEqual({
+					status: "excluded",
+					pattern: "*.rogen.json",
+				});
+			});
+
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 

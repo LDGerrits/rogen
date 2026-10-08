@@ -728,6 +728,92 @@ describe("CoreBuildService.locate", () => {
 		});
 	});
 
+	describe("where an instance no file places would go", () => {
+		const foldersFor = async (...references: string[]) =>
+			foldersIn(configOf(), ...references);
+
+		const foldersIn = async (
+			config: ResolvedConfig,
+			...references: string[]
+		) => {
+			const located = (
+				await locateIn(buildService(), config, {
+					args: references,
+					cwd: abs(),
+				})
+			).unwrap();
+			return located.instances.map(({ folders }) => folders);
+		};
+
+		it("should name the folder of the files placed beside it", async () => {
+			await write(
+				"src/Inventory/Server/Save.luau",
+				"src/Inventory/Server/Load.luau",
+				"src/Inventory/Types.luau"
+			);
+
+			expect(
+				await foldersFor("ServerScriptService.Inventory.NewThing")
+			).toEqual([[abs("src/Inventory/Server")]]);
+		});
+
+		it("should name every folder that supplies the parent, sorted", async () => {
+			await write(
+				"src/Inventory/Server/Save.luau",
+				"extra/Inventory/Server/Load.luau"
+			);
+
+			expect(
+				await foldersIn(
+					configOf({ rootDirs: [abs("src"), abs("extra")] }),
+					"ServerScriptService.Inventory.NewThing"
+				)
+			).toEqual([
+				[abs("extra/Inventory/Server"), abs("src/Inventory/Server")],
+			]);
+		});
+
+		it("should count the init script that places the parent", async () => {
+			await write("src/Net/Server/Moves/init.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Net.Moves.Kick")
+			).toEqual([[abs("src/Net/Server/Moves")]]);
+		});
+
+		it("should name the folder beside a folder's init script for its sibling", async () => {
+			await write("src/Net/Server/Moves/init.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Net.NewThing")
+			).toEqual([[abs("src/Net/Server")]]);
+		});
+
+		it("should go up to the nearest parent something is placed in", async () => {
+			await write("src/Inventory/Server/Save.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Inventory.Deep.NewThing")
+			).toEqual([[abs("src/Inventory/Server")]]);
+		});
+
+		it("should name nothing for a service or an instance in an empty parent", async () => {
+			await write("src/Inventory/Server/Save.luau");
+
+			expect(await foldersFor("Workspace", "Workspace.Map.Tree")).toEqual(
+				[[], []]
+			);
+		});
+
+		it("should name nothing when files place the instance", async () => {
+			await write("src/Inventory/Server/Save.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Inventory.Save")
+			).toEqual([[]]);
+		});
+	});
+
 	it("should index the root dirs it reads itself", async () => {
 		await write("src/A.luau");
 
