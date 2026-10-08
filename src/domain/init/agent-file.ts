@@ -14,11 +14,10 @@ export class AgentFile {
 		private readonly claudeText: string | undefined
 	) {}
 
-	/** One file only: a `CLAUDE.md` that imports `AGENTS.md` would load the rules twice. */
-	static choose(
-		agentsText: string | undefined,
-		claudeText: string | undefined
-	): AgentFile {
+	/** One file only: a `CLAUDE.md` that imports `AGENTS.md` would load the rules twice. `textOf` gives the text of each of `FILE_NAMES`, or `undefined` when it isn't there. */
+	static choose(textOf: (fileName: string) => string | undefined): AgentFile {
+		const agentsText = textOf(AGENTS_MD);
+		const claudeText = textOf(CLAUDE_MD);
 		if (agentsText !== undefined)
 			return new AgentFile(AGENTS_MD, agentsText, claudeText);
 		return claudeText !== undefined
@@ -43,7 +42,7 @@ export class AgentFile {
 		return {
 			fileName: this.fileName,
 			content: `${this.text}${gap}${agentBlock}`,
-			appends: true,
+			addition: "Rogen's rules",
 		};
 	}
 

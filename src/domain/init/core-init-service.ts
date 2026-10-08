@@ -14,7 +14,6 @@ import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";
-import { AgentHookSetup } from "./agent-hook-setup.js";
 import { AgentHooks, AgentInUse } from "./agent-hooks.js";
 import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "./hook-target.js";
 import {
@@ -32,6 +31,12 @@ import { ExtendingConfigSetup } from "./extending-config-setup.js";
 type Asking = () => Promise<
 	Result<((builder: InitPlanBuilder) => void) | undefined, Diagnostic[]>
 >;
+
+/** An addition picked from What to add: the pick is the yes, so there is nothing left to ask. */
+const chosen =
+	(plan: (builder: InitPlanBuilder) => void): Asking =>
+	async () =>
+		ok(plan);
 
 function asking<C>(setup: Setup<C>): Asking {
 	return async () =>
@@ -151,55 +156,33 @@ export class CoreInitService implements InitService {
 		const { base } = directory;
 		if (!base && directory.hasConfigs)
 			return this.planWith(directory, questions, asking(projectSetup));
-		const read = await this.agentFileIn(directory);
-		if (read.isErr()) return read;
-		const agentFile = read.value;
-		const hooksRead = await this.agentHooksIn(directory);
-		if (hooksRead.isErr()) return hooksRead;
-		const hooks = hooksRead.value;
+		const agentFile = await this.agentFileIn(directory);
+		if (agentFile.isErr()) return agentFile;
+		const hooks = await this.agentHooksIn(directory);
+		if (hooks.isErr()) return hooks;
 		if (!base)
 			return this.planWith(
 				directory,
 				questions,
 				asking(projectSetup),
-				asking(new AgentSetup(agentFile, questions)),
-				asking(new AgentHookSetup(hooks, questions))
+				asking(new AgentSetup(agentFile.value, hooks.value, questions))
 			);
-		const offered = agentFile.hasBlock ? undefined : agentFile.fileName;
-		switch (await questions.whatToAdd(offered, hooks.agents)) {
-			case undefined:
-				return ok(undefined);
-			case "place":
-				return this.planWith(
-					directory,
-					questions,
-					asking(new PlaceSetup(directory, base, questions))
-				);
-			case "extending":
-				return this.planWith(
-					directory,
-					questions,
-					asking(new ExtendingConfigSetup(directory, questions))
-				);
-			case "separate":
-				return this.planWith(
-					directory,
-					questions,
-					asking(projectSetup)
-				);
-			case "agent":
-				return this.planWith(
-					directory,
-					questions,
-					asking(new AgentSetup(agentFile, questions, true))
-				);
-			case "hook":
-				return this.planWith(
-					directory,
-					questions,
-					asking(new AgentHookSetup(hooks, questions, true))
-				);
-		}
+		const offered = agentFile.value.hasBlock
+			? undefined
+			: agentFile.value.fileName;
+		const additions = {
+			place: () => asking(new PlaceSetup(directory, base, questions)),
+			extending: () =>
+				asking(new ExtendingConfigSetup(directory, questions)),
+			separate: () => asking(projectSetup),
+			agent: () =>
+				chosen((builder) => builder.addAgentFile(agentFile.value)),
+			hook: () => chosen((builder) => builder.addAgentHook(hooks.value)),
+		};
+		const addition = await questions.whatToAdd(offered, hooks.value.agents);
+		return addition === undefined
+			? ok(undefined)
+			: this.planWith(directory, questions, additions[addition]());
 	}
 
 	/** Asks each setup its questions in turn, then plans what the answers write. */
@@ -222,37 +205,22 @@ export class CoreInitService implements InitService {
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
 
-	/** Fails on a file it can't read rather than take it for missing, which would write over it. */
 	private async agentFileIn(
 		directory: InitDirectory
 	): Promise<Result<AgentFile, Error>> {
-		const texts: (string | undefined)[] = [];
+		const texts = new Map<string, string | undefined>();
 		for (const fileName of AgentFile.FILE_NAMES) {
-			if (!directory.has(fileName)) {
-				texts.push(undefined);
-				continue;
-			}
-			const text = await tryWithAsync(() =>
-				this.fileSystemService.readFile(
-					path.join(directory.path, fileName)
-				)
+			const text = await this.readIfThere(
+				directory,
+				fileName,
+				directory.has(fileName)
 			);
-			if (text.isErr())
-				return err(
-					new Error(
-						`Failed to read ${fileName}: ${text.error.message}`,
-						{
-							cause: text.error,
-						}
-					)
-				);
-			texts.push(text.value);
+			if (text.isErr()) return text;
+			texts.set(fileName, text.value);
 		}
-		const [agents, claude] = texts;
-		return ok(AgentFile.choose(agents, claude));
+		return ok(AgentFile.choose((fileName) => texts.get(fileName)));
 	}
 
-	/** Fails on an agent's hook file it can't read rather than take it for missing, which would write over it. */
 	private async agentHooksIn(
 		directory: InitDirectory
 	): Promise<Result<AgentHooks, Error>> {
@@ -280,12 +248,15 @@ export class CoreInitService implements InitService {
 		);
 	}
 
+	/** The text of `fileName`, or `undefined` when it isn't there. Fails on a file it can't read rather than take it for missing, which would write over it. */
 	private async readIfThere(
 		directory: InitDirectory,
-		fileName: string
+		fileName: string,
+		there?: boolean
 	): Promise<Result<string | undefined, Error>> {
 		const file = path.join(directory.path, fileName);
-		if (!(await this.fileSystemService.exists(file))) return ok(undefined);
+		if (!(there ?? (await this.fileSystemService.exists(file))))
+			return ok(undefined);
 		const text = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)
 		);

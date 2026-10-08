@@ -1,8 +1,7 @@
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { agentHook } from "./agent-hook.js";
-import { HookRegistration } from "./hook-registration.js";
-import { HOOK_SCRIPT_FILE, HookTarget } from "./hook-target.js";
+import { HOOK_SCRIPT_FILE, HookTarget, registerHook } from "./hook-target.js";
 
 /** An agent found in the project, and the text of its hook file if it has one. */
 export interface AgentInUse {
@@ -19,27 +18,30 @@ export interface AgentHooksState {
 
 /** The Stop hook that reports Rogen warnings about the files a turn changed, and what it takes to register it with each agent in use. */
 export class AgentHooks {
-	private readonly registrations: readonly {
+	/** The agents it still has to be registered with, and their hook files with it registered. */
+	private readonly registering: readonly {
 		readonly target: HookTarget;
-		readonly registration: HookRegistration;
+		readonly text: string;
 		/** Whether the agent's hook file is there to add to. */
 		readonly existed: boolean;
 	}[];
+	/** The agents whose hook file isn't plain JSON, so it can't be added to. */
+	private readonly unreadable: readonly HookTarget[];
 
 	constructor(private readonly state: AgentHooksState) {
-		this.registrations = state.inUse.map(({ target, text }) => ({
+		const registrations = state.inUse.map(({ target, text }) => ({
 			target,
-			registration: target.register(text),
+			registration: registerHook(text, target.hook),
 			existed: text !== undefined,
 		}));
-	}
-
-	private get registering() {
-		return this.registrations.flatMap(
+		this.registering = registrations.flatMap(
 			({ target, registration, existed }) =>
 				registration.kind === "added"
 					? [{ target, text: registration.text, existed }]
 					: []
+		);
+		this.unreadable = registrations.flatMap(({ target, registration }) =>
+			registration.kind === "unreadable" ? [target] : []
 		);
 	}
 
@@ -62,19 +64,16 @@ export class AgentHooks {
 			...this.registering.map(({ target, text, existed }) => ({
 				fileName: target.settingsFile,
 				content: text,
-				...(existed && { appends: true, summary: "the Rogen hook" }),
+				...(existed && { addition: "the Rogen hook" }),
 			})),
 		];
 	}
 
 	/** A file `init` left alone for a reason the user can act on. */
 	get notes(): string[] {
-		return this.registrations.flatMap(({ target, registration }) =>
-			registration.kind === "unreadable"
-				? [
-						`${target.settingsFile} isn't plain JSON, so it was left alone. Register ${HOOK_SCRIPT_FILE} in it by hand: ${DOCS_URL}/agents`,
-					]
-				: []
+		return this.unreadable.map(
+			({ settingsFile }) =>
+				`${settingsFile} isn't plain JSON, so it was left alone. Register ${HOOK_SCRIPT_FILE} in it by hand: ${DOCS_URL}/agents`
 		);
 	}
 

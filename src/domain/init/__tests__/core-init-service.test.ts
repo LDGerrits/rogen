@@ -184,7 +184,7 @@ describe("CoreInitService", () => {
 			expect(file).toEqual({
 				fileName: "AGENTS.md",
 				content: `# Team rules\n\nBe kind.\n\n${agentBlock}`,
-				appends: true,
+				addition: "Rogen's rules",
 			});
 		});
 
@@ -194,7 +194,7 @@ describe("CoreInitService", () => {
 			expect(await agentFile()).toEqual({
 				fileName: "CLAUDE.md",
 				content: `Use tabs.\n\n${agentBlock}`,
-				appends: true,
+				addition: "Rogen's rules",
 			});
 		});
 
@@ -395,8 +395,7 @@ describe("CoreInitService", () => {
 			const settings = fileOf(plan, CLAUDE);
 
 			expect(settings).toMatchObject({
-				appends: true,
-				summary: "the Rogen hook",
+				addition: "the Rogen hook",
 			});
 			expect(JSON.parse(settings?.content ?? "")).toMatchObject({
 				model: "opus",

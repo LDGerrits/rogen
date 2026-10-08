@@ -144,10 +144,10 @@ registerCommand(
 					logService.success(`Created ${item.directory}/.`);
 					return;
 				}
-				const { fileName, appends, summary } = item.file;
+				const { fileName, addition } = item.file;
 				logService.success(
-					appends
-						? `Added ${summary ?? "Rogen's rules"} to ${fileName}.`
+					addition !== undefined
+						? `Added ${addition} to ${fileName}.`
 						: `Created ${fileName}.`
 				);
 			});
@@ -189,7 +189,7 @@ registerCommand(
 				}
 				const file = path.join(plan.directory, item.file.fileName);
 				files.push(file);
-				if (item.file.appends) appended.push(file);
+				if (item.file.addition !== undefined) appended.push(file);
 			});
 			if (written.isErr())
 				return this.printJson(
