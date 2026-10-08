@@ -38,6 +38,71 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
 ````
 
+## Check changed files automatically
+
+The block asks an agent to run `rogen build` after it adds, moves or renames files. That depends on the agent remembering, and `rogen build` prints every warning in the project, including ones that were there before the agent started. A clean result still costs a tool call.
+
+[`rogen where --json`](/docs/v2/cli#json-output) lists, for each path, the diagnostics about it. A Claude Code `Stop` hook can use that to report only what the agent's own changes caused. It runs when Claude is about to end its turn, collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen where --json` on them, and reports each diagnostic it hasn't reported earlier in the session. On exit 2, Claude Code passes the report back to Claude, which then continues its turn.
+
+`Stop` and not `PostToolUse`, because `PostToolUse` only sees `Write` and `Edit`, so a move done with `mv` or `git mv` in Bash is invisible, and it would report half-finished states, such as `dev/Service.luau` written before its `prod/` partner. `Stop` checks the end state once per turn.
+
+```bash title=".claude/hooks/rogen-stop.sh"
+#!/usr/bin/env bash
+# Claude Code Stop hook: report new Rogen diagnostics about changed files before Claude ends its turn.
+session=$(jq -r .session_id)
+cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
+compgen -G '*.rogen.json' >/dev/null || exit 0
+
+mapfile -d '' changed < <(
+	git diff -z --name-only --relative --diff-filter=d HEAD 2>/dev/null
+	git ls-files -z --others --exclude-standard 2>/dev/null
+)
+((${#changed[@]})) || exit 0
+
+seen="$(git rev-parse --git-dir)/rogen-hook-$session"
+touch "$seen"
+report=$(rogen where --json "${changed[@]}" | jq -r --arg root "$PWD/" '
+	[(.diagnostics[] | {file, d: .}), (.locations[] | .source as $s | .diagnostics[] | {file: $s, d: .})]
+	| map("\(.file | ltrimstr($root)): \(.d.severity): \(.d.message) (\(.d.code))") | unique | .[]' |
+	grep -vxF -f "$seen")
+[[ -z $report ]] && exit 0
+printf '%s\n' "$report" >>"$seen"
+printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s\n' "$report" >&2
+exit 2
+```
+
+Make it executable (`chmod +x .claude/hooks/rogen-stop.sh`) and register it:
+
+```json title=".claude/settings.json"
+{
+	"hooks": {
+		"Stop": [
+			{ "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rogen-stop.sh" }] }
+		]
+	}
+}
+```
+
+Tried on a project with two configs and one warning already there (`Old@sevre.luau`):
+
+| Turn | Claude sees |
+|---|---|
+| Adds a clean file | nothing |
+| Adds `Buy@sever.luau`, and `git mv`s `Save.luau` to `Save.client.luau` | `route.strayAt` and `tree.deadScript`, one line each |
+| Stops again, same state | nothing, it was already reported |
+| Fixes the typo, adds `Tax.shared.luau` | only `route.dotRoute` |
+
+The warning that was there before never shows up, and the two configs' copies of each diagnostic collapse to one line. A run takes about 0.13 seconds.
+
+With the hook in place, the "run `rogen build` …" rule in the block is optional, so a repo that uses the hook may drop it.
+
+### Limits
+
+- **Your own changes count too.** The hook can't tell Claude's changes from your uncommitted ones, so a warning in a file you're editing is reported once per session.
+- **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`).
+- **It's Claude Code only.** Codex, Cursor and Gemini CLI each use a different hook format.
+- **It only runs where the project dir has a config.** `rogen` also finds configs in the nearest folder above, but the `compgen` check doesn't look there: drop that line when the configs live above the project dir.
+
 ## Install the skill
 
 For a repo that doesn't use `init`, the same text ships as a skill in [`skills/rogen`](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format that most coding agents understand. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
