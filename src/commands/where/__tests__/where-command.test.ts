@@ -259,6 +259,44 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should hint at a folder that doesn't exist when it is named with a trailing backslash", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		await run({ _: ["src\\Combat\\"] });
+
+		expect(printed()).toEqual([
+			"src/Combat -> does not exist · name a file in it to see where it would land",
+		]);
+	});
+
+	it.each([
+		[
+			"a file that doesn't exist yet",
+			"src\\Combat\\Hit.luau",
+			"src/Combat/Hit.luau",
+		],
+		["a folder", "src\\", "src/"],
+		[
+			"a path through ..",
+			"src\\Combat\\..\\A.luau",
+			"src/Combat/../A.luau",
+		],
+	])(
+		"should read a backslash as a separator, so %s answers as with slashes",
+		async (_, backslashed, slashed) => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/A.luau");
+
+			await run({ _: [slashed] });
+			const expected = printed();
+			logService.clear();
+			await run({ _: [backslashed] });
+
+			expect(printed()).toEqual(expected);
+		}
+	);
+
 	it("should not hint at a folder for a missing name without a trailing slash, which may be a file missing its extension", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await fs.createDirectory("/repo/src");
