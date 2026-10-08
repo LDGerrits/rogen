@@ -13,6 +13,7 @@ import { ConfigSet } from "../config-set.js";
 import { DerivedRoutes } from "../derived-routes.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { TemplateChoice } from "../starter-template.js";
 import { StartingRoutes } from "../starting-routes.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -67,7 +68,9 @@ const defaultProjectChoices = async (
 };
 
 interface ProjectPlanOptions {
-	readonly choices: ProjectChoices;
+	readonly choices: Omit<ProjectChoices, "template"> & {
+		readonly template: TemplateChoice;
+	};
 	readonly projectName: string;
 	readonly directory: string;
 	readonly existingFiles: ReadonlySet<string>;
@@ -87,7 +90,13 @@ const planProject = ({
 			new InitQuestions(new MockPromptService([], false), false),
 			new MemoryFileSystemService()
 		),
-		{ ...choices, ...(copiedTemplate !== undefined && { copiedTemplate }) },
+		{
+			...choices,
+			template:
+				choices.template.kind === "copy"
+					? { ...choices.template, content: copiedTemplate ?? "" }
+					: choices.template,
+		},
 		target
 	).map(legacyPlan);
 };
@@ -655,7 +664,7 @@ describe("ProjectSetup plan", () => {
 		});
 
 		const withTemplate = async (
-			template: ProjectChoices["template"],
+			template: TemplateChoice,
 			copiedTemplate?: string
 		) =>
 			planProject({
@@ -1477,7 +1486,11 @@ describe("an unattended run", () => {
 					false
 				)
 			).template
-		).toEqual({ kind: "copy", from: "default.project.json" });
+		).toEqual({
+			kind: "copy",
+			from: "default.project.json",
+			content: "{}",
+		});
 	});
 
 	it("should leave a project file that a config writes alone", async () => {

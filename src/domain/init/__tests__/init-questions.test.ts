@@ -1103,6 +1103,7 @@ describe("InitQuestions askProject template", () => {
 		expect(result?.template).toEqual({
 			kind: "copy",
 			from: "default.project.json",
+			content: "{}",
 		});
 		expect(result?.mounts).toEqual([
 			{
