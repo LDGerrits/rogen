@@ -71,6 +71,7 @@ describe("list command", () => {
 		await write("default.rogen.json", {
 			rootDirs: ["src", "lobby"],
 			syncDir: "out",
+			routes: { Server: "ServerScriptService", "*": "ReplicatedStorage" },
 			variants: ["mock", "dev", "prod"],
 		});
 
@@ -81,11 +82,68 @@ describe("list command", () => {
 		expect(under("default.rogen.json")).toEqual([
 			[
 				"root dirs: src, lobby",
+				"routes:",
+				"  Server -> ServerScriptService",
+				"  * -> ReplicatedStorage",
 				"sync dir: out",
 				"project file: default.project.json",
 				"variants: mock on, dev off, prod on",
 			].join("\n"),
 		]);
+	});
+
+	describe("routes", () => {
+		const routes = { Server: "ServerScriptService", "*": "Workspace" };
+
+		it("should say 'same as' for a place that inherits the routes of an earlier config", async () => {
+			await write("default.rogen.json", { routes });
+			await write("lobby.rogen.json", { extends: "default.rogen.json" });
+
+			await run();
+
+			expect(under("default.rogen.json")[0]).toContain(
+				"routes:\n  Server -> ServerScriptService\n  * -> Workspace"
+			);
+			expect(under("lobby.rogen.json").at(-1)).toContain(
+				"routes: same as default"
+			);
+		});
+
+		it("should print the routes of a place that overrides one", async () => {
+			await write("default.rogen.json", { routes });
+			await write("lobby.rogen.json", {
+				extends: "default.rogen.json",
+				routes: { Server: "Workspace" },
+			});
+
+			await run();
+
+			const details = under("lobby.rogen.json").at(-1)!;
+			expect(details).not.toContain("same as");
+			expect(details).toContain("  Server -> Workspace");
+		});
+
+		it("should not call routes the same when only their order differs", async () => {
+			await write("a.rogen.json", {
+				routes: { Server: "Workspace", Client: "Workspace" },
+			});
+			await write("b.rogen.json", {
+				routes: { Client: "Workspace", Server: "Workspace" },
+			});
+
+			await run();
+
+			expect(under("b.rogen.json")[0]).not.toContain("same as");
+		});
+
+		it("should print none for a broken config", async () => {
+			await write("a.rogen.json", { routes });
+			await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
+
+			await run();
+
+			expect(under("b.rogen.json").join("\n")).not.toContain("routes");
+		});
 	});
 
 	it("should say so when there is no sync dir and no variant", async () => {

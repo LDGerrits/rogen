@@ -112,7 +112,7 @@ A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `
 
 ### `list [config…]`
 
-Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file, every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`), the mode it builds in and every mode it declares (`mode: dev`, `modes: dev, qa, prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, its resolved routes (`Server -> ServerScriptService`, one per line, or `routes: same as default` when an earlier config in the list has the same), sync directory, project file, every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`), the mode it builds in and every mode it declares (`mode: dev`, `modes: dev, qa, prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
 ### `help [name]`
 

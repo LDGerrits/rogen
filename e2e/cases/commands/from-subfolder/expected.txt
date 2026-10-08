@@ -26,12 +26,17 @@ stdout:
   rogen list · in ../..
   ../../default.rogen.json
     root dirs: ..
+    routes:
+      Server -> ServerScriptService
+      Shared -> ReplicatedStorage/Shared
+      * -> ReplicatedStorage/Shared
     sync dir: (none)
     project file: ../../default.project.json
     variants: (none)
   ../../lobby.rogen.json
     extends: ../../default.rogen.json
     root dirs: ..
+    routes: same as default
     sync dir: (none)
     project file: ../../out/lobby.project.json
     variants: (none)
