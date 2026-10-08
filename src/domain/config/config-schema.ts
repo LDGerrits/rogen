@@ -7,7 +7,10 @@ import {
 	MergePolicies,
 	MergePolicy,
 } from "../../platform/config/config-models.js";
-import { RogenConfig } from "./config.js";
+import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
+import { DeclaredKeys, RogenConfig } from "./config.js";
+
+const NAME_PATTERN = DeclaredKeys.NAME.source;
 
 const routesSchema: JSONSchema = {
 	type: "object",
@@ -18,12 +21,26 @@ const routesSchema: JSONSchema = {
 		"ReplicatedStorage. Only declared " +
 		"keys route: there is no built-in set, so an absent or empty " +
 		"routes leaves every file unrouted (rogen init writes a starting set).",
-	additionalProperties: { type: "string" },
+	propertyNames: {
+		pattern: `^(${NAME_PATTERN.slice(1, -1)}|\\${DeclaredKeys.FALLBACK_ROUTE})$`,
+	},
+	additionalProperties: {
+		type: "string",
+		pattern: `^(${SUPPORTED_SERVICES.join("|")})(/[^/]+)*$`,
+		examples: [
+			"ServerScriptService",
+			"StarterPlayer/StarterPlayerScripts",
+			"ReplicatedStorage/Shared",
+			"ReplicatedFirst",
+			"ServerStorage",
+			"StarterGui",
+		],
+	},
 };
 
 const variantsSchema: JSONSchema = {
 	type: "array",
-	items: { type: "string" },
+	items: { type: "string", pattern: NAME_PATTERN },
 	default: [],
 	description:
 		"Every variant this project uses. A variant is a switch: off unless " +
@@ -48,6 +65,7 @@ const modesSchema: JSONSchema = {
 		"mode marks files like a variant does (Service.prod.luau, a prod " +
 		"folder, a .prod marker), turns variants on and excludes globs, " +
 		'never changes where files go. "mode" or --mode picks the active one.',
+	propertyNames: { pattern: NAME_PATTERN },
 	additionalProperties: {
 		type: "object",
 		additionalProperties: false,
@@ -117,6 +135,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 		merge: "replace",
 		schema: {
 			type: "string",
+			pattern: NAME_PATTERN,
 			description:
 				'The mode this config builds in, unless --mode says otherwise. Required when "modes" is declared.',
 		},

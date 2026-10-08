@@ -52,7 +52,7 @@ There are twelve fields, none nested more than two levels. `modes` is the only o
 
 | Field | Default | What it does |
 |---|---|---|
-| `$schema` | none | The published JSON schema, for editor validation and completion. Not inherited. |
+| `$schema` | none | The published JSON schema, for editor validation and completion. It underlines a route key or a variant, mode or `mode` name that isn't letters and digits, and a route target that doesn't start with a service, and offers the common targets as completions. Not inherited. |
 | `extends` | none | Another `*.rogen.json` to inherit from. See [Extending Configs](#extending-configs). |
 | `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. A config adds its entries to those of the config it extends. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |

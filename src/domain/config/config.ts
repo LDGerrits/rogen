@@ -149,7 +149,7 @@ export class DeclaredKeys {
 	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";
 
-	private static readonly NAME = /^[A-Za-z][A-Za-z0-9]*$/;
+	static readonly NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 
 	/** Every route key but the fallback, which no name can spell. */
 	readonly routeKeys: ReadonlySet<string>;
