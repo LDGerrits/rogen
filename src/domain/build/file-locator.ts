@@ -125,9 +125,8 @@ export class FileLocator {
 			path.posix.dirname(target),
 			path.posix.basename(target)
 		);
-		const folder =
-			!exists &&
-			(folders.has(target) || !path.posix.basename(target).includes("."));
+		// Only a trailing separator says folder: a bare `Module` is as likely a file missing its extension.
+		const folder = !exists && folders.has(target);
 		return [
 			{
 				status: exists ? "ignored" : "missing",

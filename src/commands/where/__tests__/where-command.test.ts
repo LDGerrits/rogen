@@ -248,15 +248,24 @@ describe("where command", () => {
 		expect(printed()).toEqual(["No files in the root dirs (src)."]);
 	});
 
-	it("should hint at a folder that doesn't exist, with or without the trailing slash", async () => {
+	it("should hint at a folder that doesn't exist when it is named with a trailing slash", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await fs.createDirectory("/repo/src");
 
-		await run({ _: ["src/Combat/", "src/Combat"] });
+		await run({ _: ["src/Combat/"] });
 
 		expect(printed()).toEqual([
 			"src/Combat -> does not exist · name a file in it to see where it would land",
 		]);
+	});
+
+	it("should not hint at a folder for a missing name without a trailing slash, which may be a file missing its extension", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		await run({ _: ["src/Module"] });
+
+		expect(printed()).toEqual(["src/Module -> does not exist"]);
 	});
 
 	it("should print the require expression of a module under --verbose, dimmed under its line", async () => {

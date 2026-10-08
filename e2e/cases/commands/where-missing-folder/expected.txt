@@ -6,7 +6,7 @@ stdout:
 $ rogen where src/Combat
 exit 0
 stdout:
-  src/Combat -> does not exist · name a file in it to see where it would land
+  src/Combat -> does not exist
 
 $ rogen where src/Combat/Hit.luau
 exit 0
