@@ -184,6 +184,14 @@ export class Placement {
 					),
 				})
 			),
+			modes: this.config.modes.map((mode) => {
+				const on = mode === this.config.mode;
+				return {
+					mode,
+					on,
+					files: carrying(mode, on ? placedVariants : prunedVariants),
+				};
+			}),
 			unrouted: this.leftOut.count("unrouted"),
 			replaced: this.leftOut.count("replaced"),
 			displaced: this.leftOut.count("displaced"),

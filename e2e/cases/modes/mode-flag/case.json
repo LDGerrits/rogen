@@ -1,0 +1,22 @@
+{
+	"steps": [
+		[
+			"build",
+			"--mode",
+			"prod"
+		],
+		[
+			"where",
+			"src",
+			"--mode",
+			"prod"
+		],
+		[
+			"where",
+			"src/Service.dev.luau",
+			"--mode",
+			"prod",
+			"--json"
+		]
+	]
+}

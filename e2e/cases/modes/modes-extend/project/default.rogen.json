@@ -1,0 +1,11 @@
+{
+	"extends": "./base.rogen.json",
+	"modes": {
+		"prod": {
+			"exclude": [
+				"Tools"
+			]
+		},
+		"staging": {}
+	}
+}

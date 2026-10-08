@@ -1,4 +1,11 @@
 {
 	"title": "Core Concepts",
-	"pages": ["routing", "variants", "project-layout", "requires", "output"]
+	"pages": [
+		"routing",
+		"variants",
+		"modes",
+		"project-layout",
+		"requires",
+		"output"
+	]
 }

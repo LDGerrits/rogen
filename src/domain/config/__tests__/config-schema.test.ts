@@ -1,4 +1,9 @@
-import { configDefaults, configSchema } from "../config-schema.js";
+import { JSONSchema } from "../../../base/json-schema.js";
+import {
+	configDefaults,
+	configMergePolicies,
+	configSchema,
+} from "../config-schema.js";
 
 describe("domain/config/config-schema", () => {
 	describe("configSchema", () => {
@@ -10,6 +15,8 @@ describe("domain/config/config-schema", () => {
 			"rootDirs",
 			"routes",
 			"variants",
+			"modes",
+			"mode",
 			"exclude",
 			"template",
 			"syncDir",
@@ -26,7 +33,6 @@ describe("domain/config/config-schema", () => {
 			"luau",
 			"ts",
 			"darklua",
-			"modes",
 			"profiles",
 			"outputs",
 			"sourceProject",
@@ -68,6 +74,11 @@ describe("domain/config/config-schema", () => {
 				expect(schema.properties!.exclude.default).toEqual([]);
 			});
 
+			it("has no static default for modes or mode", () => {
+				expect(schema.properties!.modes.default).toBeUndefined();
+				expect(schema.properties!.mode.default).toBeUndefined();
+			});
+
 			it("has no static default for template, syncDir or outFile", () => {
 				expect(schema.properties!.template.default).toBeUndefined();
 				expect(schema.properties!.syncDir.default).toBeUndefined();
@@ -79,6 +90,39 @@ describe("domain/config/config-schema", () => {
 			for (const field of ROOT_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
+		});
+	});
+
+	describe("mode bodies", () => {
+		it("hold only variants and exclude", () => {
+			const body = configSchema.properties!.modes
+				.additionalProperties as JSONSchema;
+
+			expect(body.additionalProperties).toBe(false);
+			expect(Object.keys(body.properties!).sort()).toEqual([
+				"exclude",
+				"variants",
+			]);
+		});
+	});
+
+	describe("configMergePolicies", () => {
+		it("names a policy for every field", () => {
+			expect(Object.keys(configMergePolicies).sort()).toEqual(
+				Object.keys(configSchema.properties!).sort()
+			);
+		});
+
+		it("adds list entries, merges maps and replaces strings", () => {
+			expect(configMergePolicies).toMatchObject({
+				rootDirs: "append",
+				exclude: "append",
+				routes: "merge",
+				variants: "merge",
+				template: "replace",
+				syncDir: "replace",
+				mode: "replace",
+			});
 		});
 	});
 

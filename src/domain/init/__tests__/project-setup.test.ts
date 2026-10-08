@@ -159,6 +159,58 @@ describe("ProjectSetup plan", () => {
 			).toEqual(["src", "places/lobby", "places/match"]);
 		});
 	});
+	describe("modes", () => {
+		const modesOf = async (spec: WorkspaceSpec, modes: boolean) => {
+			const choices = {
+				...(await defaultProjectChoices(
+					spec,
+					"default",
+					new Set(),
+					false
+				)),
+				modes,
+			};
+			const files = planProject({
+				choices,
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(),
+			}).unwrap();
+			return {
+				config: configOf(files, "default.rogen.json"),
+				edits: files.nextSteps.edits,
+			};
+		};
+
+		it("should write dev and prod, prod leaving out Luau specs", async () => {
+			const { config, edits } = await modesOf(luau, true);
+
+			expect(config.modes).toEqual({
+				dev: {},
+				prod: { exclude: ["**/*.spec.luau"] },
+			});
+			expect(edits).toContain(
+				"Build a release without specs with rogen build --mode prod; default.rogen.json declares the modes."
+			);
+		});
+
+		it("should leave out roblox-ts specs by their source extension", async () => {
+			const { config } = await modesOf(
+				{ ...luau, language: "roblox-ts" },
+				true
+			);
+
+			expect(config.modes?.prod.exclude).toEqual(["**/*.spec.ts"]);
+		});
+
+		it("should write no modes unless asked to", async () => {
+			const { config, edits } = await modesOf(luau, false);
+
+			expect(config).not.toHaveProperty("modes");
+			expect(edits.join("\n")).not.toContain("--mode");
+		});
+	});
+
 	it("should write default.rogen.json for the default name", async () => {
 		const { configs } = await plan(luau);
 

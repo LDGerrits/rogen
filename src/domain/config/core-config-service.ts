@@ -21,6 +21,7 @@ import { ManagedConfig } from "./managed-config.js";
 function overridesOf(options: ConfigOptionValues): ConfigOverrides {
 	return {
 		outFile: options["out-file"],
+		mode: options.mode,
 		variants: {
 			...Object.fromEntries(
 				(options.variant ?? []).map((variant) => [variant, true])

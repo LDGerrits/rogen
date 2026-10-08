@@ -1,0 +1,8 @@
+$ rogen build default
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.rogen.json · not loaded
+  base.rogen.json:3:3 - error: root dir "src/lib" is inside root dir "src"; a file under it would belong to both. Remove one.

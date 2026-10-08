@@ -18,14 +18,18 @@ const reportOf = (
 		diagnostics?: Diagnostic[],
 	][],
 	everyFile = false,
-	errors: Diagnostic[] = []
+	errors: Diagnostic[] = [],
+	modes: Parameters<typeof mockConfig>[0] = {}
 ) =>
 	new LocationReport("/repo", {
 		everyFile,
 		errors,
 		configs: configs.map(
 			([label, files, instances = [], diagnostics = []]) => ({
-				config: mockConfig({ file: `/repo/${label}.rogen.json` }),
+				config: mockConfig({
+					file: `/repo/${label}.rogen.json`,
+					...modes,
+				}),
 				files,
 				instances,
 				diagnostics,
@@ -132,6 +136,123 @@ describe("LocationReport", () => {
 			).toBe(
 				"src/Http.mock.luau -> pruned · variant mock is off (suffix)"
 			);
+		});
+
+		describe("in a mode", () => {
+			const inMode = { modes: { dev: {}, prod: {} }, mode: "dev" };
+			const lineIn = (location: FileLocation) =>
+				reportOf(
+					[["default", [location]]],
+					false,
+					[],
+					inMode
+				).lines()[0];
+
+			it("should say the mode is another than the one that marks a pruned file", () => {
+				expect(
+					lineIn({
+						status: "pruned",
+						source: "/repo/src/Service.prod.luau",
+						exists: true,
+						variants: [{ variant: "prod", form: "suffix" }],
+					})
+				).toBe(
+					"src/Service.prod.luau -> pruned · mode is dev, not prod"
+				);
+			});
+
+			it("should keep the variant wording for a variant that prunes a file", () => {
+				expect(
+					lineIn({
+						status: "pruned",
+						source: "/repo/src/Http.mock.luau",
+						exists: true,
+						variants: [{ variant: "mock", form: "suffix" }],
+					})
+				).toBe(
+					"src/Http.mock.luau -> pruned · variant mock is off (suffix)"
+				);
+			});
+
+			it("should name a mode a placed file carries as a mode", () => {
+				expect(
+					lineIn({
+						status: "placed",
+						source: "/repo/src/Service.dev.luau",
+						exists: true,
+						instancePath: ["ReplicatedStorage", "Service"],
+						route: "*",
+						routeMatch: "fallback",
+						variants: [{ variant: "dev", form: "suffix" }],
+					})
+				).toBe(
+					"src/Service.dev.luau -> ReplicatedStorage/Service · route * (fallback) · mode dev (suffix)"
+				);
+			});
+
+			it("should name each carried switch's kind when a file carries both", () => {
+				expect(
+					lineIn({
+						status: "placed",
+						source: "/repo/src/Service.dev.mock.luau",
+						exists: true,
+						instancePath: ["ReplicatedStorage", "Service"],
+						route: "*",
+						routeMatch: "fallback",
+						variants: [
+							{ variant: "dev", form: "suffix" },
+							{ variant: "mock", form: "suffix" },
+						],
+					})
+				).toBe(
+					"src/Service.dev.mock.luau -> ReplicatedStorage/Service · route * (fallback) · mode dev (suffix), variant mock (suffix)"
+				);
+			});
+
+			it("should add the mode to each location in the JSON form", () => {
+				const [location] = reportOf(
+					[
+						[
+							"default",
+							[
+								{
+									status: "excluded",
+									source: "/repo/src/A.spec.luau",
+									exists: true,
+									pattern: "/repo/**/*.spec.luau",
+								},
+							],
+						],
+					],
+					false,
+					[],
+					inMode
+				).json().locations;
+
+				expect(location).toMatchObject({
+					config: "default",
+					mode: "dev",
+					status: "excluded",
+				});
+			});
+
+			it("should leave the mode out of a config that declares none", () => {
+				const [location] = reportOf([
+					[
+						"default",
+						[
+							{
+								status: "excluded",
+								source: "/repo/src/A.spec.luau",
+								exists: true,
+								pattern: "/repo/**/*.spec.luau",
+							},
+						],
+					],
+				]).json().locations;
+
+				expect(location).not.toHaveProperty("mode");
+			});
 		});
 
 		it("should name the template node that mounts a path", () => {

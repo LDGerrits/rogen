@@ -9,6 +9,7 @@ export class ManagedConfig {
 	private config: Config | undefined;
 	private _files: readonly string[] = [];
 	private _skippedVariants: readonly string[] | undefined;
+	private _modes: readonly string[] | undefined;
 
 	constructor(
 		readonly file: string,
@@ -32,6 +33,11 @@ export class ManagedConfig {
 		return this._skippedVariants;
 	}
 
+	/** The modes the config declares; `undefined` when its chain could not be read. */
+	get modes(): readonly string[] | undefined {
+		return this._modes;
+	}
+
 	reads(changed: ReadonlySet<string>): boolean {
 		return this._files.some((file) => changed.has(file));
 	}
@@ -42,6 +48,7 @@ export class ManagedConfig {
 		const fields = { file: this.file, parents: loaded.chain.slice(1) };
 		this._files = loaded.files;
 		this._skippedVariants = loaded.skippedVariants;
+		this._modes = loaded.modes;
 
 		if (loaded.resolved.isOk()) {
 			this.config = loaded.config;

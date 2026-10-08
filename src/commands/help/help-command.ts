@@ -37,6 +37,11 @@ const TOPICS: readonly HelpTopic[] = [
 		description: "Files that swap in when a variant is on.",
 	},
 	{
+		name: "modes",
+		description:
+			"One environment per build, like dev or prod, picked with --mode.",
+	},
+	{
 		name: "config",
 		description: "Config fields, extends, places, templates and sync dirs.",
 	},

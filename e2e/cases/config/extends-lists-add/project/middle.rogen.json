@@ -1,0 +1,9 @@
+{
+	"extends": "./core.rogen.json",
+	"rootDirs": [
+		"places/lobby"
+	],
+	"exclude": [
+		"**/*.story.luau"
+	]
+}

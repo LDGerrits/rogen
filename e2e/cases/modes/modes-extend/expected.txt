@@ -1,0 +1,42 @@
+$ rogen list default --mode prod --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "status": "valid",
+        "extends": [
+          "<dir>/base.rogen.json"
+        ],
+        "projectName": "project",
+        "rootDirs": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "Server": "ServerScriptService",
+          "*": "ReplicatedStorage/Shared"
+        },
+        "variants": {
+          "mock": false
+        },
+        "mode": "prod",
+        "modes": [
+          "dev",
+          "prod",
+          "staging"
+        ],
+        "exclude": [
+          "<dir>/**/_*",
+          "<dir>/**/*.spec.luau",
+          "<dir>/Tools"
+        ],
+        "template": null,
+        "syncDir": null,
+        "outFile": "<dir>/default.project.json",
+        "diagnostics": []
+      }
+    ]
+  }

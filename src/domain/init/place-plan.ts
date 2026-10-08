@@ -48,13 +48,13 @@ export class PlacePlan {
 
 	/** The configs, the compiler's own files and the one-time edits, which a project sets up for every place. */
 	planFiles(builder: InitPlanBuilder): void {
-		const { configSet, rootDirs, syncDir, compiled } = this;
-		builder.addDirectory(this.folder);
+		const { configSet, folder, syncDir, compiled } = this;
+		builder.addDirectory(folder);
 		configSet.planConfigs(
 			builder,
 			{
 				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
-				rootDirs,
+				rootDirs: [folder],
 			},
 			syncDir
 		);

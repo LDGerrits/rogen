@@ -8,6 +8,7 @@ import { RojoTree } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
+import { ModeCheck } from "./mode-check.js";
 import { Placement, Placer } from "./placement.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
@@ -34,6 +35,7 @@ export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
 	private readonly assembler: TreeAssembler;
 	private readonly syncDirCheck: SyncDirCheck;
+	private readonly modeCheck: ModeCheck;
 
 	constructor(
 		fileSystemService: FileSystemService,
@@ -43,6 +45,7 @@ export class ConfigBuilder {
 		this.metaReader = new MetaReader(fileSystemService);
 		this.assembler = new TreeAssembler();
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
+		this.modeCheck = new ModeCheck(index, tools);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */
@@ -59,14 +62,18 @@ export class ConfigBuilder {
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
 		const assembled = await this.assemble(placement.value);
-		if (assembled.isErr()) return err(new DiagnosticsError(assembled.error));
+		if (assembled.isErr())
+			return err(new DiagnosticsError(assembled.error));
 		const { meta, assembly } = assembled.value;
 		return ok({
 			config,
 			tree: assembly.tree,
 			summary: placement.value.summary(),
 			findings: {
-				warnings: new BuildValidator(assembly).validate(),
+				warnings: [
+					...new BuildValidator(assembly).validate(),
+					...this.modeCheck.check(config, placement.value),
+				],
 				syncWarnings:
 					syncWarnings ??
 					(await this.syncDirCheck.check(placement.value)),
@@ -87,7 +94,12 @@ export class ConfigBuilder {
 			placement: placement.value,
 			diagnostics: assembled.isErr()
 				? assembled.error
-				: new BuildValidator(assembled.value.assembly).validate(),
+				: [
+						...new BuildValidator(
+							assembled.value.assembly
+						).validate(),
+						...this.modeCheck.check(config, placement.value),
+					],
 		});
 	}
 

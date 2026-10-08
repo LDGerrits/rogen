@@ -419,6 +419,31 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
+		it("should name the mode a config built in", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const { document } = await buildJson(
+				new MockConfigService([
+					buildable({ modes: { dev: {}, prod: {} }, mode: "prod" }),
+				])
+			);
+
+			expect(document.configs[0]).toMatchObject({
+				config: "default",
+				mode: "prod",
+			});
+		});
+
+		it("should leave the mode out for a config without modes", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const { document } = await buildJson(
+				new MockConfigService([buildable()])
+			);
+
+			expect(document.configs[0]).not.toHaveProperty("mode");
+		});
+
 		it("should say unchanged for a project file that was already up to date", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await run(
@@ -624,6 +649,8 @@ describe("build command", () => {
 				"dev",
 				"--no-variant",
 				"prod",
+				"--mode",
+				"release",
 				"--json"
 			).unwrap();
 
@@ -633,6 +660,7 @@ describe("build command", () => {
 				"out-file": "out.project.json",
 				variant: ["mock", "dev"],
 				"no-variant": ["prod"],
+				mode: "release",
 				json: true,
 			});
 		});

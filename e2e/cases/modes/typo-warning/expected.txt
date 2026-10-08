@@ -1,0 +1,19 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode dev
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared mode, so it is read as an ordinary name:
+    src/Service.prd.luau (did you mean ".prod"?)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Service: ModuleScript  <- src/Service.dev.luau
+      Service.prd: ModuleScript  <- src/Service.prd.luau

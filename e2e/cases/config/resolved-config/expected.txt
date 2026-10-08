@@ -24,6 +24,8 @@ stdout:
         "variants": {
           "mock": true
         },
+        "mode": null,
+        "modes": [],
         "exclude": [
           "<dir>/**/*.spec.luau"
         ],

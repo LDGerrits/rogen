@@ -15,7 +15,6 @@ Game: DataModel
       Lib: ModuleScript  <- Packages/Lib.luau
     shared: Folder
       Analytics: ModuleScript  <- src/Analytics.mock.luau
-      Save.spec: ModuleScript  <- src/Save.spec.luau
   ServerScriptService: ServerScriptService
     Save: Script  <- src/Save.server.luau
   TextChatService: TextChatService

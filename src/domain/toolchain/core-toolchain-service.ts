@@ -3,6 +3,7 @@ import { DarkluaDetector } from "./darklua-detector.js";
 import { Luau } from "./luau.js";
 import { PackageManagerDetector } from "./package-manager-detector.js";
 import { SyncTool } from "../build/build.js";
+import { TestRunnerDetector } from "./test-runner-detector.js";
 import { ROBLOX_TS_SYNC_TOOL, RobloxTsDetector } from "./roblox-ts.js";
 import { Darklua, DetectedWorkspace } from "./toolchain.js";
 import { ToolchainService } from "./toolchain-service.js";
@@ -25,6 +26,7 @@ export class CoreToolchainService implements ToolchainService {
 			darklua,
 			new DarkluaDetector(fileSystemService, darklua),
 			new PackageManagerDetector(fileSystemService),
+			new TestRunnerDetector(fileSystemService),
 			[new Luau(), new RobloxTsDetector(fileSystemService)]
 		);
 	}

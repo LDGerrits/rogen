@@ -30,7 +30,6 @@ lobby.rogen.json:
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./default.rogen.json",
 	"rootDirs": [
-		"src",
 		"places/lobby"
 	]
 }

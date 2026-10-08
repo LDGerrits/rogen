@@ -44,7 +44,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
   </Tab>
 </Tabs>
 
-There are nine fields, none nested more than one level. Unknown keys and wrong types are errors.
+There are eleven fields, none nested more than two levels. `modes` is the only one that nests a map in a map. Unknown keys and wrong types are errors.
 
 ---
 
@@ -54,10 +54,12 @@ There are nine fields, none nested more than one level. Unknown keys and wrong t
 |---|---|---|
 | `$schema` | none | The published JSON schema, for editor validation and completion. Not inherited. |
 | `extends` | none | Another `*.rogen.json` to inherit from. See [Extending Configs](#extending-configs). |
-| `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. |
+| `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. A config adds its entries to those of the config it extends. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |
 | `variants` | `{}` | Every variant the project uses, and whether it's on. See [Variants](/docs/v2/core-concepts/variants). |
-| `exclude` | `[]` | Globs for files that are never built. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
+| `modes` | none | Named environments, exactly one active per build. See [Modes](/docs/v2/core-concepts/modes). |
+| `mode` | first declared | The mode this config builds in unless `--mode` says otherwise. |
+| `exclude` | `[]` | Globs for files that are never built, scanned or mounted by the template. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
 | `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |
@@ -73,18 +75,19 @@ Use `extends` when a config is a small variation on another: a second place, oth
 ```json title="lobby.rogen.json"
 {
 	"extends": "./default.rogen.json",
-	"rootDirs": ["src", "places/lobby"]
+	"rootDirs": ["places/lobby"]
 }
 ```
 
 | Kind | Fields | Behavior |
 |---|---|---|
-| Map | `routes`, `variants` | merged key by key; the child wins |
-| List | `rootDirs`, `exclude` | the child replaces |
-| String | `syncDir`, `template` | the child replaces |
+| Map | `routes`, `variants` | merged key by key; the child wins a key |
+| Map of blocks | `modes` | merged by name; each block merges by these same rules, so a child adds to the parent's `prod` |
+| List | `rootDirs`, `exclude` | the child's entries are added after the parent's; a repeated entry keeps its last position |
+| String | `syncDir`, `template`, `mode` | the child replaces |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
 
-A child can add or replace values but never remove them. To drop something, flip the chain so the config without it is the parent, or `exclude` the files. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.
+A child adds to its parent and never removes. To drop something, flip the chain so the config without it is the parent. A default applies only when no config in the chain sets the field, so a parent that leaves out `rootDirs` contributes no `src` once a child sets its own. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.
 
 `rogen list --json` prints a config fully resolved, with defaults filled in and paths made absolute.
 

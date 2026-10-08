@@ -47,7 +47,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Suffix**: The end of a name that routes it or marks a variant. Routes use `@` (`Save@server.luau`, `Matchmaking@server/`), variants use a dot (`Analytics.mock.luau`), and Rojo's `.server` and `.client` route too when a key of that name exists. See [Routing](/docs/v2/core-concepts/routing#the--sign).
 
-- **Declared key**: A route key or a variant. Both are recognized as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
+- **Declared key**: A route key, a variant or a mode. All three are recognized as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
 
 - **Marker file**: An empty file named after a declared key with its sign, `@server` for a route and `.mock` for a variant, which applies it to its folder and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
 
@@ -68,9 +68,13 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Variant folder**: A folder named after a declared variant. It never appears in the tree. See [Variants](/docs/v2/core-concepts/variants#variant-folders).
 
-- **Pruned**: Left out of the output because the file belongs to a dormant variant. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Mode**: A named environment declared in `modes`, such as `dev` or `prod`, of which exactly one is active per build. It marks files like a variant does and can switch variants and add excludes, but never changes where files go. See [Modes](/docs/v2/core-concepts/modes).
 
-- **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
+- **Active mode**: The mode the build runs in, picked by `--mode`, the config's `mode` field, or the first one declared. See [Modes](/docs/v2/core-concepts/modes#picking-the-mode).
+
+- **Pruned**: Left out of the output because the file belongs to a dormant variant or to a mode that isn't active. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+
+- **Excluded**: Left out of the output because the file, or the template `$path` that mounts it, matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
 
 - **Mounted**: Left out of the scan because a template `$path` points at it, inside a root directory. Rojo reads it as it is, and Rogen neither routes it nor warns about it. See [Output and Sync](/docs/v2/core-concepts/output#template).
 

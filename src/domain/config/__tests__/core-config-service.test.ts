@@ -14,6 +14,7 @@ interface Refs {
 	readonly names?: string[];
 	readonly overrides?: {
 		readonly outFile?: string;
+		readonly mode?: string;
 		readonly variants: Record<string, boolean>;
 	};
 }
@@ -56,6 +57,7 @@ describe("domain/config/core-config-service", () => {
 		service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
 		const result = await service.select(names, {
 			"out-file": overrides?.outFile,
+			mode: overrides?.mode,
 			variant: variants
 				.filter(([, on]) => on)
 				.map(([variant]) => variant),
@@ -443,23 +445,100 @@ describe("domain/config/core-config-service", () => {
 			});
 		});
 
-		it("should replace lists wholesale", async () => {
+		it("should add a child's list entries to its parent's", async () => {
 			await write("/repo/base.rogen.json", {
 				rootDirs: ["core"],
-				exclude: ["**/*.spec.luau", "**/*.story.luau"],
+				exclude: ["**/*.spec.luau"],
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
-				rootDirs: ["core", "places/lobby"],
-				exclude: ["**/*.spec.luau"],
+				rootDirs: ["places/lobby"],
+				exclude: ["**/*.story.luau"],
 			});
 
 			await start();
 
 			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
-				exclude: ["/repo/**/*.spec.luau"],
+				exclude: ["/repo/**/*.spec.luau", "/repo/**/*.story.luau"],
 			});
+		});
+
+		it("should add list entries across a chain of three", async () => {
+			await write("/repo/core.rogen.json", { exclude: ["a"] });
+			await write("/repo/middle.rogen.json", {
+				extends: "./core.rogen.json",
+				exclude: ["b"],
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./middle.rogen.json",
+				exclude: ["c"],
+			});
+
+			await start();
+
+			expect(resolved(0)?.exclude).toEqual([
+				"/repo/a",
+				"/repo/b",
+				"/repo/c",
+			]);
+		});
+
+		it("should keep a repeated entry at its last position", async () => {
+			await write("/repo/base.rogen.json", {
+				rootDirs: ["core", "shared"],
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["core", "places/lobby"],
+			});
+
+			await start();
+
+			expect(resolved(0)?.rootDirs).toEqual([
+				"/repo/shared",
+				"/repo/core",
+				"/repo/places/lobby",
+			]);
+		});
+
+		it("should apply the default list only when no config in the chain sets it", async () => {
+			await write("/repo/base.rogen.json", { routes: {} });
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+			await write("/repo/lobby.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["places/lobby"],
+			});
+
+			await start({ names: ["default", "lobby"] });
+
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/src"]);
+			expect(resolved(1)?.rootDirs).toEqual(["/repo/places/lobby"]);
+		});
+
+		it("should point a root dir diagnostic at the file and position that wrote the entry", async () => {
+			await write(
+				"/repo/base.rogen.json",
+				`{
+	"rootDirs": ["src/Lib"]
+}`
+			);
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["src"],
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.nestedRootDir",
+					resource: "/repo/base.rogen.json",
+					position: { line: 2, column: 15 },
+				},
+			]);
 		});
 
 		it("should inherit a field the child leaves out and replace one it sets", async () => {
@@ -1628,6 +1707,354 @@ describe("domain/config/core-config-service", () => {
 				outFile: "/repo/out.project.json",
 				variants: { mock: true },
 			});
+		});
+	});
+
+	describe("modes", () => {
+		const routes = { "*": "ReplicatedStorage/Shared" };
+
+		it("should build in the first declared mode, adding its variants and exclude on top of the config's", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				variants: { mock: false },
+				exclude: ["**/_*"],
+				modes: {
+					dev: { variants: { mock: true } },
+					prod: { exclude: ["**/*.spec.luau"] },
+				},
+			});
+
+			await start();
+
+			expect(resolved(0)).toMatchObject({
+				mode: "dev",
+				modes: ["dev", "prod"],
+				variants: { mock: true },
+				exclude: ["/repo/**/_*"],
+			});
+		});
+
+		it("should build in the mode the config names", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				mode: "prod",
+				modes: { dev: {}, prod: { exclude: ["**/*.spec.luau"] } },
+			});
+
+			await start();
+
+			expect(resolved(0)).toMatchObject({
+				mode: "prod",
+				defaultMode: "prod",
+				exclude: ["/repo/**/*.spec.luau"],
+			});
+		});
+
+		it("should build in the mode --mode names over the config's own", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				mode: "dev",
+				modes: { dev: {}, prod: { exclude: ["Dev"] } },
+			});
+
+			await start({ overrides: { mode: "prod", variants: {} } });
+
+			expect(resolved(0)).toMatchObject({
+				mode: "prod",
+				defaultMode: "dev",
+				exclude: ["/repo/Dev"],
+			});
+		});
+
+		it("should let a variant flag beat the mode's variants", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				variants: { mock: false },
+				modes: { dev: { variants: { mock: true } } },
+			});
+
+			await start({ overrides: { variants: { mock: false } } });
+
+			expect(resolved(0)?.variants).toEqual({ mock: false });
+		});
+
+		it("should merge modes by name across extends, adding a child's globs to the parent's", async () => {
+			await write("/repo/base.rogen.json", {
+				routes,
+				variants: { mock: false },
+				modes: {
+					dev: { variants: { mock: true } },
+					prod: { exclude: ["**/*.spec.luau"] },
+				},
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+				mode: "prod",
+				modes: { prod: { exclude: ["Tools"] }, staging: {} },
+			});
+
+			await start();
+
+			expect(resolved(0)).toMatchObject({
+				mode: "prod",
+				modes: ["dev", "prod", "staging"],
+				exclude: ["/repo/**/*.spec.luau", "/repo/Tools"],
+			});
+		});
+
+		it("should ignore --mode in a config that declares no modes", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { dev: {}, prod: {} },
+			});
+			await write("/repo/tools.rogen.json", { routes });
+
+			const result = await start({
+				names: ["default", "tools"],
+				overrides: { mode: "prod", variants: {} },
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(resolved(0)?.mode).toBe("prod");
+			expect(resolved(1)?.mode).toBeUndefined();
+		});
+
+		it("should refuse --mode when no config being built declares modes", async () => {
+			await write("/repo/default.rogen.json", { routes });
+
+			const result = await start({
+				overrides: { mode: "prod", variants: {} },
+			});
+
+			expect(result.isErr()).toBe(true);
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+			expect(result.isErr() && result.error.message).toContain(
+				'Mode "prod" is not declared by any config being built'
+			);
+		});
+
+		it("should break a config that lacks the mode --mode names, so a run never builds it in another", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { dev: {}, prod: {} },
+			});
+			await write("/repo/lobby.rogen.json", {
+				routes,
+				modes: { dev: {}, prd: {} },
+			});
+
+			await start({
+				names: ["default", "lobby"],
+				overrides: { mode: "prod", variants: {} },
+			});
+
+			expect(resolved(0)?.mode).toBe("prod");
+			expect(errors(1)).toMatchObject([
+				{ code: "config.modeNotDeclared" },
+			]);
+			expect(errors(1)[0].message).toContain('Did you mean "prd"?');
+		});
+
+		it("should refuse a variant flag that names a mode", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { dev: {}, prod: {} },
+			});
+
+			const result = await start({
+				overrides: { variants: { prod: true } },
+			});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+			expect(result.isErr() && result.error.message).toBe(
+				'"prod" is a mode, not a variant. Pick it with --mode prod.'
+			);
+		});
+
+		it("should report a mode field that names no declared mode where it is written", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"mode": "prod",
+	"modes": { "dev": {} }
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.unknownMode",
+					resource: "/repo/default.rogen.json",
+					position: { line: 3, column: 10 },
+				},
+			]);
+		});
+
+		it("should report a mode field that names no declared mode even when --mode picks a valid one", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				mode: "prd",
+				modes: { dev: {}, prod: {} },
+			});
+
+			await start({ overrides: { mode: "prod", variants: {} } });
+
+			expect(errors(0)).toMatchObject([{ code: "config.unknownMode" }]);
+			expect(errors(0)[0].message).toContain('Did you mean "prod"?');
+		});
+
+		it("should not read a mode named like an Object member as a clash", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { constructor: {}, toString: {} },
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+			expect(resolved(0)?.modes).toEqual(["constructor", "toString"]);
+		});
+
+		it("should report a mode field in a config that declares no modes", async () => {
+			await write("/repo/default.rogen.json", { routes, mode: "prod" });
+
+			await start();
+
+			expect(errors(0)[0]).toMatchObject({ code: "config.unknownMode" });
+			expect(errors(0)[0].message).toContain("declares no modes");
+		});
+
+		it("should reject a mode body with any field but variants and exclude", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { prod: { rootDirs: ["src"] } },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([{ code: "config.unknownField" }]);
+			expect(errors(0)[0].message).toContain("modes.prod.rootDirs");
+		});
+
+		it("should reject a mode named like a route or a variant", async () => {
+			await write("/repo/default.rogen.json", {
+				routes: { ...routes, Server: "ServerScriptService" },
+				variants: { mock: false },
+				modes: { Server: {}, mock: {} },
+			});
+
+			await start();
+
+			expect(errors(0).map(({ code }) => code)).toEqual([
+				"config.modeClashesWithRoute",
+				"config.modeClashesWithVariant",
+			]);
+		});
+
+		it("should reject a mode name that is not a name", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { "1st": {} },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{ code: "config.invalidModeName" },
+			]);
+		});
+
+		it("should reject two modes that differ only in their first letter", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { prod: {}, Prod: {} },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([{ code: "config.ambiguousKey" }]);
+		});
+
+		it("should reject a mode that switches a variant nothing declares, at the mode's own line", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"modes": {
+		"dev": { "variants": { "mock": true } }
+	}
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.undeclaredModeVariant",
+					position: { line: 4, column: 34 },
+					message: expect.stringContaining("Declare it there."),
+				},
+			]);
+		});
+
+		it("should suggest the declared variant a mode's switch is a typo of", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				variants: { mock: false },
+				modes: { dev: { variants: { mocks: true } } },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.undeclaredModeVariant",
+					message: expect.stringContaining('Did you mean "mock"?'),
+				},
+			]);
+		});
+
+		it("should keep the chosen mode across a reload", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { dev: {}, prod: { exclude: ["a"] } },
+			});
+			await start({ overrides: { mode: "prod", variants: {} } });
+
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { dev: {}, prod: { exclude: ["b"] } },
+			});
+			await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(resolved(0)).toMatchObject({
+				mode: "prod",
+				exclude: ["/repo/b"],
+			});
+		});
+
+		it("should give every declared mode its own view of the config", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				variants: { mock: false },
+				exclude: ["x"],
+				modes: {
+					dev: { variants: { mock: true } },
+					prod: { exclude: ["y"] },
+				},
+			});
+
+			await start();
+
+			const prod = resolved(0)?.inMode("prod");
+			expect(prod).toMatchObject({
+				mode: "prod",
+				variants: { mock: false },
+				exclude: ["/repo/x", "/repo/y"],
+			});
+			expect(resolved(0)?.inMode("nope")).toBeUndefined();
 		});
 	});
 });

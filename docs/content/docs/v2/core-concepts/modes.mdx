@@ -1,0 +1,137 @@
+---
+title: Modes
+description: Build for dev or prod from the same config, with exactly one environment active per build.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+A **mode** is a named environment, such as `dev` or `prod`, and exactly one is active per build. It changes which files are in the tree, never where they go or what is written. For independent on/off switches, use [variants](/docs/v2/core-concepts/variants).
+
+Without modes, an environment becomes two variants flipped in opposite directions, or a config per environment. A lone `DebugPanel.dev.luau` then ships to production the day someone forgets a flag. A mode is one choice with one value, so that can't happen.
+
+## Declaring Modes
+
+`modes` maps a name to what the mode changes. A mode body holds only `variants` and `exclude`:
+
+```json title="default.rogen.json"
+{
+	"rootDirs": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"exclude": ["**/_*"],
+	"variants": { "mock": false, "halloween": false },
+	"modes": {
+		"dev": { "variants": { "mock": true } },
+		"prod": { "exclude": ["**/*.spec.luau", "DevPackages"] }
+	},
+	"mode": "dev"
+}
+```
+
+- `variants` in a mode turns variants on or off in that mode. Each one must be declared under the config's own `variants`.
+- `exclude` adds globs that are left out in that mode, on top of the config's, with the same reach: scanned files and template mounts alike, see [Template Nodes](#template-nodes).
+- `rootDirs`, `routes`, `template`, `syncDir` and `outFile` belong to the config, and every mode shares them. A mode body with any other field is a `config.unknownField` error. That is the line between a mode and a second config.
+
+Route keys, variants and modes share one namespace, since all three are written the same way in a file name. A mode can't share a name with either of the others, and two names that differ only in the case of their first letter are an error too.
+
+## Picking the Mode
+
+Three things pick the active mode, strongest first:
+
+1. `--mode prod` on the command line.
+2. The config's `mode` field, which an `extends` chain inherits like any string.
+3. The first declared mode.
+
+A config without `modes` builds as it always has.
+
+```bash
+rogen watch                                  # dev: mocks on, specs and DevPackages in
+rogen build --mode prod                      # every config in prod
+rogen build --mode prod --variant halloween  # a release with the event on
+rogen where src/Net --mode prod
+rogen list --json --mode prod
+```
+
+`--mode` is strict. It applies to every selected config that declares modes, and a config that declares modes but not the one you named is an error (`config.modeNotDeclared`), so a production run can never quietly build one place in dev. Configs that declare no modes ignore the flag, and it's a usage error when none of the configs being built declares any. `--variant prod` for a mode name is a usage error that suggests `--mode prod`.
+
+`build` and `watch` write the same file, so there is no default by command: a bare `rogen build` builds in the config's mode, just as `rogen watch` does. Pass `--mode prod` for a release.
+
+### Pinning a Mode
+
+When both outputs must exist at once, give the second one its own config that pins the mode:
+
+```json title="release.rogen.json"
+{
+	"extends": "./default.rogen.json",
+	"mode": "prod"
+}
+```
+
+`rogen build` then writes `default.project.json` in dev and `release.project.json` in prod. Otherwise a mode changes what a config writes, not where.
+
+## Marking Files
+
+A mode name marks files the way a [variant](/docs/v2/core-concepts/variants#marking-files) does, with the same three forms and the same matching rules:
+
+| Form | Example |
+|---|---|
+| **Suffix** | `Service.prod.luau` |
+| **Folder** | `dev/Service.luau`, `prod/Service.luau` |
+| **Marker file** | `Net/.prod` marks everything under `Net` |
+
+In the active mode, the file replaces the plain file of the same name and its suffix is stripped. Files marked for any other mode are pruned. In `rogen where`, they say so:
+
+```
+src/Service.dev.luau -> pruned · mode is prod, not dev
+src/Service.prod.luau -> ReplicatedStorage/Shared/Service · route * (fallback) · mode prod (suffix)
+```
+
+Test files fit as excludes, not as marks: an active suffix is stripped, so `Button.spec.luau` would become `Button`. Put `**/*.spec.luau` in the `exclude` of the mode that should leave them out.
+
+## Layers
+
+The `extends` chain merges first. Then the active mode's `variants` and `exclude` are added on top, and last `--variant` and `--no-variant`. `modes` merges by name across `extends`, and a mode body merges by the same rules as the config: a place can add globs to the shared `prod` without restating them. See [Extending Configs](/docs/v2/configuration#extending-configs).
+
+## Template Nodes
+
+`exclude` drops a template node whose `$path` matches a glob, from the config or from a mode, so "excluded means never built" holds for scanned files and mounted folders alike. That is how `DevPackages` mounted by the template stays out of prod:
+
+```json title="template.project.json"
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": { "$path": "Packages" },
+			"DevPackages": { "$path": "DevPackages" }
+		}
+	}
+}
+```
+
+With `"prod": { "exclude": ["DevPackages"] }`, the prod project file has `Packages` and no `DevPackages`, and `rogen where DevPackages` says so. The glob names the mounted path as the template writes it, relative to the config.
+
+## Checking Every Mode
+
+Rogen reads names only, so every build can place the files in every mode and warn about what the others would lose. A dev build warns when `Net` has files for `dev` and `staging` but none for `prod`, or when two files clash in `prod`:
+
+```
+default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
+  ReplicatedStorage/Shared/Net (dev, staging)
+Add a file for "prod" to it, or a plain file.
+```
+
+See [`mode.missingInstance`](/docs/v2/diagnostics#mode-missinginstance) and [`mode.clash`](/docs/v2/diagnostics#mode-clash). A file only one mode has (`DebugPanel.dev.luau`) is silent: disappearing elsewhere is the point.
+
+## Seeing the Mode
+
+- `rogen list` prints `modes: dev (default), prod`, marking the mode the config picks on its own, and `(active)` on the one `--mode` picked. `list --json` prints the resolved config for the active mode, with `mode` and `modes`.
+- `rogen build` ends the line of a config that declares modes with `mode prod`, and `build --json` adds `mode` to its entry.
+- `rogen where` accepts `--mode`, and `where --json` adds `mode` to each location. Its `variants` entries keep their `form`, and also list the modes a file carries.
+
+<Callout type="info" title="Why modes, not groups of variants">
+	A group inside `variants` would never appear in a file name and couldn't carry an `exclude`. A mode that could set `syncDir` or `rootDirs` would be a hidden second config, so it can't.
+</Callout>

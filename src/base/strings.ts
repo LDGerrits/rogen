@@ -73,3 +73,8 @@ export function joinedWithAnd(items: readonly string[]): string {
 	if (items.length <= 1) return items.join("");
 	return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
+
+export function joinedWithOr(items: readonly string[]): string {
+	if (items.length <= 1) return items.join("");
+	return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
+}

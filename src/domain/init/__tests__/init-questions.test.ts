@@ -216,6 +216,72 @@ describe("InitQuestions askProject", () => {
 		});
 	});
 
+	describe("modes", () => {
+		const withJest: WorkspaceSpec = { ...luau, testRunner: "Jest" };
+		const MESSAGE = "Add dev and prod modes?";
+
+		it("should offer modes when a test runner is found, hinting which", async () => {
+			const prompts = new MockPromptService(acceptAll(12));
+
+			const choices = (
+				await askInitChoices(prompts, contextOf(withJest))
+			).unwrap();
+
+			const question = prompts.prompts.find(
+				({ message }) => message === MESSAGE
+			);
+			expect(question?.hint).toBe("found Jest");
+			expect(question?.description).toContain("**/*.spec.luau");
+			expect(choices?.modes).toBe(true);
+		});
+
+		it("should name the spec files of the language", async () => {
+			const prompts = new MockPromptService(acceptAll(12));
+
+			await askInitChoices(
+				prompts,
+				contextOf({ ...rbxts, testRunner: "Jest" })
+			);
+
+			expect(
+				prompts.prompts.find(({ message }) => message === MESSAGE)
+					?.description
+			).toContain("**/*.spec.ts");
+		});
+
+		it("should take the answer that was given", async () => {
+			const probe = new MockPromptService(acceptAll(12));
+			await askInitChoices(probe, contextOf(withJest));
+			const position = probe.prompts.findIndex(
+				({ message }) => message === MESSAGE
+			);
+			const answers = acceptAll(12);
+			answers[position] = false;
+
+			const choices = await asked(withJest, answers);
+
+			expect(choices.modes).toBeUndefined();
+		});
+
+		it("should not ask when no test runner is found", async () => {
+			const prompts = new MockPromptService(acceptAll(12));
+
+			const choices = (
+				await askInitChoices(prompts, contextOf(luau))
+			).unwrap();
+
+			expect(
+				prompts.prompts.some(({ message }) => message === MESSAGE)
+			).toBe(false);
+			expect(choices?.modes).toBeUndefined();
+		});
+
+		it("should add modes without a terminal when a test runner is found", async () => {
+			expect((await defaultInitChoices(withJest))?.modes).toBe(true);
+			expect((await defaultInitChoices(luau))?.modes).toBeUndefined();
+		});
+	});
+
 	describe("darklua", () => {
 		it("should be preselected when found", async () => {
 			const choices = await asked(

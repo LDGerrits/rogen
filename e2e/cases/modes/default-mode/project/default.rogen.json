@@ -1,0 +1,24 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"variants": {
+		"mock": false
+	},
+	"modes": {
+		"dev": {
+			"variants": {
+				"mock": true
+			}
+		},
+		"prod": {
+			"exclude": [
+				"**/*.spec.luau"
+			]
+		}
+	}
+}

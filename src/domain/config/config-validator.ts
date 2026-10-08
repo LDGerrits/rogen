@@ -6,8 +6,10 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
+import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 import {
 	DeclaredKeys,
+	ModeView,
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
@@ -52,6 +54,7 @@ export class ConfigValidator {
 
 		const routes = this.checkRoutes(claimed);
 		this.checkVariants(claimed);
+		this.checkModes(claimed);
 		this.checkOutFile(template);
 		this.checkRootDirs();
 
@@ -68,6 +71,9 @@ export class ConfigValidator {
 				routes,
 				variants: this.variants,
 				exclude: config.getValue<string[]>("exclude"),
+				mode: this.layered.mode,
+				defaultMode: this.layered.defaultMode,
+				modeViews: this.modeViews(),
 				template,
 				syncDir: config.getValue<string | undefined>("syncDir"),
 				outFile: this.outFile,
@@ -118,6 +124,101 @@ export class ConfigValidator {
 		}
 	}
 
+	private modeViews(): Map<string, ModeView> {
+		return new Map(
+			this.layered.modes.map((mode) => {
+				const config = this.layered.configIn(mode);
+				return [
+					mode,
+					{
+						variants:
+							config.getValue<Record<string, boolean>>(
+								"variants"
+							),
+						exclude: config.getValue<string[]>("exclude"),
+					},
+				];
+			})
+		);
+	}
+
+	private checkModes(claimed: Map<string, string>): void {
+		const { modes, modeChoice } = this.layered;
+		const chain = this.layered.configIn(undefined);
+		const declared =
+			chain.getValue<Record<string, boolean>>("variants") ?? {};
+		for (const mode of modes) {
+			const location = this.layered.locateMode(mode);
+			if (!DeclaredKeys.isName(mode)) {
+				this.problems.error(
+					"config.invalidModeName",
+					location,
+					`mode "${mode}" is invalid: ${NAME_RULE}.`
+				);
+			} else if (Object.hasOwn(this.routes, mode)) {
+				this.problems.error(
+					"config.modeClashesWithRoute",
+					location,
+					`mode "${mode}" has the same name as a route key; rename one of them.`
+				);
+			} else if (Object.hasOwn(this.variants, mode)) {
+				this.problems.error(
+					"config.modeClashesWithVariant",
+					location,
+					`mode "${mode}" has the same name as a variant; a name is either a mode or a variant. Rename one of them.`
+				);
+			} else {
+				this.claim(claimed, mode, location);
+			}
+			const switched = chain.getValue<
+				Record<string, boolean> | undefined
+			>(["modes", mode, "variants"]);
+			for (const variant of Object.keys(switched ?? {})) {
+				if (Object.hasOwn(declared, variant)) continue;
+				const suggestion = closestMatch(variant, Object.keys(declared));
+				this.problems.error(
+					"config.undeclaredModeVariant",
+					this.layered.locateMode(mode, "variants", variant),
+					`mode "${mode}" switches variant "${variant}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
+				);
+			}
+		}
+
+		const written = chain.getValue<string | undefined>("mode");
+		if (written !== undefined && !modes.includes(written)) {
+			this.problems.error(
+				"config.unknownMode",
+				this.layered.locate("mode"),
+				`"mode" is "${written}", but ${ConfigValidator.declaredModes(modes, written)}`
+			);
+		}
+		const { name, source } = modeChoice;
+		if (
+			source === "cli" &&
+			name !== undefined &&
+			modes.length > 0 &&
+			!modes.includes(name)
+		) {
+			this.problems.error(
+				"config.modeNotDeclared",
+				{ resource: this.layered.leaf.file },
+				`--mode ${name} names no mode here: ${ConfigValidator.declaredModes(modes, name)}`
+			);
+		}
+	}
+
+	private static declaredModes(
+		modes: readonly string[],
+		asked: string
+	): string {
+		if (modes.length === 0) return "this config declares no modes.";
+		const suggestion = closestMatch(asked, modes);
+		return (
+			`this config declares ${joinedWithAnd(modes.map((mode) => `"${mode}"`))}.` +
+			(suggestion ? ` Did you mean "${suggestion}"?` : "")
+		);
+	}
+
 	private checkOutFile(template: ResolvedTemplate | undefined): void {
 		if (template?.file !== this.outFile) return;
 		const explicit = this.layered.config.inspect("outFile").source?.tier;
@@ -134,7 +235,7 @@ export class ConfigValidator {
 		this.rootDirs.forEach((rootDir, index) => {
 			const overlap = rootDirOverlap(this.rootDirs, index);
 			if (!overlap) return;
-			const location = this.layered.locate("rootDirs", String(index));
+			const location = this.layered.locateEntry("rootDirs", index);
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
 					"config.duplicateRootDir",

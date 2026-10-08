@@ -91,6 +91,11 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 			? `variant ${variant} on: ${plural(files, "file")}`
 			: `variant ${variant} off: ${plural(files, "file")} left out`
 	);
+	const modes = summary.modes.map(({ mode, on, files }) =>
+		on
+			? `mode ${mode} on: ${plural(files, "file")}`
+			: `mode ${mode} off: ${plural(files, "file")} left out`
+	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
 		...(summary.replaced > 0
@@ -104,6 +109,7 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		...roots,
 		...routes,
 		...variants,
+		...modes,
 		...(leftOut.length > 0 ? [`left out: ${leftOut.join(", ")}`] : []),
 	];
 }
@@ -248,6 +254,9 @@ export class BuildLog {
 						: build.config.outFile
 				),
 				outcome,
+				build.outcome !== "notLoaded" && build.config.mode
+					? `mode ${build.config.mode}`
+					: undefined,
 				note,
 			]
 				.filter((part) => part !== undefined)

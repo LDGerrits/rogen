@@ -4,7 +4,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
-import { ResolvedConfig, ResolvedTemplate } from "../config.js";
+import { ModeView, ResolvedConfig, ResolvedTemplate } from "../config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,
@@ -26,6 +26,18 @@ export interface ResolvedConfigSpec {
 	readonly routes?: Readonly<Record<string, string>>;
 	readonly variants?: Readonly<Record<string, boolean>>;
 	readonly exclude?: readonly string[];
+	/** Each mode's changes to `variants` and `exclude`, which are the config's outside any mode. */
+	readonly modes?: Readonly<
+		Record<
+			string,
+			{
+				readonly variants?: Readonly<Record<string, boolean>>;
+				readonly exclude?: readonly string[];
+			}
+		>
+	>;
+	/** The active mode; the first of `modes` when left out. */
+	readonly mode?: string;
 	readonly template?: {
 		readonly file: string;
 		readonly project: Readonly<Record<string, unknown>>;
@@ -36,6 +48,20 @@ export interface ResolvedConfigSpec {
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	const file = spec.file ?? "/repo/default.rogen.json";
+	const modeViews = new Map<string, ModeView>(
+		Object.entries(spec.modes ?? {}).map(([mode, body]) => [
+			mode,
+			{
+				variants: { ...spec.variants, ...body.variants },
+				exclude: [...(spec.exclude ?? []), ...(body.exclude ?? [])],
+			},
+		])
+	);
+	const mode =
+		modeViews.size > 0
+			? (spec.mode ?? [...modeViews.keys()][0])
+			: undefined;
+	const view = mode === undefined ? undefined : modeViews.get(mode);
 	return new ResolvedConfig({
 		file,
 		parents: spec.parents ?? [],
@@ -48,8 +74,11 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		variants: spec.variants ?? {},
-		exclude: spec.exclude ?? [],
+		variants: view?.variants ?? spec.variants ?? {},
+		exclude: view?.exclude ?? spec.exclude ?? [],
+		mode,
+		defaultMode: modeViews.size > 0 ? [...modeViews.keys()][0] : undefined,
+		modeViews,
 		template:
 			spec.template &&
 			new ResolvedTemplate(

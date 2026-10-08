@@ -1,4 +1,5 @@
 import path from "path";
+import { isMatch } from "../../base/glob.js";
 import { contains, isInside, joinPosix, toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
@@ -79,9 +80,14 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 export class BuildTemplate {
 	private readonly project: RojoProject;
 	private readonly templateFile: string | undefined;
+	/** Every path the template's own `$path`s mount, except those `exclude` drops. Rojo reads these, not Rogen. */
+	readonly mounts: TemplateMounts;
 
 	constructor(
-		private readonly config: Pick<ResolvedConfig, "name" | "template">,
+		private readonly config: Pick<
+			ResolvedConfig,
+			"name" | "template" | "exclude"
+		>,
 		private readonly layout: SyncLayout
 	) {
 		const { template } = config;
@@ -95,9 +101,11 @@ export class BuildTemplate {
 			},
 			generatedContainer
 		);
+		this.project.removeNodes((target) => this.isDropped(target));
 		if (template && this.templateDir !== layout.projectDir) {
 			this.project.mapPaths((target) => this.rebase(target));
 		}
+		this.mounts = this.mountsOf(template?.project);
 	}
 
 	/** Whether the template disables legacy scripts, which leaves scripts under the player containers without a run context. */
@@ -105,19 +113,28 @@ export class BuildTemplate {
 		return this.config.template?.project.emitLegacyScripts === false;
 	}
 
-	/** Every path the template's own `$path`s mount. Rojo reads these, not Rogen. */
-	get mounts(): TemplateMounts {
-		const project = this.config.template?.project;
+	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
+	private isDropped(target: string): boolean {
+		const mounted = toPosix(path.resolve(this.templateDir, target));
+		return this.config.exclude.some((glob) => isMatch(mounted, glob));
+	}
+
+	private mountsOf(
+		project: NonNullable<ResolvedConfig["template"]>["project"] | undefined
+	): TemplateMounts {
 		return new TemplateMounts(
-			(project?.getPaths() ?? []).map(
-				({ path: rojoPath, instancePath }) => ({
+			(project?.getPaths() ?? [])
+				.filter(
+					({ path: rojoPath }) =>
+						!this.isDropped(rojoPathTarget(rojoPath))
+				)
+				.map(({ path: rojoPath, instancePath }) => ({
 					path: path.resolve(
 						this.templateDir,
 						rojoPathTarget(rojoPath)
 					),
 					node: instancePath,
-				})
-			),
+				})),
 			this.templateFile
 		);
 	}

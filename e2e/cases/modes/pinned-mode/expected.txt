@@ -1,0 +1,55 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default, release
+  default
+    default.project.json · wrote · mode dev
+  release
+    release.project.json · wrote · mode prod
+  Built 2 configs.
+
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.rogen.json
+    root dirs: src
+    sync dir: (none)
+    project file: default.project.json
+    variants: mock on
+    modes: dev (default), prod
+  release.rogen.json
+    extends: default.rogen.json
+    root dirs: src
+    sync dir: (none)
+    project file: release.project.json
+    variants: mock off
+    modes: dev, prod (default)
+  2 configs.
+
+written:
+  default.project.json
+  release.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.mock.luau
+      Lib: Folder
+        Math: ModuleScript  <- src/Lib/Math.luau
+        Math.spec: ModuleScript  <- src/Lib/Math.spec.luau
+      Service: ModuleScript  <- src/Service.dev.luau
+      Tools: ModuleScript  <- src/dev/Tools.luau
+
+$ rojo sourcemap release.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Analytics: ModuleScript  <- src/Analytics.luau
+      Lib: Folder
+        Math: ModuleScript  <- src/Lib/Math.luau
+      Net: Folder
+        Http: ModuleScript  <- src/Net/Http.luau
+      Service: ModuleScript  <- src/Service.prod.luau
+      Tools: ModuleScript  <- src/prod/Tools.luau

@@ -1,0 +1,9 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:13:11 - error: mode "prod" has the same name as a variant; a name is either a mode or a variant. Rename one of them.
+  default.rogen.json:14:13 - error: mode "Server" has the same name as a route key; rename one of them.

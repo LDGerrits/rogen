@@ -55,6 +55,19 @@ describe("BuildTemplate", () => {
 		).toMatchObject({ $path: "places/main/Packages" });
 	});
 
+	it("should drop a mounted node whose $path exclude matches", () => {
+		const template = templateOf({
+			exclude: [abs("Packages")],
+			template: {
+				file: abs("default.project.json"),
+				project: mountedPackages,
+			},
+		});
+
+		expect(template.getNode(["ReplicatedStorage"])).toBeUndefined();
+		expect(template.mounts.paths).toEqual([]);
+	});
+
 	describe("globIgnorePaths", () => {
 		const project = { tree: {}, globIgnorePaths: ["**/*.spec.luau", 3] };
 

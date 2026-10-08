@@ -1,0 +1,12 @@
+{
+	"steps": [
+		[
+			"list",
+			"default",
+			"--mode",
+			"prod",
+			"--json"
+		]
+	],
+	"rojo": false
+}

@@ -1,0 +1,11 @@
+$ rogen build --mode prod
+exit 1
+stdout:
+  rogen build · default, lobby
+  default
+  lobby
+  build failed.
+stderr:
+  error: default.project.json · not written · mode prod · lobby failed
+  error: lobby.rogen.json · not loaded
+  lobby.rogen.json - error: --mode prod names no mode here: this config declares "dev" and "staging".

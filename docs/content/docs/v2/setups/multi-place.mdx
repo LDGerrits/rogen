@@ -46,11 +46,11 @@ What `init` writes depends on your toolchain:
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"extends": "./default.rogen.json",
-    	"rootDirs": ["src", "places/lobby"]
+    	"rootDirs": ["places/lobby"]
     }
     ```
 
-    Both root directories merge into one tree, and the later one wins a clash, so a place can override shared code.
+    The place's root directory is added to those of `default.rogen.json`. They merge into one tree, and the later one wins a clash, so a place can override shared code.
   </Tab>
   <Tab value="roblox-ts">
     One config and one tsconfig, since the place's compiled files need their own `outDir`:
@@ -59,7 +59,7 @@ What `init` writes depends on your toolchain:
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"extends": "./default.rogen.json",
-    	"rootDirs": ["src", "places/lobby"],
+    	"rootDirs": ["places/lobby"],
     	"syncDir": "out/lobby"
     }
     ```
@@ -117,7 +117,7 @@ Each place needs a project file for its source (for Darklua) and one for the pro
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./default.rogen.json",
-	"rootDirs": ["src", "places/lobby"]
+	"rootDirs": ["places/lobby"]
 }
 ```
 
@@ -142,5 +142,5 @@ rojo serve lobby-sync.project.json
 One catch: luau-lsp regenerates `sourcemap.json` from `default.project.json` and would overwrite the place's version. While you work on a place, set `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 
 <Callout type="info">
-	Shared `routes`, `variants` and `template` live in the config every place extends, so each place only has to say what's different.
+	Shared `routes`, `variants`, `modes` and `template` live in the config every place extends, so each place only has to say what's different. A place's own `modes.prod.exclude` adds globs to the shared `prod` mode, and `rogen build --mode prod` builds every place in it. See [Modes](/docs/v2/core-concepts/modes).
 </Callout>

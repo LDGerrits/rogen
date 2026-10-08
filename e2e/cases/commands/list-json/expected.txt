@@ -25,6 +25,8 @@ stdout:
           "mock": false,
           "dev": true
         },
+        "mode": null,
+        "modes": [],
         "exclude": [],
         "template": null,
         "syncDir": "<dir>/dist",
@@ -49,6 +51,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "mode": null,
+        "modes": [],
         "exclude": [],
         "template": null,
         "syncDir": null,
@@ -75,6 +79,8 @@ stdout:
           "mock": false,
           "dev": true
         },
+        "mode": null,
+        "modes": [],
         "exclude": [],
         "template": null,
         "syncDir": null,
@@ -107,6 +113,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "mode": null,
+        "modes": [],
         "exclude": [],
         "template": null,
         "syncDir": null,

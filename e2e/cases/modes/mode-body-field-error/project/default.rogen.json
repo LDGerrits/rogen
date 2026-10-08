@@ -1,0 +1,16 @@
+{
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"modes": {
+		"prod": {
+			"rootDirs": [
+				"lib"
+			]
+		}
+	}
+}

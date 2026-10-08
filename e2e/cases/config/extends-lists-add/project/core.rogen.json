@@ -1,0 +1,15 @@
+{
+	"rootDirs": [
+		"core",
+		"lib"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"exclude": [
+		"**/*.spec.luau"
+	]
+}

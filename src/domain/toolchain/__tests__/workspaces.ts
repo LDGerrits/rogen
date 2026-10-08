@@ -10,6 +10,7 @@ export interface WorkspaceSpec {
 	readonly codeFolders?: readonly string[];
 	readonly hasSrc?: boolean;
 	readonly places?: readonly string[];
+	readonly testRunner?: string;
 	readonly robloxTs?: RobloxTsFacts;
 }
 
@@ -31,6 +32,7 @@ export function workspaceOf(spec: WorkspaceSpec = {}): DetectedWorkspace {
 		codeFolders: spec.codeFolders ?? [],
 		hasSrc: spec.hasSrc ?? false,
 		places: spec.places ?? [],
+		testRunner: spec.testRunner,
 	});
 }
 

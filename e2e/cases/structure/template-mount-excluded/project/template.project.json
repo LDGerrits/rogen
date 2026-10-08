@@ -1,0 +1,9 @@
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Vendor": { "$path": "src/Vendor" }
+		}
+	}
+}

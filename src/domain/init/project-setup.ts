@@ -36,6 +36,8 @@ export interface ProjectChoices {
 	readonly fallback: boolean;
 	/** Places set up alongside, each extending this config from `places/<name>`. */
 	readonly places: readonly string[];
+	/** Whether the config declares dev and prod modes, the prod one leaving out specs. */
+	readonly modes?: boolean;
 	/** The contents of the file a `copy` template choice copies. */
 	readonly copiedTemplate?: string;
 }
@@ -110,6 +112,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const routes = await questions.routes(language);
 		if (routes === undefined) return ok(undefined);
 
+		const modes = await questions.modes(directory, language);
+		if (modes === undefined) return ok(undefined);
+
 		let places: readonly string[] = [];
 		if (layout === "several") {
 			const answer = await questions.places(directory, {
@@ -146,6 +151,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			routes: routes.routes,
 			fallback: routes.fallback,
 			places,
+			...(modes && { modes }),
 			...(copiedTemplate !== undefined && { copiedTemplate }),
 		});
 	}
@@ -181,6 +187,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const starter: RogenConfig = {
 			rootDirs: [...rootDirs],
 			routes: starting.starting(choices.routes, choices.fallback),
+			...(choices.modes && {
+				modes: {
+					dev: {},
+					prod: { exclude: [ConfigSet.specGlobOf(language)] },
+				},
+			}),
 			...(template.reference && { template: template.reference }),
 		};
 
@@ -217,6 +229,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		}
 		builder.addEdit(...template.edits);
+		if (choices.modes) {
+			builder.addEdit(
+				`Build a release without specs with rogen build --mode prod; ${configFileName(name)} declares the modes.`
+			);
+		}
 		builder.addEdit(
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
 			ConfigSet.variantsStep(language, configFileName(name))

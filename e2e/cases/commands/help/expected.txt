@@ -17,6 +17,7 @@ stdout:
   Topics:
     routing   How folders and names place a file, and what that means for requires.
     variants  Files that swap in when a variant is on.
+    modes     One environment per build, like dev or prod, picked with --mode.
     config    Config fields, extends, places, templates and sync dirs.
     layout    Invisible folders, init scripts and .meta.json files.
     output    Diagnostics, exit codes, --json, fixes and docs links.
@@ -50,6 +51,7 @@ stdout:
   Topics:
     routing   How folders and names place a file, and what that means for requires.
     variants  Files that swap in when a variant is on.
+    modes     One environment per build, like dev or prod, picked with --mode.
     config    Config fields, extends, places, templates and sync dirs.
     layout    Invisible folders, init scripts and .meta.json files.
     output    Diagnostics, exit codes, --json, fixes and docs links.
@@ -83,6 +85,7 @@ stdout:
   Topics:
     routing   How folders and names place a file, and what that means for requires.
     variants  Files that swap in when a variant is on.
+    modes     One environment per build, like dev or prod, picked with --mode.
     config    Config fields, extends, places, templates and sync dirs.
     layout    Invisible folders, init scripts and .meta.json files.
     output    Diagnostics, exit codes, --json, fixes and docs links.

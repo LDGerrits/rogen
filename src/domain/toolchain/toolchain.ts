@@ -180,6 +180,8 @@ export interface DetectedWorkspaceFields {
 	readonly hasSrc: boolean;
 	/** The folders directly inside `places/`, sorted. */
 	readonly places: readonly string[];
+	/** The test runner the package manifests name, such as Jest. */
+	readonly testRunner?: string;
 }
 
 /** What `init` found in the workspace: facts only, never decisions. */
@@ -193,6 +195,7 @@ export class DetectedWorkspace {
 	readonly codeFolders: readonly string[];
 	readonly hasSrc: boolean;
 	readonly places: readonly string[];
+	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
 		if (fields.languages.length === 0) {
@@ -206,6 +209,7 @@ export class DetectedWorkspace {
 		this.codeFolders = fields.codeFolders;
 		this.hasSrc = fields.hasSrc;
 		this.places = fields.places;
+		this.testRunner = fields.testRunner;
 	}
 
 	/** Darklua, when the workspace has a config for it. */
