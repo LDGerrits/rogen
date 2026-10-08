@@ -136,6 +136,8 @@ describe("OutputWriter", () => {
 			).toMatchObject({
 				code: "output.writeFailed",
 				resource: outFile,
+				message:
+					"the project file could not be written: illegal operation on a directory.",
 			});
 			const entries = await fs.readDirectory(path.dirname(outFile));
 			expect(entries.map(([name]) => name)).toEqual([
