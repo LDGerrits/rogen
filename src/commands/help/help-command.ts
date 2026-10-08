@@ -62,8 +62,7 @@ const isCode = (name: string) => name.includes(".");
 function codeNamed(name: string): string | undefined {
 	const codes = Object.keys(helpTexts.diagnostics);
 	const lower = name.toLowerCase();
-	if (isCode(name))
-		return codes.find((code) => code.toLowerCase() === lower);
+	if (isCode(name)) return codes.find((code) => code.toLowerCase() === lower);
 	const ending = codes.filter(
 		(code) => code.slice(code.indexOf(".") + 1).toLowerCase() === lower
 	);
@@ -237,8 +236,7 @@ registerCommand(
 			registry: CommandRegistry
 		): string | undefined {
 			const code = codeNamed(target);
-			if (isCode(target))
-				return code && helpTexts.diagnostics[code];
+			if (isCode(target)) return code && helpTexts.diagnostics[code];
 			const name = target.toLowerCase();
 			const command = registry.getCommand(name);
 			if (command) return formatCommandHelp(command, GlobalOptions);

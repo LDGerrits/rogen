@@ -51,16 +51,10 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
-/** Why a build failed, or nothing. */
-const errorsOf = (build: ConfigBuild): readonly Diagnostic[] =>
-	build.outcome === "failed" || build.outcome === "notLoaded"
-		? build.errors
-		: [];
-
 /** What a build found, less the sync dir's warnings: the compiler they ask for hasn't run in a project that was just written. */
 const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
-	...errorsOf(build),
+	...build.errors,
 ];
 
 registerCommand(
@@ -165,7 +159,7 @@ registerCommand(
 			if (built.isErr()) return built;
 			const log = new BuildLog(logService, cwd);
 			for (const build of built.value) log.outcome(build, foundBy(build));
-			const errors = built.value.flatMap(errorsOf);
+			const errors = built.value.flatMap((build) => build.errors);
 			if (errors.length > 0) {
 				logService.outro(
 					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
@@ -225,7 +219,7 @@ registerCommand(
 				);
 			const report = new BuildReport();
 			for (const build of built.value) report.add(build, foundBy(build));
-			const errors = built.value.flatMap(errorsOf);
+			const errors = built.value.flatMap((build) => build.errors);
 			return this.printJson(
 				logService,
 				{

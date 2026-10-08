@@ -17,7 +17,7 @@ export class BuildReport {
 		const loaded = build.outcome !== "notLoaded";
 		this.configs.push({
 			config: build.label,
-			file: toNative(loaded ? build.config.file : build.file),
+			file: toNative(build.file),
 			outFile: loaded ? toNative(build.config.outFile) : null,
 			...(loaded && build.config.mode && { mode: build.config.mode }),
 			outcome:

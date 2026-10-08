@@ -84,11 +84,7 @@ registerCommand(
 			const builds = await buildService.build(selection.value);
 			if (builds.isErr()) return builds;
 
-			const errors = builds.value.flatMap((build) =>
-				build.outcome === "failed" || build.outcome === "notLoaded"
-					? build.errors
-					: []
-			);
+			const errors = builds.value.flatMap((build) => build.errors);
 			const denyWarnings = Boolean(line.options["deny-warnings"]);
 			const denied = denyWarnings ? countWarnings(builds.value) : 0;
 			return line.options.json

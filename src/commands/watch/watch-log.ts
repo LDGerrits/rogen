@@ -158,7 +158,7 @@ export class WatchLog {
 	): void {
 		const warnings = printedWarnings.take(
 			build.label,
-			build.config.file,
+			build.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
 		);
 		this.buildLog.outcome(

@@ -96,12 +96,19 @@ export type ConfigBuild = LoadedBuild | UnloadedBuild;
 abstract class AbstractConfigBuild {
 	constructor(
 		readonly config: ResolvedConfig,
-		private readonly findings: BuildFindings
+		private readonly findings: BuildFindings,
+		/** Why it failed; none unless it did. */
+		readonly errors: readonly Diagnostic[] = []
 	) {}
 
 	/** What the config is asked for by. */
 	get label(): string {
 		return this.config.label;
+	}
+
+	/** The config file. */
+	get file(): string {
+		return this.config.file;
 	}
 
 	get warnings(): readonly Diagnostic[] {
@@ -113,9 +120,9 @@ abstract class AbstractConfigBuild {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, then sync dir warnings. */
+	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
-		return [...this.warnings, ...(this.syncWarnings ?? [])];
+		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
 }
 
@@ -184,15 +191,10 @@ export class FailedBuild extends AbstractConfigBuild {
 
 	constructor(
 		config: ResolvedConfig,
-		readonly errors: readonly Diagnostic[],
+		errors: readonly Diagnostic[],
 		findings: BuildFindings = { warnings: [], syncWarnings: undefined }
 	) {
-		super(config, findings);
-	}
-
-	/** Warnings, sync dir warnings, then the errors that failed it. */
-	override get diagnostics(): readonly Diagnostic[] {
-		return [...super.diagnostics, ...this.errors];
+		super(config, findings, errors);
 	}
 }
 

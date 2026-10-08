@@ -34,7 +34,10 @@ registerCommand(
 						},
 					],
 					options: ConfigOptions,
-					examples: ["rogen watch", "rogen watch lobby --variant dev"],
+					examples: [
+						"rogen watch",
+						"rogen watch lobby --variant dev",
+					],
 				},
 			});
 		}
