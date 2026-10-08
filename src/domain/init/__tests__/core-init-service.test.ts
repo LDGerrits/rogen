@@ -1,4 +1,6 @@
 import { agentBlock } from "../agent-block.js";
+import { agentHook } from "../agent-hook.js";
+import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
@@ -260,6 +262,254 @@ describe("CoreInitService", () => {
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"AGENTS.md",
 			]);
+		});
+	});
+
+	describe("agent hook", () => {
+		const SCRIPT = ".agents/hooks/rogen-check.sh";
+		const CLAUDE = ".claude/settings.json";
+		const CODEX = ".codex/hooks.json";
+		const answersEverything = () =>
+			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
+		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
+			plan?.files.map(({ fileName }) => fileName);
+		const planned = async (prompts = answersEverything()) =>
+			(await serviceFor(prompts).plan([])).unwrap();
+		const fileOf = (
+			plan: { files: readonly PlannedFile[] } | undefined,
+			name: string
+		) => plan?.files.find(({ fileName }) => fileName === name);
+
+		it("should offer it where an agent is in use, and write the script and the agent's file", async () => {
+			await write(".claude/keep", "");
+
+			const plan = await planned();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				SCRIPT,
+				CLAUDE,
+			]);
+			expect(fileOf(plan, SCRIPT)).toMatchObject({ content: agentHook });
+			expect(JSON.parse(fileOf(plan, CLAUDE)?.content ?? "")).toEqual({
+				hooks: {
+					Stop: [
+						{
+							hooks: [
+								{
+									type: "command",
+									command:
+										'bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
+								},
+							],
+						},
+					],
+				},
+			});
+		});
+
+		it("should write one script and a file for each agent in use", async () => {
+			await write(".claude/keep", "");
+			await write(".codex/keep", "");
+			await write("GEMINI.md", "");
+			await write(".cursor/keep", "");
+			await write(".github/copilot-instructions.md", "");
+
+			const plan = await planned();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				SCRIPT,
+				CLAUDE,
+				CODEX,
+				".gemini/settings.json",
+				".cursor/hooks.json",
+				".github/hooks/rogen.json",
+			]);
+		});
+
+		it.each([
+			["CLAUDE.md", CLAUDE],
+			["GEMINI.md", ".gemini/settings.json"],
+			[".github/copilot-instructions.md", ".github/hooks/rogen.json"],
+		])("should take %s as a sign of its agent", async (sign, file) => {
+			await write(sign, "Use tabs.\n");
+
+			expect(names(await planned())).toContain(file);
+		});
+
+		it("should not offer it where nothing says an agent is in use", async () => {
+			const prompts = answersEverything();
+
+			const plan = await planned(prompts);
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(
+				prompts.asked.filter((message) => message.includes("hook"))
+			).toEqual([]);
+		});
+
+		it("should not write it in a run that can't ask", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (await serviceFor().plan([])).unwrap();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+		});
+
+		it("should name the agents in the question", async () => {
+			await write(".claude/keep", "");
+			await write(".codex/keep", "");
+			const prompts = answersEverything();
+
+			await planned(prompts);
+
+			expect(prompts.asked.at(-1)).toBe(
+				"Add a hook that reports Rogen warnings to Claude Code and Codex?"
+			);
+		});
+
+		it("should not write it when the question is declined", async () => {
+			await write(".claude/keep", "");
+			const asked = answersEverything();
+			await planned(asked);
+			const declined = new MockPromptService([
+				...Array(asked.asked.length - 1).fill(ACCEPT_DEFAULT),
+				false,
+			]);
+
+			const plan = await planned(declined);
+
+			expect(names(plan)).not.toContain(SCRIPT);
+		});
+
+		it("should register it in a file that exists, keeping what it holds", async () => {
+			await write(
+				CLAUDE,
+				JSON.stringify({ model: "opus" }, null, 2) + "\n"
+			);
+
+			const plan = await planned();
+			const settings = fileOf(plan, CLAUDE);
+
+			expect(settings).toMatchObject({
+				appends: true,
+				summary: "the Rogen hook",
+			});
+			expect(JSON.parse(settings?.content ?? "")).toMatchObject({
+				model: "opus",
+				hooks: { Stop: [expect.anything()] },
+			});
+		});
+
+		it("should skip an agent whose file names the script, and still write the others", async () => {
+			await write(
+				CLAUDE,
+				JSON.stringify({
+					hooks: {
+						Stop: [{ hooks: [{ command: "x/rogen-check.sh" }] }],
+					},
+				})
+			);
+			await write(".codex/keep", "");
+
+			const plan = await planned();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				SCRIPT,
+				CODEX,
+			]);
+		});
+
+		it("should not offer it when every agent in use has it", async () => {
+			await write(
+				CLAUDE,
+				JSON.stringify({
+					hooks: {
+						Stop: [{ hooks: [{ command: "x/rogen-check.sh" }] }],
+					},
+				})
+			);
+
+			expect(names(await planned())).not.toContain(SCRIPT);
+		});
+
+		it("should register a new agent without writing over a script that exists", async () => {
+			await write(SCRIPT, "#!/bin/sh\n");
+			await write(".codex/keep", "");
+
+			const plan = await planned();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				CODEX,
+			]);
+		});
+
+		it("should leave a file that is not plain JSON alone, and say so", async () => {
+			await write(CLAUDE, "{ // mine\n}");
+			await write(".codex/keep", "");
+
+			const plan = await planned();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				SCRIPT,
+				CODEX,
+			]);
+			expect(plan?.notes).toEqual([
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.sh in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+			]);
+		});
+
+		it("should not offer it when the only file is not plain JSON", async () => {
+			await write(CLAUDE, "{ // mine\n}");
+
+			expect(names(await planned())).not.toContain(SCRIPT);
+		});
+
+		it("should say what the script needs, and what an agent asks of the user", async () => {
+			await write(".claude/keep", "");
+			await write(".codex/keep", "");
+
+			const plan = await planned();
+
+			expect(plan?.nextSteps.setup).toEqual([
+				"The hook needs bash, git and jq; on Windows, winget install jqlang.jq.",
+				"Codex runs a new hook only once you trust it: open /hooks in Codex to review it.",
+			]);
+		});
+
+		it("should list it beside default.rogen.json, and write only it", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ routes: { "*": "ReplicatedStorage" } })
+			);
+			await write("AGENTS.md", agentBlock);
+			await write(".claude/keep", "");
+
+			const plan = await planned(new MockPromptService(["hook"]));
+
+			expect(names(plan)).toEqual([SCRIPT, CLAUDE]);
+		});
+
+		it("should fail rather than write over a file it can't read", async () => {
+			await write(CLAUDE, "{}");
+			jest.spyOn(fileSystem, "readFile").mockRejectedValueOnce(
+				new Error("busy")
+			);
+
+			const result = await serviceFor(answersEverything()).plan([]);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Failed to read .claude/settings.json: busy"
+			);
 		});
 	});
 

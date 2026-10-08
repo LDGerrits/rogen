@@ -1,12 +1,19 @@
 import { toNative } from "../../base/path.js";
 import { ConfigBuild } from "../../domain/build/build.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	diagnosticToJson,
+} from "../../platform/diagnostics/diagnostic.js";
 
 /** What a build did to each config, as one JSON document. */
 export class BuildReport {
 	private readonly configs: Record<string, unknown>[] = [];
 
-	add(build: ConfigBuild): void {
+	/** `diagnostics` stands in for everything the build found, for a caller that leaves some out. */
+	add(
+		build: ConfigBuild,
+		diagnostics: readonly Diagnostic[] = build.diagnostics
+	): void {
 		const loaded = build.outcome !== "notLoaded";
 		this.configs.push({
 			config: build.label,
@@ -17,7 +24,7 @@ export class BuildReport {
 			...(build.outcome === "notWritten" && {
 				blockedBy: build.blockedBy,
 			}),
-			diagnostics: build.diagnostics.map(diagnosticToJson),
+			diagnostics: diagnostics.map(diagnosticToJson),
 		});
 	}
 

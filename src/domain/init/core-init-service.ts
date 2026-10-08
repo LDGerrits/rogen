@@ -14,6 +14,9 @@ import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";
+import { AgentHookSetup } from "./agent-hook-setup.js";
+import { AgentHooks, AgentInUse } from "./agent-hooks.js";
+import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "./hook-target.js";
 import {
 	InitOptions,
 	InitPlan,
@@ -151,15 +154,19 @@ export class CoreInitService implements InitService {
 		const read = await this.agentFileIn(directory);
 		if (read.isErr()) return read;
 		const agentFile = read.value;
+		const hooksRead = await this.agentHooksIn(directory);
+		if (hooksRead.isErr()) return hooksRead;
+		const hooks = hooksRead.value;
 		if (!base)
 			return this.planWith(
 				directory,
 				questions,
 				asking(projectSetup),
-				asking(new AgentSetup(agentFile, questions))
+				asking(new AgentSetup(agentFile, questions)),
+				asking(new AgentHookSetup(hooks, questions))
 			);
 		const offered = agentFile.hasBlock ? undefined : agentFile.fileName;
-		switch (await questions.whatToAdd(offered)) {
+		switch (await questions.whatToAdd(offered, hooks.agents)) {
 			case undefined:
 				return ok(undefined);
 			case "place":
@@ -185,6 +192,12 @@ export class CoreInitService implements InitService {
 					directory,
 					questions,
 					asking(new AgentSetup(agentFile, questions, true))
+				);
+			case "hook":
+				return this.planWith(
+					directory,
+					questions,
+					asking(new AgentHookSetup(hooks, questions, true))
 				);
 		}
 	}
@@ -237,6 +250,53 @@ export class CoreInitService implements InitService {
 		}
 		const [agents, claude] = texts;
 		return ok(AgentFile.choose(agents, claude));
+	}
+
+	/** Fails on an agent's hook file it can't read rather than take it for missing, which would write over it. */
+	private async agentHooksIn(
+		directory: InitDirectory
+	): Promise<Result<AgentHooks, Error>> {
+		const inUse: AgentInUse[] = [];
+		for (const target of HOOK_TARGETS) {
+			const signs = await Promise.all(
+				target.signs.map((sign) =>
+					this.fileSystemService.exists(
+						path.join(directory.path, sign)
+					)
+				)
+			);
+			if (!signs.includes(true)) continue;
+			const text = await this.readIfThere(directory, target.settingsFile);
+			if (text.isErr()) return text;
+			inUse.push({ target, text: text.value });
+		}
+		return ok(
+			new AgentHooks({
+				scriptExists: await this.fileSystemService.exists(
+					path.join(directory.path, HOOK_SCRIPT_FILE)
+				),
+				inUse,
+			})
+		);
+	}
+
+	private async readIfThere(
+		directory: InitDirectory,
+		fileName: string
+	): Promise<Result<string | undefined, Error>> {
+		const file = path.join(directory.path, fileName);
+		if (!(await this.fileSystemService.exists(file))) return ok(undefined);
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isErr()
+			? err(
+					new Error(
+						`Failed to read ${fileName}: ${text.error.message}`,
+						{ cause: text.error }
+					)
+				)
+			: text;
 	}
 
 	async write(

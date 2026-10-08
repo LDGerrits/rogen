@@ -1,4 +1,4 @@
-$ rogen init
+$ rogen init -y
 exit 0
 stdout:
   rogen init
@@ -12,13 +12,6 @@ stdout:
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
-
-$ rogen build
-exit 0
-stdout:
-  rogen build · default
-  default.project.json · unchanged
-  Built 1 config.
 
 written:
   AGENTS.md
@@ -43,16 +36,4 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
-      Inventory: Folder
-        Types: ModuleScript  <- src/Inventory/Types.luau
-      Trading: Folder
-        Rules: ModuleScript  <- src/Trading/shared/Rules.luau
-  ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Save: ModuleScript  <- src/Inventory/Server/Save.luau
-    Trading: Folder
-      Trade: ModuleScript  <- src/Trading/server/Trade.luau
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Trading: Folder
-        Window: ModuleScript  <- src/Trading/Client/Window.luau
+      A: ModuleScript  <- src/A.luau

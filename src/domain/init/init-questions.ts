@@ -1,4 +1,5 @@
 import { normalizeDir } from "../../base/path.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import {
 	PromptChoice,
 	PromptService,
@@ -7,13 +8,14 @@ import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { HOOK_SCRIPT_FILE } from "./hook-target.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
-export type Addition = "place" | "extending" | "separate" | "agent";
+export type Addition = "place" | "extending" | "separate" | "agent" | "hook";
 
 export interface NameQuestion {
 	readonly message: string;
@@ -62,7 +64,10 @@ export class InitQuestions {
 	}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
-	async whatToAdd(agentFile?: string): Promise<Addition | undefined> {
+	async whatToAdd(
+		agentFile?: string,
+		hookAgents: readonly string[] = []
+	): Promise<Addition | undefined> {
 		if (!this.interactive) return "place";
 		return this.promptService.select<Addition>({
 			message: `${ConfigSet.DEFAULT_FILE} exists. What do you want to add?`,
@@ -91,6 +96,15 @@ export class InitQuestions {
 							},
 						]
 					: []),
+				...(hookAgents.length > 0
+					? [
+							{
+								value: "hook" as const,
+								label: "Agent hook",
+								hint: `reports Rogen warnings to ${joinedWithAnd(hookAgents)}`,
+							},
+						]
+					: []),
 			],
 			initialValue: "place",
 		});
@@ -103,6 +117,18 @@ export class InitQuestions {
 			message: `Add Rogen's rules for coding agents to ${fileName}?`,
 			description:
 				"About 10 lines, read by every agent that opens this repo.",
+			initialValue: true,
+		});
+	}
+
+	/** Whether to add the hook that reports Rogen warnings to `agents`; a run that can't ask doesn't, since it edits the repo's tooling. */
+	async addAgentHook(
+		agents: readonly string[]
+	): Promise<boolean | undefined> {
+		if (!this.interactive) return false;
+		return this.promptService.confirm({
+			message: `Add a hook that reports Rogen warnings to ${joinedWithAnd(agents)}?`,
+			description: `Writes ${HOOK_SCRIPT_FILE} and registers it with ${agents.length === 1 ? "the agent" : "each agent"}. It runs when the agent is about to stop, on the files it changed.`,
 			initialValue: true,
 		});
 	}

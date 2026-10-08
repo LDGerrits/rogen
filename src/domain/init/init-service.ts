@@ -22,6 +22,8 @@ export interface InitPlan {
 	readonly files: readonly PlannedFile[];
 	/** Root dirs the configs name that `init` creates when they don't exist yet, relative to `directory`. Never one a config only inherits. */
 	readonly directories: readonly string[];
+	/** The file names of the configs it writes, which are built once written. */
+	readonly configs: readonly string[];
 	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;

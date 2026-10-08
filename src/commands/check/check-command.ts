@@ -1,5 +1,9 @@
+import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { diagnosticsAbout } from "../../domain/build/build.js";
+import {
+	diagnosticsAbout,
+	diagnosticsPerFile,
+} from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigSelectionOptions } from "../../domain/config/config.js";
 import {
@@ -13,6 +17,7 @@ import {
 import {
 	Diagnostic,
 	diagnosticToJson,
+	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
@@ -87,7 +92,11 @@ registerCommand(
 					},
 					failure
 				);
-			return failure ? err(failure) : ok(undefined);
+			if (!failure) return ok(undefined);
+			// The findings are what was asked for, so they go to stdout and survive --quiet.
+			for (const diagnostic of failure.diagnostics)
+				logService.print(renderDiagnostic(diagnostic, cwd));
+			return err(new ReportedError(failure));
 		}
 
 		/** What a build raises about each path, narrowed to it, and why any config didn't load. */
@@ -118,7 +127,9 @@ registerCommand(
 			selection: ConfigSelection
 		): Promise<Result<Diagnostic[], Error>> {
 			const builds = await buildService.check(selection);
-			return builds.isErr() ? builds : ok(diagnosticsOf(builds.value));
+			return builds.isErr()
+				? builds
+				: ok(diagnosticsPerFile(diagnosticsOf(builds.value)));
 		}
 	}
 );

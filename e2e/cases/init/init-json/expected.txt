@@ -8,6 +8,15 @@ stdout:
     ],
     "appended": [],
     "directories": [],
+    "built": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
     "notes": [],
     "nextSteps": {
       "setup": [],
@@ -40,6 +49,7 @@ stdout:
 
 written:
   AGENTS.md
+  default.project.json
   default.rogen.json
 
 default.rogen.json:

@@ -16,7 +16,7 @@ import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { LogService } from "../../../platform/log/log-service.js";
+import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -76,9 +76,36 @@ describe("check command", () => {
 			});
 	});
 
+	const printed = () =>
+		logService.entries
+			.filter(({ kind }) => kind === "print")
+			.map(({ text }) => text);
+
 	describe("with paths", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", { routes: ROUTES });
+		});
+
+		it("should print the findings as output, not as warnings", async () => {
+			await write("src/Save@sever.luau");
+
+			await run({ _: ["src/Save@sever.luau"] });
+
+			expect(printed()).toEqual([
+				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+			]);
+			expect(logService.entries.map(({ kind }) => kind)).toEqual([
+				"print",
+			]);
+		});
+
+		it("should print the findings under --quiet", async () => {
+			logService.setLevel(LogLevel.Error);
+			await write("src/Save@sever.luau");
+
+			await run({ _: ["src/Save@sever.luau"] });
+
+			expect(printed()).toHaveLength(1);
 		});
 
 		it("should fail with the diagnostics about a path", async () => {
@@ -179,7 +206,43 @@ describe("check command", () => {
 			const result = await run({});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "default.rogen.json"],
+				["route.strayAt", "src/Save@sever.luau"],
+			]);
+		});
+
+		it("should print one line per file a grouped warning is about", async () => {
+			await write("src/Save@sever.luau", "src/Load@sever.luau");
+
+			await run({});
+
+			expect(printed()).toEqual([
+				'src/Load@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+			]);
+		});
+
+		it("should not cap the files a grouped warning is about", async () => {
+			const names = Array.from(
+				{ length: 12 },
+				(_, i) => `A${i}@sever.luau`
+			);
+			await write(...names.map((name) => `src/${name}`));
+
+			await run({});
+
+			expect(printed()).toHaveLength(12);
+		});
+
+		it("should keep a warning that is not about a file as it is", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				rootDirs: ["missing"],
+			});
+
+			await run({});
+
+			expect(printed()).toEqual([
+				"missing - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)",
 			]);
 		});
 

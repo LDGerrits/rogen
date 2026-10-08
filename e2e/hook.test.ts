@@ -10,14 +10,14 @@ const script = fs
 	.readFileSync(path.join(ROOT, "docs/content/docs/v2/agents.mdx"), "utf8")
 	.replace(/\r\n/g, "\n")
 	.match(
-		/```bash title="\.claude\/hooks\/rogen-stop\.sh"\n([\s\S]*?)\n```/
+		/```bash title="\.agents\/hooks\/rogen-check\.sh"\n([\s\S]*?)\n```/
 	)?.[1];
 
 const has = (tool: string) =>
 	spawnSync(tool, ["--version"], { stdio: "ignore" }).status === 0;
 const available = has("bash") && has("git") && has("jq");
 
-(available ? describe : describe.skip)("Claude Code Stop hook", () => {
+(available ? describe : describe.skip)("agent Stop hook", () => {
 	let bundle: ReturnType<typeof bundleCli>;
 	let dir: string;
 	let bin: string;
@@ -35,20 +35,37 @@ const available = has("bash") && has("git") && has("jq");
 		fs.writeFileSync(target, text);
 	};
 
-	const stop = (session = "s1") => {
-		const result = spawnSync("bash", [path.join(dir, "rogen-stop.sh")], {
-			input: JSON.stringify({ session_id: session }),
-			encoding: "utf8",
-			env: {
-				...process.env,
-				PATH: `${bin}${path.delimiter}${process.env.PATH}`,
-				CLAUDE_PROJECT_DIR: path.join(dir, "project"),
-				NO_COLOR: "1",
-			},
-		});
+	const stop = (
+		payload: Record<string, unknown> = { session_id: "s1" },
+		args: string[] = [],
+		env: Record<string, string | undefined> = {}
+	) => {
+		const result = spawnSync(
+			"bash",
+			[path.join(dir, "rogen-check.sh"), ...args],
+			{
+				input: JSON.stringify(payload),
+				encoding: "utf8",
+				env: Object.fromEntries(
+					Object.entries({
+						...process.env,
+						PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+						CLAUDE_PROJECT_DIR: path.join(dir, "project"),
+						NO_COLOR: "1",
+						...env,
+					}).filter(([, value]) => value !== undefined)
+				),
+			}
+		);
+		const reply = result.stdout.trim()
+			? (JSON.parse(result.stdout) as Record<string, string>)
+			: undefined;
+		const message = reply?.reason ?? reply?.followup_message;
 		return {
 			exit: result.status,
-			report: result.stderr.split("\n").slice(1).filter(Boolean),
+			stderr: result.stderr,
+			reply,
+			report: message?.split("\n").slice(1).filter(Boolean) ?? [],
 		};
 	};
 
@@ -64,7 +81,7 @@ const available = has("bash") && has("git") && has("jq");
 		dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-hook-"));
 		bin = path.join(dir, "bin");
 		fs.mkdirSync(bin);
-		fs.writeFileSync(path.join(dir, "rogen-stop.sh"), script!);
+		fs.writeFileSync(path.join(dir, "rogen-check.sh"), script!);
 		const wrapper = path.join(bin, "rogen");
 		const [command, args] = invocation(bundle.cli, []);
 		fs.writeFileSync(
@@ -106,7 +123,7 @@ const available = has("bash") && has("git") && has("jq");
 	it("should say nothing about a clean file, or the warning that was there before", () => {
 		write("src/Clean.luau");
 
-		expect(stop()).toEqual({ exit: 0, report: [] });
+		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 	});
 
 	it("should report each new warning once, one line each, and only what is new after a fix", () => {
@@ -117,7 +134,9 @@ const available = has("bash") && has("git") && has("jq");
 		git("mv", "src/Save.luau", "src/Save.client.luau");
 		const first = stop();
 
-		expect(first.exit).toBe(2);
+		expect(first.exit).toBe(0);
+		expect(first.reply?.decision).toBe("block");
+		expect(first.stderr).toBe("");
 		expect(first.report).toEqual([
 			expect.stringMatching(
 				/^src\/Save\.client\.luau - warning: .*\(tree\.deadScript\)$/
@@ -127,7 +146,7 @@ const available = has("bash") && has("git") && has("jq");
 			),
 		]);
 
-		expect(stop()).toEqual({ exit: 0, report: [] });
+		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 
 		fs.renameSync(
 			path.join(dir, "project/src/Buy@sever.luau"),
@@ -136,7 +155,7 @@ const available = has("bash") && has("git") && has("jq");
 		write("src/Tax.shared.luau");
 		const fixed = stop();
 
-		expect(fixed.exit).toBe(2);
+		expect(fixed.reply?.decision).toBe("block");
 		expect(fixed.report).toEqual([
 			expect.stringMatching(
 				/^src\/Tax\.shared\.luau - warning: .*\(route\.dotRoute\)$/
@@ -146,9 +165,74 @@ const available = has("bash") && has("git") && has("jq");
 
 	it("should report again in another session", () => {
 		write("src/Buy@sever.luau");
-		stop("s1");
+		stop({ session_id: "s1" });
 
-		expect(stop("s2").exit).toBe(2);
+		expect(stop({ session_id: "s2" }).reply?.decision).toBe("block");
+	});
+
+	it.each([
+		["Copilot", { sessionId: "a" }],
+		["Cursor", { conversation_id: "a" }],
+	])("should key the session on the id %s sends", (_, payload) => {
+		write("src/Buy@sever.luau");
+		stop(payload);
+
+		expect(stop(payload).reply).toBeUndefined();
+		expect(stop({ session_id: "b" }).reply?.decision).toBe("block");
+	});
+
+	it("should ask Cursor to continue with followup_message", () => {
+		write("src/Buy@sever.luau");
+
+		const { reply } = stop({ conversation_id: "c" }, ["cursor"]);
+
+		expect(Object.keys(reply ?? {})).toEqual(["followup_message"]);
+		expect(reply?.followup_message).toContain("route.strayAt");
+	});
+
+	it("should find the project from the payload's cwd where no agent sets CLAUDE_PROJECT_DIR", () => {
+		write("src/Buy@sever.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "project") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should find the config above the folder the agent runs in", () => {
+		write("src/sub/Buy@sever.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "project/src/sub") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should not count a report as given when the reply could not be made", () => {
+		write("src/Buy@sever.luau");
+		const broken = path.join(dir, "broken");
+		fs.mkdirSync(broken);
+		const realJq = execFileSync("which", ["jq"], {
+			encoding: "utf8",
+		}).trim();
+		fs.writeFileSync(
+			path.join(broken, "jq"),
+			`#!/bin/sh\n[ "$1" = "-n" ] && exit 1\nexec "${realJq}" "$@"\n`
+		);
+		fs.chmodSync(path.join(broken, "jq"), 0o755);
+
+		const failed = stop({ session_id: "s" }, [], {
+			PATH: `${broken}${path.delimiter}${bin}${path.delimiter}${process.env.PATH}`,
+		});
+
+		expect(failed.exit).toBe(1);
+		expect(stop({ session_id: "s" }).reply?.decision).toBe("block");
 	});
 
 	it("should do nothing without a config in the project dir", () => {
@@ -156,6 +240,6 @@ const available = has("bash") && has("git") && has("jq");
 		fs.rmSync(path.join(dir, "project/lobby.rogen.json"));
 		write("src/Buy@sever.luau");
 
-		expect(stop()).toEqual({ exit: 0, report: [] });
+		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 	});
 });

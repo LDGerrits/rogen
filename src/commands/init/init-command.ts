@@ -1,7 +1,10 @@
 import path from "path";
-import { CancelledError } from "../../base/errors.js";
+import { CancelledError, ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
+import { ConfigBuild } from "../../domain/build/build.js";
+import { BuildService } from "../../domain/build/build-service.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	InitPlan,
 	InitService,
@@ -12,8 +15,13 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { BuildLog } from "../build/build-log.js";
+import { BuildReport } from "../build/build-report.js";
 
 const InitOptions = [
 	{
@@ -43,6 +51,18 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
+/** Why a build failed, or nothing. */
+const errorsOf = (build: ConfigBuild): readonly Diagnostic[] =>
+	build.outcome === "failed" || build.outcome === "notLoaded"
+		? build.errors
+		: [];
+
+/** What a build found, less the sync dir's warnings: the compiler they ask for hasn't run in a project that was just written. */
+const foundBy = (build: ConfigBuild): Diagnostic[] => [
+	...build.warnings,
+	...errorsOf(build),
+];
+
 registerCommand(
 	class InitCommand extends AbstractCommand<typeof InitOptions> {
 		constructor() {
@@ -60,7 +80,11 @@ registerCommand(
 						},
 					],
 					options: InitOptions,
-					examples: ["rogen init", "rogen init lobby", "rogen init -y"],
+					examples: [
+						"rogen init",
+						"rogen init lobby",
+						"rogen init -y",
+					],
 				},
 			});
 		}
@@ -71,6 +95,13 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const buildConfigs = (plan: InitPlan) =>
+				this.buildConfigs(
+					accessor.get(ConfigService),
+					accessor.get(BuildService),
+					plan
+				);
 			// A JSON document is read by a program, which can't answer a question.
 			const ask = !line.options.yes && !line.options.json;
 
@@ -81,14 +112,37 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 
 			return line.options.json
-				? this.writeAsJson(initService, logService, plan)
-				: this.writeAsText(initService, logService, plan);
+				? this.writeAsJson(initService, logService, plan, buildConfigs)
+				: this.writeAsText(
+						initService,
+						logService,
+						plan,
+						cwd,
+						buildConfigs
+					);
+		}
+
+		/** The project file of every config the plan wrote, so `rojo serve` and the compiler have one to read. */
+		private async buildConfigs(
+			configService: ConfigService,
+			buildService: BuildService,
+			plan: InitPlan
+		): Promise<Result<ConfigBuild[], Error>> {
+			// No names would select every config in the folder.
+			if (plan.configs.length === 0) return ok([]);
+			const selection = await configService.select(plan.configs, {});
+			if (selection.isErr()) return selection;
+			return buildService.build(selection.value);
 		}
 
 		private async writeAsText(
 			initService: InitService,
 			logService: LogService,
-			plan: InitPlan
+			plan: InitPlan,
+			cwd: string,
+			buildConfigs: (
+				plan: InitPlan
+			) => Promise<Result<ConfigBuild[], Error>>
 		): Promise<Result<void, Error>> {
 			// A blank gutter line sets the results apart from the last answer.
 			if (plan.asked) logService.info("");
@@ -98,14 +152,26 @@ registerCommand(
 					logService.success(`Created ${item.directory}/.`);
 					return;
 				}
-				const { fileName, appends } = item.file;
+				const { fileName, appends, summary } = item.file;
 				logService.success(
 					appends
-						? `Added Rogen's rules to ${fileName}.`
+						? `Added ${summary ?? "Rogen's rules"} to ${fileName}.`
 						: `Created ${fileName}.`
 				);
 			});
 			if (written.isErr()) return written;
+
+			const built = await buildConfigs(plan);
+			if (built.isErr()) return built;
+			const log = new BuildLog(logService, cwd);
+			for (const build of built.value) log.outcome(build, foundBy(build));
+			const errors = built.value.flatMap(errorsOf);
+			if (errors.length > 0) {
+				logService.outro(
+					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
+				);
+				return err(new ReportedError(new DiagnosticsError(errors)));
+			}
 
 			logService.step("Next steps");
 			for (const line of stepLines(plan.nextSteps)) logService.info(line);
@@ -117,7 +183,10 @@ registerCommand(
 		private async writeAsJson(
 			initService: InitService,
 			logService: LogService,
-			plan: InitPlan
+			plan: InitPlan,
+			buildConfigs: (
+				plan: InitPlan
+			) => Promise<Result<ConfigBuild[], Error>>
 		): Promise<Result<void, Error>> {
 			const files: string[] = [];
 			const appended: string[] = [];
@@ -134,16 +203,41 @@ registerCommand(
 			if (written.isErr())
 				return this.printJson(
 					logService,
-					{ files, appended, directories, error: written.error.message },
+					{
+						files,
+						appended,
+						directories,
+						error: written.error.message,
+					},
 					written.error
 				);
-			return this.printJson(logService, {
-				files,
-				appended,
-				directories,
-				notes: plan.notes,
-				nextSteps: plan.nextSteps,
-			});
+			const built = await buildConfigs(plan);
+			if (built.isErr())
+				return this.printJson(
+					logService,
+					{
+						files,
+						appended,
+						directories,
+						error: built.error.message,
+					},
+					built.error
+				);
+			const report = new BuildReport();
+			for (const build of built.value) report.add(build, foundBy(build));
+			const errors = built.value.flatMap(errorsOf);
+			return this.printJson(
+				logService,
+				{
+					files,
+					appended,
+					directories,
+					built: report.json().configs,
+					notes: plan.notes,
+					nextSteps: plan.nextSteps,
+				},
+				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+			);
 		}
 	}
 );

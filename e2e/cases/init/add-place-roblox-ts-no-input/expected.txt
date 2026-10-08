@@ -4,6 +4,7 @@ stdout:
   rogen init
   Created lobby.rogen.json.
   Created tsconfig.lobby.json.
+  lobby.project.json · wrote
   Next steps
     Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.
     Run each in its own terminal:
@@ -20,7 +21,7 @@ stdout:
   default
     default.project.json · wrote
   lobby
-    lobby.project.json · wrote
+    lobby.project.json · unchanged
   Built 2 configs.
 
 written:

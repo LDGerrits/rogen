@@ -4,6 +4,7 @@ stdout:
   rogen init
   Created lobby.rogen.json.
   Created AGENTS.md.
+  lobby.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -16,7 +17,7 @@ $ rogen build lobby
 exit 0
 stdout:
   rogen build · lobby
-  lobby.project.json · wrote
+  lobby.project.json · unchanged
   Built 1 config.
 
 written:

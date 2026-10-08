@@ -1,11 +1,16 @@
 $ rogen check
 exit 1
-stderr:
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Inventory/Save@sever.luau (did you mean "@server"?)
+stdout:
+  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
   out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen check src
 exit 1
-stderr:
+stdout:
   src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check -q
+exit 1
+stdout:
+  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)

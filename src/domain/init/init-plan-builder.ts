@@ -9,6 +9,7 @@ import {
 } from "../config/config.js";
 import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent-file.js";
+import { AgentHooks } from "./agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
@@ -27,6 +28,7 @@ export class InitPlanBuilder {
 	private readonly compilerConfigs: PlannedFile[] = [];
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
+	private hookFiles: readonly PlannedFile[] = [];
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
@@ -60,6 +62,13 @@ export class InitPlanBuilder {
 	addAgentFile(file: AgentFile): void {
 		this.agentFile = file.planned;
 		this.agentStep = file.nextStep;
+	}
+
+	/** The hook's script and the agents' files, written after the agent rules. */
+	addAgentHook(hooks: AgentHooks): void {
+		this.hookFiles = hooks.files;
+		for (const note of hooks.notes) this.addNote(note);
+		this.addSetup(...hooks.setup);
 	}
 
 	/** A root dir this run chose, which `write` creates if it isn't there. */
@@ -116,8 +125,10 @@ export class InitPlanBuilder {
 				...(this.template ? [this.template] : []),
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),
+				...this.hookFiles,
 			],
 			directories: [...this.directories],
+			configs: this.configs.map(({ fileName }) => fileName),
 			notes: [...this.notes],
 			nextSteps: {
 				setup: [...this.setup],

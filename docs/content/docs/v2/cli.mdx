@@ -126,9 +126,9 @@ $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
 src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-Each line is `file:line:col - severity: message (code)`. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A config that doesn't load fails the check, whatever paths you give.
+Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A config that doesn't load fails the check, whatever paths you give.
 
-With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs.
+With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing root dir, an empty sync dir) names the config or folder it is about.
 
 `check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--mode`, `--variant`, `--no-variant` and `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
 
@@ -144,9 +144,13 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
-`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). When it's done, `init` prints what to run next.
+`init` never overwrites a file it writes. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)).
+
+Then `init` builds the configs it wrote, so the project files exist before you run anything: `rojo serve` and `rbxtsc --rojo` find theirs, and the file is ready to commit. A hand-written project file in the way is replaced by that build, which is why it was copied first. The build prints as `build` does, with its warnings and their codes, except the ones about the sync dir, since the compiler hasn't run yet. If it fails, the files stay, the errors print, and `init` exits 1: fix the config and run `rogen build`. With `--json`, the document has the build's entries under `built`, shaped as in [`build --json`](#build---json). When it's done, `init` prints what to run next.
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
+
+Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask never adds it, and `jq` is the one tool it needs besides `bash` and `git`.
 
 ### `list [config…]`
 
@@ -300,6 +304,15 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
 	"appended": [],
 	"directories": ["/repo/places/lobby"],
+	"built": [
+		{
+			"config": "lobby",
+			"file": "/repo/lobby.rogen.json",
+			"outFile": "/repo/lobby.project.json",
+			"outcome": "wrote",
+			"diagnostics": []
+		}
+	],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -310,7 +323,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, or the hook in an agent's hook file. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `built` has an entry per config it wrote, as `build --json` does, without the sync dir's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 

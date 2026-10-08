@@ -5,6 +5,7 @@ stdout:
   Created template.project.json.
   Created default.rogen.json.
   Created AGENTS.md.
+  default.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -17,7 +18,7 @@ $ rogen build
 exit 0
 stdout:
   rogen build · default
-  default.project.json · wrote
+  default.project.json · unchanged
   Built 1 config.
 
 written:

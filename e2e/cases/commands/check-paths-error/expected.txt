@@ -1,6 +1,6 @@
 $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau src/Inventory/New@sever.luau src/Shared/Server/Secret.server.luau
 exit 1
-stderr:
+stdout:
   src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
   src/Inventory/New@sever.luau - warning: did you mean "@server"? (route.strayAt)
   src/Shared/Server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage (tree.deadScript)
