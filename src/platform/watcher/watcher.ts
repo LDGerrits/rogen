@@ -1,3 +1,4 @@
+import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
@@ -8,6 +9,8 @@ export type IgnoredPath = string | RegExp;
 export interface WatchOptions {
 	/** Paths to skip; a directory skips everything under it, and a pattern matches whole paths. */
 	readonly ignored?: readonly IgnoredPath[];
+	/** Directories to watch for their own entries only, unless `paths` also reaches a subfolder. */
+	readonly shallow?: readonly string[];
 }
 
 export interface Watcher {
@@ -21,6 +24,25 @@ export interface Watcher {
 }
 
 export const Watcher = createServiceIdentifier<Watcher>("watcher");
+
+/** Whether a watch leaves `target` out: it lies below a subfolder of a `shallow` directory and no `paths` entry reaches it. */
+export function isBeyondShallow(
+	target: string,
+	paths: readonly string[],
+	shallow: readonly string[]
+): boolean {
+	const posixTarget = toPosix(target);
+	if (paths.some((entry) => containsPosix(toPosix(entry), posixTarget)))
+		return false;
+	return shallow.some((dir) => {
+		const posixDir = toPosix(dir);
+		return (
+			containsPosix(posixDir, posixTarget) &&
+			posixTarget !== posixDir &&
+			path.posix.dirname(posixTarget) !== posixDir
+		);
+	});
+}
 
 /** Whether `target` is one of `ignored`, or lies under one; a pattern matches the posix form of the whole path. */
 export function isIgnored(

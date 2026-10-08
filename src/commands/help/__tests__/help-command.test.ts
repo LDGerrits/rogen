@@ -146,6 +146,26 @@ describe("help command", () => {
 		});
 	});
 
+	describe("a diagnostic code named without its module", () => {
+		it("should suggest the code it is the end of, misspelled or not", async () => {
+			const exact = await help("strayAt");
+			const misspelled = await help("strayAd");
+
+			for (const result of [exact, misspelled])
+				expect((result as ResultError<Error>).error.message).toContain(
+					"Did you mean 'rogen help route.strayAt'?"
+				);
+		});
+
+		it("should prefer a command or topic to the end of a code", async () => {
+			const result = await help("wacth");
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"'rogen help watch'"
+			);
+		});
+	});
+
 	describe("rogen help <topic>", () => {
 		it.each(["routing", "variants", "config", "layout", "output"])(
 			"should print the %s topic as written",

@@ -55,6 +55,24 @@ describe("ConfigDiscovery", () => {
 			expect(errorOf(result)).not.toBeInstanceOf(UsageError);
 		});
 
+		it("should say which parent folder has configs, when this one has none", async () => {
+			await fs.createDirectory("/repo/src");
+			await fs.createDirectory("/repo/src/Inventory");
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/lobby.rogen.json", "{}");
+			const nested = new ConfigDiscovery(
+				fs,
+				new MockEnvironmentService("/repo/src/Inventory")
+			);
+
+			const result = await nested.discover([]);
+
+			expect(errorOf(result).message).toBe(
+				"No *.rogen.json found in /repo/src/Inventory. " +
+					"/repo has default.rogen.json, lobby.rogen.json: run rogen from there."
+			);
+		});
+
 		it("should ignore a directory that happens to end in .rogen.json", async () => {
 			await fs.createDirectory("/repo/weird.rogen.json");
 
@@ -190,5 +208,43 @@ describe("ConfigDiscovery", () => {
 
 			expect(result.isErr()).toBe(true);
 		});
+	});
+});
+
+describe("ConfigDiscovery.findEnclosing", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo");
+		await fs.createDirectory("/repo/src");
+		await fs.createDirectory("/repo/src/Inventory");
+	});
+
+	const from = (cwd: string) =>
+		new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
+
+	it("should find the nearest parent folder with a config", async () => {
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+		await fs.writeFile("/repo/src/lobby.rogen.json", "{}");
+
+		const found = await from("/repo/src/Inventory").findEnclosing();
+
+		expect(found).toEqual({
+			directory: "/repo/src",
+			fileNames: ["lobby.rogen.json"],
+		});
+	});
+
+	it("should not count the working directory", async () => {
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+
+		expect(await from("/repo").findEnclosing()).toBeUndefined();
+	});
+
+	it("should find nothing when no parent has a config", async () => {
+		expect(
+			await from("/repo/src/Inventory").findEnclosing()
+		).toBeUndefined();
 	});
 });

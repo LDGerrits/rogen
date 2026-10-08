@@ -229,16 +229,28 @@ registerCommand(
 		}
 
 		private unknown(target: string, registry: CommandRegistry): Error {
-			const names = isCode(target)
-				? Object.keys(helpTexts.diagnostics)
-				: [
-						...registry.getCommands().keys(),
-						...TOPICS.map(({ name }) => name),
-					];
+			const codes = Object.keys(helpTexts.diagnostics);
+			// A command or topic wins over the end of a code.
+			const named = new Map<string, string>();
+			const add = (name: string, standsFor: string) => {
+				if (!named.has(name)) named.set(name, standsFor);
+			};
+			if (isCode(target)) codes.forEach((code) => add(code, code));
+			else {
+				const names = [
+					...registry.getCommands().keys(),
+					...TOPICS.map(({ name }) => name),
+				];
+				names.forEach((name) => add(name, name));
+				codes.forEach((code) =>
+					add(code.slice(code.indexOf(".") + 1), code)
+				);
+			}
 			const what = isCode(target)
 				? "diagnostic code"
 				: "command or topic";
-			const suggestion = closestMatch(target, names);
+			const closest = closestMatch(target, named.keys());
+			const suggestion = closest && named.get(closest);
 			return new UsageError(
 				suggestion
 					? `Unknown ${what} "${target}". Did you mean 'rogen help ${suggestion}'?`

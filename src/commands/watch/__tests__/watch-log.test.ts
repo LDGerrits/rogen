@@ -150,8 +150,15 @@ describe("WatchLog.update", () => {
 			build: LoadedBuild,
 			unreported: readonly Diagnostic[],
 			repeatedFailure = false,
-			repeated: readonly Diagnostic[] = []
-		): RebuildReport => ({ build, unreported, repeated, repeatedFailure });
+			repeated: readonly Diagnostic[] = [],
+			fixed: readonly Diagnostic[] = []
+		): RebuildReport => ({
+			build,
+			unreported,
+			repeated,
+			fixed,
+			repeatedFailure,
+		});
 
 		const session = () => {
 			const logService = new MockLogService();
@@ -293,6 +300,83 @@ describe("WatchLog.update", () => {
 			).toBe("default.project.json · wrote · 1 warning as before");
 		});
 
+		it("should say how many diagnostics a rebuild fixed, after the ones left out", () => {
+			const standing = warning("old");
+
+			expect(
+				resultLine([
+					reportOf(
+						built([standing]),
+						[],
+						false,
+						[standing],
+						[warning("gone"), warning("gone too")]
+					),
+				])
+			).toBe(
+				"default.project.json · wrote · 1 warning as before · 2 warnings fixed"
+			);
+			expect(
+				resultLine([
+					reportOf(
+						built([]),
+						[],
+						false,
+						[],
+						[
+							errorDiagnostic(
+								"x.err",
+								{ resource: entry.file },
+								"bad."
+							),
+						]
+					),
+				])
+			).toBe("default.project.json · wrote · 1 error fixed");
+		});
+
+		it("should print a warning two configs of one round share once, and say so on the second", () => {
+			const shared = warning("shared");
+			const lobby = mockEntry(
+				{ outFile: path.join(cwd, "lobby.project.json") },
+				path.join(cwd, "lobby.rogen.json")
+			);
+			const { log, logService } = session();
+
+			log.update(
+				updateOf({
+					reports: [
+						reportOf(built([shared]), [shared]),
+						reportOf(
+							new WrittenBuild(
+								lobby.config,
+								"wrote",
+								{ warnings: [shared], syncWarnings: [] },
+								built([]).summary,
+								[]
+							),
+							[shared]
+						),
+					],
+				})
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) =>
+						["success", "diagnosticWarning"].includes(kind)
+					)
+					.map(({ kind, text }) => [kind, text])
+			).toEqual([
+				["success", "default.project.json · wrote"],
+				["diagnosticWarning", expect.stringContaining(": shared")],
+				[
+					"success",
+					"lobby.project.json · wrote · same warnings as default",
+				],
+			]);
+		});
+
 		it("should print a config's new errors and say its last valid version still builds", () => {
 			const { log, logService } = session();
 			const error = errorDiagnostic(
@@ -304,7 +388,12 @@ describe("WatchLog.update", () => {
 			log.update(
 				updateOf({
 					notices: [
-						{ kind: "broken", file: entry.file, errors: [error] },
+						{
+							kind: "broken",
+							file: entry.file,
+							errors: [error],
+							keptLastValid: true,
+						},
 					],
 				})
 			);
@@ -319,6 +408,41 @@ describe("WatchLog.update", () => {
 					"error",
 					"Still building from the last valid default.rogen.json.",
 				],
+			]);
+		});
+
+		it("should say a config that was never valid isn't built, and a config added or removed", () => {
+			const { log, logService } = session();
+			const error = errorDiagnostic(
+				"x.err",
+				{ resource: "/repo/lobby.rogen.json" },
+				"bad."
+			);
+
+			log.update(
+				updateOf({
+					notices: [
+						{ kind: "added", file: "/repo/match.rogen.json" },
+						{ kind: "removed", file: "/repo/arena.rogen.json" },
+						{
+							kind: "broken",
+							file: "/repo/lobby.rogen.json",
+							errors: [error],
+							keptLastValid: false,
+						},
+					],
+				})
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind !== "step")
+					.map(({ kind, text }) => [kind, text])
+			).toEqual([
+				["info", "match.rogen.json added. Building it too."],
+				["info", "arena.rogen.json removed. No longer building it."],
+				["diagnosticError", expect.stringContaining("bad.")],
+				["error", "Not building lobby.rogen.json until it loads."],
 			]);
 		});
 

@@ -8,11 +8,8 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import {
-	CONFIG_SUFFIX,
-	configFileName,
-	configLabel,
-} from "./config.js";
+import { CONFIG_SUFFIX, configFileName, configLabel } from "./config.js";
+import { EnclosingConfigs } from "./config-service.js";
 
 /** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
 function isConfigPath(ref: string): boolean {
@@ -78,14 +75,34 @@ export class ConfigDiscovery {
 		const candidates = configFileNames(listing.value);
 
 		if (candidates.length === 0) {
+			const enclosing = await this.findEnclosing();
 			return err(
 				new Error(
-					`No *${CONFIG_SUFFIX} found in ${cwd}. Run "rogen init" to create one.`
+					`No *${CONFIG_SUFFIX} found in ${cwd}. ` +
+						(enclosing
+							? `${enclosing.directory} has ${enclosing.fileNames.join(", ")}: run rogen from there.`
+							: `Run "rogen init" to create one.`)
 				)
 			);
 		}
 
 		return ok(candidates.map((name) => path.join(cwd, name)));
+	}
+
+	/** The nearest parent of the working directory that has configs. */
+	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
+		let directory = this.environmentService.cwd;
+		for (;;) {
+			const parent = path.dirname(directory);
+			if (parent === directory) return undefined;
+			directory = parent;
+			const listing = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(directory)
+			);
+			if (listing.isErr()) continue;
+			const fileNames = configFileNames(listing.value);
+			if (fileNames.length > 0) return { directory, fileNames };
+		}
 	}
 
 	/** Suggests the config here that `name` is most likely a misspelling of. */

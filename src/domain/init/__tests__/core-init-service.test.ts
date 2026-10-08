@@ -93,6 +93,71 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("in a folder below a config", () => {
+		const nested = path.join(directory, "src", "Inventory");
+
+		beforeEach(async () => {
+			await fileSystem.createDirectory(path.join(directory, "src"));
+			await fileSystem.createDirectory(nested);
+			await write("default.rogen.json", "{}");
+		});
+
+		it("should refuse, naming the folder that has the config, when it may not ask", async () => {
+			const result = await serviceFor(undefined, nested).plan([]);
+
+			const message = (result as ResultError<Error>).error.message;
+			expect(message).toContain(
+				`${directory} already has default.rogen.json`
+			);
+			expect(message).toContain("run rogen from there: cd");
+		});
+
+		it("should refuse in a terminal that is told not to ask", async () => {
+			const result = await serviceFor(
+				new MockPromptService([], true),
+				nested
+			).plan([], { ask: false });
+
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should ask first in a terminal, and go on when the user says yes", async () => {
+			const prompts = new MockPromptService([
+				true,
+				...Array<typeof ACCEPT_DEFAULT>(10).fill(ACCEPT_DEFAULT),
+			]);
+
+			const result = await serviceFor(prompts, nested).plan([]);
+
+			expect(prompts.asked[0]).toContain("default.rogen.json");
+			expect(
+				result.unwrap()?.files.map(({ fileName }) => fileName)
+			).toContain("default.rogen.json");
+		});
+
+		it("should resolve to nothing when the user says no", async () => {
+			const prompts = new MockPromptService([false]);
+
+			const result = await serviceFor(prompts, nested).plan([]);
+
+			expect(result.unwrap()).toBeUndefined();
+		});
+
+		it("should not ask or refuse once the folder has a config of its own", async () => {
+			await fileSystem.writeFile(
+				path.join(nested, "default.rogen.json"),
+				"{}"
+			);
+			const prompts = new MockPromptService([]);
+
+			const result = await serviceFor(prompts, nested).plan(["lobby"], {
+				ask: false,
+			});
+
+			expect(result.isOk()).toBe(true);
+		});
+	});
+
 	describe("agent instructions", () => {
 		const agentFile = async (prompts?: PromptService) => {
 			const plan = (await serviceFor(prompts).plan([])).unwrap();

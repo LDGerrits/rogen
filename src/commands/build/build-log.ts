@@ -108,6 +108,73 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	];
 }
 
+/** The notes a config's line ends with, in the order given; none when no note applies. */
+export function joinNotes(
+	...notes: readonly (string | undefined)[]
+): string | undefined {
+	return notes.filter((note) => note !== undefined).join(" · ") || undefined;
+}
+
+/** What a config printed of one kind of diagnostic. */
+export class Printed {
+	constructor(
+		readonly fresh: readonly Diagnostic[],
+		private readonly kind: "errors" | "warnings",
+		private readonly owners: readonly string[],
+		private readonly total: number
+	) {}
+
+	/** The note for a config whose diagnostics of this kind were all printed above. */
+	repeatNote(): string | undefined {
+		return this.total > 0 &&
+			this.fresh.length === 0 &&
+			this.owners.length > 0
+			? `same ${this.kind} as ${joinedWithAnd(this.owners)}`
+			: undefined;
+	}
+}
+
+/** The diagnostics of one kind a run has printed, so a config that repeats one prints nothing for it. */
+export class PrintedDiagnostics {
+	private readonly printedBy = new Map<string, string>();
+
+	private constructor(
+		private readonly kind: "errors" | "warnings",
+		/** Whether a diagnostic about a config's own file equals another config's. */
+		private readonly sameAcrossConfigs: boolean
+	) {}
+
+	static errors(): PrintedDiagnostics {
+		return new PrintedDiagnostics("errors", false);
+	}
+
+	/** Configs that read one folder find the same warnings, each filed under its own config. */
+	static warnings(): PrintedDiagnostics {
+		return new PrintedDiagnostics("warnings", true);
+	}
+
+	/** Splits `diagnostics` of the config `label` into those not printed yet and those another config did. */
+	take(
+		label: string,
+		configFile: string,
+		diagnostics: readonly Diagnostic[]
+	): Printed {
+		const owners = new Set<string>();
+		const fresh = diagnostics.filter((diagnostic) => {
+			const key = renderDiagnostic(
+				this.sameAcrossConfigs && diagnostic.resource === configFile
+					? { ...diagnostic, resource: "" }
+					: diagnostic
+			);
+			const owner = this.printedBy.get(key);
+			if (owner === undefined) this.printedBy.set(key, label);
+			else if (owner !== label) owners.add(owner);
+			return owner === undefined;
+		});
+		return new Printed(fresh, this.kind, [...owners], diagnostics.length);
+	}
+}
+
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(
@@ -126,29 +193,30 @@ export class BuildLog {
 			"build",
 			builds.map(({ label }) => label)
 		);
-		const printedBy = new Map<string, string>();
+		const printedErrors = PrintedDiagnostics.errors();
+		const printedWarnings = PrintedDiagnostics.warnings();
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.label);
+			const file =
+				build.outcome === "notLoaded" ? build.file : build.config.file;
 			const errors =
 				build.outcome === "failed" || build.outcome === "notLoaded"
-					? build.errors
-					: [];
-			const shared = new Set<string>();
-			const fresh = errors.filter((error) => {
-				const key = renderDiagnostic(error);
-				const owner = printedBy.get(key);
-				if (owner !== undefined) shared.add(owner);
-				else printedBy.set(key, build.label);
-				return owner === undefined;
-			});
+					? printedErrors.take(build.label, file, build.errors)
+					: undefined;
+			const warnings = printedWarnings.take(build.label, file, [
+				...build.warnings,
+				...(build.syncWarnings ?? []),
+			]);
 			this.outcome(
 				build,
-				[...build.warnings, ...(build.syncWarnings ?? []), ...fresh],
-				build.outcome === "notWritten"
-					? `${joinedWithAnd(build.blockedBy)} failed`
-					: errors.length > 0 && fresh.length === 0
-						? `same errors as ${joinedWithAnd([...shared])}`
-						: undefined
+				[...warnings.fresh, ...(errors?.fresh ?? [])],
+				joinNotes(
+					build.outcome === "notWritten"
+						? `${joinedWithAnd(build.blockedBy)} failed`
+						: undefined,
+					errors?.repeatNote(),
+					warnings.repeatNote()
+				)
 			);
 		}
 		if (

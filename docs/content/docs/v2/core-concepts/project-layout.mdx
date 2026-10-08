@@ -51,6 +51,8 @@ Rogen warns about metadata with nothing to apply to, such as an `init.meta.json`
 { "exclude": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
+A `*.rogen.json` inside a root dir is never built, whatever `exclude` says: a config is Rogen's own file, not game data. `rogen where` reports it as `excluded · matches *.rogen.json`.
+
 To sync a vendored library exactly as it is, [mount it in the template](/docs/v2/core-concepts/output#template) instead.
 
 ### Leaving Out `_` Files

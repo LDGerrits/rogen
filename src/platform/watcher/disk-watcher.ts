@@ -5,7 +5,7 @@ import { FileType } from "../fs/file-system-service.js";
 import { toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
-import { isIgnored, WatchOptions } from "./watcher.js";
+import { isBeyondShallow, isIgnored, WatchOptions } from "./watcher.js";
 
 export class DiskWatcher extends AbstractWatcher {
 	private watcher: chokidar.FSWatcher | null = null;
@@ -20,13 +20,16 @@ export class DiskWatcher extends AbstractWatcher {
 		options: WatchOptions
 	): Promise<void> {
 		const ignored = options.ignored ?? [];
+		const shallow = options.shallow ?? [];
 
-		this.watcher = chokidar.watch([...paths], {
+		this.watcher = chokidar.watch([...paths, ...shallow], {
 			ignoreInitial: true,
 			persistent: true,
 			followSymlinks: true,
 			ignored: (target: string) =>
-				isIgnored(target, ignored) || this.skipUnfollowable(target),
+				isIgnored(target, ignored) ||
+				isBeyondShallow(target, paths, shallow) ||
+				this.skipUnfollowable(target),
 		});
 
 		this.watcher.on("add", (p) =>

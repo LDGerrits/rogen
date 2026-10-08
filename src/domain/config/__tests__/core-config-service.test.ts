@@ -781,6 +781,98 @@ describe("domain/config/core-config-service", () => {
 		});
 	});
 
+	describe("reload of every config here", () => {
+		beforeEach(async () => {
+			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
+		});
+
+		it("should know the folder it was picked from, and not when configs were named", async () => {
+			await start({ names: [] });
+			expect(selection.directory).toBe("/repo");
+
+			await start({ names: ["default"] });
+			expect(selection.directory).toBeUndefined();
+		});
+
+		it("should concern the config files of that folder and the files it reads", async () => {
+			await start({ names: [] });
+
+			expect(selection.concerns("/repo/new.rogen.json")).toBe(true);
+			expect(selection.concerns("/repo/default.rogen.json")).toBe(true);
+			expect(selection.concerns("/repo/src/x.rogen.json")).toBe(false);
+			expect(selection.concerns("/repo/README.md")).toBe(false);
+		});
+
+		it("should pick up a config added to the folder, and report it", async () => {
+			await start({ names: [] });
+
+			await write("/repo/lobby.rogen.json", { rootDirs: ["b"] });
+			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+			expect(reload.changed).toEqual(["/repo/lobby.rogen.json"]);
+			expect(reload.notices).toEqual([
+				{ kind: "added", file: "/repo/lobby.rogen.json" },
+			]);
+			expect(selection.files.has("/repo/lobby.rogen.json")).toBe(true);
+		});
+
+		it("should report a config added broken with its errors, which no earlier version stands in for", async () => {
+			await start({ names: [] });
+
+			await write("/repo/lobby.rogen.json", { bogus: 1 });
+			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+
+			expect(selection.entries[1].status).toBe("broken");
+			expect(reload.changed).toEqual([]);
+			expect(reload.notices).toMatchObject([
+				{
+					kind: "broken",
+					file: "/repo/lobby.rogen.json",
+					keptLastValid: false,
+				},
+			]);
+		});
+
+		it("should drop a config deleted from the folder, and report it", async () => {
+			await write("/repo/lobby.rogen.json", {});
+			await start({ names: [] });
+
+			await fs.delete("/repo/lobby.rogen.json");
+			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+			expect(reload.notices).toEqual([
+				{ kind: "removed", file: "/repo/lobby.rogen.json" },
+			]);
+			expect(selection.files.has("/repo/lobby.rogen.json")).toBe(false);
+		});
+
+		it("should be left with no config when the last one is deleted", async () => {
+			await start({ names: [] });
+
+			await fs.delete("/repo/default.rogen.json");
+			await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(selection.entries).toEqual([]);
+		});
+
+		it("should not look for new configs when the selection named its configs", async () => {
+			await start({ names: ["default"] });
+
+			await write("/repo/lobby.rogen.json", {});
+			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+
+			expect(selection.entries).toHaveLength(1);
+			expect(reload).toEqual({ changed: [], notices: [] });
+		});
+	});
+
 	describe("reload", () => {
 		it("should report each config whose value changed, in selection order", async () => {
 			await write("/repo/base.rogen.json", { rootDirs: ["a"] });
@@ -858,6 +950,7 @@ describe("domain/config/core-config-service", () => {
 					kind: "broken",
 					file: "/repo/default.rogen.json",
 					errors: errors(0),
+					keptLastValid: true,
 				},
 			]);
 		});

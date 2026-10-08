@@ -40,3 +40,9 @@ exit 0
 stdout:
   src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)
   src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+
+$ rogen where ServerScriptService.Inventory.Export ServerScriptService.Nothing.Here
+exit 0
+stdout:
+  ServerScriptService.Inventory.Export -> no file places it · a new file goes in src/Inventory/Server/
+  ServerScriptService.Nothing.Here -> no file places it

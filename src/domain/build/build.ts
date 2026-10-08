@@ -244,6 +244,8 @@ export type FileLocation =
 export interface InstanceLocation {
 	readonly reference: InstanceReference;
 	readonly files: readonly PlacedLocation[];
+	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
+	readonly folders: readonly string[];
 }
 
 /** Where `locate` found things in one config. */

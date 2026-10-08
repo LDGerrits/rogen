@@ -47,18 +47,30 @@ class WatchedConfig {
 
 	/** Records `build` as the latest, and reports what it says that the one before didn't. */
 	finished(build: LoadedBuild): RebuildReport {
-		const unreported = newDiagnostics(
-			this.latest?.diagnostics ?? [],
-			build.diagnostics
-		);
+		const before = this.latest?.diagnostics ?? [];
+		const unreported = newDiagnostics(before, build.diagnostics);
+		// A failed build stops before it finds warnings, so what it doesn't list isn't fixed.
+		const fixed =
+			build.outcome === "failed"
+				? []
+				: newDiagnostics(build.diagnostics, before).filter(
+						(gone) =>
+							!unreported.some(
+								({ code, resource }) =>
+									code === gone.code &&
+									resource === gone.resource
+							)
+					);
 		this.latest = build;
-		if (build.outcome !== "failed") this.readFiles = new Set(build.readFiles);
+		if (build.outcome !== "failed")
+			this.readFiles = new Set(build.readFiles);
 		return {
 			build,
 			unreported,
 			repeated: build.diagnostics.filter(
 				(diagnostic) => !unreported.includes(diagnostic)
 			),
+			fixed,
 			repeatedFailure:
 				build.outcome === "failed" && !unreported.some(isError),
 		};
@@ -157,14 +169,25 @@ export class CoreWatchSession
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
 		if (!this.started || watched.some((config) => !config.settled)) {
-			return [...changes];
+			return changes.filter((change) => this.isWatched(change.path));
 		}
 		const contentFiles = this.selection.files;
 		return changes.filter(
 			(change) =>
-				change.type !== FileChangeType.UPDATED ||
-				contentFiles.has(change.path) ||
-				watched.some(({ readFiles }) => readFiles.has(change.path))
+				this.isWatched(change.path) &&
+				(change.type !== FileChangeType.UPDATED ||
+					contentFiles.has(change.path) ||
+					watched.some(({ readFiles }) => readFiles.has(change.path)))
+		);
+	}
+
+	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
+	private isWatched(file: string): boolean {
+		return (
+			!this.selection.directory ||
+			this.selection.concerns(file) ||
+			this.selection.files.has(file) ||
+			this.plan.watches(file)
 		);
 	}
 
@@ -258,6 +281,11 @@ export class CoreWatchSession
 		);
 	}
 
+	/** The folder watched for configs added to it and deleted from it. */
+	private get shallowDirs(): string[] {
+		return this.selection.directory ? [this.selection.directory] : [];
+	}
+
 	private watchPaths(): string[] {
 		return [...this.selection.files, ...this.plan.roots];
 	}
@@ -266,6 +294,7 @@ export class CoreWatchSession
 	private watchKey(): string {
 		return JSON.stringify([
 			this.watchPaths(),
+			this.shallowDirs,
 			this.plan.ignored.map(String),
 		]);
 	}
@@ -274,6 +303,7 @@ export class CoreWatchSession
 		this.activeWatch = this.watchKey();
 		await this.watcher.watch(this.watchPaths(), {
 			ignored: [...this.plan.ignored],
+			shallow: this.shallowDirs,
 		});
 		this.listing = await this.indexService.list(this.plan.roots);
 	}
@@ -294,6 +324,13 @@ export class CoreWatchSession
 		return [...new Set([...before, ...after])].filter(
 			(file) => before.has(file) !== after.has(file)
 		);
+	}
+
+	/** Drops what the session knows of configs that left the selection. */
+	private forgetRemoved(): void {
+		const current = new Set(this.currentConfigs.map(({ file }) => file));
+		for (const file of this.watched.keys())
+			if (!current.has(file)) this.watched.delete(file);
 	}
 
 	private async reloadConfigs(
@@ -322,17 +359,15 @@ export class CoreWatchSession
 			// A config edited while the watcher restarted was never reported.
 			toReload = [...this.selection.files];
 		}
-		return {
-			reloaded: [...reloaded],
-			reindexed,
-			reblocked: this.refreshSet(),
-		};
+		const reblocked = this.refreshSet();
+		this.forgetRemoved();
+		return { reloaded: [...reloaded], reindexed, reblocked };
 	}
 
 	private async onChanges(changes: FileChange[]): Promise<void> {
 		const configFiles = changes
 			.map((change) => change.path)
-			.filter((file) => this.selection.files.has(file));
+			.filter((file) => this.selection.concerns(file));
 
 		let reloaded: string[] = [];
 		let reindexed = false;

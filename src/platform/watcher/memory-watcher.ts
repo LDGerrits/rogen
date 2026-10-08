@@ -3,10 +3,16 @@ import { containsPosix, toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
-import { IgnoredPath, isIgnored, WatchOptions } from "./watcher.js";
+import {
+	IgnoredPath,
+	isBeyondShallow,
+	isIgnored,
+	WatchOptions,
+} from "./watcher.js";
 
 export class MemoryWatcher extends AbstractWatcher {
 	private watched: readonly string[] = [];
+	private shallow: readonly string[] = [];
 	private ignored: readonly IgnoredPath[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
@@ -23,6 +29,7 @@ export class MemoryWatcher extends AbstractWatcher {
 	): Promise<void> {
 		this.ignored = options.ignored ?? [];
 		this.watched = paths.map(toPosix);
+		this.shallow = (options.shallow ?? []).map(toPosix);
 
 		this.watchDisposables = new DisposableStore();
 
@@ -30,9 +37,15 @@ export class MemoryWatcher extends AbstractWatcher {
 			const normalizedChangePath = toPosix(change.path);
 			if (isIgnored(normalizedChangePath, this.ignored)) return;
 
-			const isWatched = this.watched.some((watched) =>
-				containsPosix(watched, normalizedChangePath)
-			);
+			const isWatched =
+				[...this.watched, ...this.shallow].some((watched) =>
+					containsPosix(watched, normalizedChangePath)
+				) &&
+				!isBeyondShallow(
+					normalizedChangePath,
+					this.watched,
+					this.shallow
+				);
 
 			if (isWatched) {
 				this.fireChange({
@@ -50,6 +63,7 @@ export class MemoryWatcher extends AbstractWatcher {
 			this.watchDisposables = null;
 		}
 		this.watched = [];
+		this.shallow = [];
 		this.ignored = [];
 	}
 }

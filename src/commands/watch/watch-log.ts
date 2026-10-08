@@ -11,7 +11,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { BuildLog } from "../build/build-log.js";
+import { BuildLog, PrintedDiagnostics, joinNotes } from "../build/build-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;
@@ -77,15 +77,18 @@ function titleOf(cause: WatchCause): string {
 	}
 }
 
-/** What a block leaves out because it printed it before, counted: `3 warnings as before`. */
-function asBefore(repeated: readonly Diagnostic[]): string | undefined {
-	const errors = repeated.filter(isError).length;
-	const warnings = repeated.length - errors;
+/** `diagnostics` counted with `what` said of them: `3 warnings as before`. */
+function counted(
+	diagnostics: readonly Diagnostic[],
+	what: string
+): string | undefined {
+	const errors = diagnostics.filter(isError).length;
+	const warnings = diagnostics.length - errors;
 	const parts = [
 		...(errors > 0 ? [plural(errors, "error")] : []),
 		...(warnings > 0 ? [plural(warnings, "warning")] : []),
 	];
-	return parts.length > 0 ? `${parts.join(" and ")} as before` : undefined;
+	return parts.length > 0 ? `${parts.join(" and ")} ${what}` : undefined;
 }
 
 /** How `watch` reports each round of rebuilds. */
@@ -121,29 +124,52 @@ export class WatchLog {
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
-		reports.forEach((report) => this.report(report));
+		const printedWarnings = PrintedDiagnostics.warnings();
+		reports.forEach((report) => this.report(report, printedWarnings));
 	}
 
 	private notice(notice: ConfigNotice): void {
 		const name = path.basename(notice.file);
-		if (notice.kind === "recovered") {
-			this.logService.info(`${name} loads again.`);
-			return;
+		switch (notice.kind) {
+			case "recovered":
+				this.logService.info(`${name} loads again.`);
+				return;
+			case "added":
+				this.logService.info(`${name} added. Building it too.`);
+				return;
+			case "removed":
+				this.logService.info(`${name} removed. No longer building it.`);
+				return;
+			case "broken":
+				this.buildLog.diagnostics(notice.errors);
+				this.logService.error(
+					notice.keptLastValid
+						? `Still building from the last valid ${name}.`
+						: `Not building ${name} until it loads.`
+				);
+				return;
 		}
-		this.buildLog.diagnostics(notice.errors);
-		this.logService.error(`Still building from the last valid ${name}.`);
 	}
 
-	private report({
-		build,
-		unreported,
-		repeated,
-		repeatedFailure,
-	}: RebuildReport): void {
+	private report(
+		{ build, unreported, repeated, fixed, repeatedFailure }: RebuildReport,
+		printedWarnings: PrintedDiagnostics
+	): void {
+		const warnings = printedWarnings.take(
+			build.label,
+			build.config.file,
+			unreported.filter((diagnostic) => !isError(diagnostic))
+		);
 		this.buildLog.outcome(
 			build,
-			unreported,
-			repeatedFailure ? "same errors as before" : asBefore(repeated)
+			[...warnings.fresh, ...unreported.filter(isError)],
+			joinNotes(
+				repeatedFailure
+					? "same errors as before"
+					: counted(repeated, "as before"),
+				warnings.repeatNote(),
+				counted(fixed, "fixed")
+			)
 		);
 	}
 }

@@ -8,6 +8,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
+import { CONFIG_SUFFIX } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
 import { TemplateMounts } from "./build-template.js";
@@ -195,7 +196,7 @@ export class RootScanner {
 		return this.exclude.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that the template doesn't mount and `exclude` doesn't match; the rest are recorded as left out. */
+	/** The entries of `dir` that the template doesn't mount, `exclude` doesn't match and aren't a Rogen config; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,
@@ -204,7 +205,10 @@ export class RootScanner {
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
 			const mount = this.mounts.at(path.join(dir, name));
-			const glob = this.excludingGlob(path.join(dir, name));
+			const glob =
+				isFileType(type) && name.endsWith(CONFIG_SUFFIX)
+					? `*${CONFIG_SUFFIX}`
+					: this.excludingGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "mounted",

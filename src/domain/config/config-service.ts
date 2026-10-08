@@ -34,14 +34,20 @@ export function buildableConfig(
 	return entry.status === "valid" ? entry.config : entry.lastValid;
 }
 
-/** What a reload says of one config: its latest load found errors the previous one didn't, or a broken config loads again. */
+/** What a reload says of one config: new errors, a recovery, or joining or leaving the selection. */
 export type ConfigNotice =
 	| {
 			readonly kind: "broken";
 			readonly file: string;
 			readonly errors: readonly Diagnostic[];
+			/** Whether an earlier valid version still builds; a config that never loaded has none. */
+			readonly keptLastValid: boolean;
 	  }
-	| { readonly kind: "recovered"; readonly file: string };
+	| { readonly kind: "recovered"; readonly file: string }
+	/** A config appeared in the folder the selection was picked from, and loads. */
+	| { readonly kind: "added"; readonly file: string }
+	/** A config left that folder. */
+	| { readonly kind: "removed"; readonly file: string };
 
 /** What one `reload` did. */
 export interface ConfigReload {
@@ -55,12 +61,24 @@ export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
+	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
+	readonly directory: string | undefined;
+
+	/** Whether `reload` should hear of a change to `file`. */
+	concerns(file: string): boolean;
 
 	/** The configs, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
 
-	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. */
+	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `directory` first adds and drops the configs that came and went. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
+}
+
+/** The configs of a folder above the working directory. */
+export interface EnclosingConfigs {
+	readonly directory: string;
+	/** File names, sorted. */
+	readonly fileNames: readonly string[];
 }
 
 /** A config file that failed to load, as a file check sees it. */
@@ -84,6 +102,8 @@ export interface ConfigService {
 		refs: readonly string[],
 		options: ConfigOptionValues
 	): Promise<Result<ConfigSelection, Error>>;
+	/** The nearest folder above the working directory that has configs. */
+	findEnclosing(): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
 	/** Runs `check` on every config file that can't be read as a config (unnamed, not JSON, or against the schema), never on one that can; what it returns is added to that file's errors. Dispose the result to remove it. */

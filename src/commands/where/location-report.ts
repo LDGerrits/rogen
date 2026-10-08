@@ -24,7 +24,12 @@ type Answer =
 			readonly location: FileLocation;
 			readonly diagnostics: readonly Diagnostic[];
 	  }
-	| { readonly label: string; readonly instance: string };
+	| {
+			readonly label: string;
+			readonly instance: string;
+			/** Absolute POSIX folders a new file for it goes in. */
+			readonly folders: readonly string[];
+	  };
 
 /** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
 function aboutPath(
@@ -201,10 +206,10 @@ export class LocationReport {
 		});
 		return [
 			...locations.map(answer),
-			...instances.flatMap(({ reference, files }) =>
+			...instances.flatMap(({ reference, files, folders }) =>
 				files.length > 0
 					? files.map(answer)
-					: [{ label, instance: reference.text }]
+					: [{ label, instance: reference.text, folders }]
 			),
 		];
 	}
@@ -279,6 +284,11 @@ export class LocationReport {
 					: {
 							instance: answer.instance,
 							status: "noFile",
+							...(answer.folders.length > 0 && {
+								folders: answer.folders.map((folder) =>
+									toNative(folder)
+								),
+							}),
 							diagnostics: [],
 						}),
 			}));
@@ -320,9 +330,16 @@ export class LocationReport {
 		];
 	}
 
+	/** Where a file that would place the instance goes, as the end of its line. */
+	private whereToAdd(folders: readonly string[]): string {
+		return folders.length > 0
+			? ` · a new file goes in ${folders.map((folder) => `${relativeTo(this.cwd, folder)}/`).join(" or ")}`
+			: "";
+	}
+
 	private describe(answer: Answer): string {
 		return "location" in answer
 			? describeLocation(answer.location, this.cwd)
-			: `${answer.instance} -> no file places it`;
+			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders)}`;
 	}
 }

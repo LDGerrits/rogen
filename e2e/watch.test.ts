@@ -219,6 +219,41 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should build a config added while it runs, and stop building one that is deleted", async () => {
+		const running = start();
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/A.server.luau");
+		});
+
+		writeProjectFile(
+			project.dir,
+			"lobby.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { "*": "Workspace" },
+			})
+		);
+		await eventually(async () => {
+			expect(await tree("lobby.project.json")).toContain(
+				"<- src/A.server.luau"
+			);
+		});
+		expect(running.output).toContain("lobby.rogen.json added");
+
+		fs.rmSync(path.join(project.dir, "lobby.rogen.json"));
+		await eventually(() => {
+			expect(running.output).toContain("lobby.rogen.json removed");
+		});
+		fs.rmSync(path.join(project.dir, "lobby.project.json"));
+		writeProjectFile(project.dir, "src/B.luau");
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/B.luau");
+		});
+		expect(
+			fs.existsSync(path.join(project.dir, "lobby.project.json"))
+		).toBe(false);
+	}, 30_000);
+
 	it("should pick up a root dir that appears later", async () => {
 		writeProjectFile(
 			project.dir,
