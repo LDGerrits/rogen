@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 script will never run where it lands:
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
     src/Shared/Secret.server.luau -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)
   A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 

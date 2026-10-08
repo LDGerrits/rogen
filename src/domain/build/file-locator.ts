@@ -32,8 +32,13 @@ export class FileLocator {
 
 		const found = new Map<string, FileLocation>();
 		for (const target of paths.map(toPosix))
-			for (const location of this.locatePath(target, folders))
-				found.set(location.source, location);
+			for (const location of this.locatePath(target, folders)) {
+				const named = found.get(location.source);
+				found.set(
+					location.source,
+					named?.status === "placed" && named.named ? named : location
+				);
+			}
 		return [...found.values()];
 	}
 
@@ -134,7 +139,11 @@ export class FileLocator {
 			.filter(({ source }) => source.startsWith(`${target}/`))
 			.sort(this.bySource);
 		const exact = this.scanned.get(target);
-		if (exact) return [exact, ...below];
+		if (exact)
+			return [
+				exact.status === "placed" ? { ...exact, named: true } : exact,
+				...below,
+			];
 		if (below.length > 0) return below;
 
 		if (!roots.some((root) => contains(toPosix(root.rootDir), target)))

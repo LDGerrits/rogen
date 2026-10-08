@@ -20,6 +20,9 @@ export class TerminalLogService extends AbstractLogService {
 			case "print":
 				console.info(text);
 				break;
+			case "note":
+				console.info(styleText("dim", text));
+				break;
 			case "intro":
 				clack.intro(text);
 				break;

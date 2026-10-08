@@ -6,6 +6,9 @@ export interface JSONSchema {
 	default?: unknown;
 	description?: string;
 	enum?: unknown[];
+	examples?: unknown[];
+	pattern?: string;
+	propertyNames?: JSONSchema;
 	properties?: Record<string, JSONSchema>;
 	items?: JSONSchema;
 	additionalProperties?: boolean | JSONSchema;

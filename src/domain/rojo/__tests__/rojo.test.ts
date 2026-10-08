@@ -40,6 +40,22 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("isLuau", () => {
+			it.each(["Save.luau", "Save.lua", "Save.server.luau", "init.luau"])(
+				"should be true for %s",
+				(name) => {
+					expect(new RojoFile(name).isLuau).toBe(true);
+				}
+			);
+
+			it.each(["Save.ts", "Hud.tsx", "Data.json", "Model.rbxm"])(
+				"should be false for %s",
+				(name) => {
+					expect(new RojoFile(name).isLuau).toBe(false);
+				}
+			);
+		});
+
 		describe("isLuauModule", () => {
 			it.each(["Save.luau", "Save.lua", "init.luau", "Hit.mock.luau"])(
 				"should be true for %s",

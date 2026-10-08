@@ -10,12 +10,14 @@ import {
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { Layout, InitQuestions } from "./init-questions.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
+import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { StarterTemplate, TemplateChoice } from "./starter-template.js";
 
@@ -54,6 +56,17 @@ const joinList = (items: readonly string[], conjunction: string): string =>
 	items.length <= 1
 		? items.join("")
 		: `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
+
+/** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
+function derivedRoutesOf(
+	template: TemplateChoice,
+	copied: string | undefined,
+	rootDirs: readonly string[]
+): DerivedRoutes | undefined {
+	return template.kind === "copy" && copied !== undefined
+		? DerivedRoutes.of(template.from, copied, rootDirs)
+		: undefined;
+}
 
 /** A new project: a config, its template and project file, and any places that share its code. */
 export class ProjectSetup implements Setup<ProjectChoices> {
@@ -96,6 +109,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const template = await questions.template(directory, outputs);
 		if (template === undefined) return ok(undefined);
 
+		let copiedTemplate: string | undefined;
+		if (template.kind === "copy") {
+			const copied = await this.readTemplate(template.from);
+			if (copied.isErr()) return err(copied.error);
+			copiedTemplate = copied.value;
+		}
+
 		let syncDir = configSet.syncDir;
 		if (darklua) {
 			const answer = await questions.syncDir(directory);
@@ -109,7 +129,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: await questions.mounts(directory, language);
 		if (mounts === undefined) return ok(undefined);
 
-		const routes = await questions.routes(language);
+		const routes = await questions.routes(
+			language,
+			derivedRoutesOf(template, copiedTemplate, rootDirs)
+		);
 		if (routes === undefined) return ok(undefined);
 
 		const modes = await questions.modes(directory, language);
@@ -129,13 +152,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			});
 			if (answer === undefined) return ok(undefined);
 			places = answer;
-		}
-
-		let copiedTemplate: string | undefined;
-		if (template.kind === "copy") {
-			const copied = await this.readTemplate(template.from);
-			if (copied.isErr()) return err(copied.error);
-			copiedTemplate = copied.value;
 		}
 
 		const outDir = language.compiler?.outDir;
@@ -180,8 +196,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
 		const { name, language, darklua, rootDirs, syncDir } = choices;
 		const configSet = new ConfigSet(name, language, darklua);
-		const template = this.planTemplate(choices, configSet);
-		const starting = new StartingRoutes(language);
+		const derived = derivedRoutesOf(
+			choices.template,
+			choices.copiedTemplate,
+			rootDirs
+		);
+		const template = this.planTemplate(choices, configSet, derived);
+		const starting = new StartingRoutes(language, derived);
 		const { compiler } = language;
 
 		const starter: RogenConfig = {
@@ -266,7 +287,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			places,
 			copiedTemplate,
 		}: ProjectChoices,
-		configSet: ConfigSet
+		configSet: ConfigSet,
+		derived: DerivedRoutes | undefined
 	): PlannedTemplate {
 		const { directory } = this;
 		if (directory.has(TEMPLATE_FILE)) {
@@ -295,7 +317,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...rootDirs,
 					...(syncDir ? [syncDir] : []),
 					...places.map(ConfigSet.placeFolderOf),
-				]
+				],
+				derived
 			);
 		}
 		if (template.kind === "use") {
@@ -324,12 +347,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		from: string,
 		content: string,
 		mounts: readonly Mount[],
-		dirs: readonly string[]
+		dirs: readonly string[],
+		derived: DerivedRoutes | undefined
 	): PlannedTemplate {
 		const parsed = StarterTemplate.parse(content);
 		const stripped = parsed?.withoutNodesIn(dirs);
 		const mounted = (stripped?.template ?? parsed)?.withMounts(mounts);
-		const removed = stripped?.removed ?? [];
+		const removed = (stripped?.removed ?? []).map(({ instancePath }) =>
+			instanceKey(instancePath)
+		);
 		const added = mounted?.added ?? [];
 		const skipped = mounted?.skipped ?? [];
 		return {
@@ -347,6 +373,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				...(removed.length > 0
 					? [
 							`Left out ${joinList(removed, "and")}, since ${removed.length === 1 ? "it points" : "they point"} into ${joinList(dirs, "or")} and Rogen generates that code now.`,
+						]
+					: []),
+				...(derived?.unrouted.length
+					? [
+							`Couldn't route ${joinList(
+								derived.unrouted.map(({ node }) => node),
+								"or"
+							)}: only a folder directly in a root dir becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${path.posix.basename(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a root dir.`,
 						]
 					: []),
 				...(added.length > 0

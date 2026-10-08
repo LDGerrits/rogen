@@ -10,8 +10,10 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
+import { DerivedRoutes } from "../derived-routes.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { StartingRoutes } from "../starting-routes.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
@@ -743,6 +745,83 @@ describe("ProjectSetup plan", () => {
 			expect(files.nextSteps.edits).not.toContainEqual(
 				expect.stringContaining("Remove the nodes")
 			);
+		});
+
+		describe("routes derived from the nodes it leaves out", () => {
+			const tree = {
+				$className: "DataModel",
+				ReplicatedStorage: { Shared: { $path: "src/shared" } },
+				ServerScriptService: {
+					Server: { $path: "src/server" },
+					Admin: { $path: "src/server/Admin" },
+				},
+				StarterPlayer: {
+					StarterPlayerScripts: { Client: { $path: "src/client" } },
+				},
+			};
+
+			const planDerived = async (content: object) => {
+				const copiedTemplate = JSON.stringify({
+					name: "my-game",
+					tree: content,
+				});
+				const choices = await defaultProjectChoices(
+					luau,
+					"default",
+					new Set(["default.project.json"]),
+					false
+				);
+				const derived = DerivedRoutes.of(
+					"default.project.json",
+					copiedTemplate,
+					choices.rootDirs
+				);
+				const starting = new StartingRoutes(
+					workspaceOf(luau).languageFor("luau"),
+					derived
+				);
+				return planProject({
+					choices: {
+						...choices,
+						template: {
+							kind: "copy",
+							from: "default.project.json",
+						},
+						routes: starting.tickedByDefault,
+					},
+					projectName: "my-game",
+					directory,
+					existingFiles: new Set(["default.project.json"]),
+					copiedTemplate,
+				}).unwrap();
+			};
+
+			it("should write routes that put each folder where the project file had it", async () => {
+				const files = await planDerived(tree);
+
+				expect(configOf(files, "default.rogen.json").routes).toEqual({
+					server: "ServerScriptService/Server",
+					shared: "ReplicatedStorage/Shared",
+					client: "StarterPlayer/StarterPlayerScripts/Client",
+					"*": "ReplicatedStorage/Shared",
+				});
+			});
+
+			it("should say it can't route a mount below a folder, and what to do instead", async () => {
+				const files = await planDerived(tree);
+
+				expect(files.notes).toContain(
+					"Couldn't route ServerScriptService/Admin: only a folder directly in a root dir becomes a route. Give its folder a marker such as Admin@server, or move it up into a root dir."
+				);
+			});
+
+			it("should say nothing about mounts it did route", async () => {
+				const files = await planDerived({
+					ServerScriptService: { Server: { $path: "src/server" } },
+				});
+
+				expect(files.notes.join("\n")).not.toContain("Couldn't route");
+			});
 		});
 
 		it("should leave out of a copied template the nodes that point into the sync dir", async () => {

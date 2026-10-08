@@ -65,6 +65,58 @@ describe("CoreBuildService.locate", () => {
 		store[Symbol.dispose]();
 	});
 
+	describe("a named file", () => {
+		beforeEach(() =>
+			write("src/Util.luau", "src/Net/Http.luau", "src/Net/Socket.luau")
+		);
+
+		const namedSources = async (args: string[]) =>
+			(await locate(args))
+				.filter(
+					(location) => location.status === "placed" && location.named
+				)
+				.map(({ source }) => source);
+
+		it("should be marked as named", async () => {
+			expect(await namedSources(["src/Util.luau"])).toEqual([
+				abs("src/Util.luau"),
+			]);
+		});
+
+		it("should mark a file that doesn't exist yet", async () => {
+			expect(await namedSources(["src/New.luau"])).toEqual([
+				abs("src/New.luau"),
+			]);
+		});
+
+		it("should not mark the files found in a directory", async () => {
+			expect(await namedSources(["src/Net"])).toEqual([]);
+		});
+
+		it("should keep the mark when the directory holding the file is named too", async () => {
+			const expected = [abs("src/Net/Http.luau")];
+
+			expect(
+				await namedSources(["src/Net/Http.luau", "src/Net"])
+			).toEqual(expected);
+			expect(
+				await namedSources(["src/Net", "src/Net/Http.luau"])
+			).toEqual(expected);
+		});
+
+		it("should not mark the files behind an instance", async () => {
+			const located = (
+				await locateIn(buildService(), configOf(), {
+					args: ["ReplicatedStorage.Shared.Util"],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(located.instances[0].files).toHaveLength(1);
+			expect(located.instances[0].files[0].named).toBeUndefined();
+		});
+	});
+
 	describe("a file with a position after it", () => {
 		const save = "src/Inventory/Server/Save.luau";
 
@@ -143,6 +195,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Server",
 				routeMatch: "folder",
 				variants: [],
+				named: true,
 			},
 			{
 				status: "placed",
@@ -157,6 +210,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Client",
 				routeMatch: "suffix",
 				variants: [],
+				named: true,
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Socket.client.luau"),
@@ -171,6 +225,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Server",
 				routeMatch: "marker",
 				variants: [],
+				named: true,
 			},
 			{
 				status: "placed",
@@ -180,6 +235,7 @@ describe("CoreBuildService.locate", () => {
 				route: "*",
 				routeMatch: "fallback",
 				variants: [],
+				named: true,
 			},
 		]);
 	});
@@ -574,6 +630,7 @@ describe("CoreBuildService.locate", () => {
 					.files.filter(
 						({ source }) => source === abs("src/Pipe.luau")
 					)
+					.map((file) => ({ ...file, named: true }))
 			);
 		});
 	});
@@ -717,6 +774,7 @@ describe("CoreBuildService.locate", () => {
 					route: "*",
 					routeMatch: "fallback",
 					variants: [],
+					named: true,
 				},
 			]);
 			expect(
@@ -808,9 +866,9 @@ describe("CoreBuildService.locate", () => {
 		it("should name the folder for the first file on a new side of a feature", async () => {
 			await write("src/Shop/Types.luau");
 
-			expect(
-				await foldersFor("ServerScriptService.Shop.Buy")
-			).toEqual([[abs("src/Shop/Server")]]);
+			expect(await foldersFor("ServerScriptService.Shop.Buy")).toEqual([
+				[abs("src/Shop/Server")],
+			]);
 		});
 
 		it("should name the root dir's routing folder for a feature that doesn't exist yet", async () => {
@@ -840,9 +898,9 @@ describe("CoreBuildService.locate", () => {
 		it("should drop a candidate that a governing route sends elsewhere", async () => {
 			await write("src/Shop/@Client", "src/Shop/Types.luau");
 
-			expect(
-				await foldersFor("ServerScriptService.Shop.Buy")
-			).toEqual([[]]);
+			expect(await foldersFor("ServerScriptService.Shop.Buy")).toEqual([
+				[],
+			]);
 		});
 
 		it("should name nothing when no route leads the instance", async () => {

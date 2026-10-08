@@ -1,0 +1,9 @@
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Common": { "$path": "src" }
+		}
+	}
+}

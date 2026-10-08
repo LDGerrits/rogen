@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:3 - error: root dir "src/shared" is inside root dir "src"; a file under it would belong to both. Remove one.
+  default.rogen.json:4:3 - error: root dir "src/shared" is inside root dir "src"; a file under it would belong to both. Remove one. (config.nestedRootDir)

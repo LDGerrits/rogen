@@ -71,17 +71,16 @@ registerCommand(
 			const empty = report.emptyLine();
 			if (blocks.length === 0) {
 				if (empty) logService.print(empty);
-			} else if (line.options.verbose) {
-				// A dimmed line under each placement says how to require it.
+			} else {
 				for (const block of blocks) {
 					logService.print(block.lines.join("\n"));
-					for (const expression of block.requires)
-						logService.debug(`require: ${expression}`);
+					if (block.requireLines.length > 0)
+						logService.note(block.requireLines.join("\n"));
+					// A listing doesn't show the requires, which a person only asks to see.
+					else if (line.options.verbose)
+						for (const expression of block.requires)
+							logService.debug(`require: ${expression}`);
 				}
-			} else {
-				logService.print(
-					blocks.flatMap(({ lines }) => lines).join("\n")
-				);
 			}
 			return failure ? err(failure) : ok(undefined);
 		}

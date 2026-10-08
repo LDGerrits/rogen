@@ -5,12 +5,12 @@ stdout:
   build failed.
 stderr:
   error: default.project.json · not written
-  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files.
-  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files.
+  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
 
 $ rogen build --json
 exit 1
@@ -73,9 +73,9 @@ stdout:
 $ rogen where src/server/Util@client.luau
 exit 1
 stderr:
-  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files.
-  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
-  src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files.
+  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)

@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.project.json · not written
-  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files.
+  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)

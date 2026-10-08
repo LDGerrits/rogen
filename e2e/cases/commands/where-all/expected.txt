@@ -8,6 +8,7 @@ $ rogen where places/lobby/Lobby/Server/Queue.luau src/Inventory README.md
 exit 0
 stdout:
   lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+    lobby: require(game:GetService("ServerScriptService").Lobby.Queue)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
   README.md -> outside the root dirs
 

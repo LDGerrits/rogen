@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.project.json · not written
-  template.project.json - error: "ReplicatedStorage/All" mounts the root dir src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the root dir, or remove the root dir from "rootDirs".
+  template.project.json - error: "ReplicatedStorage/All" mounts the root dir src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the root dir, or remove the root dir from "rootDirs". (template.mountsRootDir)

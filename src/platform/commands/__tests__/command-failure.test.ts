@@ -44,7 +44,7 @@ describe("CommandFailure", () => {
 			);
 
 			expect(logService.lines.slice(1)).toEqual([
-				"diagnosticError: /a - error: bad.",
+				"diagnosticError: /a - error: bad. (x.err)",
 				"outro: build failed.",
 			]);
 		});

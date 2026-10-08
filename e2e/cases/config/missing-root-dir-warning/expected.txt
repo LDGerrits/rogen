@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  later - warning: this root dir does not exist, so it contributes nothing.
+  later - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)
 
 written:
   default.project.json

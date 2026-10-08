@@ -44,7 +44,7 @@ Next steps
 }
 ```
 
-In a terminal, `init` asks about your root directories, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in a new `template.project.json`. If you already have a hand-written `default.project.json`, it copies that to `template.project.json` instead, so you don't lose anything.
+In a terminal, `init` asks about your root directories, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in a new `template.project.json`. If you already have a hand-written `default.project.json`, it copies that to `template.project.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). Commit the project files with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
 
 </Step>
 

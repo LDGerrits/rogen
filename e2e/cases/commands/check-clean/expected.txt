@@ -1,0 +1,12 @@
+$ rogen check src/Inventory/Clean.luau
+exit 0
+
+$ rogen check src/Inventory/Clean.luau --json
+exit 0
+stdout:
+  {
+    "diagnostics": []
+  }
+
+$ rogen check
+exit 0

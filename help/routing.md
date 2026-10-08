@@ -30,7 +30,7 @@ A file's instance path is its route's target, then its folders without the routi
 Requires and imports:
 
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see ServerScriptService.
-- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`). `rogen where <file> --json` gives the exact expression in `require`, with names that aren't identifiers written as indexes; it has none under the Starter containers, whose contents are cloned at runtime, and none for scripts and roblox-ts sources. String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
+- Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`). `rogen where <file>` prints the exact expression under the file's line (`--json` has it in `require`), with names that aren't identifiers written as indexes; under the Starter containers, whose contents are cloned at runtime, and for scripts, it says why there is none, and it prints nothing for roblox-ts sources. String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
 - roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
 - Keep the import boundaries the repo states. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 

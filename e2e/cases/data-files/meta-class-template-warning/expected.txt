@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  src/Combat/init.meta.json - warning: the template makes "ServerScriptService/Combat" a Model, so its class is kept over this meta's Actor.
+  src/Combat/init.meta.json - warning: the template makes "ServerScriptService/Combat" a Model, so its class is kept over this meta's Actor. (meta.templateClass)
 
 written:
   default.project.json

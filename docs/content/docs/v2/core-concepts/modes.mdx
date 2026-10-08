@@ -134,7 +134,7 @@ With `"prod": { "exclude": ["DevPackages"] }`, the prod project file has `Packag
 Rogen reads names only, so every build can place the files in every mode and warn about what the others would lose. Each mode is checked with the variants it lists, whatever the command line turned on. A dev build warns when `Net` has files for `dev` and `staging` but none for `prod`, or when two files clash in `prod`:
 
 ```
-default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
+default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies: (mode.missingInstance)
   ReplicatedStorage/Shared/Net (dev, staging)
 Add a file for "prod" to it, or a plain file.
 ```

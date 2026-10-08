@@ -111,13 +111,23 @@ export function messageRelativeTo(message: string, cwd: string): string {
 	return stripDirectory(message, cwd);
 }
 
+/** `message` ending in `(code)`: on its first line, since a grouped diagnostic lists its related entries on the lines after it. */
+export function messageWithCode(message: string, code: string): string {
+	const end = message.indexOf("\n");
+	return end === -1
+		? `${message} (${code})`
+		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
+}
+
 /** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const { position, severity } = diagnostic;
-	const message =
+	const message = messageWithCode(
 		cwd === undefined
 			? diagnostic.message
-			: stripDirectory(diagnostic.message, cwd);
+			: stripDirectory(diagnostic.message, cwd),
+		diagnostic.code
+	);
 	const resource =
 		cwd === undefined
 			? toNative(diagnostic.resource)
@@ -147,7 +157,7 @@ export interface DiagnosticJson {
 const diagnosticAnchor = (code: string): string =>
 	code.replace(".", "-").toLowerCase();
 
-/** The form a `--json` run prints; the code is here and not in the text, since only a program matches on it. */
+/** The form a `--json` run prints. */
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 	const { resource, position, severity, code, message, related, fixes } =
 		diagnostic;

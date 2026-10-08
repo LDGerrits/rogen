@@ -8,4 +8,4 @@ stdout:
 stderr:
   error: default.project.json · not written · mode prod · lobby failed
   error: lobby.rogen.json · not loaded
-  lobby.rogen.json - error: --mode prod names no mode here: this config declares "dev" and "staging".
+  lobby.rogen.json - error: --mode prod names no mode here: this config declares "dev" and "staging". (config.modeNotDeclared)

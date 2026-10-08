@@ -39,7 +39,7 @@ export function Agents() {
 						},
 						{
 							title: "It checks its own work",
-							desc: "rogen where shows where a file lands and why, and rogen build says what to fix.",
+							desc: "rogen where shows where a file lands and why, and rogen check says what to fix.",
 						},
 					].map((point, i) => (
 						<div

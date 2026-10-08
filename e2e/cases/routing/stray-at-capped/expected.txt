@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 12 names have an "@" that routes nowhere, so they are read as ordinary names:
+  default.rogen.json - warning: 12 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
     src/Save01@sever.luau (did you mean "@server"?)
     src/Save02@sever.luau (did you mean "@server"?)
     src/Save03@sever.luau (did you mean "@server"?)

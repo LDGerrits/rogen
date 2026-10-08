@@ -1,5 +1,6 @@
 import { JSONSchema } from "../../../base/json-schema.js";
 import { JsoncNode } from "../../../base/jsonc.js";
+import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
 	configDefaults,
 	configMergePolicies,
@@ -93,6 +94,80 @@ describe("domain/config/config-schema", () => {
 		it("carries a description on every field", () => {
 			for (const field of ROOT_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
+			}
+		});
+	});
+
+	describe("name rules", () => {
+		const matches = (pattern: string | undefined, text: string) =>
+			new RegExp(pattern ?? "").test(text);
+
+		const routeKeys = configSchema.properties!.routes.propertyNames;
+		const target = configSchema.properties!.routes
+			.additionalProperties as JSONSchema;
+		const modeBody = configSchema.properties!.modes;
+
+		it.each(["server", "Server", "Shared2", "*"])(
+			"accepts the route key %s",
+			(key) => {
+				expect(matches(routeKeys?.pattern, key)).toBe(true);
+			}
+		);
+
+		it.each(["ser-ver", "2fast", "a.b", "", "**", "a b"])(
+			"rejects the route key %p",
+			(key) => {
+				expect(matches(routeKeys?.pattern, key)).toBe(false);
+			}
+		);
+
+		it.each(SUPPORTED_SERVICES)(
+			"accepts the target service %s",
+			(service) => {
+				expect(matches(target.pattern, service)).toBe(true);
+				expect(matches(target.pattern, `${service}/Shared/Deep`)).toBe(
+					true
+				);
+			}
+		);
+
+		it.each([
+			"StarterPlayerScripts",
+			"ser-ver",
+			"",
+			"ReplicatedStorage/",
+			"ReplicatedStorageShared",
+			"/ReplicatedStorage",
+		])("rejects the target %p", (text) => {
+			expect(matches(target.pattern, text)).toBe(false);
+		});
+
+		it("offers the common targets, each of which the pattern accepts", () => {
+			expect(target.examples).toEqual(
+				expect.arrayContaining([
+					"ServerScriptService",
+					"StarterPlayer/StarterPlayerScripts",
+					"ReplicatedStorage/Shared",
+					"ReplicatedFirst",
+					"ServerStorage",
+					"StarterGui",
+				])
+			);
+			for (const example of target.examples as string[])
+				expect(matches(target.pattern, example)).toBe(true);
+		});
+
+		it("holds variant, mode and mode-name names to letters and digits", () => {
+			const names = [
+				configSchema.properties!.variants.items?.pattern,
+				modeBody.propertyNames?.pattern,
+				configSchema.properties!.mode.pattern,
+			];
+			for (const pattern of names) {
+				expect(matches(pattern, "myMode2")).toBe(true);
+				expect(matches(pattern, "my-mode")).toBe(false);
+				expect(matches(pattern, "2mode")).toBe(false);
+				expect(matches(pattern, "")).toBe(false);
 			}
 		});
 	});

@@ -5,5 +5,5 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:5:16 - error: a conflict group names "prod", which is a mode; modes are already exclusive, so a group names variants only.
-  default.rogen.json:5:39 - error: a conflict group names "christmass", which is not declared under "variants". Did you mean "christmas"?
+  default.rogen.json:5:16 - error: a conflict group names "prod", which is a mode; modes are already exclusive, so a group names variants only. (config.conflictNamesMode)
+  default.rogen.json:5:39 - error: a conflict group names "christmass", which is not declared under "variants". Did you mean "christmas"? (config.conflictUndeclaredVariant)

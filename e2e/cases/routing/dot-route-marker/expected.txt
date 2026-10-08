@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing:
+  default.rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
     src/Inventory/.server (write "@server")
     src/Tools/.SERVER (write "@server")
     src/.server (write "@server")

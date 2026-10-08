@@ -36,8 +36,21 @@ export class CoreBuildService implements BuildService {
 		this.writer = new OutputWriter(fileSystemService);
 	}
 
-	async build(
+	build(
 		selection: ConfigSelection
+	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+		return this.buildAll(selection, true);
+	}
+
+	check(
+		selection: ConfigSelection
+	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+		return this.buildAll(selection, false);
+	}
+
+	private async buildAll(
+		selection: ConfigSelection,
+		write: boolean
 	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
 		const unloaded = selection.entries.flatMap((entry) =>
 			entry.status === "broken"
@@ -63,7 +76,8 @@ export class CoreBuildService implements BuildService {
 		const built = await this.run(
 			configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing,
-			unloaded.map(({ label }) => label)
+			unloaded.map(({ label }) => label),
+			write
 		);
 		// Selection order, each config's build beside the ones that didn't load.
 		const loaded = [...built];
@@ -123,14 +137,15 @@ export class CoreBuildService implements BuildService {
 		return ok({ ...located.value, errors });
 	}
 
-	/** Builds every config from `listing`, then writes them in order unless one failed or `unloaded` names a config that didn't load. */
+	/** Builds every config from `listing`, then writes them in order unless one failed, `unloaded` names a config that didn't load, or `write` is off. */
 	private async run(
 		configs: readonly {
 			readonly config: ResolvedConfig;
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
 		}[],
 		listing: IndexReader,
-		unloaded: readonly string[] = []
+		unloaded: readonly string[] = [],
+		write = true
 	): Promise<LoadedBuild[]> {
 		const builder = this.builderOf(listing);
 		const attempts: (BuiltConfig | FailedBuild)[] = [];
@@ -151,7 +166,7 @@ export class CoreBuildService implements BuildService {
 				attempt instanceof FailedBuild ? [attempt.config.label] : []
 			),
 		];
-		if (failed.length === 0)
+		if (failed.length === 0 && write)
 			return this.writeInOrder(attempts as BuiltConfig[]);
 		return attempts.map((attempt) =>
 			attempt instanceof FailedBuild

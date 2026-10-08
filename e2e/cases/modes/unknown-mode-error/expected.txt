@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:9:10 - error: "mode" is "prod", but this config declares "dev".
+  default.rogen.json:9:10 - error: "mode" is "prod", but this config declares "dev". (config.unknownMode)

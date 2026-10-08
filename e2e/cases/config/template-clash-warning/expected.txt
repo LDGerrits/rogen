@@ -9,9 +9,9 @@ stdout:
   [debug] route shared -> ReplicatedStorage/shared: 0 files
   [debug] route * -> ReplicatedStorage/shared: 0 files
   [debug] left out: 1 displaced by the template
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  src/Save.server.luau - warning: the template defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both.
+  src/Save.server.luau - warning: the template defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both. (tree.templateClash)
 
 $ rogen where
 exit 0

@@ -3,11 +3,11 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 3 warnings.
 stderr:
-  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
+  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
 
 written:
   default.project.json

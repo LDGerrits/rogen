@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["check", "src/Inventory/Clean.luau"],
+		["check", "src/Inventory/Clean.luau", "--json"],
+		["check"]
+	],
+	"rojo": false
+}

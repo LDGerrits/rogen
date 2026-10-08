@@ -46,6 +46,7 @@ $ rogen where Server/Save.luau
 exit 0
 stdout:
   Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
+    require(game:GetService("ServerScriptService").Inventory.Save)
 
 $ rogen build ../../lobby.rogen.json --json
 exit 0

@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names:
+  default.rogen.json - warning: 3 names end in a dot part that is one edit from a declared variant, so they are read as ordinary names: (variant.typo)
     src/Experimental/.mok (did you mean ".mock"?)
     src/.mok (did you mean ".mock"?)
     src/Analytics.mok.luau (did you mean ".mock"?)

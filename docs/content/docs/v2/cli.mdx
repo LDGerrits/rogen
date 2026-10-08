@@ -17,6 +17,8 @@ The first word is always the command, and a bare `rogen` prints usage. Whatever 
 
 Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in the mode its `mode` field names, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
+Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
+
 ### `watch [config…]`
 
 Builds, then rebuilds whenever files or configs change. Only names matter, so editing inside a script never triggers a rebuild.
@@ -29,7 +31,7 @@ A config reloads when it, its `extends` chain or its template changes, and CLI o
 ◇  12:04:31 · 2 files changed
 │  ✔ default.project.json · wrote
 │  ■ lobby.project.json · not written
-│  ■ /repo/lobby.project.json - error: …
+│  ■ /repo/lobby.project.json - error: … (config.unknownField)
 │
 ◇  12:05:02 · default.rogen.json changed · reloaded
 │  ✔ default.project.json · unchanged
@@ -62,6 +64,16 @@ A directory stands for the files inside it, and no path at all means every file 
 A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
+
+Under the line of a file you name, `where` prints, dimmed, the `require` that reaches it, since "where does it land" is followed by "how do I reach it". It writes a name that isn't an identifier as an index. Where no path reaches the file, it says why instead: a module under `StarterPlayerScripts` (or `StarterCharacterScripts`, `StarterGui`, `StarterPack`) is cloned into each player, and a script isn't a module. A roblox-ts source is imported by path and gets no line. A directory and a bare `rogen where` are listings and stay as they are; `--verbose` adds each module's require to a listing.
+
+```
+$ rogen where src/Inventory/Types.luau src/Hud/Client/Hud.luau
+src/Inventory/Types.luau -> ReplicatedStorage/Shared/Inventory/Types · route * (fallback)
+  require(game:GetService("ReplicatedStorage").Shared.Inventory.Types)
+src/Hud/Client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Hud/Hud · route Client (folder)
+  no require by this path: StarterPlayerScripts is cloned into each player
+```
 
 Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
 
@@ -105,6 +117,25 @@ A config that doesn't load answers nothing: `where` prints the answers of the co
 
 `where --json` keeps every config's entry, `outside` included. `where` accepts `--mode`, `--variant`, `--no-variant` and `--json`.
 
+### `check [path…]`
+
+Prints the diagnostics about the paths you give it, and nothing else, and exits 1 when there are any. It builds as `build` does and writes nothing, so it fits a hook, `lint-staged` or `pre-commit`, which pass changed paths to a command and expect a non-zero exit. `where` answers a question and always exits 0; `check` is the judging counterpart, as `--deny-warnings` is for `build`.
+
+```
+$ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
+src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
+```
+
+Each line is `file:line:col - severity: message (code)`. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A config that doesn't load fails the check, whatever paths you give.
+
+With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs.
+
+`check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--mode`, `--variant`, `--no-variant` and `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
+
+```bash
+git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
+```
+
 ### `init [name]`
 
 Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
@@ -113,7 +144,7 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
-`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
+`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). When it's done, `init` prints what to run next.
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
@@ -125,11 +156,11 @@ Lists every config in the folder, or the ones you name, with its root directorie
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 ## Options
 
-An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where` and `list` only take `--mode`, `--variant` and `--no-variant`.
+An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where`, `check` and `list` only take `--mode`, `--variant` and `--no-variant`.
 
 | Flag | Effect |
 |---|---|
@@ -138,7 +169,7 @@ An override changes a config value for one run. Anything you want every time bel
 | `--variant <name>` | Turns a variant on, beyond those the mode lists. Repeatable. |
 | `--no-variant <name>` | Turns a variant off, whatever turned it on. Applies last. Repeatable. |
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. On `init` it implies `--yes`. |
+| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`. On `init` it implies `--yes`. |
 | `-y, --yes` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
@@ -152,7 +183,7 @@ An override changes a config value for one run. Anything you want every time bel
 | Code | Meaning |
 |---|---|
 | `0` | The command did its job, warnings included (unless `build --deny-warnings` is given). |
-| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, or any warning under `build --deny-warnings`. |
+| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. |
 | `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`), or a name that doesn't exist (a config, a variant or a help topic). |
 
 `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
@@ -171,7 +202,8 @@ git diff --exit-code -- '*.project.json'
 - Every build checks every mode, so a `--mode prod` build also fails on `mode.missingInstance` for another mode. That's the point of the check.
 - Run the compiler or processor before `rogen build` when `syncDir` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync dir.
-- `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0.
+- `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
+- Whether to [commit the project file](/docs/v2/core-concepts/output#commit-the-project-file) is yours to decide, and committing it is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
 ## JSON output
@@ -233,6 +265,10 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 `outcome` is `wrote`, `unchanged` or `notWritten`. A config that declares modes also has `mode`, the one it built in. If any config fails, nothing is written.
 
 A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+
+### `check --json`
+
+An object with a `diagnostics` array: the entries described above, one per diagnostic about the paths (or, with none, about the project), each once. The exit code is 1 when it isn't empty.
 
 ### `where --json`
 

@@ -5,7 +5,7 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:11 - error: this config declares modes but not which one to build in. Set "mode" to "dev" and "prod", or pass --mode.
+  default.rogen.json:4:11 - error: this config declares modes but not which one to build in. Set "mode" to "dev" and "prod", or pass --mode. (config.modeRequired)
 
 $ rogen build --mode prod
 exit 0

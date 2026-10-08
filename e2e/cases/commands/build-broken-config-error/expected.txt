@@ -7,7 +7,7 @@ stdout:
   build failed.
 stderr:
   error: broken.rogen.json · not loaded
-  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'.
+  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   error: default.project.json · not written · broken failed
 
 $ rogen build --json

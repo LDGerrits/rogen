@@ -85,7 +85,12 @@ describe("StarterTemplate", () => {
 		it("should drop the nodes that point into the dirs Rogen generates, and say where they were", () => {
 			const result = parsed(project).withoutNodesIn(["src"]);
 
-			expect(result?.removed).toEqual(["ServerScriptService/Server"]);
+			expect(result?.removed).toEqual([
+				{
+					path: "src/server",
+					instancePath: ["ServerScriptService", "Server"],
+				},
+			]);
 			expect(treeOf(result!.template)).toEqual({
 				$path: "src",
 				ServerScriptService: { Kept: { $path: "Packages" } },

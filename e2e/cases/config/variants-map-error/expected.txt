@@ -5,5 +5,5 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless the active mode lists it under "modes" or --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes.
-  default.rogen.json:7:24 - error: "modes.dev.variants" is a list of the variants the mode turns on, such as ["mock"], not a map of on and off. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes.
+  default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless the active mode lists it under "modes" or --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes. (config.variantsAreAList)
+  default.rogen.json:7:24 - error: "modes.dev.variants" is a list of the variants the mode turns on, such as ["mock"], not a map of on and off. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes. (config.variantsAreAList)

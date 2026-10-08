@@ -8,4 +8,4 @@ stdout:
 stderr:
   error: lobby.project.json · not written · match failed
   error: match.project.json · not written
-  places/match/init.luau - error: an init script becomes the folder it sits in, but it sits in a root dir, which never becomes an instance. Move it into a folder of its own, or rename it.
+  places/match/init.luau - error: an init script becomes the folder it sits in, but it sits in a root dir, which never becomes an instance. Move it into a folder of its own, or rename it. (tree.initWithoutFolder)

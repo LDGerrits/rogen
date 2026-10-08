@@ -237,6 +237,8 @@ export interface PlacedLocation extends Located {
 	readonly variants: readonly VariantMatch[];
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
+	/** The path was named as a file, and not found in a folder or behind an instance. */
+	readonly named?: true;
 }
 
 export interface UnplacedLocation extends Located {
@@ -334,6 +336,34 @@ export class OutputFile {
 		);
 		return new RegExp(`^${escaped}\\.[^/]+\\.tmp$`);
 	}
+}
+
+/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+export function diagnosticsAbout(
+	diagnostics: readonly Diagnostic[],
+	source: string
+): Diagnostic[] {
+	const target = toPosix(source);
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		const entries = (related ?? []).filter(
+			({ resource }) => toPosix(resource) === target
+		);
+		if (entries.length > 0)
+			return entries.map(({ message }) => ({
+				...rest,
+				resource: source,
+				position: undefined,
+				message,
+				fixes: diagnostic.fixes?.filter(
+					({ rename }) => toPosix(rename.from) === target
+				),
+			}));
+		// A group is about its related files; its own resource is the config.
+		return !related?.length && toPosix(diagnostic.resource) === target
+			? [rest]
+			: [];
+	});
 }
 
 /** Nothing can be placed without a route. */

@@ -1,13 +1,14 @@
 # Output
 
-Diagnostics print as `file:line:col - severity: message`, on stderr. Errors stop every config in the run from being written. Warnings don't, and still name something to fix.
+Diagnostics print as `file:line:col - severity: message (code)`, on stderr; `rogen help <code>` explains the code. Errors stop every config in the run from being written. Warnings don't, and still name something to fix.
 
-Exit codes: 0 done, warnings included (`build --deny-warnings` exits 1 on any warning, for CI: files and diagnostics are unchanged, only the exit code differs); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `--json` keeps the same codes.
+Exit codes: 0 done, warnings included (`build --deny-warnings` exits 1 on any warning, for CI: files and diagnostics are unchanged, only the exit code differs; `check` exits 1 on any diagnostic about the paths it is given); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `--json` keeps the same codes.
 
-Plain lines (in pipes, CI and under an agent) put results on stdout and warnings, errors and diagnostics on stderr. `--json` on `build`, `where`, `list` and `init` prints one JSON document on stdout, whatever the exit code, and nothing else. Read it instead of parsing text.
+Plain lines (in pipes, CI and under an agent) put results on stdout and warnings, errors and diagnostics on stderr. `--json` on `build`, `where`, `check`, `list` and `init` prints one JSON document on stdout, whatever the exit code, and nothing else. Read it instead of parsing text.
 
 - `build --json`: `{ "configs": [{ "config", "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`. A config that doesn't load is an entry too, with `"outFile": null` and its errors in `diagnostics`; a config not written because others failed or didn't load has `blockedBy`, their names.
 - `where --json`: `{ "locations": [...], "diagnostics": [...] }` (`diagnostics` holds the errors of a config that didn't load), one entry per config and path, with `config`, `source` and `status`; `exists` says whether the path is there now or only placed as it would be once created; a placed file adds `instancePath`, `route`, `routeMatch` and `variants`, and a placed Luau module `require`, the expression that reaches it (none under the Starter containers, for scripts or for roblox-ts). Each entry ends with `diagnostics`: what a build would raise about that path, narrowed to it.
+- `check --json`: `{ "diagnostics": [...] }`, the diagnostics about the given paths (about the whole project with none), each once; exit 1 when there are any.
 - `list --json`: `{ "configs": [...] }`, one entry per config with `config`, `file`, `status` (`valid` or `broken`), `extends`, then the resolved values (`projectName` is the Rojo project's name) with every default and absolute path, and `diagnostics`.
 - `init --json`: the `files` it wrote, the `directories` it created (root dirs that didn't exist), its notes, and its `nextSteps`.
 - A command that fails before it has anything else to show prints `{ "diagnostics": [...] }` or `{ "error": "..." }`.
@@ -17,5 +18,7 @@ An entry that is a config has `config` (the name every command takes, `lobby` fo
 Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file. A warning about several files has `related`: `[{ "file", "message" }]`, one for every file, uncapped (the text stops at ten). A diagnostic is about a file when its `file` is that file or `related[].file` includes it.
 
 `rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build. It prints the warnings a build would raise about each path under its line, except the sync dir's. With nothing in the root dirs it says so, and a missing path named with a trailing separator says to name a file in it.
+
+`rogen check <paths>` is `where`'s verdict: it prints only the diagnostics about the paths (a clean path prints nothing), writes nothing and exits 1 on any; with no path it reports the whole project, the sync dir's warnings included.
 
 `rogen build` is safe beside a running `rogen watch`: it writes only bytes that changed.

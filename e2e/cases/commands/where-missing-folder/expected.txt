@@ -12,3 +12,4 @@ $ rogen where src/Combat/Hit.luau
 exit 0
 stdout:
   src/Combat/Hit.luau -> ReplicatedStorage/shared/Combat/Hit · route * (fallback)
+    require(game:GetService("ReplicatedStorage").shared.Combat.Hit)

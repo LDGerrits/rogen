@@ -2,8 +2,9 @@ $ rogen where src/A.luau
 exit 1
 stdout:
   src/A.luau -> ReplicatedStorage/shared/A · route * (fallback)
+    require(game:GetService("ReplicatedStorage").shared.A)
 stderr:
-  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'.
+  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen where src/A.luau --json
 exit 1

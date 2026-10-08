@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote · mode dev
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared mode, so it is read as an ordinary name:
+  default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared mode, so it is read as an ordinary name: (variant.typo)
     src/Service.prd.luau (did you mean ".prod"?)
 
 written:

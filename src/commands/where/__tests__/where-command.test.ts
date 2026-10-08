@@ -317,39 +317,154 @@ describe("where command", () => {
 		expect(printed()).toEqual(["src/Module -> does not exist"]);
 	});
 
-	it("should print the require expression of a module under --verbose, dimmed under its line", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Util.luau", "src/Inventory/Server/Hit.server.luau");
-		logService.setLevel(LogLevel.Debug);
+	describe("the require of a named file", () => {
+		const notes = () =>
+			logService.entries
+				.filter(({ kind }) => kind === "note")
+				.map(({ text }) => text);
 
-		await run({
-			_: ["src/Util.luau", "src/Inventory/Server/Hit.server.luau"],
-			verbose: true,
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 		});
 
-		expect(
-			logService.entries
-				.filter(({ kind }) => kind === "print" || kind === "debug")
-				.map(({ kind, text }) => [kind, text])
-		).toEqual([
-			["print", expect.stringContaining("src/Util.luau ->")],
-			[
-				"debug",
-				'require: game:GetService("ReplicatedStorage").Shared.Util',
-			],
-			["print", expect.stringContaining("Hit.server.luau ->")],
-		]);
-	});
+		it("should print a module's require as a note under its line", async () => {
+			await write("src/Util.luau");
 
-	it("should not print the expression without --verbose", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Util.luau");
+			await run({ _: ["src/Util.luau"] });
 
-		await run({ _: ["src/Util.luau"] });
+			expect(
+				logService.entries.map(({ kind, text }) => [kind, text])
+			).toEqual([
+				["print", expect.stringContaining("src/Util.luau ->")],
+				[
+					"note",
+					'  require(game:GetService("ReplicatedStorage").Shared.Util)',
+				],
+			]);
+		});
 
-		expect(
-			logService.entries.filter(({ kind }) => kind === "debug")
-		).toEqual([]);
+		it("should write a name that isn't an identifier as an index", async () => {
+			await write("src/Foo Bar.luau");
+
+			await run({ _: ["src/Foo Bar.luau"] });
+
+			expect(notes()).toEqual([
+				'  require(game:GetService("ReplicatedStorage").Shared["Foo Bar"])',
+			]);
+		});
+
+		it("should say why a module under a Starter container has none", async () => {
+			await write("src/Hud/Client/Hud.luau");
+
+			await run({ _: ["src/Hud/Client/Hud.luau"] });
+
+			expect(notes()).toEqual([
+				"  no require by this path: StarterPlayerScripts is cloned into each player",
+			]);
+		});
+
+		it("should say why a script has none", async () => {
+			await write("src/Inventory/Server/Hit.server.luau");
+
+			await run({ _: ["src/Inventory/Server/Hit.server.luau"] });
+
+			expect(notes()).toEqual([
+				"  no require by this path: a script runs on its own and is not a module",
+			]);
+		});
+
+		it.each(["src/Hit.ts", "src/Data.json"])(
+			"should say nothing for %s",
+			async (file) => {
+				await write(file);
+
+				await run({ _: [file] });
+
+				expect(notes()).toEqual([]);
+			}
+		);
+
+		it("should say nothing for a file that is not placed", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				variants: ["mock"],
+			});
+			await write("src/Net/Http.mock.luau");
+
+			await run({ _: ["src/Net/Http.mock.luau"] });
+
+			expect(notes()).toEqual([]);
+		});
+
+		it("should say nothing for a directory, nor for a listing", async () => {
+			await write("src/Util.luau");
+
+			await run({ _: ["src"] });
+			await run({ _: [] });
+
+			expect(notes()).toEqual([]);
+		});
+
+		it("should give a file that does not exist yet the require it would have", async () => {
+			await fs.createDirectory("/repo/src");
+
+			await run({ _: ["src/New.luau"] });
+
+			expect(notes()).toEqual([
+				'  require(game:GetService("ReplicatedStorage").Shared.New)',
+			]);
+		});
+
+		it("should print a listing's requires under --verbose, as debug lines", async () => {
+			await write(
+				"src/Util.luau",
+				"src/Inventory/Server/Hit.server.luau"
+			);
+			logService.setLevel(LogLevel.Debug);
+
+			await run({ _: ["src"], verbose: true });
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind === "print" || kind === "debug")
+					.map(({ kind, text }) => [kind, text])
+			).toEqual([
+				[
+					"print",
+					expect.stringContaining(
+						"src/Inventory/Server/Hit.server.luau ->"
+					),
+				],
+				["print", expect.stringContaining("src/Util.luau ->")],
+				[
+					"debug",
+					'require: game:GetService("ReplicatedStorage").Shared.Util',
+				],
+			]);
+			expect(notes()).toEqual([]);
+		});
+
+		it("should not print the expression of a listing without --verbose", async () => {
+			await write("src/Util.luau");
+
+			await run({ _: ["src"] });
+
+			expect(
+				logService.entries.filter(({ kind }) => kind === "debug")
+			).toEqual([]);
+		});
+
+		it("should not repeat a named file's require as a debug line under --verbose", async () => {
+			await write("src/Util.luau");
+			logService.setLevel(LogLevel.Debug);
+
+			await run({ _: ["src/Util.luau"], verbose: true });
+
+			expect(notes()).toHaveLength(1);
+			expect(
+				logService.entries.filter(({ kind }) => kind === "debug")
+			).toEqual([]);
+		});
 	});
 
 	describe("with --json", () => {
@@ -423,10 +538,7 @@ describe("where command", () => {
 
 		it("should print an entry for an instance no file places", async () => {
 			await run({
-				_: [
-					"ServerScriptService.Inventory.Save:3",
-					"Workspace.Gone",
-				],
+				_: ["ServerScriptService.Inventory.Save:3", "Workspace.Gone"],
 				json: true,
 			});
 

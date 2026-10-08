@@ -20,6 +20,7 @@ stdout:
     warning: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
   src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)
+    require(game:GetService("ServerScriptService").Combat.Moves.Sweep)
   src/Empty -> empty · no file in it places
   README.md -> outside the root dirs
 
@@ -27,6 +28,7 @@ $ rogen where src/Net/Http.mock.luau --variant mock
 exit 0
 stdout:
   src/Net/Http.mock.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · variant mock (suffix)
+    require(game:GetService("ReplicatedStorage").Shared.Net.Http)
 
 $ rogen where ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
 exit 0
@@ -39,7 +41,9 @@ $ rogen where src/Combat/Server/Moves/Sweep.luau:12 src/Net/Http@client.luau:3:9
 exit 0
 stdout:
   src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)
+    require(game:GetService("ServerScriptService").Combat.Moves.Sweep)
   src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
+    no require by this path: StarterPlayerScripts is cloned into each player
 
 $ rogen where ServerScriptService.Inventory.Export ServerScriptService.Nothing.Here
 exit 0

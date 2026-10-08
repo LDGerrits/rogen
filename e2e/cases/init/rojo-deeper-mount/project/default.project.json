@@ -1,0 +1,9 @@
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"Admin": { "$path": "src/server/Admin" }
+		}
+	}
+}

@@ -15,7 +15,7 @@ describe("platform/diagnostics/diagnostics-error", () => {
 
 		it("should render one diagnostic per line as its message", () => {
 			expect(new DiagnosticsError(diagnostics).message).toBe(
-				"/repo/a.json:2:5 - error: first.\n/repo - error: second."
+				"/repo/a.json:2:5 - error: first. (test.first)\n/repo - error: second. (test.second)"
 			);
 		});
 
@@ -33,7 +33,7 @@ describe("platform/diagnostics/diagnostics-error", () => {
 
 			expect(error.diagnostics).toEqual(diagnostics);
 			expect(error.message).toBe(
-				"/repo/a.json:2:5 - error: first.\n/repo - error: second."
+				"/repo/a.json:2:5 - error: first. (test.first)\n/repo - error: second. (test.second)"
 			);
 		});
 

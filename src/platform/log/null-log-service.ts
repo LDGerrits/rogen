@@ -11,6 +11,7 @@ export class NullLogService implements LogService {
 	debug(_message: string, ..._args: unknown[]): void {}
 	trace(_message: string, ..._args: unknown[]): void {}
 	print(_text: string): void {}
+	note(_text: string): void {}
 	intro(_title: string): void {}
 	step(_title: string): void {}
 	success(_message: string): void {}

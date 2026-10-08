@@ -6,8 +6,12 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
+	diagnosticsAbout,
 } from "../../domain/build/build.js";
-import { requireExpression } from "../../domain/roblox/roblox.js";
+import {
+	requireExpression,
+	whyNotRequirable,
+} from "../../domain/roblox/roblox.js";
 import { RojoFile } from "../../domain/rojo/rojo.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
@@ -16,6 +20,7 @@ import {
 	DiagnosticSeverity,
 	diagnosticToJson,
 	messageRelativeTo,
+	messageWithCode,
 } from "../../platform/diagnostics/diagnostic.js";
 
 /** The mode a config built in, and every mode it declares. */
@@ -40,34 +45,6 @@ type Answer =
 			/** Renames of files that would place it. */
 			readonly fixes: readonly InstanceFix[];
 	  };
-
-/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
-function aboutPath(
-	diagnostics: readonly Diagnostic[],
-	source: string
-): Diagnostic[] {
-	const target = toPosix(source);
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		const entries = (related ?? []).filter(
-			({ resource }) => toPosix(resource) === target
-		);
-		if (entries.length > 0)
-			return entries.map(({ message }) => ({
-				...rest,
-				resource: source,
-				position: undefined,
-				message,
-				fixes: diagnostic.fixes?.filter(
-					({ rename }) => toPosix(rename.from) === target
-				),
-			}));
-		// A group is about its related files; its own resource is the config.
-		return !related?.length && toPosix(diagnostic.resource) === target
-			? [rest]
-			: [];
-	});
-}
 
 const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
@@ -152,6 +129,19 @@ function requireOf(location: FileLocation): string | undefined {
 		new RojoFile(path.posix.basename(location.source)).isLuauModule
 		? requireExpression(location.instancePath)
 		: undefined;
+}
+
+/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
+function requirementOf(location: FileLocation): string | undefined {
+	if (location.status !== "placed" || !location.named) return undefined;
+	const file = new RojoFile(path.posix.basename(location.source));
+	if (!file.isLuau) return undefined;
+	if (!file.isLuauModule)
+		return "no require by this path: a script runs on its own and is not a module";
+	const expression = requireExpression(location.instancePath);
+	if (expression) return `require(${expression})`;
+	const reason = whyNotRequirable(location.instancePath);
+	return reason && `no require by this path: ${reason}`;
 }
 
 /** The fields a location adds to its source and status in the JSON form. */
@@ -240,7 +230,7 @@ export class LocationReport {
 			label,
 			location,
 			mode,
-			diagnostics: aboutPath(diagnostics, location.source),
+			diagnostics: diagnosticsAbout(diagnostics, location.source),
 		});
 		return [
 			...locations.map(answer),
@@ -257,8 +247,12 @@ export class LocationReport {
 		return this.blocks().flatMap(({ lines }) => lines);
 	}
 
-	/** The lines of each path, with the Luau expressions that require its module, which a person only asks to see. */
-	blocks(): { lines: string[]; requires: string[] }[] {
+	/** The lines of each path; under a file the user named, how to require it or why that can't be. For a listing, the expressions that require its modules, which a person only asks to see. */
+	blocks(): {
+		lines: string[];
+		requireLines: string[];
+		requires: string[];
+	}[] {
 		return this.bySource().map((all) => {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
@@ -274,9 +268,19 @@ export class LocationReport {
 					)
 				),
 			];
+			const requirements = answers.map((answer) =>
+				"location" in answer
+					? requirementOf(answer.location)
+					: undefined
+			);
 			if (agreed || this.configs === 1)
 				return {
 					lines: [lines[0], ...this.sharedNotes(answers)],
+					requireLines: [
+						...new Set(
+							requirements.filter((line) => line !== undefined)
+						),
+					].map((line) => `  ${line}`),
 					requires,
 				};
 			return {
@@ -284,6 +288,11 @@ export class LocationReport {
 					`${answer.label}: ${lines[index]}`,
 					...this.noted(answer),
 				]),
+				requireLines: answers.flatMap(({ label }, index) =>
+					requirements[index] === undefined
+						? []
+						: [`  ${label}: ${requirements[index]}`]
+				),
 				requires,
 			};
 		});
@@ -359,7 +368,7 @@ export class LocationReport {
 		if (!("location" in answer)) return [];
 		return answer.diagnostics.map(
 			({ severity, message, code }) =>
-				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageRelativeTo(message, this.cwd)} (${code})`
+				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageWithCode(messageRelativeTo(message, this.cwd), code)}`
 		);
 	}
 

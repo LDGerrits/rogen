@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:14 - error: the template does not exist (looked for nope.project.json). Paths are relative to the config that sets them.
+  default.rogen.json:4:14 - error: the template does not exist (looked for nope.project.json). Paths are relative to the config that sets them. (config.templateUnreadable)

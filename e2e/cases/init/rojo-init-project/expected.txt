@@ -35,9 +35,9 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
+		"shared": "ReplicatedStorage/Shared",
+		"server": "ServerScriptService/Server",
+		"client": "StarterPlayer/StarterPlayerScripts/Client",
 		"*": "ReplicatedStorage/Shared"
 	},
 	"template": "template.project.json"
@@ -49,10 +49,12 @@ my-game: DataModel
     Shared: Folder
       Util: ModuleScript  <- src/shared/Util.luau
   ServerScriptService: ServerScriptService
-    Main: Script  <- src/server/Main.server.luau
+    Server: Folder
+      Main: Script  <- src/server/Main.server.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Main: LocalScript  <- src/client/Main.client.luau
+      Client: Folder
+        Main: LocalScript  <- src/client/Main.client.luau
   Workspace: Workspace
 
 $ rojo sourcemap template.project.json

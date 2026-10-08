@@ -1,0 +1,56 @@
+$ rogen init -y
+exit 0
+stdout:
+  rogen init
+  Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
+  Left out ServerScriptService/Admin, since it points into src and Rogen generates that code now.
+  Couldn't route ServerScriptService/Admin: only a folder directly in a root dir becomes a route. Give its folder a marker such as Admin@server, or move it up into a root dir.
+  Created template.project.json.
+  Created default.rogen.json.
+  Created AGENTS.md.
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+  Wrote 3 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"template": "template.project.json"
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  ServerScriptService: ServerScriptService
+    Admin: Folder
+      Ban: ModuleScript  <- src/server/Admin/Ban.luau
+    Main: Script  <- src/server/Main.server.luau
+
+$ rojo sourcemap template.project.json
+my-game: DataModel
+  ServerScriptService: ServerScriptService

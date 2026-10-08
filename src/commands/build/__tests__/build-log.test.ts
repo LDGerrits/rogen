@@ -346,10 +346,10 @@ describe("BuildLog report", () => {
 			).toEqual([
 				"step: arena",
 				"error: arena.project.json · not written",
-				"diagnosticError: /repo/a - error: shared.",
+				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"step: match",
 				"error: match.project.json · not written",
-				"diagnosticError: /repo/b - error: other.",
+				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
 			]);
 		});
@@ -363,7 +363,7 @@ describe("BuildLog report", () => {
 			).toEqual([
 				"step: arena",
 				"error: arena.project.json · not written",
-				"diagnosticError: /repo/a - error: shared.",
+				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"step: match",
 				"error: match.project.json · not written · same errors as arena",
 				"outro: build failed.",
@@ -379,7 +379,7 @@ describe("BuildLog report", () => {
 			).toEqual([
 				"step: match",
 				"error: match.project.json · not written",
-				"diagnosticError: /repo/b - error: other.",
+				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
 			]);
 		});
@@ -387,7 +387,7 @@ describe("BuildLog report", () => {
 		it("should close the frame with the failure and not with the built line", () => {
 			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
 				"error: arena.project.json · not written",
-				"diagnosticError: /repo/a - error: shared.",
+				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"outro: build failed.",
 			]);
 		});
@@ -438,10 +438,10 @@ describe("BuildLog report, warnings", () => {
 		).toEqual([
 			"step: arena",
 			"success: arena.project.json · wrote",
-			"diagnosticWarning: /repo/arena.rogen.json - warning: 1 folder is odd:\n  src/Sever",
+			"diagnosticWarning: /repo/arena.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match",
 			"success: match.project.json · wrote · same warnings as arena",
-			"outro: Built 2 configs.",
+			"outro: Built 2 configs with 1 warning.",
 		]);
 	});
 
@@ -460,8 +460,8 @@ describe("BuildLog report, warnings", () => {
 		).toEqual([
 			"step: match",
 			"success: match.project.json · wrote",
-			"diagnosticWarning: /repo/match.rogen.json - warning: only here.",
-			"outro: Built 2 configs.",
+			"diagnosticWarning: /repo/match.rogen.json - warning: only here. (x.own)",
+			"outro: Built 2 configs with 2 warnings.",
 		]);
 	});
 

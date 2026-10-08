@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both.
+  src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
 
 written:
   default.project.json
