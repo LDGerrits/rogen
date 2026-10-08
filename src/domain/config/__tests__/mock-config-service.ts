@@ -148,7 +148,10 @@ export class MockConfigSelection implements ConfigSelection {
 	readonly files: ReadonlySet<string>;
 	readonly directory = undefined;
 
-	constructor(readonly entries: readonly ConfigEntry[] = [mockEntry()]) {
+	constructor(
+		readonly entries: readonly ConfigEntry[] = [mockEntry()],
+		readonly home = "/repo"
+	) {
 		this.files = new Set(entries.map(({ file }) => file));
 	}
 
@@ -175,7 +178,8 @@ export class MockConfigService implements ConfigService {
 
 	constructor(
 		public entries: readonly ConfigEntry[] = [mockEntry()],
-		public enclosing: EnclosingConfigs | undefined = undefined
+		public enclosing: EnclosingConfigs | undefined = undefined,
+		public home = "/repo"
 	) {}
 
 	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
@@ -183,7 +187,7 @@ export class MockConfigService implements ConfigService {
 	}
 
 	async select(): Promise<Result<ConfigSelection, Error>> {
-		return ok(new MockConfigSelection(this.entries));
+		return ok(new MockConfigSelection(this.entries, this.home));
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

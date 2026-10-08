@@ -1,0 +1,62 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default, lobby · in ../..
+  default
+    ../../default.project.json · wrote
+  lobby
+    ../../out/lobby.project.json · wrote
+  Built 2 configs.
+
+$ rogen build lobby
+exit 0
+stdout:
+  rogen build · lobby · in ../..
+  ../../out/lobby.project.json · unchanged
+  Built 1 config.
+
+$ rogen build ghost
+exit 2
+stderr:
+  error: Config "ghost" not found: looked for <dir>/ghost.rogen.json. Configs here: default, lobby.
+
+$ rogen list
+exit 0
+stdout:
+  rogen list · in ../..
+  ../../default.rogen.json
+    root dirs: ..
+    sync dir: (none)
+    project file: ../../default.project.json
+    variants: (none)
+  ../../lobby.rogen.json
+    extends: ../../default.rogen.json
+    root dirs: ..
+    sync dir: (none)
+    project file: ../../out/lobby.project.json
+    variants: (none)
+  2 configs.
+
+$ rogen where Server/Save.luau
+exit 0
+stdout:
+  Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
+
+$ rogen build ../../lobby.rogen.json --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "lobby",
+        "file": "<dir>/lobby.rogen.json",
+        "outFile": "<dir>/out/lobby.project.json",
+        "outcome": "unchanged",
+        "diagnostics": []
+      }
+    ]
+  }
+
+written:
+  default.project.json
+  out/lobby.project.json

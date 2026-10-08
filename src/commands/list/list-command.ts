@@ -14,6 +14,7 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { inFolder } from "../build/build-log.js";
 import { ConfigReport } from "./config-report.js";
 
 /** The run's result line when some configs are broken; none when every one loads. */
@@ -42,7 +43,7 @@ registerCommand(
 						{
 							name: "config",
 							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -72,7 +73,11 @@ registerCommand(
 			if (line.options.json)
 				return this.listAsJson(selection.value, logService);
 
-			logService.intro("rogen list");
+			logService.intro(
+				["rogen list", inFolder(cwd, selection.value.home)]
+					.filter((part) => part !== undefined)
+					.join(" · ")
+			);
 			new ConfigReport(entries).print(logService, cwd);
 
 			if (broken) return err(broken);

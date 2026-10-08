@@ -61,6 +61,8 @@ export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
+	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */
+	readonly home: string;
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
 	readonly directory: string | undefined;
 
@@ -97,7 +99,7 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, each a name or a path, or every config in the working directory when it names none, with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, each a name or a path, or every config in the working directory when it names none (or in the nearest folder above that has any, when the working directory has none), with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
 		refs: readonly string[],
 		options: ConfigOptionValues

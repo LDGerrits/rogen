@@ -31,7 +31,7 @@ registerCommand(
 						{
 							name: "config",
 							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -72,15 +72,21 @@ registerCommand(
 			);
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors)
-				: this.report(new BuildLog(logService, cwd), builds.value, errors);
+				: this.report(
+						new BuildLog(logService, cwd),
+						builds.value,
+						errors,
+						selection.value.home
+					);
 		}
 
 		private report(
 			log: BuildLog,
 			builds: readonly ConfigBuild[],
-			errors: readonly Diagnostic[]
+			errors: readonly Diagnostic[],
+			home: string
 		): Result<void, Error> {
-			log.report(builds);
+			log.report(builds, home);
 			return errors.length > 0
 				? err(new ReportedError(new DiagnosticsError(errors)))
 				: ok(undefined);
