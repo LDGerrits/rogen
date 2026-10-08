@@ -99,6 +99,30 @@ describe("platform/config/config-file", () => {
 			]);
 		});
 
+		it("should say a missing file does not exist, and where it looked", async () => {
+			const result = await reader.read("/repo/nope.json");
+
+			expect(diagnosticsOf(result)[0].message).toBe(
+				"the config does not exist (looked for /repo/nope.json)."
+			);
+			expect(
+				(result as ResultError<ConfigFileFailure>).error.missing
+			).toBe(true);
+		});
+
+		it("should give the reason, without a Node code, for a directory where a file is expected", async () => {
+			await fs.createDirectory("/repo/dir.json");
+
+			const result = await reader.read("/repo/dir.json");
+
+			expect(diagnosticsOf(result)[0].message).toBe(
+				"the config could not be read: illegal operation on a directory."
+			);
+			expect(
+				(result as ResultError<ConfigFileFailure>).error
+			).toMatchObject({ missing: false, kind: "unreadable" });
+		});
+
 		it("should tell a file it couldn't read from one that is wrong", async () => {
 			const unreadable = await reader.read("/repo/nope.json");
 			const invalid = await read("garbage");

@@ -1,6 +1,11 @@
 import { jest } from "@jest/globals";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
-import { FileType } from "../file-system-service.js";
+import {
+	FileType,
+	failureReason,
+	fileSystemError,
+	isMissingPath,
+} from "../file-system-service.js";
 import { FileChange, FileChangeType } from "../file-changes.js";
 
 describe("MemoryFileSystemService: core operations", () => {
@@ -314,5 +319,46 @@ describe("MemoryFileSystemService: core operations", () => {
 				"src/Loop/a.luau",
 			]);
 		});
+	});
+});
+
+describe("file system failures", () => {
+	it("should tell a missing path by its code and not its message", () => {
+		expect(isMissingPath(fileSystemError("ENOENT", "gone"))).toBe(true);
+		expect(
+			isMissingPath(fileSystemError("EISDIR", "ENOENT: not really"))
+		).toBe(false);
+		expect(isMissingPath(new Error("ENOENT"))).toBe(false);
+	});
+
+	it.each([
+		[
+			"ENOENT: no such file or directory, open '/x'",
+			"no such file or directory",
+		],
+		["EACCES: permission denied, open '/x'", "permission denied"],
+		[
+			"EISDIR: illegal operation on a directory, read",
+			"illegal operation on a directory",
+		],
+		[
+			"EISDIR: illegal operation on a directory, read '/x'",
+			"illegal operation on a directory",
+		],
+		["disk full", "disk full"],
+	])("should give the reason of %j without its code", (message, reason) => {
+		expect(failureReason(new Error(message))).toBe(reason);
+	});
+
+	it("should give the reason a memory file system fails with when a directory is read as a file", async () => {
+		const memFs = new MemoryFileSystemService();
+		await memFs.createDirectory("/repo/dir");
+
+		const error = await memFs.readFile("/repo/dir").catch((e: Error) => e);
+
+		expect(failureReason(error as Error)).toBe(
+			"illegal operation on a directory"
+		);
+		expect((error as { code?: string }).code).toBe("EISDIR");
 	});
 });

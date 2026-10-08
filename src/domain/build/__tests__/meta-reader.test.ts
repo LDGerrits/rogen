@@ -1,4 +1,6 @@
+import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../base/disposable.js";
+import { fileSystemError } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
 import { MetaReader } from "../meta-reader.js";
@@ -32,6 +34,44 @@ describe("MetaReader", () => {
 
 		afterEach(() => {
 			store[Symbol.dispose]();
+		});
+
+		it("should say a meta file that vanished while the build ran does not exist", async () => {
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
+			jest.spyOn(fs, "readFile").mockRejectedValue(
+				fileSystemError(
+					"ENOENT",
+					"ENOENT: no such file or directory, open 'x'"
+				)
+			);
+
+			const result = await read();
+
+			expect(result.isErr() && result.error).toMatchObject([
+				{
+					code: "meta.unreadable",
+					message: expect.stringContaining("does not exist any more"),
+				},
+			]);
+		});
+
+		it("should give the reason, without a Node code, for a meta file it could not read", async () => {
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
+			jest.spyOn(fs, "readFile").mockRejectedValue(
+				fileSystemError(
+					"EISDIR",
+					"EISDIR: illegal operation on a directory, read"
+				)
+			);
+
+			const result = await read();
+
+			expect(result.isErr() && result.error).toMatchObject([
+				{
+					message:
+						"the meta file could not be read: illegal operation on a directory.",
+				},
+			]);
 		});
 
 		it("should read every init.meta.json with its folder and fields", async () => {

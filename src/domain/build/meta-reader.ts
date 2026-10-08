@@ -6,7 +6,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	failureReason,
+	isMissingPath,
+} from "../../platform/fs/file-system-service.js";
 import { RojoFile, RojoMeta, RojoMetaFields } from "../rojo/rojo.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
@@ -145,7 +149,9 @@ export class MetaReader {
 				errorDiagnostic(
 					"meta.unreadable",
 					{ resource: file },
-					`the meta file could not be read: ${text.error.message}.`
+					isMissingPath(text.error)
+						? "the meta file does not exist any more; it was there when the build scanned and was removed while it ran."
+						: `the meta file could not be read: ${failureReason(text.error)}.`
 				),
 			]);
 		}

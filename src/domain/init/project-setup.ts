@@ -4,7 +4,11 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	failureReason,
+	isMissingPath,
+} from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
@@ -160,7 +164,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					errorDiagnostic(
 						"init.templateUnreadable",
 						{ resource: file },
-						`couldn't read this file to copy it: ${text.error.message}`
+						isMissingPath(text.error)
+							? "this file does not exist, so it can't be copied."
+							: `couldn't read this file to copy it: ${failureReason(text.error)}.`
 					),
 				]);
 	}
