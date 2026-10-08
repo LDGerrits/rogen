@@ -1,9 +1,10 @@
-$ rogen init
+$ rogen init -y
 exit 0
 stdout:
   rogen init
   Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
-  Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
+  Left out ServerScriptService/Admin, since it points into src and Rogen generates that code now.
+  Couldn't route ServerScriptService/Admin: only a folder directly in a root dir becomes a route. Give its folder a marker such as Admin@server, or move it up into a root dir.
   Created template.project.json.
   Created default.rogen.json.
   Created AGENTS.md.
@@ -35,9 +36,9 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"shared": "ReplicatedStorage/Shared",
-		"server": "ServerScriptService/Server",
-		"client": "StarterPlayer/StarterPlayerScripts/Client",
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
 	"template": "template.project.json"
@@ -45,22 +46,11 @@ default.rogen.json:
 
 $ rojo sourcemap default.project.json
 my-game: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Util: ModuleScript  <- src/shared/Util.luau
   ServerScriptService: ServerScriptService
-    Server: Folder
-      Main: Script  <- src/server/Main.server.luau
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Client: Folder
-        Main: LocalScript  <- src/client/Main.client.luau
-  Workspace: Workspace
+    Admin: Folder
+      Ban: ModuleScript  <- src/server/Admin/Ban.luau
+    Main: Script  <- src/server/Main.server.luau
 
 $ rojo sourcemap template.project.json
 my-game: DataModel
-  ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-  Workspace: Workspace

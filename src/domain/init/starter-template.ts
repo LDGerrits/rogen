@@ -53,10 +53,10 @@ export class StarterTemplate {
 		return project.isOk() ? new StarterTemplate(project.value) : undefined;
 	}
 
-	/** This template without the nodes that point into `dirs`, and where they were; `undefined` when a dir is the whole folder. */
+	/** This template without the nodes that point into `dirs`, each with its `$path` and where it was; `undefined` when a dir is the whole folder. */
 	withoutNodesIn(
 		dirs: readonly string[]
-	): { template: StarterTemplate; removed: string[] } | undefined {
+	): { template: StarterTemplate; removed: MountedPath[] } | undefined {
 		const claimed = dirs.map(normalizeDir);
 		if (claimed.includes(".")) return undefined;
 
@@ -64,10 +64,7 @@ export class StarterTemplate {
 		const removed = edited.removeNodes((target) =>
 			claimed.some((dir) => containsPosix(dir, normalizeDir(target)))
 		);
-		return {
-			template: new StarterTemplate(edited),
-			removed: removed.map((instancePath) => instanceKey(instancePath)),
-		};
+		return { template: new StarterTemplate(edited), removed };
 	}
 
 	/** This template plus the `mounts` it lacks, as `<path> at <node>`; a node already there wins and its mounts are `skipped`. */

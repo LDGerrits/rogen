@@ -8,6 +8,7 @@ import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
+import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TemplateChoice } from "./starter-template.js";
 
@@ -385,13 +386,14 @@ export class InitQuestions {
 	}
 
 	async routes(
-		language: Language
+		language: Language,
+		derived?: DerivedRoutes
 	): Promise<{ routes: readonly RouteId[]; fallback: boolean } | undefined> {
+		const starting = new StartingRoutes(language, derived);
 		if (!this.interactive) {
-			return { routes: StartingRoutes.DEFAULT, fallback: true };
+			return { routes: starting.tickedByDefault, fallback: true };
 		}
 
-		const starting = new StartingRoutes(language);
 		const server = language.routeKey("server");
 		const { extension } = language;
 		const routes = await this.promptService.multiSelect<RouteId>({
@@ -402,9 +404,7 @@ export class InitQuestions {
 				label: key,
 				hint: `→ ${target} · ${hint}`,
 			})),
-			initialValues: starting.options
-				.filter(({ ticked }) => ticked)
-				.map(({ id }) => id),
+			initialValues: starting.tickedByDefault,
 		});
 		if (routes === undefined) return undefined;
 		if (routes.length === 0) return { routes, fallback: true };
@@ -416,7 +416,7 @@ export class InitQuestions {
 			choices: [
 				{
 					value: "shared",
-					label: `Put them in ${starting.sharedTarget}`,
+					label: `Put them in ${starting.fallbackTarget}`,
 				},
 				{
 					value: "leave",

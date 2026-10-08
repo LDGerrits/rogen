@@ -1,0 +1,83 @@
+---
+title: Coming from Rojo
+description: Move a hand-written Rojo project to Rogen without changing where anything lands.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+If you use Rojo with `server`, `client` and `shared` folders, `rogen init` keeps your tree. It reads the `default.project.json` you wrote, and the folders it points at become routes that put each one where Rojo had it:
+
+```json title="default.project.json"
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "Shared": { "$path": "src/shared" } },
+		"ServerScriptService": { "Server": { "$path": "src/server" } },
+		"StarterPlayer": {
+			"StarterPlayerScripts": { "Client": { "$path": "src/client" } }
+		}
+	}
+}
+```
+
+<Steps>
+
+<Step>
+### Run `rogen init`
+
+```bash
+rogen init
+```
+
+`init` copies the project file to `template.project.json`, since Rogen owns `default.project.json` from now on, and leaves out the nodes that point into `src`: Rogen generates those. Each one becomes a route:
+
+```json title="default.rogen.json"
+{
+	"rootDirs": ["src"],
+	"routes": {
+		"shared": "ReplicatedStorage/Shared",
+		"server": "ServerScriptService/Server",
+		"client": "StarterPlayer/StarterPlayerScripts/Client",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"template": "template.project.json"
+}
+```
+
+- A mount of a folder directly in a root dir (`src/server`) becomes a route named after the folder, to the node's path. The key matches with its first letter in either case, so `server/` and `Server/` both route.
+- A mount of a root dir itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route. Otherwise `*` goes where the `shared` folder went.
+- A mount deeper down (`src/server/Admin`) can't be a route. `init` says so, and it needs a marker such as `Admin@server`, or a move.
+
+In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `-y` or `--json`, `init` takes them.
+
+</Step>
+
+<Step>
+### Build and compare
+
+```bash
+rogen build
+rogen where src
+```
+
+`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes each file as its own node, so the file differs even when nothing moved.
+
+</Step>
+
+<Step>
+### Move one feature
+
+Now you can move code into [feature folders](/docs/v2/architectures/feature-folders) a folder at a time. Move one feature, then ask where its files land:
+
+```bash
+rogen where src/Inventory
+```
+
+`where` prints each file's instance path and the `require` that reaches it. When a folder's routes are right, move the next one.
+
+</Step>
+
+</Steps>
+
+Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.

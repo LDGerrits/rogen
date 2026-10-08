@@ -255,9 +255,9 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		return found;
 	}
 
-	/** Removes each node below the root whose `$path` target matches, with its children, and returns where they were. */
-	removeNodes(matches: (target: string) => boolean): string[][] {
-		const removed: string[][] = [];
+	/** Removes each node below the root whose `$path` target matches, with its children, and returns each one's `$path` and where it was. */
+	removeNodes(matches: (target: string) => boolean): MountedPath[] {
+		const removed: MountedPath[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {
 			for (const [name, child] of childNodes(node)) {
 				const childPath = [...instancePath, name];
@@ -265,8 +265,8 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 					isRojoPath(child.$path) &&
 					matches(rojoPathTarget(child.$path))
 				) {
+					removed.push({ path: child.$path, instancePath: childPath });
 					delete node[name];
-					removed.push(childPath);
 				} else {
 					visit(child, childPath);
 				}

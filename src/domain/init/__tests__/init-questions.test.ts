@@ -785,6 +785,89 @@ describe("InitQuestions askProject", () => {
 			);
 		});
 
+		describe("from a copied project file", () => {
+			const projectFile = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: { Server: { $path: "src/server" } },
+					ReplicatedStorage: { Shared: { $path: "src/shared" } },
+				},
+			});
+
+			const askCopying = async (prompts: MockPromptService) => {
+				const fileSystem = new MemoryFileSystemService();
+				await fileSystem.createDirectory(directory);
+				await fileSystem.writeFile(
+					path.join(directory, "default.project.json"),
+					projectFile
+				);
+				return new ProjectSetup(
+					directoryOf({
+						workspace: luau,
+						existing: ["default.project.json"],
+					}),
+					new InitQuestions(prompts, prompts.isInteractive),
+					fileSystem
+				).ask();
+			};
+
+			it("should offer the routes it derives first, ticked, beside the standard ones", async () => {
+				const prompts = new MockPromptService(acceptAll(9));
+				let choices: { value: string; label: string; hint?: string }[] =
+					[];
+				let initial: readonly string[] | undefined;
+				const original = prompts.multiSelect.bind(prompts);
+				prompts.multiSelect = (options) => {
+					if (options.message === "Routes") {
+						choices = [...options.choices];
+						initial = options.initialValues;
+					}
+					return original(options);
+				};
+
+				await askCopying(prompts);
+
+				expect(choices.map(({ value }) => value)).toEqual([
+					"mount:server",
+					"mount:shared",
+					"client",
+					"replicatedFirst",
+					"serverStorage",
+					"starterGui",
+				]);
+				expect(choices[0]).toEqual({
+					value: "mount:server",
+					label: "server",
+					hint: "→ ServerScriptService/Server · from default.project.json",
+				});
+				expect(initial).toEqual([
+					"mount:server",
+					"mount:shared",
+					"client",
+				]);
+			});
+
+			it("should take them without asking", async () => {
+				const result = (
+					await askCopying(new MockPromptService([], false))
+				).unwrap();
+
+				expect(result?.routes).toEqual([
+					"mount:server",
+					"mount:shared",
+					"client",
+				]);
+				expect(result?.fallback).toBe(true);
+			});
+
+			it("should offer the standard routes when the file is not copied", async () => {
+				const result = await defaultInitChoices(luau);
+
+				expect(result?.routes).toEqual(["server", "client", "shared"]);
+			});
+		});
+
 		it("should take the ticked routes", async () => {
 			const choices = await asked(luau, [
 				...acceptAll(4),

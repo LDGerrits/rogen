@@ -144,7 +144,7 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
-`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first. When it's done, `init` prints what to run next.
+`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). When it's done, `init` prints what to run next.
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 

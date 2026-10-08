@@ -1,9 +1,9 @@
-$ rogen init
+$ rogen init -y
 exit 0
 stdout:
   rogen init
   Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
-  Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
+  Left out ReplicatedStorage/Common, since it points into src and Rogen generates that code now.
   Created template.project.json.
   Created default.rogen.json.
   Created AGENTS.md.
@@ -22,6 +22,12 @@ stdout:
   default.project.json · wrote
   Built 1 config.
 
+$ rogen where src/Inventory/Types.luau
+exit 0
+stdout:
+  src/Inventory/Types.luau -> ReplicatedStorage/Common/Inventory/Types · route * (fallback)
+    require(game:GetService("ReplicatedStorage").Common.Inventory.Types)
+
 written:
   AGENTS.md
   default.project.json
@@ -35,10 +41,10 @@ default.rogen.json:
 		"src"
 	],
 	"routes": {
-		"shared": "ReplicatedStorage/Shared",
-		"server": "ServerScriptService/Server",
-		"client": "StarterPlayer/StarterPlayerScripts/Client",
-		"*": "ReplicatedStorage/Shared"
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Common"
 	},
 	"template": "template.project.json"
 }
@@ -46,21 +52,10 @@ default.rogen.json:
 $ rojo sourcemap default.project.json
 my-game: DataModel
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Util: ModuleScript  <- src/shared/Util.luau
-  ServerScriptService: ServerScriptService
-    Server: Folder
-      Main: Script  <- src/server/Main.server.luau
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Client: Folder
-        Main: LocalScript  <- src/client/Main.client.luau
-  Workspace: Workspace
+    Common: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
 
 $ rojo sourcemap template.project.json
 my-game: DataModel
   ReplicatedStorage: ReplicatedStorage
-  ServerScriptService: ServerScriptService
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-  Workspace: Workspace

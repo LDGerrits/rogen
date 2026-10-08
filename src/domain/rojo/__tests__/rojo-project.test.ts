@@ -170,7 +170,12 @@ describe("RojoProject", () => {
 
 			const removed = project.removeNodes((path) => path !== "Packages");
 
-			expect(removed).toEqual([["ServerScriptService", "Server"]]);
+			expect(removed).toEqual([
+				{
+					path: "src/server",
+					instancePath: ["ServerScriptService", "Server"],
+				},
+			]);
 			expect(project.getTree().tree).toEqual({
 				$path: "src",
 				ServerScriptService: { Kept: { $path: "Packages" } },
