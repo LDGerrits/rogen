@@ -191,6 +191,20 @@ export class PrintedDiagnostics {
 	}
 }
 
+/** How many warnings a run prints, counting a warning that several configs share once. */
+export function countWarnings(builds: readonly ConfigBuild[]): number {
+	const printed = PrintedDiagnostics.warnings();
+	let count = 0;
+	for (const build of builds) {
+		if (build.outcome === "notLoaded") continue;
+		count += printed.take(build.label, build.config.file, [
+			...build.warnings,
+			...(build.syncWarnings ?? []),
+		]).fresh.length;
+	}
+	return count;
+}
+
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(
@@ -208,7 +222,11 @@ export class BuildLog {
 	}
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
-	report(builds: readonly ConfigBuild[], home?: string): void {
+	report(
+		builds: readonly ConfigBuild[],
+		home?: string,
+		denied?: number
+	): void {
 		this.begin(
 			"build",
 			builds.map(({ label }) => label),
@@ -246,6 +264,10 @@ export class BuildLog {
 			)
 		)
 			this.logService.closeFrame("build failed.");
+		else if (denied)
+			this.logService.closeFrame(
+				`Built ${plural(builds.length, "config")} with ${plural(denied, "warning")}; --deny-warnings fails the run.`
+			);
 		else this.end(builds.length);
 	}
 

@@ -130,6 +130,7 @@ An override changes a config value for one run. Anything you want every time bel
 | `--mode <name>` | Picks the mode every config that declares modes builds in. Strict: a config that declares modes without this one is an error. |
 | `--variant <name>` | Turns a variant on, beyond those the mode lists. Repeatable. |
 | `--no-variant <name>` | Turns a variant off, whatever turned it on. Applies last. Repeatable. |
+| `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
 | `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. On `init` it implies `--yes`. |
 | `-y, --yes` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
@@ -143,11 +144,28 @@ An override changes a config value for one run. Anything you want every time bel
 
 | Code | Meaning |
 |---|---|
-| `0` | The command did its job, warnings included. |
-| `1` | The project is wrong: an invalid config, build errors, a failed write, or a cancelled `init`. |
+| `0` | The command did its job, warnings included (unless `build --deny-warnings` is given). |
+| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, or any warning under `build --deny-warnings`. |
 | `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`), or a name that doesn't exist (a config, a variant or a help topic). |
 
 `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
+
+## Continuous integration
+
+Warnings exit 0 on a developer's machine, but some should stop a merge, such as `route.serverCodeShipped` (server code replicating to clients) or `tree.deadScript`. `build --deny-warnings` exits 1 when any config has a warning, with the summary line `Built 2 configs with 3 warnings; --deny-warnings fails the run.`. It changes the verdict only: files are written as without the flag, and with `--json` the document is the same. Every warning has a fix that removes it (a rename, a marker such as `@Shared`, or a config edit; see [Diagnostics](/docs/v2/diagnostics)).
+
+```bash
+# compile first when a config has a syncDir, or output.nothingEmitted warns
+rogen build --mode prod --deny-warnings
+# only if you commit project files: fail when they're out of date
+git diff --exit-code -- '*.project.json'
+```
+
+- Every build checks every mode, so a `--mode prod` build also fails on `mode.missingInstance` for another mode. That's the point of the check.
+- Run the compiler or processor before `rogen build` when `syncDir` is set.
+- With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync dir.
+- `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0.
+- No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
 ## JSON output
 

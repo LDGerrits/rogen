@@ -1,5 +1,6 @@
 import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { plural } from "../../base/strings.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigOptions } from "../../domain/config/config.js";
@@ -11,13 +12,30 @@ import {
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { CommandLine, JsonOption } from "../../platform/environment/args.js";
+import {
+	CommandLine,
+	JsonOption,
+	OptionDescriptor,
+} from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "./build-log.js";
+import { BuildLog, countWarnings } from "./build-log.js";
 import { BuildReport } from "./build-report.js";
 
-const BuildOptions = [...ConfigOptions, JsonOption] as const;
+const DenyWarningsOption = {
+	name: "deny-warnings",
+	type: "boolean",
+	description: "Exit 1 when any config has a warning.",
+} as const satisfies OptionDescriptor;
+
+const BuildOptions = [
+	...ConfigOptions,
+	JsonOption,
+	DenyWarningsOption,
+] as const;
+
+const deniedMessage = (count: number): string =>
+	`${plural(count, "warning")}; --deny-warnings fails the run.`;
 
 registerCommand(
 	class BuildCommand extends AbstractCommand<typeof BuildOptions> {
@@ -42,6 +60,7 @@ registerCommand(
 						"rogen build",
 						"rogen build places/lobby.rogen.json --variant mock",
 						"rogen build --json",
+						"rogen build --mode prod --deny-warnings",
 					],
 				},
 			});
@@ -70,13 +89,17 @@ registerCommand(
 					? build.errors
 					: []
 			);
+			const denied = line.options["deny-warnings"]
+				? countWarnings(builds.value)
+				: 0;
 			return line.options.json
-				? this.reportAsJson(logService, builds.value, errors)
+				? this.reportAsJson(logService, builds.value, errors, denied)
 				: this.report(
 						new BuildLog(logService, cwd),
 						builds.value,
 						errors,
-						selection.value.home
+						selection.value.home,
+						denied
 					);
 		}
 
@@ -84,18 +107,22 @@ registerCommand(
 			log: BuildLog,
 			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
-			home: string
+			home: string,
+			denied: number
 		): Result<void, Error> {
-			log.report(builds, home);
-			return errors.length > 0
-				? err(new ReportedError(new DiagnosticsError(errors)))
+			log.report(builds, home, denied);
+			if (errors.length > 0)
+				return err(new ReportedError(new DiagnosticsError(errors)));
+			return denied > 0
+				? err(new ReportedError(new Error(deniedMessage(denied))))
 				: ok(undefined);
 		}
 
 		private reportAsJson(
 			logService: LogService,
 			builds: readonly ConfigBuild[],
-			errors: readonly Diagnostic[]
+			errors: readonly Diagnostic[],
+			denied: number
 		): Result<void, Error> {
 			const report = new BuildReport();
 			for (const build of builds) report.add(build);
@@ -103,7 +130,11 @@ registerCommand(
 			return this.printJson(
 				logService,
 				report.json(),
-				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+				errors.length > 0
+					? new DiagnosticsError(errors)
+					: denied > 0
+						? new Error(deniedMessage(denied))
+						: undefined
 			);
 		}
 	}

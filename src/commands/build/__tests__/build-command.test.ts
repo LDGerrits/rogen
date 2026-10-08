@@ -377,6 +377,95 @@ describe("build command", () => {
 		]);
 	});
 
+	describe("--deny-warnings", () => {
+		const withWarning = async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			return new MockConfigService([
+				buildable({ routes: { server: "ServerScriptService" } }),
+			]);
+		};
+
+		it("should exit 1 on a warning, and still write the project file", async () => {
+			const logService = new MockLogService();
+
+			const result = await run(await withWarning(), logService, {
+				positionals: [],
+				options: { "deny-warnings": true },
+			});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+			expect(logService.lines.at(-1)).toBe(
+				"outro: Built 1 config with 1 warning; --deny-warnings fails the run."
+			);
+		});
+
+		it("should exit 0 on a warning without the flag", async () => {
+			const result = await run(await withWarning(), new MockLogService());
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should exit 0 with the flag when there is no warning", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const logService = new MockLogService();
+
+			const result = await run(
+				new MockConfigService([buildable()]),
+				logService,
+				{ positionals: [], options: { "deny-warnings": true } }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(logService.lines.at(-1)).toBe("outro: Built 1 config.");
+		});
+
+		it("should still fail on errors", async () => {
+			const result = await run(
+				new MockConfigService([
+					brokenEntry([
+						errorDiagnostic(
+							"config.unknownField",
+							{ resource: "/repo/default.rogen.json" },
+							"boom."
+						),
+					]),
+				]),
+				new MockLogService(),
+				{ positionals: [], options: { "deny-warnings": true } }
+			);
+
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should exit 1 with --json and keep the warning's severity and code", async () => {
+			const logService = new MockLogService();
+
+			const result = await run(await withWarning(), logService, {
+				positionals: [],
+				options: { json: true, "deny-warnings": true },
+			});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			const document = JSON.parse(
+				logService.entries
+					.filter(({ kind }) => kind === "print")
+					.map(({ text }) => text)
+					.join("\n")
+			);
+			expect(document.configs[0].diagnostics).toEqual([
+				expect.objectContaining({
+					severity: "warning",
+					code: "route.unrouted",
+				}),
+			]);
+		});
+	});
+
 	describe("--json", () => {
 		const buildJson = async (
 			configService: MockConfigService,
