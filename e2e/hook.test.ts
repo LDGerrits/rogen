@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { bundleCli } from "./harness.js";
+import { bundleCli, invocation } from "./harness.js";
 
 const ROOT = path.join(import.meta.dirname, "..");
 
@@ -66,9 +66,10 @@ const available = has("bash") && has("git") && has("jq");
 		fs.mkdirSync(bin);
 		fs.writeFileSync(path.join(dir, "rogen-stop.sh"), script!);
 		const wrapper = path.join(bin, "rogen");
+		const [command, args] = invocation(bundle.cli, []);
 		fs.writeFileSync(
 			wrapper,
-			`#!/bin/sh\nexec "${process.execPath}" "${bundle.cli}" "$@"\n`
+			`#!/bin/sh\nexec "${command}" ${args.map((arg) => `"${arg}"`).join(" ")} "$@"\n`
 		);
 		fs.chmodSync(wrapper, 0o755);
 

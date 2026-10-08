@@ -52,7 +52,7 @@ export function discoverCases(root = CASES_DIR): string[] {
 const BINARY = process.env.ROGEN_E2E_BINARY;
 
 /** The command and arguments that run `cli` with `args`: the binary itself, or the bundle on this Node. */
-function invocation(
+export function invocation(
 	cli: string,
 	args: readonly string[]
 ): readonly [string, readonly string[]] {
