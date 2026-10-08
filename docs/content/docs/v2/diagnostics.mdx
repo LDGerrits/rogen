@@ -592,13 +592,13 @@ Give each config its own `outFile`. `outFile` isn't inherited through `extends`,
 
 ### `output.writeFailed` [#output-writefailed]
 
-Error. The project file couldn't be written to disk.
+Error. The project file couldn't be written to disk. The message gives the reason without the system's error code.
 
 ```
-default.project.json - error: the project file could not be written: EACCES: permission denied
+default.project.json - error: the project file could not be written: permission denied.
 ```
 
-Check that the directory exists and is writable, and that no other program locks the file. See [Output](/docs/v2/core-concepts/output#output).
+Check that the folder is writable and that no other program locks the file. Rogen creates the folder if it is missing. See [Output](/docs/v2/core-concepts/output#output).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
