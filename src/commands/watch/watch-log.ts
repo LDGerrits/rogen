@@ -11,7 +11,8 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { BuildLog, PrintedDiagnostics, joinNotes } from "../build/build-log.js";
+import { SharedDiagnostics } from "../../domain/build/build.js";
+import { BuildLog, joinNotes, sameNote } from "../build/build-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;
@@ -125,8 +126,8 @@ export class WatchLog {
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
-		const printedWarnings = PrintedDiagnostics.warnings();
-		reports.forEach((report) => this.report(report, printedWarnings));
+		const sharedWarnings = SharedDiagnostics.warnings();
+		reports.forEach((report) => this.report(report, sharedWarnings));
 	}
 
 	private notice(notice: ConfigNotice): void {
@@ -154,9 +155,9 @@ export class WatchLog {
 
 	private report(
 		{ build, unreported, repeated, fixed, repeatedFailure }: RebuildReport,
-		printedWarnings: PrintedDiagnostics
+		sharedWarnings: SharedDiagnostics
 	): void {
-		const warnings = printedWarnings.take(
+		const warnings = sharedWarnings.take(
 			build.label,
 			build.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
@@ -168,7 +169,7 @@ export class WatchLog {
 				repeatedFailure
 					? "same errors as before"
 					: counted(repeated, "as before"),
-				warnings.repeatNote(),
+				sameNote("warnings", warnings.sameAs),
 				counted(fixed, "fixed")
 			)
 		);

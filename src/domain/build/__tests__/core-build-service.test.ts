@@ -43,7 +43,7 @@ describe("CoreBuildService", () => {
 		const runOf = async (configs: readonly ResolvedConfig[]) => {
 			return (
 				await buildServiceOfFs().build(selectionOf(...configs))
-			).unwrap();
+			).unwrap().builds;
 		};
 
 		const loadable = (file: string, spec: ResolvedConfigSpec = {}) =>
@@ -75,7 +75,7 @@ describe("CoreBuildService", () => {
 
 			const [build] = (
 				await buildServiceOfFs().build(selectionOf(configOf()))
-			).unwrap();
+			).unwrap().builds;
 
 			expect(build).toMatchObject({
 				summary: { roots: [{ rootDir: abs("src"), files: 1 }] },
@@ -143,7 +143,7 @@ describe("CoreBuildService", () => {
 						),
 					])
 				)
-			).unwrap();
+			).unwrap().builds;
 
 			expect(outcomesOf(result)).toEqual([
 				[abs("default.rogen.json"), "notWritten"],
@@ -165,7 +165,7 @@ describe("CoreBuildService", () => {
 						loadable(abs("default.rogen.json")),
 					])
 				)
-			).unwrap();
+			).unwrap().builds;
 
 			expect(result.map(({ label }) => label)).toEqual(["a", "default"]);
 		});
@@ -183,7 +183,7 @@ describe("CoreBuildService", () => {
 						}),
 					])
 				)
-			).unwrap();
+			).unwrap().builds;
 
 			expect(result[0]).toMatchObject({
 				blockedBy: ["broken", "lobby"],
@@ -233,7 +233,8 @@ describe("CoreBuildService", () => {
 
 	describe("check", () => {
 		const checkOf = async (...configs: ResolvedConfig[]) =>
-			(await buildServiceOfFs().check(selectionOf(...configs))).unwrap();
+			(await buildServiceOfFs().check(selectionOf(...configs))).unwrap()
+				.builds;
 
 		beforeEach(async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
@@ -254,7 +255,7 @@ describe("CoreBuildService", () => {
 			const [checked] = await checkOf(config);
 			const [built] = (
 				await buildServiceOfFs().build(selectionOf(config))
-			).unwrap();
+			).unwrap().builds;
 
 			expect(checked.diagnostics).toEqual(built.diagnostics);
 			expect(checked.diagnostics).toMatchObject([
@@ -594,9 +595,9 @@ describe("CoreBuildService", () => {
 		it("should build a selection that can be built", async () => {
 			const result = await check(entryOf());
 
-			expect(result.unwrap().map(({ outcome }) => outcome)).toEqual([
-				"wrote",
-			]);
+			expect(
+				result.unwrap().builds.map(({ outcome }) => outcome)
+			).toEqual(["wrote"]);
 		});
 
 		it("should fail with the errors of a config that doesn't load and the ones that block the rest", async () => {

@@ -2,7 +2,7 @@ import path from "path";
 import { CancelledError, ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
-import { ConfigBuild } from "../../domain/build/build.js";
+import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
@@ -121,9 +121,9 @@ registerCommand(
 			configService: ConfigService,
 			buildService: BuildService,
 			plan: InitPlan
-		): Promise<Result<ConfigBuild[], Error>> {
+		): Promise<Result<BuildRun, Error>> {
 			// No names would select every config in the folder.
-			if (plan.configs.length === 0) return ok([]);
+			if (plan.configs.length === 0) return ok(new BuildRun([]));
 			const selection = await configService.select(plan.configs, {});
 			if (selection.isErr()) return selection;
 			return buildService.build(selection.value);
@@ -134,9 +134,7 @@ registerCommand(
 			logService: LogService,
 			plan: InitPlan,
 			cwd: string,
-			buildConfigs: (
-				plan: InitPlan
-			) => Promise<Result<ConfigBuild[], Error>>
+			buildConfigs: (plan: InitPlan) => Promise<Result<BuildRun, Error>>
 		): Promise<Result<void, Error>> {
 			// A blank gutter line sets the results apart from the last answer.
 			if (plan.asked) logService.info("");
@@ -158,8 +156,9 @@ registerCommand(
 			const built = await buildConfigs(plan);
 			if (built.isErr()) return built;
 			const log = new BuildLog(logService, cwd);
-			for (const build of built.value) log.outcome(build, foundBy(build));
-			const errors = built.value.flatMap((build) => build.errors);
+			for (const build of built.value.builds)
+				log.outcome(build, foundBy(build));
+			const { errors } = built.value;
 			if (errors.length > 0) {
 				logService.outro(
 					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
@@ -178,9 +177,7 @@ registerCommand(
 			initService: InitService,
 			logService: LogService,
 			plan: InitPlan,
-			buildConfigs: (
-				plan: InitPlan
-			) => Promise<Result<ConfigBuild[], Error>>
+			buildConfigs: (plan: InitPlan) => Promise<Result<BuildRun, Error>>
 		): Promise<Result<void, Error>> {
 			const files: string[] = [];
 			const appended: string[] = [];
@@ -218,8 +215,9 @@ registerCommand(
 					built.error
 				);
 			const report = new BuildReport();
-			for (const build of built.value) report.add(build, foundBy(build));
-			const errors = built.value.flatMap((build) => build.errors);
+			for (const build of built.value.builds)
+				report.add(build, foundBy(build));
+			const { errors } = built.value;
 			return this.printJson(
 				logService,
 				{

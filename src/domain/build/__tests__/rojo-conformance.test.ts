@@ -120,7 +120,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		});
 		const build = (
 			await buildServiceOf(fileSystem, index).build(selectionOf(config))
-		).unwrap()[0];
+		).unwrap().builds[0];
 		expect(build.outcome).toBe("wrote");
 	};
 

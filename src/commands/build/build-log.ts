@@ -1,11 +1,14 @@
 import { relativeTo } from "../../base/path.js";
 import { joinedWithAnd, plural } from "../../base/strings.js";
-import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
+import {
+	BuildRun,
+	BuildSummary,
+	ConfigBuild,
+} from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
-	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 
@@ -131,97 +134,14 @@ export function joinNotes(
 	return notes.filter((note) => note !== undefined).join(" · ") || undefined;
 }
 
-/** What a config printed of one kind of diagnostic. */
-export class Printed {
-	constructor(
-		readonly fresh: readonly Diagnostic[],
-		private readonly kind: "errors" | "warnings",
-		private readonly owners: readonly string[],
-		private readonly total: number
-	) {}
-
-	/** The note for a config whose diagnostics of this kind were all printed above. */
-	repeatNote(): string | undefined {
-		return this.total > 0 &&
-			this.fresh.length === 0 &&
-			this.owners.length > 0
-			? `same ${this.kind} as ${joinedWithAnd(this.owners)}`
-			: undefined;
-	}
-}
-
-/** The diagnostics of one kind a run has printed, so a config that repeats one prints nothing for it. */
-export class PrintedDiagnostics {
-	private readonly printedBy = new Map<string, string>();
-
-	private constructor(
-		private readonly kind: "errors" | "warnings",
-		/** Whether a diagnostic about a config's own file equals another config's. */
-		private readonly sameAcrossConfigs: boolean
-	) {}
-
-	static errors(): PrintedDiagnostics {
-		return new PrintedDiagnostics("errors", false);
-	}
-
-	/** Configs that read one folder find the same warnings, each filed under its own config. */
-	static warnings(): PrintedDiagnostics {
-		return new PrintedDiagnostics("warnings", true);
-	}
-
-	/** Splits `diagnostics` of the config `label` into those not printed yet and those another config did. */
-	take(
-		label: string,
-		configFile: string,
-		diagnostics: readonly Diagnostic[]
-	): Printed {
-		const owners = new Set<string>();
-		const fresh = diagnostics.filter((diagnostic) => {
-			const key = renderDiagnostic(
-				this.sameAcrossConfigs && diagnostic.resource === configFile
-					? { ...diagnostic, resource: "" }
-					: diagnostic
-			);
-			const owner = this.printedBy.get(key);
-			if (owner === undefined) this.printedBy.set(key, label);
-			else if (owner !== label) owners.add(owner);
-			return owner === undefined;
-		});
-		return new Printed(fresh, this.kind, [...owners], diagnostics.length);
-	}
-}
-
-/** How many warnings a run prints, counting a warning that several configs share once. */
-export function countWarnings(builds: readonly ConfigBuild[]): number {
-	const printed = PrintedDiagnostics.warnings();
-	let count = 0;
-	for (const build of builds) {
-		if (build.outcome === "notLoaded") continue;
-		count += printed.take(build.label, build.config.file, [
-			...build.warnings,
-			...(build.syncWarnings ?? []),
-		]).fresh.length;
-	}
-	return count;
-}
-
-/** Every error and warning of a run, as `report` prints them: one that several configs share only once. */
-export function diagnosticsOf(builds: readonly ConfigBuild[]): Diagnostic[] {
-	const printedErrors = PrintedDiagnostics.errors();
-	const printedWarnings = PrintedDiagnostics.warnings();
-	return builds.flatMap((build) => {
-		const file =
-			build.outcome === "notLoaded" ? build.file : build.config.file;
-		const errors =
-			build.outcome === "failed" || build.outcome === "notLoaded"
-				? printedErrors.take(build.label, file, build.errors).fresh
-				: [];
-		const warnings = printedWarnings.take(build.label, file, [
-			...build.warnings,
-			...(build.syncWarnings ?? []),
-		]).fresh;
-		return [...warnings, ...errors];
-	});
+/** `same warnings as lobby`, for a config whose diagnostics of `kind` earlier configs all said. */
+export function sameNote(
+	kind: "errors" | "warnings",
+	sameAs: readonly string[]
+): string | undefined {
+	return sameAs.length > 0
+		? `same ${kind} as ${joinedWithAnd(sameAs)}`
+		: undefined;
 }
 
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
@@ -241,49 +161,28 @@ export class BuildLog {
 	}
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
-	report(
-		builds: readonly ConfigBuild[],
-		home?: string,
-		denyWarnings = false
-	): void {
+	report(run: BuildRun, home?: string, denyWarnings = false): void {
 		this.begin(
 			"build",
-			builds.map(({ label }) => label),
+			run.builds.map(({ label }) => label),
 			home
 		);
-		const printedErrors = PrintedDiagnostics.errors();
-		const printedWarnings = PrintedDiagnostics.warnings();
-		for (const build of builds) {
-			if (builds.length > 1) this.heading(build.label);
-			const file =
-				build.outcome === "notLoaded" ? build.file : build.config.file;
-			const errors =
-				build.outcome === "failed" || build.outcome === "notLoaded"
-					? printedErrors.take(build.label, file, build.errors)
-					: undefined;
-			const warnings = printedWarnings.take(build.label, file, [
-				...build.warnings,
-				...(build.syncWarnings ?? []),
-			]);
+		for (const { build, warnings, errors } of run.shares) {
+			if (run.builds.length > 1) this.heading(build.label);
 			this.outcome(
 				build,
-				[...warnings.fresh, ...(errors?.fresh ?? [])],
+				[...warnings.fresh, ...errors.fresh],
 				joinNotes(
 					build.outcome === "notWritten"
 						? `${joinedWithAnd(build.blockedBy)} failed`
 						: undefined,
-					errors?.repeatNote(),
-					warnings.repeatNote()
+					sameNote("errors", errors.sameAs),
+					sameNote("warnings", warnings.sameAs)
 				)
 			);
 		}
-		if (
-			builds.some(
-				({ outcome }) => outcome === "failed" || outcome === "notLoaded"
-			)
-		)
-			this.logService.closeFrame("build failed.");
-		else this.end(builds.length, countWarnings(builds), denyWarnings);
+		if (run.failed) this.logService.closeFrame("build failed.");
+		else this.end(run.builds.length, run.warningCount, denyWarnings);
 	}
 
 	/** Heads the lines about one config, when a run builds several. */

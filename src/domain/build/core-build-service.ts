@@ -6,8 +6,8 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
+	BuildRun,
 	BuildSet,
-	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
 	Locations,
@@ -38,20 +38,20 @@ export class CoreBuildService implements BuildService {
 
 	build(
 		selection: ConfigSelection
-	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+	): Promise<Result<BuildRun, DiagnosticsError>> {
 		return this.buildAll(selection, true);
 	}
 
 	check(
 		selection: ConfigSelection
-	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+	): Promise<Result<BuildRun, DiagnosticsError>> {
 		return this.buildAll(selection, false);
 	}
 
 	private async buildAll(
 		selection: ConfigSelection,
 		write: boolean
-	): Promise<Result<ConfigBuild[], DiagnosticsError>> {
+	): Promise<Result<BuildRun, DiagnosticsError>> {
 		const unloaded = selection.entries.flatMap((entry) =>
 			entry.status === "broken"
 				? [new UnloadedBuild(entry.file, entry.errors)]
@@ -82,10 +82,12 @@ export class CoreBuildService implements BuildService {
 		// Selection order, each config's build beside the ones that didn't load.
 		const loaded = [...built];
 		return ok(
-			selection.entries.map(
-				(entry) =>
-					unloaded.find(({ file }) => file === entry.file) ??
-					loaded.shift()!
+			new BuildRun(
+				selection.entries.map(
+					(entry) =>
+						unloaded.find(({ file }) => file === entry.file) ??
+						loaded.shift()!
+				)
 			)
 		);
 	}
@@ -194,7 +196,11 @@ export class CoreBuildService implements BuildService {
 			if (written.isErr()) failed = config.label;
 			builds.push(
 				written.isErr()
-					? new FailedBuild(config, written.error.diagnostics, findings)
+					? new FailedBuild(
+							config,
+							written.error.diagnostics,
+							findings
+						)
 					: new WrittenBuild(
 							config,
 							written.value ? "wrote" : "unchanged",

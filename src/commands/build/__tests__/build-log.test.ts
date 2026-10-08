@@ -1,5 +1,6 @@
 import path from "path";
 import {
+	BuildRun,
 	BuildSummary,
 	ConfigBuild,
 	FailedBuild,
@@ -285,7 +286,7 @@ describe("BuildLog report", () => {
 
 	const report = (builds: readonly ConfigBuild[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(builds);
+		new BuildLog(logService, cwd).report(new BuildRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind === "error" || kind === "success")
 			.map(({ text }) => text);
@@ -321,7 +322,7 @@ describe("BuildLog report", () => {
 	describe("errors", () => {
 		const all = (builds: readonly ConfigBuild[]) => {
 			const logService = new MockLogService();
-			new BuildLog(logService, cwd).report(builds);
+			new BuildLog(logService, cwd).report(new BuildRun(builds));
 			return logService.entries
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`);
@@ -416,7 +417,7 @@ describe("BuildLog report, warnings", () => {
 
 	const all = (builds: readonly ConfigBuild[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(builds);
+		new BuildLog(logService, cwd).report(new BuildRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind !== "intro")
 			.map(({ kind, text }) => `${kind}: ${text}`);
