@@ -203,6 +203,7 @@ git diff --exit-code -- '*.project.json'
 - Run the compiler or processor before `rogen build` when `syncDir` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync dir.
 - `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
+- Whether to [commit the project file](/docs/v2/core-concepts/output#commit-the-project-file) is yours to decide, and committing it is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
 ## JSON output
