@@ -7,7 +7,10 @@ import {
 	InstanceFix,
 	Locations,
 } from "../../domain/build/build.js";
-import { requireExpression } from "../../domain/roblox/roblox.js";
+import {
+	requireExpression,
+	whyNotRequirable,
+} from "../../domain/roblox/roblox.js";
 import { RojoFile } from "../../domain/rojo/rojo.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
@@ -155,6 +158,19 @@ function requireOf(location: FileLocation): string | undefined {
 		: undefined;
 }
 
+/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
+function requirementOf(location: FileLocation): string | undefined {
+	if (location.status !== "placed" || !location.named) return undefined;
+	const file = new RojoFile(path.posix.basename(location.source));
+	if (!file.isLuau) return undefined;
+	if (!file.isLuauModule)
+		return "no require by this path: a script runs on its own and is not a module";
+	const reason = whyNotRequirable(location.instancePath);
+	return reason
+		? `no require by this path: ${reason}`
+		: `require(${requireExpression(location.instancePath)})`;
+}
+
 /** The fields a location adds to its source and status in the JSON form. */
 function locationFields(location: FileLocation): Record<string, unknown> {
 	switch (location.status) {
@@ -258,8 +274,12 @@ export class LocationReport {
 		return this.blocks().flatMap(({ lines }) => lines);
 	}
 
-	/** The lines of each path, with the Luau expressions that require its module, which a person only asks to see. */
-	blocks(): { lines: string[]; requires: string[] }[] {
+	/** The lines of each path; under a file the user named, how to require it or why that can't be. For a listing, the expressions that require its modules, which a person only asks to see. */
+	blocks(): {
+		lines: string[];
+		requireLines: string[];
+		requires: string[];
+	}[] {
 		return this.bySource().map((all) => {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
@@ -275,9 +295,19 @@ export class LocationReport {
 					)
 				),
 			];
+			const requirements = answers.map((answer) =>
+				"location" in answer
+					? requirementOf(answer.location)
+					: undefined
+			);
 			if (agreed || this.configs === 1)
 				return {
 					lines: [lines[0], ...this.sharedNotes(answers)],
+					requireLines: [
+						...new Set(
+							requirements.filter((line) => line !== undefined)
+						),
+					].map((line) => `  ${line}`),
 					requires,
 				};
 			return {
@@ -285,6 +315,11 @@ export class LocationReport {
 					`${answer.label}: ${lines[index]}`,
 					...this.noted(answer),
 				]),
+				requireLines: answers.flatMap(({ label }, index) =>
+					requirements[index] === undefined
+						? []
+						: [`  ${label}: ${requirements[index]}`]
+				),
 				requires,
 			};
 		});

@@ -69,5 +69,5 @@ The `@` in a routed file name only exists on disk. Instance requires use the gam
 Shared code runs on both sides, so it can't require anything only the server can see, like `ServerScriptService` or `ServerStorage`. Files in the same feature folder can land on sides that can't see each other, so check where a file lands before you require it.
 
 <Callout type="info" title="Find the instance path of a file">
-	`rogen where <file>` prints a file's instance path, even before the file exists. It works in reverse too: `rogen where ServerScriptService.Inventory.Save` prints the file behind an instance.
+	`rogen where <file>` prints a file's instance path, even before the file exists, and under it the `require` that reaches it. In the Starter containers, which Roblox clones into each player, and for scripts, it says there is none. It works in reverse too: `rogen where ServerScriptService.Inventory.Save` prints the file behind an instance.
 </Callout>

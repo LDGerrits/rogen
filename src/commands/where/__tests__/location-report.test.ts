@@ -548,6 +548,55 @@ describe("LocationReport", () => {
 		});
 	});
 
+	describe("the require lines of a named file", () => {
+		const placed = (
+			instancePath: string[],
+			named = true
+		): FileLocation => ({
+			status: "placed",
+			source: "/repo/src/Util.luau",
+			exists: true,
+			instancePath,
+			route: "*",
+			routeMatch: "fallback",
+			variants: [],
+			...(named && { named: true as const }),
+		});
+		const requireLines = (...configs: [string, FileLocation][]) =>
+			reportOf(
+				configs.map(([label, location]) => [label, [location]])
+			).blocks()[0].requireLines;
+
+		it("should give a module's require, and none for a file found in a folder", () => {
+			const path = ["ReplicatedStorage", "Util"];
+
+			expect(requireLines(["default", placed(path)])).toEqual([
+				'  require(game:GetService("ReplicatedStorage").Util)',
+			]);
+			expect(requireLines(["default", placed(path, false)])).toEqual([]);
+		});
+
+		it("should say it once when every config places the file alike", () => {
+			const location = placed(["ReplicatedStorage", "Util"]);
+
+			expect(
+				requireLines(["default", location], ["lobby", location])
+			).toHaveLength(1);
+		});
+
+		it("should head each config's line when they place the file apart", () => {
+			expect(
+				requireLines(
+					["default", placed(["ReplicatedStorage", "Util"])],
+					["lobby", placed(["ReplicatedFirst", "Util"])]
+				)
+			).toEqual([
+				'  default: require(game:GetService("ReplicatedStorage").Util)',
+				'  lobby: require(game:GetService("ReplicatedFirst").Util)',
+			]);
+		});
+	});
+
 	describe("a missing folder", () => {
 		it("should say how to ask about a folder that doesn't exist", () => {
 			expect(

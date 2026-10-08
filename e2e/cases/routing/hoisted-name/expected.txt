@@ -9,6 +9,7 @@ $ rogen where src/Player/^Animate.client.luau src/Ui
 exit 0
 stdout:
   src/Player/^Animate.client.luau -> StarterPlayer/StarterCharacterScripts/Animate · route character (marker) · hoisted by ^
+    no require by this path: a script runs on its own and is not a module
   src/Ui/^Hud/Health.luau -> ReplicatedStorage/shared/Hud/Health · route * (fallback) · hoisted by ^
 
 $ rogen where src/Player/^Animate.client.luau --json

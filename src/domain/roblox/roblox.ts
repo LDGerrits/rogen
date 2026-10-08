@@ -167,24 +167,41 @@ const RESERVED_WORDS: ReadonlySet<string> = new Set([
 ]);
 
 /** The containers whose contents Roblox clones into the player or character at runtime, so their edit-time path is not where the code that runs finds them. */
-const CLONED_AT_RUNTIME: readonly (readonly string[])[] = [
-	["StarterPlayer", "StarterPlayerScripts"],
-	["StarterPlayer", "StarterCharacterScripts"],
-	["StarterGui"],
-	["StarterPack"],
+const CLONED_AT_RUNTIME: readonly {
+	readonly container: readonly string[];
+	readonly into: string;
+}[] = [
+	{
+		container: ["StarterPlayer", "StarterPlayerScripts"],
+		into: "each player",
+	},
+	{
+		container: ["StarterPlayer", "StarterCharacterScripts"],
+		into: "each character",
+	},
+	{ container: ["StarterGui"], into: "each player" },
+	{ container: ["StarterPack"], into: "each player" },
 ];
+
+/** Why nothing under a container that is cloned at runtime can be reached by its path, such as `StarterPlayerScripts is cloned into each player`; `undefined` anywhere else. */
+export function whyNotRequirable(
+	instancePath: readonly string[]
+): string | undefined {
+	const cloned = CLONED_AT_RUNTIME.find(({ container }) =>
+		container.every((name, index) => instancePath[index] === name)
+	);
+	return (
+		cloned &&
+		`${cloned.container[cloned.container.length - 1]} is cloned into ${cloned.into}`
+	);
+}
 
 /** The Luau expression that reaches the instance at `instancePath`, as `game:GetService("ReplicatedStorage").Shared.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is reserved. `undefined` under the containers cloned at runtime, where that path names the template and not the copy. */
 export function requireExpression(
 	instancePath: readonly string[]
 ): string | undefined {
 	const [service, ...names] = instancePath;
-	if (
-		service === undefined ||
-		CLONED_AT_RUNTIME.some((container) =>
-			container.every((name, index) => instancePath[index] === name)
-		)
-	)
+	if (service === undefined || whyNotRequirable(instancePath) !== undefined)
 		return undefined;
 	return [
 		`game:GetService("${service}")`,

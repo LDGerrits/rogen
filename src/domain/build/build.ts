@@ -237,6 +237,8 @@ export interface PlacedLocation extends Located {
 	readonly variants: readonly VariantMatch[];
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
+	/** The path was named as a file, and not found in a folder or behind an instance. */
+	readonly named?: true;
 }
 
 export interface UnplacedLocation extends Located {

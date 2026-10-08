@@ -21,6 +21,17 @@ describe("TerminalLogService", () => {
 
 	const drawn = () => stripVTControlCharacters(written);
 
+	it("should write a note as it is, dimmed where there are colours", () => {
+		const info = jest.spyOn(console, "info").mockImplementation(() => {});
+
+		new TerminalLogService().note("  require(game)");
+
+		expect(info).toHaveBeenCalledTimes(1);
+		expect(stripVTControlCharacters(String(info.mock.calls[0][0]))).toBe(
+			"  require(game)"
+		);
+	});
+
 	it("should nest results and diagnostics under a step", () => {
 		const logService = new TerminalLogService();
 

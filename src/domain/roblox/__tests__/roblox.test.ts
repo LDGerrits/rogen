@@ -6,6 +6,7 @@ import {
 	containerClassName,
 	requireExpression,
 	scriptFate,
+	whyNotRequirable,
 } from "../roblox.js";
 
 const location = {
@@ -241,6 +242,30 @@ describe("WHERE_SCRIPTS_RUN", () => {
 		expect(WHERE_SCRIPTS_RUN).toBe(
 			"A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see."
 		);
+	});
+});
+
+describe("whyNotRequirable", () => {
+	it.each([
+		[
+			["StarterPlayer", "StarterPlayerScripts", "Net", "Http"],
+			"StarterPlayerScripts is cloned into each player",
+		],
+		[
+			["StarterPlayer", "StarterCharacterScripts", "Animate"],
+			"StarterCharacterScripts is cloned into each character",
+		],
+		[["StarterGui", "Hud"], "StarterGui is cloned into each player"],
+		[["StarterPack", "Tool"], "StarterPack is cloned into each player"],
+	])("should say why %j has none", (path, reason) => {
+		expect(whyNotRequirable(path)).toBe(reason);
+	});
+
+	it("should say nothing elsewhere", () => {
+		expect(
+			whyNotRequirable(["StarterPlayer", "Shared", "X"])
+		).toBeUndefined();
+		expect(whyNotRequirable(["ReplicatedStorage", "X"])).toBeUndefined();
 	});
 });
 

@@ -8,6 +8,7 @@ import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
 	| "print"
+	| "note"
 	| "intro"
 	| "step"
 	| "success"
@@ -107,6 +108,10 @@ export abstract class AbstractLogService implements LogService {
 
 	print(text: string): void {
 		if (this.level !== LogLevel.Off) this.write("print", text);
+	}
+
+	note(text: string): void {
+		if (this.level !== LogLevel.Off) this.write("note", text);
 	}
 
 	intro(title: string): void {

@@ -23,6 +23,8 @@ export interface LogService {
 
 	/** Text the user asked for (help, version, JSON), written as is. */
 	print(text: string): void;
+	/** Text that goes with what `print` wrote, dimmed where the output has colour. */
+	note(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
 	success(message: string): void;

@@ -65,6 +65,16 @@ A placed file shows its instance path, the governing route, how it matched (`fol
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
+Under the line of a file you name, `where` prints, dimmed, the `require` that reaches it, since "where does it land" is followed by "how do I reach it". It writes a name that isn't an identifier as an index. Where no path reaches the file, it says why instead: a module under `StarterPlayerScripts` (or `StarterCharacterScripts`, `StarterGui`, `StarterPack`) is cloned into each player, and a script isn't a module. A roblox-ts source is imported by path and gets no line. A directory and a bare `rogen where` are listings and stay as they are; `--verbose` adds each module's require to a listing.
+
+```
+$ rogen where src/Inventory/Types.luau src/Hud/Client/Hud.luau
+src/Inventory/Types.luau -> ReplicatedStorage/Shared/Inventory/Types · route * (fallback)
+  require(game:GetService("ReplicatedStorage").Shared.Inventory.Types)
+src/Hud/Client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Hud/Hud · route Client (folder)
+  no require by this path: StarterPlayerScripts is cloned into each player
+```
+
 Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
 
 ```

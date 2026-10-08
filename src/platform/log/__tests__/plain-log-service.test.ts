@@ -129,6 +129,21 @@ describe("PlainLogService", () => {
 		expect(out).toEqual(["rogen 2.0.0"]);
 	});
 
+	it("should print a note as is", () => {
+		new PlainLogService().note("  require(game)");
+
+		expect(out).toEqual(["  require(game)"]);
+	});
+
+	it("should print no note when logging is off", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Off);
+
+		logService.note("  require(game)");
+
+		expect(out).toEqual([]);
+	});
+
 	it("should print raw text at the error level", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Error);

@@ -22,7 +22,9 @@ $ rogen where src/Net/.mock@server/FakeStore.luau src/Net/@server.mock/Probe.lua
 exit 0
 stdout:
   src/Net/.mock@server/FakeStore.luau -> ServerScriptService/Net/FakeStore · route server (folder) · variant mock (folder)
+    require(game:GetService("ServerScriptService").Net.FakeStore)
   src/Net/@server.mock/Probe.luau -> ServerScriptService/Net/Probe · route server (folder) · variant mock (folder)
+    require(game:GetService("ServerScriptService").Net.Probe)
 
 written:
   mocked.project.json
