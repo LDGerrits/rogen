@@ -1167,3 +1167,42 @@ describe("InitQuestions addAgentInstructions", () => {
 		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);
 	});
 });
+
+describe("InitQuestions addClaudeHook", () => {
+	it("should add it on Enter in a terminal, and never in a run that can't ask", async () => {
+		const asked = new InitQuestions(
+			new MockPromptService([ACCEPT_DEFAULT]),
+			true
+		);
+		const unasked = new InitQuestions(
+			new MockPromptService([], false),
+			false
+		);
+
+		expect(await asked.addClaudeHook()).toBe(true);
+		expect(await unasked.addClaudeHook()).toBe(false);
+	});
+});
+
+describe("InitQuestions whatToAdd", () => {
+	const valuesListed = async (agentFile?: string, hookOffered?: boolean) => {
+		const prompts = new MockPromptService([ACCEPT_DEFAULT]);
+		let values: string[] = [];
+		const original = prompts.select.bind(prompts);
+		prompts.select = ((options: Parameters<typeof original>[0]) => {
+			values = options.choices.map(({ value }) => value);
+			return original(options);
+		}) as typeof prompts.select;
+		await new InitQuestions(prompts, true).whatToAdd(
+			agentFile,
+			hookOffered
+		);
+		return values;
+	};
+
+	it("should list the hook only where it is offered", async () => {
+		expect(await valuesListed("AGENTS.md", true)).toContain("hook");
+		expect(await valuesListed("AGENTS.md", false)).not.toContain("hook");
+		expect(await valuesListed()).not.toContain("hook");
+	});
+});

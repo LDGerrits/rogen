@@ -364,6 +364,48 @@ describe("init command", () => {
 		});
 	});
 
+	describe("Claude Code hook", () => {
+		const accepting = () =>
+			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
+
+		it("should say it created the script and the settings", async () => {
+			await write(".claude/keep");
+			const logService = new MockLogService();
+
+			await runInit([], accepting(), logService);
+
+			expect(logService.lines).toEqual(
+				expect.arrayContaining([
+					"success: Created .claude/hooks/rogen-stop.sh.",
+					"success: Created .claude/settings.json.",
+				])
+			);
+			expect(await exists(".claude/hooks/rogen-stop.sh")).toBe(true);
+		});
+
+		it("should say it added the hook to settings that exist, and list them as appended", async () => {
+			await write(".claude/settings.json", "{}\n");
+			const logService = new MockLogService();
+
+			await runInit([], accepting(), logService);
+
+			expect(logService.lines).toContain(
+				"success: Added the Rogen hook to .claude/settings.json."
+			);
+			expect(
+				(await readJson(".claude/settings.json")).hooks.Stop
+			).toHaveLength(1);
+		});
+
+		it("should not write it in a run that can't ask", async () => {
+			await write(".claude/keep");
+
+			await runInit();
+
+			expect(await exists(".claude/hooks/rogen-stop.sh")).toBe(false);
+		});
+	});
+
 	describe("language and darklua", () => {
 		it("should write a plain config when no toolchain is found", async () => {
 			const result = await runInit();

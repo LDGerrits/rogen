@@ -15,6 +15,12 @@ import { InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
+	ClaudeHook,
+	HOOK_SCRIPT_FILE,
+	HOOK_SETTINGS_FILE,
+} from "./claude-hook.js";
+import { ClaudeHookSetup } from "./claude-hook-setup.js";
+import {
 	InitOptions,
 	InitPlan,
 	InitService,
@@ -151,15 +157,19 @@ export class CoreInitService implements InitService {
 		const read = await this.agentFileIn(directory);
 		if (read.isErr()) return read;
 		const agentFile = read.value;
+		const hookRead = await this.claudeHookIn(directory);
+		if (hookRead.isErr()) return hookRead;
+		const hook = hookRead.value;
 		if (!base)
 			return this.planWith(
 				directory,
 				questions,
 				asking(projectSetup),
-				asking(new AgentSetup(agentFile, questions))
+				asking(new AgentSetup(agentFile, questions)),
+				asking(new ClaudeHookSetup(hook, questions))
 			);
 		const offered = agentFile.hasBlock ? undefined : agentFile.fileName;
-		switch (await questions.whatToAdd(offered)) {
+		switch (await questions.whatToAdd(offered, hook.offered)) {
 			case undefined:
 				return ok(undefined);
 			case "place":
@@ -185,6 +195,12 @@ export class CoreInitService implements InitService {
 					directory,
 					questions,
 					asking(new AgentSetup(agentFile, questions, true))
+				);
+			case "hook":
+				return this.planWith(
+					directory,
+					questions,
+					asking(new ClaudeHookSetup(hook, questions, true))
 				);
 		}
 	}
@@ -237,6 +253,49 @@ export class CoreInitService implements InitService {
 		}
 		const [agents, claude] = texts;
 		return ok(AgentFile.choose(agents, claude));
+	}
+
+	/** Fails on a settings file it can't read rather than take it for missing, which would write over it. */
+	private async claudeHookIn(
+		directory: InitDirectory
+	): Promise<Result<ClaudeHook, Error>> {
+		const inUse = directory.has(".claude") || directory.has("CLAUDE.md");
+		const settings = await this.readIfThere(
+			directory,
+			HOOK_SETTINGS_FILE,
+			inUse
+		);
+		if (settings.isErr()) return settings;
+		return ok(
+			new ClaudeHook({
+				inUse,
+				scriptExists: await this.fileSystemService.exists(
+					path.join(directory.path, HOOK_SCRIPT_FILE)
+				),
+				settings: settings.value,
+			})
+		);
+	}
+
+	private async readIfThere(
+		directory: InitDirectory,
+		fileName: string,
+		look: boolean
+	): Promise<Result<string | undefined, Error>> {
+		const file = path.join(directory.path, fileName);
+		if (!look || !(await this.fileSystemService.exists(file)))
+			return ok(undefined);
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(file)
+		);
+		return text.isErr()
+			? err(
+					new Error(
+						`Failed to read ${fileName}: ${text.error.message}`,
+						{ cause: text.error }
+					)
+				)
+			: text;
 	}
 
 	async write(

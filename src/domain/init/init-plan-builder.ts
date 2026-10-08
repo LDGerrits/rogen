@@ -27,6 +27,7 @@ export class InitPlanBuilder {
 	private readonly compilerConfigs: PlannedFile[] = [];
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
+	private hookFiles: readonly PlannedFile[] = [];
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
@@ -60,6 +61,14 @@ export class InitPlanBuilder {
 	addAgentFile(file: AgentFile): void {
 		this.agentFile = file.planned;
 		this.agentStep = file.nextStep;
+	}
+
+	/** The Claude Code hook's script and settings, written after the agent rules. */
+	addClaudeHook(files: readonly PlannedFile[]): void {
+		this.hookFiles = files;
+		this.setup.add(
+			"The Claude Code hook needs bash, git and jq; on Windows, winget install jqlang.jq."
+		);
 	}
 
 	/** A root dir this run chose, which `write` creates if it isn't there. */
@@ -116,6 +125,7 @@ export class InitPlanBuilder {
 				...(this.template ? [this.template] : []),
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),
+				...this.hookFiles,
 			],
 			directories: [...this.directories],
 			configs: this.configs.map(({ fileName }) => fileName),

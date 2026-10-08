@@ -150,6 +150,8 @@ Then `init` builds the configs it wrote, so the project files exist before you r
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
+Where a `.claude` folder or a `CLAUDE.md` is, a terminal run also offers the [Claude Code hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.claude/hooks/rogen-stop.sh` and registers it in `.claude/settings.json`. A later `init` lists it under **Claude Code hook**. A run that can't ask never adds it, and `jq` is the one tool it needs besides `bash` and `git`.
+
 ### `list [config…]`
 
 Lists every config in the folder, or the ones you name, with its root directories, its resolved routes (`Server -> ServerScriptService`, one per line, or `routes: same as default` when an earlier config in the list has the same), sync directory, project file, every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`), the mode it builds in and every mode it declares (`mode: dev`, `modes: dev, qa, prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
@@ -321,7 +323,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `built` has an entry per config it wrote, as `build --json` does, without the sync dir's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, or the hook in `.claude/settings.json`. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `built` has an entry per config it wrote, as `build --json` does, without the sync dir's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 

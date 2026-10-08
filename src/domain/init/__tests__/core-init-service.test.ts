@@ -1,4 +1,5 @@
 import { agentBlock } from "../agent-block.js";
+import { agentHook } from "../agent-hook.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
@@ -260,6 +261,197 @@ describe("CoreInitService", () => {
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"AGENTS.md",
 			]);
+		});
+	});
+
+	describe("Claude Code hook", () => {
+		const HOOK = ".claude/hooks/rogen-stop.sh";
+		const SETTINGS = ".claude/settings.json";
+		const answersEverything = () =>
+			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
+		const names = (
+			plan: { files: readonly { fileName: string }[] } | undefined
+		) => plan?.files.map(({ fileName }) => fileName);
+
+		it("should offer it where Claude Code is in use, and write the script and the settings", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(names(plan)).toEqual([
+				"default.rogen.json",
+				"AGENTS.md",
+				HOOK,
+				SETTINGS,
+			]);
+			expect(
+				plan?.files.find(({ fileName }) => fileName === HOOK)?.content
+			).toBe(agentHook);
+			expect(
+				JSON.parse(
+					plan?.files.find(({ fileName }) => fileName === SETTINGS)
+						?.content ?? ""
+				)
+			).toEqual({
+				hooks: {
+					Stop: [
+						{
+							hooks: [
+								{
+									type: "command",
+									command:
+										'bash "$CLAUDE_PROJECT_DIR"/.claude/hooks/rogen-stop.sh',
+								},
+							],
+						},
+					],
+				},
+			});
+		});
+
+		it("should offer it when CLAUDE.md is the agent file", async () => {
+			await write("CLAUDE.md", "Use tabs.\n");
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(names(plan)).toContain(HOOK);
+		});
+
+		it("should not offer it where nothing says Claude Code is in use", async () => {
+			const prompts = answersEverything();
+
+			const plan = (await serviceFor(prompts).plan([])).unwrap();
+
+			expect(names(plan)).not.toContain(HOOK);
+			expect(
+				prompts.asked.filter((message) => message.includes("hook"))
+			).toEqual([]);
+		});
+
+		it("should not write it in a run that can't ask", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (await serviceFor().plan([])).unwrap();
+
+			expect(names(plan)).not.toContain(HOOK);
+		});
+
+		it("should not write it when the question is declined", async () => {
+			await write(".claude/keep", "");
+			const asked = answersEverything();
+			await serviceFor(asked).plan([]);
+			const declined = new MockPromptService([
+				...Array(asked.asked.length - 1).fill(ACCEPT_DEFAULT),
+				false,
+			]);
+
+			const plan = (await serviceFor(declined).plan([])).unwrap();
+
+			expect(declined.asked.at(-1)).toContain("hook");
+			expect(names(plan)).not.toContain(HOOK);
+		});
+
+		it("should register it in settings that exist, keeping what they hold", async () => {
+			await write(
+				SETTINGS,
+				JSON.stringify({ model: "opus" }, null, 2) + "\n"
+			);
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+			const settings = plan?.files.find(
+				({ fileName }) => fileName === SETTINGS
+			);
+
+			expect(settings).toMatchObject({
+				appends: true,
+				summary: "the Rogen hook",
+			});
+			expect(JSON.parse(settings?.content ?? "")).toMatchObject({
+				model: "opus",
+				hooks: { Stop: [expect.anything()] },
+			});
+		});
+
+		it("should not offer it when the settings name the script already", async () => {
+			await write(
+				SETTINGS,
+				JSON.stringify({
+					hooks: {
+						Stop: [{ hooks: [{ command: "x/rogen-stop.sh" }] }],
+					},
+				})
+			);
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(names(plan)).not.toContain(HOOK);
+		});
+
+		it("should not offer it when the script exists, since init never overwrites a file", async () => {
+			await write(HOOK, "#!/bin/sh\n");
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(names(plan)).not.toContain(HOOK);
+		});
+
+		it("should not offer it when the settings are not plain JSON", async () => {
+			await write(SETTINGS, "{ // mine\n}");
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(names(plan)).not.toContain(HOOK);
+		});
+
+		it("should say what the script needs", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (
+				await serviceFor(answersEverything()).plan([])
+			).unwrap();
+
+			expect(plan?.nextSteps.setup).toEqual([
+				"The Claude Code hook needs bash, git and jq; on Windows, winget install jqlang.jq.",
+			]);
+		});
+
+		it("should list it beside default.rogen.json, and write only it", async () => {
+			await write(
+				"default.rogen.json",
+				JSON.stringify({ routes: { "*": "ReplicatedStorage" } })
+			);
+			await write("AGENTS.md", agentBlock);
+			await write(".claude/keep", "");
+			const prompts = new MockPromptService(["hook"]);
+
+			const plan = (await serviceFor(prompts).plan([])).unwrap();
+
+			expect(names(plan)).toEqual([HOOK, SETTINGS]);
+		});
+
+		it("should fail rather than write over settings it can't read", async () => {
+			await write(SETTINGS, "{}");
+			jest.spyOn(fileSystem, "readFile").mockRejectedValueOnce(
+				new Error("busy")
+			);
+
+			const result = await serviceFor(answersEverything()).plan([]);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Failed to read .claude/settings.json: busy"
+			);
 		});
 	});
 

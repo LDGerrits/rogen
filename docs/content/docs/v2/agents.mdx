@@ -68,7 +68,9 @@ printf 'Rogen warns about files you changed. Fix each, or tell the user why it s
 exit 2
 ```
 
-Make it executable (`chmod +x .claude/hooks/rogen-stop.sh`) and register it:
+In a repo that uses Claude Code, `rogen init` can do both steps: where it finds a `.claude` folder or a `CLAUDE.md`, a terminal run asks whether to add the hook, and a later `init` lists it under **Claude Code hook**. It writes the script, and adds the entry to `.claude/settings.json`, creating the file or adding to the `Stop` list of one that exists. It runs the script through `bash`, so it needs no executable bit. It leaves a repo alone that has the script or names it in its settings, and settings that aren't plain JSON, and a run without a terminal never adds it.
+
+To do it by hand, make the script executable (`chmod +x .claude/hooks/rogen-stop.sh`) and register it:
 
 ```json title=".claude/settings.json"
 {

@@ -1,0 +1,39 @@
+$ rogen init -y
+exit 0
+stdout:
+  rogen init
+  Created default.rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run each in its own terminal:
+      rogen watch
+      rojo serve default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+  Wrote 2 files.
+
+written:
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau

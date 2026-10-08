@@ -146,10 +146,10 @@ registerCommand(
 					logService.success(`Created ${item.directory}/.`);
 					return;
 				}
-				const { fileName, appends } = item.file;
+				const { fileName, appends, summary } = item.file;
 				logService.success(
 					appends
-						? `Added Rogen's rules to ${fileName}.`
+						? `Added ${summary ?? "Rogen's rules"} to ${fileName}.`
 						: `Created ${fileName}.`
 				);
 			});
