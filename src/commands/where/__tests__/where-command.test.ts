@@ -108,14 +108,14 @@ describe("where command", () => {
 			_: [
 				"ServerScriptService.Inventory.Save:12: attempt to index nil",
 				"ReplicatedStorage/Shared/Inventory",
-				"ServerScriptService.Missing",
+				"Workspace.Missing",
 			],
 		});
 
 		expect(printed()).toEqual([
 			"src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)",
 			"src/Inventory/Types.luau -> ReplicatedStorage/Shared/Inventory/Types · route * (fallback)",
-			"ServerScriptService.Missing -> no file places it",
+			"Workspace.Missing -> no file places it",
 		]);
 	});
 
@@ -425,7 +425,7 @@ describe("where command", () => {
 			await run({
 				_: [
 					"ServerScriptService.Inventory.Save:3",
-					"ServerScriptService.Gone",
+					"Workspace.Gone",
 				],
 				json: true,
 			});
@@ -437,7 +437,7 @@ describe("where command", () => {
 				}),
 				{
 					config: "default",
-					instance: "ServerScriptService.Gone",
+					instance: "Workspace.Gone",
 					status: "noFile",
 					diagnostics: [],
 				},
