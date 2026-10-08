@@ -138,10 +138,10 @@ function requirementOf(location: FileLocation): string | undefined {
 	if (!file.isLuau) return undefined;
 	if (!file.isLuauModule)
 		return "no require by this path: a script runs on its own and is not a module";
+	const expression = requireExpression(location.instancePath);
+	if (expression) return `require(${expression})`;
 	const reason = whyNotRequirable(location.instancePath);
-	return reason
-		? `no require by this path: ${reason}`
-		: `require(${requireExpression(location.instancePath)})`;
+	return reason && `no require by this path: ${reason}`;
 }
 
 /** The fields a location adds to its source and status in the JSON form. */

@@ -57,6 +57,17 @@ const joinList = (items: readonly string[], conjunction: string): string =>
 		? items.join("")
 		: `${items.slice(0, -1).join(", ")} ${conjunction} ${items[items.length - 1]}`;
 
+/** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
+function derivedRoutesOf(
+	template: TemplateChoice,
+	copied: string | undefined,
+	rootDirs: readonly string[]
+): DerivedRoutes | undefined {
+	return template.kind === "copy" && copied !== undefined
+		? DerivedRoutes.of(template.from, copied, rootDirs)
+		: undefined;
+}
+
 /** A new project: a config, its template and project file, and any places that share its code. */
 export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
@@ -120,9 +131,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const routes = await questions.routes(
 			language,
-			template.kind === "copy" && copiedTemplate !== undefined
-				? DerivedRoutes.of(template.from, copiedTemplate, rootDirs)
-				: undefined
+			derivedRoutesOf(template, copiedTemplate, rootDirs)
 		);
 		if (routes === undefined) return ok(undefined);
 
@@ -187,15 +196,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
 		const { name, language, darklua, rootDirs, syncDir } = choices;
 		const configSet = new ConfigSet(name, language, darklua);
-		const derived =
-			choices.template.kind === "copy" &&
-			!this.directory.has(TEMPLATE_FILE)
-				? DerivedRoutes.of(
-						choices.template.from,
-						choices.copiedTemplate ?? "",
-						rootDirs
-					)
-				: undefined;
+		const derived = derivedRoutesOf(
+			choices.template,
+			choices.copiedTemplate,
+			rootDirs
+		);
 		const template = this.planTemplate(choices, configSet, derived);
 		const starting = new StartingRoutes(language, derived);
 		const { compiler } = language;

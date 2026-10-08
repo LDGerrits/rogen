@@ -125,6 +125,15 @@ describe("domain/init/derived-routes", () => {
 				expect(derived?.unrouted).toHaveLength(1);
 			});
 
+			it("should list a root dir mounted somewhere no route can reach", () => {
+				const derived = derive({
+					Custom: { Common: { $path: "src" } },
+				});
+
+				expect(derived?.fallback).toBeUndefined();
+				expect(derived?.unrouted).toHaveLength(1);
+			});
+
 			it("should list a mount that isn't under a service", () => {
 				const derived = derive({
 					Custom: { Server: { $path: "src/server" } },

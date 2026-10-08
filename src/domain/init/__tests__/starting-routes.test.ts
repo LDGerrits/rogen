@@ -8,7 +8,7 @@ const rbxts = new StartingRoutes(workspaceOf().languageFor("roblox-ts"));
 describe("domain/init/starting-routes", () => {
 	describe("StartingRoutes", () => {
 		it("should tick the server, client and shared routes to start with", () => {
-			expect(StartingRoutes.DEFAULT).toEqual([
+			expect(luau.tickedByDefault).toEqual([
 				"server",
 				"client",
 				"shared",

@@ -31,8 +31,12 @@ export class DerivedRoutes {
 			const target = normalizeDir(rojoPathTarget(rojoPath));
 			const node = instanceKey(instancePath);
 			const landing = instancePath.join("/");
+			const reachable =
+				isSupportedService(instancePath[0]) &&
+				instancePath.every((name) => !name.includes("/"));
 			if (roots.includes(target)) {
-				rootTarget ??= landing;
+				if (reachable) rootTarget ??= landing;
+				else this.unrouted.push({ target, node });
 				continue;
 			}
 			if (!roots.some((root) => containsPosix(root, target))) continue;
@@ -42,8 +46,7 @@ export class DerivedRoutes {
 			if (
 				direct &&
 				DeclaredKeys.isName(key) &&
-				isSupportedService(instancePath[0]) &&
-				instancePath.every((name) => !name.includes("/")) &&
+				reachable &&
 				![...this.routes.keys()].some(
 					(taken) => DeclaredKeys.identityOf(taken) === identity
 				)

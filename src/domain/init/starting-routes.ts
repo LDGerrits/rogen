@@ -65,11 +65,6 @@ const ROUTES: readonly RouteTemplate[] = [
 
 /** The routes `init` offers to write, spelled the way `language` spells route keys. */
 export class StartingRoutes {
-	/** The standard routes that start ticked. */
-	static readonly DEFAULT: readonly RouteId[] = ROUTES.filter(
-		({ ticked }) => ticked
-	).map(({ id }) => id);
-
 	/** With `derived`, its routes come first and start ticked, and replace the standard route of the same key. */
 	constructor(
 		private readonly language: Language,
