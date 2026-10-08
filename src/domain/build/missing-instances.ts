@@ -20,10 +20,15 @@ const LISTED = 10;
 export class MissingInstances {
 	constructor(private readonly placement: Placement) {}
 
-	/** One warning per kind of gap: variants alone leave a file out, or a mode does. With `named`, every gap is told as the mode's, since another mode's switches decide it. */
-	diagnostics(named = false): Diagnostic[] {
+	/** One warning per kind of gap: variants alone leave a file out, or a mode does. With `named`, every gap is told as the mode's, since another mode's switches decide it, except those of `known` instances, which another warning already reports. */
+	diagnostics(
+		named = false,
+		known: ReadonlySet<string> = new Set()
+	): Diagnostic[] {
 		const { config } = this.placement;
-		const missing = this.find();
+		const missing = this.find().filter(
+			({ instance }) => !known.has(instance)
+		);
 		const ofMode = (gap: MissingInstance) =>
 			named || gap.variants.some((key) => config.keys.isMode(key));
 		return [

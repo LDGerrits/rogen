@@ -1,15 +1,15 @@
 import path from "path";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** A test runner's name, as `init` says it, and how a manifest names its package. */
+/** A test runner's name, as `init` says it, and how a package source names it: as a whole path segment, so `ts-jest` is no runner. */
 const RUNNERS = [
-	{ name: "Jest", pattern: /jest/i },
-	{ name: "TestEZ", pattern: /testez/i },
+	{ name: "Jest", pattern: /(?:^|\/)jest(?:-[a-z]+)?(?:@|$)/i },
+	{ name: "TestEZ", pattern: /(?:^|\/)testez(?:@|$)/i },
 ] as const;
 
 const NPM_SECTIONS = ["dependencies", "devDependencies"];
 const TOML_SECTION = /^\s*\[([^\]]*)\]/;
-const TOML_STRING = /^\s*[\w-]+\s*=\s*"([^"]*)"/;
+const TOML_STRING = /"([^"]*)"/g;
 
 /** The test runner a workspace's package manifests name, which tells that it has specs a release can leave out. */
 export class TestRunnerDetector {
@@ -48,8 +48,8 @@ export class TestRunnerDetector {
 			const section = TOML_SECTION.exec(line);
 			if (section) inDependencies = /dependencies/i.test(section[1]);
 			else if (inDependencies) {
-				const source = TOML_STRING.exec(line)?.[1];
-				if (source !== undefined) sources.push(source);
+				for (const [, source] of line.matchAll(TOML_STRING))
+					sources.push(source);
 			}
 		}
 		return sources;

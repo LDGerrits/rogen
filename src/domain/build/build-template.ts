@@ -80,6 +80,8 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 export class BuildTemplate {
 	private readonly project: RojoProject;
 	private readonly templateFile: string | undefined;
+	/** Every path the template's own `$path`s mount, except those the active mode's `exclude` drops. Rojo reads these, not Rogen. */
+	readonly mounts: TemplateMounts;
 
 	constructor(
 		private readonly config: Pick<ResolvedConfig, "name" | "template"> &
@@ -101,6 +103,7 @@ export class BuildTemplate {
 		if (template && this.templateDir !== layout.projectDir) {
 			this.project.mapPaths((target) => this.rebase(target));
 		}
+		this.mounts = this.mountsOf(template?.project);
 	}
 
 	/** Whether the template disables legacy scripts, which leaves scripts under the player containers without a run context. */
@@ -116,9 +119,9 @@ export class BuildTemplate {
 		);
 	}
 
-	/** Every path the template's own `$path`s mount, except those the active mode's `exclude` drops. Rojo reads these, not Rogen. */
-	get mounts(): TemplateMounts {
-		const project = this.config.template?.project;
+	private mountsOf(
+		project: NonNullable<ResolvedConfig["template"]>["project"] | undefined
+	): TemplateMounts {
 		return new TemplateMounts(
 			(project?.getPaths() ?? [])
 				.filter(

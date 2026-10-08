@@ -55,6 +55,24 @@ describe("TestRunnerDetector", () => {
 		expect(await detect()).toBe("Jest");
 	});
 
+	it("should find a runner in a Pesde dependency written as a table", async () => {
+		await write(
+			"pesde.toml",
+			'[dev_dependencies]\njest = { wally = "jsdotlua/jest", version = "^3" }\n'
+		);
+
+		expect(await detect()).toBe("Jest");
+	});
+
+	it("should not take a package that only has a runner in its name for one", async () => {
+		await write(
+			"package.json",
+			JSON.stringify({ devDependencies: { "ts-jest": "^29.0.0" } })
+		);
+
+		expect(await detect()).toBeUndefined();
+	});
+
 	it("should ignore a runner named outside the dependencies", async () => {
 		await write(
 			"package.json",

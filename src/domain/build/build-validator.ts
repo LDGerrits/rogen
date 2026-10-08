@@ -1,7 +1,11 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix, toPosix } from "../../base/path.js";
-import { capitalized, joinedWithAnd } from "../../base/strings.js";
+import {
+	capitalized,
+	joinedWithAnd,
+	joinedWithOr,
+} from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -97,9 +101,7 @@ export class BuildValidator {
 					rootDir,
 					shown: toPosix(path.relative(configDir, rootDir)),
 					key,
-					kind: this.config.keys.isVariant(key)
-						? ("variant" as const)
-						: ("route" as const),
+					kind: this.kindOf(key),
 					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
 					parent:
 						relativeParent !== "" &&
@@ -113,9 +115,13 @@ export class BuildValidator {
 
 		const kinds = new Set(named.map(({ kind }) => kind));
 		const many = named.length > 1;
-		const keyKind = kinds.size > 1 ? "route or variant" : [...kinds][0];
+		const keyKind = joinedWithOr(
+			(["route", "variant", "mode"] as const).filter((kind) =>
+				kinds.has(kind)
+			)
+		);
 		const effect =
-			kinds.size > 1
+			kinds.has("route") && kinds.size > 1
 				? "do nothing"
 				: kinds.has("route")
 					? `route${many ? "" : "s"} nothing`
@@ -183,10 +189,20 @@ export class BuildValidator {
 	}
 
 	/** A folder or marker that only differs from a declared key in letter case is read as an ordinary name. */
+	/** What a declared key is, in the words a message names it. */
+	private kindOf(key: string): "mode" | "variant" | "route" {
+		const { keys } = this.config;
+		return keys.isMode(key)
+			? "mode"
+			: keys.isVariant(key)
+				? "variant"
+				: "route";
+	}
+
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
 		return this.diagnosePaths([...nearMisses], (resource, key) => {
-			const kind = this.config.keys.isVariant(key) ? "variant" : "route";
+			const kind = this.kindOf(key);
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },

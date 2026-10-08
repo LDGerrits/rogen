@@ -156,13 +156,13 @@ export class ConfigValidator {
 					location,
 					`mode "${mode}" is invalid: ${NAME_RULE}.`
 				);
-			} else if (mode in this.routes) {
+			} else if (Object.hasOwn(this.routes, mode)) {
 				this.problems.error(
 					"config.modeClashesWithRoute",
 					location,
 					`mode "${mode}" has the same name as a route key; rename one of them.`
 				);
-			} else if (mode in this.variants) {
+			} else if (Object.hasOwn(this.variants, mode)) {
 				this.problems.error(
 					"config.modeClashesWithVariant",
 					location,
@@ -175,7 +175,7 @@ export class ConfigValidator {
 				Record<string, boolean> | undefined
 			>(["modes", mode, "variants"]);
 			for (const variant of Object.keys(switched ?? {})) {
-				if (variant in declared) continue;
+				if (Object.hasOwn(declared, variant)) continue;
 				this.problems.error(
 					"config.undeclaredModeVariant",
 					this.layered.locateMode(mode, "variants", variant),
@@ -184,15 +184,21 @@ export class ConfigValidator {
 			}
 		}
 
-		const { name, source } = modeChoice;
-		if (this.layered.mode !== undefined || name === undefined) return;
-		if (source === "config") {
+		const written = chain.getValue<string | undefined>("mode");
+		if (written !== undefined && !modes.includes(written)) {
 			this.problems.error(
 				"config.unknownMode",
 				this.layered.locate("mode"),
-				`"mode" is "${name}", but ${ConfigValidator.declaredModes(modes, name)}`
+				`"mode" is "${written}", but ${ConfigValidator.declaredModes(modes, written)}`
 			);
-		} else if (source === "cli" && modes.length > 0) {
+		}
+		const { name, source } = modeChoice;
+		if (
+			source === "cli" &&
+			name !== undefined &&
+			modes.length > 0 &&
+			!modes.includes(name)
+		) {
 			this.problems.error(
 				"config.modeNotDeclared",
 				{ resource: this.layered.leaf.file },

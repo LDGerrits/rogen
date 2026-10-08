@@ -72,7 +72,7 @@ export class ConfigBuilder {
 			findings: {
 				warnings: [
 					...new BuildValidator(assembly).validate(),
-					...this.modeCheck.check(config),
+					...this.modeCheck.check(config, placement.value),
 				],
 				syncWarnings:
 					syncWarnings ??
@@ -98,7 +98,7 @@ export class ConfigBuilder {
 						...new BuildValidator(
 							assembled.value.assembly
 						).validate(),
-						...this.modeCheck.check(config),
+						...this.modeCheck.check(config, placement.value),
 					],
 		});
 	}

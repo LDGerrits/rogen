@@ -1894,6 +1894,31 @@ describe("domain/config/core-config-service", () => {
 			]);
 		});
 
+		it("should report a mode field that names no declared mode even when --mode picks a valid one", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				mode: "prd",
+				modes: { dev: {}, prod: {} },
+			});
+
+			await start({ overrides: { mode: "prod", variants: {} } });
+
+			expect(errors(0)).toMatchObject([{ code: "config.unknownMode" }]);
+			expect(errors(0)[0].message).toContain('Did you mean "prod"?');
+		});
+
+		it("should not read a mode named like an Object member as a clash", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				modes: { constructor: {}, toString: {} },
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+			expect(resolved(0)?.modes).toEqual(["constructor", "toString"]);
+		});
+
 		it("should report a mode field in a config that declares no modes", async () => {
 			await write("/repo/default.rogen.json", { routes, mode: "prod" });
 

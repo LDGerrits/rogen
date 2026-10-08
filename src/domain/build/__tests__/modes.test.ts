@@ -334,13 +334,7 @@ describe("modes in a build", () => {
 			expect(warnings[0].message).toContain('in mode "prod"');
 		});
 
-		it("should warn nothing for a config without modes", async () => {
-			await write("src/A.luau");
-
-			expect(await warningsOf({})).toEqual([]);
-		});
-
-		it("should report a variant gap with the variant wording even in a mode", async () => {
+		it("should not repeat in another mode a gap the active mode reports", async () => {
 			await write("src/Analytics.mock.luau", "src/Analytics.fake.luau");
 
 			const warnings = await warningsOf({
@@ -351,8 +345,13 @@ describe("modes in a build", () => {
 
 			expect(warnings.map(({ code }) => code)).toEqual([
 				"variant.noneActive",
-				"mode.missingInstance",
 			]);
+		});
+
+		it("should warn nothing for a config without modes", async () => {
+			await write("src/A.luau");
+
+			expect(await warningsOf({})).toEqual([]);
 		});
 	});
 });
