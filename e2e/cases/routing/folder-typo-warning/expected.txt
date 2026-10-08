@@ -7,7 +7,8 @@ stdout:
 stderr:
   default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name:
     src/Net/mokc (did you mean "mock"?)
-  default.rogen.json - warning: 2 folders are one edit from a declared route key, so they are read as ordinary folders:
+  default.rogen.json - warning: 3 folders are one edit from a declared route key, so they are read as ordinary folders:
+    src/Hud/Servers (did you mean "Server"?)
     src/Hud/Sevrer (did you mean "Server"?)
     src/Inventory/Sever (did you mean "Server"?)
 
@@ -47,9 +48,13 @@ stdout:
             "file": "<dir>/default.rogen.json",
             "severity": "warning",
             "code": "route.folderTypo",
-            "message": "2 folders are one edit from a declared route key, so they are read as ordinary folders:\n  <dir>/src/Hud/Sevrer (did you mean \"Server\"?)\n  <dir>/src/Inventory/Sever (did you mean \"Server\"?)",
+            "message": "3 folders are one edit from a declared route key, so they are read as ordinary folders:\n  <dir>/src/Hud/Servers (did you mean \"Server\"?)\n  <dir>/src/Hud/Sevrer (did you mean \"Server\"?)\n  <dir>/src/Inventory/Sever (did you mean \"Server\"?)",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-foldertypo",
             "related": [
+              {
+                "file": "<dir>/src/Hud/Servers",
+                "message": "did you mean \"Server\"?"
+              },
               {
                 "file": "<dir>/src/Hud/Sevrer",
                 "message": "did you mean \"Server\"?"
@@ -60,6 +65,12 @@ stdout:
               }
             ],
             "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Hud/Servers",
+                  "to": "<dir>/src/Hud/Server"
+                }
+              },
               {
                 "rename": {
                   "from": "<dir>/src/Hud/Sevrer",

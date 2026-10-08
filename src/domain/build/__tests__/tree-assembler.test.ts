@@ -1463,7 +1463,7 @@ describe("TreeAssembler", () => {
 				).toEqual({ $path: optional("src/Queue@server") });
 			});
 
-			it("should not warn about meta in a folder whose files were all pruned", async () => {
+			it("should warn about the name, not the meta, of a folder whose files were all pruned", async () => {
 				await write("src/Mocks/Http.mock.luau");
 				await writeMeta("src/Mocks/init.meta.json", {
 					className: "Actor",
@@ -1473,7 +1473,9 @@ describe("TreeAssembler", () => {
 					variants: { mock: false },
 				});
 
-				expect(warnings).toEqual([]);
+				expect(warnings.map(({ code }) => code)).toEqual([
+					"variant.typo",
+				]);
 			});
 		});
 

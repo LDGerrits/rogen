@@ -237,7 +237,7 @@ Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, an
 
 ### `route.folderTypo` [#route-foldertypo]
 
-Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). The folder's name is read with its parentheses, `^` and variant parts off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
+Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). A plural counts too: `Servers/` reads as an ordinary folder, so it warns; rename it if its files belong under the route. The folder's name is read with its parentheses, `^` and variant parts off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
 
 ```
 default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder:
@@ -292,7 +292,7 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 ### `variant.typo` [#variant-typo]
 
-Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A folder whose whole name is one edit from a variant of four letters or more (`mokc/` next to `mock`) is reported too, and the hint then leaves out the dot; shorter variants are one edit from real words, so they are not offered. One warning lists every such name.
+Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A folder whose whole name is one edit from a variant of four letters or more (`mokc/` next to `mock`, or the plural `Mocks/`) is reported too, and the hint then leaves out the dot; shorter variants are one edit from real words, so they are not offered. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:

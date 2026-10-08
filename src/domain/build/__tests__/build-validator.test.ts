@@ -215,9 +215,21 @@ describe("BuildValidator rules", () => {
 				expect(warning.code).toBe("route.folderTypo");
 			});
 
+			it("should warn about a plural, which is one edit away like any other", async () => {
+				await write("src/Servers/Save.luau");
+
+				const [warning] = await folderTypos({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(warning.code).toBe("route.folderTypo");
+			});
+
 			it.each([
 				["two edits", "Srvr"],
-				["a plural", "Servers"],
 				["an ordinary name", "Inventory"],
 			])("should not warn about %s", async (_, folder) => {
 				await write(`src/${folder}/Save.luau`);
