@@ -147,22 +147,37 @@ describe("help command", () => {
 	});
 
 	describe("a diagnostic code named without its module", () => {
-		it("should suggest the code it is the end of, misspelled or not", async () => {
-			const exact = await help("strayAt");
-			const misspelled = await help("strayAd");
+		it("should print the one code it is the end of, in any case", async () => {
+			for (const name of ["strayAt", "strayat", "STRAYAT"]) {
+				info.mockClear();
+				const result = await help(name);
 
-			for (const result of [exact, misspelled])
-				expect((result as ResultError<Error>).error.message).toContain(
-					"Did you mean 'rogen help route.strayAt'?"
-				);
+				expect(result.isOk()).toBe(true);
+				expect(printed().split("\n")[0]).toBe("route.strayAt");
+			}
+		});
+
+		it("should suggest the code a misspelled end is closest to", async () => {
+			const result = await help("strayAd");
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"Did you mean 'rogen help route.strayAt'?"
+			);
+		});
+
+		it("should suggest rather than print when several codes end in the name", async () => {
+			const result = await help("invalidSyntax");
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"Did you mean"
+			);
+			expect(info).not.toHaveBeenCalled();
 		});
 
 		it("should prefer a command or topic to the end of a code", async () => {
-			const result = await help("wacth");
+			await help("Routing");
 
-			expect((result as ResultError<Error>).error.message).toContain(
-				"'rogen help watch'"
-			);
+			expect(printed()).toBe(helpTexts.topics.routing);
 		});
 	});
 
@@ -224,6 +239,12 @@ describe("help command", () => {
 
 			expect(printed().split("\n")[0]).toBe("route.strayAt");
 			expect(printed()).toContain("Warning.");
+		});
+
+		it("should print the code written in another case", async () => {
+			await help("route.strayat");
+
+			expect(printed().split("\n")[0]).toBe("route.strayAt");
 		});
 
 		it("should suggest the code a misspelled one is closest to", async () => {

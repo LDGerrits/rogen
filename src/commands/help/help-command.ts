@@ -58,6 +58,18 @@ const TOPICS: readonly HelpTopic[] = [
 /** A diagnostic code has a dot, which no command or topic does. */
 const isCode = (name: string) => name.includes(".");
 
+/** The code `name` writes, ignoring case; a name without its module stands for the one code that ends in it. */
+function codeNamed(name: string): string | undefined {
+	const codes = Object.keys(helpTexts.diagnostics);
+	const lower = name.toLowerCase();
+	if (isCode(name))
+		return codes.find((code) => code.toLowerCase() === lower);
+	const ending = codes.filter(
+		(code) => code.slice(code.indexOf(".") + 1).toLowerCase() === lower
+	);
+	return ending.length === 1 ? ending[0] : undefined;
+}
+
 const EXIT_CODES =
 	"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.";
 
@@ -224,13 +236,15 @@ registerCommand(
 			target: string,
 			registry: CommandRegistry
 		): string | undefined {
-			if (isCode(target)) return helpTexts.diagnostics[target];
+			const code = codeNamed(target);
+			if (isCode(target))
+				return code && helpTexts.diagnostics[code];
 			const name = target.toLowerCase();
 			const command = registry.getCommand(name);
 			if (command) return formatCommandHelp(command, GlobalOptions);
-			return TOPICS.some((topic) => topic.name === name)
-				? helpTexts.topics[name]
-				: undefined;
+			if (TOPICS.some((topic) => topic.name === name))
+				return helpTexts.topics[name];
+			return code && helpTexts.diagnostics[code];
 		}
 
 		private unknown(target: string, registry: CommandRegistry): Error {
