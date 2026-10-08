@@ -33,7 +33,12 @@ A config reloads when it, its `extends` chain or its template changes, and CLI o
 │
 ◇  12:05:02 · default.rogen.json changed · reloaded
 │  ✔ default.project.json · unchanged
+│
+◇  12:06:10 · 1 file changed
+│  ✔ default.project.json · wrote · 3 warnings as before
 ```
+
+A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there.
 
 It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
 
@@ -54,6 +59,18 @@ A directory stands for the files inside it, and no path at all means every file 
 
 A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants. Otherwise the line says why it isn't placed: `pruned`, `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
 
+With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and names a folder (`src/Combat/`, or a name with no extension) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed.
+
+Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
+
+```
+$ rogen where src/Inventory/Save@sever.luau
+src/Inventory/Save@sever.luau -> ReplicatedStorage/shared/Inventory/Save@sever · route * (fallback)
+  warning: did you mean "@server"? (route.strayAt)
+```
+
+A path can carry the `:line` or `:line:col` that linters and logs print after it, with or without a message (`src/Net/Http.luau:12:5: unexpected symbol`); Rogen reads it as the path, so you can paste such a line as it is.
+
 `where` also works backwards. An argument that starts with a service is read as an instance, and you can paste an error line straight in:
 
 ```
@@ -67,6 +84,8 @@ Unlike other commands, `where` takes paths, not config names, so it reads every 
 $ rogen where places/lobby/Lobby/Server/Queue.luau
 lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
 ```
+
+A config that doesn't load answers nothing: `where` prints the answers of the configs that do, then the broken config's errors, and exits 1.
 
 `where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
 
@@ -144,6 +163,18 @@ A warning whose fix is one rename also has `fixes`, a rename for every name it c
 ]
 ```
 
+Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (the name every command takes: `lobby` for `lobby.rogen.json`) and `file` (its absolute path). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
+
+A warning about several files, such as `route.strayAt` or `tree.deadScript`, is filed under the config and lists every file it is about in `related`, each with what it says about that file. The list is complete, while the text output stops at ten lines.
+
+```json
+"related": [
+	{ "file": "/repo/src/Inventory/Save@sever.luau", "message": "did you mean \"@server\"?" }
+]
+```
+
+A diagnostic is about a file when its `file` is that file or `related[].file` includes it. A program that wants every warning about the files it just changed filters on that, instead of reading `message`.
+
 If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
 
 ### `build --json`
@@ -152,6 +183,7 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 {
 	"configs": [
 		{
+			"config": "default",
 			"file": "/repo/default.rogen.json",
 			"outFile": "/repo/default.project.json",
 			"outcome": "wrote",
@@ -163,13 +195,15 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 
 `outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
+A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+
 ### `where --json`
 
-An array with one entry per config and path, each with `config`, `status` and `source`, plus:
+An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of any config that didn't load (the exit code is then 1) and is empty otherwise. `locations` has one entry per config that loaded and path, each with `config`, `status` and `source`, plus:
 
 | `status` | Fields |
 |---|---|
-| `placed` | `instancePath` (an array of names), `route`, `routeMatch`, `variants`, and `hoisted: true` for a `^` name |
+| `placed` | `instancePath` (an array of names), `require`, `route`, `routeMatch`, `variants`, and `hoisted: true` for a `^` name |
 | `pruned` | `variants`, the dormant ones |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
@@ -177,6 +211,12 @@ An array with one entry per config and path, each with `config`, `status` and `s
 | `excluded` | `pattern`, the glob that matched |
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` instead of `source`: no file places an instance you asked about |
+
+Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
+
+Every entry also has `diagnostics`, last: the diagnostics about its path (the ones whose `file` is the path, or whose `related` lists it), empty for a clean path. A grouped diagnostic is narrowed to the path: its `message` is the `related` message about this path and `fixes` holds only the renames of this path. A `noFile` entry has none.
+
+`require` is the Luau expression that reaches the module, such as `game:GetService("ReplicatedStorage").Shared.Inventory.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is a reserved word. It is there only for a placed Luau module. A Script has none, nor does a roblox-ts source, which you import by relative path, nor anything under `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui` or `StarterPack`, because Roblox clones those into the player at runtime and the edit-time path names the template. `rogen where <file> --verbose` prints it in text.
 
 `routeMatch` is `folder`, `marker`, `suffix` or `fallback`. Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.
 
@@ -186,6 +226,7 @@ An array with one entry per config and path, each with `config`, `status` and `s
 {
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
 	"appended": [],
+	"directories": ["/repo/places/lobby"],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -196,11 +237,11 @@ An array with one entry per config and path, each with `config`, `status` and `s
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 
-An object keyed by each config's absolute path. Every value has `extends` (nearest parent first) and `diagnostics`. Configs that resolved also have `name`, `rootDirs`, `commonRoot`, `routes`, `variants`, `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. If any config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants`, `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. A broken config has only the five. If any config has errors, the exit code is 1.
 
 ## Output
 

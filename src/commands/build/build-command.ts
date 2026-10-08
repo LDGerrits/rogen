@@ -1,3 +1,4 @@
+import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
@@ -65,7 +66,9 @@ registerCommand(
 			if (builds.isErr()) return builds;
 
 			const errors = builds.value.flatMap((build) =>
-				build.outcome === "failed" ? build.errors : []
+				build.outcome === "failed" || build.outcome === "notLoaded"
+					? build.errors
+					: []
 			);
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors)
@@ -79,7 +82,7 @@ registerCommand(
 		): Result<void, Error> {
 			log.report(builds);
 			return errors.length > 0
-				? err(new DiagnosticsError(errors))
+				? err(new ReportedError(new DiagnosticsError(errors)))
 				: ok(undefined);
 		}
 

@@ -6,4 +6,4 @@ stdout:
   list failed.
 stderr:
   default.rogen.json:2:2 - error: unknown field "bogus".
-  error: 1 of 1 configs have errors.
+  error: 1 config has errors.

@@ -9,7 +9,7 @@ import {
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet, ConfigBuild } from "../build/build.js";
+import { BuildSet, LoadedBuild } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -32,7 +32,7 @@ class WatchedConfig {
 	/** Rebuilds queued that haven't finished. */
 	pending = 0;
 	/** The latest finished rebuild; `undefined` before the first. */
-	latest: ConfigBuild | undefined;
+	latest: LoadedBuild | undefined;
 	/** The files the latest successful build read, whose updates must rebuild it. */
 	readFiles: ReadonlySet<string> = new Set();
 
@@ -46,7 +46,7 @@ class WatchedConfig {
 	}
 
 	/** Records `build` as the latest, and reports what it says that the one before didn't. */
-	finished(build: ConfigBuild): RebuildReport {
+	finished(build: LoadedBuild): RebuildReport {
 		const unreported = newDiagnostics(
 			this.latest?.diagnostics ?? [],
 			build.diagnostics
@@ -56,6 +56,9 @@ class WatchedConfig {
 		return {
 			build,
 			unreported,
+			repeated: build.diagnostics.filter(
+				(diagnostic) => !unreported.includes(diagnostic)
+			),
 			repeatedFailure:
 				build.outcome === "failed" && !unreported.some(isError),
 		};

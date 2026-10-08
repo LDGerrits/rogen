@@ -6,12 +6,53 @@ import {
 	FileLocation,
 	Locations,
 } from "../../domain/build/build.js";
+import { requireExpression } from "../../domain/roblox/roblox.js";
+import { RojoFile } from "../../domain/rojo/rojo.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
+import {
+	Diagnostic,
+	DiagnosticJson,
+	DiagnosticSeverity,
+	diagnosticToJson,
+	messageRelativeTo,
+} from "../../platform/diagnostics/diagnostic.js";
 
-/** What one config says: where a path lands, or that no file places an instance. */
+/** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
 type Answer =
-	| { readonly label: string; readonly location: FileLocation }
+	| {
+			readonly label: string;
+			readonly location: FileLocation;
+			readonly diagnostics: readonly Diagnostic[];
+	  }
 	| { readonly label: string; readonly instance: string };
+
+/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+function aboutPath(
+	diagnostics: readonly Diagnostic[],
+	source: string
+): Diagnostic[] {
+	const target = toPosix(source);
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		const entries = (related ?? []).filter(
+			({ resource }) => toPosix(resource) === target
+		);
+		if (entries.length > 0)
+			return entries.map(({ message }) => ({
+				...rest,
+				resource: source,
+				position: undefined,
+				message,
+				fixes: diagnostic.fixes?.filter(
+					({ rename }) => toPosix(rename.from) === target
+				),
+			}));
+		// A group is about its related files; its own resource is the config.
+		return !related?.length && toPosix(diagnostic.resource) === target
+			? [rest]
+			: [];
+	});
+}
 
 const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
@@ -59,10 +100,20 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 		case "ignored":
 			return "not an instance";
 		case "missing":
-			return "does not exist";
+			return location.folder
+				? "does not exist · name a file in it to see where it would land"
+				: "does not exist";
 		case "empty":
 			return "empty · no file in it places";
 	}
+}
+
+/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
+function requireOf(location: FileLocation): string | undefined {
+	return location.status === "placed" &&
+		new RojoFile(path.posix.basename(location.source)).isLuauModule
+		? requireExpression(location.instancePath)
+		: undefined;
 }
 
 /** The fields a location adds to its source and status in the JSON form. */
@@ -71,6 +122,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
+				...(requireOf(location) && { require: requireOf(location) }),
 				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
@@ -116,14 +168,19 @@ function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 /** Where files land, one line per path however many configs answered. */
 export class LocationReport {
 	private readonly answers: Answer[];
+	/** Why the configs that didn't load did not answer. */
+	readonly errors: readonly Diagnostic[];
 	private readonly configs: number;
+	private readonly rootDirs: readonly string[];
 	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
 	private readonly sorted: boolean;
 
 	constructor(
 		private readonly cwd: string,
-		{ everyFile, configs }: Locations
+		{ everyFile, configs, errors }: Locations
 	) {
+		this.errors = errors;
+		this.rootDirs = configs.flatMap(({ config }) => config.rootDirs);
 		this.configs = configs.length;
 		this.sorted = everyFile;
 		this.answers = configs.flatMap((located) => this.answersOf(located));
@@ -134,11 +191,13 @@ export class LocationReport {
 		config,
 		files: locations,
 		instances,
+		diagnostics,
 	}: ConfigLocations): Answer[] {
 		const { label } = config;
 		const answer = (location: FileLocation): Answer => ({
 			label,
 			location,
+			diagnostics: aboutPath(diagnostics, location.source),
 		});
 		return [
 			...locations.map(answer),
@@ -150,25 +209,61 @@ export class LocationReport {
 		];
 	}
 
-	/** One line per path when every config agrees; otherwise each config's line, headed by its name. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
+	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Under each, a line for every diagnostic a build raises about the path. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
-		return this.bySource().flatMap((all) => {
+		return this.blocks().flatMap(({ lines }) => lines);
+	}
+
+	/** The lines of each path, with the Luau expressions that require its module, which a person only asks to see. */
+	blocks(): { lines: string[]; requires: string[] }[] {
+		return this.bySource().map((all) => {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
 				answers.length === this.configs &&
 				lines.every((line) => line === lines[0]);
-			return agreed || this.configs === 1
-				? [lines[0]]
-				: answers.map(
-						({ label }, index) => `${label}: ${lines[index]}`
-					);
+			const requires = [
+				...new Set(
+					answers.flatMap((answer) =>
+						"location" in answer
+							? (requireOf(answer.location) ?? [])
+							: []
+					)
+				),
+			];
+			if (agreed || this.configs === 1)
+				return {
+					lines: [lines[0], ...this.sharedNotes(answers)],
+					requires,
+				};
+			return {
+				lines: answers.flatMap((answer, index) => [
+					`${answer.label}: ${lines[index]}`,
+					...this.noted(answer),
+				]),
+				requires,
+			};
 		});
 	}
 
-	/** One entry per config and path, in the order `lines` puts the paths. */
-	json(): Record<string, unknown>[] {
-		return this.bySource()
+	/** What to say when there is nothing to list because no root dir holds a file; `undefined` when no config answered at all. */
+	emptyLine(): string | undefined {
+		const rootDirs = [
+			...new Set(
+				this.rootDirs.map((rootDir) => relativeTo(this.cwd, rootDir))
+			),
+		];
+		return rootDirs.length > 0
+			? `No files in the root dirs (${rootDirs.join(", ")}).`
+			: undefined;
+	}
+
+	/** One entry per config and path, in the order `lines` puts the paths, under `locations`. */
+	json(): {
+		locations: Record<string, unknown>[];
+		diagnostics: DiagnosticJson[];
+	} {
+		const locations = this.bySource()
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
@@ -176,10 +271,21 @@ export class LocationReport {
 					? {
 							source: toNative(answer.location.source),
 							status: answer.location.status,
+							exists: answer.location.exists,
 							...locationFields(answer.location),
+							diagnostics:
+								answer.diagnostics.map(diagnosticToJson),
 						}
-					: { instance: answer.instance, status: "noFile" }),
+					: {
+							instance: answer.instance,
+							status: "noFile",
+							diagnostics: [],
+						}),
 			}));
+		return {
+			locations,
+			diagnostics: this.errors.map(diagnosticToJson),
+		};
 	}
 
 	private bySource(): Answer[][] {
@@ -187,6 +293,31 @@ export class LocationReport {
 		const sources = [...bySource.keys()];
 		if (this.sorted) sources.sort();
 		return sources.map((source) => bySource.get(source) ?? []);
+	}
+
+	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */
+	private noted(answer: Answer): string[] {
+		if (!("location" in answer)) return [];
+		return answer.diagnostics.map(
+			({ severity, message, code }) =>
+				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageRelativeTo(message, this.cwd)} (${code})`
+		);
+	}
+
+	/** The notes every answer has once, then the ones only some have, headed by their config. */
+	private sharedNotes(answers: readonly Answer[]): string[] {
+		const notes = answers.map((answer) => this.noted(answer));
+		const shared = notes[0].filter((note) =>
+			notes.every((own) => own.includes(note))
+		);
+		return [
+			...new Set(shared),
+			...answers.flatMap(({ label }, index) =>
+				notes[index]
+					.filter((note) => !shared.includes(note))
+					.map((note) => `  ${label}: ${note.trimStart()}`)
+			),
+		];
 	}
 
 	private describe(answer: Answer): string {

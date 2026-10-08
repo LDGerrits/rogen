@@ -14,22 +14,27 @@ stdout:
 $ rogen where src/Player/^Animate.client.luau --json
 exit 0
 stdout:
-  [
-    {
-      "config": "default",
-      "source": "<dir>/src/Player/^Animate.client.luau",
-      "status": "placed",
-      "instancePath": [
-        "StarterPlayer",
-        "StarterCharacterScripts",
-        "Animate"
-      ],
-      "route": "character",
-      "routeMatch": "marker",
-      "variants": [],
-      "hoisted": true
-    }
-  ]
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/Player/^Animate.client.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "StarterPlayer",
+          "StarterCharacterScripts",
+          "Animate"
+        ],
+        "route": "character",
+        "routeMatch": "marker",
+        "variants": [],
+        "hoisted": true,
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
 
 written:
   default.project.json

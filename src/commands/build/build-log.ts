@@ -2,8 +2,60 @@ import { relativeTo } from "../../base/path.js";
 import { joinedWithAnd, plural } from "../../base/strings.js";
 import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+
+/** How many warnings of one code a config prints before the rest are counted. */
+const LISTED_PER_CODE = 10;
+
+/** A grouped diagnostic lists each related file on a line of its message after the first; this keeps ten and counts the rest. */
+function withListCapped(diagnostic: Diagnostic): Diagnostic {
+	const count = diagnostic.related?.length ?? 0;
+	if (count <= LISTED_PER_CODE) return diagnostic;
+	const [headline, ...lines] = diagnostic.message.split("\n");
+	const unlisted = count - LISTED_PER_CODE;
+	return {
+		...diagnostic,
+		message: [
+			headline,
+			...lines.slice(0, LISTED_PER_CODE),
+			`  ${unlisted} more like it aren't listed.`,
+			...lines.slice(count),
+		].join("\n"),
+	};
+}
+
+/** At most `LISTED_PER_CODE` warnings of one code; the last one printed says how many more there were. Errors always print, since the build stops on them. */
+function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+	const totals = new Map<string, number>();
+	const warnings = diagnostics.filter(
+		({ severity }) => severity === DiagnosticSeverity.Warning
+	);
+	for (const { code } of warnings)
+		totals.set(code, (totals.get(code) ?? 0) + 1);
+	const seen = new Map<string, number>();
+	return diagnostics.flatMap((diagnostic) => {
+		if (diagnostic.severity !== DiagnosticSeverity.Warning)
+			return [withListCapped(diagnostic)];
+		const { code } = diagnostic;
+		const position = (seen.get(code) ?? 0) + 1;
+		seen.set(code, position);
+		if (position > LISTED_PER_CODE) return [];
+		const unlisted = (totals.get(code) ?? 0) - LISTED_PER_CODE;
+		return position === LISTED_PER_CODE && unlisted > 0
+			? [
+					{
+						...diagnostic,
+						message: `${diagnostic.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
+					},
+				]
+			: [withListCapped(diagnostic)];
+	});
+}
 
 /** The `extends` chain and skipped variant flags of a config. */
 function describeConfig(config: ResolvedConfig, cwd: string): string[] {
@@ -64,36 +116,53 @@ export class BuildLog {
 	) {}
 
 	/** Opens the output: the command and the configs it builds. */
-	begin(command: string, configs: readonly ResolvedConfig[]): void {
-		this.logService.intro(
-			`rogen ${command} · ${configs.map(({ label }) => label).join(", ")}`
-		);
+	begin(command: string, labels: readonly string[]): void {
+		this.logService.intro(`rogen ${command} · ${labels.join(", ")}`);
 	}
 
-	/** The whole output of a build: each config's outcome and warnings, then the closing line when none failed. */
+	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(builds: readonly ConfigBuild[]): void {
 		this.begin(
 			"build",
-			builds.map(({ config }) => config)
+			builds.map(({ label }) => label)
 		);
+		const printedBy = new Map<string, string>();
 		for (const build of builds) {
-			if (builds.length > 1) this.heading(build.config);
-			// A config's errors end the run, so the failure prints them last.
+			if (builds.length > 1) this.heading(build.label);
+			const errors =
+				build.outcome === "failed" || build.outcome === "notLoaded"
+					? build.errors
+					: [];
+			const shared = new Set<string>();
+			const fresh = errors.filter((error) => {
+				const key = renderDiagnostic(error);
+				const owner = printedBy.get(key);
+				if (owner !== undefined) shared.add(owner);
+				else printedBy.set(key, build.label);
+				return owner === undefined;
+			});
 			this.outcome(
 				build,
-				[...build.warnings, ...(build.syncWarnings ?? [])],
+				[...build.warnings, ...(build.syncWarnings ?? []), ...fresh],
 				build.outcome === "notWritten"
-					? `${joinedWithAnd(build.blockedBy.map(({ label }) => label))} failed`
-					: undefined
+					? `${joinedWithAnd(build.blockedBy)} failed`
+					: errors.length > 0 && fresh.length === 0
+						? `same errors as ${joinedWithAnd([...shared])}`
+						: undefined
 			);
 		}
-		if (builds.every(({ outcome }) => outcome !== "failed"))
-			this.end(builds.length);
+		if (
+			builds.some(
+				({ outcome }) => outcome === "failed" || outcome === "notLoaded"
+			)
+		)
+			this.logService.closeFrame("build failed.");
+		else this.end(builds.length);
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
-	heading(config: ResolvedConfig): void {
-		this.logService.step(config.label);
+	heading(label: string): void {
+		this.logService.step(label);
 	}
 
 	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
@@ -103,7 +172,16 @@ export class BuildLog {
 		note?: string
 	): void {
 		const line = (outcome: string) =>
-			[relativeTo(this.cwd, build.config.outFile), outcome, note]
+			[
+				relativeTo(
+					this.cwd,
+					build.outcome === "notLoaded"
+						? build.file
+						: build.config.outFile
+				),
+				outcome,
+				note,
+			]
 				.filter((part) => part !== undefined)
 				.join(" · ");
 		switch (build.outcome) {
@@ -120,12 +198,15 @@ export class BuildLog {
 				this.logService.error(line("not written"));
 				this.details(build.config);
 				break;
+			case "notLoaded":
+				this.logService.error(line("not loaded"));
+				break;
 		}
 		this.diagnostics(diagnostics);
 	}
 
 	diagnostics(diagnostics: readonly Diagnostic[]): void {
-		for (const diagnostic of diagnostics)
+		for (const diagnostic of capped(diagnostics))
 			this.logService.diagnostic(diagnostic);
 	}
 

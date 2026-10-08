@@ -1,0 +1,9 @@
+{
+	"rootDirs": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
+	},
+	"variants": { "mock": false }
+}

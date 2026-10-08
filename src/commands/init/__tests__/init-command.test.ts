@@ -128,6 +128,7 @@ describe("init command", () => {
 					path.join(cwd, "lobby.rogen.json"),
 					path.join(cwd, "tsconfig.lobby.json"),
 				],
+				directories: [path.join(cwd, "places/lobby")],
 				notes: [],
 				nextSteps: {
 					setup: [
@@ -176,6 +177,7 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				appended: [],
 				files: [path.join(cwd, "lobby.rogen.json")],
+				directories: [],
 				error: "Failed to write tsconfig.lobby.json: disk full",
 			});
 		});
@@ -231,6 +233,7 @@ describe("init command", () => {
 				"intro: rogen init",
 				"success: Created default.rogen.json.",
 				"success: Created AGENTS.md.",
+				"success: Created src/.",
 				"step: Next steps",
 				"info: Run each in its own terminal:",
 				"info:   rogen watch",
@@ -771,7 +774,32 @@ describe("init command", () => {
 				rootDirs: ["src", "places/lobby"],
 			});
 			const after = await memFs.readDirectory(cwd);
-			expect(after.length).toBe(before.length + 1);
+			expect(after.length).toBe(before.length + 2);
+		});
+
+		it("should create the place folder so the next build finds it", async () => {
+			await setUpLuau();
+
+			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+
+			expect(await memFs.exists(path.join(cwd, "places/lobby"))).toBe(
+				true
+			);
+		});
+
+		it("should leave a place folder that exists alone and not report it", async () => {
+			await setUpLuau();
+			await write("places/lobby/Main.luau", "");
+			const logService = new MockLogService();
+
+			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
+
+			expect(logService.lines).not.toContain(
+				"success: Created places/lobby/."
+			);
+			expect(
+				await memFs.exists(path.join(cwd, "places/lobby/Main.luau"))
+			).toBe(true);
 		});
 
 		it("should ask the place name and folder, and nothing else", async () => {
@@ -939,6 +967,7 @@ describe("init command", () => {
 				"info: ",
 				"success: Created lobby.rogen.json.",
 				"success: Created tsconfig.lobby.json.",
+				"success: Created places/lobby/.",
 				"step: Next steps",
 				'info: Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
 				"info: Run each in its own terminal:",

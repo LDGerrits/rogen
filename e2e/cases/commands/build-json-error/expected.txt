@@ -2,15 +2,23 @@ $ rogen build --json
 exit 1
 stdout:
   {
-    "diagnostics": [
+    "configs": [
       {
+        "config": "default",
         "file": "<dir>/default.rogen.json",
-        "line": 3,
-        "column": 2,
-        "severity": "error",
-        "code": "config.unknownField",
-        "message": "unknown field \"outDir\".",
-        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
+        "outFile": null,
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "line": 3,
+            "column": 2,
+            "severity": "error",
+            "code": "config.unknownField",
+            "message": "unknown field \"outDir\".",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
+          }
+        ]
       }
     ]
   }

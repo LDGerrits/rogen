@@ -22,6 +22,13 @@ export interface BuiltConfig {
 	readonly readFiles: readonly string[];
 }
 
+/** What `examine` found for one config. */
+export interface ExaminedConfig {
+	readonly placement: Placement;
+	/** The errors that stopped the later phases, else the warnings the build raises (without the sync dir's). */
+	readonly diagnostics: readonly Diagnostic[];
+}
+
 /** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
@@ -51,21 +58,45 @@ export class ConfigBuilder {
 		const placement = this.place(config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
-		const meta = await this.metaReader.read(placement.value);
-		if (meta.isErr()) return err(new DiagnosticsError(meta.error));
-		const assembly = this.assembler.assemble(placement.value, meta.value);
-		if (assembly.isErr()) return err(new DiagnosticsError(assembly.error));
+		const assembled = await this.assemble(placement.value);
+		if (assembled.isErr()) return err(new DiagnosticsError(assembled.error));
+		const { meta, assembly } = assembled.value;
 		return ok({
 			config,
-			tree: assembly.value.tree,
+			tree: assembly.tree,
 			summary: placement.value.summary(),
 			findings: {
-				warnings: new BuildValidator(assembly.value).validate(),
+				warnings: new BuildValidator(assembly).validate(),
 				syncWarnings:
 					syncWarnings ??
 					(await this.syncDirCheck.check(placement.value)),
 			},
-			readFiles: meta.value.files,
+			readFiles: meta.files,
 		});
+	}
+
+	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the error is in `diagnostics` beside the warnings the build would raise. Fails only when the files can't be placed. */
+	async examine(
+		config: ResolvedConfig
+	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
+		const placement = this.place(config);
+		if (placement.isErr())
+			return err(new DiagnosticsError(placement.error));
+		const assembled = await this.assemble(placement.value);
+		return ok({
+			placement: placement.value,
+			diagnostics: assembled.isErr()
+				? assembled.error
+				: new BuildValidator(assembled.value.assembly).validate(),
+		});
+	}
+
+	private async assemble(placement: Placement) {
+		const meta = await this.metaReader.read(placement);
+		if (meta.isErr()) return err(meta.error);
+		const assembly = this.assembler.assemble(placement, meta.value);
+		return assembly.isErr()
+			? err(assembly.error)
+			: ok({ meta: meta.value, assembly: assembly.value });
 	}
 }

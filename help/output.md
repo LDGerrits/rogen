@@ -6,14 +6,16 @@ Exit codes: 0 done, warnings included; 1 the project has errors (an invalid conf
 
 Plain lines (in pipes, CI and under an agent) put results on stdout and warnings, errors and diagnostics on stderr. `--json` on `build`, `where`, `list` and `init` prints one JSON document on stdout, whatever the exit code, and nothing else. Read it instead of parsing text.
 
-- `build --json`: `{ "configs": [{ "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`.
-- `where --json`: one entry per config and path, with `config`, `source` and `status`; a placed file adds `instancePath`, `route`, `routeMatch` and `variants`.
-- `list --json`: each config resolved, keyed by its file, with every default and absolute path.
-- `init --json`: the files it wrote, its notes, and its `nextSteps`.
+- `build --json`: `{ "configs": [{ "config", "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`. A config that doesn't load is an entry too, with `"outFile": null` and its errors in `diagnostics`; a config not written because others failed or didn't load has `blockedBy`, their names.
+- `where --json`: `{ "locations": [...], "diagnostics": [...] }` (`diagnostics` holds the errors of a config that didn't load), one entry per config and path, with `config`, `source` and `status`; `exists` says whether the path is there now or only placed as it would be once created; a placed file adds `instancePath`, `route`, `routeMatch` and `variants`, and a placed Luau module `require`, the expression that reaches it (none under the Starter containers, for scripts or for roblox-ts). Each entry ends with `diagnostics`: what a build would raise about that path, narrowed to it.
+- `list --json`: `{ "configs": [...] }`, one entry per config with `config`, `file`, `status` (`valid` or `broken`), `extends`, then the resolved values (`projectName` is the Rojo project's name) with every default and absolute path, and `diagnostics`.
+- `init --json`: the `files` it wrote, the `directories` it created (root dirs that didn't exist), its notes, and its `nextSteps`.
 - A command that fails before it has anything else to show prints `{ "diagnostics": [...] }` or `{ "error": "..." }`.
 
-Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file.
+An entry that is a config has `config` (the name every command takes, `lobby` for `lobby.rogen.json`) and `file` (its absolute path); an entry that belongs to a config has `config`. Identity comes first and `diagnostics` last.
 
-`rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build.
+Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `severity`, a stable `code` to match on, `message`, and a `url` to the code's docs. `rogen help <code>` prints the same section offline. A diagnostic whose fix is one rename has `fixes`: `[{ "rename": { "from", "to" } }]`, one for every name it covers. Rogen never applies them; after a rename, update the requires and imports that name the file. A warning about several files has `related`: `[{ "file", "message" }]`, one for every file, uncapped (the text stops at ten). A diagnostic is about a file when its `file` is that file or `related[].file` includes it.
+
+`rogen where` is `build`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (pruned, replaced, excluded, displaced or mounted), before you build. It prints the warnings a build would raise about each path under its line, except the sync dir's. With nothing in the root dirs it says so, and a missing folder says to name a file in it.
 
 `rogen build` is safe beside a running `rogen watch`: it writes only bytes that changed.

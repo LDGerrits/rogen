@@ -1,5 +1,4 @@
 import { agentBlock } from "../agent-block.js";
-import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
@@ -15,7 +14,7 @@ import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-erro
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
-import { InitPlan } from "../init-service.js";
+import { InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -494,17 +493,20 @@ describe("CoreInitService", () => {
 		});
 
 		it("should report each file as it is written", async () => {
-			const onWritten = jest.fn<(file: PlannedFile) => void>();
+			const onWritten = jest.fn<(written: InitWritten) => void>();
 
 			await serviceFor().write(await planned(), onWritten);
 
-			expect(onWritten).toHaveBeenCalledWith(
-				expect.objectContaining({ fileName: "default.rogen.json" })
-			);
+			expect(onWritten).toHaveBeenCalledWith({
+				kind: "file",
+				file: expect.objectContaining({
+					fileName: "default.rogen.json",
+				}),
+			});
 		});
 
 		it("should stop at the file it can't write and name it", async () => {
-			const onWritten = jest.fn<(file: PlannedFile) => void>();
+			const onWritten = jest.fn<(written: InitWritten) => void>();
 			jest.spyOn(fileSystem, "writeFile").mockRejectedValue(
 				new Error("disk full")
 			);
@@ -515,6 +517,59 @@ describe("CoreInitService", () => {
 				"Failed to write default.rogen.json: disk full"
 			);
 			expect(onWritten).not.toHaveBeenCalled();
+		});
+
+		it("should create a directory that doesn't exist after the files, and report it", async () => {
+			const onWritten = jest.fn<(written: InitWritten) => void>();
+			const plan = {
+				...(await planned()),
+				directories: ["places/lobby"],
+			};
+
+			const result = await serviceFor().write(plan, onWritten);
+
+			expect(result.isOk()).toBe(true);
+			expect(
+				await fileSystem.exists(path.join(directory, "places/lobby"))
+			).toBe(true);
+			const last = onWritten.mock.calls[onWritten.mock.calls.length - 1];
+			expect(last[0]).toEqual({
+				kind: "directory",
+				directory: "places/lobby",
+			});
+		});
+
+		it("should leave a directory that exists alone and not report it", async () => {
+			await write("src/Keep.luau", "");
+			const onWritten = jest.fn<(written: InitWritten) => void>();
+			const plan = { ...(await planned()), directories: ["src"] };
+
+			await serviceFor().write(plan, onWritten);
+
+			expect(
+				onWritten.mock.calls.filter(
+					([written]) => written.kind === "directory"
+				)
+			).toEqual([]);
+			expect(
+				await fileSystem.exists(path.join(directory, "src/Keep.luau"))
+			).toBe(true);
+		});
+
+		it("should name the directory it can't create", async () => {
+			jest.spyOn(fileSystem, "createDirectory").mockRejectedValue(
+				new Error("read-only")
+			);
+			const plan = {
+				...(await planned()),
+				directories: ["places/lobby"],
+			};
+
+			const result = await serviceFor().write(plan, () => undefined);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Failed to create places/lobby: read-only"
+			);
 		});
 	});
 });

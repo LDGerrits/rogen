@@ -1,10 +1,13 @@
 import path from "path";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import {
 	ConfigLocations,
 	FileLocation,
@@ -13,12 +16,14 @@ import {
 	missingRoutes,
 } from "./build.js";
 import { LocateTargets } from "./build-service.js";
+import { ConfigBuilder } from "./config-builder.js";
 import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
-import { Placer } from "./placement.js";
 
 /** What `where` asked about: the paths, resolved, and the instances. */
 interface Targets {
 	readonly paths: readonly string[];
+	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
+	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
 }
 
@@ -41,7 +46,7 @@ export class Locator {
 		const targets = await this.classify(query);
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
-			const locations = this.locateIn(config, targets);
+			const locations = await this.locateIn(config, targets);
 			if (locations.isErr()) return locations;
 			located.push(locations.value);
 		}
@@ -49,57 +54,115 @@ export class Locator {
 			everyFile:
 				targets.paths.length === 0 && targets.instances.length === 0,
 			configs: located,
+			errors: [],
 		});
 	}
 
-	private locateIn(
+	private async locateIn(
 		config: ResolvedConfig,
-		{ paths, instances }: Targets
-	): Result<ConfigLocations, DiagnosticsError> {
+		{ paths, folders, instances }: Targets
+	): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		let files: FileLocation[] = [];
+		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
-			const planned = this.locatorOf(
-				new PlannedFilesIndex(this.listing, config.rootDirs, paths),
-				config
+			const index = new PlannedFilesIndex(
+				this.listing,
+				config.rootDirs,
+				paths
+			);
+			const planned = await this.locatorOf(
+				index,
+				config,
+				await this.existence(index, paths)
 			);
 			if (planned.isErr()) return err(planned.error);
-			files = planned.value.locate(paths);
+			files = planned.value.locator.locate(paths, folders);
+			diagnostics = planned.value.diagnostics;
 			if (instances.length === 0)
-				return ok({ config, files, instances: [] });
+				return ok({ config, files, instances: [], diagnostics });
 		}
 
 		// A planned file can move the files that exist, and an instance is only ever made by those.
-		const existing = this.locatorOf(this.listing, config);
+		const existing = await this.locatorOf(this.listing, config);
 		if (existing.isErr()) return err(existing.error);
+		const { locator } = existing.value;
 		return ok({
 			config,
 			files:
 				paths.length > 0 || instances.length > 0
 					? files
-					: existing.value.locate(),
+					: locator.locate(),
 			instances: instances.map((reference) => ({
 				reference,
-				files: existing.value.locateInstance(reference),
+				files: locator.locateInstance(reference),
 			})),
+			diagnostics:
+				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});
 	}
 
-	private locatorOf(
+	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */
+	private async locatorOf(
 		index: IndexReader,
-		config: ResolvedConfig
-	): Result<FileLocator, DiagnosticsError> {
-		const placement = new Placer(index, config, this.tools).place();
-		return placement.isErr()
-			? err(new DiagnosticsError(placement.error))
-			: ok(new FileLocator(placement.value, index));
+		config: ResolvedConfig,
+		exists?: (source: string) => boolean
+	): Promise<
+		Result<
+			{
+				readonly locator: FileLocator;
+				readonly diagnostics: readonly Diagnostic[];
+			},
+			DiagnosticsError
+		>
+	> {
+		const examined = await new ConfigBuilder(
+			this.fileSystemService,
+			index,
+			this.tools
+		).examine(config);
+		return examined.map(({ placement, diagnostics }) => ({
+			locator: new FileLocator(placement, index, exists),
+			diagnostics,
+		}));
+	}
+
+	/** Whether each of `paths` is there now: not one the index only plans, and in the listing or on disk. Any other path the locator names is a file the scan found. */
+	private async existence(
+		index: PlannedFilesIndex,
+		paths: readonly string[]
+	): Promise<(source: string) => boolean> {
+		const known = new Map<string, boolean>();
+		for (const target of paths) {
+			known.set(
+				toPosix(target),
+				!index.isPlanned(target) &&
+					(this.listing.hasEntry(
+						path.dirname(target),
+						path.basename(target)
+					) ||
+						(await this.fileSystemService.exists(target)))
+			);
+		}
+		return (source) => known.get(source) ?? !index.isPlanned(source);
+	}
+
+	/** `arg` without a `:line` or `:line:col` after the path, and what follows it (`: attempt to index nil`), as a linter or a log prints it. It is only cut when what is left exists or has a file type Rojo reads, so a Windows drive letter or a colon in a name stays. */
+	private async withoutPosition(arg: string, cwd: string): Promise<string> {
+		const head = /^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg)?.[1];
+		if (head === undefined) return arg;
+		return new RojoFile(path.basename(head)).kind !== undefined ||
+			(await this.fileSystemService.exists(path.resolve(cwd, head)))
+			? head
+			: arg;
 	}
 
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
 	private async classify(query?: LocateTargets): Promise<Targets> {
 		const paths: string[] = [];
+		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
-		for (const arg of query?.args ?? []) {
-			const reference = InstanceReference.parse(arg);
+		for (const given of query?.args ?? []) {
+			const reference = InstanceReference.parse(given);
 			if (
 				reference &&
 				!(await this.fileSystemService.exists(
@@ -107,8 +170,13 @@ export class Locator {
 				))
 			)
 				instances.push(reference);
-			else paths.push(path.resolve(query!.cwd, arg));
+			else {
+				const arg = await this.withoutPosition(given, query!.cwd);
+				const resolved = path.resolve(query!.cwd, arg);
+				paths.push(resolved);
+				if (/[\\/]$/.test(arg)) folders.add(toPosix(resolved));
+			}
 		}
-		return { paths, instances };
+		return { paths, folders, instances };
 	}
 }

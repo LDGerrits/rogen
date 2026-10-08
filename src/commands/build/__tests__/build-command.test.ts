@@ -272,6 +272,7 @@ describe("build command", () => {
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
 			[{ message: expect.stringContaining("nothing emitted") }],
+			[{ code: "meta.wrongType" }],
 		]);
 	});
 
@@ -355,8 +356,8 @@ describe("build command", () => {
 		);
 	});
 
-	it("should refuse to build when a config is invalid", async () => {
-		const logService = new NullLogService();
+	it("should report a config that doesn't load as part of the build, and fail", async () => {
+		const logService = new MockLogService();
 		const entry = brokenEntry([
 			errorDiagnostic(
 				"config.unknownField",
@@ -367,9 +368,13 @@ describe("build command", () => {
 
 		const result = await run(new MockConfigService([entry]), logService);
 
-		expect((result as ResultError<Error>).error.message).toBe(
-			"/repo/default.rogen.json - error: boom."
-		);
+		expect(result.isErr() && result.error).toBeInstanceOf(ReportedError);
+		expect(logService.lines).toEqual([
+			"intro: rogen build · default",
+			"error: default.rogen.json · not loaded",
+			"diagnosticError: /repo/default.rogen.json - error: boom.",
+			"outro: build failed.",
+		]);
 	});
 
 	describe("--json", () => {
@@ -403,6 +408,7 @@ describe("build command", () => {
 			expect(document).toEqual({
 				configs: [
 					{
+						config: "default",
 						file: "/repo/default.rogen.json",
 						outFile: "/repo/default.project.json",
 						outcome: "wrote",
@@ -542,7 +548,7 @@ describe("build command", () => {
 			).toEqual([]);
 		});
 
-		it("should fail without printing when a config is invalid, for the caller to report", async () => {
+		it("should print a config that doesn't load as an entry that wasn't written", async () => {
 			const entry = brokenEntry([
 				errorDiagnostic(
 					"config.unknownField",
@@ -551,14 +557,50 @@ describe("build command", () => {
 				),
 			]);
 
-			const { result, logService } = await buildJson(
+			const { result, document } = await buildJson(
 				new MockConfigService([entry])
 			);
 
-			expect(result.isErr() && result.error).not.toBeInstanceOf(
+			expect(result.isErr() && result.error).toBeInstanceOf(
 				ReportedError
 			);
-			expect(logService.entries).toEqual([]);
+			expect(document).toEqual({
+				configs: [
+					{
+						config: "default",
+						file: "/repo/default.rogen.json",
+						outFile: null,
+						outcome: "notWritten",
+						diagnostics: [
+							expect.objectContaining({
+								code: "config.unknownField",
+							}),
+						],
+					},
+				],
+			});
+		});
+
+		it("should name the configs that blocked a config that was not written", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const broken = brokenEntry([], "/repo/broken.rogen.json");
+
+			const { document } = await buildJson(
+				new MockConfigService([buildable(), broken])
+			);
+
+			expect(document.configs[0]).toMatchObject({
+				outcome: "notWritten",
+				blockedBy: ["broken"],
+			});
+			expect(Object.keys(document.configs[0])).toEqual([
+				"config",
+				"file",
+				"outFile",
+				"outcome",
+				"blockedBy",
+				"diagnostics",
+			]);
 		});
 	});
 

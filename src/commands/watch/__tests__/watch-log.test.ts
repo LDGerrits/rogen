@@ -5,7 +5,7 @@ import {
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
 import {
-	ConfigBuild,
+	LoadedBuild,
 	FailedBuild,
 	WrittenBuild,
 } from "../../../domain/build/build.js";
@@ -147,10 +147,11 @@ describe("WatchLog.update", () => {
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			build: ConfigBuild,
+			build: LoadedBuild,
 			unreported: readonly Diagnostic[],
-			repeatedFailure = false
-		): RebuildReport => ({ build, unreported, repeatedFailure });
+			repeatedFailure = false,
+			repeated: readonly Diagnostic[] = []
+		): RebuildReport => ({ build, unreported, repeated, repeatedFailure });
 
 		const session = () => {
 			const logService = new MockLogService();
@@ -206,6 +207,90 @@ describe("WatchLog.update", () => {
 				"default.project.json · not written",
 				"default.project.json · not written · same errors as before",
 			]);
+		});
+
+		const built = (warnings: Diagnostic[]) =>
+			new WrittenBuild(
+				entry.config,
+				"wrote",
+				{ warnings, syncWarnings: [] },
+				{
+					roots: [],
+					routes: [],
+					variants: [],
+					unrouted: 0,
+					replaced: 0,
+					displaced: 0,
+				},
+				[]
+			);
+		const resultLine = (reports: RebuildReport[]) => {
+			const { log, logService } = session();
+			log.update(updateOf({ reports }));
+			return logService.entries.find(({ kind }) => kind === "success")
+				?.text;
+		};
+
+		it("should count the warnings it leaves out", () => {
+			const standing = [warning("a"), warning("b"), warning("c")];
+
+			expect(
+				resultLine([reportOf(built(standing), [], false, standing)])
+			).toBe("default.project.json · wrote · 3 warnings as before");
+			expect(
+				resultLine([
+					reportOf(
+						built(standing.slice(0, 1)),
+						[],
+						false,
+						standing.slice(0, 1)
+					),
+				])
+			).toBe("default.project.json · wrote · 1 warning as before");
+		});
+
+		it("should count the warnings it leaves out of a failed build too", () => {
+			const error = errorDiagnostic(
+				"x.err",
+				{ resource: entry.file },
+				"bad."
+			);
+			const { log, logService } = session();
+
+			log.update(
+				updateOf({
+					reports: [
+						reportOf(
+							new FailedBuild(entry.config, [error], {
+								warnings: [warning("a"), warning("b")],
+								syncWarnings: [],
+							}),
+							[error],
+							false,
+							[warning("a"), warning("b")]
+						),
+					],
+				})
+			);
+
+			expect(
+				logService.entries.find(({ kind }) => kind === "error")?.text
+			).toBe("default.project.json · not written · 2 warnings as before");
+		});
+
+		it("should say nothing when it left nothing out, and print what is new beside the count", () => {
+			const fresh = warning("new");
+
+			expect(resultLine([reportOf(built([]), [])])).toBe(
+				"default.project.json · wrote"
+			);
+			expect(
+				resultLine([
+					reportOf(built([fresh, warning("old")]), [fresh], false, [
+						warning("old"),
+					]),
+				])
+			).toBe("default.project.json · wrote · 1 warning as before");
 		});
 
 		it("should print a config's new errors and say its last valid version still builds", () => {

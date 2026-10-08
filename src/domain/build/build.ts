@@ -7,7 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
 
@@ -75,8 +75,11 @@ export interface BuildSummary {
 	readonly displaced: number;
 }
 
-/** What a run did for one config: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
-export type ConfigBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+/** What a run did for a config that loaded: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
+export type LoadedBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+
+/** What a run did for one selected config; one that didn't load has no `config`. */
+export type ConfigBuild = LoadedBuild | UnloadedBuild;
 
 /** What every kind of config build holds. */
 abstract class AbstractConfigBuild {
@@ -84,6 +87,11 @@ abstract class AbstractConfigBuild {
 		readonly config: ResolvedConfig,
 		private readonly findings: BuildFindings
 	) {}
+
+	/** What the config is asked for by. */
+	get label(): string {
+		return this.config.label;
+	}
 
 	get warnings(): readonly Diagnostic[] {
 		return this.findings.warnings;
@@ -119,7 +127,40 @@ export class WrittenBuild extends AbstractConfigBuild {
 	}
 }
 
-/** A config that built cleanly, but whose run stopped before writing it because the configs in `blockedBy` failed. */
+/** A config that didn't load, so there was nothing to build; `errors` is why. */
+export class UnloadedBuild {
+	readonly outcome = "notLoaded";
+
+	constructor(
+		/** The config file. */
+		readonly file: string,
+		readonly errors: readonly Diagnostic[]
+	) {}
+
+	/** What the config is asked for by. */
+	get label(): string {
+		return configLabel(this.file);
+	}
+
+	/** An unloaded config has no project file to write. */
+	get documentOutcome(): "notWritten" {
+		return "notWritten";
+	}
+
+	get warnings(): readonly Diagnostic[] {
+		return [];
+	}
+
+	get syncWarnings(): undefined {
+		return undefined;
+	}
+
+	get diagnostics(): readonly Diagnostic[] {
+		return this.errors;
+	}
+}
+
+/** A config that built cleanly, but whose run stopped before writing it because the configs named in `blockedBy` failed or didn't load. */
 export class UnwrittenBuild extends AbstractConfigBuild {
 	readonly outcome = "notWritten";
 
@@ -128,7 +169,8 @@ export class UnwrittenBuild extends AbstractConfigBuild {
 		findings: BuildFindings,
 		readonly summary: BuildSummary,
 		readonly readFiles: readonly string[],
-		readonly blockedBy: readonly ResolvedConfig[]
+		/** The labels of those configs. */
+		readonly blockedBy: readonly string[]
 	) {
 		super(config, findings);
 	}
@@ -170,6 +212,8 @@ export interface BuildFindings {
 interface Located {
 	/** An absolute POSIX path. */
 	readonly source: string;
+	/** Whether the path is there now, rather than only placed as it would be once created. */
+	readonly exists: boolean;
 }
 
 export interface PlacedLocation extends Located {
@@ -188,6 +232,8 @@ export interface PlacedLocation extends Located {
 export interface UnplacedLocation extends Located {
 	/** `ignored` exists but isn't an instance. */
 	readonly status: "outside" | "ignored" | "missing" | "empty";
+	/** A `missing` path that is named as a folder: it ends in a separator, or has no file type to be placed by. */
+	readonly folder?: true;
 }
 
 /** Where a path lands in the tree, or why it lands nowhere. */
@@ -207,6 +253,8 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	/** One per instance argument. */
 	readonly instances: readonly InstanceLocation[];
+	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
+	readonly diagnostics: readonly Diagnostic[];
 }
 
 /** What a sync tool writes in place of a `.meta.json`. */
@@ -243,7 +291,10 @@ export interface SyncTool {
 export interface Locations {
 	/** No path or instance was asked about, so `files` holds every file. */
 	readonly everyFile: boolean;
+	/** The configs that load; each answers for itself. */
 	readonly configs: readonly ConfigLocations[];
+	/** Why the configs that didn't load did not answer. */
+	readonly errors: readonly Diagnostic[];
 }
 
 /** The project file a config writes, and the staging files its writes go through. */

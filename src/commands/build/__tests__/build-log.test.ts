@@ -10,6 +10,7 @@ import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
+	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
@@ -49,7 +50,7 @@ const builtOf = (
 	summary: BuildSummary,
 	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
-	blockedBy: readonly ResolvedConfig[] = [mockConfig()]
+	blockedBy: readonly string[] = ["match"]
 ): ConfigBuild => {
 	const findings = { warnings: [], syncWarnings: [] };
 	return outcome === "notWritten"
@@ -265,7 +266,7 @@ describe("BuildLog report", () => {
 		expect(
 			report([
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					configNamed("match"),
+					"match",
 				]),
 				failedOf([], configNamed("match")),
 			])
@@ -280,11 +281,161 @@ describe("BuildLog report", () => {
 			report([
 				failedOf([], configNamed("arena")),
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					configNamed("arena"),
-					configNamed("match"),
+					"arena",
+					"match",
 				]),
 				failedOf([], configNamed("match")),
 			])[1]
 		).toBe("lobby.project.json · not written · arena and match failed");
+	});
+
+	describe("errors", () => {
+		const all = (builds: readonly ConfigBuild[]) => {
+			const logService = new MockLogService();
+			new BuildLog(logService, cwd).report(builds);
+			return logService.entries
+				.filter(({ kind }) => kind !== "intro")
+				.map(({ kind, text }) => `${kind}: ${text}`);
+		};
+		const shared = errorDiagnostic(
+			"x.shared",
+			{ resource: "/repo/a" },
+			"shared."
+		);
+		const other = errorDiagnostic(
+			"x.other",
+			{ resource: "/repo/b" },
+			"other."
+		);
+
+		it("should print a failed config's errors under its own line", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([other], configNamed("match")),
+				])
+			).toEqual([
+				"step: arena",
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"step: match",
+				"error: match.project.json · not written",
+				"diagnosticError: /repo/b - error: other.",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should print an error a later config shares once and say so on its line", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([shared], configNamed("match")),
+				])
+			).toEqual([
+				"step: arena",
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"step: match",
+				"error: match.project.json · not written · same errors as arena",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should print only the new errors of a config that shares some, with no note", () => {
+			expect(
+				all([
+					failedOf([shared], configNamed("arena")),
+					failedOf([shared, other], configNamed("match")),
+				]).slice(3)
+			).toEqual([
+				"step: match",
+				"error: match.project.json · not written",
+				"diagnosticError: /repo/b - error: other.",
+				"outro: build failed.",
+			]);
+		});
+
+		it("should close the frame with the failure and not with the built line", () => {
+			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
+				"error: arena.project.json · not written",
+				"diagnosticError: /repo/a - error: shared.",
+				"outro: build failed.",
+			]);
+		});
+	});
+});
+
+describe("BuildLog.diagnostics", () => {
+	const warnings = (count: number, code = "route.unrouted") =>
+		Array.from({ length: count }, (_, n) =>
+			warningDiagnostic(
+				code,
+				{ resource: `/repo/src/F${n}.luau` },
+				"bad."
+			)
+		);
+
+	const printed = (diagnostics: readonly Diagnostic[]) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).diagnostics(diagnostics);
+		return logService.entries.map(({ text }) => text);
+	};
+
+	it("should print at most ten warnings of one code, the tenth saying how many more there are", () => {
+		const lines = printed(warnings(12));
+
+		expect(lines).toHaveLength(10);
+		expect(lines[9]).toContain("bad. 2 more like it aren't listed.");
+		expect(lines[8]).not.toContain("more like it");
+	});
+
+	it("should say 'isn't' for one more", () => {
+		expect(printed(warnings(11))[9]).toContain(
+			"1 more like it isn't listed."
+		);
+	});
+
+	it("should print exactly ten without a note", () => {
+		expect(printed(warnings(10))[9]).not.toContain("more like it");
+	});
+
+	it("should print ten of the related files a grouped warning lists, then count the rest", () => {
+		const related = Array.from({ length: 12 }, (_, n) => ({
+			resource: `/repo/src/F${n}`,
+			message: "hint",
+		}));
+		const grouped = warningDiagnostic(
+			"route.strayAt",
+			{ resource: "/repo/default.rogen.json" },
+			[
+				"12 names:",
+				...related.map(({ resource }) => `  ${resource} (hint)`),
+				"Fix them.",
+			].join("\n"),
+			[],
+			related
+		);
+
+		const [text] = printed([grouped]);
+
+		const lines = text.split("\n");
+		expect(lines).toHaveLength(13);
+		expect(lines[10]).toContain("/repo/src/F9 (hint)");
+		expect(lines[11]).toBe("  2 more like it aren't listed.");
+		expect(lines[12]).toBe("Fix them.");
+	});
+
+	it("should cap each code on its own and never an error", () => {
+		const errors = Array.from({ length: 12 }, (_, n) =>
+			errorDiagnostic("x.err", { resource: `/repo/e${n}` }, "boom.")
+		);
+
+		const lines = printed([
+			...warnings(11, "a.code"),
+			...warnings(11, "b.code"),
+			...errors,
+		]);
+
+		expect(lines).toHaveLength(32);
 	});
 });

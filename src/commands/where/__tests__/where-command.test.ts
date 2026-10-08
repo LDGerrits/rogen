@@ -12,7 +12,7 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogService } from "../../../platform/log/log-service.js";
+import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import {
@@ -223,9 +223,84 @@ describe("where command", () => {
 		expect(printed()).toEqual([]);
 	});
 
+	it("should print the answers, then the errors of a config that doesn't load, and fail", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await writeConfig("broken.rogen.json", { routes: ROUTES, bogus: 1 });
+		await write("src/Util.luau");
+
+		const result = await run({ _: ["src/Util.luau"] });
+
+		expect(printed()).toEqual([
+			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+		]);
+		expect(result.isErr() && result.error.message).toContain(
+			"/repo/broken.rogen.json:1:"
+		);
+	});
+
+	it("should say there are no files rather than print nothing", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		const result = await run({});
+
+		expect(result.isOk()).toBe(true);
+		expect(printed()).toEqual(["No files in the root dirs (src)."]);
+	});
+
+	it("should hint at a folder that doesn't exist, with or without the trailing slash", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		await run({ _: ["src/Combat/", "src/Combat"] });
+
+		expect(printed()).toEqual([
+			"src/Combat -> does not exist · name a file in it to see where it would land",
+		]);
+	});
+
+	it("should print the require expression of a module under --verbose, dimmed under its line", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Util.luau", "src/Inventory/Server/Hit.server.luau");
+		logService.setLevel(LogLevel.Debug);
+
+		await run({
+			_: ["src/Util.luau", "src/Inventory/Server/Hit.server.luau"],
+			verbose: true,
+		});
+
+		expect(
+			logService.entries
+				.filter(({ kind }) => kind === "print" || kind === "debug")
+				.map(({ kind, text }) => [kind, text])
+		).toEqual([
+			["print", expect.stringContaining("src/Util.luau ->")],
+			[
+				"debug",
+				'require: game:GetService("ReplicatedStorage").Shared.Util',
+			],
+			["print", expect.stringContaining("Hit.server.luau ->")],
+		]);
+	});
+
+	it("should not print the expression without --verbose", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Util.luau");
+
+		await run({ _: ["src/Util.luau"] });
+
+		expect(
+			logService.entries.filter(({ kind }) => kind === "debug")
+		).toEqual([]);
+	});
+
 	describe("with --json", () => {
 		const document = () =>
-			JSON.parse(printed().join("\n")) as Record<string, unknown>[];
+			(
+				JSON.parse(printed().join("\n")) as {
+					locations: Record<string, unknown>[];
+				}
+			).locations;
 
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
@@ -255,25 +330,35 @@ describe("where command", () => {
 					config: "default",
 					source: "/repo/src/Inventory/Server/Save.luau",
 					status: "placed",
+					exists: true,
 					instancePath: ["ServerScriptService", "Inventory", "Save"],
+					require:
+						'game:GetService("ServerScriptService").Inventory.Save',
 					route: "Server",
 					routeMatch: "folder",
 					variants: [],
+					diagnostics: [],
 				},
 				{
 					config: "default",
 					source: "/repo/src/Net/Http.mock.luau",
 					status: "pruned",
+					exists: true,
 					variants: [{ variant: "mock", form: "suffix" }],
+					diagnostics: [],
 				},
 				{
 					config: "default",
 					source: "/repo/src/Nowhere.luau",
 					status: "placed",
+					exists: false,
 					instancePath: ["ReplicatedStorage", "Shared", "Nowhere"],
+					require:
+						'game:GetService("ReplicatedStorage").Shared.Nowhere',
 					route: "*",
 					routeMatch: "fallback",
 					variants: [],
+					diagnostics: [],
 				},
 			]);
 		});
@@ -296,6 +381,7 @@ describe("where command", () => {
 					config: "default",
 					instance: "ServerScriptService.Gone",
 					status: "noFile",
+					diagnostics: [],
 				},
 			]);
 		});
@@ -308,7 +394,7 @@ describe("where command", () => {
 			).toEqual([]);
 		});
 
-		it("should print an empty array when nothing is placed", async () => {
+		it("should print an empty list when nothing is placed", async () => {
 			await fs.delete("/repo/src/Inventory/Server/Save.luau");
 			await fs.delete("/repo/src/Net/Http.mock.luau");
 
@@ -332,16 +418,34 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should fail without printing when the config is broken, for the caller to report", async () => {
-			await writeConfig("default.rogen.json", {
+		it("should answer from the configs that load and print the errors of one that doesn't", async () => {
+			await writeConfig("broken.rogen.json", {
 				routes: ROUTES,
 				bogus: 1,
 			});
 
-			const result = await run({ json: true });
+			const result = await run({
+				_: ["src/Inventory/Server/Save.luau"],
+				json: true,
+			});
 
 			expect(result.isErr()).toBe(true);
-			expect(printed()).toEqual([]);
+			const { locations, diagnostics } = JSON.parse(
+				printed().join("\n")
+			) as { locations: { config: string }[]; diagnostics: unknown[] };
+			expect(locations.map(({ config }) => config)).toEqual(["default"]);
+			expect(diagnostics).toMatchObject([
+				{
+					file: "/repo/broken.rogen.json",
+					code: "config.unknownField",
+				},
+			]);
+		});
+
+		it("should print an empty list of diagnostics when every config loads", async () => {
+			await run({ json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
 		});
 	});
 

@@ -14,23 +14,31 @@ stdout:
 $ rogen where places/lobby/Lobby/Server/Queue.luau --json
 exit 0
 stdout:
-  [
-    {
-      "config": "default",
-      "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
-      "status": "outside"
-    },
-    {
-      "config": "lobby",
-      "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Lobby",
-        "Queue"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    }
-  ]
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
+        "status": "outside",
+        "exists": true,
+        "diagnostics": []
+      },
+      {
+        "config": "lobby",
+        "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Lobby",
+          "Queue"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Lobby.Queue",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

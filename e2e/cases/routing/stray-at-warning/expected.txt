@@ -17,6 +17,7 @@ stdout:
   {
     "configs": [
       {
+        "config": "default",
         "file": "<dir>/default.rogen.json",
         "outFile": "<dir>/default.project.json",
         "outcome": "unchanged",
@@ -27,6 +28,24 @@ stdout:
             "code": "route.strayAt",
             "message": "4 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/@sever (did you mean \"@server\"?)\n  <dir>/src/Inventory/Report@server.bak.luau (\"@server\" must end the name, or be followed only by a variant)\n  <dir>/src/Inventory/Save@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Queue@clent (did you mean \"@client\"?)",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "related": [
+              {
+                "file": "<dir>/src/@sever",
+                "message": "did you mean \"@server\"?"
+              },
+              {
+                "file": "<dir>/src/Inventory/Report@server.bak.luau",
+                "message": "\"@server\" must end the name, or be followed only by a variant"
+              },
+              {
+                "file": "<dir>/src/Inventory/Save@sever.luau",
+                "message": "did you mean \"@server\"?"
+              },
+              {
+                "file": "<dir>/src/Queue@clent",
+                "message": "did you mean \"@client\"?"
+              }
+            ],
             "fixes": [
               {
                 "rename": {

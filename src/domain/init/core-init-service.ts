@@ -7,7 +7,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
-import { PlannedFile } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
@@ -15,7 +14,12 @@ import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";
-import { InitOptions, InitPlan, InitService } from "./init-service.js";
+import {
+	InitOptions,
+	InitPlan,
+	InitService,
+	InitWritten,
+} from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
 import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
@@ -215,7 +219,7 @@ export class CoreInitService implements InitService {
 
 	async write(
 		plan: InitPlan,
-		onWritten: (file: PlannedFile) => void
+		onWritten: (written: InitWritten) => void
 	): Promise<Result<void, Error>> {
 		for (const file of plan.files) {
 			const { fileName, content } = file;
@@ -233,7 +237,24 @@ export class CoreInitService implements InitService {
 					)
 				);
 			}
-			onWritten(file);
+			onWritten({ kind: "file", file });
+		}
+		for (const directory of plan.directories) {
+			const created = await tryWithAsync(async () => {
+				const target = path.join(plan.directory, directory);
+				if (await this.fileSystemService.exists(target)) return false;
+				await this.fileSystemService.createDirectory(target);
+				return true;
+			});
+			if (created.isErr()) {
+				return err(
+					new Error(
+						`Failed to create ${directory}: ${created.error.message}`,
+						{ cause: created.error }
+					)
+				);
+			}
+			if (created.value) onWritten({ kind: "directory", directory });
 		}
 		return ok(undefined);
 	}

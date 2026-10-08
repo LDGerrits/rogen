@@ -78,6 +78,15 @@ export class RojoFile {
 		return undefined;
 	}
 
+	/** Whether Rojo makes the file a ModuleScript: Luau source with no `.server`, `.client` or `.plugin`. A `.ts` source is compiled first, so it is not. */
+	get isLuauModule(): boolean {
+		const extension = path.extname(this.name).toLowerCase();
+		return (
+			(extension === ".luau" || extension === ".lua") &&
+			RojoFile.scriptSuffixOf(this.stem) === undefined
+		);
+	}
+
 	/** Whether Rojo reads the file as its folder, which also means a `$path` can't point at it. */
 	get isInit(): boolean {
 		return INIT_FILE.test(this.name);

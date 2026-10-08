@@ -1400,7 +1400,7 @@ describe("Router", () => {
 				expect(warnings[0].message).toContain('"*"');
 			});
 
-			it("should list at most ten unrouted files, the last noting how many more weren't", async () => {
+			it("should warn about every unrouted file", async () => {
 				await write(
 					...Array.from(
 						{ length: 12 },
@@ -1412,12 +1412,11 @@ describe("Router", () => {
 					.unwrap()
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
-				expect(warnings).toHaveLength(10);
-				expect(warnings[9].resource).toBe(abs("src/F19.luau"));
-				expect(warnings[9].message).toContain(
-					"2 more like it aren't listed"
-				);
-				expect(warnings[8].message).not.toContain("more like it");
+				expect(warnings).toHaveLength(12);
+				expect(warnings[11].resource).toBe(abs("src/F21.luau"));
+				expect(
+					warnings.some(({ message }) => message.includes("more like it"))
+				).toBe(false);
 			});
 
 			it("should not warn when every file is routed", async () => {

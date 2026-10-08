@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix } from "../../base/path.js";
+import { joinPosix, toPosix } from "../../base/path.js";
 import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -17,11 +17,7 @@ import {
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
-import {
-	MisspellingKind,
-	MisspellingOf,
-	NotedName,
-} from "./name-reader.js";
+import { MisspellingKind, MisspellingOf, NotedName } from "./name-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
@@ -56,12 +52,14 @@ export class BuildValidator {
 	validate(): Diagnostic[] {
 		return [
 			...this.missingRootDir(),
+			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
 			...this.dotRoute(),
 			...this.variantTypo(),
+			...this.folderTypo(),
 			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
@@ -86,6 +84,76 @@ export class BuildValidator {
 					"this root dir does not exist, so it contributes nothing."
 				)
 			);
+	}
+
+	/** Routing starts below a root dir, so a root dir named like a key routes or prunes nothing by that name. */
+	private rootDirNamedAfterKey(): Diagnostic[] {
+		const configDir = path.dirname(this.config.file);
+		const named = this.config.rootDirs.flatMap((rootDir) => {
+			const key = this.config.keys.resolve(path.basename(rootDir));
+			if (key === undefined) return [];
+			const parent = path.dirname(rootDir);
+			const relativeParent = toPosix(path.relative(configDir, parent));
+			return [
+				{
+					rootDir,
+					shown: toPosix(path.relative(configDir, rootDir)),
+					key,
+					kind: this.config.keys.isVariant(key)
+						? ("variant" as const)
+						: ("route" as const),
+					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
+					parent:
+						relativeParent !== "" &&
+						!relativeParent.startsWith("..")
+							? relativeParent
+							: undefined,
+				},
+			];
+		});
+		if (named.length === 0) return [];
+
+		const kinds = new Set(named.map(({ kind }) => kind));
+		const many = named.length > 1;
+		const keyKind = kinds.size > 1 ? "route or variant" : [...kinds][0];
+		const effect =
+			kinds.size > 1
+				? "do nothing"
+				: kinds.has("route")
+					? `route${many ? "" : "s"} nothing`
+					: `prune${many ? "" : "s"} nothing`;
+		const inside = named.filter(({ parent }) => parent !== undefined);
+		const atTop = named.filter(({ parent }) => parent === undefined);
+		const fixes = [
+			...(inside.length > 0
+				? [
+						`Use ${joinedWithAnd([...new Set(inside.map(({ parent }) => `"${parent}"`))])} as the root dir instead, so ${joinedWithAnd(inside.map(({ rootDir }) => `"${path.basename(rootDir)}"`))} ${inside.length > 1 ? "are" : "is"} read as ${inside.length > 1 ? "keys" : "a key"}.`,
+					]
+				: []),
+			...(atTop.length > 0
+				? [
+						`Move ${atTop.length > 1 ? "them" : "it"} into one folder, such as ${joinedWithAnd(atTop.map(({ shown }) => `src/${shown}`))}, and use "rootDirs": ["src"].`,
+					]
+				: []),
+		];
+		const items = named.map(({ rootDir, shown, key, kind }) => ({
+			resource: rootDir,
+			message: `named after the "${key}" ${kind}`,
+			line: `  ${shown} ("${key}" ${kind})`,
+		}));
+		return [
+			warningDiagnostic(
+				"scan.rootDirNamedAfterKey",
+				{ resource: this.config.file },
+				[
+					`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
+					...items.map(({ line }) => line),
+					...fixes,
+				].join("\n"),
+				[],
+				items.map(({ resource, message }) => ({ resource, message }))
+			),
+		];
 	}
 
 	private unresolvedLink(): Diagnostic[] {
@@ -136,12 +204,10 @@ export class BuildValidator {
 			"strayAt",
 			(count) =>
 				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
-			(resource, { text, suggestion, notLast }) => {
-				const hint = notLast
+			(_, { text, suggestion, notLast }) =>
+				notLast
 					? `"@${text}" must end the name, or be followed only by a variant`
-					: `did you mean "${suggestion}"?`;
-				return `${resource} (${hint})`;
-			}
+					: `did you mean "${suggestion}"?`
 		);
 	}
 
@@ -153,19 +219,35 @@ export class BuildValidator {
 			(count) =>
 				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
 			(resource, { renamedTo }) =>
-				`${resource} (write "${path.posix.basename(renamedTo ?? resource)}")`
+				`write "${path.posix.basename(renamedTo ?? resource)}"`
 		);
 	}
 
-	/** A dot part one edit from a declared variant is probably that variant, mistyped. */
+	/** A dot part one edit from a declared variant, or a folder one edit from one, is probably that variant, mistyped. */
 	private variantTypo(): Diagnostic[] {
+		const bare = [
+			...this.placement.readings.misspelt("variantTypo").values(),
+		].some((typo) => typo.bare);
 		return this.misspelt(
 			"variant.typo",
 			"variantTypo",
 			(count) =>
-				`${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-			(resource, { text, variant }) =>
-				`${resource} (did you mean ".${variant}" for ".${text}"?)`
+				bare
+					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
+					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+			(_, { variant, bare }) =>
+				`did you mean "${bare ? variant : `.${variant}`}"?`
+		);
+	}
+
+	/** A folder one edit from a declared route key falls through to the route above it, as its files would not if it were spelt right. */
+	private folderTypo(): Diagnostic[] {
+		return this.misspelt(
+			"route.folderTypo",
+			"folderTypo",
+			(count) =>
+				`${count} ${count > 1 ? "folders are" : "folder is"} one edit from a declared route key, so ${count > 1 ? "they are read as ordinary folders" : "it is read as an ordinary folder"}:`,
+			(_, { key }) => `did you mean "${key}"?`
 		);
 	}
 
@@ -174,21 +256,29 @@ export class BuildValidator {
 		code: string,
 		kind: K,
 		headline: (count: number) => string,
-		line: (resource: string, misspelt: NotedName<MisspellingOf<K>>) => string
+		hint: (
+			resource: string,
+			misspelt: NotedName<MisspellingOf<K>>
+		) => string
 	): Diagnostic[] {
 		const noted = this.placement.readings.misspelt(kind);
 		if (noted.size === 0) return [];
+		const items = [...noted].map(([resource, misspelt]) => ({
+			resource,
+			message: hint(resource, misspelt),
+		}));
 		return [
 			warningDiagnostic(
 				code,
 				{ resource: this.config.file },
 				[
 					headline(noted.size),
-					...this.listed([...noted], ([resource, misspelt]) =>
-						line(resource, misspelt)
+					...items.map(
+						({ resource, message }) => `  ${resource} (${message})`
 					),
 				].join("\n"),
-				renames(noted)
+				renames(noted),
+				items
 			),
 		];
 	}
@@ -282,10 +372,14 @@ export class BuildValidator {
 	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
 		return this.placement.files.flatMap((file) => {
-			const ignored = [...new Set(file.outrankedFolderRoutes)].filter((key) => {
-				const service = routes.get(key)?.service;
-				return service !== undefined && isServerOnlyService(service);
-			});
+			const ignored = [...new Set(file.outrankedFolderRoutes)].filter(
+				(key) => {
+					const service = routes.get(key)?.service;
+					return (
+						service !== undefined && isServerOnlyService(service)
+					);
+				}
+			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
 				this.placement.readings.entryAt(file.entry.source)
@@ -308,10 +402,13 @@ export class BuildValidator {
 		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
 		const routeKeys = [...new Set(shipped.map(({ file }) => file.route))];
 		const governing = quoted(routeKeys);
-		const listed = this.listed(
-			shipped,
+		const related = shipped.map(({ file }) => ({
+			resource: file.entry.source,
+			message: `ships to clients as ${instanceKey(file.instancePath)}`,
+		}));
+		const listed = shipped.map(
 			({ file }) =>
-				`${file.entry.source} -> ${instanceKey(file.instancePath)}`
+				`  ${file.entry.source} -> ${instanceKey(file.instancePath)}`
 		);
 		const many = shipped.length > 1;
 		const marker =
@@ -326,7 +423,9 @@ export class BuildValidator {
 					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
 					...listed,
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
-				].join("\n")
+				].join("\n"),
+				[],
+				related
 			),
 		];
 	}
@@ -342,10 +441,13 @@ export class BuildValidator {
 		});
 		if (dead.length === 0) return [];
 
-		const listed = this.listed(
-			dead,
+		const related = dead.map(({ file, run }) => ({
+			resource: file.entry.source,
+			message: `${BuildValidator.describeRun(run)} never runs in ${file.instancePath[0]}`,
+		}));
+		const listed = dead.map(
 			({ file, run }) =>
-				`${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
+				`  ${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
 		);
 		const many = dead.length > 1;
 		return [
@@ -356,7 +458,9 @@ export class BuildValidator {
 					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
 					...listed,
 					WHERE_SCRIPTS_RUN,
-				].join("\n")
+				].join("\n"),
+				[],
+				related
 			),
 		];
 	}
@@ -534,23 +638,11 @@ export class BuildValidator {
 			: lines;
 	}
 
-	/** One diagnostic per path, up to a cap; the last one says how many more went unlisted. */
+	/** One diagnostic per path. */
 	private diagnosePaths<T>(
 		paths: readonly (readonly [string, T])[],
 		diagnose: (path: string, item: T) => Diagnostic
 	): Diagnostic[] {
-		const diagnosed = paths
-			.slice(0, DIAGNOSED_PATHS)
-			.map(([path, item]) => diagnose(path, item));
-		const unlisted = paths.length - diagnosed.length;
-		if (unlisted === 0) return diagnosed;
-		const last = diagnosed[diagnosed.length - 1];
-		return [
-			...diagnosed.slice(0, -1),
-			{
-				...last,
-				message: `${last.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
-			},
-		];
+		return paths.map(([path, item]) => diagnose(path, item));
 	}
 }

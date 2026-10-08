@@ -16,6 +16,7 @@ export interface PlaceChoices {
 /** What one place writes and says, which a place added later and every place of a new project share. */
 export class PlacePlan {
 	readonly configSet: ConfigSet;
+	private readonly folder: string;
 	private readonly rootDirs: string[];
 	private readonly outDir: string | undefined;
 	private readonly syncDir: string | undefined;
@@ -25,6 +26,7 @@ export class PlacePlan {
 		private readonly directory: InitDirectory,
 		{ name, folder, language, darklua, base }: PlaceChoices
 	) {
+		this.folder = folder;
 		this.configSet = new ConfigSet(name, language, darklua);
 		const { compiler } = language;
 		this.rootDirs = [...base.rootDirs, folder];
@@ -47,6 +49,7 @@ export class PlacePlan {
 	/** The configs, the compiler's own files and the one-time edits, which a project sets up for every place. */
 	planFiles(builder: InitPlanBuilder): void {
 		const { configSet, rootDirs, syncDir, compiled } = this;
+		builder.addDirectory(this.folder);
 		configSet.planConfigs(
 			builder,
 			{

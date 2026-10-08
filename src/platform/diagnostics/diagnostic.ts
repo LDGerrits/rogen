@@ -24,11 +24,21 @@ export interface DiagnosticFix {
 	readonly rename: { readonly from: string; readonly to: string };
 }
 
+/** A file a diagnostic is also about, and what it says about that file. */
+export interface DiagnosticRelated {
+	/** An absolute path. */
+	readonly resource: string;
+	readonly message: string;
+}
+
 export interface Diagnostic extends DiagnosticLocation {
 	readonly severity: DiagnosticSeverity;
 	/** Stable identifier such as `config.unknownField`; tests assert on it. */
 	readonly code: string;
+	/** A grouped diagnostic lists its related entries on the lines of `message` after the first, one each, in this order. */
 	readonly message: string;
+	/** Every file a grouped diagnostic is about, complete: a presenter caps what it prints. */
+	readonly related?: readonly DiagnosticRelated[];
 	/** Given only when they are the one answer; the rendered line leaves them out. */
 	readonly fixes?: readonly DiagnosticFix[];
 }
@@ -53,13 +63,15 @@ export function warningDiagnostic(
 	code: string,
 	location: DiagnosticLocation,
 	message: string,
-	fixes: readonly DiagnosticFix[] = []
+	fixes: readonly DiagnosticFix[] = [],
+	related: readonly DiagnosticRelated[] = []
 ): Diagnostic {
 	return {
 		...location,
 		severity: DiagnosticSeverity.Warning,
 		code,
 		message,
+		...(related.length > 0 && { related }),
 		...(fixes.length > 0 && { fixes }),
 	};
 }
@@ -94,6 +106,11 @@ function stripDirectory(text: string, dir: string): string {
 	);
 }
 
+/** `message` with the paths under `cwd` written relative to it. */
+export function messageRelativeTo(message: string, cwd: string): string {
+	return stripDirectory(message, cwd);
+}
+
 /** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const { position, severity } = diagnostic;
@@ -121,6 +138,8 @@ export interface DiagnosticJson {
 	/** The code's section on the diagnostics page. */
 	readonly url: string;
 	/** As the diagnostic's, with native paths. */
+	readonly related?: readonly { readonly file: string; readonly message: string }[];
+	/** As the diagnostic's, with native paths. */
 	readonly fixes?: readonly DiagnosticFix[];
 }
 
@@ -130,7 +149,8 @@ const diagnosticAnchor = (code: string): string =>
 
 /** The form a `--json` run prints; the code is here and not in the text, since only a program matches on it. */
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
-	const { resource, position, severity, code, message, fixes } = diagnostic;
+	const { resource, position, severity, code, message, related, fixes } =
+		diagnostic;
 	return {
 		file: toNative(resource),
 		...(position && { line: position.line, column: position.column }),
@@ -138,6 +158,12 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 		code,
 		message,
 		url: `${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`,
+		...(related && {
+			related: related.map((item) => ({
+				file: toNative(item.resource),
+				message: item.message,
+			})),
+		}),
 		...(fixes && {
 			fixes: fixes.map(({ rename }) => ({
 				rename: {

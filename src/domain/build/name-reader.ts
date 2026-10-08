@@ -61,17 +61,29 @@ export interface DotRoute {
 	readonly respelling: Respelling;
 }
 
-/** A trailing dot part that is one edit from a declared variant. */
+/** A folder whose whole name is one edit from a declared route key. */
+export interface FolderTypo {
+	readonly kind: "folderTypo";
+	/** The folder's name with its parentheses, `^` and variant parts off. */
+	readonly text: string;
+	readonly key: string;
+	/** The one rename that fixes it: none when another key is as close. */
+	readonly respelling?: Respelling;
+}
+
+/** A trailing dot part, or a folder's whole name, that is one edit from a declared variant. */
 export interface VariantTypo {
 	readonly kind: "variantTypo";
 	readonly text: string;
 	readonly variant: string;
+	/** The name is a folder's whole name, so the variant is written without a dot. */
+	readonly bare?: true;
 	/** The one rename that fixes it: none when another variant is as close. */
 	readonly respelling?: Respelling;
 }
 
 /** A name that looks like a slip in spelling a declared key. */
-export type Misspelling = StrayAt | DotRoute | VariantTypo;
+export type Misspelling = StrayAt | DotRoute | FolderTypo | VariantTypo;
 
 export type MisspellingKind = Misspelling["kind"];
 
@@ -101,6 +113,9 @@ export interface SuffixMatch {
 
 /** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
 const DOT_ROUTE_KEYS: ReadonlySet<string> = new Set(["server", "client"]);
+
+/** Shorter keys are one edit from real words, so a folder is not read as a slip of them. */
+const MIN_TYPO_KEY_LENGTH = 4;
 
 /** Finds the config's declared keys in folder names, marker files and file suffixes. */
 export class NameReader {
@@ -231,6 +246,9 @@ export class NameReader {
 						({ kind }) => kind !== "strayAt"
 					),
 					...NameReader.present([leadingTypo]),
+					...(routeSpan
+						? []
+						: NameReader.present([this.folderTypo(keptName)])),
 				],
 				offset
 			),
@@ -427,6 +445,45 @@ export class NameReader {
 		if (this.keys.resolve(text) !== undefined || this.keys.nearMiss(text))
 			return undefined;
 		return this.variantTypoOf(text, 0);
+	}
+
+	/** A folder named one edit from a declared key, which would route or prune if it were spelt right. A key shorter than four letters is not offered, since it is one edit from real words. */
+	private folderTypo(name: string): FolderTypo | VariantTypo | undefined {
+		if (this.keys.resolve(name) !== undefined || this.keys.nearMiss(name))
+			return undefined;
+		const identity = DeclaredKeys.identityOf(name);
+		const keys = [...this.keys.all].filter(
+			(key) =>
+				key.length >= MIN_TYPO_KEY_LENGTH &&
+				editDistance(identity, DeclaredKeys.identityOf(key)) === 1 &&
+				// `Servers/` and `Mocks/` are plurals, ordinary names that happen to be one edit away.
+				identity !== `${DeclaredKeys.identityOf(key)}s`
+		);
+		if (keys.length === 0) return undefined;
+		const [key] = keys;
+		// The name's own first letter, so the rename keeps its case.
+		const spelling =
+			(name[0] === name[0].toUpperCase()
+				? key[0].toUpperCase()
+				: key[0].toLowerCase()) + key.slice(1);
+		const respelling =
+			keys.length === 1
+				? { start: 0, written: name, spelling }
+				: undefined;
+		return this.keys.isVariant(key)
+			? {
+					kind: "variantTypo",
+					text: name,
+					variant: key,
+					bare: true,
+					...(respelling && { respelling }),
+				}
+			: {
+					kind: "folderTypo",
+					text: name,
+					key,
+					...(respelling && { respelling }),
+				};
 	}
 
 	/** `.text`, written at `start`, as a typo of the closest declared variant one edit away, if any. */

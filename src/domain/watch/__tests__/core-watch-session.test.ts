@@ -222,6 +222,25 @@ describe("CoreWatchSession", () => {
 		expect(unreported()).toEqual(["meta.unclaimed"]);
 	});
 
+	it("should hand over the diagnostics it leaves out as repeated, so the count agrees with what was printed", async () => {
+		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
+		await start();
+		const codes = (list: readonly { code: string }[] | undefined) =>
+			list?.map(({ code }) => code);
+
+		expect(codes(updates[0].reports[0].repeated)).toEqual([]);
+		expect(codes(updates[0].reports[0].unreported)).toEqual([
+			"meta.unclaimed",
+		]);
+
+		await fs.writeFile("/repo/src/A.luau", "");
+		await settle();
+
+		const report = updates.at(-1)?.reports[0];
+		expect(codes(report?.unreported)).toEqual([]);
+		expect(codes(report?.repeated)).toEqual(["meta.unclaimed"]);
+	});
+
 	it("should check the sync dir when the config loads, and not again until it changes", async () => {
 		await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
 		await fs.writeFile("/repo/src/A.luau", "");

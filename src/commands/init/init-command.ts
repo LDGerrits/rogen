@@ -93,15 +93,18 @@ registerCommand(
 			// A blank gutter line sets the results apart from the last answer.
 			if (plan.asked) logService.info("");
 			for (const note of plan.notes) logService.info(note);
-			const written = await initService.write(
-				plan,
-				({ fileName, appends }) =>
-					logService.success(
-						appends
-							? `Added Rogen's rules to ${fileName}.`
-							: `Created ${fileName}.`
-					)
-			);
+			const written = await initService.write(plan, (item) => {
+				if (item.kind === "directory") {
+					logService.success(`Created ${item.directory}/.`);
+					return;
+				}
+				const { fileName, appends } = item.file;
+				logService.success(
+					appends
+						? `Added Rogen's rules to ${fileName}.`
+						: `Created ${fileName}.`
+				);
+			});
 			if (written.isErr()) return written;
 
 			logService.step("Next steps");
@@ -118,23 +121,26 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const files: string[] = [];
 			const appended: string[] = [];
-			const written = await initService.write(
-				plan,
-				({ fileName, appends }) => {
-					const file = path.join(plan.directory, fileName);
-					files.push(file);
-					if (appends) appended.push(file);
+			const directories: string[] = [];
+			const written = await initService.write(plan, (item) => {
+				if (item.kind === "directory") {
+					directories.push(path.join(plan.directory, item.directory));
+					return;
 				}
-			);
+				const file = path.join(plan.directory, item.file.fileName);
+				files.push(file);
+				if (item.file.appends) appended.push(file);
+			});
 			if (written.isErr())
 				return this.printJson(
 					logService,
-					{ files, appended, error: written.error.message },
+					{ files, appended, directories, error: written.error.message },
 					written.error
 				);
 			return this.printJson(logService, {
 				files,
 				appended,
+				directories,
 				notes: plan.notes,
 				nextSteps: plan.nextSteps,
 			});

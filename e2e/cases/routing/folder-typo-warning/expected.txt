@@ -1,0 +1,83 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name:
+    src/Net/mokc (did you mean "mock"?)
+  default.rogen.json - warning: 2 folders are one edit from a declared route key, so they are read as ordinary folders:
+    src/Hud/Sevrer (did you mean "Server"?)
+    src/Inventory/Sever (did you mean "Server"?)
+
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "variant.typo",
+            "message": "1 name is one edit from a declared variant, so it is read as an ordinary name:\n  <dir>/src/Net/mokc (did you mean \"mock\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
+            "related": [
+              {
+                "file": "<dir>/src/Net/mokc",
+                "message": "did you mean \"mock\"?"
+              }
+            ],
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Net/mokc",
+                  "to": "<dir>/src/Net/mock"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "route.folderTypo",
+            "message": "2 folders are one edit from a declared route key, so they are read as ordinary folders:\n  <dir>/src/Hud/Sevrer (did you mean \"Server\"?)\n  <dir>/src/Inventory/Sever (did you mean \"Server\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-foldertypo",
+            "related": [
+              {
+                "file": "<dir>/src/Hud/Sevrer",
+                "message": "did you mean \"Server\"?"
+              },
+              {
+                "file": "<dir>/src/Inventory/Sever",
+                "message": "did you mean \"Server\"?"
+              }
+            ],
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Hud/Sevrer",
+                  "to": "<dir>/src/Hud/Server"
+                }
+              },
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Sever",
+                  "to": "<dir>/src/Inventory/Server"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+written:
+  default.project.json

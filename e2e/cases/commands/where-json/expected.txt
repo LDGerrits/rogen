@@ -1,159 +1,206 @@
 $ rogen where --json
 exit 0
 stdout:
-  [
-    {
-      "config": "default",
-      "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Combat",
-        "Moves",
-        "Punch"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Combat/Server/Moves/init.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Combat",
-        "Moves"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Inventory/Server/Save.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Inventory",
-        "Save"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/Http.mock.luau",
-      "status": "pruned",
-      "variants": [
-        {
-          "variant": "mock",
-          "form": "suffix"
-        }
-      ]
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/Http@client.luau",
-      "status": "placed",
-      "instancePath": [
-        "StarterPlayer",
-        "StarterPlayerScripts",
-        "Net",
-        "Http"
-      ],
-      "route": "Client",
-      "routeMatch": "suffix",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/Types.lua",
-      "status": "replaced",
-      "by": "<dir>/src/Net/Types.luau"
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/Types.luau",
-      "status": "placed",
-      "instancePath": [
-        "ReplicatedStorage",
-        "Shared",
-        "Net",
-        "Types"
-      ],
-      "route": "*",
-      "routeMatch": "fallback",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Specs",
-      "status": "excluded",
-      "pattern": "<dir>/src/Specs"
-    }
-  ]
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Combat",
+          "Moves",
+          "Punch"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Combat/Server/Moves/init.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Combat",
+          "Moves"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Inventory/Server/Save.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Inventory",
+          "Save"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Inventory.Save",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Net/Http.mock.luau",
+        "status": "pruned",
+        "exists": true,
+        "variants": [
+          {
+            "variant": "mock",
+            "form": "suffix"
+          }
+        ],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Net/Http@client.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "StarterPlayer",
+          "StarterPlayerScripts",
+          "Net",
+          "Http"
+        ],
+        "route": "Client",
+        "routeMatch": "suffix",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Net/Types.lua",
+        "status": "replaced",
+        "exists": true,
+        "by": "<dir>/src/Net/Types.luau",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Net/Types.lua",
+            "severity": "warning",
+            "code": "tree.instanceClash",
+            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place. Rename one of them to keep both.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#tree-instanceclash"
+          }
+        ]
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Net/Types.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "Net",
+          "Types"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Types",
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Specs",
+        "status": "excluded",
+        "exists": true,
+        "pattern": "<dir>/src/Specs",
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
 
 $ rogen where --json src/Net/Http.mock.luau --variant mock
 exit 0
 stdout:
-  [
-    {
-      "config": "default",
-      "source": "<dir>/src/Net/Http.mock.luau",
-      "status": "placed",
-      "instancePath": [
-        "ReplicatedStorage",
-        "Shared",
-        "Net",
-        "Http"
-      ],
-      "route": "*",
-      "routeMatch": "fallback",
-      "variants": [
-        {
-          "variant": "mock",
-          "form": "suffix"
-        }
-      ]
-    }
-  ]
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/Net/Http.mock.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "Net",
+          "Http"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Http",
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": [
+          {
+            "variant": "mock",
+            "form": "suffix"
+          }
+        ],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
 
 $ rogen where --json ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
 exit 0
 stdout:
-  [
-    {
-      "config": "default",
-      "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Combat",
-        "Moves",
-        "Punch"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "source": "<dir>/src/Combat/Server/Moves/init.luau",
-      "status": "placed",
-      "instancePath": [
-        "ServerScriptService",
-        "Combat",
-        "Moves"
-      ],
-      "route": "Server",
-      "routeMatch": "folder",
-      "variants": []
-    },
-    {
-      "config": "default",
-      "instance": "ReplicatedStorage/Shared/Nope",
-      "status": "noFile"
-    }
-  ]
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Combat",
+          "Moves",
+          "Punch"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Combat/Server/Moves/init.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerScriptService",
+          "Combat",
+          "Moves"
+        ],
+        "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
+        "route": "Server",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "instance": "ReplicatedStorage/Shared/Nope",
+        "status": "noFile",
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

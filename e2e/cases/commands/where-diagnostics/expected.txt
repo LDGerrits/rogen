@@ -1,0 +1,126 @@
+$ rogen where src/Inventory/Save@sever.luau src/Shared/Server/Secret.server.luau src/Inventory/New@sever.luau src/Inventory/Clean.luau
+exit 0
+stdout:
+  src/Inventory/Save@sever.luau -> ReplicatedStorage/shared/Inventory/Save@sever · route * (fallback)
+    warning: did you mean "@server"? (route.strayAt)
+  src/Shared/Server/Secret.server.luau -> ReplicatedStorage/shared/Server/Secret · route shared (folder)
+    warning: a Script never runs in ReplicatedStorage (tree.deadScript)
+  src/Inventory/New@sever.luau -> ReplicatedStorage/shared/Inventory/New@sever · route * (fallback)
+    warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Clean.luau -> ReplicatedStorage/shared/Inventory/Clean · route * (fallback)
+
+$ rogen where src/Inventory/Save@sever.luau src/Shared/Server/Secret.server.luau src/Inventory/New@sever.luau src/Inventory/Clean.luau --json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default",
+        "source": "<dir>/src/Inventory/Save@sever.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "Inventory",
+          "Save@sever"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save@sever\"]",
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": [],
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Inventory/Save@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Save@sever.luau",
+                  "to": "<dir>/src/Inventory/Save@server.luau"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Shared/Server/Secret.server.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "Server",
+          "Secret"
+        ],
+        "route": "shared",
+        "routeMatch": "folder",
+        "variants": [],
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Shared/Server/Secret.server.luau",
+            "severity": "warning",
+            "code": "tree.deadScript",
+            "message": "a Script never runs in ReplicatedStorage",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#tree-deadscript"
+          }
+        ]
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Inventory/New@sever.luau",
+        "status": "placed",
+        "exists": false,
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "Inventory",
+          "New@sever"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New@sever\"]",
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": [],
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Inventory/New@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/New@sever.luau",
+                  "to": "<dir>/src/Inventory/New@server.luau"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "config": "default",
+        "source": "<dir>/src/Inventory/Clean.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "Inventory",
+          "Clean"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory.Clean",
+        "route": "*",
+        "routeMatch": "fallback",
+        "variants": [],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

@@ -1,0 +1,46 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · broken, default
+  broken
+  default
+  build failed.
+stderr:
+  error: broken.rogen.json · not loaded
+  broken.rogen.json:3:29 - error: invalid JSONC: expected '}'.
+  error: default.project.json · not written · broken failed
+
+$ rogen build --json
+exit 1
+stdout:
+  {
+    "configs": [
+      {
+        "config": "broken",
+        "file": "<dir>/broken.rogen.json",
+        "outFile": null,
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/broken.rogen.json",
+            "line": 3,
+            "column": 29,
+            "severity": "error",
+            "code": "config.invalidSyntax",
+            "message": "invalid JSONC: expected '}'.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+          }
+        ]
+      },
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "notWritten",
+        "blockedBy": [
+          "broken"
+        ],
+        "diagnostics": []
+      }
+    ]
+  }

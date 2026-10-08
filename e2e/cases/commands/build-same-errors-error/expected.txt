@@ -1,0 +1,11 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default, lobby
+  default
+  lobby
+  build failed.
+stderr:
+  error: default.project.json · not written
+  src/init.luau - error: an init script becomes the folder it sits in, but it sits in a root dir, which never becomes an instance. Move it into a folder of its own, or rename it.
+  error: lobby.project.json · not written · same errors as default

@@ -10,10 +10,10 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-    -o, --out-file <value>    Overrides outFile, for one config.
-        --variant <value>     Turns a variant on. (repeatable)
-        --no-variant <value>  Turns a variant off. (repeatable)
-        --json                Print one JSON document instead of text.
+    -o, --out-file <path>    Overrides outFile, for one config.
+        --variant <name>     Turns a variant on. (repeatable)
+        --no-variant <name>  Turns a variant off. (repeatable)
+        --json               Print one JSON document instead of text.
   
   Examples:
     rogen build
@@ -38,10 +38,10 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
   
   Options:
-    -o, --out-file <value>    Overrides outFile, for one config.
-        --variant <value>     Turns a variant on. (repeatable)
-        --no-variant <value>  Turns a variant off. (repeatable)
-        --json                Print one JSON document instead of text.
+    -o, --out-file <path>    Overrides outFile, for one config.
+        --variant <name>     Turns a variant on. (repeatable)
+        --no-variant <name>  Turns a variant off. (repeatable)
+        --json               Print one JSON document instead of text.
   
   Examples:
     rogen build

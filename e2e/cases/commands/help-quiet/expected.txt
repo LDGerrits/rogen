@@ -12,7 +12,7 @@ stdout:
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
     list [config...]   Lists every config here with its root dirs, sync dir, project file and variants; with --json, each fully resolved.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
-    where [path...]    Prints where each file lands in the game, and why.
+    where [path...]    Prints where each file lands in the game, and why, with its warnings.
   
   Topics:
     routing   How folders and names place a file, and what that means for requires.

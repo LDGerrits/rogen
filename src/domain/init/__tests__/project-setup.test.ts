@@ -105,6 +105,26 @@ const planResult = async (
 const plan = async (...args: Parameters<typeof planResult>) =>
 	(await planResult(...args)).unwrap();
 
+const directoriesOf = async (
+	spec: WorkspaceSpec,
+	overrides: Partial<ProjectChoices> = {}
+) => {
+	const choices = {
+		...(await defaultProjectChoices(spec, "default", new Set(), false)),
+		...overrides,
+	};
+	const target = directoryOf({ path: directory, workspace: spec });
+	return planOf(
+		new ProjectSetup(
+			target,
+			new InitQuestions(new MockPromptService([], false), false),
+			new MemoryFileSystemService()
+		),
+		choices,
+		target
+	).unwrap().directories;
+};
+
 const errorsOf = (result: Awaited<ReturnType<typeof planResult>>) =>
 	(result as ResultError<Diagnostic[]>).error;
 
@@ -123,6 +143,22 @@ const configOf = (
 };
 
 describe("ProjectSetup plan", () => {
+	describe("directories", () => {
+		it("should plan every root dir it writes", async () => {
+			expect(
+				await directoriesOf(luau, { rootDirs: ["core", "shared"] })
+			).toEqual(["core", "shared"]);
+		});
+
+		it("should plan each place folder after the root dirs", async () => {
+			expect(
+				await directoriesOf(luau, {
+					rootDirs: ["src"],
+					places: ["lobby", "match"],
+				})
+			).toEqual(["src", "places/lobby", "places/match"]);
+		});
+	});
 	it("should write default.rogen.json for the default name", async () => {
 		const { configs } = await plan(luau);
 

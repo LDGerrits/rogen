@@ -1,4 +1,8 @@
 $ rogen build
 exit 1
+stdout:
+  rogen build · default
+  build failed.
 stderr:
+  error: default.rogen.json · not loaded
   default.rogen.json:4:3 - error: root dir "src" is listed twice; a file under it would belong to both. Remove one.

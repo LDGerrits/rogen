@@ -1,4 +1,8 @@
 $ rogen build a
 exit 1
+stdout:
+  rogen build · a
+  build failed.
 stderr:
+  error: a.rogen.json · not loaded
   c.rogen.json:2:13 - error: extends cycle: a.rogen.json -> b.rogen.json -> c.rogen.json -> a.rogen.json.

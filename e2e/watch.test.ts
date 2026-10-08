@@ -74,6 +74,23 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should count the warnings a rebuild doesn't repeat", async () => {
+		writeProjectFile(project.dir, "src/Save@sever.luau");
+		const running = start();
+		await eventually(() => {
+			expect(running.output).toContain("did you mean");
+		});
+
+		writeProjectFile(project.dir, "src/B.luau");
+
+		await eventually(() => {
+			expect(running.output).toContain(
+				"default.project.json · wrote · 1 warning as before"
+			);
+		});
+		expect(running.output.split("did you mean").length).toBe(2);
+	}, 30_000);
+
 	it("should reload when the config changes", async () => {
 		start();
 		await eventually(async () => {

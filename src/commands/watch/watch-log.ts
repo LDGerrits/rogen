@@ -6,6 +6,7 @@ import {
 	WatchCause,
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
@@ -76,6 +77,17 @@ function titleOf(cause: WatchCause): string {
 	}
 }
 
+/** What a block leaves out because it printed it before, counted: `3 warnings as before`. */
+function asBefore(repeated: readonly Diagnostic[]): string | undefined {
+	const errors = repeated.filter(isError).length;
+	const warnings = repeated.length - errors;
+	const parts = [
+		...(errors > 0 ? [plural(errors, "error")] : []),
+		...(warnings > 0 ? [plural(warnings, "warning")] : []),
+	];
+	return parts.length > 0 ? `${parts.join(" and ")} as before` : undefined;
+}
+
 /** How `watch` reports each round of rebuilds. */
 export class WatchLog {
 	private readonly buildLog: BuildLog;
@@ -89,7 +101,10 @@ export class WatchLog {
 
 	/** Opens the output: the configs it watches. */
 	begin(configs: readonly ResolvedConfig[]): void {
-		this.buildLog.begin("watch", configs);
+		this.buildLog.begin(
+			"watch",
+			configs.map(({ label }) => label)
+		);
 	}
 
 	end(): void {
@@ -122,12 +137,13 @@ export class WatchLog {
 	private report({
 		build,
 		unreported,
+		repeated,
 		repeatedFailure,
 	}: RebuildReport): void {
 		this.buildLog.outcome(
 			build,
 			unreported,
-			repeatedFailure ? "same errors as before" : undefined
+			repeatedFailure ? "same errors as before" : asBefore(repeated)
 		);
 	}
 }

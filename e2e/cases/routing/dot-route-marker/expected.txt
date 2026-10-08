@@ -20,6 +20,7 @@ stdout:
   {
     "configs": [
       {
+        "config": "default",
         "file": "<dir>/default.rogen.json",
         "outFile": "<dir>/default.project.json",
         "outcome": "unchanged",
@@ -30,6 +31,36 @@ stdout:
             "code": "route.dotRoute",
             "message": "7 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Tools/.SERVER (write \"@server\")\n  <dir>/src/.server (write \"@server\")\n  <dir>/src/Config.server.json (write \"Config@server.json\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")\n  <dir>/src/Start.Server.luau (write \"Start.server.luau\")",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "related": [
+              {
+                "file": "<dir>/src/Inventory/.server",
+                "message": "write \"@server\""
+              },
+              {
+                "file": "<dir>/src/Tools/.SERVER",
+                "message": "write \"@server\""
+              },
+              {
+                "file": "<dir>/src/.server",
+                "message": "write \"@server\""
+              },
+              {
+                "file": "<dir>/src/Config.server.json",
+                "message": "write \"Config@server.json\""
+              },
+              {
+                "file": "<dir>/src/Inventory/Types.shared.luau",
+                "message": "write \"Types@shared.luau\""
+              },
+              {
+                "file": "<dir>/src/Net.shared",
+                "message": "write \"Net@shared\""
+              },
+              {
+                "file": "<dir>/src/Start.Server.luau",
+                "message": "write \"Start.server.luau\""
+              }
+            ],
             "fixes": [
               {
                 "rename": {

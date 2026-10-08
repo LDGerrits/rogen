@@ -117,6 +117,30 @@ describe("PlaceSetup", () => {
 		});
 	});
 
+	describe("directories", () => {
+		it("should plan only the place folder, not the root dirs it inherits", () => {
+			const target = directoryOf({ workspace: luau });
+			const { workspace } = target;
+
+			const value = planOf(
+				new PlaceSetup(
+					target,
+					ok({ rootDirs: ["src"] }),
+					new InitQuestions(new MockPromptService([], false), false)
+				),
+				{
+					...choices,
+					language: workspace.language,
+					darklua: workspace.detectedDarklua,
+					base: { rootDirs: ["src"] },
+				},
+				target
+			).unwrap();
+
+			expect(value.directories).toEqual(["places/lobby"]);
+		});
+	});
+
 	describe("luau with darklua", () => {
 		const base: BaseConfig = { rootDirs: ["src"], syncDir: "dist" };
 

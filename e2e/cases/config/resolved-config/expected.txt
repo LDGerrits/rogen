@@ -2,30 +2,35 @@ $ rogen list default --json
 exit 0
 stdout:
   {
-    "<dir>/default.rogen.json": {
-      "extends": [
-        "<dir>/base.rogen.json"
-      ],
-      "name": "Game",
-      "rootDirs": [
-        "<dir>/src"
-      ],
-      "commonRoot": "<dir>/src",
-      "routes": {
-        "server": "ServerScriptService",
-        "client": "StarterPlayer/StarterPlayerScripts",
-        "shared": "ReplicatedStorage/shared",
-        "*": "ReplicatedStorage/shared"
-      },
-      "variants": {
-        "mock": true
-      },
-      "exclude": [
-        "<dir>/**/*.spec.luau"
-      ],
-      "template": "<dir>/template.project.json",
-      "syncDir": "<dir>/dist",
-      "outFile": "<dir>/default.project.json",
-      "diagnostics": []
-    }
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "status": "valid",
+        "extends": [
+          "<dir>/base.rogen.json"
+        ],
+        "projectName": "Game",
+        "rootDirs": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "variants": {
+          "mock": true
+        },
+        "exclude": [
+          "<dir>/**/*.spec.luau"
+        ],
+        "template": "<dir>/template.project.json",
+        "syncDir": "<dir>/dist",
+        "outFile": "<dir>/default.project.json",
+        "diagnostics": []
+      }
+    ]
   }

@@ -235,6 +235,17 @@ default.rogen.json - warning: 2 names write a route key after a dot, where only 
 
 Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
+### `route.folderTypo` [#route-foldertypo]
+
+Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). The folder's name is read with its parentheses, `^` and variant parts off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
+
+```
+default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder:
+  src/Inventory/Sever (did you mean "Server"?)
+```
+
+Rename the folder to the key suggested, or, when the key in your config is the typo, fix it in `routes`. In `--json`, `fixes` holds the rename when exactly one key is closest. See [Routing Folders](/docs/v2/core-concepts/routing).
+
 ### `route.markerClash` [#route-markerclash]
 
 Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
@@ -281,11 +292,11 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 ### `variant.typo` [#variant-typo]
 
-Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A plain `mok/` isn't reported, since without a dot it may just be a name. One warning lists every such name.
+Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A folder whose whole name is one edit from a variant of four letters or more (`mokc/` next to `mock`) is reported too, and the hint then leaves out the dot; shorter variants are one edit from real words, so they are not offered. One warning lists every such name.
 
 ```
 default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name:
-  src/Analytics.mok.luau (did you mean ".mock" for ".mok"?)
+  src/Analytics.mok.luau (did you mean ".mock"?)
 ```
 
 Rename the file or folder to the variant suggested. A dot-file that really is something else, such as a `.lock` next to a `mock` variant, can be renamed or left out with `exclude`. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
@@ -539,6 +550,19 @@ later - warning: this root dir does not exist, so it contributes nothing.
 ```
 
 Create it, or remove it from `rootDirs`. The path is relative to the config that sets it. See [Configuration](/docs/v2/configuration#fields).
+
+### `scan.rootDirNamedAfterKey` [#scan-rootdirnamedafterkey]
+
+Warning. A root directory is named after a route or variant key. Routing starts below a root directory, so its name routes (or prunes) nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such root dir.
+
+```
+default.rogen.json - warning: 2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing:
+  server ("server" route)
+  client ("client" route)
+Move them into one folder, such as src/server and src/client, and use "rootDirs": ["src"].
+```
+
+When the root dir has a parent inside the project (`src/server`), use the parent: `"rootDirs": ["src"]`, and the `server` folder routes. When it sits at the config's own folder, move the folders into one code folder first, since `"."` would scan the whole repo. The build still runs and writes. See [Routing](/docs/v2/core-concepts/routing).
 
 ### `scan.unresolvedLink` [#scan-unresolvedlink]
 

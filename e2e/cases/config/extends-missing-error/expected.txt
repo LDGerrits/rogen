@@ -1,4 +1,8 @@
 $ rogen build
 exit 1
+stdout:
+  rogen build · default
+  build failed.
 stderr:
+  error: default.rogen.json · not loaded
   default.rogen.json:2:13 - error: "extends" target "nowhere.rogen.json": the config could not be read: ENOENT: no such file or directory, open 'nowhere.rogen.json'.
