@@ -27,10 +27,21 @@ describe("registerHook", () => {
 		expect(Object.keys(JSON.parse(text))).toEqual(["version", "hooks"]);
 	});
 
-	it("should leave the version of a file that exists as it is", () => {
+	it("should add the version to a file that has none", () => {
+		const text = added('{ "other": 1 }', { ...SPEC, version: 1 });
+
+		expect(Object.keys(JSON.parse(text))).toEqual([
+			"version",
+			"other",
+			"hooks",
+		]);
+	});
+
+	it("should leave the version a file has as it is", () => {
 		expect(
-			JSON.parse(added("{}", { ...SPEC, version: 1 }))
-		).not.toHaveProperty("version");
+			JSON.parse(added('{ "version": 2 }', { ...SPEC, version: 1 }))
+				.version
+		).toBe(2);
 	});
 
 	it("should keep what the settings already hold", () => {
@@ -71,6 +82,14 @@ describe("registerHook", () => {
 			hooks: {
 				Stop: [entry('"$DIR"/.agents/hooks/rogen-check.sh')],
 			},
+		});
+
+		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
+	});
+
+	it("should leave settings that name the script by its earlier name", () => {
+		const settings = JSON.stringify({
+			hooks: { Stop: [entry("x/.claude/hooks/rogen-stop.sh")] },
 		});
 
 		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });

@@ -22,20 +22,24 @@ export class AgentHooks {
 	private readonly registrations: readonly {
 		readonly target: HookTarget;
 		readonly registration: HookRegistration;
+		/** Whether the agent's hook file is there to add to. */
+		readonly existed: boolean;
 	}[];
 
 	constructor(private readonly state: AgentHooksState) {
 		this.registrations = state.inUse.map(({ target, text }) => ({
 			target,
 			registration: target.register(text),
+			existed: text !== undefined,
 		}));
 	}
 
 	private get registering() {
-		return this.registrations.flatMap(({ target, registration }) =>
-			registration.kind === "added"
-				? [{ target, text: registration.text }]
-				: []
+		return this.registrations.flatMap(
+			({ target, registration, existed }) =>
+				registration.kind === "added"
+					? [{ target, text: registration.text, existed }]
+					: []
 		);
 	}
 
@@ -51,20 +55,14 @@ export class AgentHooks {
 
 	/** The script unless it's there, then each agent's file with the hook registered. */
 	get files(): PlannedFile[] {
-		const existing = new Map(
-			this.state.inUse.map(({ target, text }) => [target.name, text])
-		);
 		return [
 			...(this.state.scriptExists
 				? []
 				: [{ fileName: HOOK_SCRIPT_FILE, content: agentHook }]),
-			...this.registering.map(({ target, text }) => ({
+			...this.registering.map(({ target, text, existed }) => ({
 				fileName: target.settingsFile,
 				content: text,
-				...(existing.get(target.name) !== undefined && {
-					appends: true,
-					summary: "the Rogen hook",
-				}),
+				...(existed && { appends: true, summary: "the Rogen hook" }),
 			})),
 		];
 	}

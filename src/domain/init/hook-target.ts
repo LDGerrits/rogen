@@ -79,7 +79,10 @@ export const HOOK_TARGETS: readonly HookTarget[] = [
 		signs: [".github/copilot-instructions.md", ".github/hooks"],
 		hook: {
 			event: "agentStop",
-			entry: { type: "command", bash: `bash ${HOOK_SCRIPT_FILE}` },
+			entry: {
+				type: "command",
+				bash: `bash "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
+			},
 			version: 1,
 		},
 	}),

@@ -10,7 +10,7 @@ export interface HookEntry {
 	readonly event: string;
 	/** The entry in the event's list, as the agent writes it. */
 	readonly entry: unknown;
-	/** What a new file starts with, for an agent whose files carry one. */
+	/** What a file without one starts with, for an agent whose files carry one. */
 	readonly version?: number;
 }
 
@@ -39,11 +39,12 @@ export function registerHook(
 	if (!isObject(hooks)) return { kind: "unreadable" };
 	const { [event]: listed = [] } = hooks;
 	if (!Array.isArray(listed)) return { kind: "unreadable" };
-	if (JSON.stringify(listed).includes("rogen-check.sh"))
+	if (/rogen-(check|stop)\.sh/.test(JSON.stringify(listed)))
 		return { kind: "present" };
 
 	const registered = {
-		...(text === undefined && version !== undefined && { version }),
+		...(version !== undefined &&
+			settings.version === undefined && { version }),
 		...settings,
 		hooks: { ...hooks, [event]: [...listed, entry] },
 	};

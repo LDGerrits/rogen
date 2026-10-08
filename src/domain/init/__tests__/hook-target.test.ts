@@ -70,7 +70,7 @@ describe("hook targets", () => {
 				agentStop: [
 					{
 						type: "command",
-						bash: "bash .agents/hooks/rogen-check.sh",
+						bash: 'bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh',
 					},
 				],
 			},

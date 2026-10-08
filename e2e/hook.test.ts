@@ -202,6 +202,39 @@ const available = has("bash") && has("git") && has("jq");
 		expect(reply?.decision).toBe("block");
 	});
 
+	it("should find the config above the folder the agent runs in", () => {
+		write("src/sub/Buy@sever.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "project/src/sub") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should not count a report as given when the reply could not be made", () => {
+		write("src/Buy@sever.luau");
+		const broken = path.join(dir, "broken");
+		fs.mkdirSync(broken);
+		const realJq = execFileSync("which", ["jq"], {
+			encoding: "utf8",
+		}).trim();
+		fs.writeFileSync(
+			path.join(broken, "jq"),
+			`#!/bin/sh\n[ "$1" = "-n" ] && exit 1\nexec "${realJq}" "$@"\n`
+		);
+		fs.chmodSync(path.join(broken, "jq"), 0o755);
+
+		const failed = stop({ session_id: "s" }, [], {
+			PATH: `${broken}${path.delimiter}${bin}${path.delimiter}${process.env.PATH}`,
+		});
+
+		expect(failed.exit).toBe(1);
+		expect(stop({ session_id: "s" }).reply?.decision).toBe("block");
+	});
+
 	it("should do nothing without a config in the project dir", () => {
 		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		fs.rmSync(path.join(dir, "project/lobby.rogen.json"));

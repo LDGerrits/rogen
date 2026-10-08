@@ -52,10 +52,10 @@ It is one script for every agent that has a hook for the end of a turn. They agr
 #!/usr/bin/env bash
 # Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
 # Pass "cursor" as the first argument for Cursor, which replies with followup_message.
+command -v jq >/dev/null || { echo "rogen-check.sh needs jq." >&2; exit 1; }
 payload=$(cat)
 session=$(jq -r '.session_id // .sessionId // .conversation_id // "agent"' <<<"$payload")
 cd "${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$payload")}" || exit 0
-compgen -G '*.rogen.json' >/dev/null || exit 0
 
 changed=()
 while IFS= read -r -d '' file; do changed+=("$file"); done < <(
@@ -66,18 +66,17 @@ while IFS= read -r -d '' file; do changed+=("$file"); done < <(
 
 seen="$(git rev-parse --git-dir)/rogen-hook-$session"
 touch "$seen"
-report=$(rogen check "${changed[@]}" | grep -vxF -f "$seen")
+report=$(rogen check "${changed[@]}" 2>/dev/null | grep -vxF -f "$seen")
 [[ -z $report ]] && exit 0
-printf '%s\n' "$report" >>"$seen"
 message=$(printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s' "$report")
-if [[ ${1:-} == cursor ]]; then
-	jq -n --arg message "$message" '{followup_message: $message}'
-else
-	jq -n --arg message "$message" '{decision: "block", reason: $message}'
-fi
+reply='{decision: "block", reason: $message}'
+[[ ${1:-} == cursor ]] && reply='{followup_message: $message}'
+reply=$(jq -n --arg message "$message" "$reply") || exit 1
+printf '%s\n' "$report" >>"$seen"
+printf '%s\n' "$reply"
 ```
 
-Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal never adds it, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, and says so about the latter.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal never adds it, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
 
 | Agent | Found by | Hook file | Event | Entry |
 |---|---|---|---|---|
@@ -85,7 +84,7 @@ Where it finds an agent, `rogen init` can write the script and register it: a te
 | Codex | `.codex` | `.codex/hooks.json` | `Stop` | `bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh` |
 | Gemini CLI | `.gemini`, `GEMINI.md` | `.gemini/settings.json` | `AfterAgent` | `bash "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.sh` |
 | Cursor | `.cursor` | `.cursor/hooks.json` | `stop` | `bash .agents/hooks/rogen-check.sh cursor` |
-| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `bash .agents/hooks/rogen-check.sh` |
+| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh` |
 
 To do it by hand, put the script at `.agents/hooks/rogen-check.sh` and add the entry in the agent's own format. Claude Code, Codex and Gemini CLI take a group of command hooks; Cursor and Copilot take the command itself, in a file that starts with `"version": 1`:
 
@@ -127,7 +126,7 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 - **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`). The script runs on bash 3.2, the one macOS ships.
 - **An agent with no hook for the end of a turn** can still run `rogen check <paths>` and read its exit code, as `lint-staged` does: `"*": "rogen check"`.
 - **Cursor and Copilot have caps and quirks.** Cursor limits automatic follow-ups (`loop_limit`, 5 by default), and its `stop` hook has been reported not to fire in the CLI or to ignore its reply on Windows. Copilot ends the turn after 8 blocks in a row. The script reports each line once, so neither limit is reached by it.
-- **It only runs where the project dir has a config.** `rogen` also finds configs in the nearest folder above, but the `compgen` check doesn't look there: drop that line when the configs live above the project dir.
+- **It runs from the folder the agent started in.** `rogen` finds the config there or in the nearest folder above, and the changed files are those below it, so an agent started in a subfolder is checked on that subfolder.
 
 ## Install the skill
 
