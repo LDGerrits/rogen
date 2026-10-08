@@ -114,6 +114,16 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	];
 }
 
+/** `in <folder>`, relative to `cwd`, for a `home` that isn't `cwd` itself. */
+export function inFolder(
+	cwd: string,
+	home: string | undefined
+): string | undefined {
+	return home === undefined || relativeTo(cwd, home) === "."
+		? undefined
+		: `in ${relativeTo(cwd, home)}`;
+}
+
 /** The notes a config's line ends with, in the order given; none when no note applies. */
 export function joinNotes(
 	...notes: readonly (string | undefined)[]
@@ -181,6 +191,20 @@ export class PrintedDiagnostics {
 	}
 }
 
+/** How many warnings a run prints, counting a warning that several configs share once. */
+export function countWarnings(builds: readonly ConfigBuild[]): number {
+	const printed = PrintedDiagnostics.warnings();
+	let count = 0;
+	for (const build of builds) {
+		if (build.outcome === "notLoaded") continue;
+		count += printed.take(build.label, build.config.file, [
+			...build.warnings,
+			...(build.syncWarnings ?? []),
+		]).fresh.length;
+	}
+	return count;
+}
+
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(
@@ -188,16 +212,25 @@ export class BuildLog {
 		private readonly cwd: string
 	) {}
 
-	/** Opens the output: the command and the configs it builds. */
-	begin(command: string, labels: readonly string[]): void {
-		this.logService.intro(`rogen ${command} · ${labels.join(", ")}`);
+	/** Opens the output: the command and the configs it builds, and the folder they are in when that isn't the working directory. */
+	begin(command: string, labels: readonly string[], home?: string): void {
+		this.logService.intro(
+			[`rogen ${command}`, labels.join(", "), inFolder(this.cwd, home)]
+				.filter((part) => part !== undefined)
+				.join(" · ")
+		);
 	}
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
-	report(builds: readonly ConfigBuild[]): void {
+	report(
+		builds: readonly ConfigBuild[],
+		home?: string,
+		denied?: number
+	): void {
 		this.begin(
 			"build",
-			builds.map(({ label }) => label)
+			builds.map(({ label }) => label),
+			home
 		);
 		const printedErrors = PrintedDiagnostics.errors();
 		const printedWarnings = PrintedDiagnostics.warnings();
@@ -231,6 +264,10 @@ export class BuildLog {
 			)
 		)
 			this.logService.closeFrame("build failed.");
+		else if (denied)
+			this.logService.closeFrame(
+				`Built ${plural(builds.length, "config")} with ${plural(denied, "warning")}; --deny-warnings fails the run.`
+			);
 		else this.end(builds.length);
 	}
 

@@ -2,7 +2,7 @@
 
 Rogen reads the folder and file names under each config's `rootDirs` and writes the Rojo project file. Folders decide where code runs, so the disk path is not the instance path.
 
-`routes` maps a route key to a target, `Service` or `Service/Folder/...`. Only declared keys route, and nothing is built in. Read the keys and targets from the config's `routes`; `rogen list --json` resolves an `extends` chain.
+`routes` maps a route key to a target, `Service` or `Service/Folder/...`. Only declared keys route, and nothing is built in. `rogen list` prints each config's resolved routes, in order, as `key -> target`, and `routes: same as <config>` for one that repeats an earlier config's; it follows an `extends` chain.
 
 Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
 

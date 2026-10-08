@@ -40,6 +40,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		private managed: readonly ManagedConfig[],
 		private readonly loader: ConfigLoader,
 		private readonly overrides: ConfigOverrides,
+		readonly home: string,
 		private readonly folder: PickedFolder | undefined
 	) {
 		this._files = this.readFiles();
@@ -50,6 +51,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		files: readonly string[],
 		loader: ConfigLoader,
 		overrides: ConfigOverrides,
+		home: string,
 		folder?: PickedFolder
 	): Promise<Result<CoreConfigSelection, Error>> {
 		const managed = files.map(
@@ -61,7 +63,7 @@ export class CoreConfigSelection implements ConfigSelection {
 			undeclaredMode(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed, loader, overrides, folder));
+			: ok(new CoreConfigSelection(managed, loader, overrides, home, folder));
 	}
 
 	get entries(): readonly ConfigEntry[] {

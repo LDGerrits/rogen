@@ -14,6 +14,7 @@ const RUN_TIMEOUT_MS = 20_000;
 
 export interface CaseSpec {
 	readonly steps?: readonly (readonly string[])[];
+	readonly cwd?: string;
 	readonly links?: Readonly<Record<string, string>>;
 	readonly rojo?: boolean;
 	readonly show?: readonly string[];
@@ -51,7 +52,7 @@ export function discoverCases(root = CASES_DIR): string[] {
 const BINARY = process.env.ROGEN_E2E_BINARY;
 
 /** The command and arguments that run `cli` with `args`: the binary itself, or the bundle on this Node. */
-function invocation(
+export function invocation(
 	cli: string,
 	args: readonly string[]
 ): readonly [string, readonly string[]] {
@@ -100,7 +101,10 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		const before = snapshot(dir);
 		const sections: string[] = [];
 		for (const args of spec.steps ?? [["build"]]) {
-			const result = await run(...invocation(cli, args), dir);
+			const result = await run(
+				...invocation(cli, args),
+				path.join(dir, spec.cwd ?? "")
+			);
 			sections.push(formatStep(["rogen", ...args], result));
 		}
 
@@ -307,10 +311,15 @@ export class WatchSession {
 	private readonly exited: Promise<number | null>;
 	private _output = "";
 
-	constructor(cli: string, dir: string, args: readonly string[] = []) {
+	constructor(
+		cli: string,
+		dir: string,
+		args: readonly string[] = [],
+		cwd: string = dir
+	) {
 		const [command, commandArgs] = invocation(cli, ["watch", ...args]);
 		this.child = spawn(command, [...commandArgs], {
-			cwd: dir,
+			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
 			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
 		});

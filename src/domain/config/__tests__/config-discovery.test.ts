@@ -27,7 +27,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover([]);
 
-			expect(result.unwrap()).toEqual([
+			expect(result.unwrap().files).toEqual([
 				"/repo/default.rogen.json",
 				"/repo/lobby.rogen.json",
 				"/repo/match.rogen.json",
@@ -40,7 +40,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover([]);
 
-			expect(result.unwrap()).toEqual([
+			expect(result.unwrap().files).toEqual([
 				"/repo/lobby.rogen.json",
 				"/repo/match.rogen.json",
 			]);
@@ -55,8 +55,7 @@ describe("ConfigDiscovery", () => {
 			expect(errorOf(result)).not.toBeInstanceOf(UsageError);
 		});
 
-		it("should say which parent folder has configs, when this one has none", async () => {
-			await fs.createDirectory("/repo/src");
+		it("should use the configs of the nearest folder above when this one has none", async () => {
 			await fs.createDirectory("/repo/src/Inventory");
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
@@ -67,9 +66,40 @@ describe("ConfigDiscovery", () => {
 
 			const result = await nested.discover([]);
 
+			expect(result.unwrap()).toEqual({
+				directory: "/repo",
+				files: ["/repo/default.rogen.json", "/repo/lobby.rogen.json"],
+				everyConfig: true,
+			});
+		});
+
+		it("should prefer the configs here over those above", async () => {
+			await fs.createDirectory("/repo/places");
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/places/lobby.rogen.json", "{}");
+			const nested = new ConfigDiscovery(
+				fs,
+				new MockEnvironmentService("/repo/places")
+			);
+
+			const result = await nested.discover([]);
+
+			expect(result.unwrap().files).toEqual([
+				"/repo/places/lobby.rogen.json",
+			]);
+		});
+
+		it("should fail, pointing at init, when no folder above has one either", async () => {
+			await fs.createDirectory("/repo/src");
+			const nested = new ConfigDiscovery(
+				fs,
+				new MockEnvironmentService("/repo/src")
+			);
+
+			const result = await nested.discover([]);
+
 			expect(errorOf(result).message).toBe(
-				"No *.rogen.json found in /repo/src/Inventory. " +
-					"/repo has default.rogen.json, lobby.rogen.json: run rogen from there."
+				'No *.rogen.json found in /repo/src. Run "rogen init" to create one.'
 			);
 		});
 
@@ -89,7 +119,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["lobby", "match"]);
 
-			expect(result.unwrap()).toEqual([
+			expect(result.unwrap().files).toEqual([
 				"/repo/lobby.rogen.json",
 				"/repo/match.rogen.json",
 			]);
@@ -104,6 +134,25 @@ describe("ConfigDiscovery", () => {
 			expect(errorOf(result).message).toContain("/repo/ghost.rogen.json");
 		});
 
+		it("should list the configs there when no name is close", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/place-lobby.rogen.json", "{}");
+
+			const result = await discovery.discover(["xyz"]);
+
+			expect(errorOf(result).message).toBe(
+				'Config "xyz" not found: looked for /repo/xyz.rogen.json. Configs here: default, place-lobby.'
+			);
+		});
+
+		it("should point at init when there are no configs at all", async () => {
+			const result = await discovery.discover(["ghost"]);
+
+			expect(errorOf(result).message).toBe(
+				'Config "ghost" not found: looked for /repo/ghost.rogen.json. Run "rogen init" to create one.'
+			);
+		});
+
 		it("should suggest the config a misspelled name is closest to", async () => {
 			await fs.writeFile("/repo/lobby.rogen.json", "{}");
 			await fs.writeFile("/repo/match.rogen.json", "{}");
@@ -112,6 +161,47 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result).message).toBe(
 				'Config "lobyy" not found: looked for /repo/lobyy.rogen.json. Did you mean "lobby"?'
+			);
+		});
+	});
+
+	describe("from a subfolder", () => {
+		let nested: ConfigDiscovery;
+
+		beforeEach(async () => {
+			await fs.createDirectory("/repo/src");
+			await fs.writeFile("/repo/lobby.rogen.json", "{}");
+			await fs.createDirectory("/repo/places");
+			await fs.writeFile("/repo/places/match.rogen.json", "{}");
+			nested = new ConfigDiscovery(
+				fs,
+				new MockEnvironmentService("/repo/src")
+			);
+		});
+
+		it("should resolve a name in the folder found", async () => {
+			const result = await nested.discover(["lobby"]);
+
+			expect(result.unwrap()).toEqual({
+				directory: "/repo",
+				files: ["/repo/lobby.rogen.json"],
+				everyConfig: false,
+			});
+		});
+
+		it("should resolve a path from the working directory", async () => {
+			const result = await nested.discover(["../places/match.rogen.json"]);
+
+			expect(result.unwrap().files).toEqual([
+				"/repo/places/match.rogen.json",
+			]);
+		});
+
+		it("should list the configs of the folder found when a name is missing", async () => {
+			const result = await nested.discover(["ghost"]);
+
+			expect(errorOf(result).message).toBe(
+				'Config "ghost" not found: looked for /repo/ghost.rogen.json. Configs here: lobby.'
 			);
 		});
 	});
@@ -125,7 +215,7 @@ describe("ConfigDiscovery", () => {
 				"places/lobby/default.rogen.json",
 			]);
 
-			expect(result.unwrap()).toEqual([
+			expect(result.unwrap().files).toEqual([
 				"/repo/places/lobby/default.rogen.json",
 			]);
 		});
@@ -158,7 +248,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["lobby.sync"]);
 
-			expect(result.unwrap()).toEqual(["/repo/lobby.sync.rogen.json"]);
+			expect(result.unwrap().files).toEqual(["/repo/lobby.sync.rogen.json"]);
 		});
 
 		it("should mix with names, in the order given", async () => {
@@ -170,7 +260,7 @@ describe("ConfigDiscovery", () => {
 				"lobby",
 			]);
 
-			expect(result.unwrap()).toEqual([
+			expect(result.unwrap().files).toEqual([
 				"/repo/extra.rogen.json",
 				"/repo/lobby.rogen.json",
 			]);

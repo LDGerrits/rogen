@@ -14,6 +14,9 @@ stdout:
   rogen list
   default.rogen.json
     root dirs: src
+    routes:
+      Server -> ServerScriptService
+      * -> ReplicatedStorage/Shared
     sync dir: (none)
     project file: default.project.json
     variants: mock on
@@ -22,6 +25,7 @@ stdout:
   release.rogen.json
     extends: default.rogen.json
     root dirs: src
+    routes: same as default
     sync dir: (none)
     project file: release.project.json
     variants: mock off

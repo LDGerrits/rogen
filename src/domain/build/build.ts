@@ -3,6 +3,7 @@ import { groupBy } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
+	DiagnosticFix,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -255,6 +256,14 @@ export interface InstanceLocation {
 	readonly files: readonly PlacedLocation[];
 	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
 	readonly folders: readonly string[];
+	/** When no file places it: the renames of files that would, from the diagnostics that propose them. */
+	readonly fixes: readonly InstanceFix[];
+}
+
+/** A rename, proposed by the diagnostic `code`, after which a file places the instance. Paths are absolute POSIX. */
+export interface InstanceFix {
+	readonly code: string;
+	readonly rename: DiagnosticFix["rename"];
 }
 
 /** Where `locate` found things in one config. */

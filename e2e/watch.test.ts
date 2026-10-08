@@ -23,8 +23,8 @@ describeWithRojo("end to end watch", () => {
 	const tree = (file = "default.project.json") =>
 		sourcemapTree(project.dir, file);
 
-	const start = (args: readonly string[] = []) => {
-		session = new WatchSession(bundle.cli, project.dir, args);
+	const start = (args: readonly string[] = [], cwd?: string) => {
+		session = new WatchSession(bundle.cli, project.dir, args, cwd);
 		return session;
 	};
 
@@ -252,6 +252,29 @@ describeWithRojo("end to end watch", () => {
 		expect(
 			fs.existsSync(path.join(project.dir, "lobby.project.json"))
 		).toBe(false);
+	}, 30_000);
+
+	it("should watch the configs of the folder above, and pick up a config added there", async () => {
+		const running = start([], path.join(project.dir, "src"));
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/A.server.luau");
+		});
+		expect(running.output).toContain("rogen watch · default · in ..");
+
+		writeProjectFile(
+			project.dir,
+			"lobby.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { "*": "Workspace" },
+			})
+		);
+
+		await eventually(async () => {
+			expect(await tree("lobby.project.json")).toContain(
+				"<- src/A.server.luau"
+			);
+		});
 	}, 30_000);
 
 	it("should pick up a root dir that appears later", async () => {

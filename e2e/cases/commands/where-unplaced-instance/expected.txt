@@ -1,0 +1,38 @@
+$ rogen where ServerScriptService.Shop.Buy ServerScriptService.Stray.Buy ServerScriptService.Nowhere.Thing
+exit 0
+stdout:
+  ServerScriptService.Shop.Buy -> no file places it · a new file goes in src/Shop/Server/
+  ServerScriptService.Stray.Buy -> no file places it · src/Stray/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt)
+  ServerScriptService.Nowhere.Thing -> no file places it · a new file goes in src/Nowhere/Server/
+
+$ rogen where ServerScriptService.Shop.Buy ServerScriptService.Stray.Buy --json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default",
+        "instance": "ServerScriptService.Shop.Buy",
+        "status": "noFile",
+        "folders": [
+          "<dir>/src/Shop/Server"
+        ],
+        "diagnostics": []
+      },
+      {
+        "config": "default",
+        "instance": "ServerScriptService.Stray.Buy",
+        "status": "noFile",
+        "fixes": [
+          {
+            "rename": {
+              "from": "<dir>/src/Stray/Buy@sever.luau",
+              "to": "<dir>/src/Stray/Buy@Server.luau"
+            }
+          }
+        ],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

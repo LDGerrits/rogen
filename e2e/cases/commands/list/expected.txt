@@ -5,16 +5,23 @@ stdout:
   default.rogen.json
     extends: source.rogen.json
     root dirs: src
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
     sync dir: dist
     project file: default.project.json
     variants: dev on, mock off
   lobby.rogen.json
     root dirs: core, places/lobby
+    routes: same as default
     sync dir: (none)
     project file: out/lobby.project.json
     variants: (none)
   source.rogen.json
     root dirs: src
+    routes: same as default
     sync dir: (none)
     project file: source.project.json
     variants: dev on, mock off

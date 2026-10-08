@@ -946,6 +946,7 @@ describe("LocationReport", () => {
 							)!,
 							files: [placed],
 							folders: [],
+							fixes: [],
 						},
 						{
 							reference: InstanceReference.parse(
@@ -953,6 +954,7 @@ describe("LocationReport", () => {
 							)!,
 							files: [],
 							folders: ["/repo/src/Inventory/Server"],
+							fixes: [],
 						},
 					],
 				],

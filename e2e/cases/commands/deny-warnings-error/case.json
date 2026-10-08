@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["build", "--deny-warnings"],
+		["build", "--deny-warnings", "--json"],
+		["build"]
+	],
+	"rojo": false
+}

@@ -7,7 +7,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
@@ -15,11 +15,13 @@ stdout:
         --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
         --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
         --json               Print one JSON document instead of text.
+        --deny-warnings      Exit 1 when any config has a warning.
   
   Examples:
     rogen build
     rogen build places/lobby.rogen.json --variant mock
     rogen build --json
+    rogen build --mode prod --deny-warnings
   
   Global options:
     -h, --help     Print help.
@@ -36,7 +38,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
@@ -44,11 +46,13 @@ stdout:
         --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
         --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
         --json               Print one JSON document instead of text.
+        --deny-warnings      Exit 1 when any config has a warning.
   
   Examples:
     rogen build
     rogen build places/lobby.rogen.json --variant mock
     rogen build --json
+    rogen build --mode prod --deny-warnings
   
   Global options:
     -h, --help     Print help.

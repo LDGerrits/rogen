@@ -1,9 +1,13 @@
 import path from "path";
+import { compareStrings } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	FileType,
+} from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
@@ -11,6 +15,8 @@ import { RojoFile } from "../rojo/rojo.js";
 import {
 	ConfigLocations,
 	FileLocation,
+	InstanceFix,
+	InstanceLocation,
 	Locations,
 	SyncTool,
 	missingRoutes,
@@ -25,6 +31,19 @@ interface Targets {
 	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
 	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
+}
+
+/** Whether `location` is a file placed at `reference` or inside it. */
+function placesInstance(
+	location: FileLocation,
+	reference: InstanceReference
+): boolean {
+	return (
+		location.status === "placed" &&
+		[location.instancePath, ...(location.alsoAt ?? [])].some(
+			(instancePath) => reference.contains(instancePath)
+		)
+	);
 }
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
@@ -92,18 +111,142 @@ export class Locator {
 				paths.length > 0 || instances.length > 0
 					? files
 					: locator.locate(),
-			instances: instances.map((reference) => {
-				const files = locator.locateInstance(reference);
-				return {
-					reference,
-					files,
-					folders:
-						files.length === 0 ? locator.foldersFor(reference) : [],
-				};
-			}),
+			instances: await Promise.all(
+				instances.map(async (reference): Promise<InstanceLocation> => {
+					const files = locator.locateInstance(reference);
+					if (files.length > 0)
+						return { reference, files, folders: [], fixes: [] };
+					const fixes = await this.renamesPlacing(
+						config,
+						existing.value.diagnostics,
+						reference
+					);
+					const known = locator.foldersFor(reference);
+					return {
+						reference,
+						files,
+						folders:
+							known.length > 0 || fixes.length > 0
+								? known
+								: await this.foldersForNewFile(
+										config,
+										reference
+									),
+						fixes,
+					};
+				})
+			),
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});
+	}
+
+	/** The renames among `diagnostics` after which a file places `reference`, each checked by placing the renamed path as `build` would. */
+	private async renamesPlacing(
+		config: ResolvedConfig,
+		diagnostics: readonly Diagnostic[],
+		reference: InstanceReference
+	): Promise<InstanceFix[]> {
+		const found: InstanceFix[] = [];
+		for (const { code, fixes } of diagnostics) {
+			for (const { rename } of fixes ?? []) {
+				const posix = {
+					from: toPosix(rename.from),
+					to: toPosix(rename.to),
+				};
+				if (
+					found.some(
+						({ rename: other }) =>
+							other.from === posix.from && other.to === posix.to
+					)
+				)
+					continue;
+				const placed = await this.placeNew(config, posix.to);
+				if (
+					placed.some((location) =>
+						placesInstance(location, reference)
+					)
+				)
+					found.push({ code, rename: posix });
+			}
+		}
+		return found;
+	}
+
+	/** The folders a first file for `reference` goes in: for each route whose target leads its path, the deepest folder in a root dir that holds the path's leading names, then the route's folder. Only those where a file placed there lands at `reference`. */
+	private async foldersForNewFile(
+		config: ResolvedConfig,
+		reference: InstanceReference
+	): Promise<string[]> {
+		const names = reference.text.split(reference.separator);
+		const candidates = async (key: string): Promise<string[]> => {
+			const target = config.routes.get(key);
+			if (!target) return [];
+			const lead = target.instancePath;
+			if (
+				names.length <= lead.length ||
+				!lead.every((name, index) => name === names[index])
+			)
+				return [];
+			const rest = names.slice(lead.length);
+			const leaf = rest[rest.length - 1];
+			const folders = new Set<string>();
+			for (const rootDir of config.rootDirs) {
+				const below = rest.slice(0, -1);
+				let dir = toPosix(rootDir);
+				let matched = 0;
+				while (
+					matched < below.length &&
+					this.listing.getEntryType(dir, below[matched]) ===
+						FileType.Directory
+				) {
+					dir = path.posix.join(dir, below[matched]);
+					matched++;
+				}
+				const folder = path.posix.join(
+					dir,
+					...below.slice(matched),
+					...(key === "*" ? [] : [key])
+				);
+				const placed = await this.placeNew(
+					config,
+					path.posix.join(folder, `${leaf}.luau`)
+				);
+				if (
+					placed.some(
+						(location) =>
+							location.status === "placed" &&
+							location.instancePath.join(reference.separator) ===
+								reference.text
+					)
+				)
+					folders.add(folder);
+			}
+			return [...folders];
+		};
+
+		const keys = [...config.routes.keys()];
+		const routed = (
+			await Promise.all(keys.filter((key) => key !== "*").map(candidates))
+		).flat();
+		const found = routed.length > 0 ? routed : await candidates("*");
+		return [...new Set(found)].sort(compareStrings);
+	}
+
+	/** Where a file at `file`, which need not exist, lands in `config`; nothing when the config can't be placed. */
+	private async placeNew(
+		config: ResolvedConfig,
+		file: string
+	): Promise<FileLocation[]> {
+		const index = new PlannedFilesIndex(this.listing, config.rootDirs, [
+			file,
+		]);
+		const planned = await this.locatorOf(
+			index,
+			config,
+			await this.existence(index, [file])
+		);
+		return planned.isOk() ? planned.value.locator.locate([file]) : [];
 	}
 
 	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */

@@ -28,7 +28,7 @@ registerCommand(
 						{
 							name: "config",
 							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here when none is given.",
+								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -61,7 +61,10 @@ registerCommand(
 			const watched = watchService.watch(selection.value);
 			if (watched.isErr()) return watched;
 			// The watch started, so every config is valid.
-			log.begin(selection.value.requireValid().unwrap());
+			log.begin(
+				selection.value.requireValid().unwrap(),
+				selection.value.home
+			);
 
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();

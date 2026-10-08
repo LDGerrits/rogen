@@ -1,0 +1,59 @@
+$ rogen build --deny-warnings
+exit 1
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config with 1 warning; --deny-warnings fails the run.
+stderr:
+  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
+    src/Save@sever.luau (did you mean "@Server"?)
+
+$ rogen build --deny-warnings --json
+exit 1
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "1 name has an \"@\" that routes nowhere, so it is read as an ordinary name:\n  <dir>/src/Save@sever.luau (did you mean \"@Server\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "related": [
+              {
+                "file": "<dir>/src/Save@sever.luau",
+                "message": "did you mean \"@Server\"?"
+              }
+            ],
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Save@sever.luau",
+                  "to": "<dir>/src/Save@Server.luau"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · unchanged
+  Built 1 config.
+stderr:
+  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name:
+    src/Save@sever.luau (did you mean "@Server"?)
+
+written:
+  default.project.json

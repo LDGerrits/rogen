@@ -41,7 +41,7 @@ export class CoreConfigService implements ConfigService {
 
 	constructor(
 		fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService
+		environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
 			fileSystemService,
@@ -58,9 +58,10 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const overrides = overridesOf(options);
-		const count = discovered.value.length;
+		const { directory, files, everyConfig } = discovered.value;
+		const count = files.length;
 		if (overrides.outFile !== undefined && count > 1) {
-			const found = refs.length > 0 ? "were named" : "are here";
+			const found = everyConfig ? "are here" : "were named";
 			return err(
 				new UsageError(
 					`-${OutFileOption.short} targets a single config, but ${count} configs ${found}. Name one config, or set outFile in the file.`
@@ -69,15 +70,12 @@ export class CoreConfigService implements ConfigService {
 		}
 
 		return CoreConfigSelection.load(
-			discovered.value,
+			files,
 			this.loader,
 			overrides,
-			refs.length === 0
-				? {
-						directory: this.environmentService.cwd,
-						list: async () =>
-							(await this.discovery.find()).unwrapOr([]),
-					}
+			directory,
+			everyConfig
+				? { directory, list: () => this.discovery.list(directory) }
 				: undefined
 		);
 	}

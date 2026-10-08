@@ -1,0 +1,12 @@
+{
+	"cwd": "src/Inventory",
+	"steps": [
+		["build"],
+		["build", "lobby"],
+		["build", "ghost"],
+		["list"],
+		["where", "Server/Save.luau"],
+		["build", "../../lobby.rogen.json", "--json"]
+	],
+	"rojo": false
+}

@@ -13,6 +13,10 @@ const variantLines = ({ variants }: ResolvedConfig): string[] =>
 		([variant, on]) => `${variant} ${on ? "on" : "off"}`
 	);
 
+/** The resolved routes as `key -> target`, in the config's order. */
+const routeLines = ({ routes }: ResolvedConfig): string[] =>
+	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
+
 /** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ConfigReport {
 	constructor(private readonly entries: readonly ConfigEntry[]) {}
@@ -20,6 +24,7 @@ export class ConfigReport {
 	/** One block per config: its file, what it extends, then its values or its errors. */
 	print(logService: LogService, cwd: string): void {
 		const relative = (file: string) => relativeTo(cwd, file);
+		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of this.entries) {
 			logService.step(relative(entry.file));
 			if (entry.parents.length > 0) {
@@ -33,9 +38,20 @@ export class ConfigReport {
 				continue;
 			}
 			const { config } = entry;
+			const label = configLabel(entry.file);
+			const routes = routeLines(config);
+			const sameAs = printed.find(
+				(other) =>
+					other.routes.length === routes.length &&
+					other.routes.every((line, index) => line === routes[index])
+			);
+			printed.push({ label, routes });
 			logService.info(
 				[
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,
+					sameAs
+						? `routes: same as ${sameAs.label}`
+						: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
 					`variants: ${listed(variantLines(config))}`,
