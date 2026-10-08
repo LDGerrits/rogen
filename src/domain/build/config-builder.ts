@@ -26,7 +26,12 @@ export interface BuiltConfig {
 /** What `examine` found for one config. */
 export interface ExaminedConfig {
 	readonly placement: Placement;
-	/** The errors that stopped the later phases, else the warnings the build raises (without the sync dir's). */
+	/** The tree and the files read to assemble it; absent when a meta or assembly error stopped it. */
+	readonly assembled?: {
+		readonly tree: RojoTree;
+		readonly readFiles: readonly string[];
+	};
+	/** The errors that stopped assembly, else the warnings the build raises (without the sync dir's). */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -53,36 +58,29 @@ export class ConfigBuilder {
 		return new Placer(this.index, config, this.tools).place();
 	}
 
-	/** Builds `config`; `syncWarnings` is what is already known of its sync dir, which is checked only when nothing is. */
+	/** Builds `config`: `examine`, then the sync dir check, unless `syncWarnings` already says what is known of it. Fails when any phase does. */
 	async build(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
 	): Promise<Result<BuiltConfig, DiagnosticsError>> {
-		const placement = this.place(config);
-		if (placement.isErr())
-			return err(new DiagnosticsError(placement.error));
-		const assembled = await this.assemble(placement.value);
-		if (assembled.isErr())
-			return err(new DiagnosticsError(assembled.error));
-		const { meta, assembly } = assembled.value;
+		const examined = await this.examine(config);
+		if (examined.isErr()) return examined;
+		const { placement, assembled, diagnostics } = examined.value;
+		if (!assembled) return err(new DiagnosticsError(diagnostics));
 		return ok({
 			config,
-			tree: assembly.tree,
-			summary: placement.value.summary(),
+			tree: assembled.tree,
+			summary: placement.summary(),
 			findings: {
-				warnings: [
-					...new BuildValidator(assembly).validate(),
-					...this.modeCheck.check(config, placement.value),
-				],
+				warnings: diagnostics,
 				syncWarnings:
-					syncWarnings ??
-					(await this.syncDirCheck.check(placement.value)),
+					syncWarnings ?? (await this.syncDirCheck.check(placement)),
 			},
-			readFiles: meta.files,
+			readFiles: assembled.readFiles,
 		});
 	}
 
-	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the error is in `diagnostics` beside the warnings the build would raise. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the error is in `diagnostics`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -90,16 +88,19 @@ export class ConfigBuilder {
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
 		const assembled = await this.assemble(placement.value);
+		if (assembled.isErr())
+			return ok({
+				placement: placement.value,
+				diagnostics: assembled.error,
+			});
+		const { meta, assembly } = assembled.value;
 		return ok({
 			placement: placement.value,
-			diagnostics: assembled.isErr()
-				? assembled.error
-				: [
-						...new BuildValidator(
-							assembled.value.assembly
-						).validate(),
-						...this.modeCheck.check(config, placement.value),
-					],
+			assembled: { tree: assembly.tree, readFiles: meta.files },
+			diagnostics: [
+				...new BuildValidator(assembly).validate(),
+				...this.modeCheck.check(config, placement.value),
+			],
 		});
 	}
 
