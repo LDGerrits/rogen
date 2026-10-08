@@ -124,8 +124,7 @@ export class WatchLog {
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
-		// Configs that share a root dir find the same warnings, which one round prints once.
-		const printedWarnings = new PrintedDiagnostics(true);
+		const printedWarnings = PrintedDiagnostics.warnings();
 		reports.forEach((report) => this.report(report, printedWarnings));
 	}
 
@@ -168,7 +167,7 @@ export class WatchLog {
 				repeatedFailure
 					? "same errors as before"
 					: counted(repeated, "as before"),
-				warnings.repeatNote("warnings"),
+				warnings.repeatNote(),
 				counted(fixed, "fixed")
 			)
 		);

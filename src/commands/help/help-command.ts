@@ -230,7 +230,7 @@ registerCommand(
 
 		private unknown(target: string, registry: CommandRegistry): Error {
 			const codes = Object.keys(helpTexts.diagnostics);
-			// What a name stands for. A command or topic comes before the end of a code, which is how a code named without its module is read.
+			// A command or topic wins over the end of a code.
 			const named = new Map<string, string>();
 			const add = (name: string, standsFor: string) => {
 				if (!named.has(name)) named.set(name, standsFor);

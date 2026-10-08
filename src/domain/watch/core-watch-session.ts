@@ -181,7 +181,7 @@ export class CoreWatchSession
 		);
 	}
 
-	/** Whether `file` is one the session acts on. The folder watched for configs reports its other entries too, which it doesn't. */
+	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
 	private isWatched(file: string): boolean {
 		return (
 			!this.selection.directory ||
@@ -326,7 +326,7 @@ export class CoreWatchSession
 		);
 	}
 
-	/** Drops what the session knows of configs that left the selection, so a failed build of one doesn't hold back the filtering of source updates. */
+	/** Drops what the session knows of configs that left the selection. */
 	private forgetRemoved(): void {
 		const current = new Set(this.currentConfigs.map(({ file }) => file));
 		for (const file of this.watched.keys())

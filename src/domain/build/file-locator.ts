@@ -50,7 +50,7 @@ export class FileLocator {
 			.sort(this.bySource);
 	}
 
-	/** Where a file for `reference` would go: the folders of the files placed directly under its nearest parent that has any, sorted. The init script of a folder counts as the folder. */
+	/** The folders a new file for `reference` goes in: those of the files placed directly under its nearest parent that has any. */
 	foldersFor(reference: InstanceReference): string[] {
 		const { separator } = reference;
 		const placed = [...this.scanned.values()].filter(
@@ -64,39 +64,35 @@ export class FileLocator {
 			cut = parent.lastIndexOf(separator)
 		) {
 			parent = parent.slice(0, cut);
-			const folders = new Set(
-				placed.flatMap((location) =>
-					[location.instancePath, ...(location.alsoAt ?? [])].flatMap(
-						(instancePath) =>
-							FileLocator.folderBeside(
-								location.source,
-								instancePath.join(separator),
-								parent,
-								separator
-							) ?? []
-					)
-				)
-			);
-			if (folders.size > 0) return [...folders].sort(compareStrings);
+			const folders = FileLocator.foldersUnder(placed, parent, separator);
+			if (folders.length > 0) return folders;
 		}
 		return [];
 	}
 
-	/** The folder a file at `key` shows is the one that holds the files placed directly under `parent`; none if it isn't placed directly under it. A folder's init script is placed as the folder, so it shows its parent's folder, or its own for `parent` itself. */
-	private static folderBeside(
-		source: string,
-		key: string,
+	/** The folders of the placed files that sit directly under `parent`, sorted. A folder's init script is placed as the folder, so it counts for its parent's folder, or its own when it is `parent`. */
+	private static foldersUnder(
+		placed: readonly PlacedLocation[],
 		parent: string,
 		separator: string
-	): string | undefined {
-		const isInit = new RojoFile(path.posix.basename(source)).isInit;
-		const folder = path.posix.dirname(source);
-		if (key === parent) return isInit ? folder : undefined;
-		const below = key.startsWith(parent + separator)
-			? key.slice(parent.length + 1)
-			: undefined;
-		if (below === undefined || below.includes(separator)) return undefined;
-		return isInit ? path.posix.dirname(folder) : folder;
+	): string[] {
+		const folders = new Set<string>();
+		for (const { source, instancePath, alsoAt } of placed) {
+			const isInit = new RojoFile(path.posix.basename(source)).isInit;
+			const folder = path.posix.dirname(source);
+			for (const nodePath of [instancePath, ...(alsoAt ?? [])]) {
+				const key = nodePath.join(separator);
+				if (key === parent) {
+					if (isInit) folders.add(folder);
+				} else if (
+					key.startsWith(parent + separator) &&
+					!key.slice(parent.length + 1).includes(separator)
+				) {
+					folders.add(isInit ? path.posix.dirname(folder) : folder);
+				}
+			}
+		}
+		return [...folders].sort(compareStrings);
 	}
 
 	private locateScanned(): Map<string, FileLocation> {

@@ -196,7 +196,7 @@ export class RootScanner {
 		return this.exclude.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that the template doesn't mount and `exclude` doesn't match, and that aren't a Rogen config, which is no game data; the rest are recorded as left out. */
+	/** The entries of `dir` that the template doesn't mount, `exclude` doesn't match and aren't a Rogen config; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,

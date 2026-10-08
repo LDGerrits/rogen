@@ -45,7 +45,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		this._files = this.readFiles();
 	}
 
-	/** Loads `files` with `overrides`; fails when a variant override is declared by none of them. A `folder` makes the selection follow the configs added to it. */
+	/** Loads `files` with `overrides`; fails when a variant override is declared by none of them. */
 	static async load(
 		files: readonly string[],
 		loader: ConfigLoader,
@@ -135,7 +135,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		});
 	}
 
-	/** Brings `managed` in line with the configs now in the folder the selection was picked from, loading the ones added. */
+	/** Brings `managed` in line with the folder's configs now, loading the added ones. */
 	private async followFolder(): Promise<{
 		added: readonly ManagedConfig[];
 		removed: readonly string[];

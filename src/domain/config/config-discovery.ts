@@ -89,7 +89,7 @@ export class ConfigDiscovery {
 		return ok(candidates.map((name) => path.join(cwd, name)));
 	}
 
-	/** The nearest parent of the working directory that has configs, so a command run from a subfolder can say where the project is. */
+	/** The nearest parent of the working directory that has configs. */
 	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
 		let directory = this.environmentService.cwd;
 		for (;;) {

@@ -64,7 +64,7 @@ export class CoreInitService implements InitService {
 		return this.planIn(directory.value, questions);
 	}
 
-	/** A folder below a config is part of that config's game, so a run that can't ask refuses to start a project there. */
+	/** A run that can't ask refuses to start a project below a config. */
 	private async checkNested(
 		directory: InitDirectory,
 		questions: InitQuestions

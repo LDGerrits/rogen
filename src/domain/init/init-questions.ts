@@ -46,7 +46,7 @@ export class InitQuestions {
 		readonly interactive: boolean
 	) {}
 
-	/** Whether to start a project below `enclosing`'s configs, which would build the new folder into theirs as game code; a run that can't ask never does. */
+	/** Whether to start a project below `enclosing`'s configs; a run that can't ask never does. */
 	async startNestedProject({
 		directory,
 		fileNames,

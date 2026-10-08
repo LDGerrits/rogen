@@ -115,20 +115,21 @@ export function joinNotes(
 	return notes.filter((note) => note !== undefined).join(" · ") || undefined;
 }
 
-/** What a config printed of a kind of diagnostic: the new ones, and which earlier configs printed the rest. */
+/** What a config printed of one kind of diagnostic. */
 export class Printed {
 	constructor(
 		readonly fresh: readonly Diagnostic[],
+		private readonly kind: "errors" | "warnings",
 		private readonly owners: readonly string[],
 		private readonly total: number
 	) {}
 
-	/** The line's note when everything the config has of this kind was printed above, else nothing. */
-	repeatNote(kind: "errors" | "warnings"): string | undefined {
+	/** The note for a config whose diagnostics of this kind were all printed above. */
+	repeatNote(): string | undefined {
 		return this.total > 0 &&
 			this.fresh.length === 0 &&
 			this.owners.length > 0
-			? `same ${kind} as ${joinedWithAnd(this.owners)}`
+			? `same ${this.kind} as ${joinedWithAnd(this.owners)}`
 			: undefined;
 	}
 }
@@ -137,8 +138,20 @@ export class Printed {
 export class PrintedDiagnostics {
 	private readonly printedBy = new Map<string, string>();
 
-	/** With `sameAcrossConfigs`, a diagnostic about a config's own file is the same as another config's about its own, as warnings about a folder two configs read are. Errors about a config's file are its own. */
-	constructor(private readonly sameAcrossConfigs: boolean) {}
+	private constructor(
+		private readonly kind: "errors" | "warnings",
+		/** Whether a diagnostic about a config's own file equals another config's. */
+		private readonly sameAcrossConfigs: boolean
+	) {}
+
+	static errors(): PrintedDiagnostics {
+		return new PrintedDiagnostics("errors", false);
+	}
+
+	/** Configs that read one folder find the same warnings, each filed under its own config. */
+	static warnings(): PrintedDiagnostics {
+		return new PrintedDiagnostics("warnings", true);
+	}
 
 	/** Splits `diagnostics` of the config `label` into those not printed yet and those another config did. */
 	take(
@@ -158,7 +171,7 @@ export class PrintedDiagnostics {
 			else if (owner !== label) owners.add(owner);
 			return owner === undefined;
 		});
-		return new Printed(fresh, [...owners], diagnostics.length);
+		return new Printed(fresh, this.kind, [...owners], diagnostics.length);
 	}
 }
 
@@ -180,8 +193,8 @@ export class BuildLog {
 			"build",
 			builds.map(({ label }) => label)
 		);
-		const printedErrors = new PrintedDiagnostics(false);
-		const printedWarnings = new PrintedDiagnostics(true);
+		const printedErrors = PrintedDiagnostics.errors();
+		const printedWarnings = PrintedDiagnostics.warnings();
 		for (const build of builds) {
 			if (builds.length > 1) this.heading(build.label);
 			const file =
@@ -201,8 +214,8 @@ export class BuildLog {
 					build.outcome === "notWritten"
 						? `${joinedWithAnd(build.blockedBy)} failed`
 						: undefined,
-					errors?.repeatNote("errors"),
-					warnings.repeatNote("warnings")
+					errors?.repeatNote(),
+					warnings.repeatNote()
 				)
 			);
 		}
