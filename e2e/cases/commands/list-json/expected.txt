@@ -1,4 +1,4 @@
-$ rogen list --json
+$ rogen list --json --variant dev
 exit 0
 stdout:
   {
@@ -25,6 +25,7 @@ stdout:
           "mock": false,
           "dev": true
         },
+        "conflicts": [],
         "mode": null,
         "modes": [],
         "exclude": [],
@@ -51,6 +52,7 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "conflicts": [],
         "mode": null,
         "modes": [],
         "exclude": [],
@@ -79,6 +81,7 @@ stdout:
           "mock": false,
           "dev": true
         },
+        "conflicts": [],
         "mode": null,
         "modes": [],
         "exclude": [],
@@ -113,6 +116,7 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "conflicts": [],
         "mode": null,
         "modes": [],
         "exclude": [],

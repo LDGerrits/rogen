@@ -12,8 +12,8 @@ stdout:
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
         --mode <name>        Picks the mode every config that declares modes builds in.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off. (repeatable)
+        --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
+        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
         --json               Print one JSON document instead of text.
   
   Examples:
@@ -41,8 +41,8 @@ stdout:
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
         --mode <name>        Picks the mode every config that declares modes builds in.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off. (repeatable)
+        --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
+        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
   
   Examples:
     rogen watch
@@ -93,8 +93,8 @@ stdout:
   
   Options:
         --mode <name>        Picks the mode every config that declares modes builds in.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off. (repeatable)
+        --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
+        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
         --json               Print one JSON document instead of text.
   
   Examples:
@@ -121,8 +121,8 @@ stdout:
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
         --mode <name>        Picks the mode every config that declares modes builds in.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off. (repeatable)
+        --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
+        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
         --json               Print one JSON document instead of text.
   
   Examples:

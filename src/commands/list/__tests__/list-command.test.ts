@@ -71,10 +71,10 @@ describe("list command", () => {
 		await write("default.rogen.json", {
 			rootDirs: ["src", "lobby"],
 			syncDir: "out",
-			variants: { mock: true, dev: false, prod: true },
+			variants: ["mock", "dev", "prod"],
 		});
 
-		const result = await run();
+		const result = await run({ variant: ["mock", "prod"] });
 
 		expect(result.isOk()).toBe(true);
 		expect(steps()).toEqual(["default.rogen.json"]);
@@ -178,39 +178,59 @@ describe("list command", () => {
 
 	it("should show each variant's state once variant flags are applied", async () => {
 		await write("default.rogen.json", {
-			variants: { mock: true, dev: false },
+			variants: ["mock", "fake"],
+			mode: "dev",
+			modes: { dev: { variants: ["mock"] } },
 		});
 
-		await run({ variant: ["dev"], "no-variant": ["mock"] });
+		await run({ variant: ["fake"], "no-variant": ["mock"] });
 
 		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("variants: mock off, dev on"),
+			expect.stringContaining("variants: mock off, fake on"),
 		]);
 	});
 
-	it("should list the modes a config declares, marking the one it builds in by default", async () => {
+	it("should show the mode a config builds in and every mode it declares", async () => {
 		await write("default.rogen.json", {
-			variants: { mock: false },
-			modes: { dev: { variants: { mock: true } }, prod: {} },
+			variants: ["mock"],
+			mode: "dev",
+			modes: { dev: { variants: ["mock"] }, qa: {}, prod: {} },
 		});
 
 		await run({});
 
 		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("modes: dev (default), prod"),
+			expect.stringContaining("variants: mock on"),
 		]);
+		expect(under("default.rogen.json")[0]).toContain(
+			["mode: dev", "modes: dev, qa, prod"].join("\n")
+		);
 	});
 
-	it("should mark the mode a flag picks as active", async () => {
+	it("should show the mode a flag picks in place of the config's", async () => {
 		await write("default.rogen.json", {
+			mode: "dev",
 			modes: { dev: {}, prod: {} },
 		});
 
 		await run({ mode: "prod" });
 
-		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("modes: dev (default), prod (active)"),
-		]);
+		expect(under("default.rogen.json")[0]).toContain(
+			["mode: prod", "modes: dev, prod"].join("\n")
+		);
+	});
+
+	it("should list the conflict groups a config declares", async () => {
+		await write("default.rogen.json", {
+			variants: ["halloween", "christmas", "debug"],
+			conflicts: [["halloween", "christmas"]],
+		});
+
+		await run({});
+
+		expect(under("default.rogen.json")[0]).toContain(
+			"conflicts: halloween | christmas"
+		);
 	});
 
 	it("should leave modes off a config that declares none", async () => {
@@ -221,6 +241,8 @@ describe("list command", () => {
 		expect(under("default.rogen.json")).toEqual([
 			expect.not.stringContaining("modes:"),
 		]);
+		expect(under("default.rogen.json")[0]).not.toContain("conflicts:");
+		expect(under("default.rogen.json")[0]).not.toContain("mode:");
 	});
 
 	describe("with --json", () => {
@@ -243,12 +265,16 @@ describe("list command", () => {
 				extends: "base.rogen.json",
 				rootDirs: ["src", "lobby"],
 				routes: { "*": "ReplicatedStorage/Shared" },
-				variants: { mock: true },
+				variants: ["mock"],
 				exclude: ["**/*.spec.luau"],
 				syncDir: "out",
 			});
 
-			const result = await run({ _: ["default"], json: true });
+			const result = await run({
+				_: ["default"],
+				json: true,
+				variant: ["mock"],
+			});
 
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({
@@ -266,6 +292,7 @@ describe("list command", () => {
 							"*": "ReplicatedStorage/Shared",
 						},
 						variants: { mock: true },
+						conflicts: [],
 						mode: null,
 						modes: [],
 						exclude: ["/repo/**/*.spec.luau"],
@@ -280,9 +307,11 @@ describe("list command", () => {
 
 		it("should print the active mode and every mode a config declares", async () => {
 			await write("default.rogen.json", {
-				variants: { mock: false },
+				variants: ["mock", "fake"],
+				conflicts: [["mock", "fake"]],
+				mode: "dev",
 				modes: {
-					dev: { variants: { mock: true } },
+					dev: { variants: ["mock"] },
 					prod: { exclude: ["**/*.spec.luau"] },
 				},
 			});
@@ -310,7 +339,7 @@ describe("list command", () => {
 		});
 
 		it("should apply variant flags to the printed variants", async () => {
-			await write("default.rogen.json", { variants: { mock: false } });
+			await write("default.rogen.json", { variants: ["mock"] });
 
 			await run({ json: true, variant: ["mock"] });
 

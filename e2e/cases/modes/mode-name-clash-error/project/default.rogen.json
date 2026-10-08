@@ -6,9 +6,10 @@
 		"Server": "ServerScriptService",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"variants": {
-		"prod": false
-	},
+	"variants": [
+		"prod"
+	],
+	"mode": "prod",
 	"modes": {
 		"prod": {},
 		"Server": {}

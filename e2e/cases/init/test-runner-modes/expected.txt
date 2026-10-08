@@ -11,7 +11,7 @@ stdout:
       rojo serve default.project.json
     Build a release without specs with rogen build --mode prod; default.rogen.json declares the modes.
     Add your own routes under "routes" in default.rogen.json.
-    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 3 files.
 
 $ rogen build
@@ -39,6 +39,7 @@ default.rogen.json:
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
+	"mode": "dev",
 	"modes": {
 		"dev": {},
 		"prod": {

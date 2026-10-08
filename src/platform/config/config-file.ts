@@ -12,7 +12,10 @@ import {
 	failureReason,
 	isMissingPath,
 } from "../fs/file-system-service.js";
-import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
+import {
+	JsoncDocumentReader,
+	WrongTypeAdvisor,
+} from "../jsonc/jsonc-document-reader.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
 export interface ConfigFile {
@@ -34,15 +37,18 @@ export interface ConfigFileFailure {
 
 /** Reads config files and checks them against `schema`. */
 export class ConfigFileReader {
-	private static readonly documents = new JsoncDocumentReader({
-		codePrefix: "config",
-		noun: "a config",
-	});
+	private readonly documents: JsoncDocumentReader;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly schema: JSONSchema
-	) {}
+		private readonly schema: JSONSchema,
+		advise?: WrongTypeAdvisor
+	) {
+		this.documents = new JsoncDocumentReader(
+			{ codePrefix: "config", noun: "a config" },
+			advise
+		);
+	}
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
@@ -71,11 +77,7 @@ export class ConfigFileReader {
 		text: string,
 		file: string
 	): Result<ConfigFile, ConfigFileFailure> {
-		const document = ConfigFileReader.documents.read(
-			text,
-			file,
-			this.schema
-		);
+		const document = this.documents.read(text, file, this.schema);
 		if (document.isErr()) {
 			return err({ kind: "invalid", diagnostics: document.error });
 		}

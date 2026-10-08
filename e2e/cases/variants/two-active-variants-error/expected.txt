@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen build --variant mock --variant dev
 exit 1
 stdout:
   rogen build · default

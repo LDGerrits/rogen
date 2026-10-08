@@ -6,14 +6,15 @@
 		"Server": "ServerScriptService",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"variants": {
-		"mock": false
-	},
+	"variants": [
+		"mock"
+	],
+	"mode": "dev",
 	"modes": {
 		"dev": {
-			"variants": {
-				"mock": true
-			}
+			"variants": [
+				"mock"
+			]
 		},
 		"prod": {
 			"exclude": [

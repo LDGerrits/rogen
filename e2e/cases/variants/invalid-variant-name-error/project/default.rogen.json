@@ -8,7 +8,7 @@
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"variants": {
-		"my-variant": true
-	}
+	"variants": [
+		"my-variant"
+	]
 }

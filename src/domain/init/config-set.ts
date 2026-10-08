@@ -61,7 +61,7 @@ export class ConfigSet {
 
 	/** Says where variants of a script are swapped in, in the words the next steps use. */
 	static variantsStep(language: Language, configFile: string): string {
-		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}.`;
+		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}, and turn them on in a mode or with --variant.`;
 	}
 
 	/** `names` are the positionals after `init`. */

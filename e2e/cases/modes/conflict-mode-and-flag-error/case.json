@@ -1,0 +1,1 @@
+{ "steps": [["build", "--variant", "christmas"], ["build", "--no-variant", "halloween", "--variant", "christmas"]] }

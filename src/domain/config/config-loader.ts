@@ -19,7 +19,7 @@ import {
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";
-import { configSchema } from "./config-schema.js";
+import { configSchema, configWrongTypeAdvice } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { CONFIG_SUFFIX, ResolvedConfig, ResolvedTemplate } from "./config.js";
 import { ConfigOverrides, LayeredConfig } from "./layered-config.js";
@@ -56,7 +56,11 @@ export class ConfigLoader {
 		private readonly fileSystemService: FileSystemService,
 		private readonly environmentService: EnvironmentService
 	) {
-		this.reader = new ConfigFileReader(fileSystemService, configSchema);
+		this.reader = new ConfigFileReader(
+			fileSystemService,
+			configSchema,
+			configWrongTypeAdvice
+		);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

@@ -1,8 +1,10 @@
 import { JSONSchema } from "../../../base/json-schema.js";
+import { JsoncNode } from "../../../base/jsonc.js";
 import {
 	configDefaults,
 	configMergePolicies,
 	configSchema,
+	configWrongTypeAdvice,
 } from "../config-schema.js";
 
 describe("domain/config/config-schema", () => {
@@ -15,6 +17,7 @@ describe("domain/config/config-schema", () => {
 			"rootDirs",
 			"routes",
 			"variants",
+			"conflicts",
 			"modes",
 			"mode",
 			"exclude",
@@ -66,8 +69,9 @@ describe("domain/config/config-schema", () => {
 				expect(schema.properties!.routes.default).toEqual({});
 			});
 
-			it("defaults variants to {}", () => {
-				expect(schema.properties!.variants.default).toEqual({});
+			it("defaults variants and conflicts to []", () => {
+				expect(schema.properties!.variants.default).toEqual([]);
+				expect(schema.properties!.conflicts.default).toEqual([]);
 			});
 
 			it("defaults exclude to []", () => {
@@ -90,6 +94,70 @@ describe("domain/config/config-schema", () => {
 			for (const field of ROOT_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
+		});
+	});
+
+	describe("variants", () => {
+		it("are a list of names", () => {
+			expect(configSchema.properties!.variants).toMatchObject({
+				type: "array",
+				items: { type: "string" },
+			});
+		});
+
+		it("are turned on by a mode through a list of names", () => {
+			const body = configSchema.properties!.modes
+				.additionalProperties as JSONSchema;
+
+			expect(body.properties!.variants).toMatchObject({
+				type: "array",
+				items: { type: "string" },
+			});
+		});
+	});
+
+	describe("conflicts", () => {
+		it("are a list of groups of names", () => {
+			expect(configSchema.properties!.conflicts).toMatchObject({
+				type: "array",
+				items: { type: "array", items: { type: "string" } },
+			});
+		});
+	});
+
+	describe("wrong type advice", () => {
+		const object = { kind: "object" } as JsoncNode;
+		const location = { resource: "/repo/default.rogen.json" };
+
+		it("says variants is a list when a config writes the old map", () => {
+			expect(
+				configWrongTypeAdvice("variants", object, location)
+			).toMatchObject({
+				code: "config.variantsAreAList",
+				message: expect.stringContaining('"variants" is a list'),
+			});
+		});
+
+		it("says the same of the variants of a mode", () => {
+			expect(
+				configWrongTypeAdvice("modes.dev.variants", object, location)
+			).toMatchObject({
+				code: "config.variantsAreAList",
+				message: expect.stringContaining('"modes.dev.variants"'),
+			});
+		});
+
+		it("leaves any other wrong value to the generic message", () => {
+			expect(
+				configWrongTypeAdvice("routes", object, location)
+			).toBeUndefined();
+			expect(
+				configWrongTypeAdvice(
+					"variants",
+					{ kind: "string" } as JsoncNode,
+					location
+				)
+			).toBeUndefined();
 		});
 	});
 
@@ -118,7 +186,9 @@ describe("domain/config/config-schema", () => {
 				rootDirs: "append",
 				exclude: "append",
 				routes: "merge",
-				variants: "merge",
+				variants: "append",
+				conflicts: "append",
+				modes: { each: { variants: "append", exclude: "append" } },
 				template: "replace",
 				syncDir: "replace",
 				mode: "replace",
@@ -131,7 +201,8 @@ describe("domain/config/config-schema", () => {
 			expect(configDefaults.contents).toEqual({
 				rootDirs: ["src"],
 				routes: {},
-				variants: {},
+				variants: [],
+				conflicts: [],
 				exclude: [],
 			});
 		});

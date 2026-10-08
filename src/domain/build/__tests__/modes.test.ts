@@ -134,7 +134,7 @@ describe("modes in a build", () => {
 			await write("src/A.dev.luau");
 
 			const { summary } = await built({
-				modes: { dev: { variants: { mock: true } } },
+				modes: { dev: { variants: ["mock"] } },
 				variants: { mock: false },
 			});
 
@@ -322,7 +322,7 @@ describe("modes in a build", () => {
 			const warnings = await warningsOf({
 				variants: { mock: false, fake: false },
 				modes: {
-					dev: { variants: { mock: true } },
+					dev: { variants: ["mock"] },
 					prod: {},
 				},
 				mode: "dev",

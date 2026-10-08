@@ -1,7 +1,3 @@
 {
-	"steps": [
-		[
-			"list"
-		]
-	]
+	"steps": [["list", "--variant", "dev"]]
 }

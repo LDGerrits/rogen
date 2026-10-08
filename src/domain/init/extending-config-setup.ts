@@ -64,7 +64,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			ConfigSet.serveCommand(configSet.servedStem)
 		);
 		builder.addEdit(
-			`Turn variants on or off under "variants", or add "exclude", in ${configFileName(name)}.`
+			`Add "exclude" or "modes", or pin a "mode", in ${configFileName(name)}.`
 		);
 	}
 }

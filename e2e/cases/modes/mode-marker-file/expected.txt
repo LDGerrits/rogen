@@ -1,0 +1,38 @@
+$ rogen build --mode prod
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode prod
+  Built 1 config.
+
+$ rogen build -o dev.project.json
+exit 0
+stdout:
+  rogen build · default
+  dev.project.json · wrote · mode dev
+  Built 1 config.
+
+$ rogen where src/Tools/Inspector.luau --mode dev
+exit 0
+stdout:
+  src/Tools/Inspector.luau -> pruned · mode is dev, not prod
+
+written:
+  default.project.json
+  dev.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Core: Folder
+        Game: ModuleScript  <- src/Core/Game.luau
+      Tools: Folder
+        Inspector: ModuleScript  <- src/Tools/Inspector.luau
+
+$ rojo sourcemap dev.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Core: Folder
+        Game: ModuleScript  <- src/Core/Game.luau

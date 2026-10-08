@@ -2,7 +2,7 @@ $ rogen build c
 exit 0
 stdout:
   rogen build · c
-  c.project.json · wrote
+  c.project.json · wrote · mode dev
   Built 1 config.
 
 written:

@@ -22,6 +22,7 @@ stdout:
         "variants": {
           "mock": false
         },
+        "conflicts": [],
         "mode": "prod",
         "modes": [
           "dev",

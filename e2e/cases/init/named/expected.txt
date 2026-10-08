@@ -9,7 +9,7 @@ stdout:
       rogen watch
       rojo serve lobby.project.json
     Add your own routes under "routes" in lobby.rogen.json.
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen build lobby

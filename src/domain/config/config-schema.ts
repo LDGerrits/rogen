@@ -1,4 +1,7 @@
 import { JSONSchema } from "../../base/json-schema.js";
+import { DOCS_URL } from "../../platform/product/product-service.js";
+import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { WrongTypeAdvisor } from "../../platform/jsonc/jsonc-document-reader.js";
 import {
 	ConfigModel,
 	MergePolicies,
@@ -19,13 +22,23 @@ const routesSchema: JSONSchema = {
 };
 
 const variantsSchema: JSONSchema = {
-	type: "object",
-	default: {},
+	type: "array",
+	items: { type: "string" },
+	default: [],
 	description:
-		"Every variant this project uses, and whether it is on in this config. " +
-		"A standalone config must know the whole declared set, or an " +
-		"undeclared variant ships silently as part of an instance name.",
-	additionalProperties: { type: "boolean" },
+		"Every variant this project uses. A variant is a switch: off unless " +
+		"the active mode lists it or --variant turns it on. A declared name " +
+		"marks files (Analytics.mock.luau, a mock folder, a .mock marker); " +
+		"an undeclared one ships silently as part of an instance name.",
+};
+
+const conflictsSchema: JSONSchema = {
+	type: "array",
+	items: { type: "array", items: { type: "string" } },
+	default: [],
+	description:
+		"Groups of declared variants of which at most one may be on, such as " +
+		'[["halloween", "christmas"]]. A group names variants, never a mode.',
 };
 
 const modesSchema: JSONSchema = {
@@ -33,19 +46,18 @@ const modesSchema: JSONSchema = {
 	description:
 		"Named environments, exactly one of which is active per build. A " +
 		"mode marks files like a variant does (Service.prod.luau, a prod " +
-		"folder, a .prod marker) and can switch variants and exclude globs, " +
-		'never where files go. "mode" or --mode picks the active one; ' +
-		"the first declared is the default.",
+		"folder, a .prod marker), turns variants on and excludes globs, " +
+		'never changes where files go. "mode" or --mode picks the active one.',
 	additionalProperties: {
 		type: "object",
 		additionalProperties: false,
 		properties: {
 			variants: {
-				type: "object",
+				type: "array",
+				items: { type: "string" },
 				description:
-					"Variants this mode switches, whether on or off. Each must " +
-					'be declared under "variants".',
-				additionalProperties: { type: "boolean" },
+					"Variants this mode turns on. Each must be declared " +
+					'under "variants".',
 			},
 			exclude: {
 				type: "array",
@@ -95,9 +107,10 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 		},
 	},
 	routes: { merge: "merge", schema: routesSchema },
-	variants: { merge: "merge", schema: variantsSchema },
+	variants: { merge: "append", schema: variantsSchema },
+	conflicts: { merge: "append", schema: conflictsSchema },
 	modes: {
-		merge: { each: { variants: "merge", exclude: "append" } },
+		merge: { each: { variants: "append", exclude: "append" } },
 		schema: modesSchema,
 	},
 	mode: {
@@ -105,8 +118,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 		schema: {
 			type: "string",
 			description:
-				"The mode this config builds in, unless --mode says " +
-				"otherwise. The first declared mode when left out.",
+				'The mode this config builds in, unless --mode says otherwise. Required when "modes" is declared.',
 		},
 	},
 	exclude: {
@@ -177,3 +189,30 @@ export const configDefaults = new ConfigModel(
 		)
 	)
 );
+
+const MODES_LINK = `${DOCS_URL}/core-concepts/modes`;
+const MODE_VARIANTS_PATH = /^modes\.[^.]+\.variants$/;
+
+/** The words for an old config that wrote `variants` as a map of on and off. */
+export const configWrongTypeAdvice: WrongTypeAdvisor = (
+	path,
+	node,
+	location
+) => {
+	if (node.kind !== "object") return undefined;
+	if (path === "variants") {
+		return errorDiagnostic(
+			"config.variantsAreAList",
+			location,
+			`"variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. ` +
+				`A variant is off unless the active mode lists it under "modes" or --variant turns it on. See ${MODES_LINK}.`
+		);
+	}
+	return MODE_VARIANTS_PATH.test(path)
+		? errorDiagnostic(
+				"config.variantsAreAList",
+				location,
+				`"${path}" is a list of the variants the mode turns on, such as ["mock"], not a map of on and off. See ${MODES_LINK}.`
+			)
+		: undefined;
+};

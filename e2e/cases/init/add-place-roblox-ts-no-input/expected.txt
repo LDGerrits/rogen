@@ -10,7 +10,7 @@ stdout:
       rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
       rogen watch
       rojo serve lobby.project.json
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen build

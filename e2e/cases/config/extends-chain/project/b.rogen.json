@@ -1,7 +1,14 @@
 {
 	"extends": "./a.rogen.json",
-	"variants": {
-		"x": true
+	"variants": [
+		"y"
+	],
+	"modes": {
+		"dev": {
+			"variants": [
+				"y"
+			]
+		}
 	},
 	"rootDirs": [
 		"one"

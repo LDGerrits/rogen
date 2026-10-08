@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default, active
   default
-    default.project.json · wrote
+    default.project.json · wrote · mode prod
   active
-    active.project.json · wrote
+    active.project.json · wrote · mode dev
   Built 2 configs.
 
 written:

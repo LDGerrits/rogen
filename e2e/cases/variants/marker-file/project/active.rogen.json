@@ -1,6 +1,4 @@
 {
 	"extends": "./default.rogen.json",
-	"variants": {
-		"mock": true
-	}
+	"mode": "dev"
 }

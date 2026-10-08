@@ -6,6 +6,7 @@
 		"Server": "ServerScriptService",
 		"*": "ReplicatedStorage/Shared"
 	},
+	"mode": "dev",
 	"modes": {
 		"dev": {},
 		"prod": {}

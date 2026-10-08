@@ -1,0 +1,3 @@
+{
+	"steps": [["build", "--variant", "mock", "--variant", "dev"]]
+}

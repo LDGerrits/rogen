@@ -214,13 +214,13 @@ Rename the mode or the variant. See [Declaring Modes](/docs/v2/core-concepts/mod
 
 ### `config.undeclaredModeVariant` [#config-undeclaredmodevariant]
 
-Error. A mode switches a variant that `variants` doesn't declare. A variant exists only where `variants` lists it, so a mode can't introduce one.
+Error. A mode turns on a variant that `variants` doesn't declare. A variant exists only where `variants` lists it, so a mode can't introduce one.
 
 ```
-default.rogen.json:9:36 - error: mode "dev" switches variant "mock", which is not declared under "variants". Declare it there.
+default.rogen.json:9:36 - error: mode "dev" turns on variant "mock", which is not declared under "variants". Declare it there.
 ```
 
-Add the variant to `variants`, with the state it has outside the mode. When the name is close to a declared one, the message suggests it instead. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+Add the variant to `variants`. When the name is close to a declared one, the message suggests it instead. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
 
 ### `config.unknownMode` [#config-unknownmode]
 
@@ -241,6 +241,66 @@ lobby.rogen.json - error: --mode prod names no mode here: this config declares "
 ```
 
 Declare the mode in that config, or build it on its own without `--mode`. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
+
+### `config.modeRequired` [#config-moderequired]
+
+Error. The config declares `modes` but nothing says which one to build in. The first declared mode is not a default, since JSON key order is not a contract.
+
+```
+default.rogen.json:4:11 - error: this config declares modes but not which one to build in. Set "mode" to "dev" and "prod", or pass --mode.
+```
+
+Set `"mode"` in the config, or in a config it extends, or pass `--mode`. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
+
+### `config.variantsAreAList` [#config-variantsarealist]
+
+Error. `variants`, or the `variants` of a mode, is a map of on and off, as earlier betas wrote it. It is a list of names now: a variant is off unless the active mode lists it or `--variant` turns it on.
+
+```
+default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless the active mode lists it under "modes" or --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes.
+```
+
+Write `"variants": ["mock"]`. A variant that was `true` belongs in the `variants` list of the modes that want it, or behind `--variant`; a config that only existed to turn one on becomes a mode. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
+
+### `config.conflictNamesMode` [#config-conflictnamesmode]
+
+Error. A group in `conflicts` names a mode. Modes are already exclusive, so a group names variants only.
+
+```
+default.rogen.json:5:16 - error: a conflict group names "prod", which is a mode; modes are already exclusive, so a group names variants only.
+```
+
+Remove the mode from the group. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
+
+### `config.conflictUndeclaredVariant` [#config-conflictundeclaredvariant]
+
+Error. A group in `conflicts` names a variant that `variants` doesn't declare.
+
+```
+default.rogen.json:5:39 - error: a conflict group names "christmass", which is not declared under "variants". Did you mean "christmas"?
+```
+
+Declare the variant, or fix the name the message suggests. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
+
+### `config.modeConflict` [#config-modeconflict]
+
+Error. A mode turns on two variants of one conflict group, so every build in it would fail.
+
+```
+default.rogen.json:8:38 - error: mode "dev" turns on "halloween" and "christmas", which conflict; a mode may turn on one of them.
+```
+
+Keep one of them in the mode. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
+
+### `config.variantConflict` [#config-variantconflict]
+
+Error. Two variants of one conflict group are on, and `--variant` turned at least one on. `--variant` never turns another variant off, so the message names the swap when the mode has one on.
+
+```
+default.rogen.json:5:16 - error: variants "halloween" and "christmas" conflict, but both are on: halloween from mode "dev", christmas from --variant. --variant never turns a variant off. Use --no-variant halloween --variant christmas.
+```
+
+Turn the one you don't want off with `--no-variant`, or pass only one of them. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
 
 ## Routes
 
@@ -374,7 +434,7 @@ default.rogen.json - warning: 1 instance is missing, because none of the variant
 Turn one of its variants on, or add a plain file.
 ```
 
-Turn one of the variants on in the config or with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+Turn one of the variants on, by listing it in a mode or with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
 ### `variant.activeClash` [#variant-activeclash]
 
@@ -384,7 +444,7 @@ Error. Two files with active variants become the same instance, so Rogen can't t
 src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file.
 ```
 
-Turn one of the variants off, in the config or with `--no-variant`, or rename one of the files. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+Turn one of the variants off, by leaving it out of the mode or with `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
 ### `variant.buriedScriptSuffix` [#variant-buriedscriptsuffix]
 

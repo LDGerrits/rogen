@@ -19,7 +19,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
     	},
-    	"variants": { "mock": false },
+    	"variants": ["mock"],
     	"exclude": ["**/*.spec.luau"]
     }
     ```
@@ -35,7 +35,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"variants": { "mock": false },
+    	"variants": ["mock"],
     	"exclude": ["**/*.spec.ts"],
     	"template": "template.project.json",
     	"syncDir": "out"
@@ -44,7 +44,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
   </Tab>
 </Tabs>
 
-There are eleven fields, none nested more than two levels. `modes` is the only one that nests a map in a map. Unknown keys and wrong types are errors.
+There are twelve fields, none nested more than two levels. `modes` is the only one that nests a map in a map. Unknown keys and wrong types are errors.
 
 ---
 
@@ -56,9 +56,10 @@ There are eleven fields, none nested more than two levels. `modes` is the only o
 | `extends` | none | Another `*.rogen.json` to inherit from. See [Extending Configs](#extending-configs). |
 | `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. A config adds its entries to those of the config it extends. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |
-| `variants` | `{}` | Every variant the project uses, and whether it's on. See [Variants](/docs/v2/core-concepts/variants). |
-| `modes` | none | Named environments, exactly one active per build. See [Modes](/docs/v2/core-concepts/modes). |
-| `mode` | first declared | The mode this config builds in unless `--mode` says otherwise. |
+| `variants` | `[]` | The names of the switches the project uses, each off unless the active mode lists it or `--variant` turns it on. See [Variants](/docs/v2/core-concepts/variants). |
+| `conflicts` | `[]` | Groups of variants of which at most one may be on. See [Conflicts](/docs/v2/core-concepts/variants#conflicts). |
+| `modes` | none | Named environments, exactly one active per build, each listing the variants it turns on and the globs it excludes. See [Modes](/docs/v2/core-concepts/modes). |
+| `mode` | none | The mode this config builds in unless `--mode` says otherwise. Required when `modes` is declared. |
 | `exclude` | `[]` | Globs for files that are never built, scanned or mounted by the template. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
@@ -70,7 +71,7 @@ All paths in a config are relative to the config's folder, while paths on the co
 
 ## Extending Configs
 
-Use `extends` when a config is a small variation on another: a second place, other variants, or the same tree rendered from another folder. Rogen has no profiles; each file is one tree and one output.
+Use `extends` when a config is a small variation on another: a second place, another mode, or the same tree rendered from another folder. Rogen has no profiles; each file is one tree and one output.
 
 ```json title="lobby.rogen.json"
 {
@@ -81,9 +82,9 @@ Use `extends` when a config is a small variation on another: a second place, oth
 
 | Kind | Fields | Behavior |
 |---|---|---|
-| Map | `routes`, `variants` | merged key by key; the child wins a key |
-| Map of blocks | `modes` | merged by name; each block merges by these same rules, so a child adds to the parent's `prod` |
-| List | `rootDirs`, `exclude` | the child's entries are added after the parent's; a repeated entry keeps its last position |
+| Map | `routes` | merged key by key; the child wins a key |
+| Map of blocks | `modes` | merged by name; each block merges by these same rules, so a child adds globs and variants to the parent's `prod` |
+| List | `rootDirs`, `exclude`, `variants`, `conflicts` | the child's entries are added after the parent's; a repeated entry keeps its last position |
 | String | `syncDir`, `template`, `mode` | the child replaces |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
 

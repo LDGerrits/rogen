@@ -71,7 +71,7 @@ describe("where command", () => {
 	it("should print where each path lands and why, relative to the working directory", async () => {
 		await writeConfig("default.rogen.json", {
 			routes: ROUTES,
-			variants: { mock: false },
+			variants: ["mock"],
 		});
 		await write(
 			"src/Net/Http@client.luau",
@@ -160,7 +160,7 @@ describe("where command", () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await writeConfig("mocked.rogen.json", {
 			routes: ROUTES,
-			variants: { mock: false },
+			variants: ["mock"],
 		});
 		await write("src/Http.mock.luau");
 
@@ -363,7 +363,7 @@ describe("where command", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
-				variants: { mock: false },
+				variants: ["mock"],
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",

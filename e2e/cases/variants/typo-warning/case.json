@@ -1,1 +1,6 @@
-{ "steps": [["build"], ["build", "--json"]] }
+{
+	"steps": [
+		["build", "--variant", "mock"],
+		["build", "--json", "--variant", "mock"]
+	]
+}

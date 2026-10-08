@@ -14,6 +14,7 @@ stdout:
         "config": "match",
         "file": "<dir>/match.rogen.json",
         "outFile": "<dir>/match.project.json",
+        "mode": "dev",
         "outcome": "wrote",
         "diagnostics": [
           {

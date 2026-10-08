@@ -419,7 +419,11 @@ describe("watch command", () => {
 			beforeEach(async () => {
 				await write(
 					"/repo/default.rogen.json",
-					config({ variants: { dev: true, mock: true } })
+					config({
+						variants: ["dev", "mock"],
+						mode: "qa",
+						modes: { qa: { variants: ["dev", "mock"] } },
+					})
 				);
 				await memFs.writeFile("/repo/src/Analytics.dev.luau", "");
 				await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
@@ -430,7 +434,7 @@ describe("watch command", () => {
 
 				const [block] = blocks();
 				expect(block.lines).toEqual([
-					"default.project.json · not written",
+					"default.project.json · not written · mode qa",
 					expect.stringMatching(
 						/^diagnosticError: .*Analytics\.dev\.luau - error: /
 					),
@@ -451,7 +455,7 @@ describe("watch command", () => {
 					{
 						title: "1 file changed",
 						lines: [
-							"default.project.json · not written · same errors as before",
+							"default.project.json · not written · mode qa · same errors as before",
 						],
 					},
 				]);
@@ -554,7 +558,14 @@ describe("watch command", () => {
 
 		it("should accept the override flags, but not --json", () => {
 			expect(
-				parse("watch", "a.rogen.json", "--variant", "mock", "-o", "x").isOk()
+				parse(
+					"watch",
+					"a.rogen.json",
+					"--variant",
+					"mock",
+					"-o",
+					"x"
+				).isOk()
 			).toBe(true);
 			expect(parse("watch", "--json").isErr()).toBe(true);
 		});

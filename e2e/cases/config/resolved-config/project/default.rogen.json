@@ -1,7 +1,5 @@
 {
 	"extends": "./base.rogen.json",
-	"variants": {
-		"mock": true
-	},
+	"mode": "dev",
 	"syncDir": "dist"
 }

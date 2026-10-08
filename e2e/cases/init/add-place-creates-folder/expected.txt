@@ -8,7 +8,7 @@ stdout:
     Run each in its own terminal:
       rogen watch
       rojo serve lobby.project.json
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 1 file.
 
 $ rogen build default lobby
@@ -41,7 +41,7 @@ stdout:
       ],
       "darklua": [],
       "edits": [
-        "Declare variants under \"variants\" in match.rogen.json to swap in files like Analytics.mock.luau."
+        "Declare variants under \"variants\" in match.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant."
       ]
     }
   }
