@@ -1,0 +1,46 @@
+$ rogen build -o dev.project.json
+exit 0
+stdout:
+  rogen build · default
+  dev.project.json · wrote · mode dev
+  Built 1 config.
+
+$ rogen build -o nomock.project.json --no-variant mock
+exit 0
+stdout:
+  rogen build · default
+  nomock.project.json · wrote · mode dev
+  Built 1 config.
+
+$ rogen build -o prod.project.json --mode prod --variant debug
+exit 0
+stdout:
+  rogen build · default
+  prod.project.json · wrote · mode prod
+  Built 1 config.
+
+written:
+  dev.project.json
+  nomock.project.json
+  prod.project.json
+
+$ rojo sourcemap dev.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Admin: ModuleScript  <- src/Admin.debug.luau
+      Analytics: ModuleScript  <- src/Analytics.mock.luau
+
+$ rojo sourcemap nomock.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Admin: ModuleScript  <- src/Admin.debug.luau
+      Analytics: ModuleScript  <- src/Analytics.luau
+
+$ rojo sourcemap prod.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Admin: ModuleScript  <- src/Admin.debug.luau
+      Analytics: ModuleScript  <- src/Analytics.luau

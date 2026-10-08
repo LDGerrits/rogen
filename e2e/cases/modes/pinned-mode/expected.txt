@@ -17,14 +17,16 @@ stdout:
     sync dir: (none)
     project file: default.project.json
     variants: mock on
-    modes: dev (default), prod
+    mode: dev
+    modes: dev, prod
   release.rogen.json
     extends: default.rogen.json
     root dirs: src
     sync dir: (none)
     project file: release.project.json
     variants: mock off
-    modes: dev, prod (default)
+    mode: prod
+    modes: dev, prod
   2 configs.
 
 written:

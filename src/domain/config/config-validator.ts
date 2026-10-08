@@ -17,8 +17,15 @@ import {
 	rootDirOverlap,
 } from "./config.js";
 import { LayeredConfig } from "./layered-config.js";
+import { variantStates } from "./variant-switch.js";
 
 const FALLBACK_NAME = "project";
+
+/** Variants of which at most one may be on, and where the config wrote the group. */
+interface ConflictGroup {
+	readonly names: readonly string[];
+	readonly location: DiagnosticLocation;
+}
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
 /** Checks every rule on a config's values that doesn't need the source tree, and hands back the config with its route targets parsed. */
@@ -26,7 +33,7 @@ export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
 	private readonly rootDirs: readonly string[];
 	private readonly routes: Readonly<Record<string, string>>;
-	private readonly variants: Readonly<Record<string, boolean>>;
+	private readonly variants: readonly string[];
 	private readonly outFile: string;
 
 	constructor(
@@ -36,7 +43,7 @@ export class ConfigValidator {
 		const { config } = layered;
 		this.rootDirs = config.getValue<string[]>("rootDirs");
 		this.routes = config.getValue<Record<string, string>>("routes");
-		this.variants = config.getValue<Record<string, boolean>>("variants");
+		this.variants = layered.variants;
 		this.outFile =
 			config.getValue<string | undefined>("outFile") ??
 			path.join(
@@ -54,7 +61,9 @@ export class ConfigValidator {
 
 		const routes = this.checkRoutes(claimed);
 		this.checkVariants(claimed);
-		this.checkModes(claimed);
+		const groups = this.checkConflictGroups();
+		this.checkModes(claimed, groups);
+		this.checkActiveConflicts(groups);
 		this.checkOutFile(template);
 		this.checkRootDirs();
 
@@ -69,10 +78,10 @@ export class ConfigValidator {
 					FALLBACK_NAME,
 				rootDirs: this.rootDirs,
 				routes,
-				variants: this.variants,
+				variants: variantStates(this.layered.switches),
+				conflicts: groups.map(({ names }) => names),
 				exclude: config.getValue<string[]>("exclude"),
 				mode: this.layered.mode,
-				defaultMode: this.layered.defaultMode,
 				modeViews: this.modeViews(),
 				template,
 				syncDir: config.getValue<string | undefined>("syncDir"),
@@ -104,49 +113,82 @@ export class ConfigValidator {
 	}
 
 	private checkVariants(claimed: Map<string, string>): void {
-		for (const variant of Object.keys(this.variants)) {
-			const location = this.layered.locate("variants", variant);
-			if (!DeclaredKeys.isName(variant)) {
-				this.problems.error(
-					"config.invalidVariantName",
-					location,
-					`variant "${variant}" is invalid: ${NAME_RULE}.`
-				);
-			} else if (variant in this.routes) {
-				this.problems.error(
-					"config.variantClashesWithRoute",
-					location,
-					`variant "${variant}" has the same name as a route key; rename one of them.`
-				);
-			} else {
-				this.claim(claimed, variant, location);
-			}
-		}
+		const seen = new Set<string>();
+		this.layered.config
+			.entries<string>("variants")
+			.forEach(({ value: variant }, index) => {
+				if (seen.has(variant)) return;
+				seen.add(variant);
+				const location = this.layered.locateEntry("variants", index);
+				if (!DeclaredKeys.isName(variant)) {
+					this.problems.error(
+						"config.invalidVariantName",
+						location,
+						`variant "${variant}" is invalid: ${NAME_RULE}.`
+					);
+				} else if (variant in this.routes) {
+					this.problems.error(
+						"config.variantClashesWithRoute",
+						location,
+						`variant "${variant}" has the same name as a route key; rename one of them.`
+					);
+				} else {
+					this.claim(claimed, variant, location);
+				}
+			});
+	}
+
+	/** The groups of declared variants of which at most one may be on; a group that names anything else is reported and left out. */
+	private checkConflictGroups(): ConflictGroup[] {
+		const groups: ConflictGroup[] = [];
+		this.layered.config
+			.entries<string[]>("conflicts")
+			.forEach(({ value: names }, index) => {
+				const location = this.layered.locateEntry("conflicts", index);
+				let valid = true;
+				for (const name of names) {
+					if (this.layered.modes.includes(name)) {
+						valid = false;
+						this.problems.error(
+							"config.conflictNamesMode",
+							location,
+							`a conflict group names "${name}", which is a mode; modes are already exclusive, so a group names variants only.`
+						);
+					} else if (!this.variants.includes(name)) {
+						valid = false;
+						const suggestion = closestMatch(name, this.variants);
+						this.problems.error(
+							"config.conflictUndeclaredVariant",
+							location,
+							`a conflict group names "${name}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
+						);
+					}
+				}
+				if (valid)
+					groups.push({ names: [...new Set(names)], location });
+			});
+		return groups;
 	}
 
 	private modeViews(): Map<string, ModeView> {
 		return new Map(
-			this.layered.modes.map((mode) => {
-				const config = this.layered.configIn(mode);
-				return [
-					mode,
-					{
-						variants:
-							config.getValue<Record<string, boolean>>(
-								"variants"
-							),
-						exclude: config.getValue<string[]>("exclude"),
-					},
-				];
-			})
+			this.layered.modes.map((mode) => [
+				mode,
+				{
+					variants: variantStates(this.layered.switchesIn(mode)),
+					exclude: this.layered
+						.configIn(mode)
+						.getValue<string[]>("exclude"),
+				},
+			])
 		);
 	}
 
-	private checkModes(claimed: Map<string, string>): void {
+	private checkModes(
+		claimed: Map<string, string>,
+		groups: readonly ConflictGroup[]
+	): void {
 		const { modes, modeChoice } = this.layered;
-		const chain = this.layered.configIn(undefined);
-		const declared =
-			chain.getValue<Record<string, boolean>>("variants") ?? {};
 		for (const mode of modes) {
 			const location = this.layered.locateMode(mode);
 			if (!DeclaredKeys.isName(mode)) {
@@ -161,7 +203,7 @@ export class ConfigValidator {
 					location,
 					`mode "${mode}" has the same name as a route key; rename one of them.`
 				);
-			} else if (Object.hasOwn(this.variants, mode)) {
+			} else if (this.variants.includes(mode)) {
 				this.problems.error(
 					"config.modeClashesWithVariant",
 					location,
@@ -170,21 +212,19 @@ export class ConfigValidator {
 			} else {
 				this.claim(claimed, mode, location);
 			}
-			const switched = chain.getValue<
-				Record<string, boolean> | undefined
-			>(["modes", mode, "variants"]);
-			for (const variant of Object.keys(switched ?? {})) {
-				if (Object.hasOwn(declared, variant)) continue;
-				const suggestion = closestMatch(variant, Object.keys(declared));
-				this.problems.error(
-					"config.undeclaredModeVariant",
-					this.layered.locateMode(mode, "variants", variant),
-					`mode "${mode}" switches variant "${variant}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
-				);
-			}
+			this.checkModeVariants(mode, groups);
 		}
 
-		const written = chain.getValue<string | undefined>("mode");
+		if (modes.length > 0 && modeChoice.name === undefined) {
+			this.problems.error(
+				"config.modeRequired",
+				this.layered.locate("modes"),
+				`this config declares modes but not which one to build in. Set "mode" to ${joinedWithAnd(modes.map((mode) => `"${mode}"`))}, or pass --mode.`
+			);
+		}
+		const written = this.layered
+			.configIn(undefined)
+			.getValue<string | undefined>("mode");
 		if (written !== undefined && !modes.includes(written)) {
 			this.problems.error(
 				"config.unknownMode",
@@ -203,6 +243,76 @@ export class ConfigValidator {
 				"config.modeNotDeclared",
 				{ resource: this.layered.leaf.file },
 				`--mode ${name} names no mode here: ${ConfigValidator.declaredModes(modes, name)}`
+			);
+		}
+	}
+
+	/** A mode turns on declared variants only, and never two of one conflict group. */
+	private checkModeVariants(
+		mode: string,
+		groups: readonly ConflictGroup[]
+	): void {
+		const listed = this.layered.modeVariants(mode);
+		listed.forEach((variant, index) => {
+			if (this.variants.includes(variant)) return;
+			const suggestion = closestMatch(variant, this.variants);
+			this.problems.error(
+				"config.undeclaredModeVariant",
+				this.layered.locateModeEntry(mode, "variants", index),
+				`mode "${mode}" turns on variant "${variant}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
+			);
+		});
+		for (const { names } of groups) {
+			const together = names.filter((name) => listed.includes(name));
+			if (together.length < 2) continue;
+			this.problems.error(
+				"config.modeConflict",
+				this.layered.locateModeEntry(
+					mode,
+					"variants",
+					listed.indexOf(together[1])
+				),
+				`mode "${mode}" turns on ${joinedWithAnd(together.map((name) => `"${name}"`))}, which conflict; a mode may turn on one of them.`
+			);
+		}
+	}
+
+	/** Two variants of a group are on in the active mode only when the command line added one; the mode alone is reported at the mode. */
+	private checkActiveConflicts(groups: readonly ConflictGroup[]): void {
+		const { switches } = this.layered;
+		for (const { names, location } of groups) {
+			const on = names.flatMap((name) => {
+				const { on, by } = switches.get(name) ?? { on: false };
+				return on && by ? [{ name, by }] : [];
+			});
+			if (on.length < 2 || !on.some(({ by }) => by === "cli")) continue;
+			const fromMode = on.filter(({ by }) => by === "mode");
+			const fromCli = on.filter(({ by }) => by === "cli");
+			const mode = this.layered.mode;
+			const causes =
+				fromMode.length > 0
+					? `: ${[
+							...fromMode.map(
+								({ name }) => `${name} from mode "${mode}"`
+							),
+							...fromCli.map(
+								({ name }) => `${name} from --variant`
+							),
+						].join(", ")}`
+					: " from --variant";
+			const fix =
+				fromMode.length > 0
+					? `--variant never turns a variant off. Use ${[
+							...fromMode.map(
+								({ name }) => `--no-variant ${name}`
+							),
+							...fromCli.map(({ name }) => `--variant ${name}`),
+						].join(" ")}.`
+					: "Pass only one of them.";
+			this.problems.error(
+				"config.variantConflict",
+				location,
+				`variants ${joinedWithAnd(on.map(({ name }) => `"${name}"`))} conflict, but ${on.length === 2 ? "both" : "all"} are on${causes}. ${fix}`
 			);
 		}
 	}

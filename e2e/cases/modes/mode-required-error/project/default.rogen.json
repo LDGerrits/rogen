@@ -1,0 +1,5 @@
+{
+	"rootDirs": ["src"],
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"modes": { "dev": {}, "prod": {} }
+}

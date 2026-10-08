@@ -1,6 +1,6 @@
 {
 	"extends": "./shared/base.rogen.json",
 	"rootDirs": ["src"],
-	"variants": { "mock": false },
+	"variants": ["mock"],
 	"exclude": ["**/*.spec.luau"]
 }

@@ -124,7 +124,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"default.rogen.json",
-			'{ "variants": { "mock": false'
+			'{ "routes": { "*": "ReplicatedStorage"'
 		);
 		await eventually(() => {
 			expect(running.output).toContain(
@@ -158,7 +158,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				variants: { mock: false },
+				variants: ["mock"],
 			})
 		);
 		writeProjectFile(project.dir, "src/Analytics.luau");
@@ -174,7 +174,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				variants: { mock: false, dev: false },
+				variants: ["mock", "dev"],
 			})
 		);
 

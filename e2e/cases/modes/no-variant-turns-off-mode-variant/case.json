@@ -1,0 +1,1 @@
+{ "steps": [["build", "-o", "dev.project.json"], ["build", "-o", "nomock.project.json", "--no-variant", "mock"], ["build", "-o", "prod.project.json", "--mode", "prod", "--variant", "debug"]] }

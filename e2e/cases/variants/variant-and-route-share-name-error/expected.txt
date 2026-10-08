@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:12:13 - error: variant "server" has the same name as a route key; rename one of them.
+  default.rogen.json:12:3 - error: variant "server" has the same name as a route key; rename one of them.

@@ -7,6 +7,7 @@
 		"*": "ReplicatedStorage/Shared"
 	},
 	"template": "template.project.json",
+	"mode": "dev",
 	"modes": {
 		"dev": {},
 		"prod": {

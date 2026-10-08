@@ -3,5 +3,7 @@
 	"routes": {
 		"server": "ServerScriptService"
 	},
-	"variants": { "mock": true }
+	"variants": ["mock"],
+	"mode": "dev",
+	"modes": { "dev": { "variants": ["mock"] } }
 }

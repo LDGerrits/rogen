@@ -13,9 +13,9 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** What a mode changes about a build: which variants are on and which files are left out. */
+/** What a mode changes about a build: which variants it turns on and which files are left out. */
 export interface ModeConfig {
-	readonly variants?: Record<string, boolean>;
+	readonly variants?: string[];
 	readonly exclude?: string[];
 }
 
@@ -24,7 +24,8 @@ export interface RogenConfig {
 	readonly extends?: string;
 	readonly rootDirs?: string[];
 	readonly routes?: Record<string, string>;
-	readonly variants?: Record<string, boolean>;
+	readonly variants?: string[];
+	readonly conflicts?: string[][];
 	readonly modes?: Record<string, ModeConfig>;
 	readonly mode?: string;
 	readonly exclude?: string[];
@@ -38,7 +39,7 @@ const VariantOption = {
 	type: "string",
 	placeholder: "name",
 	multiple: true,
-	description: "Turns a variant on.",
+	description: "Turns a variant on, beyond those the mode lists.",
 } as const satisfies OptionDescriptor;
 
 const NoVariantOption = {
@@ -46,7 +47,7 @@ const NoVariantOption = {
 	type: "string",
 	placeholder: "name",
 	multiple: true,
-	description: "Turns a variant off.",
+	description: "Turns a variant off, whatever turned it on.",
 } as const satisfies OptionDescriptor;
 
 export const ModeOption = {
@@ -251,7 +252,7 @@ export class ResolvedTemplate {
 	}
 }
 
-/** A mode's effect on a config: the variants that are on and the globs left out, as the config reads them in that mode. */
+/** A mode's effect on a config: the globs left out, and which variants are on, which are those the mode lists. */
 export interface ModeView {
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
@@ -268,14 +269,14 @@ export interface ResolvedConfigFields {
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** Variant name to whether it is on, in the active mode. */
+	/** Every declared variant to whether it is on, in the active mode with the command line applied. */
 	readonly variants: Readonly<Record<string, boolean>>;
+	/** Groups of variants of which at most one is on. */
+	readonly conflicts?: readonly (readonly string[])[];
 	/** The globs left out in the active mode, which drop scanned files and template mounts alike. */
 	readonly exclude: readonly string[];
 	/** The active mode; none when the config declares no modes. */
 	readonly mode?: string;
-	/** The mode the config picks when the command line doesn't. */
-	readonly defaultMode?: string;
 	/** Every mode the config declares, in declaration order; none by default. */
 	readonly modeViews?: ReadonlyMap<string, ModeView>;
 	readonly template?: ResolvedTemplate;
@@ -294,8 +295,8 @@ export class ResolvedConfig {
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
 	readonly mode?: string;
-	readonly defaultMode?: string;
 	readonly modes: readonly string[];
+	readonly conflicts: readonly (readonly string[])[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -312,7 +313,7 @@ export class ResolvedConfig {
 		this.variants = fields.variants;
 		this.exclude = fields.exclude;
 		this.mode = fields.mode;
-		this.defaultMode = fields.defaultMode;
+		this.conflicts = fields.conflicts ?? [];
 		this.modes = [...(fields.modeViews?.keys() ?? [])];
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;

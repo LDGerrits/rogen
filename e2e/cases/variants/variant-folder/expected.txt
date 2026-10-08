@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen build --variant dev
 exit 0
 stdout:
   rogen build · default

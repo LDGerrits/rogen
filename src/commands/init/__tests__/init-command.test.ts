@@ -141,7 +141,7 @@ describe("init command", () => {
 					],
 					darklua: [],
 					edits: [
-						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.',
+						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 					],
 				},
 			});
@@ -239,7 +239,7 @@ describe("init command", () => {
 				"info:   rogen watch",
 				"info:   rojo serve default.project.json",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau.',
+				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				"outro: Wrote 2 files.",
 			]);
 		});
@@ -1003,7 +1003,7 @@ describe("init command", () => {
 				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
 				"info:   rogen watch",
 				"info:   rojo serve lobby.project.json",
-				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.',
+				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 				"outro: Wrote 2 files.",
 			]);
 		});
@@ -1169,7 +1169,7 @@ describe("init command", () => {
 				"info: Run each in its own terminal:",
 				"info:   rogen watch",
 				"info:   rojo serve prod.project.json",
-				'info: Turn variants on or off under "variants", or add "exclude", in prod.rogen.json.',
+				'info: Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
 				"outro: Wrote 1 file.",
 			]);
 		});

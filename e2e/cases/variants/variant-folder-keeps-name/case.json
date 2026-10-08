@@ -1,4 +1,7 @@
 {
-	"steps": [["build"], ["where"]],
+	"steps": [
+		["build", "--variant", "mock"],
+		["where", "--variant", "mock"]
+	],
 	"show": ["default.project.json"]
 }

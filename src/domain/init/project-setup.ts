@@ -188,6 +188,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			rootDirs: [...rootDirs],
 			routes: starting.starting(choices.routes, choices.fallback),
 			...(choices.modes && {
+				mode: "dev",
 				modes: {
 					dev: {},
 					prod: { exclude: [ConfigSet.specGlobOf(language)] },

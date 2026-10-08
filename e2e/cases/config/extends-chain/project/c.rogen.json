@@ -1,8 +1,5 @@
 {
 	"extends": "./b.rogen.json",
-	"variants": {
-		"y": true
-	},
 	"routes": {
 		"server": "ServerStorage"
 	}

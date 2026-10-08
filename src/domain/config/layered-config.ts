@@ -9,6 +9,7 @@ import {
 } from "../../platform/config/config-models.js";
 import { DiagnosticLocation } from "../../platform/diagnostics/diagnostic.js";
 import { configDefaults, configMergePolicies } from "./config-schema.js";
+import { VariantSwitch, switchVariants } from "./variant-switch.js";
 
 /** The fields that hold a path, which resolve against the file that sets them. */
 const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
@@ -25,9 +26,9 @@ export interface ConfigOverrides {
 
 /** The mode a config builds in, and how it was chosen. */
 export interface ModeChoice {
-	/** What was asked for or defaulted to; `undefined` when the config declares no modes. */
+	/** What was asked for or written; `undefined` when nothing names one. */
 	readonly name: string | undefined;
-	readonly source: "cli" | "config" | "default";
+	readonly source: "cli" | "config" | undefined;
 }
 
 /** A config's chain merged with the defaults, its active mode and the command line, with each value traceable to the file that set it. */
@@ -38,16 +39,19 @@ export class LayeredConfig {
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
 	readonly files: readonly ConfigFile[];
-	/** The variants the CLI named that no layer declares, so they were left out of `config`. */
+	/** The variants the CLI named that no layer declares, so they were left out. */
 	readonly skippedVariants: readonly string[];
+	/** Every variant the chain declares, in order. */
+	readonly variants: readonly string[];
+	/** Each declared variant's switch in the active mode, with the command line applied. */
+	readonly switches: ReadonlyMap<string, VariantSwitch>;
 	/** Every mode the chain declares, in declaration order. */
 	readonly modes: readonly string[];
 	readonly modeChoice: ModeChoice;
 	/** The active mode, when the choice names one the chain declares. */
 	readonly mode: string | undefined;
-	/** The mode the chain picks without the command line's say. */
-	readonly defaultMode: string | undefined;
 	private readonly chain: Config;
+	private readonly cliVariants: Readonly<Record<string, boolean>>;
 	private readonly defaults: ConfigModel;
 	private readonly layers: readonly ConfigModel[];
 	private readonly cli: ConfigModel;
@@ -64,63 +68,77 @@ export class LayeredConfig {
 			LayeredConfig.layerModel(file, file === leaf)
 		);
 
-		const declared = new Set(
-			this.layers.flatMap((layer) =>
-				Object.keys(
-					layer.getValue<Record<string, boolean>>("variants") ?? {}
-				)
-			)
-		);
-		const variantNames = Object.keys(overrides.variants);
-		this.skippedVariants = variantNames.filter(
-			(variant) => !declared.has(variant)
-		);
 		this.defaults = new ConfigModel(
 			LayeredConfig.absolutize(
 				configDefaults.contents,
 				path.dirname(leaf.file)
 			)
 		);
-		this.cli = LayeredConfig.cliModel(
-			overrides,
-			variantNames.filter((variant) => declared.has(variant)),
-			cwd
-		);
-
+		this.cli = LayeredConfig.cliModel(overrides, cwd);
 		this.chain = new Config(
 			this.defaults,
 			this.layers,
 			new ConfigModel(),
 			configMergePolicies
 		);
+
+		this.variants = [
+			...new Set(
+				this.chain.entries<string>("variants").map(({ value }) => value)
+			),
+		];
+		const declared = new Set(this.variants);
+		const named = Object.keys(overrides.variants);
+		this.skippedVariants = named.filter((name) => !declared.has(name));
+		this.cliVariants = Object.fromEntries(
+			named
+				.filter((name) => declared.has(name))
+				.map((name) => [name, overrides.variants[name]])
+		);
+
 		this.modes = Object.keys(
 			this.chain.getValue<Record<string, unknown>>("modes") ?? {}
 		);
 		const written = this.chain.getValue<string | undefined>("mode");
 		this.modeChoice = {
-			name: overrides.mode ?? written ?? this.modes[0],
+			name: overrides.mode ?? written,
 			source:
 				overrides.mode !== undefined
 					? "cli"
 					: written !== undefined
 						? "config"
-						: "default",
+						: undefined,
 		};
-		const fallback = written ?? this.modes[0];
-		this.defaultMode =
-			fallback !== undefined && this.modes.includes(fallback)
-				? fallback
-				: undefined;
 		this.mode =
 			this.modeChoice.name !== undefined &&
 			this.modes.includes(this.modeChoice.name)
 				? this.modeChoice.name
 				: undefined;
+		this.switches = this.switchesIn(this.mode, this.cliVariants);
 		this.config = this.configIn(this.mode);
 	}
 
 	get leaf(): ConfigFile {
 		return this.files[this.files.length - 1];
+	}
+
+	/** The variants `mode` turns on, as the chain writes them, in the order written. */
+	modeVariants(mode: string): string[] {
+		return this.chain
+			.entries<string>(["modes", mode, "variants"])
+			.map(({ value }) => value);
+	}
+
+	/** Each declared variant's switch in `mode`, with `cli` the command line's say. */
+	switchesIn(
+		mode: string | undefined,
+		cli: Readonly<Record<string, boolean>> = {}
+	): ReadonlyMap<string, VariantSwitch> {
+		return switchVariants(
+			this.variants,
+			mode === undefined ? [] : this.modeVariants(mode),
+			cli
+		);
 	}
 
 	/** The config with `mode` on top of its chain; the chain alone when `mode` is `undefined`. */
@@ -177,6 +195,22 @@ export class LayeredConfig {
 		]);
 	}
 
+	/** Where the chain wrote the entry at `index` of the merged list `field` of mode `mode`. */
+	locateModeEntry(
+		mode: string,
+		field: string,
+		index: number
+	): DiagnosticLocation {
+		const path = ["modes", mode, field];
+		const entry = this.chain.entries(path)[index];
+		return entry?.source.tier === "layer"
+			? this.positionIn(entry.source.index, [
+					...path,
+					String(entry.index),
+				])
+			: { resource: this.leaf.file };
+	}
+
 	private locateIn(
 		config: Config,
 		path: readonly string[]
@@ -196,15 +230,12 @@ export class LayeredConfig {
 	}
 
 	private modeLayer(mode: string): ConfigModel {
-		const body =
-			this.chain.getValue<{ variants?: unknown; exclude?: unknown }>([
-				"modes",
-				mode,
-			]) ?? {};
-		return new ConfigModel({
-			...(body.variants !== undefined && { variants: body.variants }),
-			...(body.exclude !== undefined && { exclude: body.exclude }),
-		});
+		const exclude = this.chain.getValue<unknown>([
+			"modes",
+			mode,
+			"exclude",
+		]);
+		return new ConfigModel(exclude === undefined ? {} : { exclude });
 	}
 
 	private static pathOf(section: ConfigSection[]): string[] {
@@ -215,20 +246,11 @@ export class LayeredConfig {
 
 	private static cliModel(
 		overrides: ConfigOverrides,
-		declaredVariants: readonly string[],
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
 		if (overrides.outFile !== undefined)
 			contents.outFile = overrides.outFile;
-		if (declaredVariants.length > 0) {
-			contents.variants = Object.fromEntries(
-				declaredVariants.map((variant) => [
-					variant,
-					overrides.variants[variant],
-				])
-			);
-		}
 		return new ConfigModel(LayeredConfig.absolutize(contents, cwd));
 	}
 

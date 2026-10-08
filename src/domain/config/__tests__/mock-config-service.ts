@@ -24,14 +24,16 @@ export interface ResolvedConfigSpec {
 	readonly name?: string;
 	readonly rootDirs?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
+	/** Every declared variant to whether it is on outside any mode, as the command line leaves it. */
 	readonly variants?: Readonly<Record<string, boolean>>;
+	readonly conflicts?: readonly (readonly string[])[];
 	readonly exclude?: readonly string[];
-	/** Each mode's changes to `variants` and `exclude`, which are the config's outside any mode. */
+	/** The variants each mode turns on and the globs it adds to the config's. */
 	readonly modes?: Readonly<
 		Record<
 			string,
 			{
-				readonly variants?: Readonly<Record<string, boolean>>;
+				readonly variants?: readonly string[];
 				readonly exclude?: readonly string[];
 			}
 		>
@@ -48,11 +50,20 @@ export interface ResolvedConfigSpec {
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	const file = spec.file ?? "/repo/default.rogen.json";
+	const declared = Object.keys(spec.variants ?? {});
+	const switched = (listed: readonly string[], base = false) =>
+		Object.fromEntries(
+			declared.map((variant) => [
+				variant,
+				listed.includes(variant) ||
+					(base && !!spec.variants?.[variant]),
+			])
+		);
 	const modeViews = new Map<string, ModeView>(
 		Object.entries(spec.modes ?? {}).map(([mode, body]) => [
 			mode,
 			{
-				variants: { ...spec.variants, ...body.variants },
+				variants: switched(body.variants ?? []),
 				exclude: [...(spec.exclude ?? []), ...(body.exclude ?? [])],
 			},
 		])
@@ -74,10 +85,13 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		variants: view?.variants ?? spec.variants ?? {},
+		variants:
+			mode === undefined
+				? (spec.variants ?? {})
+				: switched(spec.modes?.[mode]?.variants ?? [], true),
+		conflicts: spec.conflicts ?? [],
 		exclude: view?.exclude ?? spec.exclude ?? [],
 		mode,
-		defaultMode: modeViews.size > 0 ? [...modeViews.keys()][0] : undefined,
 		modeViews,
 		template:
 			spec.template &&

@@ -1,4 +1,4 @@
-$ rogen list
+$ rogen list --variant dev
 exit 0
 stdout:
   rogen list

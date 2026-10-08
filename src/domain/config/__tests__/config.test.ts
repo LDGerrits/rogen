@@ -245,7 +245,7 @@ describe("domain/config/config", () => {
 				variants: { mock: false },
 				exclude: ["/repo/a"],
 				modes: {
-					dev: { variants: { mock: true } },
+					dev: { variants: ["mock"] },
 					prod: { exclude: ["/repo/b"] },
 				},
 				mode: "prod",
@@ -254,7 +254,6 @@ describe("domain/config/config", () => {
 			it("should hold the declared modes and the active one", () => {
 				expect(config.modes).toEqual(["dev", "prod"]);
 				expect(config.mode).toBe("prod");
-				expect(config.defaultMode).toBe("dev");
 				expect(config.exclude).toEqual(["/repo/a", "/repo/b"]);
 			});
 

@@ -9,7 +9,7 @@
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"variants": {
-		"mock": true
-	}
+	"variants": [
+		"mock"
+	]
 }

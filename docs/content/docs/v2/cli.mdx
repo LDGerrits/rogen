@@ -15,7 +15,7 @@ The first word is always the command, and a bare `rogen` prints usage. Whatever 
 
 ### `build [config…]`
 
-Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in its own mode, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
+Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in the mode its `mode` field names, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
 ### `watch [config…]`
 
@@ -112,7 +112,7 @@ A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `
 
 ### `list [config…]`
 
-Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file every variant it declares, on or off (`variants: dev on, mock off`), and its modes (`modes: dev (default), prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, sync directory, project file, every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`), the mode it builds in and every mode it declares (`mode: dev`, `modes: dev, qa, prod`). It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
 ### `help [name]`
 
@@ -128,8 +128,8 @@ An override changes a config value for one run. Anything you want every time bel
 |---|---|
 | `-o, --out-file <path>` | Overrides `outFile`. |
 | `--mode <name>` | Picks the mode every config that declares modes builds in. Strict: a config that declares modes without this one is an error. |
-| `--variant <name>` | Turns a variant on. Repeatable. |
-| `--no-variant <name>` | Turns a variant off. Repeatable. |
+| `--variant <name>` | Turns a variant on, beyond those the mode lists. Repeatable. |
+| `--no-variant <name>` | Turns a variant off, whatever turned it on. Applies last. Repeatable. |
 | `--json` | Prints one JSON document for `build`, `where`, `list` and `init`. On `init` it implies `--yes`. |
 | `-y, --yes` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
@@ -137,7 +137,7 @@ An override changes a config value for one run. Anything you want every time bel
 | `-v, --verbose` | Prints debug output. |
 | `-q, --quiet` | Prints errors only, plus anything you explicitly asked for. |
 
-`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--mode` applies to every config that declares modes, ignores the ones that don't, and is an error if none declare any. Naming a mode with `--variant` is an error that points at `--mode`.
+`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--mode` applies to every config that declares modes, ignores the ones that don't, and is an error if none declare any. Naming a mode with `--variant` is an error that points at `--mode`. `--variant` never turns another variant off: for two variants of a [conflict group](/docs/v2/core-concepts/variants#conflicts), turn the first off with `--no-variant`.
 
 ## Exit codes
 
@@ -244,7 +244,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
 		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen watch", "rojo serve lobby.project.json"],
 		"darklua": [],
-		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts."]
+		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant."]
 	}
 }
 ```
@@ -253,7 +253,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. `variants` and `exclude` are those of the active mode. A broken config has only the five. If any config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants` (each declared variant and whether it is on), `conflicts`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. `variants` and `exclude` are those of the active mode with the command line applied. A broken config has only the five. If any config has errors, the exit code is 1.
 
 ## Output
 

@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["list", "--json"],
+		["list", "--json", "--variant", "dev"],
 		["list", "lobby", "--json"]
 	],
 	"rojo": false

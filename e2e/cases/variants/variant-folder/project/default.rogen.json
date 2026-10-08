@@ -8,8 +8,8 @@
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"variants": {
-		"dev": true,
-		"prod": false
-	}
+	"variants": [
+		"dev",
+		"prod"
+	]
 }

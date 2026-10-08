@@ -89,7 +89,7 @@ Route marker files now take `@` too: v1's `.server` becomes `@server`. So do mod
 
 ### Tags
 
-Tags are now [variants](/docs/v2/core-concepts/variants): `tags` became `variants` and `-t` became `--variant`. Variant folders and marker files work as before, but a suffix always uses a dot:
+Tags are now [variants](/docs/v2/core-concepts/variants): `tags` became `variants`, a list of names that are off until a [mode](/docs/v2/core-concepts/modes) lists them or `--variant` (which replaces `-t`) turns them on. Variant folders and marker files work as before, but a suffix always uses a dot:
 
 ```
 v1: src/Teleport/TeleportDev.luau     v2: src/Teleport/Teleport.dev.luau
@@ -162,9 +162,11 @@ Each v2 config is one tree and one output, so a second v1 mode becomes a second 
 ```json title="prod.rogen.json"
 {
 	"extends": "./default.rogen.json",
-	"variants": { "dev": false }
+	"syncDir": "dist"
 }
 ```
+
+A v1 mode that only flipped tags is now a v2 [mode](/docs/v2/core-concepts/modes): list the variants it turns on, and pin it in a second config with `"mode": "prod"` if both outputs must exist.
 
 <Callout type="warn" title="v2 modes are not v1 modes">
 	v2 also has `modes` and `--mode`, but they pick an environment within one config, such as dev or prod. See [Modes](/docs/v2/core-concepts/modes). A v1 mode, which chose a toolchain, is a config in v2.
@@ -179,7 +181,7 @@ Each v2 config is one tree and one output, so a second v1 mode becomes a second 
 | modes (`luau`, `ts`, `darklua`, custom) | one config per tree, each its own `<name>.rogen.json` |
 | a mode's `build` | `syncDir` |
 | a mode's `output` | `outFile`, one per config |
-| `tags` at the root and in modes | `variants`, root only. Each config sets its own |
+| `tags` at the root and in modes | `variants` (a list of names, off by default), and the v2 `modes` that turn them on. Each config sets its own |
 | `globIgnorePaths` | `exclude` |
 | `aliases` and built-in service keywords | `routes`. Only declared keys route |
 | `casing`, `unwrap` | route targets as paths |

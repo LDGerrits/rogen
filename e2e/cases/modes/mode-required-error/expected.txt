@@ -1,0 +1,24 @@
+$ rogen build
+exit 1
+stdout:
+  rogen build · default
+  build failed.
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:4:11 - error: this config declares modes but not which one to build in. Set "mode" to "dev" and "prod", or pass --mode.
+
+$ rogen build --mode prod
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote · mode prod
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau

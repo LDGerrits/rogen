@@ -26,6 +26,7 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {},
+        "conflicts": [],
         "mode": null,
         "modes": [],
         "exclude": [

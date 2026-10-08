@@ -8,22 +8,25 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 A **variant** is an alternative version of a file that lives right next to it. When `mock` is on, `Analytics.mock.luau` *becomes* `Analytics`. When it's off, the file is left out. (If you only want to leave files out, use [`exclude`](/docs/v2/core-concepts/project-layout#excluding-files).)
 
-Variants are independent switches: any number can be on, and each is flipped on its own. For one choice with exactly one value, like dev or prod, declare [modes](/docs/v2/core-concepts/modes) instead, and keep variants for the features that combine with them.
+Variants are independent switches: any number can be on, and each is off unless something turns it on. For one choice with exactly one value, like dev or prod, declare [modes](/docs/v2/core-concepts/modes), and let a mode turn on the variants it wants.
 
 ## Declaring Variants
 
-List every variant in the config's `variants` map, along with whether it's on:
+`variants` is a list of names:
 
 ```json title="default.rogen.json"
 {
-	"variants": {
-		"mock": false,
-		"dev": false
-	}
+	"variants": ["mock", "debug", "halloween"]
 }
 ```
 
-A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key or a [mode](/docs/v2/core-concepts/modes).
+A declared variant is off unless the active [mode](/docs/v2/core-concepts/modes) lists it or `--variant` turns it on. A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key or a mode.
+
+There is no default per variant: a `true` at the root would be inherited by every mode that forgot to turn it off. Which variants a build has on is decided by one place, the mode, and the command line on top of it. See [Which Variants Are On](/docs/v2/core-concepts/modes#which-variants-are-on).
+
+<Callout type="warn" title="Variants used to be a map">
+	`"variants": { "mock": false }` is a config error that prints the list form and points at modes. Write `"variants": ["mock"]`, then list `"mock"` in the modes that want it, or pass `--variant mock`. A config that only existed to turn a variant on becomes a mode, pinned by that config if it must stay a second output.
+</Callout>
 
 ## Marking Files
 
@@ -79,22 +82,42 @@ Turn one of its variants on, or add a plain file.
 
 A lone variant, like `DebugPanel.dev.luau`, doesn't warn: disappearing when it's off is the point.
 
-## Turning Variants On and Off
+## Conflicts
 
-Override the config for a single run from the CLI. Both flags can be repeated:
+Some variants must never be on together, like two seasonal events. List them in `conflicts`, as groups of which at most one may be on:
 
-```bash
-rogen build --variant mock --no-variant dev
+```json title="default.rogen.json"
+{
+	"variants": ["halloween", "christmas"],
+	"conflicts": [["halloween", "christmas"]]
+}
 ```
 
-A variant that a mode sets, like `mock` in `"dev": { "variants": { "mock": true } }`, follows the active mode; these flags still win. `--variant dev` for a mode named `dev` is a usage error that points at `--mode dev`.
+Two on at once is an error, whether they come from a mode, `--variant` or both. `--variant christmas` never turns `halloween` off, so when the mode already has it on, the error suggests the swap:
 
-To keep a combination around, add a config that extends the first and flips the variant. `rogen build mocked` then writes `mocked.project.json`:
+```bash
+rogen build --variant halloween --variant christmas       # error: they conflict
+rogen build --mode prod --no-variant halloween --variant christmas
+```
 
-```json title="mocked.rogen.json"
+A group names declared variants only, never a mode, since modes are already exclusive. A mode that lists two variants of one group is a config error. A variant may sit in several groups, and each is checked. Under [`extends`](/docs/v2/configuration#extending-configs) the groups add up, so a place can add a group but never dissolve a shared one.
+
+## Turning Variants On and Off
+
+Override a mode for a single run from the CLI. Both flags can be repeated, and `--no-variant` applies last:
+
+```bash
+rogen build --variant halloween --no-variant mock
+```
+
+A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it. `--variant dev` for a mode named `dev` is a usage error that points at `--mode dev`.
+
+To keep a combination around as a second output, add a config that extends the first and pins a mode. `rogen build release` then writes `release.project.json`:
+
+```json title="release.rogen.json"
 {
 	"extends": "./default.rogen.json",
-	"variants": { "mock": true }
+	"mode": "prod"
 }
 ```
 

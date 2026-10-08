@@ -37,7 +37,7 @@ describe("ExtendingConfigSetup", () => {
 			run: ["rogen watch", "rojo serve prod.project.json"],
 			darklua: [],
 			edits: [
-				'Turn variants on or off under "variants", or add "exclude", in prod.rogen.json.',
+				'Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
 			],
 		});
 	});

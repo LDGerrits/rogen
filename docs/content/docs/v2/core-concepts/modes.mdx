@@ -5,13 +5,13 @@ description: Build for dev or prod from the same config, with exactly one enviro
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-A **mode** is a named environment, such as `dev` or `prod`, and exactly one is active per build. It changes which files are in the tree, never where they go or what is written. For independent on/off switches, use [variants](/docs/v2/core-concepts/variants).
+A **mode** is a named environment, such as `dev`, `qa` or `prod`, and exactly one is active per build. It changes which files are in the tree, never where they go or what is written. The independent switches that combine with it, like a mock or a debug panel, are [variants](/docs/v2/core-concepts/variants), and a mode turns the ones it wants on.
 
-Without modes, an environment becomes two variants flipped in opposite directions, or a config per environment. A lone `DebugPanel.dev.luau` then ships to production the day someone forgets a flag. A mode is one choice with one value, so that can't happen.
+Without modes, an environment becomes two variants flipped in opposite directions, or a config per environment. A lone `DebugPanel.dev.luau` then ships to production the day someone forgets a flag, and two places in dev and prod become ten config files, five of which only exist to say "prod". A mode is one choice with one value, so that can't happen.
 
 ## Declaring Modes
 
-`modes` maps a name to what the mode changes. A mode body holds only `variants` and `exclude`:
+`modes` maps a name to what the mode changes, and `mode` says which one the config builds in. A mode body holds only `variants` and `exclude`:
 
 ```json title="default.rogen.json"
 {
@@ -21,37 +21,40 @@ Without modes, an environment becomes two variants flipped in opposite direction
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"exclude": ["**/_*"],
-	"variants": { "mock": false, "halloween": false },
+	"variants": ["mock", "debug", "halloween", "christmas"],
+	"conflicts": [["halloween", "christmas"]],
 	"modes": {
-		"dev": { "variants": { "mock": true } },
+		"dev": { "variants": ["mock", "debug"] },
+		"qa": { "variants": ["debug"], "exclude": ["**/*.spec.luau", "DevPackages"] },
 		"prod": { "exclude": ["**/*.spec.luau", "DevPackages"] }
 	},
 	"mode": "dev"
 }
 ```
 
-- `variants` in a mode turns variants on or off in that mode. Each one must be declared under the config's own `variants`.
+- `variants` in a mode lists the variants that are on in that mode. Each one must be declared under the config's own `variants`, and anything it doesn't list is off. QA is prod content plus the debug tools, so `debug` is listed by two modes.
 - `exclude` adds globs that are left out in that mode, on top of the config's, with the same reach: scanned files and template mounts alike, see [Template Nodes](#template-nodes).
 - `rootDirs`, `routes`, `template`, `syncDir` and `outFile` belong to the config, and every mode shares them. A mode body with any other field is a `config.unknownField` error. That is the line between a mode and a second config.
+- A mode may not list two variants of one [conflict group](/docs/v2/core-concepts/variants#conflicts).
 
 Route keys, variants and modes share one namespace, since all three are written the same way in a file name. A mode can't share a name with either of the others, and two names that differ only in the case of their first letter are an error too.
 
 ## Picking the Mode
 
-Three things pick the active mode, strongest first:
+`mode` is required when `modes` is declared: no mode is the default just because it comes first. Two things pick the active one, strongest first:
 
 1. `--mode prod` on the command line.
 2. The config's `mode` field, which an `extends` chain inherits like any string.
-3. The first declared mode.
 
-A config without `modes` builds as it always has.
+A config that declares modes but names none is an error (`config.modeRequired`). A config without `modes` builds as it always has, with every variant off unless the command line turns it on.
 
 ```bash
-rogen watch                                  # dev: mocks on, specs and DevPackages in
-rogen build --mode prod                      # every config in prod
-rogen build --mode prod --variant halloween  # a release with the event on
-rogen where src/Net --mode prod
+rogen watch                                      # dev: mocks, debug tools and specs in
+rogen build --mode qa                            # prod content plus the debug tools
+rogen build --mode prod                          # CI, every config
+rogen build --mode prod --variant halloween      # release day
+rogen build --no-variant mock                    # dev with real analytics, once
+rogen where src/Analytics --mode prod
 rogen list --json --mode prod
 ```
 
@@ -71,6 +74,18 @@ When both outputs must exist at once, give the second one its own config that pi
 ```
 
 `rogen build` then writes `default.project.json` in dev and `release.project.json` in prod. Otherwise a mode changes what a config writes, not where.
+
+## Which Variants Are On
+
+A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it. That is the whole rule, and `--no-variant` applies last:
+
+| In `dev` | Result |
+|---|---|
+| `mock` is listed by `dev` | on |
+| `--variant halloween` | `halloween` is on beside `dev`'s |
+| `--no-variant mock` | `mock` is off, although `dev` lists it |
+
+A declared variant that nothing turns on is off. There is no per-variant default to inherit, so a new mode can't pick up a switch by accident.
 
 ## Marking Files
 
@@ -93,7 +108,7 @@ Test files fit as excludes, not as marks: an active suffix is stripped, so `Butt
 
 ## Layers
 
-The `extends` chain merges first. Then the active mode's `variants` and `exclude` are added on top, and last `--variant` and `--no-variant`. `modes` merges by name across `extends`, and a mode body merges by the same rules as the config: a place can add globs to the shared `prod` without restating them. See [Extending Configs](/docs/v2/configuration#extending-configs).
+The `extends` chain merges first. Then the active mode's `exclude` is added on top of the config's, and its `variants` decide which variants are on, before `--variant` and `--no-variant`. `variants`, `conflicts` and a mode's `variants` and `exclude` add to the parent's lists, and `modes` merges by name across `extends`: a place can add globs to the shared `prod` without restating them, and add a group of conflicts but never dissolve a shared one. See [Extending Configs](/docs/v2/configuration#extending-configs).
 
 ## Template Nodes
 
@@ -116,7 +131,7 @@ With `"prod": { "exclude": ["DevPackages"] }`, the prod project file has `Packag
 
 ## Checking Every Mode
 
-Rogen reads names only, so every build can place the files in every mode and warn about what the others would lose. A dev build warns when `Net` has files for `dev` and `staging` but none for `prod`, or when two files clash in `prod`:
+Rogen reads names only, so every build can place the files in every mode and warn about what the others would lose. Each mode is checked with the variants it lists, whatever the command line turned on. A dev build warns when `Net` has files for `dev` and `staging` but none for `prod`, or when two files clash in `prod`:
 
 ```
 default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
@@ -128,10 +143,14 @@ See [`mode.missingInstance`](/docs/v2/diagnostics#mode-missinginstance) and [`mo
 
 ## Seeing the Mode
 
-- `rogen list` prints `modes: dev (default), prod`, marking the mode the config picks on its own, and `(active)` on the one `--mode` picked. `list --json` prints the resolved config for the active mode, with `mode` and `modes`.
+- `rogen list` prints `mode: dev` and `modes: dev, qa, prod` beside the variants. `list --json` prints the resolved config for the active mode, with `mode` and `modes`.
 - `rogen build` ends the line of a config that declares modes with `mode prod`, and `build --json` adds `mode` to its entry.
 - `rogen where` accepts `--mode`, and `where --json` adds `mode` to each location. Its `variants` entries keep their `form`, and also list the modes a file carries.
 
 <Callout type="info" title="Why modes, not groups of variants">
 	A group inside `variants` would never appear in a file name and couldn't carry an `exclude`. A mode that could set `syncDir` or `rootDirs` would be a hidden second config, so it can't.
+</Callout>
+
+<Callout type="info" title="Why not the first declared mode">
+	JSON key order is not a contract, so which mode a bare `rogen build` uses is written down in `mode` rather than implied by where a mode sits in the file.
 </Callout>

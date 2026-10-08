@@ -27,6 +27,7 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 - **Feature Folders:** Keep a feature's client, server and shared code in one folder.
 - **Routes:** Declare where each kind of code goes, and route files with a folder, a marker file or an `@` suffix (`Save@server.luau`).
 - **Variants:** Swap in files like `Analytics.mock.luau` at build time, without touching a `require`.
+- **Modes:** Build `dev`, `qa` or `prod` from one config. A mode turns variants on and leaves specs out.
 - **Several Places:** Merge root directories so places share core code and override parts of it.
 - **Watch Mode:** Rebuild as files change, and reload when the config does.
 - **Toolchains:** Luau, roblox-ts and Darklua, set up by `rogen init`.

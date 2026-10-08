@@ -60,17 +60,19 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Variants and Filtering
 
-- **Variant**: A name declared in `variants` that marks another version of a file, kept right next to it. See [Variants](/docs/v2/core-concepts/variants).
+- **Variant**: A switch declared in `variants` whose name marks another version of a file, kept right next to it. It is off unless the active mode lists it or `--variant` turns it on. See [Variants](/docs/v2/core-concepts/variants).
 
-- **Active variant**: A variant that's on for the current build. Its suffix is stripped, and its file replaces the plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Active variant**: A variant that's on for the current build, because the active mode lists it or `--variant` added it. Its suffix is stripped, and its file replaces the plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
-- **Dormant variant**: A declared variant that's off for the current build. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+- **Dormant variant**: A declared variant that's off for the current build, because nothing turned it on or `--no-variant` removed it. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
 - **Variant folder**: A folder named after a declared variant. It never appears in the tree. See [Variants](/docs/v2/core-concepts/variants#variant-folders).
 
-- **Mode**: A named environment declared in `modes`, such as `dev` or `prod`, of which exactly one is active per build. It marks files like a variant does and can switch variants and add excludes, but never changes where files go. See [Modes](/docs/v2/core-concepts/modes).
+- **Mode**: A named environment declared in `modes`, such as `dev` or `prod`, of which exactly one is active per build. It marks files like a variant does, turns variants on and adds excludes, but never changes where files go. See [Modes](/docs/v2/core-concepts/modes).
 
-- **Active mode**: The mode the build runs in, picked by `--mode`, the config's `mode` field, or the first one declared. See [Modes](/docs/v2/core-concepts/modes#picking-the-mode).
+- **Conflict**: A group of variants in `conflicts` of which at most one may be on. Two on at once is an error. See [Variants](/docs/v2/core-concepts/variants#conflicts).
+
+- **Active mode**: The mode the build runs in, picked by `--mode`, else the config's `mode` field, which is required when `modes` is declared. See [Modes](/docs/v2/core-concepts/modes#picking-the-mode).
 
 - **Pruned**: Left out of the output because the file belongs to a dormant variant or to a mode that isn't active. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 

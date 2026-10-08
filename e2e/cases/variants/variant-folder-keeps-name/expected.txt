@@ -1,11 +1,11 @@
-$ rogen build
+$ rogen build --variant mock
 exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
   Built 1 config.
 
-$ rogen where
+$ rogen where --variant mock
 exit 0
 stdout:
   src/.mock/Probe.luau -> ReplicatedStorage/shared/Probe · route * (fallback) · variant mock (folder)

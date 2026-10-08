@@ -1,0 +1,10 @@
+{
+	"rootDirs": ["src"],
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"variants": ["halloween", "christmas"],
+	"conflicts": [["halloween", "christmas"]],
+	"mode": "dev",
+	"modes": {
+		"dev": { "variants": ["halloween", "christmas"] }
+	}
+}

@@ -109,7 +109,7 @@ describe("PlaceSetup", () => {
 				run: ["rogen watch", "rojo serve lobby.project.json"],
 				darklua: [],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.',
+					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});
 		});
@@ -172,7 +172,7 @@ describe("PlaceSetup", () => {
 					"darklua process places/lobby dist/lobby/places/lobby",
 				],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau.',
+					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});
 		});
@@ -262,7 +262,7 @@ describe("PlaceSetup", () => {
 				],
 				darklua: [],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts.',
+					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 				],
 			});
 		});

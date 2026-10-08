@@ -11,11 +11,12 @@ stdout:
     [debug] route * -> ReplicatedStorage/shared: 1 file
     [debug] variant mock off: 1 file left out
   match
-    match.project.json · wrote
+    match.project.json · wrote · mode dev
     [debug] src: 5 files
     [debug] lib: 1 file
     [debug] route server -> ServerScriptService: 1 file
     [debug] variant mock on: 1 file
+    [debug] mode dev on: 0 files
     [debug] left out: 4 unrouted, 1 replaced by a file with the same name
   Built 2 configs.
 stderr:

@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:12:13 - error: mode "dev" switches variant "mock", which is not declared under "variants". Declare it there.
+  default.rogen.json:13:5 - error: mode "dev" turns on variant "mock", which is not declared under "variants". Declare it there.

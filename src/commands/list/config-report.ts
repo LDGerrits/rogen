@@ -7,16 +7,6 @@ import { LogService } from "../../platform/log/log-service.js";
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
-/** Every mode the config declares, the one it picks without the command line marked, and the active one when that differs. */
-const modeStates = ({ modes, mode, defaultMode }: ResolvedConfig): string[] =>
-	modes.map((name) => {
-		const marks = [
-			...(name === defaultMode ? ["default"] : []),
-			...(name === mode && mode !== defaultMode ? ["active"] : []),
-		];
-		return marks.length > 0 ? `${name} (${marks.join(", ")})` : name;
-	});
-
 /** Every variant the config declares, with its state, in the order declared. */
 const variantStates = ({ variants }: ResolvedConfig): string[] =>
 	Object.entries(variants).map(
@@ -49,8 +39,16 @@ export class ConfigReport {
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
 					`variants: ${listed(variantStates(config))}`,
-					...(config.modes.length > 0
-						? [`modes: ${listed(modeStates(config))}`]
+					...(config.conflicts.length > 0
+						? [
+								`conflicts: ${config.conflicts.map((group) => group.join(" | ")).join(", ")}`,
+							]
+						: []),
+					...(config.mode !== undefined
+						? [
+								`mode: ${config.mode}`,
+								`modes: ${config.modes.join(", ")}`,
+							]
 						: []),
 				].join("\n")
 			);
@@ -85,6 +83,7 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
 		variants: config.variants,
+		conflicts: config.conflicts,
 		mode: config.mode ?? null,
 		modes: config.modes,
 		exclude: config.exclude,
