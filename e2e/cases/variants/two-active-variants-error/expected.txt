@@ -5,5 +5,5 @@ stdout:
   build failed.
 stderr:
   error: default.project.json · not written
-  src/Analytics/Analytics.dev.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.mock.luau. Only one can apply: turn a variant off or rename a file.
-  src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file.
+  src/Analytics/Analytics.dev.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.mock.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)
+  src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)

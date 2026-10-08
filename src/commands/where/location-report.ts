@@ -16,6 +16,7 @@ import {
 	DiagnosticSeverity,
 	diagnosticToJson,
 	messageRelativeTo,
+	messageWithCode,
 } from "../../platform/diagnostics/diagnostic.js";
 
 /** The mode a config built in, and every mode it declares. */
@@ -359,7 +360,7 @@ export class LocationReport {
 		if (!("location" in answer)) return [];
 		return answer.diagnostics.map(
 			({ severity, message, code }) =>
-				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageRelativeTo(message, this.cwd)} (${code})`
+				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageWithCode(messageRelativeTo(message, this.cwd), code)}`
 		);
 	}
 

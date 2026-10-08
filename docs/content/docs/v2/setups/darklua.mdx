@@ -146,7 +146,7 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 Darklua turns `.txt`, `.json`, `.toml`, `.yaml` and `.yml` files into Lua modules (`src/Note.txt` becomes `dist/Note.lua`) and drops `.csv` files. Rogen still points at `dist/Note.txt`, so the instance goes missing, and Rogen warns:
 
 ```
-default.rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua").
+default.rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua"). (output.dataFileConverted)
 ```
 
 Either require the module (`require(script.Parent.Note)` returns the string), or copy the data files into `dist` after Darklua runs.

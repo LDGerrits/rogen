@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently?
+  core - warning: nothing emitted for root dir "core" exists under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently? (output.nothingEmitted)
 
 written:
   default.project.json

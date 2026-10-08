@@ -1,5 +1,5 @@
 $ rogen build
 exit 1
 stderr:
-  default.rogen.json - error: no routes declared, so nothing can be placed.
+  default.rogen.json - error: no routes declared, so nothing can be placed. (route.noRoutes)
   Add a "routes" map — `rogen init` writes a starting set.

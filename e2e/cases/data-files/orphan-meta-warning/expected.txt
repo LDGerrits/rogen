@@ -3,11 +3,11 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 3 warnings.
 stderr:
-  src/Inventory/Bots.meta.json - warning: belongs to no file, so Rojo ignores it. A folder's meta is Bots/init.meta.json.
-  src/Inventory/Crate.meta.json - warning: belongs to no file, so Rojo ignores it. Crate.model.json takes no meta.
-  src/Inventory/Save.server.meta.json - warning: belongs to no file, so Rojo ignores it. Rojo reads Save.meta.json.
+  src/Inventory/Bots.meta.json - warning: belongs to no file, so Rojo ignores it. A folder's meta is Bots/init.meta.json. (meta.unclaimed)
+  src/Inventory/Crate.meta.json - warning: belongs to no file, so Rojo ignores it. Crate.model.json takes no meta. (meta.unclaimed)
+  src/Inventory/Save.server.meta.json - warning: belongs to no file, so Rojo ignores it. Rojo reads Save.meta.json. (meta.unclaimed)
 
 written:
   default.project.json

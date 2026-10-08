@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:8:38 - error: mode "dev" turns on "halloween" and "christmas", which conflict; a mode may turn on one of them.
+  default.rogen.json:8:38 - error: mode "dev" turns on "halloween" and "christmas", which conflict; a mode may turn on one of them. (config.modeConflict)

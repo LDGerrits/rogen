@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:11:14 - error: the output file default.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.
+  default.rogen.json:11:14 - error: the output file default.project.json is also the template, and a build would overwrite it. Set "outFile" to another path. (config.outFileIsTemplate)

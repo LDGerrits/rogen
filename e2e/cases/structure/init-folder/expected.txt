@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it:
+  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it: (route.serverCodeShipped)
     src/Inventory/Ui/server/Nested.luau -> StarterPlayer/StarterPlayerScripts/Inventory/Ui/server/Nested
   Move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder.
 

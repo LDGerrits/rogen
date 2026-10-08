@@ -3,11 +3,11 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 2 warnings.
 stderr:
-  default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name:
+  default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name: (variant.typo)
     src/Net/mokc (did you mean "mock"?)
-  default.rogen.json - warning: 3 folders are one edit from a declared route key, so they are read as ordinary folders:
+  default.rogen.json - warning: 3 folders are one edit from a declared route key, so they are read as ordinary folders: (route.folderTypo)
     src/Hud/Servers (did you mean "Server"?)
     src/Hud/Sevrer (did you mean "Server"?)
     src/Inventory/Sever (did you mean "Server"?)

@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.project.json - warning: emitLegacyScripts: false in the template isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from the template.
+  default.project.json - warning: emitLegacyScripts: false in the template isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from the template. (tree.runContextTarget)
 
 written:
   default.project.json

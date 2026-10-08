@@ -103,7 +103,7 @@ A file called just `.rogen.json` is an error, since every config needs a name. T
 Every diagnostic points at the problem:
 
 ```
-lobby.rogen.json:7:3 - error: unknown field "outDir".
+lobby.rogen.json:7:3 - error: unknown field "outDir". (config.unknownField)
 ```
 
 Errors stop the build. Warnings don't, and the build still exits with 0. You'll get warnings for:

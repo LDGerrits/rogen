@@ -3,18 +3,18 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 12 warnings.
 stderr:
-  src/F01.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F02.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F03.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F04.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F05.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F06.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F07.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F08.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F09.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder.
-  src/F10.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. 2 more like it aren't listed.
+  src/F01.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F02.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F03.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F04.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F05.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F06.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F07.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F08.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F09.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  src/F10.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. 2 more like it aren't listed. (route.unrouted)
 
 $ rogen build --json
 exit 0

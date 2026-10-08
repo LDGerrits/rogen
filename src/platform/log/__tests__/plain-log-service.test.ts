@@ -53,8 +53,8 @@ describe("PlainLogService", () => {
 		);
 
 		expect(errors).toEqual([
-			"/repo/a.project.json - warning: 6 files matched no route.",
-			"/repo/a.rogen.json:3:2 - error: unknown field.",
+			"/repo/a.project.json - warning: 6 files matched no route. (x.y)",
+			"/repo/a.rogen.json:3:2 - error: unknown field. (x.z)",
 		]);
 	});
 
@@ -79,7 +79,7 @@ describe("PlainLogService", () => {
 			"  root dirs: src\n  sync dir: (none)",
 			"1 config.",
 		]);
-		expect(errors).toEqual(["/repo/a - warning: w"]);
+		expect(errors).toEqual(["/repo/a - warning: w (x.y)"]);
 	});
 
 	it("should prefix plain warnings and errors and tag debug lines", () => {
@@ -120,7 +120,7 @@ describe("PlainLogService", () => {
 		logService.outro("done");
 
 		expect(out).toEqual([]);
-		expect(errors).toEqual(["/repo/a - error: e"]);
+		expect(errors).toEqual(["/repo/a - error: e (x.z)"]);
 	});
 
 	it("should print raw text as is", () => {
@@ -202,6 +202,6 @@ describe("PlainLogService", () => {
 			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w")
 		);
 
-		expect(errors).toEqual(["src/a.luau - warning: w"]);
+		expect(errors).toEqual(["src/a.luau - warning: w (x.y)"]);
 	});
 });

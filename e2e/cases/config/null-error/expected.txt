@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:3:13 - error: "syncDir": expected a string, found null.
+  default.rogen.json:3:13 - error: "syncDir": expected a string, found null. (config.wrongType)

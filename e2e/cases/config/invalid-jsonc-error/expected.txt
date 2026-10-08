@@ -5,4 +5,4 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:1 - error: invalid JSONC: expected '}'.
+  default.rogen.json:4:1 - error: invalid JSONC: expected '}'. (config.invalidSyntax)

@@ -89,9 +89,8 @@ registerCommand(
 					? build.errors
 					: []
 			);
-			const denied = line.options["deny-warnings"]
-				? countWarnings(builds.value)
-				: 0;
+			const denyWarnings = Boolean(line.options["deny-warnings"]);
+			const denied = denyWarnings ? countWarnings(builds.value) : 0;
 			return line.options.json
 				? this.reportAsJson(logService, builds.value, errors, denied)
 				: this.report(
@@ -99,6 +98,7 @@ registerCommand(
 						builds.value,
 						errors,
 						selection.value.home,
+						denyWarnings,
 						denied
 					);
 		}
@@ -108,9 +108,10 @@ registerCommand(
 			builds: readonly ConfigBuild[],
 			errors: readonly Diagnostic[],
 			home: string,
+			denyWarnings: boolean,
 			denied: number
 		): Result<void, Error> {
-			log.report(builds, home, denied);
+			log.report(builds, home, denyWarnings);
 			if (errors.length > 0)
 				return err(new ReportedError(new DiagnosticsError(errors)));
 			return denied > 0

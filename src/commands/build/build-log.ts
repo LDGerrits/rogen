@@ -225,7 +225,7 @@ export class BuildLog {
 	report(
 		builds: readonly ConfigBuild[],
 		home?: string,
-		denied?: number
+		denyWarnings = false
 	): void {
 		this.begin(
 			"build",
@@ -264,11 +264,7 @@ export class BuildLog {
 			)
 		)
 			this.logService.closeFrame("build failed.");
-		else if (denied)
-			this.logService.closeFrame(
-				`Built ${plural(builds.length, "config")} with ${plural(denied, "warning")}; --deny-warnings fails the run.`
-			);
-		else this.end(builds.length);
+		else this.end(builds.length, countWarnings(builds), denyWarnings);
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
@@ -324,9 +320,14 @@ export class BuildLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	/** Closes the output of a build that wrote every config. */
-	end(configs: number): void {
-		this.logService.outro(`Built ${plural(configs, "config")}.`);
+	/** Closes the output of a build that wrote every config, counting its warnings. */
+	end(configs: number, warnings: number, denyWarnings: boolean): void {
+		const built = `Built ${plural(configs, "config")}`;
+		this.logService.outro(
+			warnings === 0
+				? `${built}.`
+				: `${built} with ${plural(warnings, "warning")}${denyWarnings ? "; --deny-warnings fails the run" : ""}.`
+		);
 	}
 
 	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */

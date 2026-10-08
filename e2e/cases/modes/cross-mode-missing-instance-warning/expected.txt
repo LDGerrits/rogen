@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote · mode dev
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
+  default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies: (mode.missingInstance)
     ReplicatedStorage/Shared/Net (dev, staging)
   Add a file for "prod" to it, or a plain file.
 
@@ -14,9 +14,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote · mode prod
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies:
+  default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies: (mode.missingInstance)
     ReplicatedStorage/Shared/Net (dev, staging)
   Add a file for "prod" to it, or a plain file.
 

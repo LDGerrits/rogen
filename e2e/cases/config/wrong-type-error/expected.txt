@@ -5,7 +5,7 @@ stdout:
   build failed.
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:2:14 - error: "rootDirs": expected an array, found a string.
-  default.rogen.json:3:23 - error: "variants[1]": expected a string, found a number.
-  default.rogen.json:4:18 - error: "routes.*": expected a string, found a number.
-  default.rogen.json:5:14 - error: "exclude[0]": expected a string, found a number.
+  default.rogen.json:2:14 - error: "rootDirs": expected an array, found a string. (config.wrongType)
+  default.rogen.json:3:23 - error: "variants[1]": expected a string, found a number. (config.wrongType)
+  default.rogen.json:4:18 - error: "routes.*": expected a string, found a number. (config.wrongType)
+  default.rogen.json:5:14 - error: "exclude[0]": expected a string, found a number. (config.wrongType)

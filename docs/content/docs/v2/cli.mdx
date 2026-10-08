@@ -17,6 +17,8 @@ The first word is always the command, and a bare `rogen` prints usage. Whatever 
 
 Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in the mode its `mode` field names, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
+Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
+
 ### `watch [config…]`
 
 Builds, then rebuilds whenever files or configs change. Only names matter, so editing inside a script never triggers a rebuild.
@@ -29,7 +31,7 @@ A config reloads when it, its `extends` chain or its template changes, and CLI o
 ◇  12:04:31 · 2 files changed
 │  ✔ default.project.json · wrote
 │  ■ lobby.project.json · not written
-│  ■ /repo/lobby.project.json - error: …
+│  ■ /repo/lobby.project.json - error: … (config.unknownField)
 │
 ◇  12:05:02 · default.rogen.json changed · reloaded
 │  ✔ default.project.json · unchanged
@@ -125,7 +127,7 @@ Lists every config in the folder, or the ones you name, with its root directorie
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`.
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 ## Options
 

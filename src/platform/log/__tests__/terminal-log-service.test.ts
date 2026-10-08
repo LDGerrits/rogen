@@ -37,7 +37,7 @@ describe("TerminalLogService", () => {
 			"│",
 			"◇  12:04:31 · 2 files changed",
 			"│  ✔ default.project.json · 14ms",
-			"│  ▲ /repo/lobby.json - warning: w",
+			"│  ▲ /repo/lobby.json - warning: w (x.y)",
 			"│",
 			"└  Stopped.",
 		]);

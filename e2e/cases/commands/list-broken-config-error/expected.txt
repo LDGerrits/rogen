@@ -5,5 +5,5 @@ stdout:
   default.rogen.json
   list failed.
 stderr:
-  default.rogen.json:2:2 - error: unknown field "bogus".
+  default.rogen.json:2:2 - error: unknown field "bogus". (config.unknownField)
   error: 1 config has errors.

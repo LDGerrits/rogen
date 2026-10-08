@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
-  Built 1 config.
+  Built 1 config with 1 warning.
 stderr:
-  out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first.
+  out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 written:
   default.project.json

@@ -6,9 +6,9 @@ stdout:
     default.project.json · wrote
   lobby
     lobby.project.json · wrote · same warnings as default
-  Built 2 configs.
+  Built 2 configs with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder:
+  default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
     src/Inventory/Sever (did you mean "server"?)
 
 $ rogen where src/Inventory/inventory.rogen.json

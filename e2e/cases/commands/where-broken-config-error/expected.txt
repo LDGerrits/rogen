@@ -3,7 +3,7 @@ exit 1
 stdout:
   src/A.luau -> ReplicatedStorage/shared/A · route * (fallback)
 stderr:
-  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'.
+  broken.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen where src/A.luau --json
 exit 1

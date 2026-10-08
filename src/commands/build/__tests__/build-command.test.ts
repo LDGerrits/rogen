@@ -372,7 +372,7 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · default",
 			"error: default.rogen.json · not loaded",
-			"diagnosticError: /repo/default.rogen.json - error: boom.",
+			"diagnosticError: /repo/default.rogen.json - error: boom. (config.unknownField)",
 			"outro: build failed.",
 		]);
 	});
@@ -402,10 +402,15 @@ describe("build command", () => {
 			);
 		});
 
-		it("should exit 0 on a warning without the flag", async () => {
-			const result = await run(await withWarning(), new MockLogService());
+		it("should exit 0 on a warning without the flag, and count it in the closing line", async () => {
+			const logService = new MockLogService();
+
+			const result = await run(await withWarning(), logService);
 
 			expect(result.isOk()).toBe(true);
+			expect(logService.lines.at(-1)).toBe(
+				"outro: Built 1 config with 1 warning."
+			);
 		});
 
 		it("should exit 0 with the flag when there is no warning", async () => {

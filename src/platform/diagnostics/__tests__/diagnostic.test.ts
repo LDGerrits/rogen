@@ -20,7 +20,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			};
 
 			expect(renderDiagnostic(diagnostic)).toBe(
-				'lobby.rogen.json:7:3 - error: unknown field "outDir".'
+				'lobby.rogen.json:7:3 - error: unknown field "outDir". (test.example)'
 			);
 		});
 
@@ -33,7 +33,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			};
 
 			expect(renderDiagnostic(diagnostic)).toBe(
-				"/repo/src - warning: it contributes nothing."
+				"/repo/src - warning: it contributes nothing. (test.example)"
 			);
 		});
 
@@ -46,11 +46,24 @@ describe("platform/diagnostics/diagnostic", () => {
 			};
 
 			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
-				"src/Net/HttpClient.luau - warning: it contributes nothing."
+				"src/Net/HttpClient.luau - warning: it contributes nothing. (test.example)"
 			);
 			expect(
 				renderDiagnostic(diagnostic, "/repo/src/Net/HttpClient.luau")
-			).toBe(". - warning: it contributes nothing.");
+			).toBe(". - warning: it contributes nothing. (test.example)");
+		});
+
+		it("should put the code on the headline of a grouped message", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				code: "test.group",
+				message: "2 names are odd:\n  a\n  b",
+				resource: "/repo/default.rogen.json",
+			};
+
+			expect(renderDiagnostic(diagnostic)).toBe(
+				`${path.normalize("/repo/default.rogen.json")} - warning: 2 names are odd: (test.group)\n  a\n  b`
+			);
 		});
 
 		it("should write the paths inside the message relative to the working directory too", () => {
@@ -63,7 +76,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			};
 
 			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
-				'default.project.json - warning: "a" is defined by src/A.luau and src/B.luau, not /repo2/src/C.luau.'
+				'default.project.json - warning: "a" is defined by src/A.luau and src/B.luau, not /repo2/src/C.luau. (test.example)'
 			);
 			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
 		});
@@ -194,7 +207,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			);
 
 			expect(renderDiagnostic(fixed)).toBe(
-				`${path.normalize("/repo/a.json")} - warning: near miss.`
+				`${path.normalize("/repo/a.json")} - warning: near miss. (test.example)`
 			);
 		});
 
