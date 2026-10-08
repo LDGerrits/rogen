@@ -32,7 +32,7 @@ Without modes, an environment becomes two variants flipped in opposite direction
 ```
 
 - `variants` in a mode turns variants on or off in that mode. Each one must be declared under the config's own `variants`.
-- `exclude` adds globs that are left out in that mode, on top of the config's. They also drop template nodes, see [Template Nodes](#template-nodes).
+- `exclude` adds globs that are left out in that mode, on top of the config's, with the same reach: scanned files and template mounts alike, see [Template Nodes](#template-nodes).
 - `rootDirs`, `routes`, `template`, `syncDir` and `outFile` belong to the config, and every mode shares them. A mode body with any other field is a `config.unknownField` error. That is the line between a mode and a second config.
 
 Route keys, variants and modes share one namespace, since all three are written the same way in a file name. A mode can't share a name with either of the others, and two names that differ only in the case of their first letter are an error too.
@@ -97,7 +97,7 @@ The `extends` chain merges first. Then the active mode's `variants` and `exclude
 
 ## Template Nodes
 
-A mode's `exclude` also drops template nodes whose `$path` matches a glob, so `DevPackages` mounted by the template stays out of prod. "Excluded means never built" then holds for scanned files and mounted folders alike:
+`exclude` drops a template node whose `$path` matches a glob, from the config or from a mode, so "excluded means never built" holds for scanned files and mounted folders alike. That is how `DevPackages` mounted by the template stays out of prod:
 
 ```json title="template.project.json"
 {
@@ -112,7 +112,7 @@ A mode's `exclude` also drops template nodes whose `$path` matches a glob, so `D
 }
 ```
 
-With `"prod": { "exclude": ["DevPackages"] }`, the prod project file has `Packages` and no `DevPackages`. The config's own `exclude` leaves template nodes alone, as before.
+With `"prod": { "exclude": ["DevPackages"] }`, the prod project file has `Packages` and no `DevPackages`, and `rogen where DevPackages` says so. The glob names the mounted path as the template writes it, relative to the config.
 
 ## Checking Every Mode
 

@@ -24,6 +24,7 @@ The **template** is a Rojo project file that Rogen merges its tree into. It hold
 
 - If the template and the generated tree define the same instance, the template wins and Rogen warns. A `$path` below a service, like a package mount, owns that whole folder.
 - A `$path` that points inside a root directory hands that path to Rojo. Rogen skips it entirely and `rogen where` reports it as `mounted`, which is how you sync a vendored library as-is. Mounting a root directory itself, a folder above one, or something inside an init folder is an error.
+- An `exclude` glob that matches a `$path` drops the node, so a [mode](/docs/v2/core-concepts/modes#template-nodes) can leave a mount such as `DevPackages` out of prod.
 - A child config's `template` replaces its parent's.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>

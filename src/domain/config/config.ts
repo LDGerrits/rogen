@@ -255,8 +255,6 @@ export class ResolvedTemplate {
 export interface ModeView {
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
-	/** The globs the mode itself adds, which also drop template nodes. */
-	readonly modeExclude: readonly string[];
 }
 
 export interface ResolvedConfigFields {
@@ -272,7 +270,7 @@ export interface ResolvedConfigFields {
 	readonly routes: ReadonlyMap<string, Target>;
 	/** Variant name to whether it is on, in the active mode. */
 	readonly variants: Readonly<Record<string, boolean>>;
-	/** The globs left out in the active mode. */
+	/** The globs left out in the active mode, which drop scanned files and template mounts alike. */
 	readonly exclude: readonly string[];
 	/** The active mode; none when the config declares no modes. */
 	readonly mode?: string;
@@ -298,8 +296,6 @@ export class ResolvedConfig {
 	readonly mode?: string;
 	readonly defaultMode?: string;
 	readonly modes: readonly string[];
-	/** The globs the active mode adds to `exclude`. */
-	readonly modeExclude: readonly string[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -318,9 +314,6 @@ export class ResolvedConfig {
 		this.mode = fields.mode;
 		this.defaultMode = fields.defaultMode;
 		this.modes = [...(fields.modeViews?.keys() ?? [])];
-		this.modeExclude =
-			(fields.mode && fields.modeViews?.get(fields.mode)?.modeExclude) ||
-			[];
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;

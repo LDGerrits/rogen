@@ -255,7 +255,7 @@ describe("domain/config/config", () => {
 				expect(config.modes).toEqual(["dev", "prod"]);
 				expect(config.mode).toBe("prod");
 				expect(config.defaultMode).toBe("dev");
-				expect(config.modeExclude).toEqual(["/repo/b"]);
+				expect(config.exclude).toEqual(["/repo/a", "/repo/b"]);
 			});
 
 			it("should count the active mode on and every other off when it prunes", () => {
@@ -283,7 +283,6 @@ describe("domain/config/config", () => {
 					mode: "dev",
 					variants: { mock: true },
 					exclude: ["/repo/a"],
-					modeExclude: [],
 					file: config.file,
 				});
 				expect(dev?.dormantVariants([{ variant: "prod" }])).toEqual([

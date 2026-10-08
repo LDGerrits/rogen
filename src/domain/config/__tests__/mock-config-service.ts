@@ -54,7 +54,6 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 			{
 				variants: { ...spec.variants, ...body.variants },
 				exclude: [...(spec.exclude ?? []), ...(body.exclude ?? [])],
-				modeExclude: body.exclude ?? [],
 			},
 		])
 	);

@@ -59,7 +59,7 @@ There are eleven fields, none nested more than two levels. `modes` is the only o
 | `variants` | `{}` | Every variant the project uses, and whether it's on. See [Variants](/docs/v2/core-concepts/variants). |
 | `modes` | none | Named environments, exactly one active per build. See [Modes](/docs/v2/core-concepts/modes). |
 | `mode` | first declared | The mode this config builds in unless `--mode` says otherwise. |
-| `exclude` | `[]` | Globs for files that are never built. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
+| `exclude` | `[]` | Globs for files that are never built, scanned or mounted by the template. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
 | `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |

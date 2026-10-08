@@ -1731,7 +1731,6 @@ describe("domain/config/core-config-service", () => {
 				modes: ["dev", "prod"],
 				variants: { mock: true },
 				exclude: ["/repo/**/_*"],
-				modeExclude: [],
 			});
 		});
 
@@ -1748,7 +1747,6 @@ describe("domain/config/core-config-service", () => {
 				mode: "prod",
 				defaultMode: "prod",
 				exclude: ["/repo/**/*.spec.luau"],
-				modeExclude: ["/repo/**/*.spec.luau"],
 			});
 		});
 
@@ -1996,6 +1994,24 @@ describe("domain/config/core-config-service", () => {
 				{
 					code: "config.undeclaredModeVariant",
 					position: { line: 4, column: 34 },
+					message: expect.stringContaining("Declare it there."),
+				},
+			]);
+		});
+
+		it("should suggest the declared variant a mode's switch is a typo of", async () => {
+			await write("/repo/default.rogen.json", {
+				routes,
+				variants: { mock: false },
+				modes: { dev: { variants: { mocks: true } } },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.undeclaredModeVariant",
+					message: expect.stringContaining('Did you mean "mock"?'),
 				},
 			]);
 		});

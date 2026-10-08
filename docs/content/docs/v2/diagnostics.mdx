@@ -220,7 +220,7 @@ Error. A mode switches a variant that `variants` doesn't declare. A variant exis
 default.rogen.json:9:36 - error: mode "dev" switches variant "mock", which is not declared under "variants". Declare it there.
 ```
 
-Add the variant to `variants`, with the state it has outside the mode. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
+Add the variant to `variants`, with the state it has outside the mode. When the name is close to a declared one, the message suggests it instead. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
 
 ### `config.unknownMode` [#config-unknownmode]
 

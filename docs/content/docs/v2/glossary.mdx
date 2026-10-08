@@ -74,7 +74,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Pruned**: Left out of the output because the file belongs to a dormant variant or to a mode that isn't active. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
-- **Excluded**: Left out of the output because the file matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
+- **Excluded**: Left out of the output because the file, or the template `$path` that mounts it, matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
 
 - **Mounted**: Left out of the scan because a template `$path` points at it, inside a root directory. Rojo reads it as it is, and Rogen neither routes it nor warns about it. See [Output and Sync](/docs/v2/core-concepts/output#template).
 

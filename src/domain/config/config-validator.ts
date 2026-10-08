@@ -136,7 +136,6 @@ export class ConfigValidator {
 								"variants"
 							),
 						exclude: config.getValue<string[]>("exclude"),
-						modeExclude: this.layered.modeExclude(mode),
 					},
 				];
 			})
@@ -176,10 +175,11 @@ export class ConfigValidator {
 			>(["modes", mode, "variants"]);
 			for (const variant of Object.keys(switched ?? {})) {
 				if (Object.hasOwn(declared, variant)) continue;
+				const suggestion = closestMatch(variant, Object.keys(declared));
 				this.problems.error(
 					"config.undeclaredModeVariant",
 					this.layered.locateMode(mode, "variants", variant),
-					`mode "${mode}" switches variant "${variant}", which is not declared under "variants". Declare it there.`
+					`mode "${mode}" switches variant "${variant}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
 				);
 			}
 		}

@@ -52,8 +52,7 @@ const modesSchema: JSONSchema = {
 				items: { type: "string" },
 				description:
 					"Globs left out in this mode, relative to this file's " +
-					"directory. They also drop the template's mounts whose " +
-					"$path they match, and add to the config's own exclude.",
+					"directory, added to the config's own exclude.",
 			},
 		},
 	},
@@ -117,8 +116,10 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 			items: { type: "string" },
 			default: [],
 			description:
-				"Globs never built, relative to this file's directory. A " +
-				"config adds its globs to those of the config it extends.",
+				"Globs never built, relative to this file's directory: " +
+				"scanned files, and the template's mounts whose $path they " +
+				"match. A config adds its globs to those of the config it " +
+				"extends.",
 		},
 	},
 	template: {

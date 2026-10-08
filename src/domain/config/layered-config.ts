@@ -135,17 +135,6 @@ export class LayeredConfig {
 		);
 	}
 
-	/** The globs the chain gives `mode` itself, which a template node can be dropped by. */
-	modeExclude(mode: string): string[] {
-		return (
-			this.chain.getValue<string[] | undefined>([
-				"modes",
-				mode,
-				"exclude",
-			]) ?? []
-		);
-	}
-
 	/** Where the config set `section`, or the leaf file when nothing did. */
 	locate(...section: ConfigSection[]): DiagnosticLocation {
 		const path = LayeredConfig.pathOf(section);

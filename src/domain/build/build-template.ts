@@ -80,12 +80,14 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 export class BuildTemplate {
 	private readonly project: RojoProject;
 	private readonly templateFile: string | undefined;
-	/** Every path the template's own `$path`s mount, except those the active mode's `exclude` drops. Rojo reads these, not Rogen. */
+	/** Every path the template's own `$path`s mount, except those `exclude` drops. Rojo reads these, not Rogen. */
 	readonly mounts: TemplateMounts;
 
 	constructor(
-		private readonly config: Pick<ResolvedConfig, "name" | "template"> &
-			Partial<Pick<ResolvedConfig, "modeExclude">>,
+		private readonly config: Pick<
+			ResolvedConfig,
+			"name" | "template" | "exclude"
+		>,
 		private readonly layout: SyncLayout
 	) {
 		const { template } = config;
@@ -111,12 +113,10 @@ export class BuildTemplate {
 		return this.config.template?.project.emitLegacyScripts === false;
 	}
 
-	/** Whether the active mode's `exclude` drops the node that mounts `target`, a `$path` as the template wrote it. */
+	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
 	private isDropped(target: string): boolean {
 		const mounted = toPosix(path.resolve(this.templateDir, target));
-		return (this.config.modeExclude ?? []).some((glob) =>
-			isMatch(mounted, glob)
-		);
+		return this.config.exclude.some((glob) => isMatch(mounted, glob));
 	}
 
 	private mountsOf(
