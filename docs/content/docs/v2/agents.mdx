@@ -12,7 +12,7 @@ Coding agents work best when the context they need is in one place and their cha
 3. **Boundaries a linter can check.** Rules like "features don't require each other" are rules about paths, so a linter can catch a crossed boundary before you review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 4. **Placement is declared.** Where a file ends up comes from a short `routes` map, not from conventions the agent has to infer.
 5. **No generated file to break.** Rogen rewrites the project file on every build, so there's nothing hand-maintained for an agent to corrupt.
-6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen build` warns about anything misplaced.
+6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen check` reports what is misplaced, with a non-zero exit.
 
 Left to itself, an agent assumes the path on disk is the instance path. It edits the generated project file, requires server code from shared code, or puts a `Server/` folder inside `Shared/` and ships it to every client. A short block of instructions prevents all of that.
 
@@ -32,7 +32,7 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen build` and fix each warning that names them.
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - A config with `modes` builds in one at a time: run `rogen build --mode <name>` for another, and `rogen list` to see them.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit.
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
@@ -40,9 +40,9 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 
 ## Check changed files automatically
 
-The block asks an agent to run `rogen build` after it adds, moves or renames files. That depends on the agent remembering, and `rogen build` prints every warning in the project, including ones that were there before the agent started. A clean result still costs a tool call.
+The block asks an agent to run `rogen check <paths>` after it adds, moves or renames files. That depends on the agent remembering, and a clean result still costs a tool call.
 
-[`rogen where --json`](/docs/v2/cli#json-output) lists, for each path, the diagnostics about it. A Claude Code `Stop` hook can use that to report only what the agent's own changes caused. It runs when Claude is about to end its turn, collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen where --json` on them, and reports each diagnostic it hasn't reported earlier in the session. On exit 2, Claude Code passes the report back to Claude, which then continues its turn.
+[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A Claude Code `Stop` hook can use that to report only what the agent's own changes caused. It runs when Claude is about to end its turn, collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. On exit 2, Claude Code passes the report back to Claude, which then continues its turn.
 
 `Stop` and not `PostToolUse`, because `PostToolUse` only sees `Write` and `Edit`, so a move done with `mv` or `git mv` in Bash is invisible, and it would report half-finished states, such as `dev/Service.luau` written before its `prod/` partner. `Stop` checks the end state once per turn.
 
@@ -61,10 +61,7 @@ mapfile -d '' changed < <(
 
 seen="$(git rev-parse --git-dir)/rogen-hook-$session"
 touch "$seen"
-report=$(rogen where --json "${changed[@]}" | jq -r --arg root "$PWD/" '
-	[(.diagnostics[] | {file, d: .}), (.locations[] | .source as $s | .diagnostics[] | {file: $s, d: .})]
-	| map("\(.file | ltrimstr($root)): \(.d.severity): \(.d.message) (\(.d.code))") | unique | .[]' |
-	grep -vxF -f "$seen")
+report=$(rogen check "${changed[@]}" 2>&1 | grep -vxF -f "$seen")
 [[ -z $report ]] && exit 0
 printf '%s\n' "$report" >>"$seen"
 printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s\n' "$report" >&2
@@ -92,15 +89,15 @@ Tried on a project with two configs and one warning already there (`Old@sevre.lu
 | Stops again, same state | nothing, it was already reported |
 | Fixes the typo, adds `Tax.shared.luau` | only `route.dotRoute` |
 
-The warning that was there before never shows up, and the two configs' copies of each diagnostic collapse to one line. A run takes about 0.13 seconds.
+The warning that was there before never shows up, and the two configs' copies of each diagnostic collapse to one line.
 
-With the hook in place, the "run `rogen build` …" rule in the block is optional, so a repo that uses the hook may drop it.
+With the hook in place, the "run `rogen check` …" rule in the block is optional, so a repo that uses the hook may drop it.
 
 ### Limits
 
 - **Your own changes count too.** The hook can't tell Claude's changes from your uncommitted ones, so a warning in a file you're editing is reported once per session.
-- **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`).
-- **It's Claude Code only.** Codex, Cursor and Gemini CLI each use a different hook format.
+- **It needs bash and git, and jq for the session id.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`).
+- **The script is Claude Code only.** Codex, Cursor and Gemini CLI each use a different hook format, but each can run `rogen check <paths>` and read its exit code. So can `lint-staged`: `"*": "rogen check"`.
 - **It only runs where the project dir has a config.** `rogen` also finds configs in the nearest folder above, but the `compgen` check doesn't look there: drop that line when the configs live above the project dir.
 
 ## Install the skill

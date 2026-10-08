@@ -205,6 +205,25 @@ export function countWarnings(builds: readonly ConfigBuild[]): number {
 	return count;
 }
 
+/** Every error and warning of a run, as `report` prints them: one that several configs share only once. */
+export function diagnosticsOf(builds: readonly ConfigBuild[]): Diagnostic[] {
+	const printedErrors = PrintedDiagnostics.errors();
+	const printedWarnings = PrintedDiagnostics.warnings();
+	return builds.flatMap((build) => {
+		const file =
+			build.outcome === "notLoaded" ? build.file : build.config.file;
+		const errors =
+			build.outcome === "failed" || build.outcome === "notLoaded"
+				? printedErrors.take(build.label, file, build.errors).fresh
+				: [];
+		const warnings = printedWarnings.take(build.label, file, [
+			...build.warnings,
+			...(build.syncWarnings ?? []),
+		]).fresh;
+		return [...warnings, ...errors];
+	});
+}
+
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(

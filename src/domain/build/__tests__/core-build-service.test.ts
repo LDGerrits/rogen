@@ -231,6 +231,46 @@ describe("CoreBuildService", () => {
 		});
 	});
 
+	describe("check", () => {
+		const checkOf = async (...configs: ResolvedConfig[]) =>
+			(await buildServiceOfFs().check(selectionOf(...configs))).unwrap();
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+		});
+
+		it("should build every config and write none", async () => {
+			const result = await checkOf(configOf());
+
+			expect(result).toMatchObject([
+				{ outcome: "notWritten", blockedBy: [] },
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should raise the diagnostics a build raises, the sync dir's included", async () => {
+			const config = configOf({ syncDir: abs("dist") });
+
+			const [checked] = await checkOf(config);
+			const [built] = (
+				await buildServiceOfFs().build(selectionOf(config))
+			).unwrap();
+
+			expect(checked.diagnostics).toEqual(built.diagnostics);
+			expect(checked.diagnostics).toMatchObject([
+				{ code: "output.nothingEmitted" },
+			]);
+		});
+
+		it("should fail a config that does not build, as build does", async () => {
+			await fs.writeFile(abs("src/init.meta.json"), "{ nope");
+
+			const [checked] = await checkOf(configOf());
+
+			expect(checked.outcome).toBe("failed");
+		});
+	});
+
 	describe("rebuild", () => {
 		const rebuildOf = async (
 			set: BuildSet,

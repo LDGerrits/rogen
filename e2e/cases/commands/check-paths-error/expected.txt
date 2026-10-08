@@ -1,0 +1,29 @@
+$ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau src/Inventory/New@sever.luau src/Shared/Server/Secret.server.luau
+exit 1
+stderr:
+  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/New@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Shared/Server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage (tree.deadScript)
+
+$ rogen check src/Inventory --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/src/Inventory/Save@sever.luau",
+        "severity": "warning",
+        "code": "route.strayAt",
+        "message": "did you mean \"@server\"?",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+        "fixes": [
+          {
+            "rename": {
+              "from": "<dir>/src/Inventory/Save@sever.luau",
+              "to": "<dir>/src/Inventory/Save@server.luau"
+            }
+          }
+        ]
+      }
+    ]
+  }

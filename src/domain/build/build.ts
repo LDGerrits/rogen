@@ -338,6 +338,34 @@ export class OutputFile {
 	}
 }
 
+/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+export function diagnosticsAbout(
+	diagnostics: readonly Diagnostic[],
+	source: string
+): Diagnostic[] {
+	const target = toPosix(source);
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		const entries = (related ?? []).filter(
+			({ resource }) => toPosix(resource) === target
+		);
+		if (entries.length > 0)
+			return entries.map(({ message }) => ({
+				...rest,
+				resource: source,
+				position: undefined,
+				message,
+				fixes: diagnostic.fixes?.filter(
+					({ rename }) => toPosix(rename.from) === target
+				),
+			}));
+		// A group is about its related files; its own resource is the config.
+		return !related?.length && toPosix(diagnostic.resource) === target
+			? [rest]
+			: [];
+	});
+}
+
 /** Nothing can be placed without a route. */
 export function missingRoutes(config: ResolvedConfig): Diagnostic[] {
 	return config.routes.size > 0

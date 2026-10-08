@@ -31,7 +31,7 @@ stderr:
 $ rogen init --variant x
 exit 2
 stderr:
-  error: init doesn't take '--variant'. build, list, watch and where do.
+  error: init doesn't take '--variant'. build, check, list, watch and where do.
 
 $ rogen build --nope --json
 exit 2
@@ -48,4 +48,4 @@ stderr:
 $ rogen --variant x
 exit 2
 stderr:
-  error: '--variant' goes after a command: build, list, watch and where take it.
+  error: '--variant' goes after a command: build, check, list, watch and where take it.

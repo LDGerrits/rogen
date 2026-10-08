@@ -11,7 +11,7 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen build` and fix each warning that names them.
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - A config with `modes` builds in one at a time: run `rogen build --mode <name>` for another, and `rogen list` to see them.
 - Leave `rogen watch` and `rojo serve` to the user: they never exit.
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.

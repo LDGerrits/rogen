@@ -120,10 +120,10 @@ const available = has("bash") && has("git") && has("jq");
 		expect(first.exit).toBe(2);
 		expect(first.report).toEqual([
 			expect.stringMatching(
-				/^src\/Buy@sever\.luau: warning: .*\(route\.strayAt\)$/
+				/^src\/Save\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 			expect.stringMatching(
-				/^src\/Save\.client\.luau: warning: .*\(tree\.deadScript\)$/
+				/^src\/Buy@sever\.luau - warning: .*\(route\.strayAt\)$/
 			),
 		]);
 
@@ -139,7 +139,7 @@ const available = has("bash") && has("git") && has("jq");
 		expect(fixed.exit).toBe(2);
 		expect(fixed.report).toEqual([
 			expect.stringMatching(
-				/^src\/Tax\.shared\.luau: warning: .*\(route\.dotRoute\)$/
+				/^src\/Tax\.shared\.luau - warning: .*\(route\.dotRoute\)$/
 			),
 		]);
 	});
