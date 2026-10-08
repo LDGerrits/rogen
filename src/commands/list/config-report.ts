@@ -8,7 +8,7 @@ const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
 /** Every variant the config declares, with its state, in the order declared. */
-const variantStates = ({ variants }: ResolvedConfig): string[] =>
+const variantLines = ({ variants }: ResolvedConfig): string[] =>
 	Object.entries(variants).map(
 		([variant, on]) => `${variant} ${on ? "on" : "off"}`
 	);
@@ -38,7 +38,7 @@ export class ConfigReport {
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
-					`variants: ${listed(variantStates(config))}`,
+					`variants: ${listed(variantLines(config))}`,
 					...(config.conflicts.length > 0
 						? [
 								`conflicts: ${config.conflicts.map((group) => group.join(" | ")).join(", ")}`,

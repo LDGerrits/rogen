@@ -252,7 +252,7 @@ export class ResolvedTemplate {
 	}
 }
 
-/** A mode's effect on a config: the globs left out, and which variants are on, which are those the mode lists. */
+/** A mode's effect on a config: the globs it leaves out, and every declared variant to whether the mode lists it, with the command line left out. */
 export interface ModeView {
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
