@@ -6,6 +6,7 @@ stdout:
   Created template.project.json.
   Created default.rogen.json.
   Created AGENTS.md.
+  default.project.json · wrote
   Next steps
     Run each in its own terminal:
       rbxtsc -w
@@ -17,6 +18,7 @@ stdout:
 
 written:
   AGENTS.md
+  default.project.json
   default.rogen.json
   template.project.json
 
@@ -35,6 +37,11 @@ default.rogen.json:
 	"template": "template.project.json",
 	"syncDir": "out"
 }
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
 
 $ rojo sourcemap template.project.json
 project: DataModel

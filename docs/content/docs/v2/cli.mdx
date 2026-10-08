@@ -144,7 +144,9 @@ In a terminal it asks a few questions, and Enter gives you the default each time
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
-`init` never overwrites a file. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). When it's done, `init` prints what to run next.
+`init` never overwrites a file it writes. If a hand-written project file is in the way, it's copied to `template.project.json` first, without the nodes that point into the root dirs, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)).
+
+Then `init` builds the configs it wrote, so the project files exist before you run anything: `rojo serve` and `rbxtsc --rojo` find theirs, and the file is ready to commit. A hand-written project file in the way is replaced by that build, which is why it was copied first. The build prints as `build` does, with its warnings and their codes, except the ones about the sync dir, since the compiler hasn't run yet. If it fails, the files stay, the errors print, and `init` exits 1: fix the config and run `rogen build`. With `--json`, the document has the build's entries under `built`, shaped as in [`build --json`](#build---json). When it's done, `init` prints what to run next.
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
@@ -300,6 +302,15 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
 	"appended": [],
 	"directories": ["/repo/places/lobby"],
+	"built": [
+		{
+			"config": "lobby",
+			"file": "/repo/lobby.rogen.json",
+			"outFile": "/repo/lobby.project.json",
+			"outcome": "wrote",
+			"diagnostics": []
+		}
+	],
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
@@ -310,7 +321,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had Rogen's agent rules added at the end. `directories` lists the root dirs `init` created because they didn't exist (a place's folder, or the root dirs of a new project); one that already existed is left alone and not listed. `built` has an entry per config it wrote, as `build --json` does, without the sync dir's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
 
 ### `list --json`
 

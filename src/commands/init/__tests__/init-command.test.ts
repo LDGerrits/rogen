@@ -4,6 +4,10 @@ import "../init-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
+import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
+import { BuildService } from "../../../domain/build/build-service.js";
+import { ConfigService } from "../../../domain/config/config-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { CoreToolchainService } from "../../../domain/toolchain/core-toolchain-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../../domain/init/core-init-service.js";
@@ -60,7 +64,13 @@ describe("init command", () => {
 	) => {
 		const environment = new NativeEnvironmentService(options, cwd);
 		const services = new ServiceCollection();
+		const configService = new CoreConfigService(memFs, environment);
 		services.set(EnvironmentService, environment);
+		services.set(ConfigService, configService);
+		services.set(
+			BuildService,
+			buildServiceOf(memFs, new CoreIndexService(memFs))
+		);
 		services.set(
 			InitService,
 			new CoreInitService(
@@ -68,7 +78,7 @@ describe("init command", () => {
 				promptService,
 				environment,
 				new CoreToolchainService(memFs),
-				new CoreConfigService(memFs, environment)
+				configService
 			)
 		);
 		services.set(LogService, logService);
@@ -112,7 +122,7 @@ describe("init command", () => {
 			return { result, logService };
 		};
 
-		it("should print only the files written and the next steps as one document", async () => {
+		it("should print only the files written, the builds and the next steps as one document", async () => {
 			await write("tsconfig.json", "{}");
 			await runInit();
 
@@ -129,6 +139,15 @@ describe("init command", () => {
 					path.join(cwd, "tsconfig.lobby.json"),
 				],
 				directories: [path.join(cwd, "places/lobby")],
+				built: [
+					{
+						config: "lobby",
+						file: path.join(cwd, "lobby.rogen.json"),
+						outFile: path.join(cwd, "lobby.project.json"),
+						outcome: "wrote",
+						diagnostics: [],
+					},
+				],
 				notes: [],
 				nextSteps: {
 					setup: [
@@ -234,6 +253,7 @@ describe("init command", () => {
 				"success: Created default.rogen.json.",
 				"success: Created AGENTS.md.",
 				"success: Created src/.",
+				"success: default.project.json · wrote",
 				"step: Next steps",
 				"info: Run each in its own terminal:",
 				"info:   rogen watch",
@@ -256,6 +276,91 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(logService.lines).toEqual(["intro: rogen init"]);
+		});
+	});
+
+	describe("first build", () => {
+		it("should write the project file of the config it wrote", async () => {
+			await write("src/Inventory/Server/Save.luau");
+
+			await runInit();
+
+			expect(
+				(await readJson("default.project.json")).tree
+					.ServerScriptService.Inventory
+			).toBeDefined();
+		});
+
+		it("should build the place it added, not the configs beside it", async () => {
+			await runInit();
+			await memFs.delete(path.join(cwd, "default.project.json"));
+
+			await runInit(["lobby"]);
+
+			expect(await exists("lobby.project.json")).toBe(true);
+			expect(await exists("default.project.json")).toBe(false);
+		});
+
+		it("should leave out the warning that the compiler has not run yet", async () => {
+			await write("tsconfig.json", "{}");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(
+				logService.lines.filter((line) => line.includes("output."))
+			).toEqual([]);
+		});
+
+		it("should say what is wrong with the routes it wrote", async () => {
+			await write("src/Save@sever.luau");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(logService.lines).toContainEqual(
+				expect.stringContaining("(route.strayAt)")
+			);
+		});
+
+		it("should keep the files and fail when the project file cannot be written", async () => {
+			const writeFile = memFs.writeFile.bind(memFs);
+			jest.spyOn(memFs, "writeFile").mockImplementation(
+				async (file, content) => {
+					if (file.includes("default.project.json"))
+						throw new Error("disk full");
+					return writeFile(file, content);
+				}
+			);
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				[],
+				new MockPromptService([], false),
+				logService
+			);
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(true);
+			expect(logService.lines).not.toContain("step: Next steps");
+		});
+
+		it("should list the build of each config in the JSON document", async () => {
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService, {
+				json: true,
+			});
+
+			expect(JSON.parse(logService.entries[0].text).built).toEqual([
+				{
+					config: "default",
+					file: path.join(cwd, "default.rogen.json"),
+					outFile: path.join(cwd, "default.project.json"),
+					outcome: "wrote",
+					diagnostics: [],
+				},
+			]);
 		});
 	});
 
@@ -749,7 +854,7 @@ describe("init command", () => {
 		const setUpLuau = async () => {
 			await write(
 				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
+				JSON.stringify({ rootDirs: ["src"], routes: LUAU_ROUTES })
 			);
 			await write("src/A.luau");
 		};
@@ -804,7 +909,7 @@ describe("init command", () => {
 				rootDirs: ["places/lobby"],
 			});
 			const after = await memFs.readDirectory(cwd);
-			expect(after.length).toBe(before.length + 2);
+			expect(after.length).toBe(before.length + 3);
 		});
 
 		it("should create the place folder so the next build finds it", async () => {
@@ -926,7 +1031,7 @@ describe("init command", () => {
 			await write(".darklua.json");
 			await write(
 				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
+				JSON.stringify({ rootDirs: ["src"], routes: LUAU_ROUTES })
 			);
 			await write(
 				"sync.rogen.json",
@@ -959,7 +1064,11 @@ describe("init command", () => {
 			await write("tsconfig.json", "{}");
 			await write(
 				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"], syncDir: "out" })
+				JSON.stringify({
+					rootDirs: ["src"],
+					routes: LUAU_ROUTES,
+					syncDir: "out",
+				})
 			);
 
 			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
@@ -983,9 +1092,14 @@ describe("init command", () => {
 
 		it("should print what to do next, including the missing include", async () => {
 			await write("tsconfig.json", "{}");
+			await write("src/A.ts");
 			await write(
 				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"], syncDir: "out" })
+				JSON.stringify({
+					rootDirs: ["src"],
+					routes: LUAU_ROUTES,
+					syncDir: "out",
+				})
 			);
 			const logService = new MockLogService();
 
@@ -997,6 +1111,7 @@ describe("init command", () => {
 				"success: Created lobby.rogen.json.",
 				"success: Created tsconfig.lobby.json.",
 				"success: Created places/lobby/.",
+				"success: lobby.project.json · wrote",
 				"step: Next steps",
 				'info: Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
 				"info: Run each in its own terminal:",
@@ -1123,8 +1238,9 @@ describe("init command", () => {
 		beforeEach(async () => {
 			await write(
 				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"] })
+				JSON.stringify({ rootDirs: ["src"], routes: LUAU_ROUTES })
 			);
+			await write("src/A.luau");
 		});
 
 		it("should write a config that extends default", async () => {
@@ -1165,6 +1281,7 @@ describe("init command", () => {
 				"intro: rogen init",
 				"info: ",
 				"success: Created prod.rogen.json.",
+				"success: prod.project.json · wrote",
 				"step: Next steps",
 				"info: Run each in its own terminal:",
 				"info:   rogen watch",
@@ -1221,12 +1338,13 @@ describe("init command", () => {
 		});
 
 		it("should allow a named init beside an existing default config", async () => {
-			await write("default.rogen.json", "{}");
+			const config = JSON.stringify({ routes: LUAU_ROUTES });
+			await write("default.rogen.json", config);
 
 			const result = await runInit(["lobby"]);
 
 			expect(result.isOk()).toBe(true);
-			expect(await read("default.rogen.json")).toBe("{}");
+			expect(await read("default.rogen.json")).toBe(config);
 			expect(await exists("lobby.rogen.json")).toBe(true);
 		});
 
@@ -1254,8 +1372,8 @@ describe("init command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			expect(await read("default.project.json")).toBe(
-				'{"name":"hand-written"}'
+			expect((await readJson("default.project.json")).name).toBe(
+				"hand-written"
 			);
 			expect(await read("template.project.json")).toBe(
 				'{"name":"hand-written"}'

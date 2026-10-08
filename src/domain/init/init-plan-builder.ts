@@ -118,6 +118,7 @@ export class InitPlanBuilder {
 				...(this.agentFile ? [this.agentFile] : []),
 			],
 			directories: [...this.directories],
+			configs: this.configs.map(({ fileName }) => fileName),
 			notes: [...this.notes],
 			nextSteps: {
 				setup: [...this.setup],

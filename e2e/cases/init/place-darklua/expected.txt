@@ -7,6 +7,10 @@ stdout:
   Created lobby.rogen.json.
   Created lobby-sync.rogen.json.
   Created AGENTS.md.
+  default.project.json · wrote
+  sync.project.json · wrote
+  lobby.project.json · wrote
+  lobby-sync.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -24,13 +28,13 @@ exit 0
 stdout:
   rogen build · default, sync, lobby, lobby-sync
   default
-    default.project.json · wrote
+    default.project.json · unchanged
   sync
-    sync.project.json · wrote
+    sync.project.json · unchanged
   lobby
-    lobby.project.json · wrote
+    lobby.project.json · unchanged
   lobby-sync
-    lobby-sync.project.json · wrote
+    lobby-sync.project.json · unchanged
   Built 4 configs.
 
 written:

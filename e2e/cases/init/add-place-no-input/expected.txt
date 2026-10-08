@@ -3,6 +3,7 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  lobby.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -17,7 +18,7 @@ stdout:
   default
     default.project.json · wrote
   lobby
-    lobby.project.json · wrote
+    lobby.project.json · unchanged
   Built 2 configs.
 
 written:

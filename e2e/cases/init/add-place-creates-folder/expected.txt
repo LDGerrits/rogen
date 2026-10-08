@@ -4,6 +4,7 @@ stdout:
   rogen init
   Created lobby.rogen.json.
   Created places/lobby/.
+  lobby.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -18,7 +19,7 @@ stdout:
   default
     default.project.json · wrote
   lobby
-    lobby.project.json · wrote
+    lobby.project.json · unchanged
   Built 2 configs.
 
 $ rogen init match --json
@@ -31,6 +32,15 @@ stdout:
     "appended": [],
     "directories": [
       "<dir>/places/match"
+    ],
+    "built": [
+      {
+        "config": "match",
+        "file": "<dir>/match.rogen.json",
+        "outFile": "<dir>/match.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
     ],
     "notes": [],
     "nextSteps": {
@@ -50,7 +60,7 @@ $ rogen build match
 exit 0
 stdout:
   rogen build · match
-  match.project.json · wrote
+  match.project.json · unchanged
   Built 1 config.
 
 written:

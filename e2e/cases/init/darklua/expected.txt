@@ -5,6 +5,8 @@ stdout:
   Created default.rogen.json.
   Created sync.rogen.json.
   Created AGENTS.md.
+  default.project.json · wrote
+  sync.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen watch
@@ -21,9 +23,9 @@ exit 0
 stdout:
   rogen build · default, sync
   default
-    default.project.json · wrote
+    default.project.json · unchanged
   sync
-    sync.project.json · wrote
+    sync.project.json · unchanged
   Built 2 configs.
 
 written:
