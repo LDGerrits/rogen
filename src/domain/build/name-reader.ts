@@ -455,9 +455,7 @@ export class NameReader {
 		const keys = [...this.keys.all].filter(
 			(key) =>
 				key.length >= MIN_TYPO_KEY_LENGTH &&
-				editDistance(identity, DeclaredKeys.identityOf(key)) === 1 &&
-				// `Servers/` and `Mocks/` are plurals, ordinary names that happen to be one edit away.
-				identity !== `${DeclaredKeys.identityOf(key)}s`
+				editDistance(identity, DeclaredKeys.identityOf(key)) === 1
 		);
 		if (keys.length === 0) return undefined;
 		const [key] = keys;

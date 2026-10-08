@@ -171,10 +171,14 @@ export class Locator {
 			)
 				instances.push(reference);
 			else {
-				const arg = await this.withoutPosition(given, query!.cwd);
+				// A backslash is a separator on every platform, so a Windows-style path answers as its slash form does.
+				const arg = await this.withoutPosition(
+					toPosix(given),
+					query!.cwd
+				);
 				const resolved = path.resolve(query!.cwd, arg);
 				paths.push(resolved);
-				if (/[\\/]$/.test(arg)) folders.add(toPosix(resolved));
+				if (arg.endsWith("/")) folders.add(toPosix(resolved));
 			}
 		}
 		return { paths, folders, instances };

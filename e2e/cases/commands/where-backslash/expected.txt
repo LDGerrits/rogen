@@ -1,0 +1,14 @@
+$ rogen where src\Combat\
+exit 0
+stdout:
+  src/Combat -> does not exist · name a file in it to see where it would land
+
+$ rogen where src\Combat\Hit.luau
+exit 0
+stdout:
+  src/Combat/Hit.luau -> ReplicatedStorage/shared/Combat/Hit · route * (fallback)
+
+$ rogen where src\
+exit 0
+stdout:
+  src/Other.luau -> ReplicatedStorage/shared/Other · route * (fallback)

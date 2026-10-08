@@ -412,20 +412,21 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should mark a missing path named as a folder, by a trailing separator or by having no file type", async () => {
+		it("should mark a missing path named as a folder by a trailing separator only", async () => {
 			await write("src/Other.luau");
 
 			const located = [
 				...(await locate(["src/Combat/"])),
-				...(await locate(["src/Fight"])),
+				...(await locate(["src/Module"])),
 				...(await locate(["src/Combat/Hit.luau"])),
 			];
 
 			expect(located).toMatchObject([
 				{ status: "missing", folder: true },
-				{ status: "missing", folder: true },
+				{ status: "missing" },
 				{ status: "placed" },
 			]);
+			expect(located[1]).not.toHaveProperty("folder");
 			expect(located[2]).not.toHaveProperty("folder");
 		});
 
@@ -523,7 +524,6 @@ describe("CoreBuildService.locate", () => {
 				status: "missing",
 				source: abs("src/Nowhere"),
 				exists: false,
-				folder: true,
 			},
 		]);
 	});
