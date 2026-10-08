@@ -1,7 +1,8 @@
 {
 	"steps": [
 		["check"],
-		["check", "src"]
+		["check", "src"],
+		["check", "-q"]
 	],
 	"rojo": false
 }

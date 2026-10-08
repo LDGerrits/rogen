@@ -61,7 +61,7 @@ mapfile -d '' changed < <(
 
 seen="$(git rev-parse --git-dir)/rogen-hook-$session"
 touch "$seen"
-report=$(rogen check "${changed[@]}" 2>&1 | grep -vxF -f "$seen")
+report=$(rogen check "${changed[@]}" | grep -vxF -f "$seen")
 [[ -z $report ]] && exit 0
 printf '%s\n' "$report" >>"$seen"
 printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s\n' "$report" >&2
