@@ -1168,7 +1168,7 @@ describe("InitQuestions addAgentInstructions", () => {
 	});
 });
 
-describe("InitQuestions addClaudeHook", () => {
+describe("InitQuestions addAgentHook", () => {
 	it("should add it on Enter in a terminal, and never in a run that can't ask", async () => {
 		const asked = new InitQuestions(
 			new MockPromptService([ACCEPT_DEFAULT]),
@@ -1179,13 +1179,16 @@ describe("InitQuestions addClaudeHook", () => {
 			false
 		);
 
-		expect(await asked.addClaudeHook()).toBe(true);
-		expect(await unasked.addClaudeHook()).toBe(false);
+		expect(await asked.addAgentHook(["Claude Code"])).toBe(true);
+		expect(await unasked.addAgentHook(["Claude Code"])).toBe(false);
 	});
 });
 
 describe("InitQuestions whatToAdd", () => {
-	const valuesListed = async (agentFile?: string, hookOffered?: boolean) => {
+	const valuesListed = async (
+		agentFile?: string,
+		hookAgents?: readonly string[]
+	) => {
 		const prompts = new MockPromptService([ACCEPT_DEFAULT]);
 		let values: string[] = [];
 		const original = prompts.select.bind(prompts);
@@ -1193,16 +1196,13 @@ describe("InitQuestions whatToAdd", () => {
 			values = options.choices.map(({ value }) => value);
 			return original(options);
 		}) as typeof prompts.select;
-		await new InitQuestions(prompts, true).whatToAdd(
-			agentFile,
-			hookOffered
-		);
+		await new InitQuestions(prompts, true).whatToAdd(agentFile, hookAgents);
 		return values;
 	};
 
 	it("should list the hook only where it is offered", async () => {
-		expect(await valuesListed("AGENTS.md", true)).toContain("hook");
-		expect(await valuesListed("AGENTS.md", false)).not.toContain("hook");
+		expect(await valuesListed("AGENTS.md", ["Codex"])).toContain("hook");
+		expect(await valuesListed("AGENTS.md", [])).not.toContain("hook");
 		expect(await valuesListed()).not.toContain("hook");
 	});
 });

@@ -42,15 +42,19 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 
 The block asks an agent to run `rogen check <paths>` after it adds, moves or renames files. That depends on the agent remembering, and a clean result still costs a tool call.
 
-[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A Claude Code `Stop` hook can use that to report only what the agent's own changes caused. It runs when Claude is about to end its turn, collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. On exit 2, Claude Code passes the report back to Claude, which then continues its turn.
+[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused. The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. The agent gets the report as its next prompt and continues its turn.
 
-`Stop` and not `PostToolUse`, because `PostToolUse` only sees `Write` and `Edit`, so a move done with `mv` or `git mv` in Bash is invisible, and it would report half-finished states, such as `dev/Service.luau` written before its `prod/` partner. `Stop` checks the end state once per turn.
+It is one script for every agent that has a hook for the end of a turn. They agree on the payload (a JSON object on stdin with the session id and the working directory) and on the reply (`{"decision": "block", "reason": …}` on stdout, which becomes the next prompt). Only Cursor differs, and takes `cursor` as the script's first argument to reply with `followup_message`.
 
-```bash title=".claude/hooks/rogen-stop.sh"
+`Stop` and not `PostToolUse`, because `PostToolUse` only sees `Write` and `Edit`, so a move done with `mv` or `git mv` in Bash is invisible, and it would report half-finished states, such as `dev/Service.luau` written before its `prod/` partner. A turn's end checks the end state once.
+
+```bash title=".agents/hooks/rogen-check.sh"
 #!/usr/bin/env bash
-# Claude Code Stop hook: report new Rogen diagnostics about changed files before Claude ends its turn.
-session=$(jq -r .session_id)
-cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
+# Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
+# Pass "cursor" as the first argument for Cursor, which replies with followup_message.
+payload=$(cat)
+session=$(jq -r '.session_id // .sessionId // .conversation_id // "agent"' <<<"$payload")
+cd "${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$payload")}" || exit 0
 compgen -G '*.rogen.json' >/dev/null || exit 0
 
 changed=()
@@ -65,27 +69,48 @@ touch "$seen"
 report=$(rogen check "${changed[@]}" | grep -vxF -f "$seen")
 [[ -z $report ]] && exit 0
 printf '%s\n' "$report" >>"$seen"
-printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s\n' "$report" >&2
-exit 2
+message=$(printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s' "$report")
+if [[ ${1:-} == cursor ]]; then
+	jq -n --arg message "$message" '{followup_message: $message}'
+else
+	jq -n --arg message "$message" '{decision: "block", reason: $message}'
+fi
 ```
 
-In a repo that uses Claude Code, `rogen init` can do both steps: where it finds a `.claude` folder or a `CLAUDE.md`, a terminal run asks whether to add the hook, and a later `init` lists it under **Claude Code hook**. It writes the script, and adds the entry to `.claude/settings.json`, creating the file or adding to the `Stop` list of one that exists. It runs the script through `bash`, so it needs no executable bit. It leaves a repo alone that has the script or names it in its settings, and settings that aren't plain JSON, and a run without a terminal never adds it.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal never adds it, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, and says so about the latter.
 
-To do it by hand, make the script executable (`chmod +x .claude/hooks/rogen-stop.sh`) and register it:
+| Agent | Found by | Hook file | Event | Entry |
+|---|---|---|---|---|
+| Claude Code | `.claude`, `CLAUDE.md` | `.claude/settings.json` | `Stop` | `bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh` |
+| Codex | `.codex` | `.codex/hooks.json` | `Stop` | `bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh` |
+| Gemini CLI | `.gemini`, `GEMINI.md` | `.gemini/settings.json` | `AfterAgent` | `bash "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.sh` |
+| Cursor | `.cursor` | `.cursor/hooks.json` | `stop` | `bash .agents/hooks/rogen-check.sh cursor` |
+| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `bash .agents/hooks/rogen-check.sh` |
+
+To do it by hand, put the script at `.agents/hooks/rogen-check.sh` and add the entry in the agent's own format. Claude Code, Codex and Gemini CLI take a group of command hooks; Cursor and Copilot take the command itself, in a file that starts with `"version": 1`:
 
 ```json title=".claude/settings.json"
 {
 	"hooks": {
 		"Stop": [
-			{ "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rogen-stop.sh" }] }
+			{ "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.agents/hooks/rogen-check.sh" }] }
 		]
 	}
 }
 ```
 
+```json title=".cursor/hooks.json"
+{
+	"version": 1,
+	"hooks": { "stop": [{ "command": "bash .agents/hooks/rogen-check.sh cursor" }] }
+}
+```
+
+Codex runs a project hook only once you trust it: open `/hooks` in Codex to review it.
+
 Tried on a project with two configs and one warning already there (`Old@sevre.luau`):
 
-| Turn | Claude sees |
+| Turn | The agent sees |
 |---|---|
 | Adds a clean file | nothing |
 | Adds `Buy@sever.luau`, and `git mv`s `Save.luau` to `Save.client.luau` | `route.strayAt` and `tree.deadScript`, one line each |
@@ -98,9 +123,10 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 
 ### Limits
 
-- **Your own changes count too.** The hook can't tell Claude's changes from your uncommitted ones, so a warning in a file you're editing is reported once per session.
-- **It needs bash and git, and jq for the session id.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`).
-- **The script is Claude Code only.** Codex, Cursor and Gemini CLI each use a different hook format, but each can run `rogen check <paths>` and read its exit code. So can `lint-staged`: `"*": "rogen check"`.
+- **Your own changes count too.** The hook can't tell the agent's changes from your uncommitted ones, so a warning in a file you're editing is reported once per session.
+- **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`). The script runs on bash 3.2, the one macOS ships.
+- **An agent with no hook for the end of a turn** can still run `rogen check <paths>` and read its exit code, as `lint-staged` does: `"*": "rogen check"`.
+- **Cursor and Copilot have caps and quirks.** Cursor limits automatic follow-ups (`loop_limit`, 5 by default), and its `stop` hook has been reported not to fire in the CLI or to ignore its reply on Windows. Copilot ends the turn after 8 blocks in a row. The script reports each line once, so neither limit is reached by it.
 - **It only runs where the project dir has a config.** `rogen` also finds configs in the nearest folder above, but the `compgen` check doesn't look there: drop that line when the configs live above the project dir.
 
 ## Install the skill

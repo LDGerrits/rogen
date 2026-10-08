@@ -9,6 +9,7 @@ import {
 } from "../config/config.js";
 import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent-file.js";
+import { AgentHooks } from "./agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
@@ -63,12 +64,11 @@ export class InitPlanBuilder {
 		this.agentStep = file.nextStep;
 	}
 
-	/** The Claude Code hook's script and settings, written after the agent rules. */
-	addClaudeHook(files: readonly PlannedFile[]): void {
-		this.hookFiles = files;
-		this.setup.add(
-			"The Claude Code hook needs bash, git and jq; on Windows, winget install jqlang.jq."
-		);
+	/** The hook's script and the agents' files, written after the agent rules. */
+	addAgentHook(hooks: AgentHooks): void {
+		this.hookFiles = hooks.files;
+		for (const note of hooks.notes) this.addNote(note);
+		this.addSetup(...hooks.setup);
 	}
 
 	/** A root dir this run chose, which `write` creates if it isn't there. */

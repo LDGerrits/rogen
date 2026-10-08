@@ -381,11 +381,11 @@ describe("init command", () => {
 		});
 	});
 
-	describe("Claude Code hook", () => {
+	describe("agent hook", () => {
 		const accepting = () =>
 			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
 
-		it("should say it created the script and the settings", async () => {
+		it("should say it created the script and the agent's file", async () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
 
@@ -393,24 +393,24 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
-					"success: Created .claude/hooks/rogen-stop.sh.",
+					"success: Created .agents/hooks/rogen-check.sh.",
 					"success: Created .claude/settings.json.",
 				])
 			);
-			expect(await exists(".claude/hooks/rogen-stop.sh")).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
 		});
 
-		it("should say it added the hook to settings that exist, and list them as appended", async () => {
-			await write(".claude/settings.json", "{}\n");
+		it("should say it added the hook to a file that exists, and list it as appended", async () => {
+			await write(".codex/hooks.json", "{}\n");
 			const logService = new MockLogService();
 
 			await runInit([], accepting(), logService);
 
 			expect(logService.lines).toContain(
-				"success: Added the Rogen hook to .claude/settings.json."
+				"success: Added the Rogen hook to .codex/hooks.json."
 			);
 			expect(
-				(await readJson(".claude/settings.json")).hooks.Stop
+				(await readJson(".codex/hooks.json")).hooks.Stop
 			).toHaveLength(1);
 		});
 
@@ -419,7 +419,7 @@ describe("init command", () => {
 
 			await runInit();
 
-			expect(await exists(".claude/hooks/rogen-stop.sh")).toBe(false);
+			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(false);
 		});
 	});
 
