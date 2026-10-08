@@ -581,7 +581,6 @@ describe("init command", () => {
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
 				["server", "starterGui"],
 				"leave",
 				ACCEPT_DEFAULT,
@@ -609,6 +608,7 @@ describe("init command", () => {
 		});
 
 		it("should mount a folder that is not installed as optional", async () => {
+			await write("wally.toml");
 			const prompts = new MockPromptService([
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
@@ -625,6 +625,36 @@ describe("init command", () => {
 			expect(
 				(await readJson("template.project.json")).tree.ReplicatedStorage
 			).toEqual({ Packages: { $path: { optional: "Packages" } } });
+		});
+
+		it("should ask seven questions on a bare Luau folder, none of them about packages", async () => {
+			const prompts = new MockPromptService(
+				Array(9).fill(ACCEPT_DEFAULT)
+			);
+
+			await runInit([], prompts);
+
+			expect(prompts.asked).toEqual([
+				"What are you setting up?",
+				"Language",
+				"Does Darklua process your code before Rojo syncs it?",
+				"Root dirs",
+				"Routes",
+				"Files that match no route",
+				expect.stringContaining("Rogen's rules for coding agents"),
+			]);
+			expect(await exists("template.project.json")).toBe(false);
+		});
+
+		it("should still ask about packages when a manifest is there", async () => {
+			await write("wally.toml");
+			const prompts = new MockPromptService(
+				Array(9).fill(ACCEPT_DEFAULT)
+			);
+
+			await runInit([], prompts);
+
+			expect(prompts.asked).toContain("Packages");
 		});
 
 		it("should not ask for a name when default.rogen.json does not exist", async () => {

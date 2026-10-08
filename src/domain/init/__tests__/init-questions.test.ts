@@ -466,10 +466,13 @@ describe("InitQuestions askProject", () => {
 
 		it("should never offer include or an @ scope to luau", async () => {
 			const { offered } = await optionsFor(
-				withRobloxTs(luau, {
-					hasInclude: true,
-					rbxtsScopes: ["@rbxts", "@flamework"],
-				})
+				withRobloxTs(
+					{ ...luau, packageManager: "wally" },
+					{
+						hasInclude: true,
+						rbxtsScopes: ["@rbxts", "@flamework"],
+					}
+				)
 			);
 
 			expect(offered?.map(({ value }) => value)).toEqual([
@@ -482,7 +485,31 @@ describe("InitQuestions askProject", () => {
 			expect(
 				(await optionsFor({ ...luau, packageManager: "wally" })).initial
 			).toEqual(["Packages", "ServerPackages"]);
-			expect((await optionsFor(luau)).initial).toEqual([]);
+		});
+
+		it("should skip the question when there is no package manager and no package folder", async () => {
+			const { offered, prompts } = await optionsFor(luau);
+
+			expect(offered).toBeUndefined();
+			expect(prompts.asked).not.toContain("Packages");
+		});
+
+		it("should ask when a package folder exists without a manifest", async () => {
+			const { offered } = await optionsFor({
+				...luau,
+				packageDirs: new Set(["Packages"]),
+			});
+
+			expect(offered?.map(({ value }) => value)).toContain("Packages");
+		});
+
+		it("should ask when a manifest exists and no folder does yet", async () => {
+			const { offered } = await optionsFor({
+				...luau,
+				packageManager: "wally",
+			});
+
+			expect(offered?.map(({ value }) => value)).toContain("Packages");
 		});
 
 		it("should offer only pesde's folders when pesde is detected", async () => {
@@ -694,7 +721,7 @@ describe("InitQuestions askProject", () => {
 
 		it("should take the ticked routes", async () => {
 			const choices = await asked(luau, [
-				...acceptAll(5),
+				...acceptAll(4),
 				["server", "starterGui"],
 				ACCEPT_DEFAULT,
 			]);
@@ -704,7 +731,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should let files that match no route be left out", async () => {
-			const choices = await asked(luau, [...acceptAll(6), "leave"]);
+			const choices = await asked(luau, [...acceptAll(5), "leave"]);
 
 			expect(choices.fallback).toBe(false);
 		});
@@ -729,7 +756,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should skip the fallback question when no route is ticked", async () => {
-			const prompts = new MockPromptService([...acceptAll(5), []]);
+			const prompts = new MockPromptService([...acceptAll(4), []]);
 
 			const result = await askInitChoices(prompts, contextOf(luau));
 
@@ -849,7 +876,7 @@ describe("InitQuestions askProject layout", () => {
 		["arena", "arena.rogen.json already exists."],
 	])("should reject the places %j at the prompt", async (answer, message) => {
 		await expect(
-			ask(luau, ["several", ...acceptAll(6), answer], undefined, [
+			ask(luau, ["several", ...acceptAll(5), answer], undefined, [
 				"arena.rogen.json",
 			])
 		).rejects.toThrow(message);
@@ -982,7 +1009,10 @@ describe("InitQuestions addAgentInstructions", () => {
 			new MockPromptService([ACCEPT_DEFAULT]),
 			true
 		);
-		const unasked = new InitQuestions(new MockPromptService([], false), false);
+		const unasked = new InitQuestions(
+			new MockPromptService([], false),
+			false
+		);
 
 		expect(await asked.addAgentInstructions("AGENTS.md")).toBe(true);
 		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);
