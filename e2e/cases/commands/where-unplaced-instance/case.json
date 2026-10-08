@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["where", "ServerScriptService.Shop.Buy", "ServerScriptService.Stray.Buy", "ServerScriptService.Nowhere.Thing"],
+		["where", "ServerScriptService.Shop.Buy", "ServerScriptService.Stray.Buy", "--json"]
+	],
+	"rojo": false
+}

@@ -199,6 +199,9 @@ stdout:
         "config": "default",
         "instance": "ReplicatedStorage/Shared/Nope",
         "status": "noFile",
+        "folders": [
+          "<dir>/src/Shared"
+        ],
         "diagnostics": []
       }
     ],

@@ -805,6 +805,87 @@ describe("CoreBuildService.locate", () => {
 			);
 		});
 
+		it("should name the folder for the first file on a new side of a feature", async () => {
+			await write("src/Shop/Types.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Shop.Buy")
+			).toEqual([[abs("src/Shop/Server")]]);
+		});
+
+		it("should name the root dir's routing folder for a feature that doesn't exist yet", async () => {
+			await write("src/Other/Types.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Shop.Cart.Buy")
+			).toEqual([[abs("src/Shop/Cart/Server")]]);
+		});
+
+		it("should go only as deep as the folders that exist", async () => {
+			await write("src/Shop/Types.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Shop.Cart.Buy")
+			).toEqual([[abs("src/Shop/Cart/Server")]]);
+		});
+
+		it("should name a route's folder for an instance directly in its target", async () => {
+			await write("src/Other/Types.luau");
+
+			expect(await foldersFor("ServerScriptService.Boot")).toEqual([
+				[abs("src/Server")],
+			]);
+		});
+
+		it("should drop a candidate that a governing route sends elsewhere", async () => {
+			await write("src/Shop/@Client", "src/Shop/Types.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Shop.Buy")
+			).toEqual([[]]);
+		});
+
+		it("should name nothing when no route leads the instance", async () => {
+			await write("src/Shop/Types.luau");
+
+			expect(await foldersFor("Workspace.Shop.Buy")).toEqual([[]]);
+		});
+
+		it("should name the rename of a file a stray @ left out of place", async () => {
+			await write("src/Shop/Buy@sever.luau");
+
+			const [instance] = (
+				await locateIn(buildService(), configOf(), {
+					args: ["ServerScriptService.Shop.Buy"],
+					cwd: abs(),
+				})
+			).unwrap().instances;
+
+			expect(instance.fixes).toEqual([
+				{
+					code: "route.strayAt",
+					rename: {
+						from: abs("src/Shop/Buy@sever.luau"),
+						to: abs("src/Shop/Buy@Server.luau"),
+					},
+				},
+			]);
+			expect(instance.folders).toEqual([]);
+		});
+
+		it("should not offer a rename that places a different instance", async () => {
+			await write("src/Shop/Cart@sever.luau");
+
+			const [instance] = (
+				await locateIn(buildService(), configOf(), {
+					args: ["ServerScriptService.Shop.Buy"],
+					cwd: abs(),
+				})
+			).unwrap().instances;
+
+			expect(instance.fixes).toEqual([]);
+		});
+
 		it("should name nothing when files place the instance", async () => {
 			await write("src/Inventory/Server/Save.luau");
 

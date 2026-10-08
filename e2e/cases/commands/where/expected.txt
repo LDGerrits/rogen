@@ -33,7 +33,7 @@ exit 0
 stdout:
   src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
   src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
-  ReplicatedStorage/Shared/Nope -> no file places it
+  ReplicatedStorage/Shared/Nope -> no file places it · a new file goes in src/Shared/
 
 $ rogen where src/Combat/Server/Moves/Sweep.luau:12 src/Net/Http@client.luau:3:9: unexpected symbol
 exit 0
@@ -45,4 +45,4 @@ $ rogen where ServerScriptService.Inventory.Export ServerScriptService.Nothing.H
 exit 0
 stdout:
   ServerScriptService.Inventory.Export -> no file places it · a new file goes in src/Inventory/Server/
-  ServerScriptService.Nothing.Here -> no file places it
+  ServerScriptService.Nothing.Here -> no file places it · a new file goes in src/Nothing/Server/

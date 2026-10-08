@@ -87,6 +87,13 @@ $ rogen where ServerScriptService.Inventory.Export
 ServerScriptService.Inventory.Export -> no file places it · a new file goes in src/Inventory/Server/
 ```
 
+With no files beside it, `where` still names the folder when a route and a root dir make one: for the first server file of `src/Shop/`, `a new file goes in src/Shop/Server/`, checked by placing a file there as `build` does. When a file on disk would place the instance after a rename that a warning proposes, such as a typo in an `@` suffix, `where` says so:
+
+```
+$ rogen where "ServerScriptService.Shop.Buy:4: attempt to index nil"
+ServerScriptService.Shop.Buy -> no file places it · src/Shop/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt)
+```
+
 Unlike other commands, `where` takes paths, not config names, so it reads every config in the folder. A file every config places the same way prints one line. Otherwise each config's line starts with its name, and `outside the root dirs` is left out when another config places the file, so a place's file prints only the place's line:
 
 ```
@@ -240,7 +247,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `mounted` | `node`, the template node whose `$path` mounts it |
 | `excluded` | `pattern`, the glob that matched |
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
-| `noFile` | `instance` instead of `source`: no file places an instance you asked about. `folders` lists where a new file for it goes, when files are placed beside it |
+| `noFile` | `instance` instead of `source`: no file places an instance you asked about. `folders` lists where a new file for it goes, when files are placed beside it or a route and a root dir make one. `fixes` lists the renames, in the shape diagnostics use, after which a file would place it |
 
 A config that declares modes adds `mode`, the active one, after `config`. Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
 

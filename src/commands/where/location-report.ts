@@ -4,6 +4,7 @@ import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import {
 	ConfigLocations,
 	FileLocation,
+	InstanceFix,
 	Locations,
 } from "../../domain/build/build.js";
 import { requireExpression } from "../../domain/roblox/roblox.js";
@@ -36,6 +37,8 @@ type Answer =
 			readonly instance: string;
 			/** Absolute POSIX folders a new file for it goes in. */
 			readonly folders: readonly string[];
+			/** Renames of files that would place it. */
+			readonly fixes: readonly InstanceFix[];
 	  };
 
 /** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
@@ -241,10 +244,10 @@ export class LocationReport {
 		});
 		return [
 			...locations.map(answer),
-			...instances.flatMap(({ reference, files, folders }) =>
+			...instances.flatMap(({ reference, files, folders, fixes }) =>
 				files.length > 0
 					? files.map(answer)
-					: [{ label, instance: reference.text, folders }]
+					: [{ label, instance: reference.text, folders, fixes }]
 			),
 		];
 	}
@@ -327,6 +330,14 @@ export class LocationReport {
 									toNative(folder)
 								),
 							}),
+							...(answer.fixes.length > 0 && {
+								fixes: answer.fixes.map(({ rename }) => ({
+									rename: {
+										from: toNative(rename.from),
+										to: toNative(rename.to),
+									},
+								})),
+							}),
 							diagnostics: [],
 						}),
 			}));
@@ -368,16 +379,30 @@ export class LocationReport {
 		];
 	}
 
-	/** Where a file that would place the instance goes, as the end of its line. */
-	private whereToAdd(folders: readonly string[]): string {
-		return folders.length > 0
-			? ` · a new file goes in ${folders.map((folder) => `${relativeTo(this.cwd, folder)}/`).join(" or ")}`
-			: "";
+	/** The renames that would place the instance and where a new file for it goes, as the end of its line. */
+	private whereToAdd(
+		folders: readonly string[],
+		fixes: readonly InstanceFix[]
+	): string {
+		const renames = fixes.map(
+			({ code, rename }) =>
+				` · ${relativeTo(this.cwd, rename.from)} would, renamed to ${
+					path.posix.dirname(toPosix(rename.from)) ===
+					path.posix.dirname(toPosix(rename.to))
+						? path.posix.basename(toPosix(rename.to))
+						: relativeTo(this.cwd, rename.to)
+				} (${code})`
+		);
+		const added =
+			folders.length > 0
+				? ` · a new file goes in ${folders.map((folder) => `${relativeTo(this.cwd, folder)}/`).join(" or ")}`
+				: "";
+		return renames.join("") + added;
 	}
 
 	private describe(answer: Answer): string {
 		return "location" in answer
 			? describeLocation(answer.location, answer.mode, this.cwd)
-			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders)}`;
+			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders, answer.fixes)}`;
 	}
 }
