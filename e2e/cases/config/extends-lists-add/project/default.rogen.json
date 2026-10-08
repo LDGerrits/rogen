@@ -1,0 +1,11 @@
+{
+	"extends": "./middle.rogen.json",
+	"rootDirs": [
+		"core",
+		"places/match"
+	],
+	"exclude": [
+		"**/*.spec.luau",
+		"**/_*"
+	]
+}

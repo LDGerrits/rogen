@@ -1,0 +1,59 @@
+$ rogen list default --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "status": "valid",
+        "extends": [
+          "<dir>/middle.rogen.json",
+          "<dir>/core.rogen.json"
+        ],
+        "projectName": "project",
+        "rootDirs": [
+          "<dir>/lib",
+          "<dir>/places/lobby",
+          "<dir>/core",
+          "<dir>/places/match"
+        ],
+        "commonRoot": "<dir>",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "variants": {},
+        "exclude": [
+          "<dir>/**/*.story.luau",
+          "<dir>/**/*.spec.luau",
+          "<dir>/**/_*"
+        ],
+        "template": null,
+        "syncDir": null,
+        "outFile": "<dir>/default.project.json",
+        "diagnostics": []
+      }
+    ]
+  }
+
+$ rogen build default
+exit 0
+stdout:
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- core/A.luau
+      B: ModuleScript  <- lib/B.luau
+      C: ModuleScript  <- places/lobby/C.luau
+      D: ModuleScript  <- places/match/D.luau

@@ -443,23 +443,100 @@ describe("domain/config/core-config-service", () => {
 			});
 		});
 
-		it("should replace lists wholesale", async () => {
+		it("should add a child's list entries to its parent's", async () => {
 			await write("/repo/base.rogen.json", {
 				rootDirs: ["core"],
-				exclude: ["**/*.spec.luau", "**/*.story.luau"],
+				exclude: ["**/*.spec.luau"],
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
-				rootDirs: ["core", "places/lobby"],
-				exclude: ["**/*.spec.luau"],
+				rootDirs: ["places/lobby"],
+				exclude: ["**/*.story.luau"],
 			});
 
 			await start();
 
 			expect(resolved(0)).toMatchObject({
 				rootDirs: ["/repo/core", "/repo/places/lobby"],
-				exclude: ["/repo/**/*.spec.luau"],
+				exclude: ["/repo/**/*.spec.luau", "/repo/**/*.story.luau"],
 			});
+		});
+
+		it("should add list entries across a chain of three", async () => {
+			await write("/repo/core.rogen.json", { exclude: ["a"] });
+			await write("/repo/middle.rogen.json", {
+				extends: "./core.rogen.json",
+				exclude: ["b"],
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./middle.rogen.json",
+				exclude: ["c"],
+			});
+
+			await start();
+
+			expect(resolved(0)?.exclude).toEqual([
+				"/repo/a",
+				"/repo/b",
+				"/repo/c",
+			]);
+		});
+
+		it("should keep a repeated entry at its last position", async () => {
+			await write("/repo/base.rogen.json", {
+				rootDirs: ["core", "shared"],
+			});
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["core", "places/lobby"],
+			});
+
+			await start();
+
+			expect(resolved(0)?.rootDirs).toEqual([
+				"/repo/shared",
+				"/repo/core",
+				"/repo/places/lobby",
+			]);
+		});
+
+		it("should apply the default list only when no config in the chain sets it", async () => {
+			await write("/repo/base.rogen.json", { routes: {} });
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+			});
+			await write("/repo/lobby.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["places/lobby"],
+			});
+
+			await start({ names: ["default", "lobby"] });
+
+			expect(resolved(0)?.rootDirs).toEqual(["/repo/src"]);
+			expect(resolved(1)?.rootDirs).toEqual(["/repo/places/lobby"]);
+		});
+
+		it("should point a root dir diagnostic at the file and position that wrote the entry", async () => {
+			await write(
+				"/repo/base.rogen.json",
+				`{
+	"rootDirs": ["src/Lib"]
+}`
+			);
+			await write("/repo/default.rogen.json", {
+				extends: "./base.rogen.json",
+				rootDirs: ["src"],
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.nestedRootDir",
+					resource: "/repo/base.rogen.json",
+					position: { line: 2, column: 15 },
+				},
+			]);
 		});
 
 		it("should inherit a field the child leaves out and replace one it sets", async () => {

@@ -134,7 +134,7 @@ export class ConfigValidator {
 		this.rootDirs.forEach((rootDir, index) => {
 			const overlap = rootDirOverlap(this.rootDirs, index);
 			if (!overlap) return;
-			const location = this.layered.locate("rootDirs", String(index));
+			const location = this.layered.locateEntry("rootDirs", index);
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
 					"config.duplicateRootDir",

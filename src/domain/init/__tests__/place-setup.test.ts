@@ -66,7 +66,7 @@ const written = (result: ReturnType<typeof plan>) => {
 
 describe("PlaceSetup", () => {
 	describe("luau", () => {
-		it("should write one config extending default, with the place folder added", () => {
+		it("should write one config extending default, with only the place folder", () => {
 			const { configs, tsconfig } = written(
 				plan(luau, { rootDirs: ["src"] })
 			);
@@ -75,20 +75,18 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["src", "places/lobby"],
+					rootDirs: ["places/lobby"],
 				},
 			});
 			expect(tsconfig).toBeUndefined();
 		});
 
-		it("should keep every root dir default has", () => {
+		it("should leave the root dirs default has to default", () => {
 			const { configs } = written(
 				plan(luau, { rootDirs: ["core", "shared"] })
 			);
 
 			expect(configs["lobby.rogen.json"].rootDirs).toEqual([
-				"core",
-				"shared",
 				"places/lobby",
 			]);
 		});
@@ -151,7 +149,7 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["src", "places/lobby"],
+					rootDirs: ["places/lobby"],
 				},
 				"lobby-sync.rogen.json": {
 					$schema: SCHEMA,
@@ -190,7 +188,7 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["src", "places/lobby"],
+					rootDirs: ["places/lobby"],
 					syncDir: "out/lobby",
 				},
 			});

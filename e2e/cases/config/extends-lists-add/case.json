@@ -1,0 +1,13 @@
+{
+	"steps": [
+		[
+			"list",
+			"default",
+			"--json"
+		],
+		[
+			"build",
+			"default"
+		]
+	]
+}

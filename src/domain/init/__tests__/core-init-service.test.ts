@@ -312,7 +312,7 @@ describe("CoreInitService", () => {
 				"lobby.rogen.json",
 			]);
 			expect(JSON.parse(plan?.files[0].content ?? "{}").rootDirs).toEqual(
-				["src", "places/lobby"]
+				["places/lobby"]
 			);
 		});
 
@@ -360,7 +360,7 @@ describe("CoreInitService", () => {
 					JSON.parse(result.unwrap()?.files[0].content ?? "{}")
 				).toMatchObject({
 					extends: "./default.rogen.json",
-					rootDirs: ["src", "places/arena"],
+					rootDirs: ["places/arena"],
 				});
 			});
 
@@ -455,7 +455,7 @@ describe("CoreInitService", () => {
 						JSON.parse(plan?.files[0].content ?? "{}")
 					).toMatchObject({
 						extends: "./default.rogen.json",
-						rootDirs: ["src", "places/lobby"],
+						rootDirs: ["places/lobby"],
 					});
 				});
 

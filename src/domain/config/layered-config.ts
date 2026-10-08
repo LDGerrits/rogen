@@ -7,7 +7,7 @@ import {
 	ConfigSection,
 } from "../../platform/config/config-models.js";
 import { DiagnosticLocation } from "../../platform/diagnostics/diagnostic.js";
-import { configDefaults } from "./config-schema.js";
+import { configDefaults, configMergePolicies } from "./config-schema.js";
 
 /** The fields that hold a path, which resolve against the file that sets them. */
 const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
@@ -65,7 +65,8 @@ export class LayeredConfig {
 				overrides,
 				variantNames.filter((variant) => declared.has(variant)),
 				cwd
-			)
+			),
+			configMergePolicies
 		);
 	}
 
@@ -84,13 +85,25 @@ export class LayeredConfig {
 		return { resource: file.file, position: file.positionOf(path) };
 	}
 
+	/** Where the config wrote the entry at `index` of the merged list `field`, or the leaf file when no file did. */
+	locateEntry(field: string, index: number): DiagnosticLocation {
+		const entry = this.config.entries([field])[index];
+		if (entry?.source.tier !== "layer") return { resource: this.leaf.file };
+		const file = this.files[entry.source.index];
+		return {
+			resource: file.file,
+			position: file.positionOf([field, String(entry.index)]),
+		};
+	}
+
 	private static cliModel(
 		overrides: ConfigOverrides,
 		declaredVariants: readonly string[],
 		cwd: string
 	): ConfigModel {
 		const contents: Record<string, unknown> = {};
-		if (overrides.outFile !== undefined) contents.outFile = overrides.outFile;
+		if (overrides.outFile !== undefined)
+			contents.outFile = overrides.outFile;
 		if (declaredVariants.length > 0) {
 			contents.variants = Object.fromEntries(
 				declaredVariants.map((variant) => [

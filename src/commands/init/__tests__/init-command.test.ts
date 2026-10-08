@@ -801,7 +801,7 @@ describe("init command", () => {
 			expect(await readJson("lobby.rogen.json")).toEqual({
 				$schema: SCHEMA_URL,
 				extends: "./default.rogen.json",
-				rootDirs: ["src", "places/lobby"],
+				rootDirs: ["places/lobby"],
 			});
 			const after = await memFs.readDirectory(cwd);
 			expect(after.length).toBe(before.length + 2);
@@ -847,7 +847,6 @@ describe("init command", () => {
 				placeholder: "places/lobby",
 			});
 			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
-				"src",
 				"world/lobby",
 			]);
 		});
@@ -943,7 +942,7 @@ describe("init command", () => {
 
 			expect(await readJson("lobby.rogen.json")).toMatchObject({
 				extends: "./default.rogen.json",
-				rootDirs: ["src", "places/lobby"],
+				rootDirs: ["places/lobby"],
 			});
 			expect(await readJson("lobby-sync.rogen.json")).toMatchObject({
 				extends: "./lobby.rogen.json",
@@ -967,7 +966,7 @@ describe("init command", () => {
 
 			expect(await readJson("lobby.rogen.json")).toMatchObject({
 				extends: "./default.rogen.json",
-				rootDirs: ["src", "places/lobby"],
+				rootDirs: ["places/lobby"],
 				syncDir: "out/lobby",
 			});
 			expect(await readJson("tsconfig.lobby.json")).toEqual({
@@ -1085,10 +1084,9 @@ describe("init command", () => {
 			expect(await readJson("lobby.rogen.json")).toEqual({
 				$schema: SCHEMA_URL,
 				extends: "./default.rogen.json",
-				rootDirs: ["src", "places/lobby"],
+				rootDirs: ["places/lobby"],
 			});
 			expect((await readJson("match.rogen.json")).rootDirs).toEqual([
-				"src",
 				"places/match",
 			]);
 		});

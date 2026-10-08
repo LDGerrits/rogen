@@ -1,5 +1,9 @@
 import { JSONSchema } from "../../base/json-schema.js";
-import { ConfigModel } from "../../platform/config/config-models.js";
+import {
+	ConfigModel,
+	MergePolicies,
+	MergePolicy,
+} from "../../platform/config/config-models.js";
 import { RogenConfig } from "./config.js";
 
 const routesSchema: JSONSchema = {
@@ -24,61 +28,99 @@ const variantsSchema: JSONSchema = {
 	additionalProperties: { type: "boolean" },
 };
 
-/** One schema per field of a config file, so a field can't be added to one and not the other. */
-const fieldSchemas: Record<keyof RogenConfig, JSONSchema> = {
+interface ConfigField {
+	readonly schema: JSONSchema;
+	/** How a child's value combines with its parent's across `extends`. */
+	readonly merge: MergePolicy;
+}
+
+/** One entry per field of a config file, so a field can't be added without saying how it merges. */
+const fields: Record<keyof RogenConfig, ConfigField> = {
 	$schema: {
-		type: "string",
-		description: "The published JSON Schema URI for editor validation.",
+		merge: "replace",
+		schema: {
+			type: "string",
+			description: "The published JSON Schema URI for editor validation.",
+		},
 	},
 	extends: {
-		type: "string",
-		description:
-			"Another *.rogen.json to inherit from, relative to this file.",
+		merge: "replace",
+		schema: {
+			type: "string",
+			description:
+				"Another *.rogen.json to inherit from, relative to this file.",
+		},
 	},
 	rootDirs: {
-		type: "array",
-		items: { type: "string" },
-		default: ["src"],
-		description:
-			"Directories Rogen scans and watches, merged into one tree; " +
-			"the last wins on a clash.",
+		merge: "append",
+		schema: {
+			type: "array",
+			items: { type: "string" },
+			default: ["src"],
+			description:
+				"Directories Rogen scans and watches, merged into one tree; " +
+				"the last wins on a clash. A config adds its entries to those " +
+				'of the config it extends; "src" applies only when no config ' +
+				"in the chain sets any.",
+		},
 	},
-	routes: routesSchema,
-	variants: variantsSchema,
+	routes: { merge: "merge", schema: routesSchema },
+	variants: { merge: "merge", schema: variantsSchema },
 	exclude: {
-		type: "array",
-		items: { type: "string" },
-		default: [],
-		description: "Globs never built, relative to this file's directory.",
+		merge: "append",
+		schema: {
+			type: "array",
+			items: { type: "string" },
+			default: [],
+			description:
+				"Globs never built, relative to this file's directory. A " +
+				"config adds its globs to those of the config it extends.",
+		},
 	},
 	template: {
-		type: "string",
-		description:
-			"A Rojo project file whose tree Rogen merges its generated " +
-			"nodes into.",
+		merge: "replace",
+		schema: {
+			type: "string",
+			description:
+				"A Rojo project file whose tree Rogen merges its generated " +
+				"nodes into.",
+		},
 	},
 	syncDir: {
-		type: "string",
-		description:
-			"The directory Rojo syncs from, when that isn't your root " +
-			"dirs. Set it to your compiler's output directory - " +
-			'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
-			"plain Luau.",
+		merge: "replace",
+		schema: {
+			type: "string",
+			description:
+				"The directory Rojo syncs from, when that isn't your root " +
+				"dirs. Set it to your compiler's output directory - " +
+				'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
+				"plain Luau.",
+		},
 	},
 	outFile: {
-		type: "string",
-		description:
-			"The Rojo project file Rogen writes. Defaults to this " +
-			"config's own file name, with .rogen.json replaced by " +
-			".project.json.",
+		merge: "replace",
+		schema: {
+			type: "string",
+			description:
+				"The Rojo project file Rogen writes. Defaults to this " +
+				"config's own file name, with .rogen.json replaced by " +
+				".project.json.",
+		},
 	},
 };
+
+/** How each top-level field combines across a config's chain. */
+export const configMergePolicies: MergePolicies = Object.fromEntries(
+	Object.entries(fields).map(([key, field]) => [key, field.merge])
+);
 
 /** What a `*.rogen.json` may hold; a key outside it is an error. */
 export const configSchema: JSONSchema = {
 	type: "object",
 	additionalProperties: false,
-	properties: fieldSchemas,
+	properties: Object.fromEntries(
+		Object.entries(fields).map(([key, field]) => [key, field.schema])
+	),
 };
 
 /** The values a config has before any file or flag sets them. */

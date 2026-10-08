@@ -35,6 +35,20 @@ export type ConfigSource =
 	| { readonly tier: "layer"; readonly index: number }
 	| { readonly tier: "cli" };
 
+/** How a field combines across tiers: `merge` maps by key and scalars by replacing, `replace` takes the last tier whole, `append` adds each tier's list entries to the earlier ones. */
+export type MergePolicy = "merge" | "replace" | "append";
+
+/** The policy of each top-level key; a key without one merges. */
+export type MergePolicies = Readonly<Record<string, MergePolicy>>;
+
+/** One entry of a list that tiers add to, with where it was written. */
+export interface ConfigEntry<T> {
+	readonly value: T;
+	readonly source: ConfigSource;
+	/** Its position in the list of the tier that wrote it. */
+	readonly index: number;
+}
+
 export interface ConfigValue<T> {
 	readonly defaultValue?: T;
 	readonly layerValues: readonly (T | undefined)[];
@@ -44,13 +58,18 @@ export interface ConfigValue<T> {
 	readonly source?: ConfigSource;
 }
 
+function asList<T>(value: unknown): T[] | undefined {
+	return Array.isArray(value) ? (value as T[]) : undefined;
+}
+
 export class Config {
 	private consolidatedModel: ConfigModel | null = null;
 
 	constructor(
 		private readonly defaultConfig: ConfigModel,
 		private readonly layers: readonly ConfigModel[],
-		private readonly cliConfig: ConfigModel
+		private readonly cliConfig: ConfigModel,
+		private readonly policies: MergePolicies = {}
 	) {}
 
 	getConsolidatedModel(): ConfigModel {
@@ -61,9 +80,53 @@ export class Config {
 				...this.layers.map((layer) => layer.contents),
 				this.cliConfig.contents
 			);
+			for (const key of Object.keys(merged)) {
+				const policy = this.policies[key];
+				if (policy === "append") {
+					merged[key] = this.entries<unknown>([key]).map(
+						({ value }) => value
+					);
+				} else if (policy === "replace") {
+					merged[key] = this.lastValue(key);
+				}
+			}
 			this.consolidatedModel = new ConfigModel(merged);
 		}
 		return this.consolidatedModel;
+	}
+
+	/**
+	 * The entries of the list at `section`, each tier's after the earlier ones.
+	 * An entry a later tier repeats moves to the later position. The default
+	 * applies only when no layer or the command line sets the list.
+	 */
+	entries<T>(section: ConfigSection): ConfigEntry<T>[] {
+		const tiers: { source: ConfigSource; list: T[] | undefined }[] = [
+			...this.layers.map((layer, index) => ({
+				source: { tier: "layer", index } as const,
+				list: asList<T>(layer.getValue(section)),
+			})),
+			{
+				source: { tier: "cli" },
+				list: asList<T>(this.cliConfig.getValue(section)),
+			},
+		];
+		if (tiers.every(({ list }) => list === undefined)) {
+			tiers.unshift({
+				source: { tier: "default" },
+				list: asList<T>(this.defaultConfig.getValue(section)),
+			});
+		}
+
+		let result: ConfigEntry<T>[] = [];
+		for (const { source, list } of tiers) {
+			if (!list) continue;
+			result = result.filter(({ value }) => !list.includes(value));
+			list.forEach((value, index) =>
+				result.push({ value, source, index })
+			);
+		}
+		return result;
 	}
 
 	getValue<T>(section?: ConfigSection): T {
@@ -98,6 +161,15 @@ export class Config {
 			}
 		}
 		return true;
+	}
+
+	private lastValue(key: string): unknown {
+		const tiers = [
+			this.defaultConfig,
+			...this.layers,
+			this.cliConfig,
+		].filter((tier) => tier.getValue(key) !== undefined);
+		return tiers[tiers.length - 1]?.getValue(key);
 	}
 
 	private keys(): string[] {

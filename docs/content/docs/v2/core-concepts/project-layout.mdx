@@ -45,7 +45,7 @@ Rogen warns about metadata with nothing to apply to, such as an `init.meta.json`
 
 ## Excluding Files
 
-`exclude` lists globs, relative to the config, for files that should never be built. Rogen doesn't route or warn about excluded files.
+`exclude` lists globs, relative to the config, for files that should never be built. Rogen doesn't route or warn about excluded files. A config that `extends` another adds its globs to the parent's, so a `prod` config can exclude specs without restating the shared list.
 
 ```json
 { "exclude": ["**/*.spec.luau", "**/*.story.luau"] }
