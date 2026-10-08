@@ -20,7 +20,10 @@ export class BuildReport {
 			file: toNative(loaded ? build.config.file : build.file),
 			outFile: loaded ? toNative(build.config.outFile) : null,
 			...(loaded && build.config.mode && { mode: build.config.mode }),
-			outcome: build.documentOutcome,
+			outcome:
+				build.outcome === "wrote" || build.outcome === "unchanged"
+					? build.outcome
+					: "notWritten",
 			...(build.outcome === "notWritten" && {
 				blockedBy: build.blockedBy,
 			}),

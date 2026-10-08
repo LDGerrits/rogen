@@ -132,10 +132,6 @@ export class WrittenBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings);
 	}
-
-	get documentOutcome(): "wrote" | "unchanged" {
-		return this.outcome;
-	}
 }
 
 /** A config that didn't load, so there was nothing to build; `errors` is why. */
@@ -151,11 +147,6 @@ export class UnloadedBuild {
 	/** What the config is asked for by. */
 	get label(): string {
 		return configLabel(this.file);
-	}
-
-	/** An unloaded config has no project file to write. */
-	get documentOutcome(): "notWritten" {
-		return "notWritten";
 	}
 
 	get warnings(): readonly Diagnostic[] {
@@ -185,10 +176,6 @@ export class UnwrittenBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings);
 	}
-
-	get documentOutcome(): "notWritten" {
-		return this.outcome;
-	}
 }
 
 /** A config whose build, write or set check went wrong; `findings` is what its build found before that. */
@@ -206,11 +193,6 @@ export class FailedBuild extends AbstractConfigBuild {
 	/** Warnings, sync dir warnings, then the errors that failed it. */
 	override get diagnostics(): readonly Diagnostic[] {
 		return [...super.diagnostics, ...this.errors];
-	}
-
-	/** A failed config left its project file as it was. */
-	get documentOutcome(): "notWritten" {
-		return "notWritten";
 	}
 }
 
