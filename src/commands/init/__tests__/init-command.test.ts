@@ -291,6 +291,23 @@ describe("init command", () => {
 			).toBeDefined();
 		});
 
+		it("should build nothing when it wrote no config", async () => {
+			await write("default.rogen.json", "{}");
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				[],
+				new MockPromptService(["agent"]),
+				logService
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("default.project.json")).toBe(false);
+			expect(logService.lines).not.toContainEqual(
+				expect.stringContaining("project.json")
+			);
+		});
+
 		it("should build the place it added, not the configs beside it", async () => {
 			await runInit();
 			await memFs.delete(path.join(cwd, "default.project.json"));

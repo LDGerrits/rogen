@@ -53,7 +53,8 @@ session=$(jq -r .session_id)
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 compgen -G '*.rogen.json' >/dev/null || exit 0
 
-mapfile -d '' changed < <(
+changed=()
+while IFS= read -r -d '' file; do changed+=("$file"); done < <(
 	git diff -z --name-only --relative --diff-filter=d HEAD 2>/dev/null
 	git ls-files -z --others --exclude-standard 2>/dev/null
 )

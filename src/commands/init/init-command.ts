@@ -51,12 +51,16 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
+/** Why a build failed, or nothing. */
+const errorsOf = (build: ConfigBuild): readonly Diagnostic[] =>
+	build.outcome === "failed" || build.outcome === "notLoaded"
+		? build.errors
+		: [];
+
 /** What a build found, less the sync dir's warnings: the compiler they ask for hasn't run in a project that was just written. */
 const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
-	...(build.outcome === "failed" || build.outcome === "notLoaded"
-		? build.errors
-		: []),
+	...errorsOf(build),
 ];
 
 registerCommand(
@@ -124,6 +128,8 @@ registerCommand(
 			buildService: BuildService,
 			plan: InitPlan
 		): Promise<Result<ConfigBuild[], Error>> {
+			// No names would select every config in the folder.
+			if (plan.configs.length === 0) return ok([]);
 			const selection = await configService.select(plan.configs, {});
 			if (selection.isErr()) return selection;
 			return buildService.build(selection.value);
@@ -159,11 +165,7 @@ registerCommand(
 			if (built.isErr()) return built;
 			const log = new BuildLog(logService, cwd);
 			for (const build of built.value) log.outcome(build, foundBy(build));
-			const errors = built.value.flatMap((build) =>
-				build.outcome === "failed" || build.outcome === "notLoaded"
-					? build.errors
-					: []
-			);
+			const errors = built.value.flatMap(errorsOf);
 			if (errors.length > 0) {
 				logService.outro(
 					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
@@ -223,11 +225,7 @@ registerCommand(
 				);
 			const report = new BuildReport();
 			for (const build of built.value) report.add(build, foundBy(build));
-			const errors = built.value.flatMap((build) =>
-				build.outcome === "failed" || build.outcome === "notLoaded"
-					? build.errors
-					: []
-			);
+			const errors = built.value.flatMap(errorsOf);
 			return this.printJson(
 				logService,
 				{
