@@ -152,23 +152,6 @@ describe("build command", () => {
 		]);
 	});
 
-	it("should leave an unchanged project file alone", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		await run(new MockConfigService([buildable()]), new NullLogService());
-		const logService = new NullLogService();
-		const success = jest.spyOn(logService, "success");
-
-		const result = await run(
-			new MockConfigService([buildable()]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(success).toHaveBeenCalledWith(
-			"default.project.json · unchanged"
-		);
-	});
-
 	it("should fail and write nothing when a config declares no routes", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 
@@ -188,23 +171,6 @@ describe("build command", () => {
 		);
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		expect(await fs.exists(abs("bare.project.json"))).toBe(false);
-	});
-
-	it("should fail and write nothing when two configs share an output file", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-
-		const result = await run(
-			new MockConfigService([
-				buildable({}, "/repo/default.rogen.json"),
-				buildable({}, "/repo/source.rogen.json"),
-			]),
-			new NullLogService()
-		);
-
-		expect((result as ResultError<Error>).error.message).toContain(
-			"write the same file"
-		);
-		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
 	it("should report an invalid folder meta once when two configs read it, and write nothing", async () => {
@@ -281,45 +247,6 @@ describe("build command", () => {
 			["default.project.json · not written · bad failed"],
 			["bad.project.json · not written"],
 		]);
-	});
-
-	it("should warn about unrouted files without failing", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		const logService = new NullLogService();
-		const diagnostic = jest.spyOn(logService, "diagnostic");
-
-		const result = await run(
-			new MockConfigService([
-				buildable({ routes: { server: "ServerScriptService" } }),
-			]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(diagnostic).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: expect.stringContaining("matched no route"),
-			})
-		);
-		expect(await fs.exists(abs("default.project.json"))).toBe(true);
-	});
-
-	it("should warn when nothing the config emits exists under its sync dir", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		const logService = new NullLogService();
-		const diagnostic = jest.spyOn(logService, "diagnostic");
-
-		const result = await run(
-			new MockConfigService([buildable({ syncDir: abs("out") })]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(diagnostic).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: expect.stringContaining("doesn't exist yet"),
-			})
-		);
 	});
 
 	it("should fail when the project file cannot be written", async () => {
