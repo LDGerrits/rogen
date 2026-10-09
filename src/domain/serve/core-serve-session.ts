@@ -61,6 +61,8 @@ interface StartedServer {
 	retiring: boolean;
 	/** The write of its record, once it answered. */
 	record?: Promise<void>;
+	/** The next time its port is asked whether it answers yet. */
+	readyTimer?: ReturnType<typeof setTimeout>;
 }
 
 const builtOutcomes: ReadonlySet<string> = new Set(["wrote", "unchanged"]);
@@ -198,15 +200,15 @@ export class CoreServeSession
 			this.plan.named
 		);
 		const wanted = new Set(served.configs.map(({ file }) => file));
-		const present = new Set(
-			this.plan.selection.entries.map(({ file }) => file)
-		);
-		for (const [file, server] of this.servers)
+		const present = new Set(served.all.map(({ file }) => file));
+		for (const [file, server] of this.servers) {
+			if (this.stopping) return;
 			if (!wanted.has(file))
 				await this.retire(
 					server,
 					present.has(file) ? "extended" : "removed"
 				);
+		}
 		for (const known of [this.servedElsewhere, this.refused])
 			for (const file of [...known.keys()])
 				if (!wanted.has(file)) known.delete(file);
@@ -237,22 +239,32 @@ export class CoreServeSession
 		const refusedHere = this.refused.get(config.file) === address;
 		const elsewhere = this.servedElsewhere.get(config.file) === address;
 		if (!holder && (refusedHere || elsewhere)) {
-			// Only a port that freed up, or a server that left it, changes anything, and one probe tells.
+			// Only a port that freed up, or a change of the server on it, changes anything, and one probe tells.
 			const state = await this.probe.probe(target.address, tool.server);
-			if (elsewhere && state.kind === "serving") return;
-			if (refusedHere && state.kind !== "free") return;
+			const ownProject =
+				state.kind === "serving" &&
+				state.info.project === target.project;
+			if (elsewhere && ownProject) return;
+			if (
+				refusedHere &&
+				!elsewhere &&
+				state.kind !== "free" &&
+				!ownProject
+			)
+				return;
 		}
-		// Its own server holds the port only when nothing but the host moved.
+		// Its own server holds the port when only the host moved, so the port has nothing else to tell.
 		const samePort = started?.target.address.port === target.address.port;
-		if (started && samePort) await this.retire(started, "moved");
 		const checked = holder
 			? err(this.ports.sharedPort(target, holder))
-			: await this.ports.check(
-					target,
-					others,
-					tool.server,
-					served.sharesName(target.project)
-				);
+			: started && samePort
+				? ok(target)
+				: await this.ports.check(
+						target,
+						others,
+						tool.server,
+						served.sharesName(target.project)
+					);
 		if (this.stopping) return;
 		if (checked.isErr()) {
 			if (!refusedHere)
@@ -262,10 +274,11 @@ export class CoreServeSession
 					diagnostic: checked.error,
 				});
 			this.refused.set(config.file, address);
+			this.servedElsewhere.delete(config.file);
 			return;
 		}
 		this.refused.delete(config.file);
-		if (started && !samePort) await this.retire(started, "moved");
+		if (started) await this.retire(started, "moved");
 		if (checked.value.running) {
 			if (!elsewhere)
 				this._onDidChange.fire({
@@ -286,6 +299,10 @@ export class CoreServeSession
 		const { target } = server;
 		server.retiring = true;
 		this.servers.delete(target.config.file);
+		if (server.readyTimer) {
+			clearTimeout(server.readyTimer);
+			this.timers.delete(server.readyTimer);
+		}
 		const retired = (async () => {
 			await server.child.terminate();
 			await this.unrecord(server);
@@ -381,6 +398,7 @@ export class CoreServeSession
 				.catch((error) => this._onDidError.fire(error));
 		}, delay);
 		this.timers.add(timer);
+		server.readyTimer = timer;
 	}
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */

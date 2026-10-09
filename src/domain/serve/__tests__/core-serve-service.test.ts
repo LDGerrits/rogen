@@ -916,6 +916,83 @@ describe("CoreServeService", () => {
 				]);
 			});
 
+			it("should restart a server whose template moves only its host, without asking the port it holds", async () => {
+				await lobby();
+				await start();
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Lobby")
+				);
+				await settle();
+
+				await memFs.writeFile(
+					"/repo/templates/lobby.project.json",
+					template({
+						name: "Lobby",
+						servePort: 34900,
+						serveAddress: "0.0.0.0",
+					})
+				);
+				await settle();
+
+				expect(spawnedProjects()).toEqual([
+					"default.project.json",
+					"lobby.project.json (ended)",
+					"lobby.project.json",
+				]);
+				expect(changes).toEqual(["retired lobby (moved)"]);
+			});
+
+			it("should take a refused config as served once its own project's server holds its port", async () => {
+				await start();
+				requests.responses.set("http://127.0.0.1:34900/api/rojo", {
+					status: 404,
+					contentType: "text/plain",
+					body: new Uint8Array(),
+				});
+				await lobby();
+				await settle();
+
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Lobby")
+				);
+				await memFs.writeFile("/repo/src/B.luau", "");
+				await settle();
+
+				expect(changes.map((change) => change.split(":")[0])).toEqual([
+					"refused lobby",
+					"running lobby",
+				]);
+			});
+
+			it("should refuse a config served elsewhere once another project's server holds its port", async () => {
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Lobby")
+				);
+				await lobby();
+				await start();
+
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Other")
+				);
+				await memFs.writeFile("/repo/src/B.luau", "");
+				await settle();
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Lobby")
+				);
+				await memFs.writeFile("/repo/src/C.luau", "");
+				await settle();
+
+				expect(changes.map((change) => change.split(":")[0])).toEqual([
+					"refused lobby",
+					"running lobby",
+				]);
+			});
+
 			it("should leave the servers alone on a rebuild that changes no config", async () => {
 				await lobby();
 				await start();

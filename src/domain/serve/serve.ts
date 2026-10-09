@@ -261,7 +261,7 @@ export class ServedConfigs {
 	private readonly servable: ReadonlySet<ResolvedConfig>;
 
 	constructor(
-		all: readonly ResolvedConfig[],
+		readonly all: readonly ResolvedConfig[],
 		named: ReadonlySet<string> | undefined
 	) {
 		const leaves = leafConfigs(all);
