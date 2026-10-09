@@ -1,6 +1,4 @@
 $ rogen watch --json
 exit 2
 stdout:
-  {
-    "error": "watch doesn't take '--json'. build, check, init, list and where do."
-  }
+  {"error":"watch doesn't take '--json'. build, check, init, list, serve and where do."}

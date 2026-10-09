@@ -11,9 +11,7 @@ stderr:
 $ rogen build -o x.project.json --json
 exit 2
 stdout:
-  {
-    "error": "-o targets a single config, but 2 configs are here. Name one config, or set outFile in the file."
-  }
+  {"error":"-o targets a single config, but 2 configs are here. Name one config, or set outFile in the file."}
 
 $ rogen build a -o x.project.json
 exit 0

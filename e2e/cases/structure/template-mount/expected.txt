@@ -3,10 +3,11 @@ exit 0
 stdout:
   rogen build · default
   default.project.json · wrote
+  Built 1 config.
+stderr:
   [debug] src: 1 file, 1 mounted
   [debug] route Server -> ServerScriptService: 0 files
   [debug] route * -> ReplicatedStorage/Shared: 1 file
-  Built 1 config.
 
 $ rogen where src/Vendor/Lib/Server/Thing.luau
 exit 0

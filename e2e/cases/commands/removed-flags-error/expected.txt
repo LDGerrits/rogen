@@ -36,6 +36,4 @@ stderr:
 $ rogen build --all --json
 exit 2
 stdout:
-  {
-    "error": "Unknown option '--all'. Run 'rogen help build' to see what build accepts."
-  }
+  {"error":"Unknown option '--all'. Run 'rogen help build' to see what build accepts."}

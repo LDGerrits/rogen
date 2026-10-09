@@ -1,17 +1,17 @@
 import {
 	CancelledError,
 	ErrorUtils,
+	ExitCodeError,
 	ReportedError,
 	UsageError,
 } from "../../base/errors.js";
-import { formatJsonDocument } from "../../base/json.js";
 import {
 	DiagnosticsError,
 	failureToJson,
 } from "../diagnostics/diagnostics-error.js";
 import { LogService } from "../log/log-service.js";
 
-/** How a failed run is told to the user: as the JSON document a program reads, or as lines for a person. */
+/** How a failed run is told to the user: as the JSON document a program reads, on one line so it also ends a stream of JSON lines, or as lines for a person. */
 export class CommandFailure {
 	constructor(
 		private readonly logService: LogService,
@@ -22,7 +22,7 @@ export class CommandFailure {
 	report(error: Error, command?: string): void {
 		if (error instanceof ReportedError) return;
 		if (this.json) {
-			this.logService.print(formatJsonDocument(failureToJson(error)));
+			this.logService.print(JSON.stringify(failureToJson(error)));
 			return;
 		}
 		if (error instanceof CancelledError) {
@@ -42,13 +42,14 @@ export class CommandFailure {
 	reportCrash(error: unknown): void {
 		if (!this.json) return;
 		this.logService.print(
-			formatJsonDocument(failureToJson(ErrorUtils.fromUnknown(error)))
+			JSON.stringify(failureToJson(ErrorUtils.fromUnknown(error)))
 		);
 	}
 }
 
-/** The exit code of a run that failed with `error`: 2 when the command line is wrong, 1 when the project is. */
+/** The exit code of a run that failed with `error`: the one it carries, else 2 when the command line is wrong and 1 when the project is. */
 export function exitCodeOf(error: Error): number {
 	const cause = error instanceof ReportedError ? error.cause : error;
+	if (cause instanceof ExitCodeError) return cause.exitCode;
 	return cause instanceof UsageError ? 2 : 1;
 }

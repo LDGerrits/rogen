@@ -82,7 +82,7 @@ describe("PlainLogService", () => {
 		expect(errors).toEqual(["/repo/a - warning: w (x.y)"]);
 	});
 
-	it("should prefix plain warnings and errors and tag debug lines", () => {
+	it("should prefix plain warnings and errors and tag debug lines, all on stderr", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Debug);
 
@@ -90,8 +90,12 @@ describe("PlainLogService", () => {
 		logService.error("broken");
 		logService.debug("detail");
 
-		expect(errors).toEqual(["warning: careful", "error: broken"]);
-		expect(out).toEqual(["[debug] detail"]);
+		expect(errors).toEqual([
+			"warning: careful",
+			"error: broken",
+			"[debug] detail",
+		]);
+		expect(out).toEqual([]);
 	});
 
 	it("should indent debug lines inside a step", () => {
@@ -101,7 +105,8 @@ describe("PlainLogService", () => {
 		logService.step("default.rogen.json");
 		logService.debug("detail");
 
-		expect(out).toEqual(["default.rogen.json", "  [debug] detail"]);
+		expect(out).toEqual(["default.rogen.json"]);
+		expect(errors).toEqual(["  [debug] detail"]);
 	});
 
 	it("should print only errors at the error level", () => {

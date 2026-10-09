@@ -6,6 +6,4 @@ stderr:
 $ rogen build lobyy --json
 exit 2
 stdout:
-  {
-    "error": "Config \"lobyy\" not found: looked for <dir>/lobyy.rogen.json. Did you mean \"lobby\"?"
-  }
+  {"error":"Config \"lobyy\" not found: looked for <dir>/lobyy.rogen.json. Did you mean \"lobby\"?"}

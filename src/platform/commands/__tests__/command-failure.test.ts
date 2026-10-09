@@ -1,5 +1,6 @@
 import {
 	CancelledError,
+	ExitCodeError,
 	ReportedError,
 	UsageError,
 } from "../../../base/errors.js";
@@ -139,6 +140,13 @@ describe("exitCodeOf", () => {
 
 		expect(exitCodeOf(usage)).toBe(2);
 		expect(exitCodeOf(new ReportedError(usage))).toBe(2);
+	});
+
+	it("should be the code a failure carries, reported or not", () => {
+		const stopped = new ExitCodeError(3, new Error("rojo stopped."));
+
+		expect(exitCodeOf(stopped)).toBe(3);
+		expect(exitCodeOf(new ReportedError(stopped))).toBe(3);
 	});
 
 	it("should be 1 for any other failure", () => {
