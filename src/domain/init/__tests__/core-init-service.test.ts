@@ -532,10 +532,7 @@ describe("CoreInitService", () => {
 				"default.rogen.json",
 				"AGENTS.md",
 			]);
-			expect(plan?.nextSteps.run).toEqual([
-				"rogen watch",
-				"rojo serve default.project.json",
-			]);
+			expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
 		});
 
 		it("should resolve to nothing when the user cancels", async () => {

@@ -8,9 +8,8 @@ stdout:
   default.project.json · wrote
   sync.project.json · wrote
   Next steps
-    Run each in its own terminal:
-      rogen watch
-      rojo serve sync.project.json
+    Run:
+      rogen serve
     Have Darklua process your code into the sync dir:
       darklua process src dist
     Add your own routes under "routes" in default.rogen.json.

@@ -6,9 +6,8 @@ stdout:
   Added Rogen's rules to AGENTS.md.
   default.project.json · wrote
   Next steps
-    Run each in its own terminal:
-      rogen watch
-      rojo serve default.project.json
+    Run:
+      rogen serve
     Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules.
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
@@ -22,9 +21,8 @@ stdout:
   Created places/lobby/.
   lobby.project.json · wrote
   Next steps
-    Run each in its own terminal:
-      rogen watch
-      rojo serve lobby.project.json
+    Run:
+      rogen serve lobby
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 1 file.
 
@@ -50,7 +48,8 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - A config with `modes` builds in one at a time: run `rogen build --mode <name>` for another, and `rogen list` to see them.
-- Leave `rogen watch` and `rojo serve` to the user: they never exit.
+- Leave `rogen watch` to the user: it never exits.
+- To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if a server already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running.
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
 <!-- /rogen -->
 

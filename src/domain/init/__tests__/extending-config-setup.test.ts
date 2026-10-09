@@ -34,7 +34,7 @@ describe("ExtendingConfigSetup", () => {
 		});
 		expect(plan.nextSteps).toEqual({
 			setup: [],
-			run: ["rogen watch", "rojo serve prod.project.json"],
+			run: ["rogen serve prod"],
 			darklua: [],
 			edits: [
 				'Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
@@ -70,10 +70,7 @@ describe("ExtendingConfigSetup", () => {
 				},
 			],
 		]);
-		expect(plan.nextSteps.run).toEqual([
-			"rogen watch",
-			"rojo serve prod-sync.project.json",
-		]);
+		expect(plan.nextSteps.run).toEqual(["rogen serve prod-sync"]);
 	});
 
 	it("should fail when the synced twin's config exists", async () => {

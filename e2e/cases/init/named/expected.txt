@@ -6,9 +6,8 @@ stdout:
   Created AGENTS.md.
   lobby.project.json · wrote
   Next steps
-    Run each in its own terminal:
-      rogen watch
-      rojo serve lobby.project.json
+    Run:
+      rogen serve lobby
     Add your own routes under "routes" in lobby.rogen.json.
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
