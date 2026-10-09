@@ -2,7 +2,10 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	isRenameFix,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
 	FileSystemService,
@@ -133,7 +136,7 @@ export class Locator {
 	): Promise<InstanceFix[]> {
 		const found: InstanceFix[] = [];
 		for (const { code, fixes } of diagnostics) {
-			for (const { rename } of fixes ?? []) {
+			for (const { rename } of (fixes ?? []).filter(isRenameFix)) {
 				const posix = {
 					from: toPosix(rename.from),
 					to: toPosix(rename.to),

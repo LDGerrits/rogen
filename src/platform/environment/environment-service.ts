@@ -5,6 +5,10 @@ export interface EnvironmentService {
 	readonly _serviceBrand: undefined;
 
 	readonly cwd: string;
+	/** The user's home folder, where tools keep their global settings. */
+	readonly userHome: string;
+	/** The folder for temporary files every process on the machine shares. */
+	readonly tmpDir: string;
 
 	/** How much to print: errors only under `--quiet`, debug output under `--verbose`. */
 	readonly logLevel: LogLevel;

@@ -2,7 +2,12 @@ import { LogLevel } from "../../log/log-service.js";
 import { NativeEnvironmentService } from "../native-environment-service.js";
 
 const inTerminal = (env: Record<string, string | undefined>) =>
-	new NativeEnvironmentService({}, "/mock/cwd", { env, isTerminal: true });
+	new NativeEnvironmentService({}, "/mock/cwd", {
+		env,
+		isTerminal: true,
+		userHome: "/mock/home",
+		tmpDir: "/mock/tmp",
+	});
 
 describe("NativeEnvironmentService", () => {
 	it("should expose the working directory", () => {
@@ -18,6 +23,8 @@ describe("NativeEnvironmentService", () => {
 		const env = new NativeEnvironmentService(flags, "/mock/cwd", {
 			env: {},
 			isTerminal: true,
+			userHome: "/mock/home",
+			tmpDir: "/mock/tmp",
 		});
 
 		expect(env.logLevel).toBe(level);
@@ -32,6 +39,8 @@ describe("NativeEnvironmentService", () => {
 			const piped = new NativeEnvironmentService({}, "/mock/cwd", {
 				env: {},
 				isTerminal: false,
+				userHome: "/mock/home",
+				tmpDir: "/mock/tmp",
 			});
 
 			expect(piped.isInteractive).toBe(false);
@@ -92,10 +101,16 @@ describe("NativeEnvironmentService", () => {
 		});
 
 		it("should print plain lines under --json in a terminal", () => {
-			const env = new NativeEnvironmentService({ json: true }, "/mock/cwd", {
-				env: {},
-				isTerminal: true,
-			});
+			const env = new NativeEnvironmentService(
+				{ json: true },
+				"/mock/cwd",
+				{
+					env: {},
+					isTerminal: true,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+				}
+			);
 
 			expect(env.isPlain).toBe(true);
 		});

@@ -1,3 +1,5 @@
+import { stripVTControlCharacters } from "util";
+
 export function capitalized(text: string): string {
 	return text[0].toUpperCase() + text.slice(1);
 }
@@ -77,4 +79,12 @@ export function joinedWithAnd(items: readonly string[]): string {
 export function joinedWithOr(items: readonly string[]): string {
 	if (items.length <= 1) return items.join("");
 	return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
+}
+
+/** The first line of `text` with something on it, trimmed and without terminal colours. */
+export function firstLine(text: string): string | undefined {
+	return stripVTControlCharacters(text)
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find((line) => line !== "");
 }
