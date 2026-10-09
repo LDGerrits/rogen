@@ -459,6 +459,13 @@ describe("init command", () => {
 				"lib",
 			]);
 		});
+
+		it("should reject more than one name", async () => {
+			const result = await runInit(["a", "b"]);
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("a.rogen.json")).toBe(false);
+		});
 	});
 
 	describe("interactive", () => {

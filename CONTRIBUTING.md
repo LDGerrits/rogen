@@ -85,7 +85,7 @@ npm run lint:fix
 Test a rule where it lives, and assert it once:
 
 - Pure domain code (`src/domain`) owns the rules and their edge cases.
-- A command test (`src/commands`) checks that the command is wired to its services and prints what it should. Build it with `commandHarness` instead of constructing services by hand, so a change to a constructor touches one file.
+- A command test (`src/commands`) checks that the command is wired to its services and prints what it should. Build it with `commandHarness` where it can run over the in-memory file system, instead of constructing services by hand, so a change to a constructor touches one file.
 - `e2e` cases show that a real Rojo accepts the output, one case per behavior a user sees.
 
 While working, run the folder you touched (`npm test -- src/domain/init`) and the whole suite before you open a pull request.

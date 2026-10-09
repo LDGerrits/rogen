@@ -28,15 +28,11 @@ export interface CommandHarnessOptions {
 	readonly environment?: EnvironmentService;
 	readonly log?: MockLogService;
 	readonly prompt?: PromptService;
-	/** Replaces the real config service, for a test that scripts what configs resolve to. */
-	readonly config?: ConfigService;
-	readonly index?: IndexService;
 }
 
 export interface CommandHarness {
 	readonly fs: MemoryFileSystemService;
 	readonly log: MockLogService;
-	readonly config: ConfigService;
 	/** Runs `command` the way `rogen <command>` does, over the harness's services. */
 	run(
 		command: string,
@@ -55,8 +51,8 @@ export async function commandHarness(
 	const log = options.log ?? new MockLogService();
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
 	const prompt = options.prompt ?? new MockPromptService([], false);
-	const config = options.config ?? new CoreConfigService(fs, environment);
-	const index = options.index ?? new CoreIndexService(fs);
+	const config = new CoreConfigService(fs, environment);
+	const index = new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 
 	const services = new ServiceCollection();
@@ -80,7 +76,6 @@ export async function commandHarness(
 	return {
 		fs,
 		log,
-		config,
 		run: (command, line = {}) =>
 			commands.executeCommand(command, {
 				positionals: [],
