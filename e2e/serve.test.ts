@@ -219,12 +219,12 @@ describeWithRojo("end to end serve", () => {
 
 		fs.rmSync(path.join(project.dir, "lobby.rogen.json"));
 
-		await eventually(async () => {
-			expect(await rojoProject(port + 1)).toBeUndefined();
+		await eventually(() => {
+			expect(serving.output).toContain(
+				"Stopped serving lobby: its config is gone."
+			);
 		}, 20_000);
-		expect(serving.output).toContain(
-			"Stopped serving lobby: its config is gone."
-		);
+		expect(await rojoProject(port + 1)).toBeUndefined();
 		expect(await rojoProject(port)).toBe("Game");
 	}, 60_000);
 
