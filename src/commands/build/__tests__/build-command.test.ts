@@ -491,6 +491,28 @@ describe("build command", () => {
 			};
 		};
 
+		it("should list a warning several configs share under each of them", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const routes = { server: "ServerScriptService" };
+
+			const { document } = await buildJson(
+				new MockConfigService([
+					buildable({ routes }, "/repo/default.rogen.json"),
+					buildable(
+						{ routes, outFile: abs("lobby.project.json") },
+						"/repo/lobby.rogen.json"
+					),
+				])
+			);
+
+			const codes = document.configs.map(
+				({ diagnostics }: { diagnostics: { code: string }[] }) =>
+					diagnostics.map(({ code }) => code)
+			);
+			expect(codes[0]).toHaveLength(1);
+			expect(codes[1]).toEqual(codes[0]);
+		});
+
 		it("should print what each config wrote", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
