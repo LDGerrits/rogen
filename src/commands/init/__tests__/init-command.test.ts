@@ -15,10 +15,9 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
-	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
-	ScriptedAnswer,
+	ScriptedAnswers,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import {
@@ -27,6 +26,7 @@ import {
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
+const WHAT_TO_ADD = "default.rogen.json exists. What do you want to add?";
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
 	Client: "StarterPlayer/StarterPlayerScripts",
@@ -349,8 +349,7 @@ describe("init command", () => {
 	});
 
 	describe("agent hook", () => {
-		const accepting = () =>
-			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
+		const accepting = () => new MockPromptService({});
 
 		it("should say it created the script and the agent's file", async () => {
 			await write(".claude/keep");
@@ -473,9 +472,7 @@ describe("init command", () => {
 			await write("tsconfig.json", "{}");
 			await write("Packages/x.luau");
 			await write("wally.toml");
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			const result = await runInit([], prompts);
 			const interactive = await readJson("default.rogen.json");
@@ -493,17 +490,15 @@ describe("init command", () => {
 
 		it("should write the answers", async () => {
 			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService([
-				"separate",
-				"game",
-				"luau",
-				true,
-				"src, lib",
-				"out",
-				[],
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				[WHAT_TO_ADD]: "separate",
+				"Config name": "game",
+				Language: "luau",
+				"Does Darklua process your code before Rojo syncs it?": true,
+				"Root dirs": "src, lib",
+				"Sync dir": "out",
+				Routes: [],
+			});
 
 			await runInit([], prompts);
 
@@ -515,15 +510,10 @@ describe("init command", () => {
 		});
 
 		it("should write the ticked routes and leave unmatched files out", async () => {
-			const prompts = new MockPromptService([
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				["server", "starterGui"],
-				"leave",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				Routes: ["server", "starterGui"],
+				"Files that match no route": "leave",
+			});
 
 			await runInit([], prompts);
 
@@ -535,9 +525,7 @@ describe("init command", () => {
 
 		it("should take the root dir placeholder from the code it finds", async () => {
 			await write("game/Main.server.luau");
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit([], prompts);
 
@@ -548,16 +536,7 @@ describe("init command", () => {
 
 		it("should mount a folder that is not installed as optional", async () => {
 			await write("wally.toml");
-			const prompts = new MockPromptService([
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				["Packages"],
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({ Packages: ["Packages"] });
 
 			await runInit([], prompts);
 
@@ -567,9 +546,7 @@ describe("init command", () => {
 		});
 
 		it("should ask seven questions on a bare Luau folder, none of them about packages", async () => {
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit([], prompts);
 
@@ -587,9 +564,7 @@ describe("init command", () => {
 
 		it("should still ask about packages when a manifest is there", async () => {
 			await write("wally.toml");
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit([], prompts);
 
@@ -597,9 +572,7 @@ describe("init command", () => {
 		});
 
 		it("should not ask for a name when default.rogen.json does not exist", async () => {
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit([], prompts);
 
@@ -609,11 +582,10 @@ describe("init command", () => {
 
 		it("should ask for a name when default.rogen.json exists", async () => {
 			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService([
-				"separate",
-				"test",
-				...Array(9).fill(ACCEPT_DEFAULT),
-			]);
+			const prompts = new MockPromptService({
+				[WHAT_TO_ADD]: "separate",
+				"Config name": "test",
+			});
 
 			await runInit([], prompts);
 
@@ -636,12 +608,9 @@ describe("init command", () => {
 
 		it("should fail after the Darklua question when a file it would write exists", async () => {
 			await write("sync.rogen.json", "{}");
-			const prompts = new MockPromptService([
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				true,
-			]);
+			const prompts = new MockPromptService({
+				"Does Darklua process your code before Rojo syncs it?": true,
+			});
 
 			const result = await runInit([], prompts);
 
@@ -656,9 +625,7 @@ describe("init command", () => {
 		});
 
 		it("should not ask for a name that was given", async () => {
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit(["lobby"], prompts);
 
@@ -693,26 +660,25 @@ describe("init command", () => {
 			);
 			await write("src/A.luau");
 		};
-		const offerAnd = (...answers: ScriptedAnswer[]) =>
-			new MockPromptService(["place", ...answers]);
+		const offerAnd = (answers: ScriptedAnswers = {}) =>
+			new MockPromptService({ [WHAT_TO_ADD]: "place", ...answers });
 
 		it("should not offer a place when default.rogen.json does not exist", async () => {
-			const prompts = new MockPromptService(
-				Array(9).fill(ACCEPT_DEFAULT)
-			);
+			const prompts = new MockPromptService({});
 
 			await runInit([], prompts);
 
-			expect(prompts.asked).not.toContain(
-				"default.rogen.json exists. What do you want to add?"
-			);
+			expect(prompts.asked).not.toContain(WHAT_TO_ADD);
 		});
 
 		it("should write one config extending default, with the place's code in src and its template beside it", async () => {
 			await setUpLuau();
 			const before = await memFs.readDirectory(cwd);
 
-			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+			const result = await runInit(
+				[],
+				offerAnd({ "Place name": "lobby" })
+			);
 
 			expect(result.isOk()).toBe(true);
 			expect(await readJson("lobby.rogen.json")).toEqual({
@@ -735,7 +701,7 @@ describe("init command", () => {
 		it("should create the place's src so the next build finds it", async () => {
 			await setUpLuau();
 
-			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+			await runInit([], offerAnd({ "Place name": "lobby" }));
 
 			expect(await exists("places/lobby/src")).toBe(true);
 		});
@@ -802,7 +768,7 @@ describe("init command", () => {
 			await write("places/lobby/Main.luau", "");
 			const logService = new MockLogService();
 
-			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
+			await runInit([], offerAnd({ "Place name": "lobby" }), logService);
 
 			expect(await readJson("lobby.rogen.json")).toMatchObject({
 				rootDirs: ["places/lobby"],
@@ -897,12 +863,15 @@ describe("init command", () => {
 
 		it("should ask the place name and folder, and nothing else", async () => {
 			await setUpLuau();
-			const prompts = offerAnd("lobby", "world/lobby");
+			const prompts = offerAnd({
+				"Place name": "lobby",
+				"Place folder": "world/lobby",
+			});
 
 			await runInit([], prompts);
 
 			expect(prompts.asked).toEqual([
-				"default.rogen.json exists. What do you want to add?",
+				WHAT_TO_ADD,
 				"Place name",
 				"Place folder",
 			]);
@@ -916,7 +885,7 @@ describe("init command", () => {
 
 		it("should not ask for a place name that was given", async () => {
 			await setUpLuau();
-			const prompts = offerAnd(ACCEPT_DEFAULT);
+			const prompts = offerAnd();
 
 			await runInit(["lobby"], prompts);
 
@@ -961,7 +930,10 @@ describe("init command", () => {
 			await setUpLuau();
 			await write("lobby-sync.rogen.json", "{}");
 
-			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+			const result = await runInit(
+				[],
+				offerAnd({ "Place name": "lobby" })
+			);
 
 			expect(result.isOk()).toBe(true);
 		});
@@ -971,7 +943,7 @@ describe("init command", () => {
 			await write("lobby.rogen.json", "{}");
 
 			await expect(
-				runInit([], offerAnd("lobby", ACCEPT_DEFAULT))
+				runInit([], offerAnd({ "Place name": "lobby" }))
 			).rejects.toThrow("lobby.rogen.json already exists.");
 		});
 
@@ -979,7 +951,7 @@ describe("init command", () => {
 			await setUpLuau();
 			const defaultConfig = await read("default.rogen.json");
 
-			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
+			await runInit([], offerAnd({ "Place name": "lobby" }));
 
 			expect(await read("default.rogen.json")).toBe(defaultConfig);
 			expect(await exists("template.project.json")).toBe(false);
@@ -998,7 +970,7 @@ describe("init command", () => {
 			);
 			const logService = new MockLogService();
 
-			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
+			await runInit([], offerAnd({ "Place name": "lobby" }), logService);
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
@@ -1020,11 +992,10 @@ describe("init command", () => {
 
 		it("should fall through to the full flow when declined", async () => {
 			await setUpLuau();
-			const prompts = new MockPromptService([
-				"separate",
-				"test",
-				...Array(9).fill(ACCEPT_DEFAULT),
-			]);
+			const prompts = new MockPromptService({
+				[WHAT_TO_ADD]: "separate",
+				"Config name": "test",
+			});
 
 			await runInit([], prompts);
 
@@ -1049,10 +1020,9 @@ describe("init command", () => {
 
 		it("should use the given name for the full flow when declined", async () => {
 			await setUpLuau();
-			const prompts = new MockPromptService([
-				"separate",
-				...Array(9).fill(ACCEPT_DEFAULT),
-			]);
+			const prompts = new MockPromptService({
+				[WHAT_TO_ADD]: "separate",
+			});
 
 			await runInit(["test"], prompts);
 
@@ -1063,7 +1033,10 @@ describe("init command", () => {
 		it("should write nothing when cancelled at the place folder", async () => {
 			await setUpLuau();
 
-			const result = await runInit([], offerAnd("lobby", CANCEL));
+			const result = await runInit(
+				[],
+				offerAnd({ "Place name": "lobby", "Place folder": CANCEL })
+			);
 
 			expect(result.isErr()).toBe(true);
 			expect(await exists("lobby.rogen.json")).toBe(false);
@@ -1117,12 +1090,10 @@ describe("init command", () => {
 		});
 
 		it("should put the shared code in places/shared by default, beside the places", async () => {
-			const prompts = new MockPromptService([
-				"several",
-				...Array(5).fill(ACCEPT_DEFAULT),
-				"lobby, arena",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				Places: "lobby, arena",
+			});
 
 			const result = await runInit([], prompts);
 
@@ -1150,12 +1121,10 @@ describe("init command", () => {
 		it("should start the shared template in places/shared, mounting packages from there", async () => {
 			await write("wally.toml");
 			await write("Packages/Foo.lua");
-			const prompts = new MockPromptService([
-				"several",
-				...Array(6).fill(ACCEPT_DEFAULT),
-				"lobby",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				Places: "lobby",
+			});
 
 			await runInit([], prompts);
 
@@ -1180,12 +1149,10 @@ describe("init command", () => {
 				"places/shared/template.project.json",
 				'{ "name": "Mine" }'
 			);
-			const prompts = new MockPromptService([
-				"several",
-				...Array(5).fill(ACCEPT_DEFAULT),
-				"lobby",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				Places: "lobby",
+			});
 
 			const result = await runInit([], prompts);
 
@@ -1201,17 +1168,12 @@ describe("init command", () => {
 		it("should take other shared folders when that is the answer", async () => {
 			await write("lib/A.luau");
 			await write("common/B.luau");
-			const prompts = new MockPromptService([
-				"several",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"other",
-				"lib, common",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"lobby",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				"Shared code": "other",
+				"Root dirs": "lib, common",
+				Places: "lobby",
+			});
 
 			await runInit([], prompts);
 
@@ -1228,17 +1190,10 @@ describe("init command", () => {
 		it("should keep a detected place in its folder wherever the shared code is", async () => {
 			await write("game/shared/A.luau");
 			await write("places/lobby/src/B.luau");
-			const prompts = new MockPromptService([
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"other",
-				"game/shared",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"Shared code": "other",
+				"Root dirs": "game/shared",
+			});
 
 			await runInit([], prompts);
 
@@ -1270,16 +1225,11 @@ describe("init command", () => {
 		});
 
 		it("should keep the shared code at the root when that is the answer", async () => {
-			const prompts = new MockPromptService([
-				"several",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"src",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"lobby",
-				ACCEPT_DEFAULT,
-			]);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				"Shared code": "src",
+				Places: "lobby",
+			});
 
 			await runInit([], prompts);
 
@@ -1349,9 +1299,7 @@ describe("init command", () => {
 			const result = await runInit(["prod"], prompts);
 
 			expect(result.isOk()).toBe(true);
-			expect(prompts.asked).toEqual([
-				"default.rogen.json exists. What do you want to add?",
-			]);
+			expect(prompts.asked).toEqual([WHAT_TO_ADD]);
 			expect(await exists("prod.rogen.json")).toBe(true);
 		});
 

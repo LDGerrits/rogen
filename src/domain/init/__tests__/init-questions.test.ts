@@ -68,7 +68,7 @@ const contextOf = (
 
 const ask = (
 	workspace: WorkspaceSpec,
-	answers: readonly ScriptedAnswer[],
+	answers: ConstructorParameters<typeof MockPromptService>[0],
 	name?: string,
 	existing: readonly string[] = []
 ) =>
@@ -99,14 +99,14 @@ describe("InitQuestions askProject", () => {
 			{ ...luau, packageManager: "pesde" as const },
 			{ ...luau, places: ["lobby", "match"] },
 		]) {
-			expect(await asked(workspace, acceptAll(10))).toEqual(
+			expect(await asked(workspace, {})).toEqual(
 				await defaultInitChoices(workspace)
 			);
 		}
 	});
 
 	it("should ask in order: language, Darklua, root dir, packages, routes, fallback", async () => {
-		const prompts = new MockPromptService(acceptAll(7));
+		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(rbxts), "lobby");
 
@@ -122,7 +122,7 @@ describe("InitQuestions askProject", () => {
 
 	describe("config name", () => {
 		it("should not ask for a name when default.rogen.json does not exist", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 
 			const result = await askInitChoices(prompts, contextOf(luau));
 
@@ -131,7 +131,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should not ask for a name that was given", async () => {
-			const prompts = new MockPromptService(acceptAll(6));
+			const prompts = new MockPromptService({});
 
 			const result = await askInitChoices(
 				prompts,
@@ -144,7 +144,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should ask for a name, without a placeholder, when default.rogen.json exists", async () => {
-			const prompts = new MockPromptService(["test", ...acceptAll(6)]);
+			const prompts = new MockPromptService({ "Config name": "test" });
 
 			const result = await askInitChoices(
 				prompts,
@@ -176,7 +176,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should trim the name that was typed", async () => {
-			const prompts = new MockPromptService(["  test ", ...acceptAll(6)]);
+			const prompts = new MockPromptService({ "Config name": "  test " });
 
 			const result = await askInitChoices(
 				prompts,
@@ -198,18 +198,12 @@ describe("InitQuestions askProject", () => {
 
 	describe("language", () => {
 		it("should preselect the detected language", async () => {
-			expect((await asked(rbxts, acceptAll(9))).language.id).toBe(
-				"roblox-ts"
-			);
-			expect((await asked(luau, acceptAll(9))).language.id).toBe("luau");
+			expect((await asked(rbxts, {})).language.id).toBe("roblox-ts");
+			expect((await asked(luau, {})).language.id).toBe("luau");
 		});
 
 		it("should take the language that was chosen", async () => {
-			const choices = await asked(luau, [
-				ACCEPT_DEFAULT,
-				"roblox-ts",
-				...acceptAll(6),
-			]);
+			const choices = await asked(luau, { Language: "roblox-ts" });
 
 			expect(choices.language.id).toBe("roblox-ts");
 			expect(choices.syncDir).toBe("out");
@@ -221,7 +215,7 @@ describe("InitQuestions askProject", () => {
 		const MESSAGE = "Add dev and prod modes?";
 
 		it("should offer modes when a test runner is found, hinting which", async () => {
-			const prompts = new MockPromptService(acceptAll(12));
+			const prompts = new MockPromptService({});
 
 			const choices = (
 				await askInitChoices(prompts, contextOf(withJest))
@@ -236,7 +230,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should name the spec files of the language", async () => {
-			const prompts = new MockPromptService(acceptAll(12));
+			const prompts = new MockPromptService({});
 
 			await askInitChoices(
 				prompts,
@@ -250,21 +244,13 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should take the answer that was given", async () => {
-			const probe = new MockPromptService(acceptAll(12));
-			await askInitChoices(probe, contextOf(withJest));
-			const position = probe.prompts.findIndex(
-				({ message }) => message === MESSAGE
-			);
-			const answers = acceptAll(12);
-			answers[position] = false;
-
-			const choices = await asked(withJest, answers);
+			const choices = await asked(withJest, { [MESSAGE]: false });
 
 			expect(choices.modes).toBeUndefined();
 		});
 
 		it("should not ask when no test runner is found", async () => {
-			const prompts = new MockPromptService(acceptAll(12));
+			const prompts = new MockPromptService({});
 
 			const choices = (
 				await askInitChoices(prompts, contextOf(luau))
@@ -286,7 +272,7 @@ describe("InitQuestions askProject", () => {
 		it("should be preselected when found", async () => {
 			const choices = await asked(
 				{ ...luau, darkluaConfig: ".darklua.json" },
-				acceptAll(9)
+				{}
 			);
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
@@ -294,7 +280,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should hint at the Darklua config that was found", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 
 			await askInitChoices(
 				prompts,
@@ -309,23 +295,18 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should take the answer that was given", async () => {
-			const choices = await asked(luau, [
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				true,
-				...acceptAll(6),
-			]);
+			const choices = await asked(luau, {
+				"Does Darklua process your code before Rojo syncs it?": true,
+			});
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
 			expect(choices.syncDir).toBe("dist");
 		});
 
 		it("should fail before the remaining questions when a file it would write exists", async () => {
-			const prompts = new MockPromptService([
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				true,
-			]);
+			const prompts = new MockPromptService({
+				"Does Darklua process your code before Rojo syncs it?": true,
+			});
 
 			const result = await askInitChoices(
 				prompts,
@@ -347,7 +328,7 @@ describe("InitQuestions askProject", () => {
 			prompts.prompts.find(({ message }) => message === "Sync dir");
 
 		it("should be skipped for plain luau", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 
 			await askInitChoices(prompts, contextOf(luau));
 
@@ -355,7 +336,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should not be asked for roblox-ts, which syncs from its outDir", async () => {
-			const prompts = new MockPromptService(acceptAll(8));
+			const prompts = new MockPromptService({});
 
 			const result = await askInitChoices(prompts, contextOf(rbxts));
 
@@ -364,7 +345,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should default to dist for Darklua and say what Darklua does", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 
 			await askInitChoices(
 				prompts,
@@ -379,18 +360,16 @@ describe("InitQuestions askProject", () => {
 	});
 
 	it("should split root dirs on commas", async () => {
-		const choices = await asked(luau, [
-			...acceptAll(3),
-			"src, ./shared/ ,,server",
-			...acceptAll(4),
-		]);
+		const choices = await asked(luau, {
+			"Root dirs": "src, ./shared/ ,,server",
+		});
 
 		expect(choices.rootDirs).toEqual(["src", "shared", "server"]);
 	});
 
 	describe("root dirs", () => {
 		const rootDirsPrompt = async (workspace: WorkspaceSpec) => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 			await askInitChoices(prompts, contextOf(workspace));
 			return prompts.prompts.find(({ message }) =>
 				message.startsWith("Root dir")
@@ -496,14 +475,14 @@ describe("InitQuestions askProject", () => {
 			["/abs/src", "Use a path relative to here, not /abs/src."],
 			["../lib", "../lib is outside this folder."],
 		])("should reject %j at the prompt", async (answer, message) => {
-			await expect(ask(luau, [...acceptAll(3), answer])).rejects.toThrow(
+			await expect(ask(luau, { "Root dirs": answer })).rejects.toThrow(
 				message
 			);
 		});
 
 		it("should take one root dir for roblox-ts", async () => {
 			await expect(
-				ask(rbxts, [...acceptAll(3), "src, lib"])
+				ask(rbxts, { "Root dir": "src, lib" })
 			).rejects.toThrow(
 				"roblox-ts compiles one folder. For code per place, set up several places."
 			);
@@ -515,7 +494,7 @@ describe("InitQuestions askProject", () => {
 			workspace: WorkspaceSpec,
 			existing: readonly string[] = []
 		) => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 			let offered: { value: string; hint?: string }[] | undefined;
 			let initial: readonly string[] | undefined;
 			const original = prompts.multiSelect.bind(prompts);
@@ -634,7 +613,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should be skipped when nothing is offered", async () => {
-			const prompts = new MockPromptService(acceptAll(8));
+			const prompts = new MockPromptService({});
 
 			const result = await askInitChoices(
 				prompts,
@@ -649,7 +628,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should be skipped when template.project.json exists", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 
 			await askInitChoices(
 				prompts,
@@ -660,11 +639,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should always mount include and @rbxts for roblox-ts", async () => {
-			const choices = await asked(rbxts, [
-				...acceptAll(4),
-				[],
-				...acceptAll(2),
-			]);
+			const choices = await asked(rbxts, { Packages: [] });
 
 			expect(choices.mounts).toEqual([
 				{
@@ -683,11 +658,9 @@ describe("InitQuestions askProject", () => {
 	});
 
 	it("should mark packages that are not installed as optional", async () => {
-		const choices = await asked(rbxts, [
-			...acceptAll(4),
-			["Packages", "ServerPackages"],
-			...acceptAll(2),
-		]);
+		const choices = await asked(rbxts, {
+			Packages: ["Packages", "ServerPackages"],
+		});
 
 		expect(choices.mounts).toEqual([
 			{
@@ -715,7 +688,7 @@ describe("InitQuestions askProject", () => {
 
 	describe("routes", () => {
 		const routesPrompt = async (workspace: WorkspaceSpec) => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 			let choices: { value: string; label: string; hint?: string }[] = [];
 			let initial: readonly string[] | undefined;
 			const original = prompts.multiSelect.bind(prompts);
@@ -813,7 +786,7 @@ describe("InitQuestions askProject", () => {
 			};
 
 			it("should offer the routes it derives first, ticked, beside the standard ones", async () => {
-				const prompts = new MockPromptService(acceptAll(9));
+				const prompts = new MockPromptService({});
 				let choices: { value: string; label: string; hint?: string }[] =
 					[];
 				let initial: readonly string[] | undefined;
@@ -869,24 +842,24 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should take the ticked routes", async () => {
-			const choices = await asked(luau, [
-				...acceptAll(4),
-				["server", "starterGui"],
-				ACCEPT_DEFAULT,
-			]);
+			const choices = await asked(luau, {
+				Routes: ["server", "starterGui"],
+			});
 
 			expect(choices.routes).toEqual(["server", "starterGui"]);
 			expect(choices.fallback).toBe(true);
 		});
 
 		it("should let files that match no route be left out", async () => {
-			const choices = await asked(luau, [...acceptAll(5), "leave"]);
+			const choices = await asked(luau, {
+				"Files that match no route": "leave",
+			});
 
 			expect(choices.fallback).toBe(false);
 		});
 
 		it("should say what the fallback options do, per language", async () => {
-			const prompts = new MockPromptService(acceptAll(9));
+			const prompts = new MockPromptService({});
 			let labels: string[] = [];
 			const original = prompts.select.bind(prompts);
 			prompts.select = ((options: Parameters<typeof original>[0]) => {
@@ -905,7 +878,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should skip the fallback question when no route is ticked", async () => {
-			const prompts = new MockPromptService([...acceptAll(4), []]);
+			const prompts = new MockPromptService({ Routes: [] });
 
 			const result = await askInitChoices(prompts, contextOf(luau));
 
@@ -918,7 +891,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	it("should show every text question as a placeholder with a description", async () => {
-		const prompts = new MockPromptService(acceptAll(10));
+		const prompts = new MockPromptService({});
 
 		await askInitChoices(
 			prompts,
@@ -938,11 +911,7 @@ describe("InitQuestions askProject", () => {
 	});
 
 	it("should take the placeholder when a text answer is empty", async () => {
-		const choices = await asked(luau, [
-			...acceptAll(3),
-			"",
-			...acceptAll(4),
-		]);
+		const choices = await asked(luau, { "Root dirs": "" });
 
 		expect(choices).toEqual(await defaultInitChoices(luau));
 	});
@@ -966,7 +935,7 @@ describe("InitQuestions askProject layout", () => {
 	};
 
 	it("should ask first on a first run without a name", async () => {
-		const prompts = new MockPromptService(acceptAll(9));
+		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(luau));
 
@@ -974,7 +943,7 @@ describe("InitQuestions askProject layout", () => {
 	});
 
 	it("should not ask when a name was given", async () => {
-		const prompts = new MockPromptService(acceptAll(9));
+		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(luau), "lobby");
 
@@ -982,13 +951,13 @@ describe("InitQuestions askProject layout", () => {
 	});
 
 	it("should start with one place when no places were found", async () => {
-		const choices = await asked(luau, acceptAll(9));
+		const choices = await asked(luau, {});
 
 		expect(choices.places).toEqual([]);
 	});
 
 	it("should start with several places, and name them, when places were found", async () => {
-		const prompts = new MockPromptService(acceptAll(10));
+		const prompts = new MockPromptService({});
 
 		const choices = (
 			await askInitChoices(prompts, contextOf(withPlaces))
@@ -1006,13 +975,15 @@ describe("InitQuestions askProject layout", () => {
 	});
 
 	it("should offer lobby when several places are chosen and none were found", async () => {
-		const choices = await asked(luau, ["several", ...acceptAll(9)]);
+		const choices = await asked(luau, {
+			"What are you setting up?": "several",
+		});
 
 		expect(choices.places.map(({ name }) => name)).toEqual(["lobby"]);
 	});
 
 	it("should ask where the shared code goes instead of the root dirs", async () => {
-		const prompts = new MockPromptService(acceptAll(10));
+		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(withPlaces));
 
@@ -1029,15 +1000,21 @@ describe("InitQuestions askProject layout", () => {
 		["arena", "arena.rogen.json already exists."],
 	])("should reject the places %j at the prompt", async (answer, message) => {
 		await expect(
-			ask(luau, ["several", ...acceptAll(5), answer], undefined, [
-				"arena.rogen.json",
-			])
+			ask(
+				luau,
+				{ "What are you setting up?": "several", Places: answer },
+				undefined,
+				["arena.rogen.json"]
+			)
 		).rejects.toThrow(message);
 	});
 
 	it("should reject a place whose folder holds the shared code", async () => {
 		await expect(
-			ask(luau, ["several", ...acceptAll(5), "shared"])
+			ask(luau, {
+				"What are you setting up?": "several",
+				Places: "shared",
+			})
 		).rejects.toThrow("places/shared overlaps places/shared/src");
 	});
 
@@ -1046,13 +1023,10 @@ describe("InitQuestions askProject layout", () => {
 			workspace: WorkspaceSpec,
 			answer: ScriptedAnswer = ACCEPT_DEFAULT
 		) => {
-			const { rootDirs, templateDir } = await asked(workspace, [
-				"several",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				answer,
-				...acceptAll(4),
-			]);
+			const { rootDirs, templateDir } = await asked(workspace, {
+				"What are you setting up?": "several",
+				"Shared code": answer,
+			});
 			return { rootDirs, templateDir };
 		};
 
@@ -1099,7 +1073,7 @@ describe("InitQuestions askProject layout", () => {
 
 describe("InitQuestions askProject template", () => {
 	const templatePrompt = async (existing: readonly string[]) => {
-		const prompts = new MockPromptService(acceptAll(9));
+		const prompts = new MockPromptService({});
 		let choices: { value: string; label: string }[] = [];
 		let initial: string | undefined;
 		const original = prompts.select.bind(prompts);
@@ -1173,11 +1147,9 @@ describe("InitQuestions askProject template", () => {
 	});
 
 	it("should not ask for packages when using a project file as it is", async () => {
-		const prompts = new MockPromptService([
-			...acceptAll(4),
-			"use:base.project.json",
-			...acceptAll(5),
-		]);
+		const prompts = new MockPromptService({
+			Template: "use:base.project.json",
+		});
 		const result = (
 			await askInitChoices(
 				prompts,
@@ -1207,10 +1179,7 @@ describe("InitQuestions askProject template", () => {
 
 describe("InitQuestions addAgentInstructions", () => {
 	it("should add them on Enter, as a run that can't ask does", async () => {
-		const asked = new InitQuestions(
-			new MockPromptService([ACCEPT_DEFAULT]),
-			true
-		);
+		const asked = new InitQuestions(new MockPromptService({}), true);
 		const unasked = new InitQuestions(
 			new MockPromptService([], false),
 			false
@@ -1223,10 +1192,7 @@ describe("InitQuestions addAgentInstructions", () => {
 
 describe("InitQuestions addAgentHook", () => {
 	it("should add it on Enter in a terminal, and never in a run that can't ask", async () => {
-		const asked = new InitQuestions(
-			new MockPromptService([ACCEPT_DEFAULT]),
-			true
-		);
+		const asked = new InitQuestions(new MockPromptService({}), true);
 		const unasked = new InitQuestions(
 			new MockPromptService([], false),
 			false
