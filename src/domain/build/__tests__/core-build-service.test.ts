@@ -351,6 +351,20 @@ describe("CoreBuildService", () => {
 			).toMatchObject([{ code: "route.noRoutes" }]);
 		});
 
+		it("should fail when two configs write the same file, as build does", async () => {
+			const result = await buildServiceOfFs().locate(
+				selectionOf(
+					configOf({ routes }),
+					configOf({ routes, file: abs("lobby.rogen.json") })
+				),
+				{ args: ["src/A.luau"], cwd: abs() }
+			);
+
+			expect(
+				result.isErr() ? result.error.diagnostics : []
+			).toMatchObject([{ code: "output.sameOutFile" }]);
+		});
+
 		it("should answer from the configs that load and return the errors of one that doesn't", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const errors = [

@@ -120,9 +120,15 @@ export class CoreBuildService implements BuildService {
 		const errors = selection.entries.flatMap((entry) =>
 			entry.status === "broken" ? entry.errors : []
 		);
-		const configs = selection.entries.flatMap((entry) =>
-			entry.status === "valid" ? [entry.config] : []
+		const set = new BuildSet(
+			selection.entries.flatMap((entry) =>
+				entry.status === "valid" ? [entry.config] : []
+			)
 		);
+		// What stops a build stops the answer too: it would describe a project that can't be built.
+		if (set.diagnostics.length > 0)
+			return err(new DiagnosticsError([...errors, ...set.diagnostics]));
+		const { configs } = set;
 
 		const listing = await this.indexService.list(
 			configs.flatMap(({ rootDirs }) => rootDirs)

@@ -33,7 +33,7 @@ export interface BuildService {
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;
 
-	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load answers nothing, and its errors come back beside the answers of the rest. Fails when a config declares no routes. */
+	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load answers nothing, and its errors come back beside the answers of the rest. Fails when the configs that load can't be built together, as `build` does. */
 	locate(
 		selection: ConfigSelection,
 		targets?: LocateTargets

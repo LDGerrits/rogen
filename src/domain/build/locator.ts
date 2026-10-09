@@ -19,7 +19,6 @@ import {
 	InstanceLocation,
 	Locations,
 	SyncTool,
-	missingRoutes,
 } from "./build.js";
 import { LocateTargets } from "./build-service.js";
 import { ConfigBuilder } from "./config-builder.js";
@@ -42,14 +41,11 @@ export class Locator {
 		private readonly tools: readonly SyncTool[]
 	) {}
 
-	/** Fails when a config declares no routes, naming every such config, or can't be placed. */
+	/** Fails when a config can't be placed; its caller checked that the configs build together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
-		const routeless = configs.flatMap(missingRoutes);
-		if (routeless.length > 0) return err(new DiagnosticsError(routeless));
-
 		const targets = await this.classify(query);
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {

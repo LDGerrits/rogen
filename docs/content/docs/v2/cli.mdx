@@ -126,7 +126,7 @@ $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
 src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A config that doesn't load fails the check, whatever paths you give.
+Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. Whatever paths you give, what stops `build` fails the check: a config that doesn't load, one without routes, or two that write the same file.
 
 With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing root dir, an empty sync dir) names the config or folder it is about.
 
