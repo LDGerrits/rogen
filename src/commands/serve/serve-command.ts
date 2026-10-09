@@ -128,10 +128,7 @@ registerCommand(
 					);
 					return ok(undefined);
 				}
-				const session = serveService.serve(
-					plan.value,
-					json ? "stderr" : "inherit"
-				);
+				const session = serveService.serve(plan.value);
 				if (session.isErr()) return failed(session.error);
 				store.add(session.value);
 				return await this.serve(
@@ -159,6 +156,7 @@ registerCommand(
 			store.add(session.onDidUpdate((update) => log.update(update)));
 			store.add(session.onDidError((error) => log.error(error)));
 			store.add(session.onDidServe((serving) => log.serving(serving)));
+			store.add(session.onDidSay((said) => log.said(said, plan)));
 			store.add(
 				session.onDidStop((stop) => {
 					log.stopped(stop, plan);

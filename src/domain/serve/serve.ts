@@ -12,6 +12,12 @@ export interface ServerInfo {
 	readonly session?: string;
 }
 
+/** One thing a server said. `info` is a line Rogen doesn't recognise, kept so nothing that explains a failure is lost; `debug` is what Rogen drops as noise, shown only with `--verbose`. */
+export interface ServerMessage {
+	readonly severity: "error" | "warning" | "info" | "debug";
+	readonly text: string;
+}
+
 interface SyncServerFields {
 	readonly id: string;
 	readonly name: string;
@@ -25,6 +31,12 @@ interface SyncServerFields {
 	readonly portFlags: readonly string[];
 	/** Keep it in the foreground, as the child Rogen stops, whatever its settings say. */
 	readonly foregroundArgs: readonly string[];
+	/** A line that starts one of its log records, with the groups `level` and `text`. */
+	readonly logRecord: RegExp;
+	/** What it prints that tells a Rogen user nothing: its banner, and what Rogen's own probes and writes make it say. */
+	readonly noise: readonly RegExp[];
+	/** Debug detail it appends to a record. */
+	readonly clutter: readonly RegExp[];
 	/** Its own settings files that may set `host` and `port`, the first found winning. */
 	readonly settingsFiles: (projectDir: string, userHome: string) => string[];
 	readonly readInfo: (
@@ -48,6 +60,9 @@ export class SyncServer {
 		hostFlags: ["--address"],
 		portFlags: ["--port"],
 		foregroundArgs: [],
+		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
+		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
+		clutter: [],
 		settingsFiles: () => [],
 		readInfo: (server, value) => {
 			const project = text(value.projectName);
@@ -74,6 +89,13 @@ export class SyncServer {
 		portFlags: ["--port", "-P"],
 		// Its run_async setting otherwise detaches a copy and exits at once.
 		foregroundArgs: ["--argon-spawn"],
+		logRecord: /^(?<level>[A-Z]+): (?<text>.*)$/,
+		noise: [
+			/^stream error: request parse error/,
+			// What Rogen's write of the project file looks like to it; it still syncs the new one.
+			/^Warning! Top level project file was deleted/,
+		],
+		clutter: [/, source: .*$/, /\s\[[\w:]+:\d+\]$/],
 		settingsFiles: (projectDir, userHome) => [
 			path.join(projectDir, "argon.toml"),
 			path.join(userHome, ".argon", "config.toml"),
@@ -126,6 +148,24 @@ export class SyncServer {
 			...this.fields.foregroundArgs,
 			...serverArgs,
 		];
+	}
+
+	/** The level and text of `line` when it starts one of its log records. */
+	logRecordOf(
+		line: string
+	): { readonly level: string; readonly text: string } | undefined {
+		const groups = this.fields.logRecord.exec(line)?.groups;
+		return groups && { level: groups.level, text: groups.text };
+	}
+
+	/** `text` without the debug detail it appended; `undefined` when it is noise. */
+	tidied(text: string): string | undefined {
+		const tidy = this.fields.clutter
+			.reduce((rest, clutter) => rest.replace(clutter, ""), text)
+			.trim();
+		return this.fields.noise.some((noise) => noise.test(tidy))
+			? undefined
+			: tidy;
 	}
 
 	/** What an answer from `infoPath` says, when it is this server's answer. */

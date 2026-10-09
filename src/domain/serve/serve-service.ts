@@ -4,14 +4,16 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import {
-	ProcessExit,
-	ProcessOutputTarget,
-} from "../../platform/process/process-service.js";
+import { ProcessExit } from "../../platform/process/process-service.js";
 import { ConfigOptionValues, ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
-import { ServeAddress, ServerInfo, SyncServer } from "./serve.js";
+import {
+	ServeAddress,
+	ServerInfo,
+	ServerMessage,
+	SyncServer,
+} from "./serve.js";
 
 export interface ServeRequest {
 	/** The configs to serve, by name or path; every config here that no other extends when none. */
@@ -69,6 +71,12 @@ export interface ServingServer {
 	readonly info: ServerInfo;
 }
 
+/** Something a server the session started said that is worth showing. */
+export interface ServerSaid {
+	readonly target: ServeTarget;
+	readonly message: ServerMessage;
+}
+
 /** A server the session started that stopped before the session did. */
 export interface ServerStop {
 	readonly target: ServeTarget;
@@ -88,7 +96,9 @@ export interface ServeSession extends Disposable {
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
 	readonly onDidServe: Event<ServingServer>;
-	/** Fired when a server stops before the session does. */
+	/** Fired for each warning, error and unrecognised line a server prints; the rest of its output is dropped. */
+	readonly onDidSay: Event<ServerSaid>;
+	/** Fired when a server stops before the session does, after what it said. */
 	readonly onDidStop: Event<ServerStop>;
 
 	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
@@ -104,11 +114,8 @@ export interface ServeService {
 	/** Selects the configs to watch and to serve, finds the server, and asks each served config's port what serves there. Fails when a config is broken, no server can run, two configs share a port, or something else holds one. */
 	prepare(request: ServeRequest): Promise<Result<ServePlan, Error>>;
 
-	/** A session for `plan`; the servers write to `output`. Fails as a watch would when the configs can't be built together. */
-	serve(
-		plan: ServePlan,
-		output: ProcessOutputTarget
-	): Result<ServeSession, DiagnosticsError>;
+	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */
+	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
 }
 
 export const ServeService =

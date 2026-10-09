@@ -17,6 +17,9 @@ import {
 /** How long a process asked to stop gets before it is killed. */
 const KILL_GRACE_MS = 5_000;
 
+/** How long an exited process's output may take to drain; a process it started can hold the pipes open for good. */
+const DRAIN_MS = 250;
+
 /** Windows runs a batch file only through its shell. */
 const needsShell = (file: string) => isWindows && /\.(cmd|bat)$/i.test(file);
 
@@ -47,6 +50,9 @@ function launch(
 }
 
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
+	private readonly _onDidOutput = this._register(new Emitter<string>());
+	readonly onDidOutput: Event<string> = this._onDidOutput.event;
+
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 
@@ -56,6 +62,10 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	constructor(private readonly child: childProcess.ChildProcess) {
 		super();
+		for (const stream of [child.stdout, child.stderr]) {
+			stream?.setEncoding("utf8");
+			stream?.on("data", (text: string) => this._onDidOutput.fire(text));
+		}
 		this.exited = new Promise((resolve) => {
 			const finish = (exit: ProcessExit) => {
 				if (this.exit) return;
@@ -63,7 +73,16 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 				resolve(exit);
 				this._onDidExit.fire(exit);
 			};
-			child.once("exit", (code, signal) => finish({ code, signal }));
+			child.once("exit", (code, signal) => {
+				const timer = setTimeout(
+					() => finish({ code, signal }),
+					DRAIN_MS
+				);
+				child.once("close", () => {
+					clearTimeout(timer);
+					finish({ code, signal });
+				});
+			});
 			child.once("error", (error) => {
 				if (child.pid === undefined)
 					finish({ code: null, signal: null, error });
@@ -176,13 +195,12 @@ export class NativeProcessService implements ProcessService {
 		options: SpawnOptions
 	): ChildProcess {
 		const run = launch(file, args);
-		const output = options.output === "inherit" ? "inherit" : 2;
 		return new NativeChildProcess(
 			childProcess.spawn(run.command, run.args, {
 				cwd: options.cwd,
 				env: this.env,
 				windowsVerbatimArguments: run.windowsVerbatimArguments,
-				stdio: ["ignore", output, output],
+				stdio: ["ignore", "pipe", "pipe"],
 				windowsHide: true,
 			})
 		);

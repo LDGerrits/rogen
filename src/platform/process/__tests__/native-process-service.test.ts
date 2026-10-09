@@ -96,7 +96,6 @@ describe("NativeProcessService", () => {
 		it("should report the exit code of a process that ends", async () => {
 			const child = service.spawn(node, ["-e", "process.exit(4)"], {
 				cwd: dir,
-				output: "stderr",
 			});
 
 			expect(await exitOf(child)).toEqual({ code: 4, signal: null });
@@ -107,7 +106,7 @@ describe("NativeProcessService", () => {
 			const child = service.spawn(
 				node,
 				["-e", "setTimeout(() => {}, 60_000)"],
-				{ cwd: dir, output: "stderr" }
+				{ cwd: dir }
 			);
 			const exited = exitOf(child);
 
@@ -122,7 +121,6 @@ describe("NativeProcessService", () => {
 		it("should report a file that can't start as an exit with an error", async () => {
 			const child = service.spawn(path.join(dir, "missing"), [], {
 				cwd: dir,
-				output: "stderr",
 			});
 
 			const exit = await exitOf(child);
@@ -132,29 +130,35 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
-		it("should keep the process's output off stdout when told to", async () => {
-			const result = await service.exec(
+		it("should pass on what the process prints, on either stream, before its exit", async () => {
+			const child = service.spawn(
 				node,
 				[
-					"--import",
-					"tsx",
 					"-e",
-					[
-						`import { NativeProcessService } from ${JSON.stringify(
-							path.resolve(
-								"src/platform/process/native-process-service.ts"
-							)
-						)};`,
-						"const child = new NativeProcessService().spawn(process.execPath, ['-e', 'console.log(\"child\")'], { cwd: process.cwd(), output: 'stderr' });",
-						"child.onDidExit(() => console.log('parent'));",
-					].join("\n"),
+					"process.stdout.write('out\\n'); process.stderr.write('err\\n'); process.exit(3)",
 				],
-				{ cwd: process.cwd(), timeout: 20_000 }
+				{ cwd: dir }
+			);
+			let printed = "";
+			child.onDidOutput((text) => (printed += text));
+
+			expect(await exitOf(child)).toEqual({ code: 3, signal: null });
+			expect(printed.split("\n").sort()).toEqual(["", "err", "out"]);
+			child[Symbol.dispose]();
+		});
+
+		it("should report the exit while a process it started still holds its output open", async () => {
+			const child = service.spawn(
+				node,
+				[
+					"-e",
+					"require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 3000)'], { stdio: 'inherit' }).unref()",
+				],
+				{ cwd: dir }
 			);
 
-			const output = result.unwrap();
-			expect(output.stdout).toBe("parent\n");
-			expect(output.stderr).toBe("child\n");
-		}, 30_000);
+			expect(await exitOf(child)).toEqual({ code: 0, signal: null });
+			child[Symbol.dispose]();
+		});
 	});
 });

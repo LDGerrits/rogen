@@ -18,17 +18,15 @@ export interface ProcessOutput {
 	readonly stderr: string;
 }
 
-/** Where a started process writes: to this process's own streams, or all of it to stderr, which keeps stdout for this process alone. */
-export type ProcessOutputTarget = "inherit" | "stderr";
-
 export interface SpawnOptions {
 	readonly cwd: string;
-	readonly output: ProcessOutputTarget;
 }
 
 /** A process this one started; disposing it ends it. */
 export interface ChildProcess extends Disposable {
-	/** Fires once, when the process has exited or failed to start. */
+	/** Text it printed, on either stream, as it arrives. */
+	readonly onDidOutput: Event<string>;
+	/** Fires once, when the process has exited or failed to start, after the text it printed. */
 	readonly onDidExit: Event<ProcessExit>;
 
 	/** Ends the process and every process it started, and resolves once it has exited. Safe to call after it exited. */
@@ -47,7 +45,7 @@ export interface ProcessService {
 		args: readonly string[],
 		options: { readonly cwd: string; readonly timeout: number }
 	): Promise<Result<ProcessOutput, Error>>;
-	/** Starts `file`, with no input. */
+	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
 	spawn(
 		file: string,
 		args: readonly string[],

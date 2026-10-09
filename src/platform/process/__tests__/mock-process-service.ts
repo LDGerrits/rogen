@@ -13,6 +13,9 @@ export class MockChildProcess
 	extends AbstractDisposable
 	implements ChildProcess
 {
+	private readonly _onDidOutput = this._register(new Emitter<string>());
+	readonly onDidOutput: Event<string> = this._onDidOutput.event;
+
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 
@@ -25,6 +28,10 @@ export class MockChildProcess
 		readonly options: SpawnOptions
 	) {
 		super();
+	}
+
+	print(text: string): void {
+		this._onDidOutput.fire(text);
 	}
 
 	exit(exit: ProcessExit): void {

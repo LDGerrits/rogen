@@ -1,8 +1,10 @@
+import path from "path";
 import { toNative } from "../../base/path.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import {
 	ServePlan,
 	ServeTarget,
+	ServerSaid,
 	ServerStop,
 	ServingServer,
 } from "../../domain/serve/serve-service.js";
@@ -26,7 +28,7 @@ export class ServeLog {
 
 	constructor(
 		private readonly logService: LogService,
-		cwd: string,
+		private readonly cwd: string,
 		private readonly json: boolean
 	) {
 		this.watchLog = new WatchLog(logService, cwd);
@@ -68,6 +70,30 @@ export class ServeLog {
 		this.logService.success(
 			`Serving ${target.config.label} with ${serverOf(info)} at ${target.address}.`
 		);
+	}
+
+	/** What a server said, as Rogen's own line, with the paths under the working folder relative to it; what Rogen drops shows only with `--verbose`. */
+	said({ target, message }: ServerSaid, plan: ServePlan): void {
+		const { server } = plan.tool;
+		if (message.severity === "debug") {
+			this.logService.debug(`${server.name}: ${message.text}`);
+			return;
+		}
+		if (this.json) {
+			this.line({
+				output: {
+					config: target.config.label,
+					tool: server.id,
+					severity: message.severity,
+					message: message.text,
+				},
+			});
+			return;
+		}
+		const text = `${server.name}: ${message.text.split(this.cwd + path.sep).join("")}`;
+		if (message.severity === "error") this.logService.error(text);
+		else if (message.severity === "warning") this.logService.warn(text);
+		else this.logService.info(text);
 	}
 
 	stopped(

@@ -177,6 +177,22 @@ describeWithRojo("end to end serve", () => {
 		});
 	}, 40_000);
 
+	it("should show Rojo's errors as its own lines, and nothing else Rojo prints", async () => {
+		const serving = start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving default");
+		}, 20_000);
+
+		writeProjectFile(project.dir, "src/Bad.model.json", "{ nope");
+
+		await eventually(() => {
+			expect(serving.output).toMatch(/Rojo: .*src[\\/]Bad\.model\.json/);
+		});
+		expect(serving.output).not.toContain("Caused by");
+		expect(serving.output).not.toContain("librojo");
+		expect(serving.output).not.toContain(project.dir);
+	}, 40_000);
+
 	it("should print only JSON lines on stdout, the build and then the server", async () => {
 		const serving = start(["--json"]);
 
@@ -201,7 +217,7 @@ describeWithRojo("end to end serve", () => {
 				port,
 			})
 		);
-		expect(serving.output).toContain("Rojo server listening");
+		expect(serving.output).not.toContain("Rojo server listening");
 	}, 40_000);
 
 	it("should exit 0 at once when the project is already served", async () => {
@@ -277,7 +293,10 @@ describeWithRojo("end to end serve", () => {
 
 		expect(await serving.exited).toBe(2);
 		expect(serving.output).toContain(
-			"Rojo stopped serving default with exit code 2; its output says why. (serve.serverExited)"
+			"Rojo stopped serving default with exit code 2; see what it said above. (serve.serverExited)"
+		);
+		expect(serving.output).toContain(
+			"Rojo: Found argument '--no-such-flag'"
 		);
 	}, 40_000);
 });
@@ -353,6 +372,22 @@ describeWithArgon("end to end serve with Argon", () => {
 		}, 20_000);
 	}, 40_000);
 
+	it("should show Argon's errors as its own lines, and nothing else Argon prints", async () => {
+		const serving = start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving default");
+		}, 20_000);
+
+		writeProjectFile(project.dir, "src/Bad.model.json", "{ nope");
+		writeProjectFile(project.dir, "src/C.luau");
+
+		await eventually(() => {
+			expect(serving.output).toMatch(/Argon: .*src[\\/]Bad\.model\.json/);
+		});
+		expect(serving.output).not.toMatch(/INFO|source: |argon::|deleted/);
+		expect(serving.output).not.toContain(project.dir);
+	}, 40_000);
+
 	it("should keep Argon running as its own child when Argon's settings run it async", async () => {
 		writeProjectFile(project.dir, "argon.toml", "run_async = true\n");
 		const serving = start();
@@ -390,7 +425,7 @@ describeWithArgon("end to end serve with Argon", () => {
 
 		expect(await serving.exited).toBe(2);
 		expect(serving.output).toContain(
-			"Argon stopped serving default with exit code 2; its output says why. (serve.serverExited)"
+			"Argon stopped serving default with exit code 2; see what it said above. (serve.serverExited)"
 		);
 	}, 40_000);
 });

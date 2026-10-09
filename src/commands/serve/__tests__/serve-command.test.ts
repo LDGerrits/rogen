@@ -145,7 +145,33 @@ describe("serve command", () => {
 			"success: default.project.json · wrote",
 			"success: Serving default with Rojo 7.7.1 at 127.0.0.1:34872.",
 		]);
-		expect(processes.spawned[0].options.output).toBe("inherit");
+	});
+
+	it("should show what the server says as its own lines, without the server's banner", async () => {
+		void serve();
+		await settle();
+
+		processes.spawned[0].print(
+			[
+				"Rojo server listening:",
+				"  Address: localhost",
+				"  Port:    34872",
+				"",
+				"Visit http://localhost:34872/ in your browser for more information.",
+				"[ERROR librojo::change_processor] File is not a valid JSON model: /repo/src/Bad.model.json: JSONC parse error",
+				"        ",
+				"        Caused by:",
+				"            Expected colon on line 2 column 1",
+				"[WARN  librojo::snapshot] Unknown file: /repo/src/notes.xyz",
+				"",
+			].join("\n")
+		);
+		await settle();
+
+		expect(logService.lines.slice(-2)).toEqual([
+			"error: Rojo: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon on line 2 column 1",
+			"warn: Rojo: Unknown file: src/notes.xyz",
+		]);
 	});
 
 	it("should stop the server and exit 0 when asked to shut down", async () => {
@@ -179,7 +205,7 @@ describe("serve command", () => {
 		expect((error as ReportedError).cause).toBeInstanceOf(ExitCodeError);
 		expect(exitCodeOf(error)).toBe(3);
 		expect(logService.lines.slice(-2)).toEqual([
-			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving default with exit code 3; its output says why. (serve.serverExited)",
+			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving default with exit code 3, without saying why. (serve.serverExited)",
 			"outro: serve failed.",
 		]);
 	});
@@ -203,7 +229,7 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should print one JSON object per line, and keep the server's output off stdout", async () => {
+	it("should print one JSON object per line", async () => {
 		void serve([], { json: true });
 		await settle();
 		requests.answer(ROJO_URL, {
@@ -238,7 +264,26 @@ describe("serve command", () => {
 		expect(
 			logService.entries.filter(({ kind }) => kind !== "print")
 		).toEqual([]);
-		expect(processes.spawned[0].options.output).toBe("stderr");
+	});
+
+	it("should print what the server says as JSON lines, without what Rogen drops", async () => {
+		void serve([], { json: true });
+		await settle();
+
+		processes.spawned[0].print(
+			"[INFO  librojo] Listening\n[ERROR librojo] It broke\n"
+		);
+		await settle();
+
+		expect(printed().filter((line) => "output" in line)).toHaveLength(1);
+		expect(printed().at(-1)).toEqual({
+			output: {
+				config: "default",
+				tool: "rojo",
+				severity: "error",
+				message: "It broke",
+			},
+		});
 	});
 
 	it("should end the JSON lines with each server stopped on shutdown", async () => {

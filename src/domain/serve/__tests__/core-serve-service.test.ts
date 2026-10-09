@@ -452,6 +452,7 @@ describe("CoreServeService", () => {
 		let session: ServeSession;
 		let served: ServingServer[];
 		let stops: ServerStop[];
+		let said: string[];
 
 		const settle = async () => {
 			for (let i = 0; i < 20; i++)
@@ -459,11 +460,18 @@ describe("CoreServeService", () => {
 		};
 
 		const start = async () => {
-			session = service.serve(await plan(), "stderr").unwrap();
+			session = service.serve(await plan()).unwrap();
 			served = [];
 			stops = [];
 			session.onDidServe((serving) => served.push(serving));
-			session.onDidStop((stop) => stops.push(stop));
+			said = [];
+			session.onDidSay(({ message }) =>
+				said.push(`${message.severity}: ${message.text}`)
+			);
+			session.onDidStop((stop) => {
+				said.push("stopped");
+				stops.push(stop);
+			});
 			const started = session.start();
 			await settle();
 			return started;
@@ -494,7 +502,7 @@ describe("CoreServeService", () => {
 				[
 					"/bin/rojo",
 					["serve", "default.project.json"],
-					{ cwd: "/repo", output: "stderr" },
+					{ cwd: "/repo" },
 				],
 			]);
 		});
@@ -587,7 +595,19 @@ describe("CoreServeService", () => {
 			expect(stops[0].interrupted).toBe(false);
 			expect(stops[0].failure?.code).toBe("serve.serverExited");
 			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving default with exit code 1; its output says why."
+				"Rojo stopped serving default with exit code 1, without saying why."
+			);
+		});
+
+		it("should pass on what the server said before it stopped, and point to it", async () => {
+			await start();
+
+			processes.spawned[0].print("[ERROR librojo] Port in use");
+			processes.spawned[0].exit({ code: 1, signal: null });
+
+			expect(said).toEqual(["error: Port in use", "stopped"]);
+			expect(stops[0].failure?.message).toBe(
+				"Rojo stopped serving default with exit code 1; see what it said above."
 			);
 		});
 
@@ -597,7 +617,7 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 0xc0000005, signal: null });
 
 			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving default with exit code 0xC0000005; its output says why."
+				"Rojo stopped serving default with exit code 0xC0000005, without saying why."
 			);
 		});
 

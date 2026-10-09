@@ -873,10 +873,10 @@ Stop what holds the port, give the config its own `servePort` in its template, o
 Error. A server stopped on its own with a non-zero exit code, or couldn't be started. `rogen serve` then stops and exits with the server's code (1 when it has none).
 
 ```
-default.rogen.json - error: Rojo stopped serving default with exit code 1; its output says why. (serve.serverExited)
+default.rogen.json - error: Rojo stopped serving default with exit code 1; see what it said above. (serve.serverExited)
 ```
 
-Read the server's output just above it, which says why. See [CLI](/docs/v2/cli#serve).
+Read what the server said just above it, which usually says why. When it said nothing, as when it was killed, the message ends `without saying why`. See [CLI](/docs/v2/cli#serve).
 
 ## Migration
 

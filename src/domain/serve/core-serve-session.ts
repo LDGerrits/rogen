@@ -12,7 +12,6 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import {
 	ChildProcess,
 	ProcessExit,
-	ProcessOutputTarget,
 	ProcessService,
 } from "../../platform/process/process-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
@@ -20,9 +19,11 @@ import {
 	ServePlan,
 	ServeSession,
 	ServeTarget,
+	ServerSaid,
 	ServerStop,
 	ServingServer,
 } from "./serve-service.js";
+import { ServerOutput } from "./server-output.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
 
@@ -58,6 +59,9 @@ export class CoreServeSession
 	private readonly _onDidServe = this._register(new Emitter<ServingServer>());
 	readonly onDidServe: Event<ServingServer> = this._onDidServe.event;
 
+	private readonly _onDidSay = this._register(new Emitter<ServerSaid>());
+	readonly onDidSay: Event<ServerSaid> = this._onDidSay.event;
+
 	private readonly _onDidStop = this._register(new Emitter<ServerStop>());
 	readonly onDidStop: Event<ServerStop> = this._onDidStop.event;
 
@@ -77,8 +81,7 @@ export class CoreServeSession
 		private readonly watch: WatchSession,
 		private readonly processService: ProcessService,
 		private readonly probe: ServerProbe,
-		private readonly records: ServerRecords,
-		private readonly output: ProcessOutputTarget
+		private readonly records: ServerRecords
 	) {
 		super();
 		this._register(watch);
@@ -142,15 +145,25 @@ export class CoreServeSession
 					path.relative(selection.home, target.config.outFile),
 					serverArgs
 				),
-				{ cwd: selection.home, output: this.output }
+				{ cwd: selection.home }
 			)
 		);
 		this.children.push(child);
+		const output = this._register(new ServerOutput(tool.server));
+		let said = false;
+		this._register(child.onDidOutput((text) => output.write(text)));
+		this._register(
+			output.onDidMessage((message) => {
+				if (message.severity !== "debug") said = true;
+				this._onDidSay.fire({ target, message });
+			})
+		);
 		let exited = false;
 		this._register(
 			child.onDidExit((exit) => {
 				exited = true;
-				if (!this.stopping) this.reportStop(target, exit);
+				output.end();
+				if (!this.stopping) this.reportStop(target, exit, said);
 			})
 		);
 		this.awaitReady(target, () => exited, READY_POLL_MS.first);
@@ -194,7 +207,12 @@ export class CoreServeSession
 		this.timers.add(timer);
 	}
 
-	private reportStop(target: ServeTarget, exit: ProcessExit): void {
+	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */
+	private reportStop(
+		target: ServeTarget,
+		exit: ProcessExit,
+		said: boolean
+	): void {
 		const interrupted = wasInterrupted(exit);
 		const { server } = this.plan.tool;
 		const { label, file } = target.config;
@@ -209,7 +227,7 @@ export class CoreServeSession
 					? errorDiagnostic(
 							"serve.serverExited",
 							{ resource: file },
-							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}; its output says why.`
+							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
 						)
 					: undefined;
 		this._onDidStop.fire({

@@ -9,10 +9,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import {
-	ProcessOutputTarget,
-	ProcessService,
-} from "../../platform/process/process-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 import { ConfigOptionValues, ResolvedConfig } from "../config/config.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
@@ -186,10 +183,7 @@ export class CoreServeService implements ServeService {
 		});
 	}
 
-	serve(
-		plan: ServePlan,
-		output: ProcessOutputTarget
-	): Result<ServeSession, DiagnosticsError> {
+	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError> {
 		const watch = this.watchService.watch(plan.selection);
 		if (watch.isErr()) return watch;
 		return ok(
@@ -198,8 +192,7 @@ export class CoreServeService implements ServeService {
 				watch.value,
 				this.processService,
 				this.probe,
-				this.records,
-				output
+				this.records
 			)
 		);
 	}
