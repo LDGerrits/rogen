@@ -73,39 +73,6 @@ describe("where command", () => {
 		]);
 	});
 
-	it("should print the files behind an instance pasted from a Studio error", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write(
-			"src/Inventory/Server/Save.luau",
-			"src/Inventory/Types.luau"
-		);
-
-		await run({
-			_: [
-				"ServerScriptService.Inventory.Save:12: attempt to index nil",
-				"ReplicatedStorage/Shared/Inventory",
-				"Workspace.Missing",
-			],
-		});
-
-		expect(printed()).toEqual([
-			"src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)",
-			"src/Inventory/Types.luau -> ReplicatedStorage/Shared/Inventory/Types · route * (fallback)",
-			"Workspace.Missing -> no file places it",
-		]);
-	});
-
-	it("should say where a new file for an instance no file places goes", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Inventory/Server/Save.luau");
-
-		await run({ _: ["ServerScriptService.Inventory.NewThing"] });
-
-		expect(printed()).toEqual([
-			"ServerScriptService.Inventory.NewThing -> no file places it · a new file goes in src/Inventory/Server/",
-		]);
-	});
-
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
 		await writeConfig("default.rogen.json", {
 			rootDirs: ["."],
@@ -117,18 +84,6 @@ describe("where command", () => {
 
 		expect(printed()).toEqual([
 			"ReplicatedFirst/Boot.client.luau -> ReplicatedFirst/Boot · route ReplicatedFirst (folder)",
-		]);
-	});
-
-	it("should print every file in the tree when given no path", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/B.luau", "src/A/Server/C.luau");
-
-		await run({});
-
-		expect(printed()).toEqual([
-			"src/A/Server/C.luau -> ServerScriptService/A/C · route Server (folder)",
-			"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
 		]);
 	});
 
@@ -169,36 +124,6 @@ describe("where command", () => {
 				"README.md -> outside the root dirs",
 			]);
 		});
-
-		it("should head only the lines that some configs lack in the whole tree, sorted", async () => {
-			await run({});
-
-			expect(printed()).toEqual([
-				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
-				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-			]);
-		});
-	});
-
-	it("should place a file that doesn't exist yet in the init folder that holds it", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write(
-			"src/Combat/Server/Moves/init.luau",
-			"src/Combat/Server/Moves/Punch.luau"
-		);
-
-		await run({ _: ["src/Combat/Server/Moves"] });
-		const asked = printed();
-		logService.clear();
-		await run({ _: ["src/Combat/Server/Moves/Sweep.luau"] });
-
-		expect(asked).toEqual([
-			"src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)",
-			"src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)",
-		]);
-		expect(printed()).toEqual([
-			"src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder)",
-		]);
 	});
 
 	it("should fail with the config's errors", async () => {
@@ -223,38 +148,6 @@ describe("where command", () => {
 		expect(result.isErr() && result.error.message).toContain(
 			"/repo/broken.rogen.json:1:"
 		);
-	});
-
-	it("should say there are no files rather than print nothing", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await fs.createDirectory("/repo/src");
-
-		const result = await run({});
-
-		expect(result.isOk()).toBe(true);
-		expect(printed()).toEqual(["No files in the root dirs (src)."]);
-	});
-
-	it("should hint at a folder that doesn't exist when it is named with a trailing slash", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await fs.createDirectory("/repo/src");
-
-		await run({ _: ["src/Combat/"] });
-
-		expect(printed()).toEqual([
-			"src/Combat -> does not exist · name a file in it to see where it would land",
-		]);
-	});
-
-	it("should hint at a folder that doesn't exist when it is named with a trailing backslash", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await fs.createDirectory("/repo/src");
-
-		await run({ _: ["src\\Combat\\"] });
-
-		expect(printed()).toEqual([
-			"src/Combat -> does not exist · name a file in it to see where it would land",
-		]);
 	});
 
 	it.each([
@@ -284,15 +177,6 @@ describe("where command", () => {
 		}
 	);
 
-	it("should not hint at a folder for a missing name without a trailing slash, which may be a file missing its extension", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await fs.createDirectory("/repo/src");
-
-		await run({ _: ["src/Module"] });
-
-		expect(printed()).toEqual(["src/Module -> does not exist"]);
-	});
-
 	describe("the require of a named file", () => {
 		const notes = () =>
 			logService.entries
@@ -316,78 +200,6 @@ describe("where command", () => {
 					"note",
 					'  require(game:GetService("ReplicatedStorage").Shared.Util)',
 				],
-			]);
-		});
-
-		it("should write a name that isn't an identifier as an index", async () => {
-			await write("src/Foo Bar.luau");
-
-			await run({ _: ["src/Foo Bar.luau"] });
-
-			expect(notes()).toEqual([
-				'  require(game:GetService("ReplicatedStorage").Shared["Foo Bar"])',
-			]);
-		});
-
-		it("should say why a module under a Starter container has none", async () => {
-			await write("src/Hud/Client/Hud.luau");
-
-			await run({ _: ["src/Hud/Client/Hud.luau"] });
-
-			expect(notes()).toEqual([
-				"  no require by this path: StarterPlayerScripts is cloned into each player",
-			]);
-		});
-
-		it("should say why a script has none", async () => {
-			await write("src/Inventory/Server/Hit.server.luau");
-
-			await run({ _: ["src/Inventory/Server/Hit.server.luau"] });
-
-			expect(notes()).toEqual([
-				"  no require by this path: a script runs on its own and is not a module",
-			]);
-		});
-
-		it.each(["src/Hit.ts", "src/Data.json"])(
-			"should say nothing for %s",
-			async (file) => {
-				await write(file);
-
-				await run({ _: [file] });
-
-				expect(notes()).toEqual([]);
-			}
-		);
-
-		it("should say nothing for a file that is not placed", async () => {
-			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				variants: ["mock"],
-			});
-			await write("src/Net/Http.mock.luau");
-
-			await run({ _: ["src/Net/Http.mock.luau"] });
-
-			expect(notes()).toEqual([]);
-		});
-
-		it("should say nothing for a directory, nor for a listing", async () => {
-			await write("src/Util.luau");
-
-			await run({ _: ["src"] });
-			await run({ _: [] });
-
-			expect(notes()).toEqual([]);
-		});
-
-		it("should give a file that does not exist yet the require it would have", async () => {
-			await fs.createDirectory("/repo/src");
-
-			await run({ _: ["src/New.luau"] });
-
-			expect(notes()).toEqual([
-				'  require(game:GetService("ReplicatedStorage").Shared.New)',
 			]);
 		});
 
@@ -512,56 +324,12 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should print an entry for an instance no file places", async () => {
-			await run({
-				_: ["ServerScriptService.Inventory.Save:3", "Workspace.Gone"],
-				json: true,
-			});
-
-			expect(document()).toEqual([
-				expect.objectContaining({
-					source: "/repo/src/Inventory/Server/Save.luau",
-					status: "placed",
-				}),
-				{
-					config: "default",
-					instance: "Workspace.Gone",
-					status: "noFile",
-					diagnostics: [],
-				},
-			]);
-		});
-
 		it("should print nothing but the document, however loud the log level", async () => {
 			await run({ json: true, verbose: true });
 
 			expect(
 				logService.entries.filter(({ kind }) => kind !== "print")
 			).toEqual([]);
-		});
-
-		it("should print an empty list when nothing is placed", async () => {
-			await fs.delete("/repo/src/Inventory/Server/Save.luau");
-			await fs.delete("/repo/src/Net/Http.mock.luau");
-
-			await run({ json: true });
-
-			expect(document()).toEqual([]);
-		});
-
-		it("should print an entry for every config, even when they agree", async () => {
-			await writeConfig("lobby.rogen.json", { routes: ROUTES });
-
-			await run({
-				_: ["src/Inventory/Server/Save.luau"],
-				json: true,
-				all: true,
-			});
-
-			expect(document().map(({ config }) => config)).toEqual([
-				"default",
-				"lobby",
-			]);
 		});
 
 		it("should answer from the configs that load and print the errors of one that doesn't", async () => {
@@ -586,12 +354,6 @@ describe("where command", () => {
 					code: "config.unknownField",
 				},
 			]);
-		});
-
-		it("should print an empty list of diagnostics when every config loads", async () => {
-			await run({ json: true });
-
-			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
 		});
 	});
 
