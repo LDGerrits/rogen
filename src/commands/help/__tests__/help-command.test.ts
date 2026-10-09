@@ -1,5 +1,9 @@
 import { jest } from "@jest/globals";
 import fs from "fs";
+import {
+	CommandHarness,
+	commandHarness,
+} from "../../__tests__/command-harness.js";
 import "../../build/build-command.js";
 import "../../check/check-command.js";
 import "../help-command.js";
@@ -17,16 +21,12 @@ import {
 	Extensions,
 	registerCommand,
 } from "../../../platform/commands/commands.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
 	parseArgs,
 } from "../../../platform/environment/args.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
-import { ProductService } from "../../../platform/product/product-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { helpTexts } from "../help-texts.js";
 
@@ -35,10 +35,10 @@ describe("help command", () => {
 	let store: DisposableStore;
 	let logService: NullLogService;
 	let info: ReturnType<typeof jest.spyOn>;
-	let commandService: CoreCommandService;
+	let harness: CommandHarness<NullLogService>;
 
 	const help = (...positionals: string[]) =>
-		commandService.executeCommand("help", { positionals, options: {} });
+		harness.run("help", { positionals });
 
 	const printed = () => String(info.mock.calls[0][0]);
 
@@ -46,13 +46,13 @@ describe("help command", () => {
 		store = new DisposableStore();
 		logService = new NullLogService();
 		info = jest.spyOn(logService, "print");
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(ProductService, {
-			_serviceBrand: undefined,
-			getVersion: async () => "2.3.4",
+		harness = commandHarness({
+			log: logService,
+			product: {
+				_serviceBrand: undefined,
+				getVersion: async () => "2.3.4",
+			},
 		});
-		commandService = new CoreCommandService(services, logService);
 	});
 
 	afterEach(() => {
@@ -100,7 +100,7 @@ describe("help command", () => {
 		});
 
 		it("should print the version for --version, whatever the command", async () => {
-			await commandService.executeCommand("help", {
+			await harness.run("help", {
 				positionals: ["build"],
 				options: { version: true, help: true },
 			});
@@ -136,7 +136,7 @@ describe("help command", () => {
 		});
 
 		it("should resolve the command from --help as well", async () => {
-			await commandService.executeCommand("help", {
+			await harness.run("help", {
 				positionals: ["build"],
 				options: { help: true },
 			});
