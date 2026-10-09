@@ -158,6 +158,9 @@ registerCommand(
 			store.add(session.onDidServe((serving) => log.serving(serving)));
 			store.add(session.onDidSay((said) => log.said(said, plan)));
 			store.add(
+				session.onDidChange((change) => log.changed(change, plan))
+			);
+			store.add(
 				session.onDidStop((stop) => {
 					log.stopped(stop, plan);
 					if (!stopped.isSettled) stopped.complete(stop);
@@ -174,8 +177,9 @@ registerCommand(
 					shutdown.p.then(() => undefined),
 					stopped.p,
 				]);
+				const running = session.targets;
 				await session.stop();
-				if (!stop) log.shutdown(plan);
+				if (!stop) log.shutdown(plan, running);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return ok(undefined);

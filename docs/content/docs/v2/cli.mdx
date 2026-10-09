@@ -64,6 +64,8 @@ Every config in the folder is built and watched, so no project file goes stale. 
 
 Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
 
+**As configs change.** The servers follow the configs while `serve` runs, as the build does. A config added that is to be served gets its own server once it builds, after the same port checks as at the start; one that can't be served, as its port is taken, is reported and the rest go on. A served config that is deleted, or that a new config comes to extend (adding `sync.rogen.json` over `default`), has its server stopped, and the new config is served instead. A template that moves a config to another port or address restarts its server there. With config names, only those configs are served, whatever is added.
+
 **Which server.** Rojo or Argon. Rogen runs the one the project pins in `rokit.toml`, `aftman.toml` or `foreman.toml`, in the folder of the configs or any folder above, so the pinned version runs. With none pinned, it uses the one on the PATH. `--tool rojo` or `--tool argon` picks. When both are pinned, Rojo serves and Rogen says so: `Both rojo and argon are pinned; serving with rojo (--tool argon to switch).` Rogen never installs or bundles a server, since it has to match the Studio plugin you installed. It runs `<tool> --version` first, so a broken install fails before the build.
 
 **Port.** There is no Rogen flag. The port is the server's own:
@@ -333,7 +335,8 @@ One JSON object per line on stdout, each keyed by what it reports, and nothing e
 | `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `file`; a broken config adds `keptLastValid` and `diagnostics` |
 | `serving` | a server answers, so Studio can connect | `config`, `tool`, `version`, `project`, `host`, `port`, `session` (Rojo only); `alreadyRunning: true` when it was already serving before `serve` started |
 | `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `tool`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
-| `stopped` | a server stops | `config`, `tool`, `reason`: `exited` when it stopped on its own, with its `code` and `signal`, or `shutdown` when `serve` was asked to stop, as the last line of a clean run |
+| `refused` | a config to serve, added while serving, can't be served; the others go on | `config`, `tool`, `diagnostics` |
+| `stopped` | a server stops | `config`, `tool`, `reason`: `exited` when it stopped on its own, with its `code` and `signal`; `removed`, `extended` or `moved` when its config was deleted, came to be extended by another, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last line of a clean run |
 | `error` | an unexpected failure that `serve` survives | the message |
 
 `project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": "..." }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).

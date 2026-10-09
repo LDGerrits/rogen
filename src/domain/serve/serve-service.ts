@@ -51,7 +51,9 @@ export class ServePlan {
 		readonly selection: ConfigSelection,
 		readonly tool: ServeTool,
 		readonly targets: readonly ServeTarget[],
-		readonly serverArgs: readonly string[]
+		readonly serverArgs: readonly string[],
+		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
+		readonly named?: ReadonlySet<string>
 	) {}
 
 	/** The targets a server already serves. */
@@ -89,6 +91,23 @@ export interface ServerStop {
 	readonly exitCode?: number;
 }
 
+/** How the servers changed with the configs, after the session started them. A config that comes to be served starts its server as at the start, and says so through `onDidServe`. */
+export type ServeChange =
+	/** A server stopped on purpose: its config is gone, another config now extends it, or its template moved it to another address, where a new server starts. */
+	| {
+			readonly kind: "retired";
+			readonly target: ServeTarget;
+			readonly reason: "removed" | "extended" | "moved";
+	  }
+	/** A config to serve now couldn't be served, as its port is taken; the others go on. */
+	| {
+			readonly kind: "refused";
+			readonly target: ServeTarget;
+			readonly diagnostic: Diagnostic;
+	  }
+	/** A config to serve now is already served by a server the session didn't start. */
+	| { readonly kind: "running"; readonly target: ServeTarget };
+
 /** A running serve: a watch of the plan's configs, and a server for each target nothing served. The caller owns it and disposes it. */
 export interface ServeSession extends Disposable {
 	readonly onDidUpdate: Event<WatchUpdate>;
@@ -98,8 +117,13 @@ export interface ServeSession extends Disposable {
 	readonly onDidServe: Event<ServingServer>;
 	/** Fired for each warning, error and unrecognised line a server prints; the rest of its output is dropped. */
 	readonly onDidSay: Event<ServerSaid>;
+	/** Fired when the configs to serve change while it serves. */
+	readonly onDidChange: Event<ServeChange>;
 	/** Fired when a server stops before the session does, after what it said. */
 	readonly onDidStop: Event<ServerStop>;
+
+	/** The targets it runs a server for now. */
+	readonly targets: readonly ServeTarget[];
 
 	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
 	start(): Promise<Result<void, Error>>;

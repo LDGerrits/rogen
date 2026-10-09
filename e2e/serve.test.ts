@@ -193,6 +193,63 @@ describeWithRojo("end to end serve", () => {
 		expect(serving.output).not.toContain(project.dir);
 	}, 40_000);
 
+	it("should start a server for a place added while it serves, and stop it when the place is removed", async () => {
+		const serving = start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving default");
+		}, 20_000);
+
+		writeProjectFile(
+			project.dir,
+			"templates/lobby.project.json",
+			template(port + 1, "Lobby")
+		);
+		writeProjectFile(
+			project.dir,
+			"lobby.rogen.json",
+			config({ template: "templates/lobby.project.json" })
+		);
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${port + 1}.`
+			);
+		}, 20_000);
+		expect(await rojoProject(port + 1)).toBe("Lobby");
+
+		fs.rmSync(path.join(project.dir, "lobby.rogen.json"));
+
+		await eventually(async () => {
+			expect(await rojoProject(port + 1)).toBeUndefined();
+		}, 20_000);
+		expect(serving.output).toContain(
+			"Stopped serving lobby: its config is gone."
+		);
+		expect(await rojoProject(port)).toBe("Game");
+	}, 60_000);
+
+	it("should restart the server where its template moves it", async () => {
+		const serving = start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving default");
+		}, 20_000);
+
+		writeProjectFile(
+			project.dir,
+			"template.project.json",
+			template(port + 2)
+		);
+
+		await eventually(async () => {
+			expect(await rojoProject(port + 2)).toBe("Game");
+		}, 20_000);
+		expect(await rojoProject(port)).toBeUndefined();
+		expect(serving.output).toContain(
+			`Stopped serving default at 127.0.0.1:${port}: its template moved it.`
+		);
+		expect(await serving.stop()).toBe(0);
+	}, 60_000);
+
 	it("should print only JSON lines on stdout, the build and then the server", async () => {
 		const serving = start(["--json"]);
 

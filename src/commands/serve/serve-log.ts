@@ -2,6 +2,7 @@ import path from "path";
 import { toNative } from "../../base/path.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import {
+	ServeChange,
 	ServePlan,
 	ServeTarget,
 	ServerSaid,
@@ -122,10 +123,47 @@ export class ServeLog {
 			);
 	}
 
-	/** Says each server it started was stopped because the run was asked to stop. */
-	shutdown(plan: ServePlan): void {
+	/** How the servers followed the configs as they changed. */
+	changed(change: ServeChange, plan: ServePlan): void {
+		const { target } = change;
+		const { label } = target.config;
+		const tool = plan.tool.server.id;
+		switch (change.kind) {
+			case "running":
+				this.running(target);
+				return;
+			case "refused":
+				if (this.json)
+					this.line({
+						refused: {
+							config: label,
+							tool,
+							diagnostics: [diagnosticToJson(change.diagnostic)],
+						},
+					});
+				else this.logService.diagnostic(change.diagnostic);
+				return;
+			case "retired":
+				if (this.json) {
+					this.line({
+						stopped: { config: label, tool, reason: change.reason },
+					});
+					return;
+				}
+				this.logService.info(
+					change.reason === "removed"
+						? `Stopped serving ${label}: its config is gone.`
+						: change.reason === "extended"
+							? `Stopped serving ${label}: a config extends it now, and is served instead.`
+							: `Stopped serving ${label} at ${target.address}: its template moved it.`
+				);
+		}
+	}
+
+	/** Says each server running at the end was stopped because the run was asked to stop. */
+	shutdown(plan: ServePlan, targets: readonly ServeTarget[]): void {
 		if (!this.json) return;
-		for (const { config } of plan.toStart)
+		for (const { config } of targets)
 			this.line({
 				stopped: {
 					config: config.label,

@@ -298,6 +298,99 @@ describe("serve command", () => {
 		});
 	});
 
+	describe("as the configs change", () => {
+		const addLobby = async (servePort: number) => {
+			await memFs.writeFile(
+				"/repo/templates/lobby.project.json",
+				JSON.stringify({ tree: { $className: "DataModel" }, servePort })
+			);
+			await memFs.writeFile(
+				"/repo/lobby.rogen.json",
+				JSON.stringify({
+					rootDirs: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+					template: "templates/lobby.project.json",
+				})
+			);
+			await settle();
+		};
+
+		it("should report a config it can't serve and go on serving the others", async () => {
+			void serve();
+			await settle();
+
+			await addLobby(34872);
+
+			expect(logService.lines).toContainEqual(
+				"diagnosticError: /repo/templates/lobby.project.json - error: Port 34872 is taken by the server of default, so lobby can't be served there. Give lobby its own servePort in lobby.project.json, or serve it on its own, as 'rogen serve lobby'. (serve.portTaken)"
+			);
+			expect(processes.spawned[0].terminated).toBe(false);
+			expect(
+				logService.lines.some((line) => line.startsWith("outro:"))
+			).toBe(false);
+		});
+
+		it("should say a server stopped because its config is gone, and stop only that one at shutdown", async () => {
+			const result = serve([], { json: true });
+			await settle();
+			await addLobby(34900);
+
+			await memFs.delete("/repo/lobby.rogen.json");
+			await settle();
+			lifecycle.shutdown();
+			await result;
+
+			expect(
+				printed()
+					.filter((line) => "stopped" in line || "refused" in line)
+					.map(({ stopped }) => stopped)
+			).toEqual([
+				{ config: "lobby", tool: "rojo", reason: "removed" },
+				{ config: "default", tool: "rojo", reason: "shutdown" },
+			]);
+		});
+
+		it("should print a refusal as a JSON line of its own", async () => {
+			void serve([], { json: true });
+			await settle();
+
+			await addLobby(34872);
+
+			expect(printed().at(-1)).toEqual({
+				refused: {
+					config: "lobby",
+					tool: "rojo",
+					diagnostics: [
+						expect.objectContaining({ code: "serve.portTaken" }),
+					],
+				},
+			});
+		});
+
+		it("should say a server stopped because another config extends its config now", async () => {
+			void serve();
+			await settle();
+
+			await memFs.writeFile(
+				"/repo/sync.rogen.json",
+				JSON.stringify({
+					extends: "./default.rogen.json",
+					syncDir: "dist",
+				})
+			);
+			await memFs.writeFile("/repo/dist/A.luau", "");
+			await settle();
+
+			expect(logService.lines).toContainEqual(
+				"info: Stopped serving default: a config extends it now, and is served instead."
+			);
+			expect(processes.spawned.map(({ args }) => args[1])).toEqual([
+				"default.project.json",
+				"sync.project.json",
+			]);
+		});
+	});
+
 	it("should print a failure as one JSON line", async () => {
 		processes.installed.clear();
 

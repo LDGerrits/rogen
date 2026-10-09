@@ -14,8 +14,11 @@ import {
 	ProcessExit,
 	ProcessService,
 } from "../../platform/process/process-service.js";
+import { buildableConfig } from "../config/config-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
+import { leafConfigs } from "./serve.js";
 import {
+	ServeChange,
 	ServePlan,
 	ServeSession,
 	ServeTarget,
@@ -23,6 +26,7 @@ import {
 	ServerStop,
 	ServingServer,
 } from "./serve-service.js";
+import { ServePorts } from "./serve-ports.js";
 import { ServerOutput } from "./server-output.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
@@ -45,7 +49,17 @@ const wasInterrupted = ({ code, signal }: ProcessExit) =>
 const exitCodeText = (code: number) =>
 	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
 
-/** A watch of the plan's configs, and a server for each target nothing served when it started. */
+/** A server the session started, by the config it serves. */
+interface StartedServer {
+	readonly target: ServeTarget;
+	readonly child: ChildProcess;
+	/** Stopped on purpose, as its config no longer wants it there; its exit is no failure. */
+	retiring: boolean;
+}
+
+const builtOutcomes: ReadonlySet<string> = new Set(["wrote", "unchanged"]);
+
+/** A watch of the plan's configs, and a server for each config to serve that nothing else serves, kept in step with the configs as they change. */
 export class CoreServeSession
 	extends AbstractDisposable
 	implements ServeSession
@@ -62,10 +76,21 @@ export class CoreServeSession
 	private readonly _onDidSay = this._register(new Emitter<ServerSaid>());
 	readonly onDidSay: Event<ServerSaid> = this._onDidSay.event;
 
+	private readonly _onDidChange = this._register(new Emitter<ServeChange>());
+	readonly onDidChange: Event<ServeChange> = this._onDidChange.event;
+
 	private readonly _onDidStop = this._register(new Emitter<ServerStop>());
 	readonly onDidStop: Event<ServerStop> = this._onDidStop.event;
 
-	private readonly children: ChildProcess[] = [];
+	private readonly servers = new Map<string, StartedServer>();
+	/** The configs a server the session didn't start serves. */
+	private readonly servedElsewhere = new Set<string>();
+	/** The configs whose latest build wrote their project file, which a new server can serve. */
+	private readonly built = new Set<string>();
+	/** Why each config to serve couldn't be, by the address it was refused at, so a refusal is said once. */
+	private readonly refused = new Map<string, string>();
+	private launched = false;
+	private reconciling: Promise<void> = Promise.resolve();
 	/** The targets whose server answered, which the session wrote a record for. */
 	private readonly recorded: ServeTarget[] = [];
 	/** The first round of builds, or the error that ended it before it said anything. */
@@ -81,15 +106,24 @@ export class CoreServeSession
 		private readonly watch: WatchSession,
 		private readonly processService: ProcessService,
 		private readonly probe: ServerProbe,
-		private readonly records: ServerRecords
+		private readonly records: ServerRecords,
+		private readonly ports: ServePorts
 	) {
 		super();
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
+				for (const { build } of update.reports)
+					if (builtOutcomes.has(build.outcome))
+						this.built.add(build.config.file);
+					else this.built.delete(build.config.file);
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
 				this._onDidUpdate.fire(update);
+				if (this.launched)
+					this.reconciling = this.reconciling
+						.then(() => this.reconcile())
+						.catch((error) => this._onDidError.fire(error));
 			})
 		);
 		this._register(
@@ -99,6 +133,10 @@ export class CoreServeSession
 				this._onDidError.fire(error);
 			})
 		);
+	}
+
+	get targets(): readonly ServeTarget[] {
+		return [...this.servers.values()].map(({ target }) => target);
 	}
 
 	async start(): Promise<Result<void, Error>> {
@@ -111,6 +149,9 @@ export class CoreServeSession
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
+		for (const { config } of this.plan.running)
+			this.servedElsewhere.add(config.file);
+		this.launched = true;
 		return ok(undefined);
 	}
 
@@ -121,7 +162,10 @@ export class CoreServeSession
 				this.firstUpdate.complete(undefined);
 			for (const timer of this.timers) clearTimeout(timer);
 			this.timers.clear();
-			await Promise.all(this.children.map((child) => child.terminate()));
+			await this.reconciling;
+			await Promise.all(
+				[...this.servers.values()].map(({ child }) => child.terminate())
+			);
 			await Promise.allSettled(
 				this.recorded.map(({ address }) => this.records.remove(address))
 			);
@@ -136,6 +180,93 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
+	/** Starts a server for each config to serve now that has none, and stops those whose config is gone, extended or moved. */
+	private async reconcile(): Promise<void> {
+		const { selection, tool, serverArgs, named } = this.plan;
+		const configs = selection.entries.flatMap(
+			(entry) => buildableConfig(entry) ?? []
+		);
+		const leaves = leafConfigs(configs);
+		const wanted = named
+			? configs.filter(({ file }) => named.has(file))
+			: leaves;
+		const wantedFiles = new Set(wanted.map(({ file }) => file));
+		const present = new Set(configs.map(({ file }) => file));
+
+		for (const [file, server] of this.servers)
+			if (!wantedFiles.has(file))
+				await this.retire(
+					server,
+					present.has(file) ? "extended" : "removed"
+				);
+		for (const file of this.servedElsewhere)
+			if (!wantedFiles.has(file)) this.servedElsewhere.delete(file);
+
+		// A name that several servable configs share can't tell which of them a server serves.
+		const servable = new Set([...leaves, ...wanted]);
+		const sharedName = (project: string) =>
+			[...servable].filter(({ name }) => name === project).length > 1;
+		for (const config of wanted) {
+			if (this.stopping) return;
+			const target = await this.ports.targetOf(config, tool, serverArgs);
+			const address = target.address.toString();
+			const started = this.servers.get(config.file);
+			if (started) {
+				if (started.target.address.toString() === address) continue;
+				await this.retire(started, "moved");
+			}
+			if (this.servedElsewhere.has(config.file)) continue;
+			if (!this.built.has(config.file)) continue;
+			const others = this.targets;
+			const holder = others.find(
+				(other) => other.address.port === target.address.port
+			);
+			const checked = holder
+				? err(this.ports.sharedPort(target, holder))
+				: await this.ports.check(
+						target,
+						others,
+						tool.server,
+						sharedName(target.project)
+					);
+			if (this.stopping) return;
+			if (checked.isErr()) {
+				if (this.refused.get(config.file) !== address)
+					this._onDidChange.fire({
+						kind: "refused",
+						target,
+						diagnostic: checked.error,
+					});
+				this.refused.set(config.file, address);
+				continue;
+			}
+			this.refused.delete(config.file);
+			if (checked.value.running) {
+				this.servedElsewhere.add(config.file);
+				this._onDidChange.fire({
+					kind: "running",
+					target: checked.value,
+				});
+			} else this.launch(checked.value);
+		}
+	}
+
+	private async retire(
+		server: StartedServer,
+		reason: "removed" | "extended" | "moved"
+	): Promise<void> {
+		const { target } = server;
+		server.retiring = true;
+		this.servers.delete(target.config.file);
+		await server.child.terminate();
+		const index = this.recorded.indexOf(target);
+		if (index !== -1) {
+			this.recorded.splice(index, 1);
+			await this.records.remove(target.address).catch(() => undefined);
+		}
+		this._onDidChange.fire({ kind: "retired", target, reason });
+	}
+
 	private launch(target: ServeTarget): void {
 		const { tool, serverArgs, selection } = this.plan;
 		const child = this._register(
@@ -148,7 +279,8 @@ export class CoreServeSession
 				{ cwd: selection.home }
 			)
 		);
-		this.children.push(child);
+		const server: StartedServer = { target, child, retiring: false };
+		this.servers.set(target.config.file, server);
 		const output = this._register(new ServerOutput(tool.server));
 		let said = false;
 		this._register(child.onDidOutput((text) => output.write(text)));
@@ -163,7 +295,8 @@ export class CoreServeSession
 			child.onDidExit((exit) => {
 				exited = true;
 				output.end();
-				if (!this.stopping) this.reportStop(target, exit, said);
+				if (!this.stopping && !server.retiring)
+					this.reportStop(target, exit, said);
 			})
 		);
 		this.awaitReady(target, () => exited, READY_POLL_MS.first);
