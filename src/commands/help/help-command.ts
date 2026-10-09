@@ -137,23 +137,35 @@ function formatCommandHelp(
 	const {
 		description,
 		args = [],
+		passthrough,
 		options = [],
 		examples = [],
 	} = command.metadata;
-	const usage = ["rogen", command.id, usageArgs(command), "[options]"]
+	const usage = [
+		"rogen",
+		command.id,
+		usageArgs(command),
+		"[options]",
+		passthrough && `[-- ${passthrough.name}...]`,
+	]
 		.filter(Boolean)
 		.join(" ");
 
 	const sections = [description, "", "Usage:", `  ${usage}`];
 
-	if (args.length > 0) {
-		sections.push(
-			"",
-			"Arguments:",
-			...formatColumns(
-				args.map((arg): [string, string] => [arg.name, arg.description])
-			)
-		);
+	const argRows = [
+		...args.map((arg): [string, string] => [arg.name, arg.description]),
+		...(passthrough
+			? [
+					[`-- ${passthrough.name}`, passthrough.description] as [
+						string,
+						string,
+					],
+				]
+			: []),
+	];
+	if (argRows.length > 0) {
+		sections.push("", "Arguments:", ...formatColumns(argRows));
 	}
 
 	if (options.length > 0) {

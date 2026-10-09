@@ -69,6 +69,54 @@ describe("CoreCommandService", () => {
 			expect((result as ResultError<Error>).error).toBe(error);
 		});
 
+		it("should refuse words after -- for a command that takes none", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "foo",
+					metadata: { description: "foo" },
+					handler: async () => ok(undefined),
+				})
+			);
+
+			const result = await commandService.executeCommand("foo", {
+				positionals: [],
+				passthrough: ["--port", "1"],
+				options: {},
+			});
+
+			expect(result.isErr() && result.error).toEqual(
+				new UsageError(
+					"foo takes nothing after '--'. Run 'rogen help foo' to see what it accepts."
+				)
+			);
+		});
+
+		it("should hand the words after -- to a command that declares them", async () => {
+			const lines: unknown[] = [];
+			store.add(
+				registry.registerCommand({
+					id: "foo",
+					metadata: {
+						description: "foo",
+						passthrough: { name: "args", description: "" },
+					},
+					handler: async (_accessor, line) => {
+						lines.push(line.passthrough);
+						return ok(undefined);
+					},
+				})
+			);
+
+			const result = await commandService.executeCommand("foo", {
+				positionals: [],
+				passthrough: ["--port", "1"],
+				options: {},
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(lines).toEqual([["--port", "1"]]);
+		});
+
 		it("should return an error naming an unknown command", async () => {
 			const result = await commandService.executeCommand("prod", {
 				positionals: [],

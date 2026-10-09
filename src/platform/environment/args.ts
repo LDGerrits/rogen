@@ -67,6 +67,8 @@ export interface CommandLine<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly positionals: readonly string[];
+	/** Everything after the first `--`, as typed; only a command that declares `passthrough` gets any. */
+	readonly passthrough?: readonly string[];
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
@@ -189,12 +191,21 @@ export function parseArgs(
 					optionsFor(owner).some((option) => option.name === name)
 				)
 				.sort();
-		const { values, positionals, tokens } = tokenize(args, allOptions);
+		const { values, tokens = [] } = tokenize(args, allOptions);
+		const terminator = tokens.find(
+			(token) => token.kind === "option-terminator"
+		);
+		const positionals = tokens.flatMap((token) =>
+			token.kind === "positional" &&
+			(!terminator || token.index < terminator.index)
+				? [token.value]
+				: []
+		);
 		const { runs, names, consumesWord } = commandOf(values, positionals);
 
 		if (commands.includes(names)) {
 			const problem = findOptionProblem(
-				tokens ?? [],
+				tokens,
 				optionsFor(names),
 				ownersOf,
 				positionals.length > 0 ? names : undefined
@@ -210,6 +221,9 @@ export function parseArgs(
 			command: runs,
 			line: {
 				positionals: consumesWord ? positionals.slice(1) : positionals,
+				...(terminator && {
+					passthrough: args.slice(terminator.index + 1),
+				}),
 				options: values as CommandLine["options"],
 			},
 		});
