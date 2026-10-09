@@ -70,6 +70,16 @@ Error. The file is called just `.rogen.json`. Every config needs a name, because
 
 Rename it, usually to `default.rogen.json`. See [Configuration](/docs/v2/configuration#finding-configs).
 
+### `config.duplicateName` [#config-duplicatename]
+
+Error, while `watch` or `serve` runs. A config appeared below the project's folder with a name another config already has, so it isn't built. A command that starts with two such configs stops instead and names both.
+
+```
+places/lobby/default.rogen.json - error: /repo/default.rogen.json is named "default" too, so this config isn't built. Rename one, since a name has to mean one config. (config.duplicateName)
+```
+
+Rename one of them; commands pick a config by its name. See [Finding Configs](/docs/v2/configuration#finding-configs).
+
 ### `config.extendsCycle` [#config-extendscycle]
 
 Error. Following `extends` leads back to a config already in the chain.

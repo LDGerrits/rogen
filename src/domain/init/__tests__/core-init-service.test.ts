@@ -635,14 +635,26 @@ describe("CoreInitService", () => {
 				);
 			});
 
-			it("should reject a place whose project file exists", async () => {
-				await expect(
-					planWith(
-						[ACCEPT_DEFAULT, "arena"],
-						[],
-						["arena.project.json"]
-					)
-				).rejects.toThrow("arena.project.json already exists.");
+			it("should reject a place whose project file exists in its folder", async () => {
+				const { result } = await planWith(
+					[ACCEPT_DEFAULT, "arena", ACCEPT_DEFAULT],
+					[],
+					["places/arena/arena.project.json"]
+				);
+
+				expect(
+					result.isErr() &&
+						result.error instanceof DiagnosticsError &&
+						result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "init.fileExists",
+						resource: path.join(
+							directory,
+							"places/arena/arena.project.json"
+						),
+					},
+				]);
 			});
 
 			it("should add an extending config by name", async () => {
@@ -768,7 +780,7 @@ describe("CoreInitService", () => {
 				});
 
 				it("should name a taken project file without asking to delete it", async () => {
-					await write("lobby.project.json", "{}");
+					await write("places/lobby/lobby.project.json", "{}");
 
 					const result = await planNamed(["lobby"]);
 
@@ -781,7 +793,7 @@ describe("CoreInitService", () => {
 							code: "init.fileExists",
 							resource: path.join(
 								directory,
-								"lobby.project.json"
+								"places/lobby/lobby.project.json"
 							),
 							message:
 								"this file already exists, and init never overwrites one. Pick another name.",

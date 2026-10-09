@@ -9,7 +9,7 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_SUFFIX } from "./config.js";
+import { CONFIG_SUFFIX, extendsTarget } from "./config.js";
 
 /** Folders that hold installed packages, never a project's own configs. */
 const PACKAGE_DIRS = new Set([
@@ -36,6 +36,9 @@ interface ConfigHeader {
 
 /** The configs in a folder and the folders below it, split into the ones that belong to the project there and the separate ones. */
 export class ConfigTree {
+	/** What a folder without configs holds. */
+	static readonly EMPTY = new ConfigTree([], [], []);
+
 	private constructor(
 		/** Absolute and sorted: every config in the folder, and each one below whose `extends` chain reaches the folder or above. */
 		readonly members: readonly string[],
@@ -113,7 +116,7 @@ async function reachesHome(
 	let current = file;
 	let header: ConfigHeader | undefined = leaf;
 	while (header?.extends !== undefined) {
-		current = path.resolve(path.dirname(current), header.extends);
+		current = extendsTarget(current, header.extends);
 		if (contains(path.dirname(current), home)) return true;
 		if (seen.has(current)) return false;
 		seen.add(current);

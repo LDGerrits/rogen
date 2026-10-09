@@ -90,6 +90,10 @@ export const DEFAULT_CONFIG_STEM = "default";
 export const configFileName = (stem: string): string =>
 	`${stem}${CONFIG_SUFFIX}`;
 
+/** The config that `extends`, as `file` writes it, names: a path from `file`'s folder. */
+export const extendsTarget = (file: string, written: string): string =>
+	path.resolve(path.dirname(file), written);
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);

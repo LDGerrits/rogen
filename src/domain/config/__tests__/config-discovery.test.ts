@@ -127,13 +127,15 @@ describe("ConfigDiscovery", () => {
 			]);
 		});
 
-		it("should fail as a usage error naming the path it looked for when a named config is missing", async () => {
+		it("should fail as a usage error naming the folder it looked in when a named config is missing", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 
 			const result = await discovery.discover(["ghost"]);
 
 			expect(errorOf(result)).toBeInstanceOf(UsageError);
-			expect(errorOf(result).message).toContain("/repo/ghost.rogen.json");
+			expect(errorOf(result).message).toContain(
+				"not found in /repo or the folders below it"
+			);
 		});
 
 		it("should list the configs there when no name is close", async () => {
@@ -143,7 +145,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["xyz"]);
 
 			expect(errorOf(result).message).toBe(
-				'Config "xyz" not found: looked for /repo/xyz.rogen.json. Configs here: default, place-lobby.'
+				'Config "xyz" not found in /repo or the folders below it. Configs here: default, place-lobby.'
 			);
 		});
 
@@ -151,7 +153,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["ghost"]);
 
 			expect(errorOf(result).message).toBe(
-				'Config "ghost" not found: looked for /repo/ghost.rogen.json. Run "rogen init" to create one.'
+				'Config "ghost" not found in /repo or the folders below it. Run "rogen init" to create one.'
 			);
 		});
 
@@ -162,7 +164,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["lobyy"]);
 
 			expect(errorOf(result).message).toBe(
-				'Config "lobyy" not found: looked for /repo/lobyy.rogen.json. Did you mean "lobby"?'
+				'Config "lobyy" not found in /repo or the folders below it. Did you mean "lobby"?'
 			);
 		});
 	});
@@ -207,7 +209,7 @@ describe("ConfigDiscovery", () => {
 			const result = await nested.discover(["ghost"]);
 
 			expect(errorOf(result).message).toBe(
-				'Config "ghost" not found: looked for /repo/ghost.rogen.json. Configs here: lobby.'
+				'Config "ghost" not found in /repo or the folders below it. Configs here: lobby.'
 			);
 		});
 	});

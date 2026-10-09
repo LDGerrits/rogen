@@ -4,7 +4,11 @@ import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import {
+	CONFIG_SUFFIX,
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+} from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import {
 	Language,
@@ -556,6 +560,7 @@ export class InitQuestions {
 					}
 					const files = filesFor(place);
 					const taken = files
+						.filter((file) => file.endsWith(CONFIG_SUFFIX))
 						.map((file) => directory.taken(file))
 						.find((file) => file !== undefined);
 					if (taken) return `${taken} already exists.`;

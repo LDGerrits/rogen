@@ -1012,6 +1012,32 @@ describe("domain/config/core-config-service", () => {
 			expect(selection.separate).toEqual([]);
 		});
 
+		it("should keep out a config added below with a name one here has, and say so once", async () => {
+			await start({ names: [] });
+
+			await write("/repo/places/lobby/default.rogen.json", {
+				extends: "../../default.rogen.json",
+			});
+			const first = await selection.reload([
+				"/repo/places/lobby/default.rogen.json",
+			]);
+			const second = await selection.reload([
+				"/repo/places/lobby/default.rogen.json",
+			]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+			expect(first.notices).toMatchObject([
+				{
+					kind: "broken",
+					file: "/repo/places/lobby/default.rogen.json",
+					errors: [{ code: "config.duplicateName" }],
+				},
+			]);
+			expect(second.notices).toEqual([]);
+		});
+
 		it("should be left with no config when the last one is deleted", async () => {
 			await start({ names: [] });
 

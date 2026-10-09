@@ -61,9 +61,10 @@ export class ConfigDiscovery {
 
 		// With nothing to find configs in, a name fails as not found, in the working directory.
 		const directory = home.isOk() ? home.value.directory : cwd;
-		const tree = refs.every(isConfigPath)
-			? undefined
-			: await this.find(directory);
+		const tree =
+			refs.every(isConfigPath) || home.isErr()
+				? undefined
+				: await this.find(directory);
 		if (tree?.isErr()) return err(tree.error);
 		const resolved: string[] = [];
 		for (const ref of refs) {
@@ -76,7 +77,7 @@ export class ConfigDiscovery {
 				resolved.push(candidate);
 				continue;
 			}
-			const found = tree!.unwrap();
+			const found = tree?.unwrap() ?? ConfigTree.EMPTY;
 			const named = found.members.find(
 				(file) => configLabel(file) === ref
 			);
@@ -184,7 +185,7 @@ export class ConfigDiscovery {
 				? `Configs here: ${labels.join(", ")}.`
 				: `Run "rogen init" to create one.`;
 		return new UsageError(
-			`Config "${name}" not found: looked for ${path.join(directory, `${name}${CONFIG_SUFFIX}`)}. ${hint}`
+			`Config "${name}" not found in ${directory} or the folders below it. ${hint}`
 		);
 	}
 }

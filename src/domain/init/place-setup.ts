@@ -29,12 +29,13 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		const { workspace } = directory;
 		if (base.isErr()) return err(base.error);
 
+		// Only its configs, whose names must be free; its other files go in its folder, checked once that is known.
 		const filesFor = (candidate: string) =>
 			new ConfigSet(
 				candidate,
 				workspace.language,
 				workspace.detectedDarklua
-			).placeFiles;
+			).configFiles;
 		const given = directory.givenName;
 		if (given) {
 			const conflicts = directory.checkFree(filesFor(given));

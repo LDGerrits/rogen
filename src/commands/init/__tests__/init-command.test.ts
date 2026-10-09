@@ -1212,20 +1212,15 @@ describe("init command", () => {
 			expect(prompts.asked).toHaveLength(1);
 		});
 
-		it("should fail before the place folder when a given name would replace a project file", async () => {
+		it("should leave a project file at the root alone, since the place writes its own in its folder", async () => {
 			await setUpLuau();
 			await write("lobby.project.json", "{}");
-			const prompts = offerAnd();
 
-			const result = await runInit(["lobby"], prompts);
+			const result = await runInit(["lobby"]);
 
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "init.fileExists",
-					resource: path.join(cwd, "lobby.project.json"),
-				},
-			]);
-			expect(prompts.asked).toHaveLength(1);
+			expect(result.isOk()).toBe(true);
+			expect(await read("lobby.project.json")).toBe("{}");
+			expect(await exists("places/lobby/lobby.project.json")).toBe(true);
 		});
 
 		it("should allow a place name whose -sync file exists when no synced config is written", async () => {

@@ -18,7 +18,7 @@ stdout:
 $ rogen build ghost
 exit 2
 stderr:
-  error: Config "ghost" not found: looked for <dir>/ghost.rogen.json. Configs here: default, lobby.
+  error: Config "ghost" not found in <dir> or the folders below it. Configs here: default, lobby.
 
 $ rogen list
 exit 0

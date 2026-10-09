@@ -6,10 +6,11 @@ import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
+	errorDiagnostic,
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { CONFIG_SUFFIX, ResolvedConfig } from "./config.js";
+import { CONFIG_SUFFIX, ResolvedConfig, configLabel } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -43,6 +44,8 @@ export class CoreConfigSelection implements ConfigSelection {
 	private _files: ReadonlySet<string>;
 	private _folders: readonly string[];
 	private _separate: readonly string[];
+	/** The configs kept out for a name a selected one has, which a reload has already said. */
+	private clashing: ReadonlySet<string> = new Set();
 
 	private constructor(
 		private managed: readonly ManagedConfig[],
@@ -163,35 +166,52 @@ export class CoreConfigSelection implements ConfigSelection {
 						kind: "removed",
 						file,
 					})),
+					...membership.clashes,
 					...everyChange.flatMap(({ notice }) => notice ?? []),
 				],
 			};
 		});
 	}
 
-	/** Brings `managed` in line with the folder's configs now, loading the added ones. */
+	/** Brings `managed` in line with the folder's configs now, loading the added ones; one named like a config already here stays out, said once. */
 	private async followFolder(): Promise<{
 		added: readonly ManagedConfig[];
 		removed: readonly string[];
+		clashes: readonly ConfigNotice[];
 	}> {
-		if (!this.folder) return { added: [], removed: [] };
+		if (!this.folder) return { added: [], removed: [], clashes: [] };
 		const found = await this.folder.read();
 		this._folders = found.folders;
 		this._separate = found.separate;
 		const now = new Set(found.members);
 		const known = new Set(this.managed.map(({ file }) => file));
-		const added = [...now]
-			.filter((file) => !known.has(file))
-			.map(
-				(file) => new ManagedConfig(file, this.loader, this.overrides)
-			);
+		const kept = this.managed.filter(({ file }) => now.has(file));
+		const named = new Map(
+			kept.map(({ file }) => [configLabel(file), file])
+		);
+		const added: ManagedConfig[] = [];
+		const clashes: ConfigNotice[] = [];
+		const clashing = new Set<string>();
+		for (const file of [...now].filter((file) => !known.has(file))) {
+			const other = named.get(configLabel(file));
+			if (other === undefined) {
+				named.set(configLabel(file), file);
+				added.push(
+					new ManagedConfig(file, this.loader, this.overrides)
+				);
+				continue;
+			}
+			clashing.add(file);
+			if (!this.clashing.has(file))
+				clashes.push(duplicateNameNotice(file, other));
+		}
+		this.clashing = clashing;
 		await Promise.all(added.map((config) => config.load()));
 		const removed = [...known].filter((file) => !now.has(file));
-		this.managed = [
-			...this.managed.filter(({ file }) => now.has(file)),
-			...added,
-		].sort((a, b) => compareStrings(a.file, b.file));
-		return { added, removed };
+		this.managed = [...kept, ...added].sort((a, b) =>
+			compareStrings(a.file, b.file)
+		);
+		return { added, removed, clashes };
 	}
 
 	private readFiles(): ReadonlySet<string> {
@@ -217,6 +237,22 @@ function noticeOf(
 				keptLastValid: after.lastValid !== undefined,
 			}
 		: undefined;
+}
+
+/** What a user is told of a config kept out because `other` already has its name. */
+function duplicateNameNotice(file: string, other: string): ConfigNotice {
+	return {
+		kind: "broken",
+		file,
+		errors: [
+			errorDiagnostic(
+				"config.duplicateName",
+				{ resource: file },
+				`${other} is named "${configLabel(file)}" too, so this config isn't built. Rename one, since a name has to mean one config.`
+			),
+		],
+		keptLastValid: false,
+	};
 }
 
 /** What a user is told of a config that joined the selection. */

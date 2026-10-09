@@ -21,7 +21,12 @@ import {
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configSchema, configWrongTypeAdvice } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
-import { CONFIG_SUFFIX, ResolvedConfig, ResolvedTemplate } from "./config.js";
+import {
+	CONFIG_SUFFIX,
+	ResolvedConfig,
+	ResolvedTemplate,
+	extendsTarget,
+} from "./config.js";
 import { ConfigOverrides, LayeredConfig } from "./layered-config.js";
 import { ConfigValidator } from "./config-validator.js";
 
@@ -189,7 +194,7 @@ export class ConfigLoader {
 				resource: layer.file,
 				position: layer.positionOf("extends"),
 			};
-			current = path.resolve(path.dirname(current), parent);
+			current = extendsTarget(current, parent);
 		}
 	}
 
