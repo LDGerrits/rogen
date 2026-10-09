@@ -576,6 +576,18 @@ describe("LocationReport", () => {
 			expect(requireLines(["default", placed(path, false)])).toEqual([]);
 		});
 
+		it.each(["/repo/src/Hit.ts", "/repo/src/Data.json"])(
+			"should give none for %s, which is not Luau",
+			(source) => {
+				expect(
+					requireLines([
+						"default",
+						{ ...placed(["ReplicatedStorage", "X"]), source },
+					])
+				).toEqual([]);
+			}
+		);
+
 		it("should say it once when every config places the file alike", () => {
 			const location = placed(["ReplicatedStorage", "Util"]);
 
@@ -594,6 +606,83 @@ describe("LocationReport", () => {
 				'  default: require(game:GetService("ReplicatedStorage").Util)',
 				'  lobby: require(game:GetService("ReplicatedFirst").Util)',
 			]);
+		});
+	});
+
+	describe("an instance no file places", () => {
+		const unplaced = (
+			text: string,
+			folders: string[] = [],
+			fixes: InstanceLocation["fixes"] = []
+		): InstanceLocation => ({
+			reference: InstanceReference.parse(text)!,
+			files: [],
+			folders,
+			fixes,
+		});
+		const linesOf = (
+			instance: InstanceLocation,
+			diagnostics: Diagnostic[] = []
+		) => reportOf([["default", [], [instance], diagnostics]]).lines();
+
+		it("should say no file places it", () => {
+			expect(linesOf(unplaced("Workspace.Missing"))).toEqual([
+				"Workspace.Missing -> no file places it",
+			]);
+		});
+
+		it("should name each folder a new file for it goes in", () => {
+			expect(
+				linesOf(
+					unplaced("ServerScriptService.Inventory.NewThing", [
+						"/repo/src/Inventory/Server",
+						"/repo/lib/Inventory/Server",
+					])
+				)
+			).toEqual([
+				"ServerScriptService.Inventory.NewThing -> no file places it · a new file goes in src/Inventory/Server/ or lib/Inventory/Server/",
+			]);
+		});
+
+		it("should name a rename that would place it, by its new name in the same folder and its path in another", () => {
+			expect(
+				linesOf(
+					unplaced(
+						"ServerScriptService.Stray.Buy",
+						[],
+						[
+							{
+								code: "route.strayAt",
+								rename: {
+									from: "/repo/src/Stray/Buy@sever.luau",
+									to: "/repo/src/Stray/Buy@Server.luau",
+								},
+							},
+							{
+								code: "route.misplaced",
+								rename: {
+									from: "/repo/src/Stray/Buy.luau",
+									to: "/repo/src/Shop/Server/Buy.luau",
+								},
+							},
+						]
+					)
+				)
+			).toEqual([
+				"ServerScriptService.Stray.Buy -> no file places it · src/Stray/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt) · src/Stray/Buy.luau would, renamed to src/Shop/Server/Buy.luau (route.misplaced)",
+			]);
+		});
+
+		it("should print no diagnostic under it, which is about a file", () => {
+			expect(
+				linesOf(unplaced("Workspace.Missing"), [
+					warningDiagnostic(
+						"route.strayAt",
+						{ resource: "/repo/src/A.luau" },
+						"A stray @."
+					),
+				])
+			).toEqual(["Workspace.Missing -> no file places it"]);
 		});
 	});
 

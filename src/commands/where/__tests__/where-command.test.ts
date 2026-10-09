@@ -99,6 +99,16 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should say there are no files rather than print nothing", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.createDirectory("/repo/src");
+
+		const result = await run({});
+
+		expect(result.isOk()).toBe(true);
+		expect(printed()).toEqual(["No files in the root dirs (src)."]);
+	});
+
 	it("should read every config here, with variant flags applied", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await writeConfig("mocked.rogen.json", {
