@@ -12,6 +12,7 @@ import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigSet } from "../config-set.js";
 import { DerivedRoutes } from "../derived-routes.js";
 import { InitQuestions } from "../init-questions.js";
+import { PlaceFolder } from "../place-folder.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import { TemplateChoice } from "../starter-template.js";
 import { StartingRoutes } from "../starting-routes.js";
@@ -165,9 +166,18 @@ describe("ProjectSetup plan", () => {
 			expect(
 				await directoriesOf(luau, {
 					rootDirs: ["src"],
-					places: ["lobby", "match"],
+					places: [
+						{
+							name: "lobby",
+							folder: PlaceFolder.empty("places/lobby"),
+						},
+						{
+							name: "match",
+							folder: PlaceFolder.empty("places/match"),
+						},
+					],
 				})
-			).toEqual(["src", "places/lobby", "places/match"]);
+			).toEqual(["src", "places/lobby/src", "places/match/src"]);
 		});
 	});
 	describe("modes", () => {
@@ -870,7 +880,12 @@ describe("ProjectSetup plan", () => {
 						false
 					)),
 					template: { kind: "copy", from: "default.project.json" },
-					places: ["lobby"],
+					places: [
+						{
+							name: "lobby",
+							folder: PlaceFolder.empty("places/lobby"),
+						},
+					],
 				},
 				projectName: "my-game",
 				directory,
@@ -1469,6 +1484,93 @@ describe("ProjectSetup plan", () => {
 	});
 });
 
+describe("ProjectSetup with several places", () => {
+	const lobby = { name: "lobby", folder: PlaceFolder.empty("places/lobby") };
+	const arena = { name: "arena", folder: PlaceFolder.empty("places/arena") };
+
+	const planPlaces = async (
+		spec: WorkspaceSpec,
+		overrides: Partial<ProjectChoices>
+	) =>
+		planProject({
+			choices: {
+				...(await defaultProjectChoices(
+					spec,
+					"default",
+					new Set(),
+					false
+				)),
+				places: [lobby, arena],
+				...overrides,
+			},
+			projectName: "my-game",
+			directory,
+			existingFiles: new Set(),
+		}).unwrap();
+
+	it("should give each place its own template, name and port, in order", async () => {
+		const { placeTemplates } = await planPlaces(luau, {});
+
+		expect(
+			placeTemplates.map(({ fileName, content }) => [
+				fileName,
+				JSON.parse(content),
+			])
+		).toEqual([
+			[
+				"places/lobby/template.project.json",
+				{
+					name: "Lobby",
+					servePort: 34873,
+					tree: { $className: "DataModel" },
+				},
+			],
+			[
+				"places/arena/template.project.json",
+				{
+					name: "Arena",
+					servePort: 34874,
+					tree: { $className: "DataModel" },
+				},
+			],
+		]);
+	});
+
+	it("should serve every place at once, with no need to swap between them", async () => {
+		const { nextSteps } = await planPlaces(luau, {});
+
+		expect(nextSteps.run).toEqual(["rogen serve"]);
+		expect(nextSteps.edits.join("\n")).not.toContain("Swap");
+	});
+
+	it("should tell roblox-ts to compile the shared code from where it moved", async () => {
+		const spec = withRobloxTs(
+			{ language: "roblox-ts" },
+			{ outDir: "out", rootDir: "src", tsconfigHasInclude: true }
+		);
+
+		const { nextSteps } = await planPlaces(spec, {
+			rootDirs: ["places/shared/src"],
+			templateDir: "places/shared",
+		});
+
+		expect(nextSteps.setup).toContain(
+			'Set "rootDir" to "places/shared/src" and "include" to ["places/shared/src"] in tsconfig.json, so roblox-ts compiles the shared code from there.'
+		);
+	});
+
+	it("should leave roblox-ts's rootDir alone when the shared code stays there", async () => {
+		const spec = withRobloxTs(
+			{ language: "roblox-ts" },
+			{ outDir: "out", rootDir: "src", tsconfigHasInclude: true }
+		);
+
+		const { nextSteps } = await planPlaces(spec, { rootDirs: ["src"] });
+
+		expect(nextSteps.setup.join("\n")).not.toContain('"rootDir"');
+	});
+});
+
 describe("an unattended run", () => {
 	it("should copy a hand-written project file the config would replace", async () => {
 		expect(
@@ -1510,7 +1612,7 @@ describe("an unattended run", () => {
 					new Set(),
 					true
 				)
-			).places
+			).places.map(({ name }) => name)
 		).toEqual(["lobby"]);
 		expect(
 			await (

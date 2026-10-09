@@ -407,6 +407,153 @@ describe("RojoProject", () => {
 			expect(project.getNode(["Lighting"])).toBeUndefined();
 		});
 	});
+
+	describe("overlaidWith", () => {
+		const parsed = (project: Record<string, unknown>) =>
+			RojoProject.parse(JSON.stringify(project)).unwrap();
+
+		it("should let the overlay's fields replace the base's and keep the rest", () => {
+			const base = parsed({
+				name: "Game",
+				servePort: 34872,
+				placeId: 1,
+				tree: { $className: "DataModel" },
+			});
+
+			const { project, clashes } = base.overlaidWith(
+				parsed({ name: "Lobby", servePort: 34873 })
+			);
+
+			expect(project.getTree()).toEqual({
+				name: "Lobby",
+				servePort: 34873,
+				placeId: 1,
+				tree: { $className: "DataModel" },
+			});
+			expect(clashes).toEqual([]);
+		});
+
+		it("should merge the trees node by node", () => {
+			const base = parsed({
+				name: "Game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			});
+
+			const { project } = base.overlaidWith(
+				parsed({
+					name: "Lobby",
+					tree: {
+						ReplicatedStorage: { Assets: { $path: "assets" } },
+						Lighting: { $properties: { Brightness: 2 } },
+					},
+				})
+			);
+
+			expect(project.getTree().tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Packages: { $path: "Packages" },
+					Assets: { $path: "assets" },
+				},
+				Lighting: { $properties: { Brightness: 2 } },
+			});
+		});
+
+		it("should merge properties and attributes by name", () => {
+			const base = parsed({
+				name: "Game",
+				tree: {
+					Lighting: {
+						$properties: { Brightness: 2, ClockTime: 14 },
+						$attributes: { Season: "summer" },
+					},
+				},
+			});
+
+			const { project, clashes } = base.overlaidWith(
+				parsed({
+					tree: {
+						Lighting: {
+							$properties: { ClockTime: 14, FogEnd: 500 },
+							$attributes: { Weather: "rain" },
+						},
+					},
+				})
+			);
+
+			expect(project.getNode(["Lighting"])).toEqual({
+				$properties: { Brightness: 2, ClockTime: 14, FogEnd: 500 },
+				$attributes: { Season: "summer", Weather: "rain" },
+			});
+			expect(clashes).toEqual([]);
+		});
+
+		it("should let the overlay win a field both set differently, and report it", () => {
+			const base = parsed({
+				name: "Game",
+				tree: {
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					Lighting: { $properties: { Brightness: 2 } },
+				},
+			});
+
+			const { project, clashes } = base.overlaidWith(
+				parsed({
+					tree: {
+						ReplicatedStorage: { Packages: { $path: "vendor" } },
+						Lighting: { $properties: { Brightness: 3 } },
+					},
+				})
+			);
+
+			expect(project.getNode(["ReplicatedStorage", "Packages"])).toEqual({
+				$path: "vendor",
+			});
+			expect(project.getNode(["Lighting"])).toEqual({
+				$properties: { Brightness: 3 },
+			});
+			expect(clashes).toEqual([
+				{
+					instancePath: ["ReplicatedStorage", "Packages"],
+					field: "$path",
+				},
+				{ instancePath: ["Lighting"], field: "$properties.Brightness" },
+			]);
+		});
+
+		it("should add up globIgnorePaths", () => {
+			const base = parsed({
+				name: "Game",
+				globIgnorePaths: ["**/*.spec.luau"],
+				tree: {},
+			});
+
+			const { project } = base.overlaidWith(
+				parsed({ globIgnorePaths: ["**/*.md", "**/*.spec.luau"] })
+			);
+
+			expect(project.globIgnorePaths).toEqual([
+				"**/*.spec.luau",
+				"**/*.md",
+			]);
+		});
+
+		it("should leave both projects as they were", () => {
+			const base = parsed({ name: "Game", tree: { Lighting: {} } });
+			const overlay = parsed({ tree: { Workspace: {} } });
+
+			base.overlaidWith(overlay);
+
+			expect(base.getTree()).toEqual({
+				name: "Game",
+				tree: { Lighting: {} },
+			});
+			expect(overlay.getTree()).toEqual({ tree: { Workspace: {} } });
+		});
+	});
 });
 
 describe("InstanceMap", () => {

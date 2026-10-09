@@ -13,6 +13,7 @@ import { MockEnvironmentService } from "../../../platform/environment/__tests__/
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { BaseConfigReader } from "../base-config-reader.js";
+import { PlaceFolder } from "../place-folder.js";
 import { PlaceSetup } from "../place-setup.js";
 import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
 
@@ -23,7 +24,11 @@ const rbxts: WorkspaceSpec = withRobloxTs(
 	{ outDir: "out", tsconfigHasInclude: true }
 );
 
-const choices = { name: "lobby", folder: "places/lobby" };
+const choices = {
+	name: "lobby",
+	folder: PlaceFolder.empty("places/lobby"),
+	servePort: 34873,
+};
 
 const plan = (
 	spec: WorkspaceSpec,
@@ -36,7 +41,8 @@ const plan = (
 		new PlaceSetup(
 			target,
 			ok(base),
-			new InitQuestions(new MockPromptService([], false), false)
+			new InitQuestions(new MockPromptService([], false), false),
+			new MemoryFileSystemService()
 		),
 		{
 			...choices,
@@ -75,7 +81,8 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby"],
+					rootDirs: ["places/lobby/src"],
+					template: "places/lobby/template.project.json",
 				},
 			});
 			expect(tsconfig).toBeUndefined();
@@ -87,7 +94,7 @@ describe("PlaceSetup", () => {
 			);
 
 			expect(configs["lobby.rogen.json"].rootDirs).toEqual([
-				"places/lobby",
+				"places/lobby/src",
 			]);
 		});
 
@@ -98,6 +105,7 @@ describe("PlaceSetup", () => {
 				"$schema",
 				"extends",
 				"rootDirs",
+				"template",
 			]);
 		});
 
@@ -106,7 +114,7 @@ describe("PlaceSetup", () => {
 				written(plan(luau, { rootDirs: ["src"] })).nextSteps
 			).toEqual({
 				setup: [],
-				run: ["rogen serve lobby"],
+				run: ["rogen serve"],
 				darklua: [],
 				edits: [
 					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
@@ -124,7 +132,8 @@ describe("PlaceSetup", () => {
 				new PlaceSetup(
 					target,
 					ok({ rootDirs: ["src"] }),
-					new InitQuestions(new MockPromptService([], false), false)
+					new InitQuestions(new MockPromptService([], false), false),
+					new MemoryFileSystemService()
 				),
 				{
 					...choices,
@@ -135,7 +144,7 @@ describe("PlaceSetup", () => {
 				target
 			).unwrap();
 
-			expect(value.directories).toEqual(["places/lobby"]);
+			expect(value.directories).toEqual(["places/lobby/src"]);
 		});
 	});
 
@@ -149,7 +158,8 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby"],
+					rootDirs: ["places/lobby/src"],
+					template: "places/lobby/template.project.json",
 				},
 				"lobby-sync.rogen.json": {
 					$schema: SCHEMA,
@@ -168,7 +178,7 @@ describe("PlaceSetup", () => {
 				],
 				darklua: [
 					"darklua process src dist/lobby/src",
-					"darklua process places/lobby dist/lobby/places/lobby",
+					"darklua process places/lobby/src dist/lobby/places/lobby/src",
 				],
 				edits: [
 					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
@@ -187,8 +197,9 @@ describe("PlaceSetup", () => {
 				"lobby.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby"],
+					rootDirs: ["places/lobby/src"],
 					syncDir: "out/lobby",
+					template: "places/lobby/template.project.json",
 				},
 			});
 		});
@@ -200,10 +211,10 @@ describe("PlaceSetup", () => {
 				extends: "./tsconfig.json",
 				compilerOptions: {
 					rootDir: null,
-					rootDirs: ["src", "places/lobby"],
+					rootDirs: ["src", "places/lobby/src"],
 					outDir: "out/lobby",
 				},
-				include: ["src", "places/lobby"],
+				include: ["src", "places/lobby/src"],
 			});
 		});
 
@@ -256,7 +267,7 @@ describe("PlaceSetup", () => {
 				setup: [],
 				run: [
 					"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-					"rogen serve lobby",
+					"rogen serve",
 				],
 				darklua: [],
 				edits: [
@@ -353,6 +364,8 @@ describe("BaseConfigReader", () => {
 
 		expect((await readBase()).unwrap()).toEqual({
 			rootDirs: ["src", "shared"],
+			ports: [],
+			sharedPort: false,
 		});
 	});
 
@@ -363,7 +376,7 @@ describe("BaseConfigReader", () => {
 		});
 		await write("core.rogen.json", { rootDirs: ["core"] });
 
-		expect((await readBase()).unwrap()).toEqual({
+		expect((await readBase()).unwrap()).toMatchObject({
 			rootDirs: ["core"],
 			syncDir: "dist",
 		});
@@ -378,7 +391,31 @@ describe("BaseConfigReader", () => {
 
 		expect(
 			(await readBase(["default.rogen.json", "sync.rogen.json"])).unwrap()
-		).toEqual({ rootDirs: ["src"], syncDir: "dist" });
+		).toMatchObject({ rootDirs: ["src"], syncDir: "dist" });
+	});
+
+	it("should read the port every config's template serves on, skipping a broken config", async () => {
+		await write("default.rogen.json", {
+			template: "default.template.json",
+		});
+		await write("default.template.json", { servePort: 34872 });
+		await write("lobby.rogen.json", {
+			extends: "./default.rogen.json",
+			template: "lobby.template.json",
+		});
+		await write("lobby.template.json", { servePort: 34873 });
+		await fs.writeFile(path.join(directory, "broken.rogen.json"), "{ nope");
+
+		expect(
+			(
+				await readBase([
+					"default.rogen.json",
+					"lobby.rogen.json",
+					"broken.rogen.json",
+					"lobby.template.json",
+				])
+			).unwrap().ports
+		).toEqual([34872, 34873]);
 	});
 
 	it("should fail with diagnostics when default.rogen.json is broken", async () => {

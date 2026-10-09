@@ -154,6 +154,18 @@ export class LayeredConfig {
 		);
 	}
 
+	/** Every template the chain names, the furthest first, each once at the nearest layer that names it, with where that layer did. */
+	templates(): { file: string; location: DiagnosticLocation }[] {
+		const named = new Map<string, DiagnosticLocation>();
+		this.layers.forEach((layer, index) => {
+			const file = layer.getValue<string | undefined>("template");
+			if (typeof file !== "string") return;
+			named.delete(file);
+			named.set(file, this.positionIn(index, ["template"]));
+		});
+		return [...named].map(([file, location]) => ({ file, location }));
+	}
+
 	/** Where the config set `section`, or the leaf file when nothing did. */
 	locate(...section: ConfigSection[]): DiagnosticLocation {
 		const path = LayeredConfig.pathOf(section);

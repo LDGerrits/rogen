@@ -6,7 +6,12 @@ import {
 } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
-import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
+import {
+	Language,
+	Mount,
+	MountCandidate,
+	PLACES_DIR,
+} from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { HOOK_SCRIPT_FILE } from "./hook-target.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -30,6 +35,18 @@ export interface PlacesQuestion {
 	readonly filesFor: (name: string) => readonly string[];
 	/** Files the project itself writes, which no place may. */
 	readonly reserved: ReadonlySet<string>;
+}
+
+/** Where a new multi-place project keeps the code every place shares, unless it already has code at the root. */
+const SHARED_FOLDER = `${PLACES_DIR}/shared`;
+
+/** The shared code question's answer that asks for the folders instead. */
+const OTHER_FOLDERS = "other";
+
+/** Where the shared code goes: its root dirs, and the folder its template starts in, at the root when there is none. */
+export interface SharedCode {
+	readonly rootDirs: readonly string[];
+	readonly templateDir?: string;
 }
 
 const required = (what: string) => (value: string) =>
@@ -145,7 +162,9 @@ export class InitQuestions {
 		const initial: Layout = workspace.places.length > 0 ? "several" : "one";
 		if (!this.interactive) return initial;
 
-		const found = workspace.places.map(ConfigSet.placeFolderOf).join(", ");
+		const found = workspace.places
+			.map((name) => ConfigSet.placeFolderOf(name))
+			.join(", ");
 		return this.promptService.select<Layout>({
 			message: "What are you setting up?",
 			choices: [
@@ -244,10 +263,11 @@ export class InitQuestions {
 		});
 	}
 
+	/** The folders of the project's code, or with `shared`, of the code every place shares. */
 	async rootDirs(
 		directory: InitDirectory,
 		language: Language,
-		layout: Layout
+		shared = false
 	): Promise<string[] | undefined> {
 		const placeholder = directory.defaultRootDir(language);
 		if (!this.interactive) return [placeholder];
@@ -258,7 +278,7 @@ export class InitQuestions {
 			message: compiler ? "Root dir" : "Root dirs",
 			description: compiler
 				? copy?.description
-				: layout === "several"
+				: shared
 					? "Folders with the code every place shares, relative to here. Separate several with commas."
 					: "Folders with your scripts, relative to here. Separate several with commas.",
 			hint: directory.otherCodeFoldersHint(placeholder),
@@ -275,6 +295,52 @@ export class InitQuestions {
 		return answer === undefined
 			? undefined
 			: splitList(answer).map(normalizeDir);
+	}
+
+	/** Where the code every place shares lives: beside the places with its own template, or in a root folder. The root folder is the default when it already holds code, so that code stays where it is, or when a compiler's config names it. */
+	async sharedCode(
+		directory: InitDirectory,
+		language: Language
+	): Promise<SharedCode | undefined> {
+		const rootDir = directory.defaultRootDir(language);
+		const { workspace } = directory;
+		const existing =
+			language.compiler !== undefined ||
+			workspace.hasSrc ||
+			workspace.codeFolders.includes(rootDir);
+		const initial = existing ? rootDir : SHARED_FOLDER;
+		const answer = this.interactive
+			? await this.promptService.select({
+					message: "Shared code",
+					description:
+						"Where the code every place shares goes. Each place's own code goes in a folder of its own.",
+					choices: [
+						{
+							value: SHARED_FOLDER,
+							label: SHARED_FOLDER,
+							hint: "beside the places, in src with its template",
+						},
+						{
+							value: rootDir,
+							label: rootDir,
+							hint: existing ? "found code here" : "at the root",
+						},
+						{ value: OTHER_FOLDERS, label: "Other folders" },
+					],
+					initialValue: initial,
+				})
+			: initial;
+		if (answer === undefined) return undefined;
+		if (answer === OTHER_FOLDERS) {
+			const rootDirs = await this.rootDirs(directory, language, true);
+			return rootDirs && { rootDirs };
+		}
+		return answer === SHARED_FOLDER
+			? {
+					rootDirs: [`${SHARED_FOLDER}/src`],
+					templateDir: SHARED_FOLDER,
+				}
+			: { rootDirs: [answer] };
 	}
 
 	/** Copies the hand-written project file a new config would replace, else starts a new template. */
@@ -466,13 +532,18 @@ export class InitQuestions {
 		directory: InitDirectory,
 		{ rootDirs, filesFor, reserved }: PlacesQuestion
 	): Promise<string[] | undefined> {
-		const found = directory.workspace.places;
-		if (!this.interactive) return [...found];
+		const found = directory.workspace.places.filter(
+			(place) =>
+				!directory.placeFolderProblem(
+					rootDirs,
+					ConfigSet.placeFolderIn(directory, place, rootDirs)
+				)
+		);
+		if (!this.interactive) return found;
 
 		const answer = await this.promptService.text({
 			message: "Places",
-			description:
-				"Each place gets <name>.rogen.json, and its own code goes in places/<name>. Separate several with commas.",
+			description: `Each place gets <name>.rogen.json, and its own folder, ${ConfigSet.placeFolderOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
 			placeholder: found.length > 0 ? found.join(", ") : "lobby",
 			validate: (value) => {
 				const names = splitList(value);
@@ -493,7 +564,7 @@ export class InitQuestions {
 					}
 					const problem = directory.placeFolderProblem(
 						rootDirs,
-						ConfigSet.placeFolderOf(place)
+						ConfigSet.placeFolderIn(directory, place, rootDirs)
 					);
 					if (problem) return problem;
 				}
@@ -503,18 +574,18 @@ export class InitQuestions {
 		return answer === undefined ? undefined : splitList(answer);
 	}
 
-	/** Where a place keeps its own code: `places/<name>` unless told otherwise. */
+	/** Where a place keeps its own files: beside default's shared folder unless told otherwise. */
 	async placeFolder(
 		directory: InitDirectory,
 		base: BaseConfig,
 		placeName: string
 	): Promise<string | undefined> {
-		const placeholder = ConfigSet.placeFolderOf(placeName);
+		const placeholder = ConfigSet.placeFolderOf(placeName, base.rootDirs);
 		if (!this.interactive) return placeholder;
 		const folder = await this.promptService.text({
 			message: "Place folder",
 			description:
-				"Holds this place's own code. It's added to default's root dirs.",
+				"Holds this place's own code, in src, beside its template. A folder that already holds code is used as it is.",
 			placeholder,
 			validate: (value) =>
 				required("a folder")(value) ??

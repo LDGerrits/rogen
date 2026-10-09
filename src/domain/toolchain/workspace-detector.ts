@@ -2,9 +2,7 @@ import path from "path";
 import {
 	FileSystemService,
 	isDirectoryType,
-	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { DarkluaDetector } from "./darklua-detector.js";
 import { PackageManagerDetector } from "./package-manager-detector.js";
 import { TestRunnerDetector } from "./test-runner-detector.js";
@@ -13,10 +11,9 @@ import {
 	DetectedWorkspace,
 	LanguageDetector,
 	PLACES_DIR,
+	holdsCode,
+	isHiddenOrVendored,
 } from "./toolchain.js";
-
-const isHiddenOrVendored = (name: string): boolean =>
-	name.startsWith(".") || name === "node_modules";
 
 /** Reads what a workspace uses of the languages and tools it was given. */
 export class WorkspaceDetector {
@@ -64,36 +61,6 @@ export class WorkspaceDetector {
 		});
 	}
 
-	private async holdsCode(dir: string): Promise<boolean> {
-		let entries;
-		try {
-			entries = await this.fileSystemService.readDirectory(dir);
-		} catch {
-			return false;
-		}
-		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
-		if (
-			visible.some(
-				([name, type]) =>
-					isFileType(type) &&
-					RojoFile.SCRIPT_EXTENSIONS.some((extension) =>
-						name.endsWith(extension)
-					)
-			)
-		) {
-			return true;
-		}
-		for (const [name, type] of visible) {
-			if (
-				isDirectoryType(type) &&
-				(await this.holdsCode(path.join(dir, name)))
-			) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private async findCodeFolders(
 		cwd: string,
 		excluded: readonly string[]
@@ -113,7 +80,9 @@ export class WorkspaceDetector {
 			)
 			.map(([name]) => name);
 		const holding = await Promise.all(
-			candidates.map((name) => this.holdsCode(path.join(cwd, name)))
+			candidates.map((name) =>
+				holdsCode(this.fileSystemService, path.join(cwd, name))
+			)
 		);
 		return candidates.filter((_, index) => holding[index]).sort();
 	}

@@ -19,6 +19,8 @@ export type ProjectTemplate =
 /** What a new project's template is made of. */
 export interface TemplateInputs {
 	readonly template: ProjectTemplate;
+	/** Where a new template starts; at the root when unset. */
+	readonly templateDir?: string;
 	readonly mounts: readonly Mount[];
 	/** The folders Rogen generates nodes for now, which a copy leaves out. */
 	readonly dirs: readonly string[];
@@ -36,11 +38,11 @@ export class TemplatePlan {
 		readonly edits: readonly string[]
 	) {}
 
-	/** An existing `template.project.json` wins; else the choice: copy a hand-written file, use it as it is, or start one from the mounts. */
+	/** An existing `template.project.json` wins; else the choice: copy a hand-written file, use it as it is, or start one from the mounts in `templateDir`. */
 	static of(
 		directory: InitDirectory,
 		configSet: ConfigSet,
-		{ template, mounts, dirs, derived }: TemplateInputs
+		{ template, templateDir, mounts, dirs, derived }: TemplateInputs
 	): TemplatePlan {
 		if (directory.has(TEMPLATE_FILE)) {
 			const handWritten = ConfigSet.handWrittenProjectFiles(directory);
@@ -70,14 +72,22 @@ export class TemplatePlan {
 				[]
 			);
 
+		const fileName = templateDir
+			? `${templateDir}/${TEMPLATE_FILE}`
+			: TEMPLATE_FILE;
 		const started = StarterTemplate.fromMounts(
 			directory.projectName,
-			mounts
+			templateDir
+				? mounts.map((mount) => ({
+						...mount,
+						path: path.posix.relative(templateDir, mount.path),
+					}))
+				: mounts
 		);
 		return started
 			? new TemplatePlan(
-					{ fileName: TEMPLATE_FILE, content: started.toJson() },
-					TEMPLATE_FILE,
+					{ fileName, content: started.toJson() },
+					fileName,
 					[],
 					[]
 				)

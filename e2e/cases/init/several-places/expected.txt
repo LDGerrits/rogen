@@ -5,17 +5,18 @@ stdout:
   Created default.rogen.json.
   Created lobby.rogen.json.
   Created match.rogen.json.
+  Created places/lobby.template.project.json.
+  Created places/match.template.project.json.
   Created AGENTS.md.
   default.project.json · wrote
   lobby.project.json · wrote
   match.project.json · wrote
   Next steps
     Run:
-      rogen serve lobby
-    Swap lobby for match to work on another place.
+      rogen serve
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 4 files.
+  Wrote 6 files.
 
 $ rogen build default lobby match
 exit 0
@@ -37,6 +38,8 @@ written:
   lobby.rogen.json
   match.project.json
   match.rogen.json
+  places/lobby.template.project.json
+  places/match.template.project.json
 
 default.rogen.json:
 {
@@ -58,7 +61,8 @@ lobby.rogen.json:
 	"extends": "./default.rogen.json",
 	"rootDirs": [
 		"places/lobby"
-	]
+	],
+	"template": "places/lobby.template.project.json"
 }
 
 match.rogen.json:
@@ -67,7 +71,8 @@ match.rogen.json:
 	"extends": "./default.rogen.json",
 	"rootDirs": [
 		"places/match"
-	]
+	],
+	"template": "places/match.template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -78,7 +83,7 @@ project: DataModel
         Types: ModuleScript  <- src/Combat/Types.luau
 
 $ rojo sourcemap lobby.project.json
-project: DataModel
+Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
@@ -88,7 +93,7 @@ project: DataModel
       Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
 
 $ rojo sourcemap match.project.json
-project: DataModel
+Match: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
@@ -96,3 +101,9 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Match: Folder
       Arena: ModuleScript  <- places/match/Match/Server/Arena.luau
+
+$ rojo sourcemap places/lobby.template.project.json
+Lobby: DataModel
+
+$ rojo sourcemap places/match.template.project.json
+Match: DataModel

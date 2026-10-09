@@ -101,25 +101,25 @@ export class ConfigLoader {
 			overrides,
 			this.environmentService.cwd
 		);
-		const templateFile = layered.config.getValue<string | undefined>(
-			"template"
-		);
+		const templates = layered.templates();
 		const loaded = {
 			chain: chain.files,
-			files: templateFile ? [...chain.files, templateFile] : chain.files,
+			files: [...chain.files, ...templates.map(({ file }) => file)],
 			skippedVariants: layered.skippedVariants,
 			modes: layered.modes,
 		};
 
-		const template = templateFile
-			? await this.readTemplate(templateFile, layered.locate("template"))
-			: undefined;
-		if (template?.isErr()) return { ...loaded, resolved: template };
+		let template: ResolvedTemplate | undefined;
+		for (const { file, location } of templates) {
+			const read = await this.readTemplate(file, location);
+			if (read.isErr()) return { ...loaded, resolved: read };
+			template = template ? read.value.over(template) : read.value;
+		}
 
 		const resolved = new ConfigValidator(
 			layered,
 			chain.files.slice(1)
-		).validate(template?.isOk() ? template.value : undefined);
+		).validate(template);
 		return {
 			...loaded,
 			...(resolved.isOk() && { config: layered.config }),

@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "util";
 import { isObject } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -85,6 +86,16 @@ export interface RojoTree {
 	globIgnorePaths?: string[];
 	emitLegacyScripts?: boolean;
 }
+
+/** A field two merged projects set on one node to different values; the overlay's wins. */
+export interface NodeClash {
+	readonly instancePath: readonly string[];
+	/** Such as `$path`, or `$properties.Gravity` for one property. */
+	readonly field: string;
+}
+
+/** Fields of a node that merge by name rather than as one value. */
+const KEYED_FIELDS = new Set(["$properties", "$attributes"]);
 
 /** The node to create for a missing ancestor, named by its instance path. */
 export type ContainerFactory = (instancePath: readonly string[]) => RojoNode;
@@ -352,6 +363,72 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		};
 		merge(this.project.tree, additions.getTree().tree, []);
 		return { added, skipped };
+	}
+
+	/** `overlay` merged over this project: its fields replace this one's, `globIgnorePaths` add up, and the trees merge node by node. */
+	overlaidWith(overlay: RojoProject<T>): {
+		project: RojoProject<T>;
+		clashes: NodeClash[];
+	} {
+		const base = this.getTree();
+		const over = overlay.getTree();
+		const clashes: NodeClash[] = [];
+		const merge = (
+			node: RojoNode,
+			from: RojoNode,
+			at: readonly string[]
+		) => {
+			for (const [key, value] of Object.entries(from)) {
+				const existing = node[key];
+				if (!key.startsWith("$")) {
+					if (isObject(existing) && isObject(value))
+						merge(existing, value, [...at, key]);
+					else node[key] = value;
+				} else if (
+					KEYED_FIELDS.has(key) &&
+					isObject(existing) &&
+					isObject(value)
+				) {
+					for (const [name, field] of Object.entries(value)) {
+						if (
+							name in existing &&
+							!isDeepStrictEqual(existing[name], field)
+						)
+							clashes.push({
+								instancePath: at,
+								field: `${key}.${name}`,
+							});
+						existing[name] = field;
+					}
+				} else {
+					if (
+						existing !== undefined &&
+						!isDeepStrictEqual(existing, value)
+					)
+						clashes.push({ instancePath: at, field: key });
+					node[key] = value;
+				}
+			}
+		};
+		merge(base.tree, over.tree, []);
+		const globs = [
+			...new Set([
+				...new RojoProject(base).globIgnorePaths,
+				...overlay.globIgnorePaths,
+			]),
+		];
+		return {
+			project: new RojoProject(
+				{
+					...base,
+					...over,
+					tree: base.tree,
+					...(globs.length > 0 && { globIgnorePaths: globs }),
+				},
+				this.createContainer
+			),
+			clashes,
+		};
 	}
 
 	private ensureNode(instancePath: readonly string[]): RojoNode {

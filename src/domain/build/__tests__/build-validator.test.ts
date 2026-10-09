@@ -767,6 +767,70 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("a template that overrides the one it merges over", () => {
+			it("should warn at the template that set each field it overrides", async () => {
+				await write("src/shared/Util.luau");
+
+				const warnings = (
+					await route({
+						template: {
+							file: abs("places/lobby/template.project.json"),
+							project: { name: "Lobby", tree: {} },
+							bases: [abs("places/shared/template.project.json")],
+							clashes: [
+								{
+									instancePath: [
+										"ReplicatedStorage",
+										"Packages",
+									],
+									field: "$path",
+									file: abs(
+										"places/lobby/template.project.json"
+									),
+									base: abs(
+										"places/shared/template.project.json"
+									),
+								},
+								{
+									instancePath: ["Lighting"],
+									field: "$properties.Brightness",
+									file: abs(
+										"places/arena/template.project.json"
+									),
+									base: abs(
+										"places/shared/template.project.json"
+									),
+								},
+							],
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "template.overridesBase"
+					);
+
+				expect(
+					warnings.map(({ resource, severity, message }) => ({
+						resource,
+						severity,
+						message,
+					}))
+				).toEqual([
+					{
+						resource: abs("places/lobby/template.project.json"),
+						severity: DiagnosticSeverity.Warning,
+						message: `"ReplicatedStorage/Packages" sets $path here and in ${abs("places/shared/template.project.json")}, which this template merges over, so this one wins. Remove it from one of them.`,
+					},
+					{
+						resource: abs("places/arena/template.project.json"),
+						severity: DiagnosticSeverity.Warning,
+						message: `"Lighting" sets $properties.Brightness here and in ${abs("places/shared/template.project.json")}, which this template merges over, so this one wins. Remove it from one of them.`,
+					},
+				]);
+			});
+		});
+
 		describe("route keys after a dot", () => {
 			const SHARED = { ...ROUTES, shared: "ReplicatedStorage/shared" };
 			const warningsOf = async (code: string) =>

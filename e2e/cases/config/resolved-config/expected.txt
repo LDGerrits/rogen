@@ -34,6 +34,9 @@ stdout:
           "<dir>/**/*.spec.luau"
         ],
         "template": "<dir>/template.project.json",
+        "templates": [
+          "<dir>/template.project.json"
+        ],
         "syncDir": "<dir>/dist",
         "outFile": "<dir>/default.project.json",
         "diagnostics": []

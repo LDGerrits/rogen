@@ -64,7 +64,7 @@ export class ConfigValidator {
 		const groups = this.checkConflictGroups();
 		this.checkModes(claimed, groups);
 		this.checkActiveConflicts(groups);
-		this.checkOutFile(template);
+		this.checkOutFile();
 		this.checkRootDirs();
 
 		return this.problems.toResult(
@@ -329,14 +329,18 @@ export class ConfigValidator {
 		);
 	}
 
-	private checkOutFile(template: ResolvedTemplate | undefined): void {
-		if (template?.file !== this.outFile) return;
+	/** The output file may be no template of the chain's, since a build would overwrite it. */
+	private checkOutFile(): void {
+		const template = this.layered
+			.templates()
+			.find(({ file }) => file === this.outFile);
+		if (!template) return;
 		const explicit = this.layered.config.inspect("outFile").source?.tier;
 		this.problems.error(
 			"config.outFileIsTemplate",
 			explicit === "layer"
 				? this.layered.locate("outFile")
-				: this.layered.locate("template"),
+				: template.location,
 			`the output file ${this.outFile} is also the template, and a build would overwrite it. Set "outFile" to another path.`
 		);
 	}

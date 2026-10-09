@@ -1,12 +1,13 @@
 import path from "path";
 import { formatJsonFile, safeStringify } from "../../base/json.js";
-import { commonAncestor, isInside } from "../../base/path.js";
+import { commonAncestor, isInside, toPosix } from "../../base/path.js";
 import {
 	OptionDescriptor,
 	OptionValues,
 } from "../../platform/environment/args.js";
 import { Target } from "../roblox/roblox.js";
 import {
+	NodeClash,
 	PROJECT_SUFFIX,
 	ParsedProjectFile,
 	RojoProject,
@@ -244,12 +245,55 @@ export class DeclaredKeys {
 	}
 }
 
-/** The Rojo project file a config builds on top of. */
+/** A field a template sets on a node that the template it merges over sets differently. */
+export interface TemplateClash extends NodeClash {
+	/** The template whose value won. */
+	readonly file: string;
+	/** The template whose value lost. */
+	readonly base: string;
+}
+
+/** The Rojo project file a config builds on top of: the nearest template its chain names, merged over the ones above it. */
 export class ResolvedTemplate {
 	constructor(
 		readonly file: string,
-		readonly project: RojoProject<ParsedProjectFile>
+		/** Every `$path` and glob is relative to `file`'s directory. */
+		readonly project: RojoProject<ParsedProjectFile>,
+		/** The templates it is merged over, the furthest first. */
+		readonly bases: readonly string[] = [],
+		readonly clashes: readonly TemplateClash[] = []
 	) {}
+
+	/** This template merged over `base`, whose paths are rebased to this one's directory. */
+	over(base: ResolvedTemplate): ResolvedTemplate {
+		const from = path.dirname(base.file);
+		const to = path.dirname(this.file);
+		const rebase = (target: string) =>
+			toPosix(path.relative(to, path.resolve(from, target)));
+		let rebased = base.project;
+		if (from !== to) {
+			const globs = rebased.globIgnorePaths;
+			rebased = new RojoProject({
+				...rebased.getTree(),
+				...(globs.length > 0 && { globIgnorePaths: globs.map(rebase) }),
+			});
+			rebased.mapPaths(rebase);
+		}
+		const { project, clashes } = rebased.overlaidWith(this.project);
+		return new ResolvedTemplate(
+			this.file,
+			project,
+			[...base.bases, base.file],
+			[
+				...base.clashes,
+				...clashes.map((clash) => ({
+					...clash,
+					file: this.file,
+					base: base.file,
+				})),
+			]
+		);
+	}
 
 	equals(other: ResolvedTemplate | undefined): boolean {
 		return (

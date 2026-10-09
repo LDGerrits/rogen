@@ -68,6 +68,7 @@ export class BuildValidator {
 			...this.instanceClash(),
 			...this.runContextTarget(),
 			...this.templateClash(),
+			...this.overridesBase(),
 			...this.metaNotCopied(),
 			...this.templateClass(),
 			...this.metaAppliesToNothing(),
@@ -483,6 +484,18 @@ export class BuildValidator {
 				{ resource },
 				`the template defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
 			)
+		);
+	}
+
+	/** A merged template that sets a field its base sets too, which only one of them should. */
+	private overridesBase(): Diagnostic[] {
+		return (this.config.template?.clashes ?? []).map(
+			({ instancePath, field, file, base }) =>
+				warningDiagnostic(
+					"template.overridesBase",
+					{ resource: file },
+					`${instancePath.length > 0 ? `"${instanceKey(instancePath)}"` : "The root node"} sets ${field} here and in ${base}, which this template merges over, so this one wins. Remove it from one of them.`
+				)
 		);
 	}
 

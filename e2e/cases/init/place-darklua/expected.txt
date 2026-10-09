@@ -6,6 +6,7 @@ stdout:
   Created sync.rogen.json.
   Created lobby.rogen.json.
   Created lobby-sync.rogen.json.
+  Created places/lobby.template.project.json.
   Created AGENTS.md.
   default.project.json · wrote
   sync.project.json · wrote
@@ -20,7 +21,7 @@ stdout:
       darklua process places/lobby dist/lobby/places/lobby
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 5 files.
+  Wrote 6 files.
 
 $ rogen build default sync lobby lobby-sync
 exit 0
@@ -44,6 +45,7 @@ written:
   lobby-sync.rogen.json
   lobby.project.json
   lobby.rogen.json
+  places/lobby.template.project.json
   sync.project.json
   sync.rogen.json
 
@@ -74,7 +76,8 @@ lobby.rogen.json:
 	"extends": "./default.rogen.json",
 	"rootDirs": [
 		"places/lobby"
-	]
+	],
+	"template": "places/lobby.template.project.json"
 }
 
 sync.rogen.json:
@@ -91,7 +94,7 @@ project: DataModel
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
 
 $ rojo sourcemap lobby-sync.project.json
-project: DataModel
+Lobby: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
       Damage: ModuleScript  <- dist/lobby/src/Combat/Server/Damage.luau
@@ -99,12 +102,15 @@ project: DataModel
       Greeter: ModuleScript  <- dist/lobby/places/lobby/Lobby/Server/Greeter.luau
 
 $ rojo sourcemap lobby.project.json
-project: DataModel
+Lobby: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
     Lobby: Folder
       Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap places/lobby.template.project.json
+Lobby: DataModel
 
 $ rojo sourcemap sync.project.json
 project: DataModel

@@ -1,0 +1,153 @@
+$ rogen init lobby
+exit 0
+stdout:
+  rogen init
+  Created lobby.rogen.json.
+  Created places/lobby/template.project.json.
+  lobby.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+  Wrote 2 files.
+
+$ rogen init arena
+exit 0
+stdout:
+  rogen init
+  Created arena.rogen.json.
+  Created places/arena/template.project.json.
+  Created places/arena/src/.
+  arena.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Declare variants under "variants" in arena.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+  Wrote 2 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · arena, default, lobby
+  arena
+    arena.project.json · unchanged
+  default
+    default.project.json · wrote
+  lobby
+    lobby.project.json · unchanged
+  Built 3 configs.
+
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  arena.rogen.json
+    extends: default.rogen.json
+    root dirs: places/shared/src, places/arena/src
+    routes:
+      Server -> ServerScriptService
+      Shared -> ReplicatedStorage/Shared
+      * -> ReplicatedStorage/Shared
+    template: places/arena/template.project.json, over places/shared/template.project.json
+    sync dir: (none)
+    project file: arena.project.json
+    variants: (none)
+  default.rogen.json
+    root dirs: places/shared/src
+    routes: same as arena
+    template: places/shared/template.project.json
+    sync dir: (none)
+    project file: default.project.json
+    variants: (none)
+  lobby.rogen.json
+    extends: default.rogen.json
+    root dirs: places/shared/src, places/lobby/src
+    routes: same as arena
+    template: places/lobby/template.project.json, over places/shared/template.project.json
+    sync dir: (none)
+    project file: lobby.project.json
+    variants: (none)
+  3 configs.
+
+written:
+  arena.project.json
+  arena.rogen.json
+  default.project.json
+  lobby.project.json
+  lobby.rogen.json
+  places/arena/template.project.json
+  places/lobby/template.project.json
+
+arena.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"places/arena/src"
+	],
+	"template": "places/arena/template.project.json"
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"places/lobby/src"
+	],
+	"template": "places/lobby/template.project.json"
+}
+
+places/arena/template.project.json:
+{
+	"name": "Arena",
+	"servePort": 34874,
+	"tree": {
+		"$className": "DataModel"
+	}
+}
+
+places/lobby/template.project.json:
+{
+	"name": "Lobby",
+	"servePort": 34873,
+	"tree": {
+		"$className": "DataModel"
+	}
+}
+
+$ rojo sourcemap arena.project.json
+Arena: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Promise: ModuleScript  <- Packages/Promise.luau
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Promise: ModuleScript  <- Packages/Promise.luau
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
+
+$ rojo sourcemap lobby.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Promise: ModuleScript  <- Packages/Promise.luau
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
+  ServerScriptService: ServerScriptService
+    Lobby: Folder
+      Queue: ModuleScript  <- places/lobby/src/Lobby/Server/Queue.luau
+
+$ rojo sourcemap places/arena/template.project.json
+Arena: DataModel
+
+$ rojo sourcemap places/lobby/template.project.json
+Lobby: DataModel

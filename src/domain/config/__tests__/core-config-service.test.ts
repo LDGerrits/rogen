@@ -1334,6 +1334,218 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
+			it("should merge a child's template over its parent's, rebasing the parent's paths", async () => {
+				await write("/repo/places/shared/template.project.json", {
+					name: "Game",
+					servePort: 34872,
+					globIgnorePaths: ["**/*.spec.luau"],
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Packages: { $path: "../../Packages" },
+						},
+					},
+				});
+				await write("/repo/places/lobby/template.project.json", {
+					name: "Lobby",
+					servePort: 34873,
+				});
+				await write("/repo/default.rogen.json", {
+					template: "places/shared/template.project.json",
+				});
+				await write("/repo/lobby.rogen.json", {
+					extends: "./default.rogen.json",
+					template: "places/lobby/template.project.json",
+				});
+
+				await start({ names: ["lobby"] });
+
+				expect(resolved(0)?.name).toBe("Lobby");
+				expect(plain(resolved(0))?.template).toEqual({
+					file: "/repo/places/lobby/template.project.json",
+					project: {
+						name: "Lobby",
+						servePort: 34873,
+						globIgnorePaths: ["../shared/**/*.spec.luau"],
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Packages: { $path: "../../Packages" },
+							},
+						},
+					},
+				});
+				expect(resolved(0)?.template?.bases).toEqual([
+					"/repo/places/shared/template.project.json",
+				]);
+				expect([...selection.files]).toEqual(
+					expect.arrayContaining([
+						"/repo/places/shared/template.project.json",
+						"/repo/places/lobby/template.project.json",
+					])
+				);
+			});
+
+			it("should merge every template down a chain, the nearest last", async () => {
+				await write("/repo/a.template.json", {
+					name: "A",
+					tree: { Lighting: { $properties: { Brightness: 1 } } },
+				});
+				await write("/repo/b.template.json", {
+					tree: { Workspace: { $properties: { Gravity: 100 } } },
+				});
+				await write("/repo/c.template.json", { name: "C" });
+				await write("/repo/a.rogen.json", {
+					template: "a.template.json",
+				});
+				await write("/repo/b.rogen.json", {
+					extends: "./a.rogen.json",
+					template: "b.template.json",
+				});
+				await write("/repo/c.rogen.json", {
+					extends: "./b.rogen.json",
+					template: "c.template.json",
+				});
+
+				await start({ names: ["c"] });
+
+				expect(resolved(0)?.template?.project.getTree()).toEqual({
+					name: "C",
+					tree: {
+						$className: "DataModel",
+						Lighting: { $properties: { Brightness: 1 } },
+						Workspace: { $properties: { Gravity: 100 } },
+					},
+				});
+				expect(resolved(0)?.template?.bases).toEqual([
+					"/repo/a.template.json",
+					"/repo/b.template.json",
+				]);
+			});
+
+			it("should merge a template a child names again over the ones between", async () => {
+				await write("/repo/t.template.json", { name: "T" });
+				await write("/repo/m.template.json", { name: "M" });
+				await write("/repo/root.rogen.json", {
+					template: "t.template.json",
+				});
+				await write("/repo/mid.rogen.json", {
+					extends: "./root.rogen.json",
+					template: "m.template.json",
+				});
+				await write("/repo/default.rogen.json", {
+					extends: "./mid.rogen.json",
+					template: "t.template.json",
+				});
+
+				await start();
+
+				expect(resolved(0)?.name).toBe("T");
+				expect(resolved(0)?.template?.bases).toEqual([
+					"/repo/m.template.json",
+				]);
+			});
+
+			it("should name the template that set a field it lost to, down a chain", async () => {
+				await write("/repo/a.template.json", {
+					tree: { Lighting: { $properties: { Brightness: 1 } } },
+				});
+				await write("/repo/b.template.json", {
+					tree: { Lighting: { $properties: { Brightness: 2 } } },
+				});
+				await write("/repo/c.template.json", { name: "C" });
+				await write("/repo/a.rogen.json", {
+					template: "a.template.json",
+				});
+				await write("/repo/b.rogen.json", {
+					extends: "./a.rogen.json",
+					template: "b.template.json",
+				});
+				await write("/repo/c.rogen.json", {
+					extends: "./b.rogen.json",
+					template: "c.template.json",
+				});
+
+				await start({ names: ["c"] });
+
+				expect(resolved(0)?.template?.clashes).toEqual([
+					{
+						instancePath: ["Lighting"],
+						field: "$properties.Brightness",
+						file: "/repo/b.template.json",
+						base: "/repo/a.template.json",
+					},
+				]);
+			});
+
+			it("should read a template a child names again only once", async () => {
+				await write("/repo/t.project.json", { name: "Game", tree: {} });
+				await write("/repo/base.rogen.json", {
+					template: "t.project.json",
+				});
+				await write("/repo/default.rogen.json", {
+					extends: "./base.rogen.json",
+					template: "t.project.json",
+				});
+
+				await start();
+
+				expect(resolved(0)?.template?.bases).toEqual([]);
+				expect(resolved(0)?.template?.clashes).toEqual([]);
+			});
+
+			it("should carry what the child's template overrode in its parent's", async () => {
+				await write("/repo/base.project.json", {
+					name: "Game",
+					tree: {
+						ReplicatedStorage: { Packages: { $path: "Packages" } },
+					},
+				});
+				await write("/repo/lobby.project.json", {
+					tree: {
+						ReplicatedStorage: { Packages: { $path: "vendor" } },
+					},
+				});
+				await write("/repo/default.rogen.json", {
+					template: "base.project.json",
+				});
+				await write("/repo/lobby.rogen.json", {
+					extends: "./default.rogen.json",
+					template: "lobby.project.json",
+					outFile: "out/lobby.project.json",
+				});
+
+				await start({ names: ["lobby"] });
+
+				expect(resolved(0)?.template?.clashes).toEqual([
+					{
+						instancePath: ["ReplicatedStorage", "Packages"],
+						field: "$path",
+						file: "/repo/lobby.project.json",
+						base: "/repo/base.project.json",
+					},
+				]);
+			});
+
+			it("should report a parent's broken template even when the child names its own", async () => {
+				await write("/repo/lobby.project.json", { name: "Lobby" });
+				await write(
+					"/repo/base.rogen.json",
+					`{
+	"template": "missing.project.json"
+}`
+				);
+
+				const problems = await diagnosticsFor({
+					extends: "./base.rogen.json",
+					template: "lobby.project.json",
+				});
+
+				expect(problems.map((problem) => problem.slice(1))).toEqual([
+					["/repo/base.rogen.json", 2, 14],
+				]);
+			});
+
 			it("should report a change when the template's contents change", async () => {
 				await write("/repo/t.project.json", { name: "One", tree: {} });
 				await write("/repo/default.rogen.json", {
@@ -1524,6 +1736,34 @@ describe("domain/config/core-config-service", () => {
 					"/repo/default.rogen.json",
 					2,
 					14,
+				]);
+			});
+
+			it("should reject a default outFile that is a parent's template", async () => {
+				await write("/repo/lobby.project.json", { tree: {} });
+				await write("/repo/lobby.template.json", { name: "Lobby" });
+				await write(
+					"/repo/base.rogen.json",
+					`{
+	"template": "lobby.project.json"
+}`
+				);
+
+				const problems = await diagnosticsFor(
+					{
+						extends: "./base.rogen.json",
+						template: "lobby.template.json",
+					},
+					"lobby"
+				);
+
+				expect(problems).toEqual([
+					[
+						'the output file /repo/lobby.project.json is also the template, and a build would overwrite it. Set "outFile" to another path.',
+						"/repo/base.rogen.json",
+						2,
+						14,
+					],
 				]);
 			});
 
