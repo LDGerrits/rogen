@@ -25,9 +25,8 @@ It writes `default.rogen.json`, builds `default.project.json` from it, and tells
 Created default.rogen.json.
 default.project.json · wrote
 Next steps
-  Run each in its own terminal:
-    rogen watch
-    rojo serve default.project.json
+  Run:
+    rogen serve
   Add your own routes under "routes" in default.rogen.json.
   Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
 ```
@@ -65,29 +64,20 @@ Rogen puts these in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlaye
 </Step>
 
 <Step>
-### Start Watching
+### Serve
 
-Start Rogen in watch mode. It builds `default.project.json` and keeps it up to date as you add, move and rename files.
-
-```bash
-rogen watch
-```
-
-</Step>
-
-<Step>
-### Sync with Rojo
-
-In a second terminal, start Rojo:
+Start Rogen:
 
 ```bash
-rojo serve
+rogen serve
 ```
+
+It builds `default.project.json`, starts Rojo (or Argon) on it, and keeps it up to date as you add, move and rename files. Connect from the Studio plugin once it prints `Serving default`.
 
 </Step>
 
 </Steps>
 
 <Callout type="info">
-	With no argument, `rojo serve` picks up `default.project.json`, which is exactly the file `rogen watch` writes.
+	Rogen runs the Rojo your project pins in `rokit.toml` (or Aftman's or Foreman's file), else the one on the PATH. To run Rojo yourself, run `rogen watch` and `rojo serve` side by side: with no argument, `rojo serve` picks up `default.project.json`.
 </Callout>

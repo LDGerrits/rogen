@@ -29,15 +29,14 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 - **Variants:** Swap in files like `Analytics.mock.luau` at build time, without touching a `require`.
 - **Modes:** Build `dev`, `qa` or `prod` from one config. A mode turns variants on and leaves specs out.
 - **Several Places:** Merge root directories so places share core code and override parts of it.
-- **Watch Mode:** Rebuild as files change, and reload when the config does.
+- **Watch Mode:** Rebuild as files change, and reload when the config does. `rogen serve` also starts Rojo or Argon.
 - **Toolchains:** Luau, roblox-ts and Darklua, set up by `rogen init`.
 
 ## Getting Started
 
 ```bash
 rogen init
-rogen watch
-rojo serve
+rogen serve
 ```
 
 `rogen init` writes a starting config and prints the commands your setup needs. `rogen where <file>` prints where a file lands and why. Read the [documentation](https://rogen-playfully.vercel.app) for routing, variants and every setup.

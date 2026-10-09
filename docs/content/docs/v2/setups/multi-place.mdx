@@ -83,27 +83,25 @@ What `init` writes depends on your toolchain:
 </Step>
 
 <Step>
-### Start Watching
+### Serve
 
-Name the place to build it:
+Name the place to serve it:
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
     ```bash
-    rogen watch lobby
-    rojo serve lobby.project.json
+    rogen serve lobby
     ```
   </Tab>
   <Tab value="roblox-ts">
     ```bash
     rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
-    rogen watch lobby
-    rojo serve lobby.project.json
+    rogen serve lobby
     ```
   </Tab>
 </Tabs>
 
-`rogen list` shows every config the repo can build.
+`rogen serve` builds every config, so the other places stay current too, and starts a server only for the places you name. With no name it serves every place, each on its own port: places that set no `servePort` share the default one, so give each place a template with its own `servePort` first, or `serve` exits 2. `rogen list` shows every config the repo can build.
 
 </Step>
 
@@ -134,10 +132,11 @@ Synced paths keep each root directory's path from the repo root (`dist/lobby/src
 ```bash
 darklua process src dist/lobby/src
 darklua process places/lobby dist/lobby/places/lobby
-rogen watch lobby lobby-sync
+rogen serve lobby-sync
 rojo sourcemap lobby.project.json --output sourcemap.json --watch
-rojo serve lobby-sync.project.json
 ```
+
+`rogen serve lobby-sync` builds every config, `lobby.project.json` included, and serves the processed one.
 
 One catch: luau-lsp regenerates `sourcemap.json` from `default.project.json` and would overwrite the place's version. While you work on a place, set `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 
