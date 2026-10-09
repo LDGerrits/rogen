@@ -611,6 +611,15 @@ describe("CoreInitService", () => {
 				]);
 			});
 
+			it("should plan nothing when the user cancels what to add", async () => {
+				const { prompts, result } = await planWith([CANCEL]);
+
+				expect(prompts.asked).toEqual([
+					"default.rogen.json exists. What do you want to add?",
+				]);
+				expect(result.unwrap()).toBeUndefined();
+			});
+
 			it("should add a place with its folder", async () => {
 				const { result } = await planWith([
 					ACCEPT_DEFAULT,
