@@ -239,13 +239,25 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should not ask, or write it, in an init that isn't the first", async () => {
+		it("should not write it beside a config when it can't ask", async () => {
 			await write("lobby.rogen.json", "{}");
 
 			const plan = (await serviceFor().plan(["arena"])).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"arena.rogen.json",
+			]);
+		});
+
+		it("should offer it beside a config that isn't default, and write only it", async () => {
+			await write("lobby.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor(new MockPromptService(["agent"])).plan([])
+			).unwrap();
+
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"AGENTS.md",
 			]);
 		});
 

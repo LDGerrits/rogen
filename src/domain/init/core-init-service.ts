@@ -11,7 +11,7 @@ import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { InitQuestions } from "./init-questions.js";
+import { Addition, InitQuestions } from "./init-questions.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentSetup } from "./agent-setup.js";
 import { AgentHooks, AgentInUse } from "./agent-hooks.js";
@@ -147,42 +147,47 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
-		// A new project when there is no `default.rogen.json` yet, otherwise what the user says to add beside it.
 		const projectSetup = new ProjectSetup(
 			directory,
 			questions,
 			this.fileSystemService
 		);
-		const { base } = directory;
-		if (!base && directory.hasConfigs)
-			return this.planWith(directory, questions, asking(projectSetup));
 		const agentFile = await this.agentFileIn(directory);
 		if (agentFile.isErr()) return agentFile;
 		const hooks = await this.agentHooksIn(directory);
 		if (hooks.isErr()) return hooks;
-		if (!base)
+		// A first init starts a project; beside configs, the user says what to add.
+		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
 				questions,
 				asking(projectSetup),
 				asking(new AgentSetup(agentFile.value, hooks.value, questions))
 			);
+		const { base } = directory;
 		const offered = agentFile.value.hasBlock
 			? undefined
 			: agentFile.value.fileName;
-		const additions = {
-			place: () => asking(new PlaceSetup(directory, base, questions)),
-			extending: () =>
-				asking(new ExtendingConfigSetup(directory, questions)),
+		const additions: Partial<Record<Addition, () => Asking>> = {
+			...(base && {
+				place: () => asking(new PlaceSetup(directory, base, questions)),
+				extending: () =>
+					asking(new ExtendingConfigSetup(directory, questions)),
+			}),
 			separate: () => asking(projectSetup),
 			agent: () =>
 				chosen((builder) => builder.addAgentFile(agentFile.value)),
 			hook: () => chosen((builder) => builder.addAgentHook(hooks.value)),
 		};
-		const addition = await questions.whatToAdd(offered, hooks.value.agents);
-		return addition === undefined
-			? ok(undefined)
-			: this.planWith(directory, questions, additions[addition]());
+		const addition = await questions.whatToAdd(
+			base !== undefined,
+			offered,
+			hooks.value.agents
+		);
+		if (addition === undefined) return ok(undefined);
+		const ask = additions[addition];
+		if (!ask) throw new Error(`${addition} can't be added here.`);
+		return this.planWith(directory, questions, ask());
 	}
 
 	/** Asks each setup its questions in turn, then plans what the answers write. */
