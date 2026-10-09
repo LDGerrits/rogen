@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from "child_process";
+import fs from "fs";
+import os from "os";
 import path from "path";
 import { pathToFileURL } from "url";
 
@@ -41,11 +43,29 @@ const tokens = (line: string) => line.trim().split(/(\s+)/);
 const lastWords = (parts: string[], words: number) =>
 	parts.slice(-(2 * words)).join("");
 
-/** Narrows a replaced line to the words that differ, keeping a little around them. */
+const BLANK = "(blank line)";
+
+const wholeLine = (line: string) => line || BLANK;
+
+const whole = (
+	side: "removed" | "added",
+	line: string
+): Omit<TranscriptChange, "cases"> => ({
+	before: "",
+	removed: "",
+	added: "",
+	after: "",
+	[side]: wholeLine(line),
+});
+
+const words = (parts: readonly string[]) =>
+	parts.filter((part) => part.trim() !== "").length;
+
+/** Narrows a replaced line to the words that differ, keeping a little around them. None when the two lines share too little to be one line edited. */
 function editOf(
 	removed: string,
 	added: string
-): Omit<TranscriptChange, "cases"> {
+): Omit<TranscriptChange, "cases"> | undefined {
 	const from = tokens(removed);
 	const to = tokens(added);
 
@@ -64,10 +84,20 @@ function editOf(
 	)
 		end++;
 
+	const shared =
+		words(from.slice(0, start)) + words(from.slice(from.length - end));
+	if (shared * 2 < Math.min(words(from), words(to))) return undefined;
+
 	const dropped = from.slice(start, from.length - end).join("");
 	const gained = to.slice(start, to.length - end).join("");
 	// Only the spacing changed.
-	if (!dropped && !gained) return { before: "", removed, added, after: "" };
+	if (!dropped && !gained)
+		return {
+			before: "",
+			removed: wholeLine(removed),
+			added: wholeLine(added),
+			after: "",
+		};
 
 	return {
 		before: lastWords(from.slice(0, start), CONTEXT_WORDS),
@@ -98,16 +128,16 @@ export function summarizeTranscriptDiff(diff: string): TranscriptChange[] {
 		edits.set(key, known);
 	};
 	const endHunk = () => {
-		if (removed.length === added.length) {
-			removed.forEach((line, at) => {
-				add(editOf(line, added[at] ?? ""));
-			});
-		} else {
-			for (const line of removed)
-				add({ before: "", removed: line, added: "", after: "" });
-			for (const line of added)
-				add({ before: "", removed: "", added: line, after: "" });
-		}
+		const paired = removed.length === added.length;
+		const edited = new Set<number>();
+		removed.forEach((line, at) => {
+			const edit = paired ? editOf(line, added[at] ?? "") : undefined;
+			if (edit) edited.add(at);
+			add(edit ?? whole("removed", line));
+		});
+		added.forEach((line, at) => {
+			if (!edited.has(at)) add(whole("added", line));
+		});
 		removed = [];
 		added = [];
 	};
@@ -142,9 +172,15 @@ const show = (change: TranscriptChange): string => {
 const plural = (count: number, noun: string) =>
 	`${count} ${noun}${count === 1 ? "" : "s"}`;
 
+/** Transcripts and case files that exist only on one side of the diff, as `<area>/<case>`. */
+export interface TranscriptFiles {
+	readonly added: readonly string[];
+	readonly deleted: readonly string[];
+}
+
 export function formatSummary(
 	changes: readonly TranscriptChange[],
-	added: readonly string[]
+	{ added, deleted }: TranscriptFiles
 ): string {
 	const changed = new Set(changes.flatMap((change) => change.cases));
 	const parts: string[] = [];
@@ -169,44 +205,104 @@ export function formatSummary(
 		parts.push(
 			`${plural(added.length, "new transcript")}: ${added.join(", ")}`
 		);
+	if (deleted.length > 0)
+		parts.push(
+			`${plural(deleted.length, "deleted transcript")}: ${deleted.join(", ")}`
+		);
 
 	return parts.length > 0 ? parts.join("\n\n") : "No transcript changed.";
 }
 
+const ROOT = path.resolve(import.meta.dirname, "..");
+
 const git = (...args: string[]): string =>
 	execFileSync("git", args, {
+		cwd: ROOT,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
 	});
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-	let status = 0;
-	if (process.argv.includes("--update")) {
-		status =
-			spawnSync(
-				process.execPath,
-				[
-					"--experimental-vm-modules",
-					"--disable-warning=ExperimentalWarning",
-					path.join("node_modules", "jest", "bin", "jest.js"),
-					"--roots",
-					"e2e",
-				],
-				{ stdio: "inherit", env: { ...process.env, UPDATE_E2E: "1" } }
-			).status ?? 1;
-	}
+/** Runs the e2e suite so that it rewrites the transcripts. The exit code is non-zero when it fails or when Rojo is missing and it skipped every case. */
+function regenerate(): number {
+	const report = path.join(os.tmpdir(), `rogen-e2e-${process.pid}.json`);
+	const status =
+		spawnSync(
+			process.execPath,
+			[
+				"--experimental-vm-modules",
+				"--disable-warning=ExperimentalWarning",
+				path.join("node_modules", "jest", "bin", "jest.js"),
+				"--roots",
+				"e2e",
+				"--json",
+				`--outputFile=${report}`,
+			],
+			{
+				cwd: ROOT,
+				stdio: "inherit",
+				env: { ...process.env, UPDATE_E2E: "1" },
+			}
+		).status ?? 1;
 
-	const added = git("ls-files", "--others", "--exclude-standard", CASES_DIR)
+	try {
+		const { numPendingTests } = JSON.parse(
+			fs.readFileSync(report, "utf8")
+		) as { numPendingTests: number };
+		if (numPendingTests > 0) {
+			console.error(
+				`${plural(numPendingTests, "test")} skipped, so the transcripts were not regenerated. Run \`rokit install\` first.`
+			);
+			return status || 1;
+		}
+	} catch {
+		return status || 1;
+	} finally {
+		fs.rmSync(report, { force: true });
+	}
+	return status;
+}
+
+/** What differs from the last commit, staged or not. */
+function changesSinceCommit(): { diff: string; files: TranscriptFiles } {
+	const named = (filter: string) =>
+		git(
+			"diff",
+			"HEAD",
+			`--diff-filter=${filter}`,
+			"--name-only",
+			"--",
+			CASES_DIR
+		)
+			.split("\n")
+			.filter((file) => file.endsWith(`/${TRANSCRIPT}`))
+			.map(nameOf);
+	const untracked = git(
+		"ls-files",
+		"--others",
+		"--exclude-standard",
+		CASES_DIR
+	)
 		.split("\n")
 		.filter((file) => file.endsWith(`/${TRANSCRIPT}`))
 		.map(nameOf);
-	console.log(
-		formatSummary(
-			summarizeTranscriptDiff(
-				git("diff", "-U0", "--no-color", "--", CASES_DIR)
-			),
-			added
-		)
-	);
+
+	return {
+		diff: git(
+			"diff",
+			"HEAD",
+			"-U0",
+			"--no-color",
+			"--diff-filter=M",
+			"--",
+			CASES_DIR
+		),
+		files: { added: [...named("A"), ...untracked], deleted: named("D") },
+	};
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+	const status = process.argv.includes("--update") ? regenerate() : 0;
+	const { diff, files } = changesSinceCommit();
+	console.log(formatSummary(summarizeTranscriptDiff(diff), files));
 	process.exit(status);
 }

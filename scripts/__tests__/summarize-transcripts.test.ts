@@ -135,12 +135,30 @@ describe("scripts/summarize-transcripts", () => {
 			);
 
 			expect(changes).toEqual([
-				change({
-					removed: "-- gone",
-					added: "++ here",
-					cases: ["x/a"],
-				}),
+				change({ removed: "-- gone", cases: ["x/a"] }),
+				change({ added: "++ here", cases: ["x/a"] }),
 			]);
+		});
+
+		it("should not read two unrelated lines in one hunk as one edited line", () => {
+			const changes = summarizeTranscriptDiff(
+				hunk("x/a", "-Wrote 2 files.", "+Next steps")
+			);
+
+			expect(changes).toEqual([
+				change({ removed: "Wrote 2 files.", cases: ["x/a"] }),
+				change({ added: "Next steps", cases: ["x/a"] }),
+			]);
+		});
+
+		it("should name a blank line that appears or disappears", () => {
+			const changes = summarizeTranscriptDiff(
+				hunk("x/a", "-", "-foo", "+bar")
+			);
+
+			expect(
+				changes.map(({ removed, added }) => removed || added)
+			).toEqual(["(blank line)", "foo", "bar"]);
 		});
 
 		it("should name a case file other than the transcript by its path", () => {
@@ -160,9 +178,10 @@ describe("scripts/summarize-transcripts", () => {
 
 	describe("formatSummary", () => {
 		const four = ["a/1", "a/2", "a/3", "a/4"];
+		const none = { added: [], deleted: [] };
 
 		it("should say nothing changed when no transcript differs", () => {
-			expect(formatSummary([], [])).toBe("No transcript changed.");
+			expect(formatSummary([], none)).toBe("No transcript changed.");
 		});
 
 		it("should show an edit as git shows a word diff, with its count", () => {
@@ -177,7 +196,7 @@ describe("scripts/summarize-transcripts", () => {
 					}),
 					change({ added: "Wrote 2 files.", cases: four }),
 				],
-				[]
+				none
 			);
 
 			expect(text).toBe(
@@ -193,7 +212,7 @@ describe("scripts/summarize-transcripts", () => {
 		it("should show a line that disappears with a minus", () => {
 			const text = formatSummary(
 				[change({ removed: "gone", cases: four })],
-				[]
+				none
 			);
 
 			expect(text).toContain("  4×  - gone");
@@ -202,16 +221,22 @@ describe("scripts/summarize-transcripts", () => {
 		it("should name the transcripts of an edit that few of them share", () => {
 			const text = formatSummary(
 				[change({ added: "surprise", cases: ["a/1", "b/2"] })],
-				[]
+				none
 			);
 
 			expect(text).toContain("  2×  + surprise\n      in a/1, b/2");
 		});
 
 		it("should report transcripts that are new", () => {
-			expect(formatSummary([], ["a/new"])).toBe(
+			expect(formatSummary([], { added: ["a/new"], deleted: [] })).toBe(
 				"1 new transcript: a/new"
 			);
+		});
+
+		it("should report transcripts that are gone", () => {
+			expect(
+				formatSummary([], { added: [], deleted: ["a/old", "a/older"] })
+			).toBe("2 deleted transcripts: a/old, a/older");
 		});
 	});
 });
