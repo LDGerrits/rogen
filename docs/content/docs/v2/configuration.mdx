@@ -76,7 +76,8 @@ Use `extends` when a config is a small variation on another: a second place, ano
 ```json title="lobby.rogen.json"
 {
 	"extends": "./default.rogen.json",
-	"rootDirs": ["places/lobby"]
+	"rootDirs": ["places/lobby/src"],
+	"template": "places/lobby/template.project.json"
 }
 ```
 
@@ -85,7 +86,8 @@ Use `extends` when a config is a small variation on another: a second place, ano
 | Map | `routes` | merged key by key; the child wins a key |
 | Map of blocks | `modes` | merged by name; each block merges by these same rules, so a child adds globs and variants to the parent's `prod` |
 | List | `rootDirs`, `exclude`, `variants`, `conflicts` | the child's entries are added after the parent's; a repeated entry keeps its last position |
-| String | `syncDir`, `template`, `mode` | the child replaces |
+| String | `syncDir`, `mode` | the child replaces |
+| Template | `template` | the child's template merges over the parent's; see [Merging Templates](/docs/v2/core-concepts/output#merging-templates) |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
 
 A child adds to its parent and never removes. To drop something, flip the chain so the config without it is the parent. A default applies only when no config in the chain sets the field, so a parent that leaves out `rootDirs` contributes no `src` once a child sets its own. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.

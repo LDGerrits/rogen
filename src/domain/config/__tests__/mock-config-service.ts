@@ -4,7 +4,12 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
-import { ModeView, ResolvedConfig, ResolvedTemplate } from "../config.js";
+import {
+	ModeView,
+	ResolvedConfig,
+	ResolvedTemplate,
+	TemplateClash,
+} from "../config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,
@@ -43,6 +48,8 @@ export interface ResolvedConfigSpec {
 	readonly template?: {
 		readonly file: string;
 		readonly project: Readonly<Record<string, unknown>>;
+		readonly bases?: readonly string[];
+		readonly clashes?: readonly TemplateClash[];
 	};
 	readonly syncDir?: string;
 	readonly outFile?: string;
@@ -99,7 +106,9 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				spec.template.file,
 				RojoProject.parse(
 					JSON.stringify(spec.template.project)
-				).unwrap()
+				).unwrap(),
+				spec.template.bases,
+				spec.template.clashes
 			),
 		syncDir: spec.syncDir,
 		outFile: spec.outFile ?? "/repo/default.project.json",

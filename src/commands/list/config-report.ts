@@ -52,6 +52,11 @@ export class ConfigReport {
 					sameAs
 						? `routes: same as ${sameAs.label}`
 						: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
+					...(config.template
+						? [
+								`template: ${[config.template.file, ...[...config.template.bases].reverse()].map(relative).join(", over ")}`,
+							]
+						: []),
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
 					`variants: ${listed(variantLines(config))}`,
@@ -104,6 +109,11 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 		modes: config.modes,
 		exclude: config.exclude,
 		template: config.template ? toNative(config.template.file) : null,
+		templates: config.template
+			? [...config.template.bases, config.template.file].map((file) =>
+					toNative(file)
+				)
+			: [],
 		syncDir: config.syncDir ? toNative(config.syncDir) : null,
 		outFile: toNative(config.outFile),
 	};

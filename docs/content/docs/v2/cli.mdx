@@ -398,7 +398,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants` (each declared variant and whether it is on), `conflicts`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template`, `syncDir` and `outFile`, with `null` for anything unset. `variants` and `exclude` are those of the active mode with the command line applied. A broken config has only the five. If any config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants` (each declared variant and whether it is on), `conflicts`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template` (the config's own, or its nearest parent's), `templates` (every template merged, the furthest first), `syncDir` and `outFile`, with `null` for anything unset. `variants` and `exclude` are those of the active mode with the command line applied. A broken config has only the five. If any config has errors, the exit code is 1.
 
 ## Output
 

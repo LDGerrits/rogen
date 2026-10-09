@@ -32,7 +32,7 @@ The **template** is a Rojo project file that Rogen merges its tree into. It hold
 - If the template and the generated tree define the same instance, the template wins and Rogen warns. A `$path` below a service, like a package mount, owns that whole folder.
 - A `$path` that points inside a root directory hands that path to Rojo. Rogen skips it entirely and `rogen where` reports it as `mounted`, which is how you sync a vendored library as-is. Mounting a root directory itself, a folder above one, or something inside an init folder is an error.
 - An `exclude` glob that matches a `$path` drops the node, so a [mode](/docs/v2/core-concepts/modes#template-nodes) can leave a mount such as `DevPackages` out of prod.
-- A child config's `template` replaces its parent's.
+- A child config's `template` merges over its parent's, so a place's template holds only what differs, such as `{ "name": "Lobby", "servePort": 34873 }`. See [Merging Templates](#merging-templates).
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -70,6 +70,17 @@ The **template** is a Rojo project file that Rogen merges its tree into. It hold
 </Tabs>
 
 `rogen init` writes a template when it finds packages to mount, or keeps your hand-written project file as one.
+
+### Merging Templates
+
+When configs in an `extends` chain each name a template, Rogen merges them, the nearest one last:
+
+- A top-level field such as `name`, `servePort` or `placeId` replaces the parent template's. `globIgnorePaths` add up.
+- The trees merge node by node. A node only one template has is kept, and `$properties` and `$attributes` merge by name, so a place can add a property to a service the shared template sets up.
+- A field both templates set on one node, to different values, takes the nearer template's value, and Rogen warns ([`template.overridesBase`](/docs/v2/diagnostics#template-overridesbase)). Keep such a field in one template only.
+- Each template's `$path`s stay relative to its own file, so a shared template's `Packages` mount works from every place.
+
+A mount added to the shared template, such as `DevPackages`, reaches every place. `rogen list` shows each config's template and the ones it merges over.
 
 ## Sync Directory
 

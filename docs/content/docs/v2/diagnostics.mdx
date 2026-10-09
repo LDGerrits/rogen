@@ -554,6 +554,16 @@ template.project.json - error: "ReplicatedStorage/All" mounts the root dir src, 
 
 Mount a folder inside the root directory, such as a vendored package, or remove the root directory from `rootDirs`. See [Template](/docs/v2/core-concepts/output#template).
 
+### `template.overridesBase` [#template-overridesbase]
+
+Warning. A config's template sets a field on a node that the template of a config it extends sets too, to another value. The templates merge, so the nearer one's value wins.
+
+```
+places/lobby/template.project.json - warning: "ReplicatedStorage/Packages" sets $path here and in places/shared/template.project.json, which this template merges over, so this one wins. Remove it from one of them. (template.overridesBase)
+```
+
+Keep the field in one template: in the shared one when every place wants it, or in each place's own when they differ. See [Template](/docs/v2/core-concepts/output#template).
+
 ## Metadata
 
 ### `meta.unreadable` [#meta-unreadable]

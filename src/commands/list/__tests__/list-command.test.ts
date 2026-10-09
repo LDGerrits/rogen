@@ -146,6 +146,27 @@ describe("list command", () => {
 		});
 	});
 
+	it("should show a config's template, and the templates it merges over", async () => {
+		await write("places/shared/template.project.json", { name: "Game" });
+		await write("places/lobby/template.project.json", { name: "Lobby" });
+		await write("default.rogen.json", {
+			template: "places/shared/template.project.json",
+		});
+		await write("lobby.rogen.json", {
+			extends: "./default.rogen.json",
+			template: "places/lobby/template.project.json",
+		});
+
+		await run();
+
+		expect(under("default.rogen.json")[0]).toContain(
+			"template: places/shared/template.project.json\n"
+		);
+		expect(under("lobby.rogen.json").at(-1)).toContain(
+			"template: places/lobby/template.project.json, over places/shared/template.project.json\n"
+		);
+	});
+
 	it("should say so when there is no sync dir and no variant", async () => {
 		await write("default.rogen.json", {});
 
@@ -315,6 +336,37 @@ describe("list command", () => {
 		const entry = (config: string) =>
 			document().configs.find((candidate) => candidate.config === config);
 
+		it("should list every template a config merges, the furthest first", async () => {
+			await write("places/shared/template.project.json", {
+				name: "Game",
+			});
+			await write("places/lobby/template.project.json", {
+				name: "Lobby",
+			});
+			await write("default.rogen.json", {
+				template: "places/shared/template.project.json",
+			});
+			await write("lobby.rogen.json", {
+				extends: "./default.rogen.json",
+				template: "places/lobby/template.project.json",
+			});
+
+			await run({ _: ["lobby"], json: true });
+
+			expect(document()).toMatchObject({
+				configs: [
+					{
+						projectName: "Lobby",
+						template: "/repo/places/lobby/template.project.json",
+						templates: [
+							"/repo/places/shared/template.project.json",
+							"/repo/places/lobby/template.project.json",
+						],
+					},
+				],
+			});
+		});
+
 		it("should print each config's resolved fields, identity first", async () => {
 			await write("base.rogen.json", {
 				routes: { Server: "ServerScriptService" },
@@ -355,6 +407,7 @@ describe("list command", () => {
 						modes: [],
 						exclude: ["/repo/**/*.spec.luau"],
 						template: null,
+						templates: [],
 						syncDir: "/repo/out",
 						outFile: "/repo/default.project.json",
 						diagnostics: [],
