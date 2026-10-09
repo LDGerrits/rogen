@@ -38,10 +38,12 @@ which `rokit install` installs too.
 
 Check a thing once, where it lives, and leave it out of the other cases.
 
-- What `init` prints (its notes and next steps) is checked by the cases in
-  `cases/init-output/`, one per kind of project, and by
-  `src/commands/init/__tests__/init-command.test.ts`. The other `cases/init/`
-  cases check what `init` writes and that Rojo accepts it.
+- What `init` prints for each kind of project (its notes and next steps) is shown
+  by the cases in `cases/init-output/`, which prove that the real binary prints
+  it. The wording of each note is checked by
+  `src/commands/init/__tests__/init-command.test.ts` and the tests of
+  `src/domain/init`. The other `cases/init/` cases check what `init` writes and
+  that Rojo accepts it.
 - What `build` prints (header, per-config lines, closing line) is checked by
   `build-log.test.ts` and `build-command.test.ts` in
   `src/commands/build/__tests__/`. A case lists `build` under `output` only when

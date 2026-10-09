@@ -19,19 +19,24 @@ export interface CaseSpec {
 	readonly rojo?: boolean;
 	readonly show?: readonly string[];
 	/** Commands, of those whose output is left out, that this case checks the output of. */
-	readonly output?: readonly string[];
+	readonly output?: readonly FramedCommand[];
 }
 
 /** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
-const FRAMED_COMMANDS: readonly string[] = ["build", "init"];
+const FRAMED_COMMANDS = ["build", "init"] as const;
+
+type FramedCommand = (typeof FRAMED_COMMANDS)[number];
 
 /** Whether a step's stdout belongs in the transcript. A document (`--json`) and help are what a case runs them for, so they always do. */
 export function showsStdout(args: readonly string[], spec: CaseSpec): boolean {
 	const [command = ""] = args;
-	if (!FRAMED_COMMANDS.includes(command)) return true;
+	if (!(FRAMED_COMMANDS as readonly string[]).includes(command)) return true;
 	if (args.some((arg) => ["--json", "--help", "-h"].includes(arg)))
 		return true;
-	return spec.output?.includes(command) ?? false;
+	return (
+		(spec.output as readonly string[] | undefined)?.includes(command) ??
+		false
+	);
 }
 
 interface RunResult {
@@ -153,7 +158,16 @@ export async function runCase(cli: string, name: string): Promise<string> {
 
 function readSpec(caseDir: string): CaseSpec {
 	const file = path.join(caseDir, "case.json");
-	return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
+	const spec: CaseSpec = fs.existsSync(file)
+		? JSON.parse(fs.readFileSync(file, "utf8"))
+		: {};
+	for (const command of spec.output ?? []) {
+		if (!FRAMED_COMMANDS.includes(command))
+			throw new Error(
+				`${file}: "output" takes ${FRAMED_COMMANDS.join(" or ")}, not "${command}". Other commands always show.`
+			);
+	}
+	return spec;
 }
 
 async function run(
