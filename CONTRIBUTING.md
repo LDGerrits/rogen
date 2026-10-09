@@ -88,6 +88,6 @@ Test a rule where it lives, and assert it once:
 - A command test (`src/commands`) checks that the command is wired to its services and prints what it should. Build it with `commandHarness` where it can run over the in-memory file system, instead of constructing services by hand, so a change to a constructor touches one file.
 - `e2e` cases show that a real Rojo accepts the output, one case per behavior a user sees.
 
-Script prompts by question, as in `new MockPromptService({ Language: "roblox-ts" })`, so that every question you don't name takes its default. A new question then breaks only the tests about the order of the questions. Use a list of answers only when the order is what the test checks.
+Script prompts by question, as in `new MockPromptService({ Language: "roblox-ts" })`, so that every question you don't name takes its default. A question with no default, a named answer no question takes, or a question asked twice fails the test. A new question then breaks only the tests about the order of the questions. Use a list of answers only when the order is what the test checks.
 
 While working, run the folder you touched (`npm test -- src/domain/init`) or `npm run test:unit` (about 5 seconds). `npm run test:e2e` builds the bundle and runs it against Rojo. Run `npm test`, which runs both, before you open a pull request.

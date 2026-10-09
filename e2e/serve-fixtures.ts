@@ -16,6 +16,13 @@ export const template = (port: number, name = "Game") =>
 		tree: { $className: "DataModel" },
 	});
 
+/** The files of a project that serves default on `port`. */
+export const projectFiles = (port: number) => ({
+	"default.rogen.json": config(),
+	"template.project.json": template(port),
+	"src/A.server.luau": "",
+});
+
 /** A fresh project per test, served on a random port from `firstPort`; `start` takes another checkout's `dir`. */
 export function useServeProject(
 	firstPort: number,
@@ -36,12 +43,7 @@ export function useServeProject(
 
 	beforeEach(() => {
 		port = firstPort + Math.floor(Math.random() * 2000);
-		project = createProject({
-			...files,
-			"default.rogen.json": config(),
-			"template.project.json": template(port),
-			"src/A.server.luau": "",
-		});
+		project = createProject({ ...files, ...projectFiles(port) });
 		sessions = [];
 	});
 

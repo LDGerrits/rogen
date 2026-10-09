@@ -5,6 +5,7 @@ import {
 	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
+	PromptScript,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import {
@@ -68,7 +69,7 @@ const contextOf = (
 
 const ask = (
 	workspace: WorkspaceSpec,
-	answers: ConstructorParameters<typeof MockPromptService>[0],
+	answers: PromptScript,
 	name?: string,
 	existing: readonly string[] = []
 ) =>

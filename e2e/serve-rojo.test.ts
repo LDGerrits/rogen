@@ -9,7 +9,12 @@ import {
 	invocation,
 	writeProjectFile,
 } from "./harness.js";
-import { config, template, useServeProject } from "./serve-fixtures.js";
+import {
+	config,
+	projectFiles,
+	template,
+	useServeProject,
+} from "./serve-fixtures.js";
 
 async function rojoProject(port: number): Promise<string | undefined> {
 	try {
@@ -220,11 +225,7 @@ describeWithRojo("end to end serve", () => {
 		await eventually(() => {
 			expect(first.output).toContain("Serving default");
 		}, 20_000);
-		const checkout = createProject({
-			"default.rogen.json": config(),
-			"template.project.json": template(serve.port),
-			"src/A.server.luau": "",
-		});
+		const checkout = createProject(projectFiles(serve.port));
 		try {
 			const second = serve.start([], checkout.dir);
 

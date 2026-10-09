@@ -10,6 +10,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import {
 	CANCEL,
 	MockPromptService,
+	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
@@ -17,6 +18,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
+const WHAT_TO_ADD = "default.rogen.json exists. What do you want to add?";
 const directory = path.resolve("/mock/my-game");
 
 describe("CoreInitService", () => {
@@ -572,7 +574,7 @@ describe("CoreInitService", () => {
 			});
 
 			const planWith = async (
-				answers: ConstructorParameters<typeof MockPromptService>[0],
+				answers: PromptScript,
 				names: readonly string[] = [],
 				existing: readonly string[] = []
 			) => {
@@ -588,9 +590,11 @@ describe("CoreInitService", () => {
 					"Place name": "arena",
 				});
 
-				expect(prompts.asked[0]).toBe(
-					"default.rogen.json exists. What do you want to add?"
-				);
+				expect(prompts.asked).toEqual([
+					WHAT_TO_ADD,
+					"Place name",
+					"Place folder",
+				]);
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual([
@@ -602,9 +606,7 @@ describe("CoreInitService", () => {
 			it("should plan nothing when the user cancels what to add", async () => {
 				const { prompts, result } = await planWith([CANCEL]);
 
-				expect(prompts.asked).toEqual([
-					"default.rogen.json exists. What do you want to add?",
-				]);
+				expect(prompts.asked).toEqual([WHAT_TO_ADD]);
 				expect(result.unwrap()).toBeUndefined();
 			});
 
@@ -650,10 +652,7 @@ describe("CoreInitService", () => {
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual(["prod.rogen.json"]);
-				expect(prompts.asked).toEqual([
-					"default.rogen.json exists. What do you want to add?",
-					"Config name",
-				]);
+				expect(prompts.asked).toEqual([WHAT_TO_ADD, "Config name"]);
 			});
 
 			it("should reject an extending config whose project file exists", async () => {
@@ -664,8 +663,7 @@ describe("CoreInitService", () => {
 
 			it("should ask every question again for a separate config", async () => {
 				const { prompts, result } = await planWith({
-					"default.rogen.json exists. What do you want to add?":
-						"separate",
+					[WHAT_TO_ADD]: "separate",
 					"Config name": "test",
 				});
 
@@ -673,19 +671,20 @@ describe("CoreInitService", () => {
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual(["test.rogen.json"]);
 				expect(prompts.asked.slice(0, 3)).toEqual([
-					"default.rogen.json exists. What do you want to add?",
+					WHAT_TO_ADD,
 					"Config name",
 					"Language",
 				]);
 			});
 
 			it("should fail at once when a given place name is taken", async () => {
-				const { result } = await planWith(
+				const { prompts, result } = await planWith(
 					{},
 					["arena"],
 					["arena.rogen.json"]
 				);
 
+				expect(prompts.asked).toEqual([]);
 				expect(
 					result.isErr() &&
 						result.error instanceof DiagnosticsError &&
