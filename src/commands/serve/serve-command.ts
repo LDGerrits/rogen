@@ -177,9 +177,8 @@ registerCommand(
 					shutdown.p.then(() => undefined),
 					stopped.p,
 				]);
-				const running = session.targets;
 				await session.stop();
-				if (!stop) log.shutdown(plan, running);
+				if (!stop) log.shutdown(plan, session.targets);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return ok(undefined);

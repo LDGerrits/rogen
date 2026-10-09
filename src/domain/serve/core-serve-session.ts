@@ -1,6 +1,6 @@
 import path from "path";
 import { DeferredPromise } from "../../base/async.js";
-import { AbstractDisposable } from "../../base/disposable.js";
+import { AbstractDisposable, DisposableStore } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -14,9 +14,10 @@ import {
 	ProcessExit,
 	ProcessService,
 } from "../../platform/process/process-service.js";
+import { ResolvedConfig } from "../config/config.js";
 import { buildableConfig } from "../config/config-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
-import { leafConfigs } from "./serve.js";
+import { ServedConfigs } from "./serve.js";
 import {
 	ServeChange,
 	ServePlan,
@@ -53,8 +54,13 @@ const exitCodeText = (code: number) =>
 interface StartedServer {
 	readonly target: ServeTarget;
 	readonly child: ChildProcess;
+	/** Its output reader and listeners, disposed once it is stopped on purpose. */
+	readonly store: DisposableStore;
+	exited: boolean;
 	/** Stopped on purpose, as its config no longer wants it there; its exit is no failure. */
 	retiring: boolean;
+	/** The write of its record, once it answered. */
+	record?: Promise<void>;
 }
 
 const builtOutcomes: ReadonlySet<string> = new Set(["wrote", "unchanged"]);
@@ -83,16 +89,16 @@ export class CoreServeSession
 	readonly onDidStop: Event<ServerStop> = this._onDidStop.event;
 
 	private readonly servers = new Map<string, StartedServer>();
-	/** The configs a server the session didn't start serves. */
-	private readonly servedElsewhere = new Set<string>();
+	/** The servers being stopped on purpose, which the session's own stop waits for. */
+	private readonly retirements = new Set<Promise<void>>();
+	/** The address of each config a server the session didn't start serves. */
+	private readonly servedElsewhere = new Map<string, string>();
 	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
-	/** Why each config to serve couldn't be, by the address it was refused at, so a refusal is said once. */
+	/** The address each config to serve was refused at, so a refusal is said once. */
 	private readonly refused = new Map<string, string>();
 	private launched = false;
 	private reconciling: Promise<void> = Promise.resolve();
-	/** The targets whose server answered, which the session wrote a record for. */
-	private readonly recorded: ServeTarget[] = [];
 	/** The first round of builds, or the error that ended it before it said anything. */
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
@@ -149,12 +155,13 @@ export class CoreServeSession
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
-		for (const { config } of this.plan.running)
-			this.servedElsewhere.add(config.file);
+		for (const { config, address } of this.plan.running)
+			this.servedElsewhere.set(config.file, address.toString());
 		this.launched = true;
 		return ok(undefined);
 	}
 
+	/** Ends every server without waiting on a reconcile in flight, which starts nothing once the session stops. */
 	stop(): Promise<void> {
 		this.stopping = true;
 		this.stopped ??= (async () => {
@@ -162,12 +169,13 @@ export class CoreServeSession
 				this.firstUpdate.complete(undefined);
 			for (const timer of this.timers) clearTimeout(timer);
 			this.timers.clear();
-			await this.reconciling;
-			await Promise.all(
-				[...this.servers.values()].map(({ child }) => child.terminate())
-			);
+			const servers = [...this.servers.values()];
+			await Promise.all([
+				...servers.map(({ child }) => child.terminate()),
+				...this.retirements,
+			]);
 			await Promise.allSettled(
-				this.recorded.map(({ address }) => this.records.remove(address))
+				servers.map((server) => this.unrecord(server))
 			);
 			await this.watch.stop();
 		})();
@@ -177,78 +185,98 @@ export class CoreServeSession
 	/** Ends the servers if `stop` wasn't awaited, then drops the subscriptions. */
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
+		for (const { store } of this.servers.values()) store[Symbol.dispose]();
 		super[Symbol.dispose]();
 	}
 
-	/** Starts a server for each config to serve now that has none, and stops those whose config is gone, extended or moved. */
+	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
-		const { selection, tool, serverArgs, named } = this.plan;
-		const configs = selection.entries.flatMap(
-			(entry) => buildableConfig(entry) ?? []
+		const served = new ServedConfigs(
+			this.plan.selection.entries.flatMap(
+				(entry) => buildableConfig(entry) ?? []
+			),
+			this.plan.named
 		);
-		const leaves = leafConfigs(configs);
-		const wanted = named
-			? configs.filter(({ file }) => named.has(file))
-			: leaves;
-		const wantedFiles = new Set(wanted.map(({ file }) => file));
-		const present = new Set(configs.map(({ file }) => file));
-
+		const wanted = new Set(served.configs.map(({ file }) => file));
+		const present = new Set(
+			this.plan.selection.entries.map(({ file }) => file)
+		);
 		for (const [file, server] of this.servers)
-			if (!wantedFiles.has(file))
+			if (!wanted.has(file))
 				await this.retire(
 					server,
 					present.has(file) ? "extended" : "removed"
 				);
-		for (const file of this.servedElsewhere)
-			if (!wantedFiles.has(file)) this.servedElsewhere.delete(file);
+		for (const known of [this.servedElsewhere, this.refused])
+			for (const file of [...known.keys()])
+				if (!wanted.has(file)) known.delete(file);
+		for (const config of served.configs) {
+			if (this.stopping) return;
+			await this.follow(config, served);
+		}
+	}
 
-		// A name that several servable configs share can't tell which of them a server serves.
-		const servable = new Set([...leaves, ...wanted]);
-		const sharedName = (project: string) =>
-			[...servable].filter(({ name }) => name === project).length > 1;
-		for (const config of wanted) {
-			if (this.stopping) return;
-			const target = await this.ports.targetOf(config, tool, serverArgs);
-			const address = target.address.toString();
-			const started = this.servers.get(config.file);
-			if (started) {
-				if (started.target.address.toString() === address) continue;
-				await this.retire(started, "moved");
-			}
-			if (this.servedElsewhere.has(config.file)) continue;
-			if (!this.built.has(config.file)) continue;
-			const others = this.targets;
-			const holder = others.find(
-				(other) => other.address.port === target.address.port
-			);
-			const checked = holder
-				? err(this.ports.sharedPort(target, holder))
-				: await this.ports.check(
-						target,
-						others,
-						tool.server,
-						sharedName(target.project)
-					);
-			if (this.stopping) return;
-			if (checked.isErr()) {
-				if (this.refused.get(config.file) !== address)
-					this._onDidChange.fire({
-						kind: "refused",
-						target,
-						diagnostic: checked.error,
-					});
-				this.refused.set(config.file, address);
-				continue;
-			}
-			this.refused.delete(config.file);
-			if (checked.value.running) {
-				this.servedElsewhere.add(config.file);
+	/** Serves `config` where its template puts it now, unless it is served there already or can't be. A server moving to a port it can't have stays where it is. */
+	private async follow(
+		config: ResolvedConfig,
+		served: ServedConfigs
+	): Promise<void> {
+		const { tool, serverArgs } = this.plan;
+		const target = await this.ports.targetOf(config, tool, serverArgs);
+		const address = target.address.toString();
+		const started = this.servers.get(config.file);
+		if (started?.target.address.toString() === address) return;
+		if (!this.built.has(config.file)) return;
+
+		const others = this.targets.filter(
+			(other) => other.config.file !== config.file
+		);
+		const holder = others.find(
+			(other) => other.address.port === target.address.port
+		);
+		const refusedHere = this.refused.get(config.file) === address;
+		const elsewhere = this.servedElsewhere.get(config.file) === address;
+		if (!holder && (refusedHere || elsewhere)) {
+			// Only a port that freed up, or a server that left it, changes anything, and one probe tells.
+			const state = await this.probe.probe(target.address, tool.server);
+			if (elsewhere && state.kind === "serving") return;
+			if (refusedHere && state.kind !== "free") return;
+		}
+		// Its own server holds the port only when nothing but the host moved.
+		const samePort = started?.target.address.port === target.address.port;
+		if (started && samePort) await this.retire(started, "moved");
+		const checked = holder
+			? err(this.ports.sharedPort(target, holder))
+			: await this.ports.check(
+					target,
+					others,
+					tool.server,
+					served.sharesName(target.project)
+				);
+		if (this.stopping) return;
+		if (checked.isErr()) {
+			if (!refusedHere)
+				this._onDidChange.fire({
+					kind: "refused",
+					target,
+					diagnostic: checked.error,
+				});
+			this.refused.set(config.file, address);
+			return;
+		}
+		this.refused.delete(config.file);
+		if (started && !samePort) await this.retire(started, "moved");
+		if (checked.value.running) {
+			if (!elsewhere)
 				this._onDidChange.fire({
 					kind: "running",
 					target: checked.value,
 				});
-			} else this.launch(checked.value);
+			this.servedElsewhere.set(config.file, address);
+			return;
 		}
+		this.servedElsewhere.delete(config.file);
+		this.launch(checked.value);
 	}
 
 	private async retire(
@@ -258,18 +286,32 @@ export class CoreServeSession
 		const { target } = server;
 		server.retiring = true;
 		this.servers.delete(target.config.file);
-		await server.child.terminate();
-		const index = this.recorded.indexOf(target);
-		if (index !== -1) {
-			this.recorded.splice(index, 1);
-			await this.records.remove(target.address).catch(() => undefined);
+		const retired = (async () => {
+			await server.child.terminate();
+			await this.unrecord(server);
+			server.store[Symbol.dispose]();
+		})();
+		this.retirements.add(retired);
+		try {
+			await retired;
+		} finally {
+			this.retirements.delete(retired);
 		}
 		this._onDidChange.fire({ kind: "retired", target, reason });
 	}
 
+	/** Drops the record of `server`, once its write is done, so no late write outlives it. */
+	private async unrecord(server: StartedServer): Promise<void> {
+		if (!server.record) return;
+		await server.record;
+		await this.records.remove(server.target.address).catch(() => undefined);
+	}
+
 	private launch(target: ServeTarget): void {
+		if (this.stopping) return;
 		const { tool, serverArgs, selection } = this.plan;
-		const child = this._register(
+		const store = new DisposableStore();
+		const child = store.add(
 			this.processService.spawn(
 				tool.file,
 				tool.server.serveArgs(
@@ -279,47 +321,49 @@ export class CoreServeSession
 				{ cwd: selection.home }
 			)
 		);
-		const server: StartedServer = { target, child, retiring: false };
+		const server: StartedServer = {
+			target,
+			child,
+			store,
+			exited: false,
+			retiring: false,
+		};
 		this.servers.set(target.config.file, server);
-		const output = this._register(new ServerOutput(tool.server));
+		const output = store.add(new ServerOutput(tool.server));
 		let said = false;
-		this._register(child.onDidOutput((text) => output.write(text)));
-		this._register(
+		store.add(child.onDidOutput((text) => output.write(text)));
+		store.add(
 			output.onDidMessage((message) => {
 				if (message.severity !== "debug") said = true;
 				this._onDidSay.fire({ target, message });
 			})
 		);
-		let exited = false;
-		this._register(
+		store.add(
 			child.onDidExit((exit) => {
-				exited = true;
+				server.exited = true;
 				output.end();
 				if (!this.stopping && !server.retiring)
 					this.reportStop(target, exit, said);
 			})
 		);
-		this.awaitReady(target, () => exited, READY_POLL_MS.first);
+		this.awaitReady(server, READY_POLL_MS.first);
 	}
 
-	/** Asks the target's port until its server answers for the project, while the server runs. */
-	private awaitReady(
-		target: ServeTarget,
-		exited: () => boolean,
-		delay: number
-	): void {
+	/** Asks the server's port until it answers for the project, while it runs. */
+	private awaitReady(server: StartedServer, delay: number): void {
+		const { target } = server;
 		const timer = setTimeout(() => {
 			this.timers.delete(timer);
 			this.probe
 				.probe(target.address, this.plan.tool.server)
 				.then((state) => {
-					if (this.stopping || exited()) return;
+					if (this.stopping || server.exited || server.retiring)
+						return;
 					if (
 						state.kind === "serving" &&
 						state.info.project === target.project
 					) {
-						this.recorded.push(target);
-						void this.records
+						server.record = this.records
 							.write(
 								target.address,
 								state.info,
@@ -330,8 +374,7 @@ export class CoreServeSession
 						return;
 					}
 					this.awaitReady(
-						target,
-						exited,
+						server,
 						Math.min(delay * 2, READY_POLL_MS.max)
 					);
 				})

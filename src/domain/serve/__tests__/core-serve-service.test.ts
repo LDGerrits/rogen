@@ -841,6 +841,81 @@ describe("CoreServeService", () => {
 				expect(stops).toEqual([]);
 			});
 
+			it("should keep a server where it is when its template moves it to a port it can't have", async () => {
+				await lobby();
+				await start();
+
+				await memFs.writeFile(
+					"/repo/templates/lobby.project.json",
+					template({ name: "Lobby", servePort: 34872 })
+				);
+				await settle();
+
+				expect(spawnedProjects()).toEqual([
+					"default.project.json",
+					"lobby.project.json",
+				]);
+				expect(changes).toEqual([
+					"refused lobby: Port 34872 is taken by the server of default, so lobby can't be served there. Give lobby its own servePort in lobby.project.json, or serve it on its own, as 'rogen serve lobby'.",
+				]);
+			});
+
+			it("should start the server of a config served elsewhere once that server is gone", async () => {
+				requests.answer(
+					"http://127.0.0.1:34900/api/rojo",
+					rojoInfo("Lobby")
+				);
+				await lobby();
+				await start();
+				expect(spawnedProjects()).toEqual(["default.project.json"]);
+
+				requests.responses.delete("http://127.0.0.1:34900/api/rojo");
+				await memFs.writeFile("/repo/src/B.luau", "");
+				await settle();
+
+				expect(spawnedProjects()).toEqual([
+					"default.project.json",
+					"lobby.project.json",
+				]);
+			});
+
+			it("should refuse a config again when it comes back after it was removed", async () => {
+				await start();
+				await lobby(34872);
+				await settle();
+				await memFs.delete("/repo/lobby.rogen.json");
+				await settle();
+
+				await lobby(34872);
+				await settle();
+
+				expect(
+					changes.filter((change) => change.startsWith("refused"))
+				).toHaveLength(2);
+			});
+
+			it("should probe a refused config's port once per rebuild, not look for a free one again", async () => {
+				await start();
+				requests.responses.set("http://127.0.0.1:34900/api/rojo", {
+					status: 404,
+					contentType: "text/plain",
+					body: new Uint8Array(),
+				});
+				await lobby();
+				await settle();
+				requests.requested.length = 0;
+
+				await memFs.writeFile("/repo/src/B.luau", "");
+				await settle();
+
+				expect(
+					requests.requested.filter((url) => !url.includes(":34872/"))
+				).toEqual([
+					"http://127.0.0.1:34900/api/rojo",
+					"http://127.0.0.1:34900/details",
+				]);
+			});
+
 			it("should leave the servers alone on a rebuild that changes no config", async () => {
 				await lobby();
 				await start();

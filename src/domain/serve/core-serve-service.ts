@@ -10,7 +10,7 @@ import { ConfigOptionValues } from "../config/config.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { leafConfigs } from "./serve.js";
+import { ServedConfigs } from "./serve.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -59,14 +59,8 @@ export class CoreServeService implements ServeService {
 		const { selection, named } = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const leaves = leafConfigs(configs.value);
-		const served = named
-			? configs.value.filter(({ file }) => named.has(file))
-			: leaves;
-		// A name that several servable configs share can't tell which of them a server serves.
-		const servable = new Set([...leaves, ...served]);
-		const sharedName = (project: string) =>
-			[...servable].filter(({ name }) => name === project).length > 1;
+		const servedConfigs = new ServedConfigs(configs.value, named);
+		const served = servedConfigs.configs;
 
 		const tool = await this.finder.find(
 			selection.home,
@@ -103,7 +97,7 @@ export class CoreServeService implements ServeService {
 				target,
 				targets,
 				tool.value.server,
-				sharedName(target.project)
+				servedConfigs.sharesName(target.project)
 			);
 			if (result.isOk()) checked.push(result.value);
 			else taken.push(result.error);

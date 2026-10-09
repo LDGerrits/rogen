@@ -350,6 +350,21 @@ describe("serve command", () => {
 			]);
 		});
 
+		it("should end the JSON lines with every server running at shutdown, one started while serving included", async () => {
+			const result = serve([], { json: true });
+			await settle();
+			await addLobby(34900);
+
+			lifecycle.shutdown();
+			await result;
+
+			expect(
+				printed()
+					.filter((line) => "stopped" in line)
+					.map(({ stopped }) => stopped.config)
+			).toEqual(["default", "lobby"]);
+		});
+
 		it("should print a refusal as a JSON line of its own", async () => {
 			void serve([], { json: true });
 			await settle();
