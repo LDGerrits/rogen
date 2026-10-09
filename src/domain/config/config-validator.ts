@@ -126,7 +126,7 @@ export class ConfigValidator {
 						location,
 						`variant "${variant}" is invalid: ${NAME_RULE}.`
 					);
-				} else if (variant in this.routes) {
+				} else if (Object.hasOwn(this.routes, variant)) {
 					this.problems.error(
 						"config.variantClashesWithRoute",
 						location,

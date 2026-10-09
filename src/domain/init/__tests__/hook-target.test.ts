@@ -1,5 +1,10 @@
 import { agentHook } from "../agent-hook.js";
-import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "../hook-target.js";
+import {
+	HOOK_SCRIPT_FILE,
+	HOOK_TARGETS,
+	HookEntry,
+	registerHook,
+} from "../hook-target.js";
 
 const target = (name: string) => {
 	const found = HOOK_TARGETS.find((candidate) => candidate.name === name);
@@ -8,9 +13,18 @@ const target = (name: string) => {
 };
 
 const registered = (name: string) => {
-	const registration = target(name).register(undefined);
+	const registration = registerHook(undefined, target(name).hook);
 	if (registration.kind !== "added") throw new Error(registration.kind);
 	return JSON.parse(registration.text);
+};
+
+const entry = (command: string) => ({ hooks: [{ type: "command", command }] });
+const SPEC: HookEntry = { event: "Stop", entry: entry("mine.sh") };
+
+const added = (text: string | undefined, spec = SPEC) => {
+	const registration = registerHook(text, spec);
+	if (registration.kind !== "added") throw new Error(registration.kind);
+	return registration.text;
 };
 
 describe("hook targets", () => {
@@ -92,8 +106,10 @@ describe("hook targets", () => {
 	it("should have every command run the script the docs hold", () => {
 		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.sh");
 		expect(agentHook).toMatch(/^#!\/usr\/bin\/env bash\n/);
-		for (const { register } of HOOK_TARGETS)
-			expect(register(undefined)).toMatchObject({ kind: "added" });
+		for (const { hook } of HOOK_TARGETS)
+			expect(registerHook(undefined, hook)).toMatchObject({
+				kind: "added",
+			});
 	});
 
 	it("should ask Codex to be trusted, and no other agent", () => {
@@ -102,5 +118,103 @@ describe("hook targets", () => {
 				({ name }) => name
 			)
 		).toEqual(["Codex"]);
+	});
+});
+
+describe("registerHook", () => {
+	it("should write new settings holding only the entry under its event", () => {
+		expect(JSON.parse(added(undefined))).toEqual({
+			hooks: { Stop: [entry("mine.sh")] },
+		});
+	});
+
+	it("should end new settings with a newline, indented with tabs", () => {
+		expect(added(undefined)).toMatch(/^\{\n\t"hooks": \{\n\t\t"Stop"/);
+		expect(added(undefined).endsWith("}\n")).toBe(true);
+	});
+
+	it("should put the version of a new file first", () => {
+		const text = added(undefined, { ...SPEC, version: 1 });
+
+		expect(Object.keys(JSON.parse(text))).toEqual(["version", "hooks"]);
+	});
+
+	it("should add the version to a file that has none", () => {
+		const text = added('{ "other": 1 }', { ...SPEC, version: 1 });
+
+		expect(Object.keys(JSON.parse(text))).toEqual([
+			"version",
+			"other",
+			"hooks",
+		]);
+	});
+
+	it("should leave the version a file has as it is", () => {
+		expect(
+			JSON.parse(added('{ "version": 2 }', { ...SPEC, version: 1 }))
+				.version
+		).toBe(2);
+	});
+
+	it("should keep what the settings already hold", () => {
+		const settings = JSON.stringify({
+			model: "opus",
+			hooks: {
+				Stop: [entry("other.sh")],
+				PreToolUse: [entry("guard.sh")],
+			},
+		});
+
+		expect(JSON.parse(added(settings))).toEqual({
+			model: "opus",
+			hooks: {
+				Stop: [entry("other.sh"), entry("mine.sh")],
+				PreToolUse: [entry("guard.sh")],
+			},
+		});
+	});
+
+	it("should add the hooks of settings that have none", () => {
+		expect(JSON.parse(added('{ "model": "opus" }'))).toEqual({
+			model: "opus",
+			hooks: { Stop: [entry("mine.sh")] },
+		});
+	});
+
+	it("should keep the indentation of the file", () => {
+		expect(added('{\n    "model": "opus"\n}\n')).toMatch(
+			/^\{\n {4}"model"/
+		);
+		expect(added('{\n\t"model": "opus"\n}')).toMatch(/^\{\n\t"model"/);
+		expect(added('{\n\t"model": "opus"\n}').endsWith("}")).toBe(true);
+	});
+
+	it("should leave settings that already name the script", () => {
+		const settings = JSON.stringify({
+			hooks: {
+				Stop: [entry('"$DIR"/.agents/hooks/rogen-check.sh')],
+			},
+		});
+
+		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
+	});
+
+	it("should add to the event it is given, not another", () => {
+		const settings = JSON.stringify({
+			hooks: { Stop: [entry("/x/rogen-check.sh")] },
+		});
+
+		expect(
+			registerHook(settings, { ...SPEC, event: "AfterAgent" }).kind
+		).toBe("added");
+	});
+
+	it.each([
+		["comments", '{ // no\n "model": "opus" }'],
+		["a list", "[]"],
+		["hooks that are not an object", '{ "hooks": [] }'],
+		["an event that is not a list", '{ "hooks": { "Stop": {} } }'],
+	])("should not edit settings with %s", (_, settings) => {
+		expect(registerHook(settings, SPEC).kind).toBe("unreadable");
 	});
 });

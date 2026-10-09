@@ -24,7 +24,6 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { diagnosticsOf } from "../build/build-log.js";
 
 const CheckOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -126,10 +125,10 @@ registerCommand(
 			buildService: BuildService,
 			selection: ConfigSelection
 		): Promise<Result<Diagnostic[], Error>> {
-			const builds = await buildService.check(selection);
-			return builds.isErr()
-				? builds
-				: ok(diagnosticsPerFile(diagnosticsOf(builds.value)));
+			const run = await buildService.check(selection);
+			return run.isErr()
+				? run
+				: ok(diagnosticsPerFile(run.value.diagnostics));
 		}
 	}
 );

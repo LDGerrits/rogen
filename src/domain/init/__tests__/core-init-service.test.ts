@@ -184,7 +184,7 @@ describe("CoreInitService", () => {
 			expect(file).toEqual({
 				fileName: "AGENTS.md",
 				content: `# Team rules\n\nBe kind.\n\n${agentBlock}`,
-				appends: true,
+				addition: "Rogen's rules",
 			});
 		});
 
@@ -194,7 +194,7 @@ describe("CoreInitService", () => {
 			expect(await agentFile()).toEqual({
 				fileName: "CLAUDE.md",
 				content: `Use tabs.\n\n${agentBlock}`,
-				appends: true,
+				addition: "Rogen's rules",
 			});
 		});
 
@@ -239,13 +239,25 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should not ask, or write it, in an init that isn't the first", async () => {
+		it("should not write it beside a config when it can't ask", async () => {
 			await write("lobby.rogen.json", "{}");
 
 			const plan = (await serviceFor().plan(["arena"])).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"arena.rogen.json",
+			]);
+		});
+
+		it("should offer it beside a config that isn't default, and write only it", async () => {
+			await write("lobby.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor(new MockPromptService(["agent"])).plan([])
+			).unwrap();
+
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"AGENTS.md",
 			]);
 		});
 
@@ -395,8 +407,7 @@ describe("CoreInitService", () => {
 			const settings = fileOf(plan, CLAUDE);
 
 			expect(settings).toMatchObject({
-				appends: true,
-				summary: "the Rogen hook",
+				addition: "the Rogen hook",
 			});
 			expect(JSON.parse(settings?.content ?? "")).toMatchObject({
 				model: "opus",

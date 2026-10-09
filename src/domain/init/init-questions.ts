@@ -64,24 +64,31 @@ export class InitQuestions {
 	}
 
 	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
+	/** What to add beside the configs here; a place or an extending config only beside `default.rogen.json`. */
 	async whatToAdd(
+		hasDefault: boolean,
 		agentFile?: string,
 		hookAgents: readonly string[] = []
 	): Promise<Addition | undefined> {
-		if (!this.interactive) return "place";
+		const first: Addition = hasDefault ? "place" : "separate";
+		if (!this.interactive) return first;
 		return this.promptService.select<Addition>({
-			message: `${ConfigSet.DEFAULT_FILE} exists. What do you want to add?`,
+			message: `${hasDefault ? ConfigSet.DEFAULT_FILE : "A config"} exists. What do you want to add?`,
 			choices: [
-				{
-					value: "place",
-					label: "A place",
-					hint: "another Roblox place that shares default's code",
-				},
-				{
-					value: "extending",
-					label: "A config that extends default",
-					hint: "the same game with other variants or excludes",
-				},
+				...(hasDefault
+					? [
+							{
+								value: "place" as const,
+								label: "A place",
+								hint: "another Roblox place that shares default's code",
+							},
+							{
+								value: "extending" as const,
+								label: "A config that extends default",
+								hint: "the same game with other variants or excludes",
+							},
+						]
+					: []),
 				{
 					value: "separate",
 					label: "A separate config",
@@ -106,7 +113,7 @@ export class InitQuestions {
 						]
 					: []),
 			],
-			initialValue: "place",
+			initialValue: first,
 		});
 	}
 

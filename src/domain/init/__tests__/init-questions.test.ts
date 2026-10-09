@@ -1103,6 +1103,7 @@ describe("InitQuestions askProject template", () => {
 		expect(result?.template).toEqual({
 			kind: "copy",
 			from: "default.project.json",
+			content: "{}",
 		});
 		expect(result?.mounts).toEqual([
 			{
@@ -1186,6 +1187,7 @@ describe("InitQuestions addAgentHook", () => {
 
 describe("InitQuestions whatToAdd", () => {
 	const valuesListed = async (
+		hasDefault: boolean,
 		agentFile?: string,
 		hookAgents?: readonly string[]
 	) => {
@@ -1196,13 +1198,38 @@ describe("InitQuestions whatToAdd", () => {
 			values = options.choices.map(({ value }) => value);
 			return original(options);
 		}) as typeof prompts.select;
-		await new InitQuestions(prompts, true).whatToAdd(agentFile, hookAgents);
+		await new InitQuestions(prompts, true).whatToAdd(
+			hasDefault,
+			agentFile,
+			hookAgents
+		);
 		return values;
 	};
 
 	it("should list the hook only where it is offered", async () => {
-		expect(await valuesListed("AGENTS.md", ["Codex"])).toContain("hook");
-		expect(await valuesListed("AGENTS.md", [])).not.toContain("hook");
-		expect(await valuesListed()).not.toContain("hook");
+		expect(await valuesListed(true, "AGENTS.md", ["Codex"])).toContain(
+			"hook"
+		);
+		expect(await valuesListed(true, "AGENTS.md", [])).not.toContain("hook");
+		expect(await valuesListed(true)).not.toContain("hook");
+	});
+
+	it("should offer a place and an extending config only beside default", async () => {
+		expect(await valuesListed(true)).toEqual([
+			"place",
+			"extending",
+			"separate",
+		]);
+		expect(await valuesListed(false, "AGENTS.md")).toEqual([
+			"separate",
+			"agent",
+		]);
+	});
+
+	it("should add a separate config when it can't ask and there is no default", async () => {
+		const questions = new InitQuestions(new MockPromptService([]), false);
+
+		expect(await questions.whatToAdd(false)).toBe("separate");
+		expect(await questions.whatToAdd(true)).toBe("place");
 	});
 });

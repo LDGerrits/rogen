@@ -1406,6 +1406,15 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
+			it("should accept a variant named like a property every object has", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "server": "ServerScriptService" },
+	"variants": ["constructor"]
+}`);
+
+				expect(problems).toEqual([]);
+			});
+
 			it("should reject two route keys that differ only in the case of their first letter", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService", "Server": "Workspace" }

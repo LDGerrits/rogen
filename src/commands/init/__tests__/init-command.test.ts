@@ -864,6 +864,7 @@ describe("init command", () => {
 			const prompts = new MockPromptService([
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
 				true,
 			]);
 
@@ -875,7 +876,7 @@ describe("init command", () => {
 					resource: path.join(cwd, "sync.rogen.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(3);
+			expect(prompts.asked).toHaveLength(4);
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 

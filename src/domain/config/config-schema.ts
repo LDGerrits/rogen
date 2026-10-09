@@ -88,16 +88,25 @@ const modesSchema: JSONSchema = {
 	},
 };
 
+/** How a relative path in a field resolves against the directory of the file that wrote it: a path or a list of them with `path.resolve`, globs joined in POSIX form. */
+export type PathForm = "path" | "paths" | "globs";
+
 interface ConfigField {
 	readonly schema: JSONSchema;
 	/** How a child's value combines with its parent's across `extends`. */
 	readonly merge: MergePolicy;
+	/** What paths it holds; a field of objects says it for each object's fields. */
+	readonly paths?:
+		PathForm | { readonly each: Readonly<Record<string, PathForm>> };
+	/** Only the config itself sets it; a parent's value is dropped. */
+	readonly leafOnly?: true;
 }
 
-/** One entry per field of a config file, so a field can't be added without saying how it merges. */
+/** One entry per field of a config file, so a field can't be added without saying how it merges and what paths it holds. */
 const fields: Record<keyof RogenConfig, ConfigField> = {
 	$schema: {
 		merge: "replace",
+		leafOnly: true,
 		schema: {
 			type: "string",
 			description: "The published JSON Schema URI for editor validation.",
@@ -105,6 +114,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	extends: {
 		merge: "replace",
+		leafOnly: true,
 		schema: {
 			type: "string",
 			description:
@@ -113,6 +123,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	rootDirs: {
 		merge: "append",
+		paths: "paths",
 		schema: {
 			type: "array",
 			items: { type: "string" },
@@ -129,6 +140,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	conflicts: { merge: "append", schema: conflictsSchema },
 	modes: {
 		merge: { each: { variants: "append", exclude: "append" } },
+		paths: { each: { exclude: "globs" } },
 		schema: modesSchema,
 	},
 	mode: {
@@ -142,6 +154,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	exclude: {
 		merge: "append",
+		paths: "globs",
 		schema: {
 			type: "array",
 			items: { type: "string" },
@@ -155,6 +168,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	template: {
 		merge: "replace",
+		paths: "path",
 		schema: {
 			type: "string",
 			description:
@@ -164,6 +178,7 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	syncDir: {
 		merge: "replace",
+		paths: "path",
 		schema: {
 			type: "string",
 			description:
@@ -175,6 +190,8 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	},
 	outFile: {
 		merge: "replace",
+		paths: "path",
+		leafOnly: true,
 		schema: {
 			type: "string",
 			description:
@@ -189,6 +206,20 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 export const configMergePolicies: MergePolicies = Object.fromEntries(
 	Object.entries(fields).map(([key, field]) => [key, field.merge])
 );
+
+/** What paths each field holds, for the fields that hold any. */
+export const configPathForms: Readonly<
+	Record<string, NonNullable<ConfigField["paths"]>>
+> = Object.fromEntries(
+	Object.entries(fields).flatMap(([key, field]) =>
+		field.paths === undefined ? [] : [[key, field.paths] as const]
+	)
+);
+
+/** The fields a parent in an `extends` chain never passes on. */
+export const configLeafOnlyKeys: readonly string[] = Object.entries(fields)
+	.filter(([, field]) => field.leafOnly)
+	.map(([key]) => key);
 
 /** What a `*.rogen.json` may hold; a key outside it is an error. */
 export const configSchema: JSONSchema = {

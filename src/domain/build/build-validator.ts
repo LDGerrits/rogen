@@ -27,8 +27,6 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
 
-const DIAGNOSED_PATHS = 10;
-
 /** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
 	noted: ReadonlyMap<string, NotedName<unknown>>
@@ -101,7 +99,7 @@ export class BuildValidator {
 					rootDir,
 					shown: toPosix(path.relative(configDir, rootDir)),
 					key,
-					kind: this.kindOf(key),
+					kind: this.config.keys.kindOf(key),
 					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
 					parent:
 						relativeParent !== "" &&
@@ -175,34 +173,21 @@ export class BuildValidator {
 	}
 
 	private unclaimedMeta(): Diagnostic[] {
-		return this.diagnosePaths(
-			this.placement
-				.unclaimedMeta()
-				.map(({ path, hint }) => [path, hint]),
-			(resource, hint) =>
+		return this.placement
+			.unclaimedMeta()
+			.map(({ path: resource, hint }) =>
 				warningDiagnostic(
 					"meta.unclaimed",
 					{ resource },
 					`belongs to no file, so Rojo ignores it. ${hint ? `${capitalized(hint)}.` : "A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."}`
 				)
-		);
-	}
-
-	/** A folder or marker that only differs from a declared key in letter case is read as an ordinary name. */
-	/** What a declared key is, in the words a message names it. */
-	private kindOf(key: string): "mode" | "variant" | "route" {
-		const { keys } = this.config;
-		return keys.isMode(key)
-			? "mode"
-			: keys.isVariant(key)
-				? "variant"
-				: "route";
+			);
 	}
 
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
-		return this.diagnosePaths([...nearMisses], (resource, key) => {
-			const kind = this.kindOf(key);
+		return [...nearMisses].map(([resource, key]) => {
+			const kind = this.config.keys.kindOf(key);
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
@@ -313,15 +298,15 @@ export class BuildValidator {
 	}
 
 	private unrouted(): Diagnostic[] {
-		return this.diagnosePaths(
-			this.placement.leftOut.withStatus("unrouted"),
-			(resource) =>
+		return this.placement.leftOut
+			.withStatus("unrouted")
+			.map(([resource]) =>
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
 					'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
 				)
-		);
+			);
 	}
 
 	/** The files a bare server routing folder holds but a replicating route governs, with the server routes ignored. */
@@ -571,34 +556,12 @@ export class BuildValidator {
 				? [[outcome.meta.file, outcome.folder] as const]
 				: []
 		);
-		return this.diagnosePaths(metas, (resource, folder) =>
+		return metas.map(([resource, folder]) =>
 			warningDiagnostic(
 				"meta.appliesToNothing",
 				{ resource },
 				`applies to nothing, because ${folder} never becomes an instance. Move the meta into the folder that should get it.`
 			)
 		);
-	}
-
-	/** The first few items as indented lines, then how many more went unlisted. */
-	private listed<T>(
-		items: readonly T[],
-		line: (item: T) => string
-	): string[] {
-		const lines = items
-			.slice(0, DIAGNOSED_PATHS)
-			.map((item) => `  ${line(item)}`);
-		const unlisted = items.length - lines.length;
-		return unlisted > 0
-			? [...lines, `  ${unlisted} more like it aren't listed.`]
-			: lines;
-	}
-
-	/** One diagnostic per path. */
-	private diagnosePaths<T>(
-		paths: readonly (readonly [string, T])[],
-		diagnose: (path: string, item: T) => Diagnostic
-	): Diagnostic[] {
-		return paths.map(([path, item]) => diagnose(path, item));
 	}
 }

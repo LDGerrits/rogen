@@ -8,11 +8,14 @@ import {
 	ConfigSection,
 } from "../../platform/config/config-models.js";
 import { DiagnosticLocation } from "../../platform/diagnostics/diagnostic.js";
-import { configDefaults, configMergePolicies } from "./config-schema.js";
+import {
+	PathForm,
+	configDefaults,
+	configLeafOnlyKeys,
+	configMergePolicies,
+	configPathForms,
+} from "./config-schema.js";
 import { VariantSwitch, switchVariants } from "./variant-switch.js";
-
-/** The fields that hold a path, which resolve against the file that sets them. */
-const PATH_FIELDS = ["template", "syncDir", "outFile"] as const;
 
 /** Per-invocation values that sit above every layer of a config's chain. */
 export interface ConfigOverrides {
@@ -33,8 +36,6 @@ export interface ModeChoice {
 
 /** A config's chain merged with the defaults, its active mode and the command line, with each value traceable to the file that set it. */
 export class LayeredConfig {
-	private static readonly LEAF_ONLY_KEYS = ["extends", "$schema", "outFile"];
-
 	/** The config in the active mode. */
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
@@ -257,8 +258,7 @@ export class LayeredConfig {
 	private static layerModel(file: ConfigFile, isLeaf: boolean): ConfigModel {
 		const contents = { ...file.model.contents };
 		if (!isLeaf) {
-			for (const key of LayeredConfig.LEAF_ONLY_KEYS)
-				delete contents[key];
+			for (const key of configLeafOnlyKeys) delete contents[key];
 		}
 		return new ConfigModel(
 			LayeredConfig.absolutize(contents, path.dirname(file.file))
@@ -270,27 +270,48 @@ export class LayeredConfig {
 		contents: Record<string, unknown>,
 		dir: string
 	): Record<string, unknown> {
-		const absolute = (value: string) => path.resolve(dir, value);
+		const resolve = (value: unknown, form: PathForm): unknown => {
+			if (form === "path")
+				return typeof value === "string"
+					? path.resolve(dir, value)
+					: value;
+			if (!Array.isArray(value)) return value;
+			return form === "paths"
+				? value.map((entry) => path.resolve(dir, entry))
+				: value.map((glob) => path.posix.join(toPosix(dir), glob));
+		};
 		const result = { ...contents };
-
-		for (const key of PATH_FIELDS) {
+		for (const [key, form] of Object.entries(configPathForms)) {
+			if (!(key in result)) continue;
 			const value = result[key];
-			if (typeof value === "string") result[key] = absolute(value);
-		}
-		if (Array.isArray(result.rootDirs)) {
-			result.rootDirs = result.rootDirs.map(absolute);
-		}
-		const globs = (list: string[]) =>
-			list.map((glob) => path.posix.join(toPosix(dir), glob));
-		if (Array.isArray(result.exclude)) {
-			result.exclude = globs(result.exclude);
-		}
-		if (isObject(result.modes)) {
-			result.modes = Object.fromEntries(
-				Object.entries(result.modes).map(([name, body]) => [
+			if (typeof form === "string") {
+				result[key] = resolve(value, form);
+				continue;
+			}
+			if (!isObject(value)) continue;
+			result[key] = Object.fromEntries(
+				Object.entries(value).map(([name, body]) => [
 					name,
-					isObject(body) && Array.isArray(body.exclude)
-						? { ...body, exclude: globs(body.exclude) }
+					isObject(body)
+						? {
+								...body,
+								...Object.fromEntries(
+									Object.entries(form.each).flatMap(
+										([field, fieldForm]) =>
+											field in body
+												? [
+														[
+															field,
+															resolve(
+																body[field],
+																fieldForm
+															),
+														],
+													]
+												: []
+									)
+								),
+							}
 						: body,
 				])
 			);

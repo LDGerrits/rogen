@@ -19,11 +19,11 @@ import {
 	InstanceLocation,
 	Locations,
 	SyncTool,
-	missingRoutes,
 } from "./build.js";
 import { LocateTargets } from "./build-service.js";
 import { ConfigBuilder } from "./config-builder.js";
-import { FileLocator, PlannedFilesIndex } from "./file-locator.js";
+import { FileLocator, placesInstance } from "./file-locator.js";
+import { PlannedFilesIndex } from "./planned-files-index.js";
 
 /** What `where` asked about: the paths, resolved, and the instances. */
 interface Targets {
@@ -31,19 +31,6 @@ interface Targets {
 	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
 	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
-}
-
-/** Whether `location` is a file placed at `reference` or inside it. */
-function placesInstance(
-	location: FileLocation,
-	reference: InstanceReference
-): boolean {
-	return (
-		location.status === "placed" &&
-		[location.instancePath, ...(location.alsoAt ?? [])].some(
-			(instancePath) => reference.contains(instancePath)
-		)
-	);
 }
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
@@ -54,14 +41,11 @@ export class Locator {
 		private readonly tools: readonly SyncTool[]
 	) {}
 
-	/** Fails when a config declares no routes, naming every such config, or can't be placed. */
+	/** Fails when a config can't be placed; its caller checked that the configs build together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
-		const routeless = configs.flatMap(missingRoutes);
-		if (routeless.length > 0) return err(new DiagnosticsError(routeless));
-
 		const targets = await this.classify(query);
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
@@ -233,7 +217,7 @@ export class Locator {
 		return [...new Set(found)].sort(compareStrings);
 	}
 
-	/** Where a file at `file`, which need not exist, lands in `config`; nothing when the config can't be placed. */
+	/** Where a file at `file`, which need not exist, lands in `config`; nothing when the config can't be placed. Placing is all it takes, so the later phases don't run. */
 	private async placeNew(
 		config: ResolvedConfig,
 		file: string
@@ -241,12 +225,14 @@ export class Locator {
 		const index = new PlannedFilesIndex(this.listing, config.rootDirs, [
 			file,
 		]);
-		const planned = await this.locatorOf(
-			index,
-			config,
-			await this.existence(index, [file])
-		);
-		return planned.isOk() ? planned.value.locator.locate([file]) : [];
+		const placement = this.builderOf(index).place(config);
+		return placement.isOk()
+			? new FileLocator(
+					placement.value,
+					index,
+					await this.existence(index, [file])
+				).locate([file])
+			: [];
 	}
 
 	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */
@@ -263,15 +249,15 @@ export class Locator {
 			DiagnosticsError
 		>
 	> {
-		const examined = await new ConfigBuilder(
-			this.fileSystemService,
-			index,
-			this.tools
-		).examine(config);
+		const examined = await this.builderOf(index).examine(config);
 		return examined.map(({ placement, diagnostics }) => ({
 			locator: new FileLocator(placement, index, exists),
 			diagnostics,
 		}));
+	}
+
+	private builderOf(index: IndexReader): ConfigBuilder {
+		return new ConfigBuilder(this.fileSystemService, index, this.tools);
 	}
 
 	/** Whether each of `paths` is there now: not one the index only plans, and in the listing or on disk. Any other path the locator names is a file the scan found. */

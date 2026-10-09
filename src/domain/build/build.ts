@@ -6,6 +6,7 @@ import {
 	DiagnosticFix,
 	DiagnosticRelated,
 	errorDiagnostic,
+	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -96,12 +97,19 @@ export type ConfigBuild = LoadedBuild | UnloadedBuild;
 abstract class AbstractConfigBuild {
 	constructor(
 		readonly config: ResolvedConfig,
-		private readonly findings: BuildFindings
+		private readonly findings: BuildFindings,
+		/** Why it failed; none unless it did. */
+		readonly errors: readonly Diagnostic[] = []
 	) {}
 
 	/** What the config is asked for by. */
 	get label(): string {
 		return this.config.label;
+	}
+
+	/** The config file. */
+	get file(): string {
+		return this.config.file;
 	}
 
 	get warnings(): readonly Diagnostic[] {
@@ -113,9 +121,9 @@ abstract class AbstractConfigBuild {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, then sync dir warnings. */
+	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
-		return [...this.warnings, ...(this.syncWarnings ?? [])];
+		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
 }
 
@@ -132,10 +140,6 @@ export class WrittenBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings);
 	}
-
-	get documentOutcome(): "wrote" | "unchanged" {
-		return this.outcome;
-	}
 }
 
 /** A config that didn't load, so there was nothing to build; `errors` is why. */
@@ -151,11 +155,6 @@ export class UnloadedBuild {
 	/** What the config is asked for by. */
 	get label(): string {
 		return configLabel(this.file);
-	}
-
-	/** An unloaded config has no project file to write. */
-	get documentOutcome(): "notWritten" {
-		return "notWritten";
 	}
 
 	get warnings(): readonly Diagnostic[] {
@@ -185,10 +184,6 @@ export class UnwrittenBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings);
 	}
-
-	get documentOutcome(): "notWritten" {
-		return this.outcome;
-	}
 }
 
 /** A config whose build, write or set check went wrong; `findings` is what its build found before that. */
@@ -197,20 +192,10 @@ export class FailedBuild extends AbstractConfigBuild {
 
 	constructor(
 		config: ResolvedConfig,
-		readonly errors: readonly Diagnostic[],
+		errors: readonly Diagnostic[],
 		findings: BuildFindings = { warnings: [], syncWarnings: undefined }
 	) {
-		super(config, findings);
-	}
-
-	/** Warnings, sync dir warnings, then the errors that failed it. */
-	override get diagnostics(): readonly Diagnostic[] {
-		return [...super.diagnostics, ...this.errors];
-	}
-
-	/** A failed config left its project file as it was. */
-	get documentOutcome(): "notWritten" {
-		return "notWritten";
+		super(config, findings, errors);
 	}
 }
 
@@ -218,6 +203,112 @@ export class FailedBuild extends AbstractConfigBuild {
 export interface BuildFindings {
 	readonly warnings: readonly Diagnostic[];
 	readonly syncWarnings: readonly Diagnostic[] | undefined;
+}
+
+/** What one config adds to a run's diagnostics of one kind. */
+export interface SharedPart {
+	/** The diagnostics no earlier config raised. */
+	readonly fresh: readonly Diagnostic[];
+	/** The earlier configs that raised every one of them, when it had some and added none; empty otherwise. */
+	readonly sameAs: readonly string[];
+}
+
+/** The diagnostics of one kind a run's configs raised, so a config that repeats one adds nothing for it. */
+export class SharedDiagnostics {
+	private readonly raisedBy = new Map<string, string>();
+
+	private constructor(
+		/** Whether a diagnostic about a config's own file equals another config's. */
+		private readonly sameAcrossConfigs: boolean
+	) {}
+
+	static errors(): SharedDiagnostics {
+		return new SharedDiagnostics(false);
+	}
+
+	/** Configs that read one folder find the same warnings, each filed under its own config. */
+	static warnings(): SharedDiagnostics {
+		return new SharedDiagnostics(true);
+	}
+
+	/** Splits `diagnostics` of the config `label`, whose file is `configFile`, into those no config raised yet and the configs that raised the rest. */
+	take(
+		label: string,
+		configFile: string,
+		diagnostics: readonly Diagnostic[]
+	): SharedPart {
+		const owners = new Set<string>();
+		const fresh = diagnostics.filter((diagnostic) => {
+			const key = renderDiagnostic(
+				this.sameAcrossConfigs && diagnostic.resource === configFile
+					? { ...diagnostic, resource: "" }
+					: diagnostic
+			);
+			const owner = this.raisedBy.get(key);
+			if (owner === undefined) this.raisedBy.set(key, label);
+			else if (owner !== label) owners.add(owner);
+			return owner === undefined;
+		});
+		return {
+			fresh,
+			sameAs:
+				diagnostics.length > 0 && fresh.length === 0 ? [...owners] : [],
+		};
+	}
+}
+
+/** One build of a run, with what it adds to the run's warnings and errors. */
+export interface BuildShare {
+	readonly build: ConfigBuild;
+	/** Its warnings, then its sync dir's. */
+	readonly warnings: SharedPart;
+	readonly errors: SharedPart;
+}
+
+/** The builds of one run, one per selected config in order, and what the run says: a warning several configs share, or an error a config repeats, is said once, by the first. The output, `--deny-warnings` and `check` all count this way. */
+export class BuildRun {
+	readonly shares: readonly BuildShare[];
+
+	constructor(readonly builds: readonly ConfigBuild[]) {
+		const warnings = SharedDiagnostics.warnings();
+		const errors = SharedDiagnostics.errors();
+		this.shares = builds.map((build) => ({
+			build,
+			warnings: warnings.take(build.label, build.file, [
+				...build.warnings,
+				...(build.syncWarnings ?? []),
+			]),
+			errors: errors.take(build.label, build.file, build.errors),
+		}));
+	}
+
+	/** Whether a config failed or didn't load, which writes nothing. */
+	get failed(): boolean {
+		return this.builds.some(
+			({ outcome }) => outcome === "failed" || outcome === "notLoaded"
+		);
+	}
+
+	/** Every error of every config, repeats included: what the run fails with. */
+	get errors(): Diagnostic[] {
+		return this.builds.flatMap(({ errors }) => errors);
+	}
+
+	/** The warnings the run says, one several configs share counted once: what `--deny-warnings` counts. */
+	get warningCount(): number {
+		return this.shares.reduce(
+			(count, { warnings }) => count + warnings.fresh.length,
+			0
+		);
+	}
+
+	/** What the run says, config by config: its fresh warnings, then its fresh errors. */
+	get diagnostics(): Diagnostic[] {
+		return this.shares.flatMap(({ warnings, errors }) => [
+			...warnings.fresh,
+			...errors.fresh,
+		]);
+	}
 }
 
 interface Located {

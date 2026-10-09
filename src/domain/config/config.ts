@@ -204,6 +204,15 @@ export class DeclaredKeys {
 		return this.routeKeys.has(key);
 	}
 
+	/** What `key` is, in the words a message names it. */
+	kindOf(key: string): "mode" | "variant" | "route" {
+		return this.isMode(key)
+			? "mode"
+			: this.isVariant(key)
+				? "variant"
+				: "route";
+	}
+
 	/** The key `name` spells, exactly or with the first letter in the other case. */
 	resolve(name: string): string | undefined {
 		return this.resolveIn(name, this.all);
