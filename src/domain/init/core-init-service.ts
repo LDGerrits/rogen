@@ -1,4 +1,5 @@
 import path from "path";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -112,9 +113,11 @@ export class CoreInitService implements InitService {
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
+		const configs = await this.configService.find(directory);
 		const base = entries.has(configFileName(DEFAULT_CONFIG_STEM))
 			? await new BaseConfigReader(this.configService, directory).read(
-					entries
+					entries,
+					configs
 				)
 			: undefined;
 
@@ -125,7 +128,8 @@ export class CoreInitService implements InitService {
 				await this.toolchainService.detect(directory),
 				names.length > 0 ? name.value : undefined,
 				name.value,
-				base
+				base,
+				configs.map((file) => toPosix(path.relative(directory, file)))
 			)
 		);
 	}

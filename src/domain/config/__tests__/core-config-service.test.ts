@@ -681,7 +681,7 @@ describe("domain/config/core-config-service", () => {
 			});
 		});
 
-		it("should read each file in the chain exactly once", async () => {
+		it("should read each config once to find it and once to load it", async () => {
 			const reads: string[] = [];
 			class RecordingFileSystemService extends MemoryFileSystemService {
 				override async readFile(filePath: string): Promise<string> {
@@ -704,6 +704,8 @@ describe("domain/config/core-config-service", () => {
 
 			expect(reads.sort()).toEqual([
 				"/repo/core.rogen.json",
+				"/repo/core.rogen.json",
+				"/repo/default.rogen.json",
 				"/repo/default.rogen.json",
 			]);
 		});
@@ -960,6 +962,54 @@ describe("domain/config/core-config-service", () => {
 				{ kind: "removed", file: "/repo/lobby.rogen.json" },
 			]);
 			expect(selection.files.has("/repo/lobby.rogen.json")).toBe(false);
+		});
+
+		it("should concern configs and folders in the folders below it", async () => {
+			await fs.createDirectory("/repo/places");
+			await start({ names: [] });
+
+			expect(selection.concerns("/repo/places/lobby.rogen.json")).toBe(
+				true
+			);
+			expect(selection.concerns("/repo/places/lobby", true)).toBe(true);
+			expect(selection.concerns("/repo/places/lobby")).toBe(false);
+			expect(selection.concerns("/repo/places/README.md")).toBe(false);
+		});
+
+		it("should pick up a config added in a new folder below that extends one here", async () => {
+			await start({ names: [] });
+
+			await write("/repo/places/lobby/lobby.rogen.json", {
+				extends: "../../default.rogen.json",
+			});
+			const reload = await selection.reload(["/repo/places"]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/places/lobby/lobby.rogen.json",
+			]);
+			expect(reload.notices).toEqual([
+				{ kind: "added", file: "/repo/places/lobby/lobby.rogen.json" },
+			]);
+			expect(selection.folders).toContain("/repo/places/lobby");
+		});
+
+		it("should leave a config below that extends nothing here, until it does", async () => {
+			await write("/repo/places/lobby/lobby.rogen.json", {});
+			await start({ names: [] });
+
+			expect(selection.entries).toHaveLength(1);
+			expect(selection.separate).toEqual([
+				"/repo/places/lobby/lobby.rogen.json",
+			]);
+
+			await write("/repo/places/lobby/lobby.rogen.json", {
+				extends: "../../default.rogen.json",
+			});
+			await selection.reload(["/repo/places/lobby/lobby.rogen.json"]);
+
+			expect(selection.entries).toHaveLength(2);
+			expect(selection.separate).toEqual([]);
 		});
 
 		it("should be left with no config when the last one is deleted", async () => {

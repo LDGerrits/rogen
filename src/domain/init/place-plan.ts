@@ -1,6 +1,5 @@
 import { formatJsonFile } from "../../base/json.js";
 import { capitalized } from "../../base/strings.js";
-import { defaultOutFileName } from "../config/config.js";
 import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -34,7 +33,12 @@ export class PlacePlan {
 	) {
 		this.folder = folder;
 		this.servePort = servePort;
-		this.configSet = new ConfigSet(name, language, darklua);
+		this.configSet = new ConfigSet(
+			name,
+			language,
+			darklua,
+			folder.configDir
+		);
 		const { compiler } = language;
 		this.rootDirs = [...base.rootDirs, folder.rootDir];
 		this.outDir = compiler && `${compiler.outDir}/${name}`;
@@ -48,23 +52,32 @@ export class PlacePlan {
 						rootDirs: this.rootDirs,
 						sharedRootDirs: base.rootDirs,
 						outDir: this.outDir,
-						projectFile: defaultOutFileName(name),
+						projectFile: this.configSet.projectFile,
+						dir: folder.configDir,
 					})
 				: undefined;
 	}
 
-	/** The configs, the place's template, the compiler's own files and the one-time edits, which a project sets up for every place. */
+	/** The files a place writes, which mustn't exist yet, relative to the directory. */
+	get files(): string[] {
+		return this.configSet.placeFiles;
+	}
+
+	/** The configs, the place's template, the compiler's own files and the one-time edits, which a project sets up for every place; its own files go in its folder, with paths from there. */
 	planFiles(builder: InitPlanBuilder): void {
 		const { configSet, folder, syncDir, compiled } = this;
+		const fromFolder = (file: string) => folder.fromConfigDir(file);
 		builder.addDirectory(folder.rootDir);
 		configSet.planConfigs(
 			builder,
 			{
-				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
-				rootDirs: [folder.rootDir],
-				template: folder.template,
+				extends: ConfigSet.reference(
+					fromFolder(ConfigSet.DEFAULT_FILE)
+				),
+				rootDirs: [fromFolder(folder.rootDir)],
+				template: fromFolder(folder.template),
 			},
-			syncDir
+			syncDir && fromFolder(syncDir)
 		);
 		if (folder.hasTemplate) builder.addNote(`Using ${folder.template}.`);
 		else

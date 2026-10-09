@@ -2,11 +2,7 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import {
-	CONFIG_SUFFIX,
-	DEFAULT_CONFIG_STEM,
-	configFileName,
-} from "../config/config.js";
+import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { SyncServer } from "../serve/serve.js";
 import { ConfigSet } from "./config-set.js";
@@ -22,7 +18,9 @@ export class BaseConfigReader {
 
 	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it. */
 	async read(
-		entries: ReadonlySet<string>
+		entries: ReadonlySet<string>,
+		/** Every config of the project, here and below, as absolute paths. */
+		configs: readonly string[]
 	): Promise<Result<BaseConfig, Diagnostic[]>> {
 		const entry = await this.configService.read(
 			path.join(this.directory, configFileName(DEFAULT_CONFIG_STEM))
@@ -41,20 +39,16 @@ export class BaseConfigReader {
 		return ok({
 			rootDirs: rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),
-			...(await this.portsIn(entries)),
+			...(await this.portsIn(configs)),
 		});
 	}
 
-	/** The serve port of every config here whose template sets one, and whether two configs nothing extends share one, `default` aside, which a place extends. A config that doesn't build is skipped. */
+	/** The serve port of every one of `configs` whose template sets one, and whether two configs nothing extends share one, `default` aside, which a place extends. A config that doesn't build is skipped. */
 	private async portsIn(
-		entries: ReadonlySet<string>
+		configs: readonly string[]
 	): Promise<{ ports: number[]; sharedPort: boolean }> {
 		const read = await Promise.all(
-			[...entries]
-				.filter((name) => name.endsWith(CONFIG_SUFFIX))
-				.map((name) =>
-					this.configService.read(path.join(this.directory, name))
-				)
+			configs.map((file) => this.configService.read(file))
 		);
 		const valid = read.filter((entry) => entry.status === "valid");
 		const extended = new Set(valid.flatMap(({ parents }) => parents));

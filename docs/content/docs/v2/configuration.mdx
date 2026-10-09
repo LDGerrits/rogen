@@ -96,7 +96,22 @@ A child adds to its parent and never removes. To drop something, flip the chain 
 
 ## Finding Configs
 
-`rogen build lobby` reads `lobby.rogen.json`, and `rogen build places/lobby.rogen.json` reads that file: a name with a `/` or ending in `.json` is a path. With no name, Rogen reads every `*.rogen.json` in the folder.
+`rogen build lobby` reads the config named `lobby`, and `rogen build places/lobby/lobby.rogen.json` reads that file: a name with a `/` or ending in `.json` is a path. With no name, Rogen reads every `*.rogen.json` in the folder, and every one in the folders below it whose `extends` chain reaches a config in the folder or above. That lets each place keep its config beside its code:
+
+```
+default.rogen.json
+places/
+  lobby/
+    lobby.rogen.json        "extends": "../../default.rogen.json"
+    template.project.json
+    src/
+```
+
+- **Names stay short.** A config's name is its file name, wherever it is, so `rogen serve lobby` finds `places/lobby/lobby.rogen.json`. Two configs of the project can't share a name; Rogen stops and names both, and a path still reads either one.
+- **A config that extends nothing here is a separate project.** Rogen leaves it alone, so a fixture or an example folder never joins your build. `rogen list` shows it as `separate: extends nothing here`, and naming it fails with the reason; build it by its path.
+- **Some folders are never searched:** hidden folders, `node_modules`, package folders (`Packages`, `ServerPackages`, `DevPackages` and pesde's), a config's sync dir, and linked folders.
+- **A subfolder narrows the set.** Run from `places/lobby`, Rogen reads only the configs there. Run from a folder with none, it uses the configs of the nearest folder above that has any.
+- `watch` and `serve` follow configs added and removed anywhere below, so a new place's server starts on its own.
 
 A file called just `.rogen.json` is an error, since every config needs a name. That was v1's file name, so Rogen also links to [Migrating from v1](/docs/v2/migrating-from-v1).
 

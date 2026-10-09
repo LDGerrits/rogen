@@ -43,7 +43,7 @@ registerCommand(
 						{
 							name: "config",
 							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
+								"A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.",
 							isOptional: true,
 							isVariadic: true,
 						},

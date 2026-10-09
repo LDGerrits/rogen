@@ -167,6 +167,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					),
 				}))
 			);
+			const taken = places.flatMap(({ name, folder }) =>
+				directory.checkFree(
+					new ConfigSet(name, language, darklua, folder.configDir)
+						.placeFiles,
+					(file) => folder.has(file)
+				)
+			);
+			if (taken.length > 0) return err(taken);
 		}
 
 		const outDir = language.compiler?.outDir;

@@ -2,14 +2,14 @@ $ rogen init lobby
 exit 0
 stdout:
   rogen init
-  Created lobby.rogen.json.
+  Created places/lobby/lobby.rogen.json.
   Created places/lobby/template.project.json.
   Created places/lobby/src/.
-  lobby.project.json · wrote
+  places/lobby/lobby.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen build default lobby
@@ -19,7 +19,7 @@ stdout:
   default
     default.project.json · wrote
   lobby
-    lobby.project.json · unchanged
+    places/lobby/lobby.project.json · unchanged
   Built 2 configs.
 
 $ rogen init match --json
@@ -27,7 +27,7 @@ exit 0
 stdout:
   {
     "files": [
-      "<dir>/match.rogen.json",
+      "<dir>/places/match/match.rogen.json",
       "<dir>/places/match/template.project.json"
     ],
     "appended": [],
@@ -37,8 +37,8 @@ stdout:
     "built": [
       {
         "config": "match",
-        "file": "<dir>/match.rogen.json",
-        "outFile": "<dir>/match.project.json",
+        "file": "<dir>/places/match/match.rogen.json",
+        "outFile": "<dir>/places/match/match.project.json",
         "outcome": "wrote",
         "diagnostics": []
       }
@@ -51,7 +51,7 @@ stdout:
       ],
       "darklua": [],
       "edits": [
-        "Declare variants under \"variants\" in match.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant."
+        "Declare variants under \"variants\" in places/match/match.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant."
       ]
     }
   }
@@ -60,36 +60,36 @@ $ rogen build match
 exit 0
 stdout:
   rogen build · match
-  match.project.json · unchanged
+  places/match/match.project.json · unchanged
   Built 1 config.
 
 written:
   default.project.json
-  lobby.project.json
-  lobby.rogen.json
-  match.project.json
-  match.rogen.json
+  places/lobby/lobby.project.json
+  places/lobby/lobby.rogen.json
   places/lobby/template.project.json
+  places/match/match.project.json
+  places/match/match.rogen.json
   places/match/template.project.json
 
-lobby.rogen.json:
+places/lobby/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../../default.rogen.json",
 	"rootDirs": [
-		"places/lobby/src"
+		"src"
 	],
-	"template": "places/lobby/template.project.json"
+	"template": "template.project.json"
 }
 
-match.rogen.json:
+places/match/match.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../../default.rogen.json",
 	"rootDirs": [
-		"places/match/src"
+		"src"
 	],
-	"template": "places/match/template.project.json"
+	"template": "template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -99,22 +99,22 @@ project: DataModel
       Combat: Folder
         Types: ModuleScript  <- src/Combat/Types.luau
 
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap places/lobby/lobby.project.json
 Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- src/Combat/Types.luau
+        Types: ModuleScript  <- ../../src/Combat/Types.luau
 
-$ rojo sourcemap match.project.json
+$ rojo sourcemap places/lobby/template.project.json
+Lobby: DataModel
+
+$ rojo sourcemap places/match/match.project.json
 Match: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- src/Combat/Types.luau
-
-$ rojo sourcemap places/lobby/template.project.json
-Lobby: DataModel
+        Types: ModuleScript  <- ../../src/Combat/Types.luau
 
 $ rojo sourcemap places/match/template.project.json
 Match: DataModel

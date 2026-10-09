@@ -7,14 +7,14 @@ import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-When one repo builds several places, each **place** is a config that `extends` a shared one and adds its own folder to the root directories. Its template merges over the shared one, so it gives the place its own name and port.
+When one repo builds several places, each **place** is a config that `extends` a shared one and adds its own folder to the root directories. Its template merges over the shared one, so it gives the place its own name and port. Each place keeps its config, template, code and project file in its own folder, a small project inside the repo, and the root keeps only the shared config.
 
 <Steps>
 
 <Step>
 ### Structure the Repository
 
-Give every place a folder of its own, with its code in `src` and its template beside it. The template stays outside `src`, since anything inside a root directory is synced into the game. The shared code goes in one of two places:
+Give every place a folder of its own, with its code in `src` and its config and template beside it. They stay outside `src`, since anything inside a root directory is synced into the game. The shared code goes in one of two places:
 
 <Tabs items={["Beside the places", "At the root"]}>
   <Tab value="Beside the places">
@@ -22,12 +22,12 @@ Give every place a folder of its own, with its code in `src` and its template be
 
     <SystemWindow>
     	<TreeFile name="default.rogen.json" />
-    	<TreeFile name="lobby.rogen.json" />
     	<TreeFolder name="places" open />
     	<TreeFolder level={1} name="shared" open />
     	<TreeFile level={2} name="template.project.json" />
     	<TreeFolder level={2} name="src" />
     	<TreeFolder level={1} name="lobby" open />
+    	<TreeFile level={2} name="lobby.rogen.json" />
     	<TreeFile level={2} name="template.project.json" />
     	<TreeFolder level={2} name="src" />
     </SystemWindow>
@@ -39,18 +39,20 @@ Give every place a folder of its own, with its code in `src` and its template be
 
     <SystemWindow>
     	<TreeFile name="default.rogen.json" />
-    	<TreeFile name="lobby.rogen.json" />
     	<TreeFile name="template.project.json" />
     	<TreeFolder name="src" />
     	<TreeFolder name="places" open />
     	<TreeFolder level={1} name="lobby" open />
+    	<TreeFile level={2} name="lobby.rogen.json" />
     	<TreeFile level={2} name="template.project.json" />
     	<TreeFolder level={2} name="src" />
     </SystemWindow>
   </Tab>
 </Tabs>
 
-The configs stay at the repo root, so one `rogen serve` sees every place. `default` is still built, for luau-lsp and `rogen build`, but never served while places extend it.
+Run from the root, Rogen [finds every config](/docs/v2/configuration#finding-configs) whose `extends` chain reaches `default.rogen.json`, so one `rogen serve` sees every place, and `rogen serve lobby` finds `places/lobby/lobby.rogen.json` by its name. Each place's project file is written beside its config, as `places/lobby/lobby.project.json`. `default` is still built, for luau-lsp and `rogen build`, but never served while places extend it.
+
+A place's config, template and code can also be a repo of their own, such as a Git submodule, as long as its config extends the shared one.
 
 </Step>
 
@@ -70,12 +72,12 @@ What `init` writes depends on your toolchain:
   <Tab value="Luau">
     One config and the place's template:
 
-    ```json title="lobby.rogen.json"
+    ```json title="places/lobby/lobby.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"extends": "./default.rogen.json",
-    	"rootDirs": ["places/lobby/src"],
-    	"template": "places/lobby/template.project.json"
+    	"extends": "../../default.rogen.json",
+    	"rootDirs": ["src"],
+    	"template": "template.project.json"
     }
     ```
 
@@ -92,25 +94,25 @@ What `init` writes depends on your toolchain:
   <Tab value="roblox-ts">
     One config, the place's template, and one tsconfig, since the place's compiled files need their own `outDir`:
 
-    ```json title="lobby.rogen.json"
+    ```json title="places/lobby/lobby.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"extends": "./default.rogen.json",
-    	"rootDirs": ["places/lobby/src"],
-    	"template": "places/lobby/template.project.json",
-    	"syncDir": "out/lobby"
+    	"extends": "../../default.rogen.json",
+    	"rootDirs": ["src"],
+    	"template": "template.project.json",
+    	"syncDir": "../../out/lobby"
     }
     ```
 
-    ```json title="tsconfig.lobby.json"
+    ```json title="places/lobby/tsconfig.lobby.json"
     {
-    	"extends": "./tsconfig.json",
+    	"extends": "../../tsconfig.json",
     	"compilerOptions": {
     		"rootDir": null,
-    		"rootDirs": ["src", "places/lobby/src"],
-    		"outDir": "out/lobby"
+    		"rootDirs": ["../../src", "src"],
+    		"outDir": "../../out/lobby"
     	},
-    	"include": ["src", "places/lobby/src"]
+    	"include": ["../../src", "src"]
     }
     ```
 
@@ -118,7 +120,7 @@ What `init` writes depends on your toolchain:
   </Tab>
 </Tabs>
 
-A place folder that already holds code is used as it is: `init` adds the folder itself as the root directory, and puts the template beside it, as `places/lobby.template.project.json`, so no code moves. A template already at the place's path is used as it is too.
+Paths in a config are relative to it, so a place's own paths stay short. A place folder that already holds code is used as it is: `init` adds the folder itself as the root directory, and puts the config and template beside the folder, as `places/lobby.rogen.json` and `places/lobby.template.project.json`, so no code moves and nothing but code is synced. A template already at the place's path is used as it is too, and places whose configs sit at the repo root, as older versions of `init` wrote them, keep working.
 
 </Step>
 
@@ -135,13 +137,13 @@ Serve every place at once, each on its own port:
   </Tab>
   <Tab value="roblox-ts">
     ```bash
-    rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
+    rbxtsc -w -p places/lobby/tsconfig.lobby.json --rojo places/lobby/lobby.project.json
     rogen serve
     ```
   </Tab>
 </Tabs>
 
-`rogen serve` builds every config and starts a server for each place, on the port its template sets. In Studio, connect to the place's port. `rogen serve lobby` serves just the one place, which is what `init` prints when other configs here would share a port, such as places set up before they got their own templates. `rogen list` shows every config the repo can build, and the templates each one merges.
+`rogen serve` builds every config and starts a server for each place, on the port its template sets. A place added while it serves gets its server too. In Studio, connect to the place's port. `rogen serve lobby` serves just the one place, which is what `init` prints when other configs here would share a port, such as places set up before they got their own templates. `rogen list` shows every config the repo can build, and the templates each one merges.
 
 </Step>
 
@@ -149,37 +151,50 @@ Serve every place at once, each on its own port:
 
 ## With Darklua
 
-Each place needs a project file for its source (for Darklua) and one for the processed output (for Studio), so it becomes two configs:
+Each place needs a project file for its source (for Darklua) and one for the processed output (for Studio), so it becomes two configs in its folder:
 
-```json title="lobby.rogen.json"
+```json title="places/lobby/lobby.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
-	"rootDirs": ["places/lobby/src"],
-	"template": "places/lobby/template.project.json"
+	"extends": "../../default.rogen.json",
+	"rootDirs": ["src"],
+	"template": "template.project.json"
 }
 ```
 
-```json title="lobby-sync.rogen.json"
+```json title="places/lobby/lobby-sync.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./lobby.rogen.json",
-	"syncDir": "dist/lobby"
+	"syncDir": "../../dist/lobby"
 }
 ```
 
-Synced paths keep each root directory's path from the repo root (`dist/lobby/src/…`, `dist/lobby/places/lobby/src/…`), so run Darklua once per root directory:
+Synced paths keep each root directory's path from the repo root (`dist/lobby/src/…`, `dist/lobby/places/lobby/src/…`), so run Darklua once per root directory, from the root:
 
 ```bash
 darklua process src dist/lobby/src
 darklua process places/lobby/src dist/lobby/places/lobby/src
 rogen serve lobby-sync
-rojo sourcemap lobby.project.json --output sourcemap.json --watch
+rojo sourcemap places/lobby/lobby.project.json --output places/lobby/sourcemap.json --watch
 ```
 
 `rogen serve lobby-sync` builds every config, `lobby.project.json` included, and serves the processed one. Name every place's synced config to serve them all, as `rogen serve lobby-sync arena-sync`: a bare `rogen serve` would also serve `sync.rogen.json`, which holds only the shared code.
 
-One catch: luau-lsp regenerates `sourcemap.json` from `default.project.json` and would overwrite the place's version. While you work on a place, set `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
+Rojo writes a sourcemap's paths from its project file's folder, so the place's sourcemap goes beside its project file, and Darklua reads it from there: set `"rojo_sourcemap": "places/lobby/sourcemap.json"` in your Darklua config. luau-lsp keeps the root `sourcemap.json` current from `default.project.json` without touching it.
+
+## Editor and Git
+
+luau-lsp reads `default.project.json`, which holds the shared code. To have it see a place's own code while you work on it, point `luau-lsp.sourcemap.rojoProjectFile` at `places/lobby/lobby.project.json` and `luau-lsp.sourcemap.sourcemapFile` at `places/lobby/sourcemap.json`, so the sourcemap sits beside the project file its paths start from.
+
+Rogen writes each place's project file in its folder, beside the template you keep. Ignore the written ones, not the templates:
+
+```gitignore title=".gitignore"
+*.project.json
+!template.project.json
+!*.template.project.json
+sourcemap.json
+```
 
 <Callout type="info">
 	Shared `routes`, `variants`, `modes` and `template` live in the config every place extends, so each place only has to say what's different. A place's own `modes.prod.exclude` adds globs to the shared `prod` mode, and `rogen build --mode prod` builds every place in it, failing if a place lacks that mode so a release never builds one in dev. See [Modes](/docs/v2/core-concepts/modes).

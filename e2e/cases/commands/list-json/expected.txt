@@ -93,7 +93,8 @@ stdout:
         "outFile": "<dir>/source.project.json",
         "diagnostics": []
       }
-    ]
+    ],
+    "separate": []
   }
 
 $ rogen list lobby --json
@@ -129,5 +130,6 @@ stdout:
         "outFile": "<dir>/out/lobby.project.json",
         "diagnostics": []
       }
-    ]
+    ],
+    "separate": []
   }

@@ -41,5 +41,6 @@ stdout:
         "outFile": "<dir>/default.project.json",
         "diagnostics": []
       }
-    ]
+    ],
+    "separate": []
   }

@@ -135,16 +135,19 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				appended: [],
 				files: [
-					path.join(cwd, "lobby.rogen.json"),
+					path.join(cwd, "places/lobby/lobby.rogen.json"),
 					path.join(cwd, "places/lobby/template.project.json"),
-					path.join(cwd, "tsconfig.lobby.json"),
+					path.join(cwd, "places/lobby/tsconfig.lobby.json"),
 				],
 				directories: [path.join(cwd, "places/lobby/src")],
 				built: [
 					{
 						config: "lobby",
-						file: path.join(cwd, "lobby.rogen.json"),
-						outFile: path.join(cwd, "lobby.project.json"),
+						file: path.join(cwd, "places/lobby/lobby.rogen.json"),
+						outFile: path.join(
+							cwd,
+							"places/lobby/lobby.project.json"
+						),
 						outcome: "wrote",
 						diagnostics: [],
 					},
@@ -155,16 +158,16 @@ describe("init command", () => {
 						'Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
 					],
 					run: [
-						"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+						"rbxtsc -w -p places/lobby/tsconfig.lobby.json --rojo places/lobby/lobby.project.json",
 						"rogen serve",
 					],
 					darklua: [],
 					edits: [
-						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
+						'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 					],
 				},
 			});
-			expect(await exists("tsconfig.lobby.json")).toBe(true);
+			expect(await exists("places/lobby/tsconfig.lobby.json")).toBe(true);
 		});
 
 		it("should print nothing and return the failure", async () => {
@@ -196,11 +199,11 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				appended: [],
 				files: [
-					path.join(cwd, "lobby.rogen.json"),
+					path.join(cwd, "places/lobby/lobby.rogen.json"),
 					path.join(cwd, "places/lobby/template.project.json"),
 				],
 				directories: [],
-				error: "Failed to write tsconfig.lobby.json: disk full",
+				error: "Failed to write places/lobby/tsconfig.lobby.json: disk full",
 			});
 		});
 
@@ -316,7 +319,7 @@ describe("init command", () => {
 
 			await runInit(["lobby"]);
 
-			expect(await exists("lobby.project.json")).toBe(true);
+			expect(await exists("places/lobby/lobby.project.json")).toBe(true);
 			expect(await exists("default.project.json")).toBe(false);
 		});
 
@@ -586,7 +589,7 @@ describe("init command", () => {
 			const entry = await new CoreConfigService(
 				memFs,
 				new NativeEnvironmentService({}, cwd)
-			).read(path.join(cwd, "lobby.rogen.json"));
+			).read(path.join(cwd, "places/lobby/lobby.rogen.json"));
 			expect(entry.status).toBe("valid");
 			if (entry.status !== "valid") return;
 			expect(entry.config.template?.project.getTree()).toMatchObject({
@@ -977,11 +980,11 @@ describe("init command", () => {
 			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
 
 			expect(result.isOk()).toBe(true);
-			expect(await readJson("lobby.rogen.json")).toEqual({
+			expect(await readJson("places/lobby/lobby.rogen.json")).toEqual({
 				$schema: SCHEMA_URL,
-				extends: "./default.rogen.json",
-				rootDirs: ["places/lobby/src"],
-				template: "places/lobby/template.project.json",
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
 			expect(
 				await readJson("places/lobby/template.project.json")
@@ -991,7 +994,7 @@ describe("init command", () => {
 				tree: { $className: "DataModel" },
 			});
 			const after = await memFs.readDirectory(cwd);
-			expect(after.length).toBe(before.length + 3);
+			expect(after.length).toBe(before.length + 1);
 		});
 
 		it("should create the place's src so the next build finds it", async () => {
@@ -1053,9 +1056,12 @@ describe("init command", () => {
 
 			await runInit(["lobby"]);
 
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				rootDirs: ["projects/lobby/src"],
-				template: "projects/lobby/template.project.json",
+			expect(
+				await readJson("projects/lobby/lobby.rogen.json")
+			).toMatchObject({
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
 		});
 
@@ -1066,9 +1072,10 @@ describe("init command", () => {
 
 			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
 
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				rootDirs: ["places/lobby"],
-				template: "places/lobby.template.project.json",
+			expect(await readJson("places/lobby.rogen.json")).toMatchObject({
+				extends: "../default.rogen.json",
+				rootDirs: ["lobby"],
+				template: "lobby.template.project.json",
 			});
 			expect(
 				await readJson("places/lobby.template.project.json")
@@ -1089,9 +1096,11 @@ describe("init command", () => {
 
 			await runInit(["lobby"]);
 
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				rootDirs: ["places/lobby/src"],
-				template: "places/lobby/template.project.json",
+			expect(
+				await readJson("places/lobby/lobby.rogen.json")
+			).toMatchObject({
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
 		});
 
@@ -1108,9 +1117,9 @@ describe("init command", () => {
 			expect(await read("places/lobby/template.project.json")).toBe(
 				'{ "name": "Mine" }'
 			);
-			expect((await readJson("lobby.rogen.json")).template).toBe(
-				"places/lobby/template.project.json"
-			);
+			expect(
+				(await readJson("places/lobby/lobby.rogen.json")).template
+			).toBe("template.project.json");
 			expect(logService.lines).toContain(
 				"info: Using places/lobby/template.project.json."
 			);
@@ -1150,7 +1159,7 @@ describe("init command", () => {
 			const entry = await new CoreConfigService(
 				memFs,
 				new NativeEnvironmentService({}, cwd)
-			).read(path.join(cwd, "lobby.rogen.json"));
+			).read(path.join(cwd, "places/lobby/lobby.rogen.json"));
 			expect(entry.status).toBe("valid");
 			if (entry.status !== "valid") return;
 			expect(entry.config.name).toBe("Lobby");
@@ -1171,9 +1180,9 @@ describe("init command", () => {
 			expect(prompts.prompts[2]).toMatchObject({
 				placeholder: "places/lobby",
 			});
-			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
-				"world/lobby/src",
-			]);
+			expect(
+				(await readJson("world/lobby/lobby.rogen.json")).rootDirs
+			).toEqual(["src"]);
 		});
 
 		it("should not ask for a place name that was given", async () => {
@@ -1183,7 +1192,7 @@ describe("init command", () => {
 			await runInit(["lobby"], prompts);
 
 			expect(prompts.asked).not.toContain("Place name");
-			expect(await exists("lobby.rogen.json")).toBe(true);
+			expect(await exists("places/lobby/lobby.rogen.json")).toBe(true);
 		});
 
 		it("should fail before the place folder when a given name would overwrite a Darklua synced config", async () => {
@@ -1237,6 +1246,45 @@ describe("init command", () => {
 			).rejects.toThrow("lobby.rogen.json already exists.");
 		});
 
+		it("should reject a place name a config below already has", async () => {
+			await setUpLuau();
+			await write(
+				"places/lobby/lobby.rogen.json",
+				JSON.stringify({ extends: "../../default.rogen.json" })
+			);
+
+			await expect(
+				runInit([], offerAnd("lobby", ACCEPT_DEFAULT))
+			).rejects.toThrow("places/lobby/lobby.rogen.json already exists.");
+		});
+
+		it("should fail when the place's folder already has its project file", async () => {
+			await setUpLuau();
+			await write("places/lobby/lobby.project.json", "{}");
+
+			const result = await runInit(["lobby"]);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{
+					code: "init.fileExists",
+					resource: path.join(cwd, "places/lobby/lobby.project.json"),
+				},
+			]);
+		});
+
+		it("should leave a place at the root as it is, and find the new one from there", async () => {
+			await setUpLuau();
+			await write(
+				"arena.rogen.json",
+				JSON.stringify({ extends: "./default.rogen.json" })
+			);
+
+			await runInit(["lobby"]);
+
+			expect(await exists("arena.rogen.json")).toBe(true);
+			expect(await exists("places/lobby/lobby.project.json")).toBe(true);
+		});
+
 		it("should leave the shared config and everything else untouched", async () => {
 			await setUpLuau();
 			const defaultConfig = await read("default.rogen.json");
@@ -1265,14 +1313,18 @@ describe("init command", () => {
 
 			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT), logService);
 
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				extends: "./default.rogen.json",
-				rootDirs: ["places/lobby/src"],
-				template: "places/lobby/template.project.json",
+			expect(
+				await readJson("places/lobby/lobby.rogen.json")
+			).toMatchObject({
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
-			expect(await readJson("lobby-sync.rogen.json")).toMatchObject({
+			expect(
+				await readJson("places/lobby/lobby-sync.rogen.json")
+			).toMatchObject({
 				extends: "./lobby.rogen.json",
-				syncDir: "build/lobby",
+				syncDir: "../../build/lobby",
 			});
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
@@ -1295,19 +1347,21 @@ describe("init command", () => {
 
 			await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
 
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				extends: "./default.rogen.json",
-				rootDirs: ["places/lobby/src"],
-				syncDir: "out/lobby",
+			expect(
+				await readJson("places/lobby/lobby.rogen.json")
+			).toMatchObject({
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				syncDir: "../../out/lobby",
 			});
-			expect(await readJson("tsconfig.lobby.json")).toEqual({
-				extends: "./tsconfig.json",
+			expect(await readJson("places/lobby/tsconfig.lobby.json")).toEqual({
+				extends: "../../tsconfig.json",
 				compilerOptions: {
 					rootDir: null,
-					rootDirs: ["src", "places/lobby/src"],
-					outDir: "out/lobby",
+					rootDirs: ["../../src", "src"],
+					outDir: "../../out/lobby",
 				},
-				include: ["src", "places/lobby/src"],
+				include: ["../../src", "src"],
 			});
 			expect(await read("tsconfig.json")).toBe("{}");
 		});
@@ -1330,17 +1384,17 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: ",
-				"success: Created lobby.rogen.json.",
+				"success: Created places/lobby/lobby.rogen.json.",
 				"success: Created places/lobby/template.project.json.",
-				"success: Created tsconfig.lobby.json.",
+				"success: Created places/lobby/tsconfig.lobby.json.",
 				"success: Created places/lobby/src/.",
-				"success: lobby.project.json · wrote",
+				"success: places/lobby/lobby.project.json · wrote",
 				"step: Next steps",
 				'info: Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
 				"info: Run each in its own terminal:",
-				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+				"info:   rbxtsc -w -p places/lobby/tsconfig.lobby.json --rojo places/lobby/lobby.project.json",
 				"info:   rogen serve",
-				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
+				'info: Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 				"outro: Wrote 3 files.",
 			]);
 		});
@@ -1351,7 +1405,7 @@ describe("init command", () => {
 			const result = await runInit([], offerAnd("lobby", ACCEPT_DEFAULT));
 
 			expect(result.isErr()).toBe(true);
-			expect(await exists("lobby.rogen.json")).toBe(false);
+			expect(await exists("places/lobby/lobby.rogen.json")).toBe(false);
 		});
 
 		it("should fall through to the full flow when declined", async () => {
@@ -1402,7 +1456,7 @@ describe("init command", () => {
 			const result = await runInit([], offerAnd("lobby", CANCEL));
 
 			expect(result.isErr()).toBe(true);
-			expect(await exists("lobby.rogen.json")).toBe(false);
+			expect(await exists("places/lobby/lobby.rogen.json")).toBe(false);
 		});
 	});
 
@@ -1418,15 +1472,15 @@ describe("init command", () => {
 			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
 				"src",
 			]);
-			expect(await readJson("lobby.rogen.json")).toEqual({
+			expect(await readJson("places/lobby.rogen.json")).toEqual({
 				$schema: SCHEMA_URL,
-				extends: "./default.rogen.json",
-				rootDirs: ["places/lobby"],
-				template: "places/lobby.template.project.json",
+				extends: "../default.rogen.json",
+				rootDirs: ["lobby"],
+				template: "lobby.template.project.json",
 			});
-			expect(await readJson("match.rogen.json")).toMatchObject({
-				rootDirs: ["places/match"],
-				template: "places/match.template.project.json",
+			expect(await readJson("places/match.rogen.json")).toMatchObject({
+				rootDirs: ["match"],
+				template: "match.template.project.json",
 			});
 			expect(
 				await readJson("places/match.template.project.json")
@@ -1446,10 +1500,10 @@ describe("init command", () => {
 			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
 				"places/shared/src",
 			]);
-			expect(await exists("shared.rogen.json")).toBe(false);
-			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
-				"places/lobby/src",
-			]);
+			expect(await exists("places/shared/shared.rogen.json")).toBe(false);
+			expect(
+				(await readJson("places/lobby/lobby.rogen.json")).rootDirs
+			).toEqual(["src"]);
 		});
 
 		it("should put the shared code in places/shared by default, beside the places", async () => {
@@ -1468,9 +1522,12 @@ describe("init command", () => {
 			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
 				"places/shared/src",
 			]);
-			expect(await readJson("arena.rogen.json")).toMatchObject({
-				rootDirs: ["places/arena/src"],
-				template: "places/arena/template.project.json",
+			expect(
+				await readJson("places/arena/arena.rogen.json")
+			).toMatchObject({
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
 			expect(
 				await readJson("places/arena/template.project.json")
@@ -1556,9 +1613,9 @@ describe("init command", () => {
 				"lib",
 				"common",
 			]);
-			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
-				"places/lobby/src",
-			]);
+			expect(
+				(await readJson("places/lobby/lobby.rogen.json")).rootDirs
+			).toEqual(["src"]);
 		});
 
 		it("should keep a detected place in its folder wherever the shared code is", async () => {
@@ -1578,9 +1635,9 @@ describe("init command", () => {
 
 			await runInit([], prompts);
 
-			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
-				"places/lobby/src",
-			]);
+			expect(
+				(await readJson("places/lobby/lobby.rogen.json")).rootDirs
+			).toEqual(["src"]);
 		});
 
 		it("should have Darklua process every place, and serve their synced configs", async () => {
@@ -1622,9 +1679,11 @@ describe("init command", () => {
 			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
 				"src",
 			]);
-			expect(await readJson("lobby.rogen.json")).toMatchObject({
-				rootDirs: ["places/lobby/src"],
-				template: "places/lobby/template.project.json",
+			expect(
+				await readJson("places/lobby/lobby.rogen.json")
+			).toMatchObject({
+				rootDirs: ["src"],
+				template: "template.project.json",
 			});
 		});
 
@@ -1634,7 +1693,7 @@ describe("init command", () => {
 			await runInit(["game"]);
 
 			expect(await exists("game.rogen.json")).toBe(true);
-			expect(await exists("lobby.rogen.json")).toBe(false);
+			expect(await exists("places/lobby.rogen.json")).toBe(false);
 		});
 
 		it("should write a tsconfig per roblox-ts place and compile each", async () => {
@@ -1645,12 +1704,12 @@ describe("init command", () => {
 
 			await runInit([], new MockPromptService([], false), logService);
 
-			expect(await exists("tsconfig.lobby.json")).toBe(true);
-			expect(await exists("tsconfig.match.json")).toBe(true);
+			expect(await exists("places/tsconfig.lobby.json")).toBe(true);
+			expect(await exists("places/tsconfig.match.json")).toBe(true);
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
-					"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-					"info:   rbxtsc -w -p tsconfig.match.json --rojo match.project.json",
+					"info:   rbxtsc -w -p places/tsconfig.lobby.json --rojo places/lobby.project.json",
+					"info:   rbxtsc -w -p places/tsconfig.match.json --rojo places/match.project.json",
 					"info:   rogen serve",
 				])
 			);
@@ -1767,7 +1826,7 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(await read("default.rogen.json")).toBe(config);
-			expect(await exists("lobby.rogen.json")).toBe(true);
+			expect(await exists("places/lobby/lobby.rogen.json")).toBe(true);
 		});
 
 		it("should write nothing when one darklua file already exists", async () => {

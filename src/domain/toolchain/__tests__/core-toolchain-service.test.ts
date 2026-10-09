@@ -8,10 +8,11 @@ const rbxts = (workspace: DetectedWorkspace) =>
 
 const PLACE = {
 	name: "lobby",
-	rootDirs: ["src", "places/lobby"],
+	rootDirs: ["src", "places/lobby/src"],
 	sharedRootDirs: ["src"],
 	outDir: "out/lobby",
-	projectFile: "lobby.project.json",
+	projectFile: "places/lobby/lobby.project.json",
+	dir: "places/lobby",
 };
 
 describe("CoreToolchainService.detect", () => {
@@ -200,7 +201,31 @@ describe("CoreToolchainService.detect", () => {
 			).compiler?.planPlace(PLACE);
 
 			expect(place?.files[0].content).toContain(
-				'"tsBuildInfoFile": "out/lobby/tsconfig.tsbuildinfo"'
+				'"tsBuildInfoFile": "../../out/lobby/tsconfig.tsbuildinfo"'
+			);
+		});
+
+		it("should write the place's tsconfig in its folder, with paths from there", async () => {
+			await write("tsconfig.json", '{"include":["src"]}');
+
+			const place = rbxts(
+				await toolchain().detect(cwd)
+			).compiler?.planPlace(PLACE);
+
+			expect(place?.files[0].fileName).toBe(
+				"places/lobby/tsconfig.lobby.json"
+			);
+			expect(JSON.parse(place?.files[0].content ?? "")).toEqual({
+				extends: "../../tsconfig.json",
+				compilerOptions: {
+					rootDir: null,
+					rootDirs: ["../../src", "src"],
+					outDir: "../../out/lobby",
+				},
+				include: ["../../src", "src"],
+			});
+			expect(place?.compileCommand).toBe(
+				"rbxtsc -w -p places/lobby/tsconfig.lobby.json --rojo places/lobby/lobby.project.json"
 			);
 		});
 	});

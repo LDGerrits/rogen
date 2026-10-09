@@ -2,11 +2,13 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
+import { contains } from "../../base/path.js";
 import {
 	isError,
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
+import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet, LoadedBuild } from "../build/build.js";
@@ -169,25 +171,33 @@ export class CoreWatchSession
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
 		if (!this.started || watched.some((config) => !config.settled)) {
-			return changes.filter((change) => this.isWatched(change.path));
+			return changes.filter((change) => this.isWatched(change));
 		}
 		const contentFiles = this.selection.files;
 		return changes.filter(
 			(change) =>
-				this.isWatched(change.path) &&
+				this.isWatched(change) &&
 				(change.type !== FileChangeType.UPDATED ||
 					contentFiles.has(change.path) ||
 					watched.some(({ readFiles }) => readFiles.has(change.path)))
 		);
 	}
 
-	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
-	private isWatched(file: string): boolean {
+	/** Whether the session acts on `change`; the folders watched for configs report their other entries too. */
+	private isWatched(change: FileChange): boolean {
 		return (
 			!this.selection.directory ||
-			this.selection.concerns(file) ||
-			this.selection.files.has(file) ||
-			this.plan.watches(file)
+			this.concerns(change) ||
+			this.selection.files.has(change.path) ||
+			this.plan.watches(change.path)
+		);
+	}
+
+	/** Whether `change` can change which configs are selected, or what one reads. */
+	private concerns(change: FileChange): boolean {
+		return this.selection.concerns(
+			change.path,
+			isDirectoryType(change.fileType)
 		);
 	}
 
@@ -281,9 +291,12 @@ export class CoreWatchSession
 		);
 	}
 
-	/** The folder watched for configs added to it and deleted from it. */
+	/** The folders watched for configs added to them and deleted from them, but for those a deep watch already reports. */
 	private get shallowDirs(): string[] {
-		return this.selection.directory ? [this.selection.directory] : [];
+		const deep = this.watchPaths();
+		return this.selection.folders.filter(
+			(folder) => !deep.some((entry) => contains(entry, folder))
+		);
 	}
 
 	private watchPaths(): string[] {
@@ -366,8 +379,8 @@ export class CoreWatchSession
 
 	private async onChanges(changes: FileChange[]): Promise<void> {
 		const configFiles = changes
-			.map((change) => change.path)
-			.filter((file) => this.selection.concerns(file));
+			.filter((change) => this.concerns(change))
+			.map((change) => change.path);
 
 		let reloaded: string[] = [];
 		let reindexed = false;

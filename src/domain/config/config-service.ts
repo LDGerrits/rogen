@@ -44,9 +44,9 @@ export type ConfigNotice =
 			readonly keptLastValid: boolean;
 	  }
 	| { readonly kind: "recovered"; readonly file: string }
-	/** A config appeared in the folder the selection was picked from, and loads. */
+	/** A config that belongs appeared in the folder the selection was picked from, or below it, and loads. */
 	| { readonly kind: "added"; readonly file: string }
-	/** A config left that folder. */
+	/** A config left the selection: deleted, or no longer extending one there. */
 	| { readonly kind: "removed"; readonly file: string };
 
 /** What one `reload` did. */
@@ -63,11 +63,15 @@ export interface ConfigSelection {
 	readonly files: ReadonlySet<string>;
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */
 	readonly home: string;
-	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
+	/** The folder the selection was picked from, when no config was named; a `reload` follows the configs added below it and deleted. */
 	readonly directory: string | undefined;
+	/** The folders searched for configs, when none was named: a config or folder added to one or deleted from one concerns a `reload`. */
+	readonly folders: readonly string[];
+	/** The configs below `directory` that extend nothing there or above, so they are left alone. */
+	readonly separate: readonly string[];
 
-	/** Whether `reload` should hear of a change to `file`. */
-	concerns(file: string): boolean;
+	/** Whether `reload` should hear of a change to `file`, a folder when `isFolder`. */
+	concerns(file: string, isFolder?: boolean): boolean;
 
 	/** The configs, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
@@ -99,13 +103,15 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, each a name or a path, or every config in the working directory when it names none (or in the nearest folder above that has any, when the working directory has none), with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, each a name or a path, or when it names none every config in the working directory (or in the nearest folder above that has any, when the working directory has none) and each config below that extends one there or above, with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
 		refs: readonly string[],
 		options: ConfigOptionValues
 	): Promise<Result<ConfigSelection, Error>>;
 	/** The nearest folder above the working directory that has configs. */
 	findEnclosing(): Promise<EnclosingConfigs | undefined>;
+	/** Every config in `directory`, and each below it that extends one there or above, as sorted absolute paths. */
+	find(directory: string): Promise<readonly string[]>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
 	/** Runs `check` on every config file that can't be read as a config (unnamed, not JSON, or against the schema), never on one that can; what it returns is added to that file's errors. Dispose the result to remove it. */

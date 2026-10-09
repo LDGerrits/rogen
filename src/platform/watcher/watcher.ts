@@ -25,7 +25,7 @@ export interface Watcher {
 
 export const Watcher = createServiceIdentifier<Watcher>("watcher");
 
-/** Whether a watch leaves `target` out: it lies below a subfolder of a `shallow` directory and no `paths` entry reaches it. */
+/** Whether a watch leaves `target` out: it lies below a subfolder of a `shallow` directory, that subfolder isn't itself `shallow`, and no `paths` entry reaches it. */
 export function isBeyondShallow(
 	target: string,
 	paths: readonly string[],
@@ -34,14 +34,14 @@ export function isBeyondShallow(
 	const posixTarget = toPosix(target);
 	if (paths.some((entry) => containsPosix(toPosix(entry), posixTarget)))
 		return false;
-	return shallow.some((dir) => {
-		const posixDir = toPosix(dir);
-		return (
-			containsPosix(posixDir, posixTarget) &&
-			posixTarget !== posixDir &&
-			path.posix.dirname(posixTarget) !== posixDir
-		);
-	});
+	const posixShallow = shallow.map(toPosix);
+	return (
+		posixShallow.some((dir) => containsPosix(dir, posixTarget)) &&
+		!posixShallow.some(
+			(dir) =>
+				posixTarget === dir || path.posix.dirname(posixTarget) === dir
+		)
+	);
 }
 
 /** Whether `target` is one of `ignored`, or lies under one; a pattern matches the posix form of the whole path. */

@@ -1,0 +1,58 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    default.project.json · wrote
+  lobby
+    places/lobby/lobby.project.json · wrote
+  Built 2 configs.
+
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.rogen.json
+    root dirs: src
+    routes:
+      * -> ReplicatedStorage
+    sync dir: (none)
+    project file: default.project.json
+    variants: (none)
+  places/lobby/lobby.rogen.json
+    extends: default.rogen.json
+    root dirs: src, places/lobby/src
+    routes: same as default
+    sync dir: (none)
+    project file: places/lobby/lobby.project.json
+    variants: (none)
+  fixtures/plain/plain.rogen.json
+    separate: extends nothing here
+  2 configs.
+
+$ rogen build lobby
+exit 0
+stdout:
+  rogen build · lobby
+  places/lobby/lobby.project.json · unchanged
+  Built 1 config.
+
+$ rogen build plain
+exit 2
+stderr:
+  error: Config "plain" is fixtures/plain/plain.rogen.json, which extends nothing here, so it is a separate project. Add "extends" to make it part of this one, or build it by its path.
+
+written:
+  default.project.json
+  places/lobby/lobby.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/Util.luau
+
+$ rojo sourcemap places/lobby/lobby.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Queue: ModuleScript  <- src/Queue.luau
+    Util: ModuleScript  <- ../../src/Util.luau

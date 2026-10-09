@@ -8,8 +8,10 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_SUFFIX, configFileName, configLabel } from "./config.js";
+import { relativeTo } from "../../base/path.js";
+import { CONFIG_SUFFIX, configLabel } from "./config.js";
 import { EnclosingConfigs } from "./config-service.js";
+import { ConfigTree } from "./config-tree.js";
 
 /** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
 function isConfigPath(ref: string): boolean {
@@ -22,18 +24,22 @@ export interface DiscoveredConfigs {
 	readonly directory: string;
 	/** Absolute paths. */
 	readonly files: readonly string[];
-	/** Whether none was named, so `files` is every config in `directory`. */
+	/** Whether none was named, so `files` is every config in `directory` and each below that extends one there or above. */
 	readonly everyConfig: boolean;
+	/** The configs below `directory` that extend nothing there or above, when none was named. */
+	readonly separate: readonly string[];
+	/** Every folder searched for configs, when none was named. */
+	readonly folders: readonly string[];
 }
 
-/** Finds which config files a command reads: in the working directory, else in the nearest folder above that has any. */
+/** Finds which config files a command reads: in the working directory and the folders below it, else in the nearest folder above that has any. */
 export class ConfigDiscovery {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files `refs` names, each a name or a path, or every config in the folder found when it names none. A name resolves in that folder, a path from the working directory. */
+	/** The config files `refs` names, each a name or a path, or every config of the folder found when it names none. A name resolves among that folder's configs, a path from the working directory. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -41,30 +47,41 @@ export class ConfigDiscovery {
 		const home = await this.home();
 		if (refs.length === 0) {
 			if (home.isErr()) return err(home.error);
-			const { directory, fileNames } = home.value;
+			const found = await this.find(home.value.directory);
+			if (found.isErr()) return err(found.error);
+			const { members, separate, folders } = found.value;
 			return ok({
-				directory,
-				files: fileNames.map((name) => path.join(directory, name)),
+				directory: home.value.directory,
+				files: members,
 				everyConfig: true,
+				separate,
+				folders,
 			});
 		}
 
 		// With nothing to find configs in, a name fails as not found, in the working directory.
 		const directory = home.isOk() ? home.value.directory : cwd;
+		const tree = refs.every(isConfigPath)
+			? undefined
+			: await this.find(directory);
+		if (tree?.isErr()) return err(tree.error);
 		const resolved: string[] = [];
 		for (const ref of refs) {
-			const isPath = isConfigPath(ref);
-			const candidate = isPath
-				? path.resolve(cwd, ref)
-				: path.join(directory, configFileName(ref));
-			if (!(await this.fileSystemService.exists(candidate))) {
-				return err(
-					isPath
-						? new UsageError(`Config file not found: ${candidate}`)
-						: await this.notFound(ref, candidate, directory)
-				);
+			if (isConfigPath(ref)) {
+				const candidate = path.resolve(cwd, ref);
+				if (!(await this.fileSystemService.exists(candidate)))
+					return err(
+						new UsageError(`Config file not found: ${candidate}`)
+					);
+				resolved.push(candidate);
+				continue;
 			}
-			resolved.push(candidate);
+			const found = tree!.unwrap();
+			const named = found.members.find(
+				(file) => configLabel(file) === ref
+			);
+			if (!named) return err(this.notFound(ref, directory, found));
+			resolved.push(named);
 		}
 
 		const duplicate = findDuplicate(resolved);
@@ -77,19 +94,30 @@ export class ConfigDiscovery {
 			);
 		}
 
-		return ok({ directory, files: resolved, everyConfig: false });
+		return ok({
+			directory,
+			files: resolved,
+			everyConfig: false,
+			separate: [],
+			folders: [],
+		});
 	}
 
-	/** Every `*.rogen.json` directly in `directory`, as sorted absolute paths; none when it can't be read. */
-	async list(directory: string): Promise<string[]> {
-		const listing = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(directory)
-		);
-		return listing.isErr()
-			? []
-			: configFileNames(listing.value).map((name) =>
-					path.join(directory, name)
-				);
+	/** The configs of `directory` and the folders below it; fails when two that belong share a name. */
+	async find(directory: string): Promise<Result<ConfigTree, Error>> {
+		const tree = await ConfigTree.read(this.fileSystemService, directory);
+		const clash = sameName(tree.members);
+		if (clash) {
+			const [first, second] = clash.map((file) =>
+				relativeTo(this.environmentService.cwd, file)
+			);
+			return err(
+				new UsageError(
+					`Two configs are named "${configLabel(clash[0])}": ${first} and ${second}. Rename one, since a name has to mean one config.`
+				)
+			);
+		}
+		return ok(tree);
 	}
 
 	/** The folder configs are read from: the working directory when it has any, else the nearest folder above that does. */
@@ -136,13 +164,19 @@ export class ConfigDiscovery {
 		}
 	}
 
-	/** Suggests the config in `directory` that `name` is most likely a misspelling of, else lists the ones there. */
-	private async notFound(
-		name: string,
-		candidate: string,
-		directory: string
-	): Promise<Error> {
-		const labels = (await this.list(directory)).map(configLabel);
+	/** Why `name` names no config of `directory`'s: it is a separate project's, else a likely misspelling, else what is there. */
+	private notFound(name: string, directory: string, tree: ConfigTree): Error {
+		const relative = (file: string) =>
+			relativeTo(this.environmentService.cwd, file);
+		const separate = tree.separate.find(
+			(file) => configLabel(file) === name
+		);
+		if (separate) {
+			return new UsageError(
+				`Config "${name}" is ${relative(separate)}, which extends nothing here, so it is a separate project. Add "extends" to make it part of this one, or build it by its path.`
+			);
+		}
+		const labels = tree.members.map(configLabel);
 		const suggestion = closestMatch(name, labels);
 		const hint = suggestion
 			? `Did you mean "${suggestion}"?`
@@ -150,7 +184,7 @@ export class ConfigDiscovery {
 				? `Configs here: ${labels.join(", ")}.`
 				: `Run "rogen init" to create one.`;
 		return new UsageError(
-			`Config "${name}" not found: looked for ${candidate}. ${hint}`
+			`Config "${name}" not found: looked for ${path.join(directory, `${name}${CONFIG_SUFFIX}`)}. ${hint}`
 		);
 	}
 }
@@ -169,6 +203,18 @@ function findDuplicate(paths: readonly string[]): string | undefined {
 	for (const candidate of paths) {
 		if (seen.has(candidate)) return candidate;
 		seen.add(candidate);
+	}
+	return undefined;
+}
+
+/** The first two of `files` with one name. */
+function sameName(files: readonly string[]): [string, string] | undefined {
+	const seen = new Map<string, string>();
+	for (const file of files) {
+		const label = configLabel(file);
+		const other = seen.get(label);
+		if (other) return [other, file];
+		seen.set(label, file);
 	}
 	return undefined;
 }

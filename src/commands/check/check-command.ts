@@ -39,7 +39,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. The whole project, sync dir warnings included, when none is given. Every config here, or in the nearest folder above that has any, is read.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. The whole project, sync dir warnings included, when none is given. Every config here and each one below that extends one here, or those of the nearest folder above that has any, are read.",
 							isOptional: true,
 							isVariadic: true,
 						},

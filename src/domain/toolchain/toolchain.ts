@@ -110,6 +110,8 @@ export interface CompilerPlaceRequest {
 	readonly outDir: string;
 	/** The project file Rojo serves for this place. */
 	readonly projectFile: string;
+	/** The folder the place's own files go in, which `placeFileNames` are in. */
+	readonly dir: string;
 }
 
 /** A compile step between the root dirs and what Rojo syncs, as roblox-ts has, as this workspace configures it. */
@@ -124,7 +126,7 @@ export interface Compiler {
 	readonly compileCommand: string;
 	/** The edit that makes it compile the shared code from `rootDir`, when its config compiles another folder. */
 	rootDirStep(rootDir: string): string;
-	/** The files a place named `name` adds, beside its config and project file. */
+	/** The files a place named `name` adds, beside its config and project file, by name. */
 	placeFileNames(name: string): readonly string[];
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
 }
@@ -277,7 +279,13 @@ export class Darklua {
 
 	/** Keeps the sourcemap that `convert_require` reads current, from the source-rooted project. */
 	sourcemapCommand(projectFile: string): string {
-		return `rojo sourcemap ${projectFile} --output sourcemap.json --watch`;
+		return `rojo sourcemap ${projectFile} --output ${this.sourcemapOf(projectFile)} --watch`;
+	}
+
+	/** Where the sourcemap of `projectFile` goes: beside it, since Rojo writes its paths from the project file's folder. */
+	sourcemapOf(projectFile: string): string {
+		const dir = path.posix.dirname(projectFile);
+		return dir === "." ? "sourcemap.json" : `${dir}/sourcemap.json`;
 	}
 
 	/** One `darklua process` per directory, each landing at its path relative to their common root. */

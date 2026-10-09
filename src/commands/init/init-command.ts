@@ -72,7 +72,7 @@ registerCommand(
 						{
 							name: "name",
 							description:
-								"The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place: its code in places/<name>/src, beside a template with its name and its own servePort.",
+								"The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place, all in places/<name>: its config, extending default, and a template with its name and its own servePort, beside its code in src.",
 							isOptional: true,
 						},
 					],

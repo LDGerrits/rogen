@@ -6,6 +6,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigOptionValues, OutFileOption } from "./config.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
+import { ConfigTree } from "./config-tree.js";
 import { ConfigOverrides } from "./layered-config.js";
 import {
 	ConfigEntry,
@@ -40,7 +41,7 @@ export class CoreConfigService implements ConfigService {
 	private readonly loader: ConfigLoader;
 
 	constructor(
-		fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileSystemService,
 		environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
@@ -58,7 +59,8 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const overrides = overridesOf(options);
-		const { directory, files, everyConfig } = discovered.value;
+		const { directory, files, everyConfig, separate, folders } =
+			discovered.value;
 		const count = files.length;
 		if (overrides.outFile !== undefined && count > 1) {
 			const found = everyConfig ? "are here" : "were named";
@@ -75,13 +77,28 @@ export class CoreConfigService implements ConfigService {
 			overrides,
 			directory,
 			everyConfig
-				? { directory, list: () => this.discovery.list(directory) }
+				? {
+						folder: {
+							directory,
+							read: () =>
+								ConfigTree.read(
+									this.fileSystemService,
+									directory
+								),
+						},
+						found: { members: files, separate, folders },
+					}
 				: undefined
 		);
 	}
 
 	findEnclosing(): Promise<EnclosingConfigs | undefined> {
 		return this.discovery.findEnclosing();
+	}
+
+	async find(directory: string): Promise<readonly string[]> {
+		return (await ConfigTree.read(this.fileSystemService, directory))
+			.members;
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

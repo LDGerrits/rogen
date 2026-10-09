@@ -1,0 +1,19 @@
+$ rogen build
+exit 2
+stderr:
+  error: Two configs are named "default": default.rogen.json and places/lobby/default.rogen.json. Rename one, since a name has to mean one config.
+
+$ rogen build places/lobby/default.rogen.json
+exit 0
+stdout:
+  rogen build · default
+  places/lobby/default.project.json · wrote
+  Built 1 config.
+
+written:
+  places/lobby/default.project.json
+
+$ rojo sourcemap places/lobby/default.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- ../../src/Util.luau

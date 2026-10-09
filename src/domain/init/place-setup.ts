@@ -6,7 +6,6 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
@@ -45,7 +44,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			given ??
 			(await questions.name(directory, {
 				message: "Place name",
-				description: "Writes <name>.rogen.json.",
+				description: "Writes <name>.rogen.json in the place's folder.",
 				filesFor,
 			}));
 		if (name === undefined) return ok(undefined);
@@ -67,13 +66,25 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			]);
 		}
 
+		const placeFolder = await PlaceFolder.read(
+			this.fileSystemService,
+			directory.path,
+			normalizeDir(folder)
+		);
+		const taken = directory.checkFree(
+			new ConfigSet(
+				name,
+				workspace.language,
+				workspace.detectedDarklua,
+				placeFolder.configDir
+			).placeFiles,
+			(file) => placeFolder.has(file)
+		);
+		if (taken.length > 0) return err(taken);
+
 		return ok({
 			name,
-			folder: await PlaceFolder.read(
-				this.fileSystemService,
-				directory.path,
-				normalizeDir(folder)
-			),
+			folder: placeFolder,
 			servePort: ConfigSet.freePort(base.value.ports ?? []),
 			language: workspace.language,
 			darklua: workspace.detectedDarklua,
@@ -91,7 +102,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		builder.addEdit(
 			ConfigSet.variantsStep(
 				place.configSet.language,
-				configFileName(place.configSet.name)
+				place.configSet.configFiles[0]
 			)
 		);
 	}

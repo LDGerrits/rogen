@@ -1,0 +1,3 @@
+{
+	"steps": [["build"], ["list"], ["build", "lobby"], ["build", "plain"]]
+}

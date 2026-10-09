@@ -193,9 +193,9 @@ export class InitQuestions {
 				if (trimmed === "") return "Enter a name.";
 				const parsed = ConfigSet.parseName([trimmed]);
 				if (parsed.isErr()) return parsed.error.message;
-				const taken = filesFor(trimmed).find((file) =>
-					directory.has(file)
-				);
+				const taken = filesFor(trimmed)
+					.map((file) => directory.taken(file))
+					.find((file) => file !== undefined);
 				return taken && `${taken} already exists.`;
 			},
 		});
@@ -543,7 +543,7 @@ export class InitQuestions {
 
 		const answer = await this.promptService.text({
 			message: "Places",
-			description: `Each place gets <name>.rogen.json, and its own folder, ${ConfigSet.placeFolderOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
+			description: `Each place gets its own folder, ${ConfigSet.placeFolderOf("<name>", rootDirs)}, with its config and template beside its code in src. Separate several with commas.`,
 			placeholder: found.length > 0 ? found.join(", ") : "lobby",
 			validate: (value) => {
 				const names = splitList(value);
@@ -554,14 +554,16 @@ export class InitQuestions {
 					if (names.indexOf(place) !== index) {
 						return `${place} is listed twice.`;
 					}
-					const clash = filesFor(place).find(
-						(file) => directory.has(file) || reserved.has(file)
+					const files = filesFor(place);
+					const taken = files
+						.map((file) => directory.taken(file))
+						.find((file) => file !== undefined);
+					if (taken) return `${taken} already exists.`;
+					const reservedFile = files.find((file) =>
+						reserved.has(file)
 					);
-					if (clash) {
-						return directory.has(clash)
-							? `${clash} already exists.`
-							: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
-					}
+					if (reservedFile)
+						return `${reservedFile} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
 					const problem = directory.placeFolderProblem(
 						rootDirs,
 						ConfigSet.placeFolderIn(directory, place, rootDirs)

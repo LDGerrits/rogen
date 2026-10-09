@@ -24,7 +24,9 @@ export class ConfigSet {
 		readonly name: string,
 		readonly language: Language,
 		/** Darklua when it processes the code, else `undefined`. */
-		readonly darklua: Darklua | undefined
+		readonly darklua: Darklua | undefined,
+		/** The folder its files go in, relative to the directory: a place's own, else the directory itself. */
+		readonly dir = "."
 	) {}
 
 	/** The stem of the synced config beside `name`'s source-rooted one. */
@@ -42,7 +44,7 @@ export class ConfigSet {
 
 	/** `extends` as init writes it: relative, and explicitly so. */
 	static reference(file: string): string {
-		return `./${file}`;
+		return file.startsWith("../") ? file : `./${file}`;
 	}
 
 	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
@@ -130,7 +132,9 @@ export class ConfigSet {
 
 	/** The synced config's file, when there is one. */
 	get syncFile(): string | undefined {
-		return this.sourced ? configFileName(this.syncStem) : undefined;
+		return this.sourced
+			? this.fileIn(configFileName(this.syncStem))
+			: undefined;
 	}
 
 	/** The stems of its configs, in the order they're written. */
@@ -139,11 +143,21 @@ export class ConfigSet {
 	}
 
 	get configFiles(): string[] {
-		return this.stems.map(configFileName);
+		return this.stems.map((stem) => this.fileIn(configFileName(stem)));
 	}
 
 	get outputFiles(): string[] {
-		return this.stems.map(defaultOutFileName);
+		return this.stems.map((stem) => this.fileIn(defaultOutFileName(stem)));
+	}
+
+	/** The project file the named config writes. */
+	get projectFile(): string {
+		return this.fileIn(defaultOutFileName(this.name));
+	}
+
+	/** `file`, named in `dir`, relative to the directory. */
+	fileIn(file: string): string {
+		return this.dir === "." ? file : `${this.dir}/${file}`;
 	}
 
 	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
@@ -159,16 +173,21 @@ export class ConfigSet {
 		syncDir?: string
 	): void {
 		if (this.sourced) {
-			builder.addConfig(this.name, own);
-			builder.addConfig(this.syncStem, {
-				extends: ConfigSet.reference(configFileName(this.name)),
-				...(syncDir && { syncDir }),
-			});
+			builder.addConfig(this.name, own, this.dir);
+			builder.addConfig(
+				this.syncStem,
+				{
+					extends: ConfigSet.reference(configFileName(this.name)),
+					...(syncDir && { syncDir }),
+				},
+				this.dir
+			);
 		} else {
-			builder.addConfig(this.name, {
-				...own,
-				...(syncDir && { syncDir }),
-			});
+			builder.addConfig(
+				this.name,
+				{ ...own, ...(syncDir && { syncDir }) },
+				this.dir
+			);
 		}
 	}
 
@@ -202,17 +221,18 @@ export class ConfigSet {
 			);
 		}
 		if (darklua && this.sourced && sourcemap) {
-			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
+			builder.addSourcemapSteps(this.projectFile, darklua);
 		}
 	}
 
 	/** The files a place named like this writes, plus its project file, which mustn't exist either. */
 	get placeFiles(): string[] {
 		return [
-			configFileName(this.name),
-			...(this.syncFile ? [this.syncFile] : []),
-			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			defaultOutFileName(this.name),
+			...this.configFiles,
+			...(this.language.compiler?.placeFileNames(this.name) ?? []).map(
+				(file) => this.fileIn(file)
+			),
+			this.projectFile,
 		];
 	}
 }

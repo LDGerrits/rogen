@@ -2,100 +2,90 @@ $ rogen init lobby
 exit 0
 stdout:
   rogen init
-  Created lobby.rogen.json.
+  Created places/lobby/lobby.rogen.json.
   Created places/lobby/template.project.json.
-  lobby.project.json · wrote
+  places/lobby/lobby.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen init arena
 exit 0
 stdout:
   rogen init
-  Created arena.rogen.json.
+  Created places/arena/arena.rogen.json.
   Created places/arena/template.project.json.
   Created places/arena/src/.
-  arena.project.json · wrote
+  places/arena/arena.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Declare variants under "variants" in arena.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Declare variants under "variants" in places/arena/arena.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen build
 exit 0
 stdout:
-  rogen build · arena, default, lobby
-  arena
-    arena.project.json · unchanged
+  rogen build · default, arena, lobby
   default
     default.project.json · wrote
+  arena
+    places/arena/arena.project.json · unchanged
   lobby
-    lobby.project.json · unchanged
+    places/lobby/lobby.project.json · unchanged
   Built 3 configs.
 
 $ rogen list
 exit 0
 stdout:
   rogen list
-  arena.rogen.json
-    extends: default.rogen.json
-    root dirs: places/shared/src, places/arena/src
+  default.rogen.json
+    root dirs: places/shared/src
     routes:
       Server -> ServerScriptService
       Shared -> ReplicatedStorage/Shared
       * -> ReplicatedStorage/Shared
-    template: places/arena/template.project.json, over places/shared/template.project.json
-    sync dir: (none)
-    project file: arena.project.json
-    variants: (none)
-  default.rogen.json
-    root dirs: places/shared/src
-    routes: same as arena
     template: places/shared/template.project.json
     sync dir: (none)
     project file: default.project.json
     variants: (none)
-  lobby.rogen.json
+  places/arena/arena.rogen.json
+    extends: default.rogen.json
+    root dirs: places/shared/src, places/arena/src
+    routes: same as default
+    template: places/arena/template.project.json, over places/shared/template.project.json
+    sync dir: (none)
+    project file: places/arena/arena.project.json
+    variants: (none)
+  places/lobby/lobby.rogen.json
     extends: default.rogen.json
     root dirs: places/shared/src, places/lobby/src
-    routes: same as arena
+    routes: same as default
     template: places/lobby/template.project.json, over places/shared/template.project.json
     sync dir: (none)
-    project file: lobby.project.json
+    project file: places/lobby/lobby.project.json
     variants: (none)
   3 configs.
 
 written:
-  arena.project.json
-  arena.rogen.json
   default.project.json
-  lobby.project.json
-  lobby.rogen.json
+  places/arena/arena.project.json
+  places/arena/arena.rogen.json
   places/arena/template.project.json
+  places/lobby/lobby.project.json
+  places/lobby/lobby.rogen.json
   places/lobby/template.project.json
 
-arena.rogen.json:
+places/arena/arena.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../../default.rogen.json",
 	"rootDirs": [
-		"places/arena/src"
+		"src"
 	],
-	"template": "places/arena/template.project.json"
-}
-
-lobby.rogen.json:
-{
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
-	"rootDirs": [
-		"places/lobby/src"
-	],
-	"template": "places/lobby/template.project.json"
+	"template": "template.project.json"
 }
 
 places/arena/template.project.json:
@@ -107,6 +97,16 @@ places/arena/template.project.json:
 	}
 }
 
+places/lobby/lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "../../default.rogen.json",
+	"rootDirs": [
+		"src"
+	],
+	"template": "template.project.json"
+}
+
 places/lobby/template.project.json:
 {
 	"name": "Lobby",
@@ -115,15 +115,6 @@ places/lobby/template.project.json:
 		"$className": "DataModel"
 	}
 }
-
-$ rojo sourcemap arena.project.json
-Arena: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Packages: Folder
-      Promise: ModuleScript  <- Packages/Promise.luau
-    Shared: Folder
-      Combat: Folder
-        Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
 
 $ rojo sourcemap default.project.json
 Game: DataModel
@@ -134,20 +125,29 @@ Game: DataModel
       Combat: Folder
         Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
 
-$ rojo sourcemap lobby.project.json
-Lobby: DataModel
+$ rojo sourcemap places/arena/arena.project.json
+Arena: DataModel
   ReplicatedStorage: ReplicatedStorage
     Packages: Folder
-      Promise: ModuleScript  <- Packages/Promise.luau
+      Promise: ModuleScript  <- ../../Packages/Promise.luau
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- places/shared/src/Combat/Shared/Types.luau
-  ServerScriptService: ServerScriptService
-    Lobby: Folder
-      Queue: ModuleScript  <- places/lobby/src/Lobby/Server/Queue.luau
+        Types: ModuleScript  <- ../shared/src/Combat/Shared/Types.luau
 
 $ rojo sourcemap places/arena/template.project.json
 Arena: DataModel
+
+$ rojo sourcemap places/lobby/lobby.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Promise: ModuleScript  <- ../../Packages/Promise.luau
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- ../shared/src/Combat/Shared/Types.luau
+  ServerScriptService: ServerScriptService
+    Lobby: Folder
+      Queue: ModuleScript  <- src/Lobby/Server/Queue.luau
 
 $ rojo sourcemap places/lobby/template.project.json
 Lobby: DataModel

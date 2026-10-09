@@ -40,7 +40,9 @@ export class InitDirectory {
 		/** The name written when none is asked for: the given one, else `default`. */
 		readonly name: string,
 		/** What a place inherits from `default.rogen.json`; `undefined` when there is none. */
-		readonly base: Result<BaseConfig, Diagnostic[]> | undefined
+		readonly base: Result<BaseConfig, Diagnostic[]> | undefined,
+		/** Every config of the project, here and below, relative to it; a name means one of them. */
+		private readonly configs: readonly string[] = []
 	) {}
 
 	/** The name of the game the project files carry. */
@@ -71,23 +73,41 @@ export class InitDirectory {
 			.sort();
 	}
 
-	/** One diagnostic per file in `fileNames` that already exists here; only a config is safe to tell the user to delete. */
-	checkFree(fileNames: readonly string[]): Diagnostic[] {
-		return fileNames
-			.filter((fileName) => this.has(fileName))
-			.map((fileName) =>
-				fileName.endsWith(CONFIG_SUFFIX)
-					? errorDiagnostic(
-							"init.configExists",
-							{ resource: path.join(this.path, fileName) },
-							"this config already exists. Delete it to write a new one."
-						)
-					: errorDiagnostic(
-							"init.fileExists",
-							{ resource: path.join(this.path, fileName) },
-							"this file already exists, and init never overwrites one. Pick another name."
-						)
+	/** The file already standing where `fileName` would go, or the config of the project that already has its name. */
+	taken(fileName: string): string | undefined {
+		if (this.has(fileName)) return fileName;
+		if (!fileName.endsWith(CONFIG_SUFFIX)) return undefined;
+		const name = path.posix.basename(fileName);
+		return this.configs.find(
+			(config) => path.posix.basename(config) === name
+		);
+	}
+
+	/** One diagnostic per file in `fileNames` that already exists here, in `isThere` when given, or whose config name the project already uses; only a config is safe to tell the user to delete. */
+	checkFree(
+		fileNames: readonly string[],
+		isThere: (fileName: string) => boolean = () => false
+	): Diagnostic[] {
+		return fileNames.flatMap((fileName) => {
+			const existing = isThere(fileName)
+				? fileName
+				: this.taken(fileName);
+			if (existing === undefined) return [];
+			const resource = { resource: path.join(this.path, existing) };
+			if (!fileName.endsWith(CONFIG_SUFFIX))
+				return errorDiagnostic(
+					"init.fileExists",
+					resource,
+					"this file already exists, and init never overwrites one. Pick another name."
+				);
+			return errorDiagnostic(
+				"init.configExists",
+				resource,
+				existing === fileName
+					? "this config already exists. Delete it to write a new one."
+					: "a config of this name already exists, and a name has to mean one config. Pick another name."
 			);
+		});
 	}
 
 	/** Beside `default.rogen.json`, a run that can't ask adds a place, which has no default name. */

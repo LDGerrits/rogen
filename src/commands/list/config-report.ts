@@ -17,9 +17,12 @@ const variantLines = ({ variants }: ResolvedConfig): string[] =>
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
-/** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
+/** The configs a run read, and the separate ones below it: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ConfigReport {
-	constructor(private readonly entries: readonly ConfigEntry[]) {}
+	constructor(
+		private readonly entries: readonly ConfigEntry[],
+		private readonly separate: readonly string[] = []
+	) {}
 
 	/** One block per config: its file, what it extends, then its values or its errors. */
 	print(logService: LogService, cwd: string): void {
@@ -74,6 +77,10 @@ export class ConfigReport {
 				].join("\n")
 			);
 		}
+		for (const file of this.separate) {
+			logService.step(relative(file));
+			logService.info("separate: extends nothing here");
+		}
 	}
 
 	json(): Record<string, unknown> {
@@ -91,6 +98,7 @@ export class ConfigReport {
 						? entry.errors.map(diagnosticToJson)
 						: [],
 			})),
+			separate: this.separate.map((file) => toNative(file)),
 		};
 	}
 }

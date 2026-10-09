@@ -156,6 +156,8 @@ export function selectionOf(
 export class MockConfigSelection implements ConfigSelection {
 	readonly files: ReadonlySet<string>;
 	readonly directory = undefined;
+	readonly folders = [];
+	readonly separate = [];
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
@@ -197,6 +199,10 @@ export class MockConfigService implements ConfigService {
 
 	async select(): Promise<Result<ConfigSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));
+	}
+
+	async find(): Promise<readonly string[]> {
+		return this.entries.map(({ file }) => file);
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

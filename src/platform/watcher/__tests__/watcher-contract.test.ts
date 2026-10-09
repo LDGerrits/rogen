@@ -175,6 +175,22 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 		expect(changed).not.toContain(toPosix(at("deep/inner/b.luau")));
 	});
 
+	it("should report the entries of a shallow directory inside another", async () => {
+		await fixture.write(at("places/lobby/old.rogen.json"));
+		await fixture.write(at("places/lobby/src/a.luau"));
+		await fixture.watcher.watch([], {
+			shallow: [fixture.root, at("places"), at("places/lobby")],
+		});
+
+		await fixture.write(at("places/lobby/src/b.luau"));
+		await fixture.write(at("places/lobby/lobby.rogen.json"));
+
+		await waitFor(() =>
+			changed.includes(toPosix(at("places/lobby/lobby.rogen.json")))
+		);
+		expect(changed).not.toContain(toPosix(at("places/lobby/src/b.luau")));
+	});
+
 	it("should report everything under a directory that is both shallow and watched deep", async () => {
 		await fixture.write(at("src/a.luau"));
 		await fixture.watcher.watch([at("src")], { shallow: [fixture.root] });

@@ -40,7 +40,8 @@ stdout:
         "outFile": "<dir>/default.project.json",
         "diagnostics": []
       }
-    ]
+    ],
+    "separate": []
   }
 
 $ rogen build default

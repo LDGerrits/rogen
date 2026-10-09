@@ -199,6 +199,37 @@ describe("list command", () => {
 		expect(steps()).toEqual(["default.rogen.json", "lobby.rogen.json"]);
 	});
 
+	it("should list a config below that extends one here, by its path", async () => {
+		await write("default.rogen.json", {});
+		await write("places/lobby/lobby.rogen.json", {
+			extends: "../../default.rogen.json",
+		});
+
+		await run();
+
+		expect(steps()).toEqual([
+			"default.rogen.json",
+			"places/lobby/lobby.rogen.json",
+		]);
+	});
+
+	it("should show a config below that extends nothing here as separate, and not count it", async () => {
+		await write("default.rogen.json", {});
+		await write("fixtures/plain/plain.rogen.json", {});
+
+		const result = await run();
+
+		expect(steps()).toEqual([
+			"default.rogen.json",
+			"fixtures/plain/plain.rogen.json",
+		]);
+		expect(under("fixtures/plain/plain.rogen.json")).toEqual([
+			"separate: extends nothing here",
+		]);
+		expect(result.isOk()).toBe(true);
+		expect(logService.entries.at(-1)?.text).toBe("1 config.");
+	});
+
 	it("should report a broken config in place, print the rest and fail", async () => {
 		await write("a.rogen.json", {});
 		await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
@@ -331,7 +362,7 @@ describe("list command", () => {
 					.filter(({ kind }) => kind === "print")
 					.map(({ text }) => text)
 					.join("\n")
-			) as { configs: Record<string, unknown>[] };
+			) as { configs: Record<string, unknown>[]; separate: string[] };
 
 		const entry = (config: string) =>
 			document().configs.find((candidate) => candidate.config === config);
@@ -413,6 +444,7 @@ describe("list command", () => {
 						diagnostics: [],
 					},
 				],
+				separate: [],
 			});
 		});
 
@@ -446,6 +478,17 @@ describe("list command", () => {
 			expect(document().configs.map(({ config }) => config)).toEqual([
 				"default",
 				"lobby",
+			]);
+		});
+
+		it("should print the separate configs below", async () => {
+			await write("default.rogen.json", {});
+			await write("fixtures/plain/plain.rogen.json", {});
+
+			await run({ json: true });
+
+			expect(document().separate).toEqual([
+				"/repo/fixtures/plain/plain.rogen.json",
 			]);
 		});
 

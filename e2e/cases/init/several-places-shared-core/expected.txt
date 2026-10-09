@@ -3,13 +3,13 @@ exit 0
 stdout:
   rogen init
   Created default.rogen.json.
-  Created lobby.rogen.json.
+  Created places/lobby/lobby.rogen.json.
   Created places/lobby/template.project.json.
   Created AGENTS.md.
   Created places/shared/src/.
   Created places/lobby/src/.
   default.project.json · wrote
-  lobby.project.json · wrote
+  places/lobby/lobby.project.json · wrote
   Next steps
     Run:
       rogen serve
@@ -24,15 +24,15 @@ stdout:
   default
     default.project.json · unchanged
   lobby
-    lobby.project.json · unchanged
+    places/lobby/lobby.project.json · unchanged
   Built 2 configs.
 
 written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  lobby.project.json
-  lobby.rogen.json
+  places/lobby/lobby.project.json
+  places/lobby/lobby.rogen.json
   places/lobby/template.project.json
 
 default.rogen.json:
@@ -49,20 +49,20 @@ default.rogen.json:
 	}
 }
 
-lobby.rogen.json:
+places/lobby/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../../default.rogen.json",
 	"rootDirs": [
-		"places/lobby/src"
+		"src"
 	],
-	"template": "places/lobby/template.project.json"
+	"template": "template.project.json"
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
 
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap places/lobby/lobby.project.json
 Lobby: DataModel
 
 $ rojo sourcemap places/lobby/template.project.json

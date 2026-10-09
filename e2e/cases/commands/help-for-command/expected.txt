@@ -7,7 +7,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
@@ -38,7 +38,7 @@ stdout:
     rogen watch [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
@@ -65,7 +65,7 @@ stdout:
     rogen init [name] [options]
   
   Arguments:
-    name  The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place: its code in places/<name>/src, beside a template with its name and its own servePort.
+    name  The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place, all in places/<name>: its config, extending default, and a template with its name and its own servePort, beside its code in src.
   
   Options:
     -y, --yes   Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
@@ -85,13 +85,13 @@ stdout:
 $ rogen help list
 exit 0
 stdout:
-  Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.
+  Lists every config here with its root dirs, routes, sync dir, project file and variants, and the separate ones below; with --json, each fully resolved.
   
   Usage:
     rogen list [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.
   
   Options:
         --mode <name>        Picks the mode every config that declares modes builds in.
@@ -118,7 +118,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.

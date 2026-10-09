@@ -277,6 +277,32 @@ describe("CoreWatchSession", () => {
 			expect(await built("lobby")).toEqual(["A"]);
 		});
 
+		it("should build a place added in a new folder below while watching", async () => {
+			await start([]);
+
+			await fs.createDirectory("/repo/places");
+			await settle();
+			await writeConfig("/repo/places/lobby/lobby.rogen.json", {
+				extends: "../../default.rogen.json",
+			});
+			await settle();
+
+			expect(changeUpdates().at(-1)?.notices).toEqual([
+				{ kind: "added", file: "/repo/places/lobby/lobby.rogen.json" },
+			]);
+		});
+
+		it("should leave a config added below that extends nothing here", async () => {
+			await start([]);
+
+			await writeConfig("/repo/fixture/fixture.rogen.json", {});
+			await settle();
+
+			expect(changeUpdates().flatMap(({ notices }) => notices)).toEqual(
+				[]
+			);
+		});
+
 		it("should rebuild an added config when its sources change", async () => {
 			await start([]);
 			await writeConfig("/repo/lobby.rogen.json", { rootDirs: ["more"] });

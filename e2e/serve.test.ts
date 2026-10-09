@@ -229,6 +229,41 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(port)).toBe("Game");
 	}, 60_000);
 
+	it("should start a server for a place added in a folder of its own while it serves", async () => {
+		const serving = start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving default");
+		}, 20_000);
+
+		writeProjectFile(project.dir, "places/lobby/src/B.server.luau");
+		writeProjectFile(
+			project.dir,
+			"places/lobby/template.project.json",
+			template(port + 1, "Lobby")
+		);
+		writeProjectFile(
+			project.dir,
+			"places/lobby/lobby.rogen.json",
+			JSON.stringify({
+				extends: "../../default.rogen.json",
+				rootDirs: ["src"],
+				template: "template.project.json",
+			})
+		);
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${port + 1}.`
+			);
+		}, 20_000);
+		expect(await rojoProject(port + 1)).toBe("Lobby");
+		expect(
+			fs.existsSync(
+				path.join(project.dir, "places/lobby/lobby.project.json")
+			)
+		).toBe(true);
+	}, 60_000);
+
 	it("should serve every place init adds, each under its own name and port", async () => {
 		const init = (name: string) => {
 			const [command, args] = invocation(bundle.cli, [

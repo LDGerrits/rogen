@@ -4,23 +4,24 @@ stdout:
   rogen init
   Created default.rogen.json.
   Created sync.rogen.json.
-  Created lobby.rogen.json.
-  Created lobby-sync.rogen.json.
+  Created places/lobby.rogen.json.
+  Created places/lobby-sync.rogen.json.
   Created places/lobby.template.project.json.
   Created AGENTS.md.
   default.project.json · wrote
   sync.project.json · wrote
-  lobby.project.json · wrote
-  lobby-sync.project.json · wrote
+  places/lobby.project.json · wrote
+  places/lobby-sync.project.json · wrote
   Next steps
     Run each in its own terminal:
       rogen serve lobby-sync
-      rojo sourcemap lobby.project.json --output sourcemap.json --watch
+      rojo sourcemap places/lobby.project.json --output places/sourcemap.json --watch
     Have Darklua process your code into the sync dir:
       darklua process src dist/lobby/src
       darklua process places/lobby dist/lobby/places/lobby
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Rojo writes places/sourcemap.json with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "places/sourcemap.json".
   Wrote 6 files.
 
 $ rogen build default sync lobby lobby-sync
@@ -32,19 +33,19 @@ stdout:
   sync
     sync.project.json · unchanged
   lobby
-    lobby.project.json · unchanged
+    places/lobby.project.json · unchanged
   lobby-sync
-    lobby-sync.project.json · unchanged
+    places/lobby-sync.project.json · unchanged
   Built 4 configs.
 
 written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  lobby-sync.project.json
-  lobby-sync.rogen.json
-  lobby.project.json
-  lobby.rogen.json
+  places/lobby-sync.project.json
+  places/lobby-sync.rogen.json
+  places/lobby.project.json
+  places/lobby.rogen.json
   places/lobby.template.project.json
   sync.project.json
   sync.rogen.json
@@ -63,21 +64,21 @@ default.rogen.json:
 	}
 }
 
-lobby-sync.rogen.json:
+places/lobby-sync.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./lobby.rogen.json",
-	"syncDir": "dist/lobby"
+	"syncDir": "../dist/lobby"
 }
 
-lobby.rogen.json:
+places/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../default.rogen.json",
 	"rootDirs": [
-		"places/lobby"
+		"lobby"
 	],
-	"template": "places/lobby.template.project.json"
+	"template": "lobby.template.project.json"
 }
 
 sync.rogen.json:
@@ -93,21 +94,21 @@ project: DataModel
     Combat: Folder
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
 
-$ rojo sourcemap lobby-sync.project.json
+$ rojo sourcemap places/lobby-sync.project.json
 Lobby: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
-      Damage: ModuleScript  <- dist/lobby/src/Combat/Server/Damage.luau
+      Damage: ModuleScript  <- ../dist/lobby/src/Combat/Server/Damage.luau
     Lobby: Folder
-      Greeter: ModuleScript  <- dist/lobby/places/lobby/Lobby/Server/Greeter.luau
+      Greeter: ModuleScript  <- ../dist/lobby/places/lobby/Lobby/Server/Greeter.luau
 
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap places/lobby.project.json
 Lobby: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
-      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+      Damage: ModuleScript  <- ../src/Combat/Server/Damage.luau
     Lobby: Folder
-      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+      Greeter: ModuleScript  <- lobby/Lobby/Server/Greeter.luau
 
 $ rojo sourcemap places/lobby.template.project.json
 Lobby: DataModel

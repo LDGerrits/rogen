@@ -24,35 +24,46 @@ import {
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
-/** The folder a selection was picked from, and how to list the configs in it now. */
+/** The configs of a folder and the folders below it, as `ConfigTree` reads them. */
+export interface FoundConfigs {
+	readonly members: readonly string[];
+	readonly separate: readonly string[];
+	readonly folders: readonly string[];
+}
+
+/** The folder a selection was picked from, and how to find the configs in it now. */
 export interface PickedFolder {
 	readonly directory: string;
-	/** Absolute, sorted; none when the folder has no config or can't be read. */
-	list(): Promise<readonly string[]>;
+	read(): Promise<FoundConfigs>;
 }
 
 /** The configs one invocation picked, each loading and reloading itself. */
 export class CoreConfigSelection implements ConfigSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
+	private _folders: readonly string[];
+	private _separate: readonly string[];
 
 	private constructor(
 		private managed: readonly ManagedConfig[],
 		private readonly loader: ConfigLoader,
 		private readonly overrides: ConfigOverrides,
 		readonly home: string,
-		private readonly folder: PickedFolder | undefined
+		private readonly folder: PickedFolder | undefined,
+		found: FoundConfigs | undefined
 	) {
 		this._files = this.readFiles();
+		this._folders = found?.folders ?? [];
+		this._separate = found?.separate ?? [];
 	}
 
-	/** Loads `files` with `overrides`; fails when a variant or mode override is declared by none of them. */
+	/** Loads `files`, or what `found` found in `folder`, with `overrides`; fails when a variant or mode override is declared by none of them. */
 	static async load(
 		files: readonly string[],
 		loader: ConfigLoader,
 		overrides: ConfigOverrides,
 		home: string,
-		folder?: PickedFolder
+		picked?: { folder: PickedFolder; found: FoundConfigs }
 	): Promise<Result<CoreConfigSelection, Error>> {
 		const managed = files.map(
 			(file) => new ManagedConfig(file, loader, overrides)
@@ -63,7 +74,16 @@ export class CoreConfigSelection implements ConfigSelection {
 			undeclaredMode(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed, loader, overrides, home, folder));
+			: ok(
+					new CoreConfigSelection(
+						managed,
+						loader,
+						overrides,
+						home,
+						picked?.folder,
+						picked?.found
+					)
+				);
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -78,13 +98,23 @@ export class CoreConfigSelection implements ConfigSelection {
 		return this.folder?.directory;
 	}
 
-	concerns(file: string): boolean {
+	get folders(): readonly string[] {
+		return this._folders;
+	}
+
+	get separate(): readonly string[] {
+		return this._separate;
+	}
+
+	concerns(file: string, isFolder = false): boolean {
 		if (this._files.has(file)) return true;
 		const posixFile = toPosix(file);
+		const searched = (dir: string) =>
+			this._folders.some((folder) => toPosix(folder) === dir);
 		return (
-			this.folder !== undefined &&
-			posixFile.endsWith(CONFIG_SUFFIX) &&
-			dirnamePosix(posixFile) === toPosix(this.folder.directory)
+			(isFolder || posixFile.endsWith(CONFIG_SUFFIX)) &&
+			(searched(dirnamePosix(posixFile)) ||
+				(isFolder && searched(posixFile)))
 		);
 	}
 
@@ -145,7 +175,10 @@ export class CoreConfigSelection implements ConfigSelection {
 		removed: readonly string[];
 	}> {
 		if (!this.folder) return { added: [], removed: [] };
-		const now = new Set(await this.folder.list());
+		const found = await this.folder.read();
+		this._folders = found.folders;
+		this._separate = found.separate;
+		const now = new Set(found.members);
 		const known = new Set(this.managed.map(({ file }) => file));
 		const added = [...now]
 			.filter((file) => !known.has(file))

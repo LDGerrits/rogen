@@ -3,14 +3,14 @@ exit 0
 stdout:
   rogen init
   Created default.rogen.json.
-  Created lobby.rogen.json.
-  Created match.rogen.json.
+  Created places/lobby.rogen.json.
+  Created places/match.rogen.json.
   Created places/lobby.template.project.json.
   Created places/match.template.project.json.
   Created AGENTS.md.
   default.project.json · wrote
-  lobby.project.json · wrote
-  match.project.json · wrote
+  places/lobby.project.json · wrote
+  places/match.project.json · wrote
   Next steps
     Run:
       rogen serve
@@ -25,20 +25,20 @@ stdout:
   default
     default.project.json · unchanged
   lobby
-    lobby.project.json · unchanged
+    places/lobby.project.json · unchanged
   match
-    match.project.json · unchanged
+    places/match.project.json · unchanged
   Built 3 configs.
 
 written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  lobby.project.json
-  lobby.rogen.json
-  match.project.json
-  match.rogen.json
+  places/lobby.project.json
+  places/lobby.rogen.json
   places/lobby.template.project.json
+  places/match.project.json
+  places/match.rogen.json
   places/match.template.project.json
 
 default.rogen.json:
@@ -55,24 +55,24 @@ default.rogen.json:
 	}
 }
 
-lobby.rogen.json:
+places/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../default.rogen.json",
 	"rootDirs": [
-		"places/lobby"
+		"lobby"
 	],
-	"template": "places/lobby.template.project.json"
+	"template": "lobby.template.project.json"
 }
 
-match.rogen.json:
+places/match.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../default.rogen.json",
 	"rootDirs": [
-		"places/match"
+		"match"
 	],
-	"template": "places/match.template.project.json"
+	"template": "match.template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -82,28 +82,28 @@ project: DataModel
       Combat: Folder
         Types: ModuleScript  <- src/Combat/Types.luau
 
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap places/lobby.project.json
 Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- src/Combat/Types.luau
+        Types: ModuleScript  <- ../src/Combat/Types.luau
   ServerScriptService: ServerScriptService
     Lobby: Folder
-      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+      Greeter: ModuleScript  <- lobby/Lobby/Server/Greeter.luau
 
-$ rojo sourcemap match.project.json
+$ rojo sourcemap places/lobby.template.project.json
+Lobby: DataModel
+
+$ rojo sourcemap places/match.project.json
 Match: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- src/Combat/Types.luau
+        Types: ModuleScript  <- ../src/Combat/Types.luau
   ServerScriptService: ServerScriptService
     Match: Folder
-      Arena: ModuleScript  <- places/match/Match/Server/Arena.luau
-
-$ rojo sourcemap places/lobby.template.project.json
-Lobby: DataModel
+      Arena: ModuleScript  <- match/Match/Server/Arena.luau
 
 $ rojo sourcemap places/match.template.project.json
 Match: DataModel

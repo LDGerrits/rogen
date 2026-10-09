@@ -2,13 +2,13 @@ $ rogen init lobby
 exit 0
 stdout:
   rogen init
-  Created lobby.rogen.json.
+  Created places/lobby.rogen.json.
   Created places/lobby.template.project.json.
-  lobby.project.json · wrote
+  places/lobby.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Declare variants under "variants" in places/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 $ rogen build default lobby
@@ -18,23 +18,23 @@ stdout:
   default
     default.project.json · wrote
   lobby
-    lobby.project.json · unchanged
+    places/lobby.project.json · unchanged
   Built 2 configs.
 
 written:
   default.project.json
-  lobby.project.json
-  lobby.rogen.json
+  places/lobby.project.json
+  places/lobby.rogen.json
   places/lobby.template.project.json
 
-lobby.rogen.json:
+places/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../default.rogen.json",
 	"rootDirs": [
-		"places/lobby"
+		"lobby"
 	],
-	"template": "places/lobby.template.project.json"
+	"template": "lobby.template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -47,17 +47,17 @@ project: DataModel
     Combat: Folder
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
 
-$ rojo sourcemap lobby.project.json
+$ rojo sourcemap places/lobby.project.json
 Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
-        Types: ModuleScript  <- src/Combat/Types.luau
+        Types: ModuleScript  <- ../src/Combat/Types.luau
   ServerScriptService: ServerScriptService
     Combat: Folder
-      Damage: ModuleScript  <- src/Combat/Server/Damage.luau
+      Damage: ModuleScript  <- ../src/Combat/Server/Damage.luau
     Lobby: Folder
-      Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+      Greeter: ModuleScript  <- lobby/Lobby/Server/Greeter.luau
 
 $ rojo sourcemap places/lobby.template.project.json
 Lobby: DataModel

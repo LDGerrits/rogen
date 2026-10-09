@@ -1,0 +1,15 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · lobby
+  lobby.project.json · wrote
+  Built 1 config.
+
+written:
+  places/lobby/lobby.project.json
+
+$ rojo sourcemap places/lobby/lobby.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Queue: ModuleScript  <- src/Queue.luau
+    Util: ModuleScript  <- ../../src/Util.luau

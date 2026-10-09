@@ -107,23 +107,29 @@ export class RobloxTsCompiler implements Compiler {
 		sharedRootDirs,
 		outDir,
 		projectFile,
+		dir,
 	}: CompilerPlaceRequest): CompiledPlace {
-		const tsconfig = tsconfigOf(name);
+		const tsconfig =
+			dir === "." ? tsconfigOf(name) : `${dir}/${tsconfigOf(name)}`;
+		const fromDir = (file: string) => path.posix.relative(dir, file) || ".";
+		const placeRootDirs = rootDirs.map(fromDir);
+		const placeOutDir = fromDir(outDir);
+		const base = fromDir(TSCONFIG);
 		return {
 			files: [
 				{
 					fileName: tsconfig,
 					content: formatJsonFile({
-						extends: `./${TSCONFIG}`,
+						extends: base.startsWith("../") ? base : `./${base}`,
 						compilerOptions: {
 							rootDir: null,
-							rootDirs,
-							outDir,
+							rootDirs: placeRootDirs,
+							outDir: placeOutDir,
 							...(this.facts.tsBuildInfoFile && {
-								tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
+								tsBuildInfoFile: `${placeOutDir}/tsconfig.tsbuildinfo`,
 							}),
 						},
-						include: rootDirs,
+						include: placeRootDirs,
 					}),
 				},
 			],

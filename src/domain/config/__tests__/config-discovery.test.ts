@@ -70,6 +70,8 @@ describe("ConfigDiscovery", () => {
 				directory: "/repo",
 				files: ["/repo/default.rogen.json", "/repo/lobby.rogen.json"],
 				everyConfig: true,
+				separate: [],
+				folders: ["/repo", "/repo/src", "/repo/src/Inventory"],
 			});
 		});
 
@@ -186,11 +188,15 @@ describe("ConfigDiscovery", () => {
 				directory: "/repo",
 				files: ["/repo/lobby.rogen.json"],
 				everyConfig: false,
+				separate: [],
+				folders: [],
 			});
 		});
 
 		it("should resolve a path from the working directory", async () => {
-			const result = await nested.discover(["../places/match.rogen.json"]);
+			const result = await nested.discover([
+				"../places/match.rogen.json",
+			]);
 
 			expect(result.unwrap().files).toEqual([
 				"/repo/places/match.rogen.json",
@@ -248,7 +254,9 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["lobby.sync"]);
 
-			expect(result.unwrap().files).toEqual(["/repo/lobby.sync.rogen.json"]);
+			expect(result.unwrap().files).toEqual([
+				"/repo/lobby.sync.rogen.json",
+			]);
 		});
 
 		it("should mix with names, in the order given", async () => {
@@ -297,6 +305,242 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["lobby", "lobby"]);
 
 			expect(result.isErr()).toBe(true);
+		});
+	});
+});
+
+describe("ConfigDiscovery in subfolders", () => {
+	let fs: MemoryFileSystemService;
+
+	const from = (cwd: string) =>
+		new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
+	const extending = (parent: string) => JSON.stringify({ extends: parent });
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/places/lobby");
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+	});
+
+	it("should find a config below that extends one here", async () => {
+		await fs.writeFile(
+			"/repo/places/lobby/lobby.rogen.json",
+			extending("../../default.rogen.json")
+		);
+
+		const result = await from("/repo").discover([]);
+
+		expect(result.unwrap().files).toEqual([
+			"/repo/default.rogen.json",
+			"/repo/places/lobby/lobby.rogen.json",
+		]);
+	});
+
+	it("should find a config whose chain reaches here through another below", async () => {
+		await fs.writeFile(
+			"/repo/places/base.rogen.json",
+			extending("../default.rogen.json")
+		);
+		await fs.writeFile(
+			"/repo/places/lobby/lobby.rogen.json",
+			extending("../base.rogen.json")
+		);
+
+		const result = await from("/repo").discover([]);
+
+		expect(result.unwrap().files).toEqual([
+			"/repo/default.rogen.json",
+			"/repo/places/base.rogen.json",
+			"/repo/places/lobby/lobby.rogen.json",
+		]);
+	});
+
+	it("should leave a config that extends nothing here as separate", async () => {
+		await fs.createDirectory("/repo/fixtures/plain");
+		await fs.writeFile("/repo/fixtures/plain/plain.rogen.json", "{}");
+		await fs.writeFile("/repo/fixtures/base.rogen.json", "{}");
+		await fs.writeFile(
+			"/repo/fixtures/plain/child.rogen.json",
+			extending("../base.rogen.json")
+		);
+
+		const result = (await from("/repo").discover([])).unwrap();
+
+		expect(result.files).toEqual(["/repo/default.rogen.json"]);
+		expect(result.separate).toEqual([
+			"/repo/fixtures/base.rogen.json",
+			"/repo/fixtures/plain/child.rogen.json",
+			"/repo/fixtures/plain/plain.rogen.json",
+		]);
+	});
+
+	it("should keep a config it can't read, so its errors are reported", async () => {
+		await fs.writeFile("/repo/places/lobby/lobby.rogen.json", "{ nope");
+
+		const result = await from("/repo").discover([]);
+
+		expect(result.unwrap().files).toContain(
+			"/repo/places/lobby/lobby.rogen.json"
+		);
+	});
+
+	it("should keep a config that extends a missing file here", async () => {
+		await fs.writeFile(
+			"/repo/places/lobby/lobby.rogen.json",
+			extending("../../gone.rogen.json")
+		);
+
+		const result = await from("/repo").discover([]);
+
+		expect(result.unwrap().files).toContain(
+			"/repo/places/lobby/lobby.rogen.json"
+		);
+	});
+
+	it.each([
+		".git",
+		"node_modules",
+		"Packages",
+		"ServerPackages",
+		"DevPackages",
+		"roblox_packages",
+		"roblox_server_packages",
+		"lune_packages",
+		"luau_packages",
+	])("should not search %s", async (folder) => {
+		await fs.createDirectory(`/repo/${folder}/pkg`);
+		await fs.writeFile(
+			`/repo/${folder}/pkg/pkg.rogen.json`,
+			extending("../../default.rogen.json")
+		);
+
+		const result = (await from("/repo").discover([])).unwrap();
+
+		expect(result.files).toEqual(["/repo/default.rogen.json"]);
+		expect(result.folders).not.toContain(`/repo/${folder}`);
+	});
+
+	it("should not search a config's sync dir", async () => {
+		await fs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({ syncDir: "out" })
+		);
+		await fs.createDirectory("/repo/out");
+		await fs.writeFile(
+			"/repo/out/copy.rogen.json",
+			extending("../default.rogen.json")
+		);
+
+		const result = (await from("/repo").discover([])).unwrap();
+
+		expect(result.files).toEqual(["/repo/default.rogen.json"]);
+	});
+
+	it("should not follow a linked folder", async () => {
+		await fs.createDirectory("/elsewhere");
+		await fs.writeFile(
+			"/elsewhere/away.rogen.json",
+			extending("../repo/default.rogen.json")
+		);
+		await fs.createSymbolicLink("/elsewhere", "/repo/linked");
+
+		const result = (await from("/repo").discover([])).unwrap();
+
+		expect(result.files).toEqual(["/repo/default.rogen.json"]);
+	});
+
+	it("should list every folder it searched", async () => {
+		const result = (await from("/repo").discover([])).unwrap();
+
+		expect(result.folders).toEqual([
+			"/repo",
+			"/repo/places",
+			"/repo/places/lobby",
+		]);
+	});
+
+	it("should fail, naming both, when two configs share a name", async () => {
+		await fs.writeFile(
+			"/repo/places/lobby/default.rogen.json",
+			extending("../../default.rogen.json")
+		);
+
+		const result = await from("/repo").discover([]);
+
+		expect(errorOf(result)).toBeInstanceOf(UsageError);
+		expect(errorOf(result).message).toBe(
+			'Two configs are named "default": default.rogen.json and places/lobby/default.rogen.json. Rename one, since a name has to mean one config.'
+		);
+	});
+
+	it("should read only a subfolder's configs when run there", async () => {
+		await fs.writeFile(
+			"/repo/places/lobby/lobby.rogen.json",
+			extending("../../default.rogen.json")
+		);
+
+		const result = await from("/repo/places/lobby").discover([]);
+
+		expect(result.unwrap().files).toEqual([
+			"/repo/places/lobby/lobby.rogen.json",
+		]);
+	});
+
+	describe("by name", () => {
+		it("should find a config below by its name", async () => {
+			await fs.writeFile(
+				"/repo/places/lobby/lobby.rogen.json",
+				extending("../../default.rogen.json")
+			);
+
+			const result = await from("/repo").discover(["lobby"]);
+
+			expect(result.unwrap()).toEqual({
+				directory: "/repo",
+				files: ["/repo/places/lobby/lobby.rogen.json"],
+				everyConfig: false,
+				separate: [],
+				folders: [],
+			});
+		});
+
+		it("should fail when the name only matches a separate config", async () => {
+			await fs.writeFile("/repo/places/lobby/lobby.rogen.json", "{}");
+
+			const result = await from("/repo").discover(["lobby"]);
+
+			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result).message).toBe(
+				'Config "lobby" is places/lobby/lobby.rogen.json, which extends nothing here, so it is a separate project. Add "extends" to make it part of this one, or build it by its path.'
+			);
+		});
+
+		it("should fail when the name means two configs", async () => {
+			await fs.writeFile(
+				"/repo/places/lobby/default.rogen.json",
+				extending("../../default.rogen.json")
+			);
+
+			const result = await from("/repo").discover(["default"]);
+
+			expect(errorOf(result).message).toContain(
+				'Two configs are named "default"'
+			);
+		});
+
+		it("should still read a path when two configs share a name", async () => {
+			await fs.writeFile(
+				"/repo/places/lobby/default.rogen.json",
+				extending("../../default.rogen.json")
+			);
+
+			const result = await from("/repo").discover([
+				"places/lobby/default.rogen.json",
+			]);
+
+			expect(result.unwrap().files).toEqual([
+				"/repo/places/lobby/default.rogen.json",
+			]);
 		});
 	});
 });

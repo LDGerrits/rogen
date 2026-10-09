@@ -78,11 +78,11 @@ describe("PlaceSetup", () => {
 			);
 
 			expect(configs).toEqual({
-				"lobby.rogen.json": {
+				"places/lobby/lobby.rogen.json": {
 					$schema: SCHEMA,
-					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby/src"],
-					template: "places/lobby/template.project.json",
+					extends: "../../default.rogen.json",
+					rootDirs: ["src"],
+					template: "template.project.json",
 				},
 			});
 			expect(tsconfig).toBeUndefined();
@@ -93,8 +93,8 @@ describe("PlaceSetup", () => {
 				plan(luau, { rootDirs: ["core", "shared"] })
 			);
 
-			expect(configs["lobby.rogen.json"].rootDirs).toEqual([
-				"places/lobby/src",
+			expect(configs["places/lobby/lobby.rogen.json"].rootDirs).toEqual([
+				"src",
 			]);
 		});
 
@@ -117,7 +117,7 @@ describe("PlaceSetup", () => {
 				run: ["rogen serve"],
 				darklua: [],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
+					'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});
 		});
@@ -155,16 +155,16 @@ describe("PlaceSetup", () => {
 			const { configs } = written(plan(darklua, base));
 
 			expect(configs).toEqual({
-				"lobby.rogen.json": {
+				"places/lobby/lobby.rogen.json": {
 					$schema: SCHEMA,
-					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby/src"],
-					template: "places/lobby/template.project.json",
+					extends: "../../default.rogen.json",
+					rootDirs: ["src"],
+					template: "template.project.json",
 				},
-				"lobby-sync.rogen.json": {
+				"places/lobby/lobby-sync.rogen.json": {
 					$schema: SCHEMA,
 					extends: "./lobby.rogen.json",
-					syncDir: "dist/lobby",
+					syncDir: "../../dist/lobby",
 				},
 			});
 		});
@@ -174,14 +174,15 @@ describe("PlaceSetup", () => {
 				setup: [],
 				run: [
 					"rogen serve lobby-sync",
-					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
+					"rojo sourcemap places/lobby/lobby.project.json --output places/lobby/sourcemap.json --watch",
 				],
 				darklua: [
 					"darklua process src dist/lobby/src",
 					"darklua process places/lobby/src dist/lobby/places/lobby/src",
 				],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
+					'Rojo writes places/lobby/sourcemap.json with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "places/lobby/sourcemap.json".',
+					'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});
 		});
@@ -194,12 +195,12 @@ describe("PlaceSetup", () => {
 			const { configs } = written(plan(rbxts, base));
 
 			expect(configs).toEqual({
-				"lobby.rogen.json": {
+				"places/lobby/lobby.rogen.json": {
 					$schema: SCHEMA,
-					extends: "./default.rogen.json",
-					rootDirs: ["places/lobby/src"],
-					syncDir: "out/lobby",
-					template: "places/lobby/template.project.json",
+					extends: "../../default.rogen.json",
+					rootDirs: ["src"],
+					syncDir: "../../out/lobby",
+					template: "template.project.json",
 				},
 			});
 		});
@@ -208,13 +209,13 @@ describe("PlaceSetup", () => {
 			const { tsconfig } = written(plan(rbxts, base));
 
 			expect(tsconfig).toEqual({
-				extends: "./tsconfig.json",
+				extends: "../../tsconfig.json",
 				compilerOptions: {
 					rootDir: null,
-					rootDirs: ["src", "places/lobby/src"],
-					outDir: "out/lobby",
+					rootDirs: ["../../src", "src"],
+					outDir: "../../out/lobby",
 				},
-				include: ["src", "places/lobby/src"],
+				include: ["../../src", "src"],
 			});
 		});
 
@@ -229,7 +230,7 @@ describe("PlaceSetup", () => {
 			);
 
 			expect(tsconfig.compilerOptions.tsBuildInfoFile).toBe(
-				"out/lobby/tsconfig.tsbuildinfo"
+				"../../out/lobby/tsconfig.tsbuildinfo"
 			);
 		});
 
@@ -244,8 +245,10 @@ describe("PlaceSetup", () => {
 				)
 			);
 
-			expect(tsconfig.compilerOptions.outDir).toBe("build/lobby");
-			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(tsconfig.compilerOptions.outDir).toBe("../../build/lobby");
+			expect(configs["places/lobby/lobby.rogen.json"].syncDir).toBe(
+				"../../dist/lobby"
+			);
 		});
 
 		it("should sync from Darklua's output when Darklua processes compiled code and its config sets no sync dir", () => {
@@ -256,7 +259,9 @@ describe("PlaceSetup", () => {
 				)
 			);
 
-			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(configs["places/lobby/lobby.rogen.json"].syncDir).toBe(
+				"../../dist/lobby"
+			);
 			expect(nextSteps.darklua).toEqual([
 				"darklua process out/lobby dist/lobby",
 			]);
@@ -266,12 +271,12 @@ describe("PlaceSetup", () => {
 			expect(written(plan(rbxts, base)).nextSteps).toEqual({
 				setup: [],
 				run: [
-					"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+					"rbxtsc -w -p places/lobby/tsconfig.lobby.json --rojo places/lobby/lobby.project.json",
 					"rogen serve",
 				],
 				darklua: [],
 				edits: [
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
+					'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 				],
 			});
 		});
@@ -309,11 +314,11 @@ describe("PlaceSetup", () => {
 
 		it("should fail when the place's config exists", () => {
 			const result = plan(luau, { rootDirs: ["src"] }, [
-				"lobby.rogen.json",
+				"places/lobby/lobby.rogen.json",
 			]);
 
 			expect(conflictsOf(result)).toEqual([
-				path.join(directory, "lobby.rogen.json"),
+				path.join(directory, "places/lobby/lobby.rogen.json"),
 			]);
 		});
 
@@ -321,22 +326,25 @@ describe("PlaceSetup", () => {
 			const result = plan(
 				darklua,
 				{ rootDirs: ["src"], syncDir: "dist" },
-				["lobby.rogen.json", "lobby-sync.rogen.json"]
+				[
+					"places/lobby/lobby.rogen.json",
+					"places/lobby/lobby-sync.rogen.json",
+				]
 			);
 
 			expect(conflictsOf(result)).toEqual([
-				path.join(directory, "lobby.rogen.json"),
-				path.join(directory, "lobby-sync.rogen.json"),
+				path.join(directory, "places/lobby/lobby.rogen.json"),
+				path.join(directory, "places/lobby/lobby-sync.rogen.json"),
 			]);
 		});
 
 		it("should fail when the place's tsconfig exists", () => {
 			const result = plan(rbxts, { rootDirs: ["src"] }, [
-				"tsconfig.lobby.json",
+				"places/lobby/tsconfig.lobby.json",
 			]);
 
 			expect(conflictsOf(result)).toEqual([
-				path.join(directory, "tsconfig.lobby.json"),
+				path.join(directory, "places/lobby/tsconfig.lobby.json"),
 			]);
 		});
 	});
@@ -348,11 +356,18 @@ describe("BaseConfigReader", () => {
 	const write = (file: string, content: unknown) =>
 		fs.writeFile(path.join(directory, file), JSON.stringify(content));
 
-	const readBase = (entries: readonly string[] = ["default.rogen.json"]) =>
-		new BaseConfigReader(
-			new CoreConfigService(fs, new MockEnvironmentService(directory)),
-			directory
-		).read(new Set(entries));
+	const readBase = async (
+		entries: readonly string[] = ["default.rogen.json"]
+	) => {
+		const service = new CoreConfigService(
+			fs,
+			new MockEnvironmentService(directory)
+		);
+		return new BaseConfigReader(service, directory).read(
+			new Set(entries),
+			await service.find(directory)
+		);
+	};
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();

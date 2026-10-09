@@ -567,11 +567,11 @@ describe("CoreInitService", () => {
 			).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"lobby.rogen.json",
+				"places/lobby/lobby.rogen.json",
 				"places/lobby/template.project.json",
 			]);
 			expect(JSON.parse(plan?.files[0].content ?? "{}").rootDirs).toEqual(
-				["places/lobby/src"]
+				["src"]
 			);
 		});
 
@@ -606,7 +606,7 @@ describe("CoreInitService", () => {
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual([
-					"arena.rogen.json",
+					"places/arena/arena.rogen.json",
 					"places/arena/template.project.json",
 				]);
 			});
@@ -621,9 +621,9 @@ describe("CoreInitService", () => {
 				expect(
 					JSON.parse(result.unwrap()?.files[0].content ?? "{}")
 				).toMatchObject({
-					extends: "./default.rogen.json",
-					rootDirs: ["places/arena/src"],
-					template: "places/arena/template.project.json",
+					extends: "../../default.rogen.json",
+					rootDirs: ["src"],
+					template: "template.project.json",
 				});
 			});
 
@@ -697,6 +697,28 @@ describe("CoreInitService", () => {
 				).toMatchObject([{ code: "init.configExists" }]);
 			});
 
+			it("should fail at once when a config below already has the given place name", async () => {
+				await write(
+					"places/arena/arena.rogen.json",
+					JSON.stringify({ extends: "../../default.rogen.json" })
+				);
+
+				const { result } = await planWith([ACCEPT_DEFAULT], ["arena"]);
+
+				expect(
+					result.isErr() &&
+						result.error instanceof DiagnosticsError &&
+						result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "init.configExists",
+						resource: expect.stringContaining(
+							"places/arena/arena.rogen.json"
+						),
+					},
+				]);
+			});
+
 			describe("when it can't ask", () => {
 				const planNamed = async (
 					names: readonly string[],
@@ -713,15 +735,15 @@ describe("CoreInitService", () => {
 
 					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
 						[
-							"lobby.rogen.json",
+							"places/lobby/lobby.rogen.json",
 							"places/lobby/template.project.json",
 						]
 					);
 					expect(
 						JSON.parse(plan?.files[0].content ?? "{}")
 					).toMatchObject({
-						extends: "./default.rogen.json",
-						rootDirs: ["places/lobby/src"],
+						extends: "../../default.rogen.json",
+						rootDirs: ["src"],
 					});
 				});
 

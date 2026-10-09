@@ -38,12 +38,12 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.",
+						"Lists every config here with its root dirs, routes, sync dir, project file and variants, and the separate ones below; with --json, each fully resolved.",
 					args: [
 						{
 							name: "config",
 							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
+								"A config's name (lobby for lobby.rogen.json, wherever it is) or path. When none is given, every config here and each one below that extends one here, or those of the nearest folder above that has any.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -78,7 +78,10 @@ registerCommand(
 					.filter((part) => part !== undefined)
 					.join(" · ")
 			);
-			new ConfigReport(entries).print(logService, cwd);
+			new ConfigReport(entries, selection.value.separate).print(
+				logService,
+				cwd
+			);
 
 			if (broken) return err(broken);
 			logService.outro(`${plural(entries.length, "config")}.`);
@@ -89,7 +92,10 @@ registerCommand(
 			selection: ConfigSelection,
 			logService: LogService
 		): Result<void, Error> {
-			const report = new ConfigReport(selection.entries);
+			const report = new ConfigReport(
+				selection.entries,
+				selection.separate
+			);
 			return this.printJson(
 				logService,
 				report.json(),

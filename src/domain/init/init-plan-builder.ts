@@ -46,10 +46,11 @@ export class InitPlanBuilder {
 		this.template = file;
 	}
 
-	/** A config named `<stem>.rogen.json`, written after the ones added before it. */
-	addConfig(stem: string, config: RogenConfig): void {
+	/** A config named `<stem>.rogen.json` in `dir`, written after the ones added before it. */
+	addConfig(stem: string, config: RogenConfig, dir = "."): void {
+		const fileName = configFileName(stem);
 		this.configs.push({
-			fileName: configFileName(stem),
+			fileName: dir === "." ? fileName : `${dir}/${fileName}`,
 			content: configFileContent(config),
 		});
 	}
@@ -111,6 +112,11 @@ export class InitPlanBuilder {
 		} else {
 			this.run.push(command);
 		}
+		const sourcemap = darklua.sourcemapOf(projectFile);
+		if (sourcemap !== "sourcemap.json")
+			this.edits.push(
+				`Rojo writes ${sourcemap} with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "${sourcemap}".`
+			);
 	}
 
 	addEdit(...lines: readonly string[]): void {

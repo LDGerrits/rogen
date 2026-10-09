@@ -17,22 +17,22 @@ $ rogen init -y lobby
 exit 0
 stdout:
   rogen init
-  Created lobby.rogen.json.
+  Created places/lobby/lobby.rogen.json.
   Created places/lobby/template.project.json.
   Created places/lobby/src/.
-  lobby.project.json · wrote
+  places/lobby/lobby.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+    Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 2 files.
 
 written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  lobby.project.json
-  lobby.rogen.json
+  places/lobby/lobby.project.json
+  places/lobby/lobby.rogen.json
   places/lobby/template.project.json
 
 AGENTS.md:
@@ -69,12 +69,12 @@ default.rogen.json:
 	}
 }
 
-lobby.rogen.json:
+places/lobby/lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
+	"extends": "../../default.rogen.json",
 	"rootDirs": [
-		"places/lobby/src"
+		"src"
 	],
-	"template": "places/lobby/template.project.json"
+	"template": "template.project.json"
 }
