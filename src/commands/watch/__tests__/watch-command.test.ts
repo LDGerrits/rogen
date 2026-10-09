@@ -194,13 +194,8 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/B.luau", "");
 			await settle();
 
-			expect(
-				logService.entries.filter(({ kind }) => kind === "error")
-			).toEqual([
-				{
-					kind: "error",
-					text: "Still building from the last valid prod.rogen.json.",
-				},
+			expect(logService.texts("error")).toEqual([
+				"Still building from the last valid prod.rogen.json.",
 			]);
 		});
 
@@ -217,11 +212,7 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/C.server.luau", "");
 			await settle();
 
-			expect(
-				logService.entries.filter(
-					({ kind }) => kind === "diagnosticWarning"
-				)
-			).toHaveLength(1);
+			expect(logService.texts("diagnosticWarning")).toHaveLength(1);
 		});
 	});
 

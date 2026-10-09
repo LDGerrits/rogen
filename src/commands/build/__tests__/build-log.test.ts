@@ -35,9 +35,7 @@ const debugLines = (
 		summary ? builtOf(summary, "wrote", config) : failedOf([], config),
 		[]
 	);
-	return logService.entries
-		.filter(({ kind }) => kind === "debug")
-		.map(({ text }) => text);
+	return logService.texts("debug");
 };
 
 const failedOf = (

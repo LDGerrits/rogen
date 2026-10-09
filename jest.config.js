@@ -1,3 +1,5 @@
+import os from "os";
+
 export default {
 	preset: "ts-jest/presets/default-esm",
 	testEnvironment: "node",
@@ -12,8 +14,8 @@ export default {
 			},
 		],
 	},
-	// e2e cases wait on child processes, so more of them can run at once than there are cores.
-	maxConcurrency: 15,
+	// e2e cases mostly wait on child processes; one per core, and never fewer than Jest's default.
+	maxConcurrency: Math.max(5, os.availableParallelism()),
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 	testMatch: [
 		"<rootDir>/src/**/__tests__/**/*.test.ts",

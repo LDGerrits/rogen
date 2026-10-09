@@ -32,6 +32,9 @@ import { RequestService } from "../../platform/request/request-service.js";
 import { MockRequestService } from "../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../platform/watcher/memory-watcher.js";
 import { ProductService } from "../../platform/product/product-service.js";
+import { MockProductService } from "../../platform/product/__tests__/mock-product-service.js";
+import { CommandService } from "../../platform/commands/commands.js";
+import { LegacyConfig } from "../../domain/legacy/legacy-config.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 
 export interface CommandHarnessOptions<L extends LogService> {
@@ -62,26 +65,32 @@ export interface CommandHarness<L extends LogService> {
 }
 
 /** The services `main.ts` wires, over an in-memory file system; tests change one service by naming it. */
-export function commandHarness<L extends LogService = MockLogService>(
-	options: CommandHarnessOptions<L> = {}
-): CommandHarness<L> {
+export function commandHarness(
+	options?: CommandHarnessOptions<MockLogService>
+): CommandHarness<MockLogService>;
+export function commandHarness<L extends LogService>(
+	options: CommandHarnessOptions<L> & { readonly log: L }
+): CommandHarness<L>;
+export function commandHarness(
+	options: CommandHarnessOptions<LogService> = {}
+): CommandHarness<LogService> {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
 	// A given file system starts the command at once, as main.ts does, for a test that acts while it starts.
 	const ready = options.fs ? undefined : fs.createDirectory(cwd);
 
-	const log = options.log ?? (new MockLogService() as LogService as L);
+	const log = options.log ?? new MockLogService();
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
 	const prompt = options.prompt ?? new MockPromptService([], false);
-	const config = options.config ?? new CoreConfigService(fs, environment);
+	const config =
+		options.config ?? legacyChecked(new CoreConfigService(fs, environment));
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 	const build = new CoreBuildService(fs, index, toolchain.syncTools);
-	const watch = new CoreWatchService(
-		options.watcher ?? new MemoryWatcher(fs, log),
-		index,
-		build
-	);
+	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
+	const watch = new CoreWatchService(watcher, index, build);
+	const processes = options.processes ?? new MockProcessService();
+	const requests = options.requests ?? new MockRequestService();
 
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);
@@ -100,27 +109,25 @@ export function commandHarness<L extends LogService = MockLogService>(
 		LifecycleService,
 		options.lifecycle ?? new MockLifecycleService()
 	);
+	services.set(Watcher, watcher);
 	services.set(WatchService, watch);
-	services.set(
-		ProductService,
-		options.product ?? {
-			_serviceBrand: undefined,
-			getVersion: async () => "0.0.0",
-		}
-	);
+	services.set(ProcessService, processes);
+	services.set(RequestService, requests);
+	services.set(ProductService, options.product ?? new MockProductService());
 	services.set(
 		ServeService,
 		new CoreServeService(
 			config,
 			fs,
-			options.processes ?? new MockProcessService(),
-			options.requests ?? new MockRequestService(),
+			processes,
+			requests,
 			watch,
 			environment
 		)
 	);
 
 	const commands = new CoreCommandService(services, log);
+	services.set(CommandService, commands);
 	return {
 		fs,
 		log,
@@ -134,4 +141,10 @@ export function commandHarness<L extends LogService = MockLogService>(
 			return ready ? ready.then(execute) : execute();
 		},
 	};
+}
+
+/** Adds the v1 config check, as main.ts does. */
+function legacyChecked(config: CoreConfigService): CoreConfigService {
+	config.registerFileCheck(LegacyConfig.check);
+	return config;
 }

@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import fs from "fs";
+import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import {
 	CommandHarness,
 	commandHarness,
@@ -48,10 +49,7 @@ describe("help command", () => {
 		info = jest.spyOn(logService, "print");
 		harness = commandHarness({
 			log: logService,
-			product: {
-				_serviceBrand: undefined,
-				getVersion: async () => "2.3.4",
-			},
+			product: new MockProductService("2.3.4"),
 		});
 	});
 

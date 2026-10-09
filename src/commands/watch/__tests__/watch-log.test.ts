@@ -188,11 +188,9 @@ describe("WatchLog.update", () => {
 				updateOf({ reports: [reportOf(built, [warning("b")])] })
 			);
 
-			expect(
-				logService.entries
-					.filter(({ kind }) => kind === "diagnosticWarning")
-					.map(({ text }) => text)
-			).toEqual([expect.stringContaining(": b")]);
+			expect(logService.texts("diagnosticWarning")).toEqual([
+				expect.stringContaining(": b"),
+			]);
 		});
 
 		it("should say a failed config's errors were printed before, rather than print them again", () => {
@@ -207,11 +205,7 @@ describe("WatchLog.update", () => {
 			log.update(updateOf({ reports: [reportOf(failed, [error])] }));
 			log.update(updateOf({ reports: [reportOf(failed, [], true)] }));
 
-			expect(
-				logService.entries
-					.filter(({ kind }) => kind === "error")
-					.map(({ text }) => text)
-			).toEqual([
+			expect(logService.texts("error")).toEqual([
 				"default.project.json · not written",
 				"default.project.json · not written · same errors as before",
 			]);

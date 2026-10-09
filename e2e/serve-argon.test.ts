@@ -106,7 +106,7 @@ describeWithArgon("end to end serve with Argon", () => {
 	});
 
 	beforeEach(() => {
-		port = 37000 + Math.floor(Math.random() * 2000);
+		port = 38000 + Math.floor(Math.random() * 2000);
 		project = createProject({
 			"rokit.toml": ARGON_TOOLCHAIN,
 			"default.rogen.json": config(),
