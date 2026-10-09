@@ -489,14 +489,13 @@ export class BuildValidator {
 
 	/** A merged template that sets a field its base sets too, which only one of them should. */
 	private overridesBase(): Diagnostic[] {
-		const { template } = this.config;
-		if (!template) return [];
-		return template.clashes.map(({ instancePath, field, base }) =>
-			warningDiagnostic(
-				"template.overridesBase",
-				{ resource: template.file },
-				`${instancePath.length > 0 ? `"${instanceKey(instancePath)}"` : "The root node"} sets ${field} here and in ${base}, which this template merges over, so this one wins. Remove it from one of them.`
-			)
+		return (this.config.template?.clashes ?? []).map(
+			({ instancePath, field, file, base }) =>
+				warningDiagnostic(
+					"template.overridesBase",
+					{ resource: file },
+					`${instancePath.length > 0 ? `"${instanceKey(instancePath)}"` : "The root node"} sets ${field} here and in ${base}, which this template merges over, so this one wins. Remove it from one of them.`
+				)
 		);
 	}
 

@@ -8,6 +8,7 @@ import {
 	configFileName,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
+import { SyncServer } from "../serve/serve.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig } from "./init-directory.js";
 
@@ -40,26 +41,45 @@ export class BaseConfigReader {
 		return ok({
 			rootDirs: rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),
-			ports: await this.portsIn(entries),
+			...(await this.portsIn(entries)),
 		});
 	}
 
-	/** The serve port of every config here whose template sets one; a config that doesn't build is skipped. */
-	private async portsIn(entries: ReadonlySet<string>): Promise<number[]> {
-		const ports = new Set<number>();
-		for (const entry of [...entries].filter((name) =>
-			name.endsWith(CONFIG_SUFFIX)
-		)) {
-			const read = await this.configService.read(
-				path.join(this.directory, entry)
+	/** The serve port of every config here whose template sets one, and whether two configs nothing extends share one, `default` aside, which a place extends. A config that doesn't build is skipped. */
+	private async portsIn(
+		entries: ReadonlySet<string>
+	): Promise<{ ports: number[]; sharedPort: boolean }> {
+		const read = await Promise.all(
+			[...entries]
+				.filter((name) => name.endsWith(CONFIG_SUFFIX))
+				.map((name) =>
+					this.configService.read(path.join(this.directory, name))
+				)
+		);
+		const valid = read.filter((entry) => entry.status === "valid");
+		const extended = new Set(valid.flatMap(({ parents }) => parents));
+		const served = valid
+			.filter(
+				({ file }) =>
+					!extended.has(file) &&
+					path.basename(file) !== configFileName(DEFAULT_CONFIG_STEM)
+			)
+			.map(
+				({ config }) =>
+					config.template?.project.servePort ??
+					SyncServer.ROJO.defaultPort
 			);
-			const port =
-				read.status === "valid"
-					? read.config.template?.project.servePort
-					: undefined;
-			if (port !== undefined) ports.add(port);
-		}
-		return [...ports];
+		return {
+			ports: [
+				...new Set(
+					valid.flatMap(({ config }) => {
+						const port = config.template?.project.servePort;
+						return port === undefined ? [] : [port];
+					})
+				),
+			],
+			sharedPort: new Set(served).size < served.length,
+		};
 	}
 
 	/** The absolute sync dir the config in `fileName` resolves to, if it has one and builds. */

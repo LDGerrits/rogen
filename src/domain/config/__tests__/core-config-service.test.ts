@@ -1423,6 +1423,61 @@ describe("domain/config/core-config-service", () => {
 				]);
 			});
 
+			it("should merge a template a child names again over the ones between", async () => {
+				await write("/repo/t.template.json", { name: "T" });
+				await write("/repo/m.template.json", { name: "M" });
+				await write("/repo/root.rogen.json", {
+					template: "t.template.json",
+				});
+				await write("/repo/mid.rogen.json", {
+					extends: "./root.rogen.json",
+					template: "m.template.json",
+				});
+				await write("/repo/default.rogen.json", {
+					extends: "./mid.rogen.json",
+					template: "t.template.json",
+				});
+
+				await start();
+
+				expect(resolved(0)?.name).toBe("T");
+				expect(resolved(0)?.template?.bases).toEqual([
+					"/repo/m.template.json",
+				]);
+			});
+
+			it("should name the template that set a field it lost to, down a chain", async () => {
+				await write("/repo/a.template.json", {
+					tree: { Lighting: { $properties: { Brightness: 1 } } },
+				});
+				await write("/repo/b.template.json", {
+					tree: { Lighting: { $properties: { Brightness: 2 } } },
+				});
+				await write("/repo/c.template.json", { name: "C" });
+				await write("/repo/a.rogen.json", {
+					template: "a.template.json",
+				});
+				await write("/repo/b.rogen.json", {
+					extends: "./a.rogen.json",
+					template: "b.template.json",
+				});
+				await write("/repo/c.rogen.json", {
+					extends: "./b.rogen.json",
+					template: "c.template.json",
+				});
+
+				await start({ names: ["c"] });
+
+				expect(resolved(0)?.template?.clashes).toEqual([
+					{
+						instancePath: ["Lighting"],
+						field: "$properties.Brightness",
+						file: "/repo/b.template.json",
+						base: "/repo/a.template.json",
+					},
+				]);
+			});
+
 			it("should read a template a child names again only once", async () => {
 				await write("/repo/t.project.json", { name: "Game", tree: {} });
 				await write("/repo/base.rogen.json", {
@@ -1466,6 +1521,7 @@ describe("domain/config/core-config-service", () => {
 					{
 						instancePath: ["ReplicatedStorage", "Packages"],
 						field: "$path",
+						file: "/repo/lobby.project.json",
 						base: "/repo/base.project.json",
 					},
 				]);

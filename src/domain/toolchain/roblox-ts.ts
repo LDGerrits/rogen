@@ -94,7 +94,7 @@ export class RobloxTsCompiler implements Compiler {
 	}
 
 	rootDirStep(rootDir: string): string {
-		return `Set "rootDir" to "${rootDir}" in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
+		return `Set "rootDir" to "${rootDir}" and "include" to ["${rootDir}"] in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
 	}
 
 	placeFileNames(name: string): readonly string[] {

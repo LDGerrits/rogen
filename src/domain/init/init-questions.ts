@@ -40,6 +40,9 @@ export interface PlacesQuestion {
 /** Where a new multi-place project keeps the code every place shares, unless it already has code at the root. */
 const SHARED_FOLDER = `${PLACES_DIR}/shared`;
 
+/** The shared code question's answer that asks for the folders instead. */
+const OTHER_FOLDERS = "other";
+
 /** Where the shared code goes: its root dirs, and the folder its template starts in, at the root when there is none. */
 export interface SharedCode {
 	readonly rootDirs: readonly string[];
@@ -260,10 +263,11 @@ export class InitQuestions {
 		});
 	}
 
-	/** The folders of one place's code; several places ask where their shared code goes instead. */
+	/** The folders of the project's code, or with `shared`, of the code every place shares. */
 	async rootDirs(
 		directory: InitDirectory,
-		language: Language
+		language: Language,
+		shared = false
 	): Promise<string[] | undefined> {
 		const placeholder = directory.defaultRootDir(language);
 		if (!this.interactive) return [placeholder];
@@ -274,7 +278,9 @@ export class InitQuestions {
 			message: compiler ? "Root dir" : "Root dirs",
 			description: compiler
 				? copy?.description
-				: "Folders with your scripts, relative to here. Separate several with commas.",
+				: shared
+					? "Folders with the code every place shares, relative to here. Separate several with commas."
+					: "Folders with your scripts, relative to here. Separate several with commas.",
 			hint: directory.otherCodeFoldersHint(placeholder),
 			placeholder,
 			validate: (value) => {
@@ -291,7 +297,7 @@ export class InitQuestions {
 			: splitList(answer).map(normalizeDir);
 	}
 
-	/** Where the code every place shares lives: beside the places with its own template, or in a root folder. The root folder is the default when it already holds code, so that code stays where it is. */
+	/** Where the code every place shares lives: beside the places with its own template, or in a root folder. The root folder is the default when it already holds code, so that code stays where it is, or when a compiler's config names it. */
 	async sharedCode(
 		directory: InitDirectory,
 		language: Language
@@ -299,7 +305,7 @@ export class InitQuestions {
 		const rootDir = directory.defaultRootDir(language);
 		const { workspace } = directory;
 		const existing =
-			language.configuredRootDir() !== undefined ||
+			language.compiler !== undefined ||
 			workspace.hasSrc ||
 			workspace.codeFolders.includes(rootDir);
 		const initial = existing ? rootDir : SHARED_FOLDER;
@@ -319,11 +325,16 @@ export class InitQuestions {
 							label: rootDir,
 							hint: existing ? "found code here" : "at the root",
 						},
+						{ value: OTHER_FOLDERS, label: "Other folders" },
 					],
 					initialValue: initial,
 				})
 			: initial;
 		if (answer === undefined) return undefined;
+		if (answer === OTHER_FOLDERS) {
+			const rootDirs = await this.rootDirs(directory, language, true);
+			return rootDirs && { rootDirs };
+		}
 		return answer === SHARED_FOLDER
 			? {
 					rootDirs: [`${SHARED_FOLDER}/src`],
@@ -525,7 +536,7 @@ export class InitQuestions {
 			(place) =>
 				!directory.placeFolderProblem(
 					rootDirs,
-					ConfigSet.placeFolderOf(place, rootDirs)
+					ConfigSet.placeFolderIn(directory, place, rootDirs)
 				)
 		);
 		if (!this.interactive) return found;
@@ -553,7 +564,7 @@ export class InitQuestions {
 					}
 					const problem = directory.placeFolderProblem(
 						rootDirs,
-						ConfigSet.placeFolderOf(place, rootDirs)
+						ConfigSet.placeFolderIn(directory, place, rootDirs)
 					);
 					if (problem) return problem;
 				}

@@ -107,11 +107,20 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const chosen = await questions.template(directory, outputs);
 		if (chosen === undefined) return ok(undefined);
 		let template: ProjectTemplate;
+		const sharedTemplate = templateDir && `${templateDir}/${TEMPLATE_FILE}`;
 		if (chosen.kind === "copy") {
 			const copied = await this.readTemplate(chosen.from);
 			if (copied.isErr()) return err(copied.error);
 			template = { ...chosen, content: copied.value };
-		} else template = chosen;
+		} else if (
+			chosen.kind === "new" &&
+			sharedTemplate &&
+			(await this.fileSystemService.exists(
+				path.join(directory.path, sharedTemplate)
+			))
+		)
+			template = { kind: "use", file: sharedTemplate };
+		else template = chosen;
 
 		let syncDir = configSet.syncDir;
 		if (darklua) {
@@ -154,7 +163,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					folder: await PlaceFolder.read(
 						this.fileSystemService,
 						directory.path,
-						ConfigSet.placeFolderOf(place, rootDirs)
+						ConfigSet.placeFolderIn(directory, place, rootDirs)
 					),
 				}))
 			);
@@ -254,18 +263,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				base: { rootDirs, ...(syncDir && { syncDir }) },
 			};
 		});
-		for (const place of places)
-			new PlacePlan(this.directory, place).planFiles(builder);
-
-		// The first place's commands stand for all of them; only a compiler needs one per place.
-		const [first, ...others] = places;
-		if (first && compiler && others.length > 0) {
-			builder.addEdit(
-				`Swap ${first.name} for ${others.map(({ name }) => name).join(" or ")} to work on another place.`
-			);
-		}
-		const pinned = language.configuredRootDir();
-		if (compiler && pinned !== undefined && pinned !== rootDirs[0]) {
+		const placePlans = places.map(
+			(place) => new PlacePlan(this.directory, place)
+		);
+		for (const place of placePlans) place.planFiles(builder);
+		const compiled =
+			language.configuredRootDir() ??
+			this.directory.defaultRootDir(language);
+		if (compiler && compiled !== rootDirs[0]) {
 			builder.addSetup(compiler.rootDirStep(rootDirs[0]));
 		}
 		builder.addEdit(...template.edits);
@@ -278,8 +283,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
 			ConfigSet.variantsStep(language, configFileName(name))
 		);
-		if (first) new PlacePlan(this.directory, first).planSteps(builder);
-		else this.planSteps(builder, choices, configSet);
+		const serveCommand = PlacePlan.serveCommandOf(placePlans);
+		placePlans.forEach((place, index) =>
+			place.planSteps(builder, serveCommand, index === 0)
+		);
+		if (placePlans.length === 0)
+			this.planSteps(builder, choices, configSet);
 	}
 
 	/** The commands that build and serve the project itself. */

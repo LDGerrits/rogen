@@ -141,7 +141,7 @@ Serve every place at once, each on its own port:
   </Tab>
 </Tabs>
 
-`rogen serve` builds every config and starts a server for each place, on the port its template sets. In Studio, connect to the place's port. `rogen serve lobby` serves just the one place. `rogen list` shows every config the repo can build, and the templates each one merges.
+`rogen serve` builds every config and starts a server for each place, on the port its template sets. In Studio, connect to the place's port. `rogen serve lobby` serves just the one place, which is what `init` prints when other configs here would share a port, such as places set up before they got their own templates. `rogen list` shows every config the repo can build, and the templates each one merges.
 
 </Step>
 
@@ -173,11 +173,11 @@ Synced paths keep each root directory's path from the repo root (`dist/lobby/src
 ```bash
 darklua process src dist/lobby/src
 darklua process places/lobby/src dist/lobby/places/lobby/src
-rogen serve
+rogen serve lobby-sync
 rojo sourcemap lobby.project.json --output sourcemap.json --watch
 ```
 
-`rogen serve` builds every config, `lobby.project.json` included, and serves the processed ones.
+`rogen serve lobby-sync` builds every config, `lobby.project.json` included, and serves the processed one. Name every place's synced config to serve them all, as `rogen serve lobby-sync arena-sync`: a bare `rogen serve` would also serve `sync.rogen.json`, which holds only the shared code.
 
 One catch: luau-lsp regenerates `sourcemap.json` from `default.project.json` and would overwrite the place's version. While you work on a place, set `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 

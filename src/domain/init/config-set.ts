@@ -35,7 +35,8 @@ export class ConfigSet {
 	/** Project files in `directory` that no config beside them writes, other than the template. */
 	static handWrittenProjectFiles(directory: InitDirectory): string[] {
 		return directory.projectFilesWithoutConfig.filter(
-			(file) => !file.endsWith(TEMPLATE_FILE)
+			(file) =>
+				file !== TEMPLATE_FILE && !file.endsWith(`.${TEMPLATE_FILE}`)
 		);
 	}
 
@@ -53,6 +54,17 @@ export class ConfigSet {
 		const shared = rootDir?.replace(/\/src$/, "");
 		const container = shared && path.posix.dirname(shared);
 		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
+	}
+
+	/** Where a new project's place named `name` keeps its files: the folder `init` found it in, else beside the shared folder. */
+	static placeFolderIn(
+		directory: InitDirectory,
+		name: string,
+		sharedRootDirs: readonly string[]
+	): string {
+		return directory.workspace.places.includes(name)
+			? ConfigSet.placeFolderOf(name)
+			: ConfigSet.placeFolderOf(name, sharedRootDirs);
 	}
 
 	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
@@ -169,11 +181,14 @@ export class ConfigSet {
 			serveCommand = this.serveCommand,
 			processed,
 			syncDir,
+			sourcemap = true,
 		}: {
 			readonly compileCommand?: string;
 			readonly serveCommand?: string;
 			readonly processed: readonly string[];
 			readonly syncDir?: string;
+			/** Whether to keep the sourcemap Darklua reads current from this set's project file. */
+			readonly sourcemap?: boolean;
 		}
 	): void {
 		const { darklua } = this;
@@ -186,7 +201,7 @@ export class ConfigSet {
 				...darklua.processCommands(directory.path, processed, syncDir)
 			);
 		}
-		if (darklua && this.sourced) {
+		if (darklua && this.sourced && sourcemap) {
 			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
 		}
 	}

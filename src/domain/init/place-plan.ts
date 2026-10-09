@@ -18,9 +18,6 @@ export interface PlaceChoices {
 	readonly base: BaseConfig;
 }
 
-/** The command that serves every place at once, since each has its own port. */
-const SERVE_EVERY_PLACE = "rogen serve";
-
 /** What one place writes and says, which a place added later and every place of a new project share. */
 export class PlacePlan {
 	readonly configSet: ConfigSet;
@@ -83,14 +80,33 @@ export class PlacePlan {
 		builder.addSetup(...(compiled?.setup ?? []));
 	}
 
-	/** The commands that build and serve the places; a project gives them for its first place only. */
-	planSteps(builder: InitPlanBuilder): void {
+	/** The commands that compile, process and serve the place; `serveCommand` serves it with the others, and only one place keeps the sourcemap current, since there is one. */
+	planSteps(
+		builder: InitPlanBuilder,
+		serveCommand: string,
+		sourcemap = true
+	): void {
 		const { configSet, rootDirs, syncDir, compiled, outDir } = this;
 		configSet.planSteps(builder, this.directory, {
 			compileCommand: compiled?.compileCommand,
-			serveCommand: SERVE_EVERY_PLACE,
+			serveCommand,
 			processed: outDir ? [outDir] : rootDirs,
 			syncDir,
+			sourcemap,
 		});
+	}
+
+	/** The command that serves `places` at once, each on its own port: every config when nothing else here shares a port, else the places by name, as with Darklua, whose shared synced config would be served too. */
+	static serveCommandOf(
+		places: readonly PlacePlan[],
+		sharedPort = false
+	): string {
+		const [first] = places;
+		if (!first?.configSet.sourced && !sharedPort) return "rogen serve";
+		return `rogen serve ${places
+			.map(({ configSet }) =>
+				configSet.sourced ? configSet.syncStem : configSet.name
+			)
+			.join(" ")}`;
 	}
 }

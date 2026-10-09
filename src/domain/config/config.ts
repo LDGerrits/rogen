@@ -247,6 +247,8 @@ export class DeclaredKeys {
 
 /** A field a template sets on a node that the template it merges over sets differently. */
 export interface TemplateClash extends NodeClash {
+	/** The template whose value won. */
+	readonly file: string;
 	/** The template whose value lost. */
 	readonly base: string;
 }
@@ -284,7 +286,11 @@ export class ResolvedTemplate {
 			[...base.bases, base.file],
 			[
 				...base.clashes,
-				...clashes.map((clash) => ({ ...clash, base: base.file })),
+				...clashes.map((clash) => ({
+					...clash,
+					file: this.file,
+					base: base.file,
+				})),
 			]
 		);
 	}

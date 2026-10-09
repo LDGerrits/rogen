@@ -1116,6 +1116,23 @@ describe("init command", () => {
 			);
 		});
 
+		it("should name the place to serve when other configs here share a port", async () => {
+			await setUpLuau();
+			await write(
+				"arena.rogen.json",
+				JSON.stringify({ extends: "./default.rogen.json" })
+			);
+			await write(
+				"shop.rogen.json",
+				JSON.stringify({ extends: "./default.rogen.json" })
+			);
+			const logService = new MockLogService();
+
+			await runInit(["lobby"], undefined, logService);
+
+			expect(logService.lines).toContain("info:   rogen serve lobby");
+		});
+
 		it("should serve every place, now that each has its own port", async () => {
 			await setUpLuau();
 			const logService = new MockLogService();
@@ -1260,6 +1277,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
 					"info: Have Darklua process your code into the sync dir:",
+					"info:   rogen serve lobby-sync",
 				])
 			);
 		});
@@ -1491,6 +1509,102 @@ describe("init command", () => {
 			});
 		});
 
+		it("should use a shared template that is already there, as it is", async () => {
+			await write("wally.toml");
+			await write("Packages/Foo.lua");
+			await write(
+				"places/shared/template.project.json",
+				'{ "name": "Mine" }'
+			);
+			const prompts = new MockPromptService([
+				"several",
+				...Array(5).fill(ACCEPT_DEFAULT),
+				"lobby",
+				ACCEPT_DEFAULT,
+			]);
+
+			const result = await runInit([], prompts);
+
+			expect(result.isOk()).toBe(true);
+			expect(await read("places/shared/template.project.json")).toBe(
+				'{ "name": "Mine" }'
+			);
+			expect((await readJson("default.rogen.json")).template).toBe(
+				"places/shared/template.project.json"
+			);
+		});
+
+		it("should take other shared folders when that is the answer", async () => {
+			await write("lib/A.luau");
+			await write("common/B.luau");
+			const prompts = new MockPromptService([
+				"several",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"other",
+				"lib, common",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"lobby",
+				ACCEPT_DEFAULT,
+			]);
+
+			await runInit([], prompts);
+
+			expect(prompts.asked).toContain("Root dirs");
+			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
+				"lib",
+				"common",
+			]);
+			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
+				"places/lobby/src",
+			]);
+		});
+
+		it("should keep a detected place in its folder wherever the shared code is", async () => {
+			await write("game/shared/A.luau");
+			await write("places/lobby/src/B.luau");
+			const prompts = new MockPromptService([
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"other",
+				"game/shared",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+			]);
+
+			await runInit([], prompts);
+
+			expect((await readJson("lobby.rogen.json")).rootDirs).toEqual([
+				"places/lobby/src",
+			]);
+		});
+
+		it("should have Darklua process every place, and serve their synced configs", async () => {
+			await write(".darklua.json");
+			await write("places/lobby/src/A.luau");
+			await write("places/arena/src/B.luau");
+			const logService = new MockLogService();
+
+			await runInit([], undefined, logService);
+
+			expect(logService.lines).toEqual(
+				expect.arrayContaining([
+					"info:   darklua process places/shared/src dist/lobby/shared/src",
+					"info:   darklua process places/arena/src dist/arena/arena/src",
+					"info:   rogen serve arena-sync lobby-sync",
+				])
+			);
+			expect(
+				logService.lines.filter((line) =>
+					line.includes("rojo sourcemap")
+				)
+			).toHaveLength(1);
+		});
+
 		it("should keep the shared code at the root when that is the answer", async () => {
 			const prompts = new MockPromptService([
 				"several",
@@ -1523,7 +1637,7 @@ describe("init command", () => {
 			expect(await exists("lobby.rogen.json")).toBe(false);
 		});
 
-		it("should write a tsconfig per roblox-ts place and say how to switch", async () => {
+		it("should write a tsconfig per roblox-ts place and compile each", async () => {
 			await write("tsconfig.json", '{ "include": ["src"] }');
 			await write("places/lobby/B.ts");
 			await write("places/match/C.ts");
@@ -1536,7 +1650,8 @@ describe("init command", () => {
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
 					"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-					"info: Swap lobby for match to work on another place.",
+					"info:   rbxtsc -w -p tsconfig.match.json --rojo match.project.json",
+					"info:   rogen serve",
 				])
 			);
 		});

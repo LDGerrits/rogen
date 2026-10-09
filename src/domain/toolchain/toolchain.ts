@@ -122,7 +122,7 @@ export interface Compiler {
 	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
-	/** The edit that makes it compile the shared code from `rootDir`, when its config pins another folder. */
+	/** The edit that makes it compile the shared code from `rootDir`, when its config compiles another folder. */
 	rootDirStep(rootDir: string): string;
 	/** The files a place named `name` adds, beside its config and project file. */
 	placeFileNames(name: string): readonly string[];

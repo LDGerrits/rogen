@@ -173,7 +173,7 @@ describe("PlaceSetup", () => {
 			expect(written(plan(darklua, base)).nextSteps).toEqual({
 				setup: [],
 				run: [
-					"rogen serve",
+					"rogen serve lobby-sync",
 					"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
 				],
 				darklua: [
@@ -365,6 +365,7 @@ describe("BaseConfigReader", () => {
 		expect((await readBase()).unwrap()).toEqual({
 			rootDirs: ["src", "shared"],
 			ports: [],
+			sharedPort: false,
 		});
 	});
 

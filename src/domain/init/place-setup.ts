@@ -84,7 +84,10 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 	plan(choices: PlaceChoices, builder: InitPlanBuilder): void {
 		const place = new PlacePlan(this.directory, choices);
 		place.planFiles(builder);
-		place.planSteps(builder);
+		place.planSteps(
+			builder,
+			PlacePlan.serveCommandOf([place], choices.base.sharedPort)
+		);
 		builder.addEdit(
 			ConfigSet.variantsStep(
 				place.configSet.language,

@@ -1555,7 +1555,7 @@ describe("ProjectSetup with several places", () => {
 		});
 
 		expect(nextSteps.setup).toContain(
-			'Set "rootDir" to "places/shared/src" in tsconfig.json, so roblox-ts compiles the shared code from there.'
+			'Set "rootDir" to "places/shared/src" and "include" to ["places/shared/src"] in tsconfig.json, so roblox-ts compiles the shared code from there.'
 		);
 	});
 

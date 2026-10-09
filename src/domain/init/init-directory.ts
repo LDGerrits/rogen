@@ -23,6 +23,8 @@ export interface BaseConfig {
 	readonly syncDir?: string;
 	/** The serve ports the templates of the configs here set, which a new place's port must differ from. */
 	readonly ports?: readonly number[];
+	/** Whether two configs a bare `rogen serve` would serve share a port, so a new place has to be served by name. */
+	readonly sharedPort?: boolean;
 }
 
 /** The directory `init` writes into: what is in it, what the toolchain found there, and which paths could be written. */
