@@ -1,20 +1,10 @@
 import "../where-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import { Result } from "../../../base/result.js";
-import { BuildService } from "../../../domain/build/build-service.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
-import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
-import { IndexService } from "../../../platform/fs/index-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -47,25 +37,11 @@ describe("where command", () => {
 			.flatMap(({ text }) => text.split("\n"));
 
 	beforeEach(async () => {
-		fs = new MemoryFileSystemService();
-		await fs.createDirectory("/repo");
-		logService = new MockLogService();
-		const environment = new MockEnvironmentService("/repo");
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(FileSystemService, fs);
-		services.set(EnvironmentService, environment);
-		const indexService = new CoreIndexService(fs);
-		services.set(IndexService, indexService);
-		services.set(BuildService, buildServiceOf(fs, indexService));
-		const configService = new CoreConfigService(fs, environment);
-		services.set(ConfigService, configService);
-		const commandService = new CoreCommandService(services, logService);
-		run = async ({ _ = [], ...options }) =>
-			commandService.executeCommand("where", {
-				positionals: _,
-				options,
-			});
+		const harness = await commandHarness();
+		({ fs } = harness);
+		logService = harness.log;
+		run = ({ _ = [], ...options }) =>
+			harness.run("where", { positionals: _, options });
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {
