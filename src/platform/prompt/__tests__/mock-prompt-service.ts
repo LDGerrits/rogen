@@ -17,6 +17,12 @@ export type ScriptedAnswer =
 	| typeof ACCEPT_DEFAULT
 	| typeof CANCEL;
 
+export type ScriptedAnswers = Readonly<Record<string, ScriptedAnswer>>;
+
+const isAnswerList = (
+	answers: readonly ScriptedAnswer[] | ScriptedAnswers
+): answers is readonly ScriptedAnswer[] => Array.isArray(answers);
+
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
 	readonly placeholder?: string;
@@ -27,13 +33,16 @@ export class MockPromptService implements PromptService {
 
 	readonly asked: string[] = [];
 	readonly prompts: AskedPrompt[] = [];
-	private readonly answers: ScriptedAnswer[];
+	private readonly answers: ScriptedAnswer[] = [];
+	private readonly byQuestion?: ScriptedAnswers;
 
+	/** Answers in the order asked, or by question, taking the default of any question not named. */
 	constructor(
-		answers: readonly ScriptedAnswer[] = [],
+		answers: readonly ScriptedAnswer[] | ScriptedAnswers = [],
 		readonly isInteractive = true
 	) {
-		this.answers = [...answers];
+		if (isAnswerList(answers)) this.answers.push(...answers);
+		else this.byQuestion = answers;
 	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {
@@ -72,7 +81,9 @@ export class MockPromptService implements PromptService {
 		const { message, placeholder, description, hint } = options;
 		this.asked.push(message);
 		this.prompts.push({ message, placeholder, description, hint });
-		const answer = this.answers.shift();
+		const answer = this.byQuestion
+			? (this.byQuestion[message] ?? ACCEPT_DEFAULT)
+			: this.answers.shift();
 		if (answer === undefined) {
 			throw new Error(`No scripted answer for "${message}".`);
 		}
