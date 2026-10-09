@@ -591,6 +591,16 @@ describe("CoreServeService", () => {
 			);
 		});
 
+		it("should show a Windows status code in hex", async () => {
+			await start();
+
+			processes.spawned[0].exit({ code: 0xc0000005, signal: null });
+
+			expect(stops[0].failure?.message).toBe(
+				"Rojo stopped serving default with exit code 0xC0000005; its output says why."
+			);
+		});
+
 		it("should not count a server that Ctrl+C ended as a failure", async () => {
 			await start();
 

@@ -40,6 +40,10 @@ const wasInterrupted = ({ code, signal }: ProcessExit) =>
 	(signal !== null && INTERRUPTING_SIGNALS.has(signal)) ||
 	(code !== null && INTERRUPTED_CODES.has(code));
 
+/** An exit code as its platform shows it: Windows status codes, such as a crash's, in hex. */
+const exitCodeText = (code: number) =>
+	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
+
 /** A watch of the plan's configs, and a server for each target nothing served when it started. */
 export class CoreServeSession
 	extends AbstractDisposable
@@ -205,7 +209,7 @@ export class CoreServeSession
 					? errorDiagnostic(
 							"serve.serverExited",
 							{ resource: file },
-							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exit.code}`}; its output says why.`
+							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}; its output says why.`
 						)
 					: undefined;
 		this._onDidStop.fire({
