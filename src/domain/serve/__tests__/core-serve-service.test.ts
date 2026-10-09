@@ -489,9 +489,19 @@ describe("CoreServeService", () => {
 		});
 
 		it("should build, then start the server on the project file", async () => {
+			expect(await memFs.exists("/repo/default.project.json")).toBe(
+				false
+			);
+			const spawn = processes.spawn.bind(processes);
+			const builtAtSpawn: Promise<boolean>[] = [];
+			jest.spyOn(processes, "spawn").mockImplementation((...args) => {
+				builtAtSpawn.push(memFs.exists("/repo/default.project.json"));
+				return spawn(...args);
+			});
+
 			expect((await start()).isOk()).toBe(true);
 
-			expect(await memFs.exists("/repo/default.project.json")).toBe(true);
+			expect(await Promise.all(builtAtSpawn)).toEqual([true]);
 			expect(
 				processes.spawned.map(({ file, args, options }) => [
 					file,
