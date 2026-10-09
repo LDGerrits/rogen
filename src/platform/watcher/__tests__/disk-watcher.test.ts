@@ -170,13 +170,21 @@ describe("DiskWatcher", () => {
 			).toBe("");
 		});
 
+		/** Writes a file and waits for its event, so what the watcher would have reported before it has arrived. */
+		const settled = async () => {
+			await fs.writeFile(path.join(root, "settled.luau"), "");
+			await waitFor(() =>
+				has(FileChangeType.ADDED, linkPath("settled.luau"))
+			);
+		};
+
 		it("should report a link to its own parent added later, without following it", async () => {
 			await watcher.watch([root]);
 
 			await fs.symlink(root, path.join(root, "Loop"), "junction");
 
 			await waitFor(() => has(FileChangeType.ADDED, linkPath("Loop")));
-			await new Promise((resolve) => setTimeout(resolve, 200));
+			await settled();
 			expect(
 				changes.filter((c) => c.path.startsWith(linkPath("Loop/")))
 			).toEqual([]);
@@ -206,7 +214,7 @@ describe("DiskWatcher", () => {
 			await fs.writeFile(path.join(root, "a.luau"), "");
 
 			await waitFor(() => has(FileChangeType.ADDED, linkPath("a.luau")));
-			await new Promise((resolve) => setTimeout(resolve, 200));
+			await settled();
 			expect(
 				changes.filter((c) => c.path.startsWith(linkPath("Loop/")))
 			).toEqual([]);
