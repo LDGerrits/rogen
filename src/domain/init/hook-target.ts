@@ -2,8 +2,13 @@ import { isObject } from "../../base/objects.js";
 
 export const HOOK_SCRIPT_FILE = ".agents/hooks/rogen-check.sh";
 
-/** A hook file that names the script, by this name or the one it had before, has the hook. */
-const SCRIPT_NAMED = /rogen-(check|stop)\.sh/;
+/** A hook file that names the script has the hook. */
+const SCRIPT_NAMED = new RegExp(
+	HOOK_SCRIPT_FILE.slice(HOOK_SCRIPT_FILE.lastIndexOf("/") + 1).replace(
+		".",
+		"\\."
+	)
+);
 
 /** What registering the hook does to an agent's hook file. */
 export type HookRegistration =

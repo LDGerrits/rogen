@@ -199,14 +199,6 @@ describe("registerHook", () => {
 		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
 	});
 
-	it("should leave settings that name the script by its earlier name", () => {
-		const settings = JSON.stringify({
-			hooks: { Stop: [entry("x/.claude/hooks/rogen-stop.sh")] },
-		});
-
-		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
-	});
-
 	it("should add to the event it is given, not another", () => {
 		const settings = JSON.stringify({
 			hooks: { Stop: [entry("/x/rogen-check.sh")] },
