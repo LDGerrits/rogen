@@ -10,11 +10,11 @@ stdout:
   Next steps
     Run each in its own terminal:
       rogen serve lobby-sync
-      rojo sourcemap places/lobby.project.json --output places/sourcemap.json --watch
+      rojo sourcemap places/lobby.project.json --output places/lobby.sourcemap.json --watch
     Have Darklua process your code into the sync dir:
-      darklua process src dist/lobby/src
-      darklua process places/lobby dist/lobby/places/lobby
-    Rojo writes places/sourcemap.json with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "places/sourcemap.json".
+      darklua process --config places/lobby.darklua.json src dist/lobby/src
+      darklua process --config places/lobby.darklua.json places/lobby dist/lobby/places/lobby
+    Darklua finds a sourcemap's files only beside its config, so copy .darklua.json to places/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Darklua reads its other paths from places too.
     Declare variants under "variants" in places/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 3 files.
 

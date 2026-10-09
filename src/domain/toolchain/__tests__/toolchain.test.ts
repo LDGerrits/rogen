@@ -28,6 +28,19 @@ describe("Darklua", () => {
 			]);
 		});
 
+		it("should read the config it is given", () => {
+			expect(
+				darklua.processCommands(
+					directory,
+					["src"],
+					"dist/lobby",
+					"places/lobby/lobby.darklua.json"
+				)
+			).toEqual([
+				"darklua process --config places/lobby/lobby.darklua.json src dist/lobby",
+			]);
+		});
+
 		it("should measure from the deepest shared folder", () => {
 			expect(
 				darklua.processCommands(

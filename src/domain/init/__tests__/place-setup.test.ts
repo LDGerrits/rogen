@@ -174,14 +174,14 @@ describe("PlaceSetup", () => {
 				setup: [],
 				run: [
 					"rogen serve lobby-sync",
-					"rojo sourcemap places/lobby/lobby.project.json --output places/lobby/sourcemap.json --watch",
+					"rojo sourcemap places/lobby/lobby.project.json --output places/lobby/lobby.sourcemap.json --watch",
 				],
 				darklua: [
-					"darklua process src dist/lobby/src",
-					"darklua process places/lobby/src dist/lobby/places/lobby/src",
+					"darklua process --config places/lobby/lobby.darklua.json src dist/lobby/src",
+					"darklua process --config places/lobby/lobby.darklua.json places/lobby/src dist/lobby/places/lobby/src",
 				],
 				edits: [
-					'Rojo writes places/lobby/sourcemap.json with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "places/lobby/sourcemap.json".',
+					'Darklua finds a sourcemap\'s files only beside its config, so copy .darklua.json to places/lobby/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Darklua reads its other paths from places/lobby too.',
 					'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});

@@ -1645,16 +1645,13 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
-					"info:   darklua process places/shared/src dist/lobby/shared/src",
-					"info:   darklua process places/arena/src dist/arena/arena/src",
+					"info:   darklua process --config places/lobby/lobby.darklua.json places/shared/src dist/lobby/shared/src",
+					"info:   darklua process --config places/arena/arena.darklua.json places/arena/src dist/arena/arena/src",
 					"info:   rogen serve arena-sync lobby-sync",
+					"info:   rojo sourcemap places/lobby/lobby.project.json --output places/lobby/lobby.sourcemap.json --watch",
+					"info:   rojo sourcemap places/arena/arena.project.json --output places/arena/arena.sourcemap.json --watch",
 				])
 			);
-			expect(
-				logService.lines.filter((line) =>
-					line.includes("rojo sourcemap")
-				)
-			).toHaveLength(1);
 		});
 
 		it("should keep the shared code at the root when that is the answer", async () => {

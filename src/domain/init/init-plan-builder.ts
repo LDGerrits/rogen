@@ -112,11 +112,6 @@ export class InitPlanBuilder {
 		} else {
 			this.run.push(command);
 		}
-		const sourcemap = darklua.sourcemapOf(projectFile);
-		if (sourcemap !== "sourcemap.json")
-			this.edits.push(
-				`Rojo writes ${sourcemap} with paths from its folder, so set "rojo_sourcemap" in your Darklua config to "${sourcemap}".`
-			);
 	}
 
 	addEdit(...lines: readonly string[]): void {

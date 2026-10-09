@@ -206,7 +206,7 @@ export class ConfigSet {
 			readonly serveCommand?: string;
 			readonly processed: readonly string[];
 			readonly syncDir?: string;
-			/** Whether to keep the sourcemap Darklua reads current from this set's project file. */
+			/** Whether to keep the root sourcemap current from this set's project file; a set below the root always keeps its own. */
 			readonly sourcemap?: boolean;
 		}
 	): void {
@@ -215,14 +215,41 @@ export class ConfigSet {
 			...(compileCommand ? [compileCommand] : []),
 			serveCommand
 		);
+		const config = this.darkluaConfigIn(directory);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(
-				...darklua.processCommands(directory.path, processed, syncDir)
+				...darklua.processCommands(
+					directory.path,
+					processed,
+					syncDir,
+					config
+				)
 			);
 		}
-		if (darklua && this.sourced && sourcemap) {
+		if (darklua && this.sourced && (sourcemap || config)) {
 			builder.addSourcemapSteps(this.projectFile, darklua);
 		}
+		if (darklua && config) {
+			const rootConfig =
+				directory.workspace.darkluaConfig ?? darklua.configFiles[0];
+			const sourcemapFile = path.posix.basename(
+				darklua.sourcemapOf(this.projectFile)
+			);
+			builder.addEdit(
+				`Darklua finds a sourcemap's files only beside its config, so copy ${rootConfig} to ${config} and set "rojo_sourcemap" in it to "./${sourcemapFile}". Darklua reads its other paths from ${this.dir} too.`
+			);
+		}
+	}
+
+	/** The Darklua config a sourced set below the root processes with, beside its sourcemap. */
+	private darkluaConfigIn(directory: InitDirectory): string | undefined {
+		if (!this.darklua || !this.sourced || this.dir === ".")
+			return undefined;
+		return this.darklua.placeConfigOf(
+			this.dir,
+			this.name,
+			directory.workspace.darkluaConfig
+		);
 	}
 
 	/** The files a place named like this writes, plus its project file, which mustn't exist either. */

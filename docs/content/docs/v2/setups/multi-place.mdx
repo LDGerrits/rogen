@@ -170,22 +170,49 @@ Each place needs a project file for its source (for Darklua) and one for the pro
 }
 ```
 
-Synced paths keep each root directory's path from the repo root (`dist/lobby/src/…`, `dist/lobby/places/lobby/src/…`), so run Darklua once per root directory, from the root:
+Rojo writes a sourcemap's paths from its project file's folder, so the place's sourcemap goes beside its project file. Darklua finds a sourcemap's files only when the sourcemap sits beside its config, so give the place a copy of your Darklua config in its folder, reading the place's sourcemap:
+
+```json title="places/lobby/lobby.darklua.json"
+{
+	"rules": [
+		{
+			"rule": "convert_require",
+			"current": { "name": "path" },
+			"target": {
+				"name": "roblox",
+				"rojo_sourcemap": "./lobby.sourcemap.json",
+				"indexing_style": "property"
+			}
+		}
+	]
+}
+```
+
+Darklua reads every path in that config from `places/lobby`. Synced paths keep each root directory's path from the repo root (`dist/lobby/src/…`, `dist/lobby/places/lobby/src/…`), so run Darklua once per root directory, from the root:
 
 ```bash
-darklua process src dist/lobby/src
-darklua process places/lobby/src dist/lobby/places/lobby/src
+darklua process --config places/lobby/lobby.darklua.json src dist/lobby/src
+darklua process --config places/lobby/lobby.darklua.json places/lobby/src dist/lobby/places/lobby/src
 rogen serve lobby-sync
-rojo sourcemap places/lobby/lobby.project.json --output places/lobby/sourcemap.json --watch
+rojo sourcemap places/lobby/lobby.project.json --output places/lobby/lobby.sourcemap.json --watch
 ```
 
 `rogen serve lobby-sync` builds every config, `lobby.project.json` included, and serves the processed one. Name every place's synced config to serve them all, as `rogen serve lobby-sync arena-sync`: a bare `rogen serve` would also serve `sync.rogen.json`, which holds only the shared code.
 
-Rojo writes a sourcemap's paths from its project file's folder, so the place's sourcemap goes beside its project file, and Darklua reads it from there: set `"rojo_sourcemap": "places/lobby/sourcemap.json"` in your Darklua config. luau-lsp keeps the root `sourcemap.json` current from `default.project.json` without touching it.
+Each place keeps its own config and sourcemap, so every place processes at once. luau-lsp keeps the root `sourcemap.json` current from `default.project.json` without touching them.
 
 ## Editor and Git
 
-luau-lsp reads `default.project.json`, which holds the shared code. To have it see a place's own code while you work on it, point `luau-lsp.sourcemap.rojoProjectFile` at `places/lobby/lobby.project.json` and `luau-lsp.sourcemap.sourcemapFile` at `places/lobby/sourcemap.json`, so the sourcemap sits beside the project file its paths start from.
+luau-lsp reads `default.project.json`, which holds the shared code. To have it see a place's own code while you work on it, have it build the place's sourcemap instead. luau-lsp reads a sourcemap's paths from the workspace root, and Rojo writes a place's from its folder, so ask Rojo for absolute paths:
+
+```json title=".vscode/settings.json"
+{
+	"luau-lsp.sourcemap.generatorCommand": "rojo sourcemap places/lobby/lobby.project.json --output editor.sourcemap.json --absolute --watch",
+	"luau-lsp.sourcemap.sourcemapFile": "editor.sourcemap.json"
+}
+```
+
+Darklua can't read absolute paths, so this sourcemap stays apart from the ones Darklua reads.
 
 Rogen writes each place's project file in its folder, beside the template you keep. Ignore the written ones, not the templates:
 
@@ -194,6 +221,7 @@ Rogen writes each place's project file in its folder, beside the template you ke
 !template.project.json
 !*.template.project.json
 sourcemap.json
+*.sourcemap.json
 ```
 
 <Callout type="info">

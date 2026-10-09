@@ -282,23 +282,36 @@ export class Darklua {
 		return `rojo sourcemap ${projectFile} --output ${this.sourcemapOf(projectFile)} --watch`;
 	}
 
-	/** Where the sourcemap of `projectFile` goes: beside it, since Rojo writes its paths from the project file's folder. */
+	/** Where the sourcemap of `projectFile` goes: beside it, since Rojo writes its paths from the project file's folder, and named after it below the root, where places can share a folder. */
 	sourcemapOf(projectFile: string): string {
 		const dir = path.posix.dirname(projectFile);
-		return dir === "." ? "sourcemap.json" : `${dir}/sourcemap.json`;
+		if (dir === ".") return "sourcemap.json";
+		const stem = path.posix.basename(projectFile, ".project.json");
+		return `${dir}/${stem}.sourcemap.json`;
+	}
+
+	/** The Darklua config of a place named `name` in `dir`, beside its sourcemap, since Darklua finds a sourcemap's files only from there; `rootConfig` is the project's own. */
+	placeConfigOf(
+		dir: string,
+		name: string,
+		rootConfig = this.configFiles[0]
+	): string {
+		return `${dir}/${name}${rootConfig}`;
 	}
 
 	/** One `darklua process` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
-		syncDir: string
+		syncDir: string,
+		config?: string
 	): string[] {
 		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
 		const common = commonAncestor(absolute);
+		const options = config ? `--config ${config} ` : "";
 		return sourceDirs.map((dir, index) => {
 			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
+			return `darklua process ${options}${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
 		});
 	}
 }
