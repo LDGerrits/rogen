@@ -12,6 +12,7 @@ stdout:
     help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
     list [config...]   Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.
+    serve [config...]  Builds, serves the project files with Rojo or Argon, and rebuilds whenever sources or configs change.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why, with its warnings.
   
@@ -47,6 +48,7 @@ stdout:
     help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
     list [config...]   Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.
+    serve [config...]  Builds, serves the project files with Rojo or Argon, and rebuilds whenever sources or configs change.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why, with its warnings.
   
@@ -82,6 +84,7 @@ stdout:
     help [name]        Prints usage, a command's details, a topic, or what a diagnostic code means.
     init [name]        Writes a starting config, detecting the workspace and asking in a terminal.
     list [config...]   Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.
+    serve [config...]  Builds, serves the project files with Rojo or Argon, and rebuilds whenever sources or configs change.
     watch [config...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]    Prints where each file lands in the game, and why, with its warnings.
   

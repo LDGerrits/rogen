@@ -28,6 +28,10 @@ import { ConsolePromptService } from "./platform/prompt/console-prompt-service.j
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
 import { ProductService } from "./platform/product/product-service.js";
+import { NativeProcessService } from "./platform/process/native-process-service.js";
+import { ProcessService } from "./platform/process/process-service.js";
+import { NativeRequestService } from "./platform/request/native-request-service.js";
+import { RequestService } from "./platform/request/request-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
@@ -41,11 +45,14 @@ import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
+import { CoreServeService } from "./domain/serve/core-serve-service.js";
+import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
+import "./commands/serve/serve-command.js";
 import "./commands/watch/watch-command.js";
 import "./commands/where/where-command.js";
 
@@ -147,9 +154,26 @@ async function main(): Promise<void> {
 		);
 		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
+		const watchService = new CoreWatchService(
+			watcher,
+			indexService,
+			buildService
+		);
+		services.set(WatchService, watchService);
+		const processService = new NativeProcessService();
+		services.set(ProcessService, processService);
+		const requestService = new NativeRequestService();
+		services.set(RequestService, requestService);
 		services.set(
-			WatchService,
-			new CoreWatchService(watcher, indexService, buildService)
+			ServeService,
+			new CoreServeService(
+				configService,
+				fileSystemService,
+				processService,
+				requestService,
+				watchService,
+				environment
+			)
 		);
 
 		const commandService = new CoreCommandService(services, logService);

@@ -306,34 +306,45 @@ export async function eventually(
 	}
 }
 
+/** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
 export class WatchSession {
 	private readonly child: ChildProcess;
-	private readonly exited: Promise<number | null>;
+	readonly exited: Promise<number | null>;
 	private _output = "";
+	private _stdout = "";
 
 	constructor(
 		cli: string,
 		dir: string,
 		args: readonly string[] = [],
-		cwd: string = dir
+		cwd: string = dir,
+		command = "watch"
 	) {
-		const [command, commandArgs] = invocation(cli, ["watch", ...args]);
-		this.child = spawn(command, [...commandArgs], {
+		const [file, commandArgs] = invocation(cli, [command, ...args]);
+		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
 			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
 		});
 		for (const stream of [this.child.stdout, this.child.stderr]) {
 			stream?.setEncoding("utf8");
-			stream?.on("data", (chunk: string) => (this._output += chunk));
+			stream?.on("data", (chunk: string) => {
+				this._output += chunk;
+				if (stream === this.child.stdout) this._stdout += chunk;
+			});
 		}
 		this.exited = new Promise((resolve) =>
 			this.child.once("exit", (code) => resolve(code))
 		);
 	}
 
+	/** Everything it printed, on both streams. */
 	get output(): string {
 		return stripVTControlCharacters(this._output);
+	}
+
+	get stdout(): string {
+		return this._stdout;
 	}
 
 	async stop(): Promise<number | null> {

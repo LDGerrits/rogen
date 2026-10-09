@@ -31,5 +31,6 @@ After changing behavior on purpose, regenerate and review the diff:
 UPDATE_E2E=1 npm test -- e2e
 ```
 
-`watch.test.ts` covers the long-running `watch` command, which a transcript
-can't describe.
+`watch.test.ts` and `serve.test.ts` cover the long-running `watch` and `serve`
+commands, which a transcript can't describe. `serve.test.ts` starts the pinned
+Rojo on a random port.

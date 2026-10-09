@@ -103,17 +103,21 @@ export class WatchLog {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
 
-	/** Opens the output: the configs it watches. */
-	begin(configs: readonly ResolvedConfig[], home?: string): void {
+	/** Opens the output of `command`: the configs it watches. */
+	begin(
+		configs: readonly ResolvedConfig[],
+		home?: string,
+		command = "watch"
+	): void {
 		this.buildLog.begin(
-			"watch",
+			command,
 			configs.map(({ label }) => label),
 			home
 		);
 	}
 
-	end(): void {
-		this.logService.outro("Stopped watching.");
+	end(message = "Stopped watching."): void {
+		this.logService.outro(message);
 	}
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
