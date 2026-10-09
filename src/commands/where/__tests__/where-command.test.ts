@@ -87,6 +87,18 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should print every file in the tree when given no path", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/B.luau", "src/A/Server/C.luau");
+
+		await run({});
+
+		expect(printed()).toEqual([
+			"src/A/Server/C.luau -> ServerScriptService/A/C · route Server (folder)",
+			"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
+		]);
+	});
+
 	it("should read every config here, with variant flags applied", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await writeConfig("mocked.rogen.json", {
