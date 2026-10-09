@@ -1,2 +1,3 @@
 [tools]
 rojo = "rojo-rbx/rojo@7.7.1"
+argon = "argon-rbx/argon@2.0.29"

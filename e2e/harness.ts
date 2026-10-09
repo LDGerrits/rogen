@@ -1,4 +1,4 @@
-import { ChildProcess, execFile, spawn } from "child_process";
+import { ChildProcess, execFile, spawn, spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { buildSync } from "esbuild";
 import fs from "fs";
@@ -289,6 +289,35 @@ export function writeProjectFile(
 	fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
 	fs.writeFileSync(path.join(dir, file), content);
 }
+
+/** A toolchain file pinning only the Argon the repo pins, for a project that serves with Argon. */
+export const ARGON_TOOLCHAIN = `[tools]\n${/^argon\s*=.*$/m.exec(fs.readFileSync(path.resolve("rokit.toml"), "utf8"))?.[0] ?? ""}\n`;
+
+function argonAvailable(): boolean {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-argon-probe-"));
+	try {
+		fs.writeFileSync(path.join(dir, "rokit.toml"), ARGON_TOOLCHAIN);
+		return (
+			spawnSync("argon", ["--version"], { cwd: dir, timeout: 20_000 })
+				.status === 0
+		);
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+const requireArgon = (name: string) =>
+	describe(name, () => {
+		it("should have Argon installed", () => {
+			throw new Error("Argon is not available; run `rokit install`.");
+		});
+	});
+
+export const describeWithArgon = argonAvailable()
+	? describe
+	: process.env.CI
+		? requireArgon
+		: describe.skip;
 
 export async function eventually(
 	check: () => void | Promise<void>,
