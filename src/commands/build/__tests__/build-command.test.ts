@@ -456,12 +456,9 @@ describe("build command", () => {
 			expect(result.isErr() && result.error).toBeInstanceOf(
 				ReportedError
 			);
-			const document = JSON.parse(
-				logService.entries
-					.filter(({ kind }) => kind === "print")
-					.map(({ text }) => text)
-					.join("\n")
-			);
+			const document = logService.json<{
+				configs: { diagnostics: unknown[] }[];
+			}>();
 			expect(document.configs[0].diagnostics).toEqual([
 				expect.objectContaining({
 					severity: "warning",
@@ -480,14 +477,13 @@ describe("build command", () => {
 				positionals: [],
 				options: { json: true },
 			});
-			const printed = logService.entries
-				.filter(({ kind }) => kind === "print")
-				.map(({ text }) => text)
-				.join("\n");
 			return {
 				result,
 				logService,
-				document: printed === "" ? undefined : JSON.parse(printed),
+				document:
+					logService.texts("print").length === 0
+						? undefined
+						: logService.json(),
 			};
 		};
 

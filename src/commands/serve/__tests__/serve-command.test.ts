@@ -82,9 +82,7 @@ describe("serve command", () => {
 	};
 
 	const printed = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "print")
-			.map(({ text }) => JSON.parse(text));
+		logService.texts("print").map((text) => JSON.parse(text));
 
 	const failureOf = async (result: Promise<Result<void, Error>>) => {
 		const settled = await result;

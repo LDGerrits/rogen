@@ -24,10 +24,7 @@ describe("list command", () => {
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
 
-	const steps = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "step")
-			.map(({ text }) => text);
+	const steps = () => logService.texts("step");
 
 	const under = (step: string) => {
 		const entries = logService.entries;
@@ -309,12 +306,7 @@ describe("list command", () => {
 
 	describe("with --json", () => {
 		const document = () =>
-			JSON.parse(
-				logService.entries
-					.filter(({ kind }) => kind === "print")
-					.map(({ text }) => text)
-					.join("\n")
-			) as { configs: Record<string, unknown>[] };
+			logService.json<{ configs: Record<string, unknown>[] }>();
 
 		const entry = (config: string) =>
 			document().configs.find((candidate) => candidate.config === config);

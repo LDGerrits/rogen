@@ -32,9 +32,7 @@ describe("where command", () => {
 		fs.writeFile(`/repo/${file}`, JSON.stringify(config));
 
 	const printed = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "print")
-			.flatMap(({ text }) => text.split("\n"));
+		logService.texts("print").flatMap((text) => text.split("\n"));
 
 	beforeEach(async () => {
 		const harness = await commandHarness();
@@ -200,10 +198,7 @@ describe("where command", () => {
 	);
 
 	describe("the require of a named file", () => {
-		const notes = () =>
-			logService.entries
-				.filter(({ kind }) => kind === "note")
-				.map(({ text }) => text);
+		const notes = () => logService.texts("note");
 
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", { routes: ROUTES });

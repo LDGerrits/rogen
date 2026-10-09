@@ -18,9 +18,7 @@ describe("CommandFailure", () => {
 	});
 
 	const printed = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "print")
-			.map(({ text }) => JSON.parse(text));
+		logService.texts("print").map((text) => JSON.parse(text));
 
 	describe("report", () => {
 		it("should print nothing for a failure already reported in full", () => {

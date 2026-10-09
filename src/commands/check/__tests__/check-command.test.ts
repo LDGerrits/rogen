@@ -53,10 +53,7 @@ describe("check command", () => {
 			harness.run("check", { positionals: _, options });
 	});
 
-	const printed = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "print")
-			.map(({ text }) => text);
+	const printed = () => logService.texts("print");
 
 	describe("with paths", () => {
 		beforeEach(async () => {

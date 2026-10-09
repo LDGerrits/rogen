@@ -14,6 +14,18 @@ export class MockLogService extends AbstractLogService {
 		return this.entries.map(({ kind, text }) => `${kind}: ${text}`);
 	}
 
+	/** The text of every entry of `kind`, in order. */
+	texts(kind: LogKind): string[] {
+		return this.entries
+			.filter((entry) => entry.kind === kind)
+			.map(({ text }) => text);
+	}
+
+	/** What was printed, read as one JSON document. */
+	json<T = ReturnType<typeof JSON.parse>>(): T {
+		return JSON.parse(this.texts("print").join("\n")) as T;
+	}
+
 	clear(): void {
 		this.entries.length = 0;
 	}
