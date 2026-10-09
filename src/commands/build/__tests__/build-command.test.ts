@@ -1,31 +1,23 @@
 import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import { ReportedError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	MockConfigService,
 	brokenEntry,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
-import { BuildService } from "../../../domain/build/build-service.js";
 import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config-service.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -48,24 +40,12 @@ describe("build command", () => {
 		store[Symbol.dispose]();
 	});
 
-	const run = (
-		configService: MockConfigService,
-		logService: LogService,
+	const run = async (
+		config: MockConfigService,
+		log: LogService,
 		line: CommandLine = { positionals: [], options: {} },
-		index: IndexService = new CoreIndexService(fs)
-	) => {
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(ConfigService, configService);
-		services.set(FileSystemService, fs);
-		services.set(IndexService, index);
-		services.set(BuildService, buildServiceOf(fs, index));
-		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
-		return new CoreCommandService(services, logService).executeCommand(
-			"build",
-			line
-		);
-	};
+		index?: IndexService
+	) => (await commandHarness({ fs, log, config, index })).run("build", line);
 
 	const buildable = (
 		overrides: ResolvedConfigSpec = {},

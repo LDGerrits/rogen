@@ -21,18 +21,21 @@ import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
 
-export interface CommandHarnessOptions {
+export interface CommandHarnessOptions<L extends LogService> {
 	/** The working directory; created in `fs`. */
 	readonly cwd?: string;
 	readonly fs?: MemoryFileSystemService;
 	readonly environment?: EnvironmentService;
-	readonly log?: MockLogService;
+	readonly log?: L;
 	readonly prompt?: PromptService;
+	/** In place of the real config service, for a test that scripts what the configs resolve to. */
+	readonly config?: ConfigService;
+	readonly index?: IndexService;
 }
 
-export interface CommandHarness {
+export interface CommandHarness<L extends LogService> {
 	readonly fs: MemoryFileSystemService;
-	readonly log: MockLogService;
+	readonly log: L;
 	/** Runs `command` the way `rogen <command>` does, over the harness's services. */
 	run(
 		command: string,
@@ -41,18 +44,18 @@ export interface CommandHarness {
 }
 
 /** The services `main.ts` wires, over an in-memory file system; tests change one service by naming it. */
-export async function commandHarness(
-	options: CommandHarnessOptions = {}
-): Promise<CommandHarness> {
+export async function commandHarness<L extends LogService = MockLogService>(
+	options: CommandHarnessOptions<L> = {}
+): Promise<CommandHarness<L>> {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
 	await fs.createDirectory(cwd);
 
-	const log = options.log ?? new MockLogService();
+	const log = options.log ?? (new MockLogService() as LogService as L);
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
 	const prompt = options.prompt ?? new MockPromptService([], false);
-	const config = new CoreConfigService(fs, environment);
-	const index = new CoreIndexService(fs);
+	const config = options.config ?? new CoreConfigService(fs, environment);
+	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 
 	const services = new ServiceCollection();
