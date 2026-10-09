@@ -1,8 +1,13 @@
 import { jest } from "@jest/globals";
+import fs from "fs";
 import "../../build/build-command.js";
+import "../../check/check-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
+import "../../list/list-command.js";
+import "../../serve/serve-command.js";
 import "../../watch/watch-command.js";
+import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
 import { Result, ResultError, ok } from "../../../base/result.js";
@@ -52,6 +57,19 @@ describe("help command", () => {
 
 	afterEach(() => {
 		store[Symbol.dispose]();
+	});
+
+	it("should have imported every command module, so the tests below cover them all", () => {
+		const commandDirs = fs
+			.readdirSync("src/commands", { withFileTypes: true })
+			.filter(
+				(entry) => entry.isDirectory() && entry.name !== "__tests__"
+			)
+			.map((entry) => entry.name);
+
+		expect([...registry.getCommands().keys()].sort()).toEqual(
+			commandDirs.sort()
+		);
 	});
 
 	describe("rogen help", () => {
