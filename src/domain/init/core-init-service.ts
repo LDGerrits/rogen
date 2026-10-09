@@ -170,7 +170,15 @@ export class CoreInitService implements InitService {
 			: agentFile.value.fileName;
 		const additions: Partial<Record<Addition, () => Asking>> = {
 			...(base && {
-				place: () => asking(new PlaceSetup(directory, base, questions)),
+				place: () =>
+					asking(
+						new PlaceSetup(
+							directory,
+							base,
+							questions,
+							this.fileSystemService
+						)
+					),
 				extending: () =>
 					asking(new ExtendingConfigSetup(directory, questions)),
 			}),

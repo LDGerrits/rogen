@@ -3,15 +3,16 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  Created places/lobby.template.project.json.
   Created tsconfig.lobby.json.
   lobby.project.json · wrote
   Next steps
     Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.
     Run each in its own terminal:
       rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
-      rogen serve lobby
+      rogen serve
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.
-  Wrote 2 files.
+  Wrote 3 files.
 
 $ rogen build
 exit 0
@@ -27,6 +28,7 @@ written:
   default.project.json
   lobby.project.json
   lobby.rogen.json
+  places/lobby.template.project.json
   tsconfig.lobby.json
 
 lobby.rogen.json:
@@ -36,6 +38,7 @@ lobby.rogen.json:
 	"rootDirs": [
 		"places/lobby"
 	],
+	"template": "places/lobby.template.project.json",
 	"syncDir": "out/lobby"
 }
 
@@ -47,10 +50,13 @@ project: DataModel
       Damage: ModuleScript  <- out/Combat/Server/Damage.luau
 
 $ rojo sourcemap lobby.project.json
-project: DataModel
+Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
     Combat: Folder
       Damage: ModuleScript  <- out/lobby/src/Combat/Server/Damage.luau
     Lobby: Folder
       Greeter: ModuleScript  <- out/lobby/places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap places/lobby.template.project.json
+Lobby: DataModel

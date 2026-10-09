@@ -3,12 +3,13 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
+  Created places/lobby.template.project.json.
   lobby.project.json · wrote
   Next steps
     Run:
-      rogen serve lobby
+      rogen serve
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 1 file.
+  Wrote 2 files.
 
 $ rogen build default lobby
 exit 0
@@ -24,6 +25,7 @@ written:
   default.project.json
   lobby.project.json
   lobby.rogen.json
+  places/lobby.template.project.json
 
 lobby.rogen.json:
 {
@@ -31,7 +33,8 @@ lobby.rogen.json:
 	"extends": "./default.rogen.json",
 	"rootDirs": [
 		"places/lobby"
-	]
+	],
+	"template": "places/lobby.template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -45,7 +48,7 @@ project: DataModel
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
 
 $ rojo sourcemap lobby.project.json
-project: DataModel
+Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
@@ -55,3 +58,6 @@ project: DataModel
       Damage: ModuleScript  <- src/Combat/Server/Damage.luau
     Lobby: Folder
       Greeter: ModuleScript  <- places/lobby/Lobby/Server/Greeter.luau
+
+$ rojo sourcemap places/lobby.template.project.json
+Lobby: DataModel

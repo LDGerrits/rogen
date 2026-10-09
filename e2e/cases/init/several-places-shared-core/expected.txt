@@ -1,0 +1,69 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Created default.rogen.json.
+  Created lobby.rogen.json.
+  Created places/lobby/template.project.json.
+  Created AGENTS.md.
+  Created places/shared/src/.
+  Created places/lobby/src/.
+  default.project.json · wrote
+  lobby.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Add your own routes under "routes" in default.rogen.json.
+    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
+  Wrote 4 files.
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · default, lobby
+  default
+    default.project.json · unchanged
+  lobby
+    lobby.project.json · unchanged
+  Built 2 configs.
+
+written:
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  lobby.project.json
+  lobby.rogen.json
+  places/lobby/template.project.json
+
+default.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"rootDirs": [
+		"places/shared/src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+lobby.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
+	"rootDirs": [
+		"places/lobby/src"
+	],
+	"template": "places/lobby/template.project.json"
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+
+$ rojo sourcemap lobby.project.json
+Lobby: DataModel
+
+$ rojo sourcemap places/lobby/template.project.json
+Lobby: DataModel

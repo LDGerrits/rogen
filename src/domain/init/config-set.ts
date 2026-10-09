@@ -1,3 +1,4 @@
+import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
@@ -6,6 +7,7 @@ import {
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
+import { SyncServer } from "../serve/serve.js";
 import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -33,7 +35,7 @@ export class ConfigSet {
 	/** Project files in `directory` that no config beside them writes, other than the template. */
 	static handWrittenProjectFiles(directory: InitDirectory): string[] {
 		return directory.projectFilesWithoutConfig.filter(
-			(file) => file !== TEMPLATE_FILE
+			(file) => !file.endsWith(TEMPLATE_FILE)
 		);
 	}
 
@@ -42,9 +44,22 @@ export class ConfigSet {
 		return `./${file}`;
 	}
 
-	/** Where a place named `name` keeps its own code. */
-	static placeFolderOf(name: string): string {
-		return `${PLACES_DIR}/${name}`;
+	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
+	static placeFolderOf(
+		name: string,
+		sharedRootDirs: readonly string[] = []
+	): string {
+		const [rootDir] = sharedRootDirs;
+		const shared = rootDir?.replace(/\/src$/, "");
+		const container = shared && path.posix.dirname(shared);
+		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
+	}
+
+	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
+	static freePort(taken: readonly number[]): number {
+		let port = SyncServer.ROJO.defaultPort + 1;
+		while (taken.includes(port)) port++;
+		return port;
 	}
 
 	/** The glob that matches a language's spec files. */
@@ -119,7 +134,7 @@ export class ConfigSet {
 		return this.stems.map(defaultOutFileName);
 	}
 
-	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but places and other named configs share a port, so they are named. */
+	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
 	get serveCommand(): string {
 		if (this.name === DEFAULT_CONFIG_STEM) return "rogen serve";
 		return `rogen serve ${this.sourced ? this.syncStem : this.name}`;
@@ -151,10 +166,12 @@ export class ConfigSet {
 		directory: InitDirectory,
 		{
 			compileCommand,
+			serveCommand = this.serveCommand,
 			processed,
 			syncDir,
 		}: {
 			readonly compileCommand?: string;
+			readonly serveCommand?: string;
 			readonly processed: readonly string[];
 			readonly syncDir?: string;
 		}
@@ -162,7 +179,7 @@ export class ConfigSet {
 		const { darklua } = this;
 		builder.addRun(
 			...(compileCommand ? [compileCommand] : []),
-			this.serveCommand
+			serveCommand
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(

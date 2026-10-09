@@ -35,6 +35,7 @@ stdout:
           "<dir>/**/_*"
         ],
         "template": null,
+        "templates": [],
         "syncDir": null,
         "outFile": "<dir>/default.project.json",
         "diagnostics": []

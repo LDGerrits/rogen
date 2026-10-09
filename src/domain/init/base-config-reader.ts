@@ -2,7 +2,11 @@ import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import {
+	CONFIG_SUFFIX,
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+} from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig } from "./init-directory.js";
@@ -36,7 +40,26 @@ export class BaseConfigReader {
 		return ok({
 			rootDirs: rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),
+			ports: await this.portsIn(entries),
 		});
+	}
+
+	/** The serve port of every config here whose template sets one; a config that doesn't build is skipped. */
+	private async portsIn(entries: ReadonlySet<string>): Promise<number[]> {
+		const ports = new Set<number>();
+		for (const entry of [...entries].filter((name) =>
+			name.endsWith(CONFIG_SUFFIX)
+		)) {
+			const read = await this.configService.read(
+				path.join(this.directory, entry)
+			);
+			const port =
+				read.status === "valid"
+					? read.config.template?.project.servePort
+					: undefined;
+			if (port !== undefined) ports.add(port);
+		}
+		return [...ports];
 	}
 
 	/** The absolute sync dir the config in `fileName` resolves to, if it has one and builds. */

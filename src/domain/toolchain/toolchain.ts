@@ -1,6 +1,12 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
+import {
+	FileSystemService,
+	isDirectoryType,
+	isFileType,
+} from "../../platform/fs/file-system-service.js";
 import { SyncTool } from "../build/build.js";
+import { RojoFile } from "../rojo/rojo.js";
 
 /** A package manager: where it keeps its manifest and installed packages, and how they mount. */
 export class PackageManager {
@@ -116,6 +122,8 @@ export interface Compiler {
 	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
+	/** The edit that makes it compile the shared code from `rootDir`, when its config pins another folder. */
+	rootDirStep(rootDir: string): string;
 	/** The files a place named `name` adds, beside its config and project file. */
 	placeFileNames(name: string): readonly string[];
 	planPlace(request: CompilerPlaceRequest): CompiledPlace;
@@ -285,4 +293,41 @@ export class Darklua {
 			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
 		});
 	}
+}
+
+export const isHiddenOrVendored = (name: string): boolean =>
+	name.startsWith(".") || name === "node_modules";
+
+/** Whether `dir` holds a script anywhere below it, outside hidden and vendored folders. */
+export async function holdsCode(
+	fileSystemService: FileSystemService,
+	dir: string
+): Promise<boolean> {
+	let entries;
+	try {
+		entries = await fileSystemService.readDirectory(dir);
+	} catch {
+		return false;
+	}
+	const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
+	if (
+		visible.some(
+			([name, type]) =>
+				isFileType(type) &&
+				RojoFile.SCRIPT_EXTENSIONS.some((extension) =>
+					name.endsWith(extension)
+				)
+		)
+	) {
+		return true;
+	}
+	for (const [name, type] of visible) {
+		if (
+			isDirectoryType(type) &&
+			(await holdsCode(fileSystemService, path.join(dir, name)))
+		) {
+			return true;
+		}
+	}
+	return false;
 }

@@ -25,6 +25,7 @@ export interface Setup<C> {
 export class InitPlanBuilder {
 	private template: PlannedFile | undefined;
 	private readonly configs: PlannedFile[] = [];
+	private readonly placeTemplates: PlannedFile[] = [];
 	private readonly compilerConfigs: PlannedFile[] = [];
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
@@ -51,6 +52,11 @@ export class InitPlanBuilder {
 			fileName: configFileName(stem),
 			content: configFileContent(config),
 		});
+	}
+
+	/** A place's own template, written after every config. */
+	addPlaceTemplate(file: PlannedFile): void {
+		this.placeTemplates.push(file);
 	}
 
 	/** A compiler's own per-place config, written after every config. */
@@ -113,7 +119,11 @@ export class InitPlanBuilder {
 
 	/** Fails when a config or compiler file it would write already exists. */
 	build(): Result<InitPlan, Diagnostic[]> {
-		const written = [...this.configs, ...this.compilerConfigs];
+		const written = [
+			...this.configs,
+			...this.placeTemplates,
+			...this.compilerConfigs,
+		];
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);

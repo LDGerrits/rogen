@@ -568,9 +568,10 @@ describe("CoreInitService", () => {
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"lobby.rogen.json",
+				"places/lobby/template.project.json",
 			]);
 			expect(JSON.parse(plan?.files[0].content ?? "{}").rootDirs).toEqual(
-				["places/lobby"]
+				["places/lobby/src"]
 			);
 		});
 
@@ -604,7 +605,10 @@ describe("CoreInitService", () => {
 				);
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
-				).toEqual(["arena.rogen.json"]);
+				).toEqual([
+					"arena.rogen.json",
+					"places/arena/template.project.json",
+				]);
 			});
 
 			it("should add a place with its folder", async () => {
@@ -618,7 +622,8 @@ describe("CoreInitService", () => {
 					JSON.parse(result.unwrap()?.files[0].content ?? "{}")
 				).toMatchObject({
 					extends: "./default.rogen.json",
-					rootDirs: ["places/arena"],
+					rootDirs: ["places/arena/src"],
+					template: "places/arena/template.project.json",
 				});
 			});
 
@@ -707,13 +712,16 @@ describe("CoreInitService", () => {
 					const plan = (await planNamed(["lobby"])).unwrap();
 
 					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
-						["lobby.rogen.json"]
+						[
+							"lobby.rogen.json",
+							"places/lobby/template.project.json",
+						]
 					);
 					expect(
 						JSON.parse(plan?.files[0].content ?? "{}")
 					).toMatchObject({
 						extends: "./default.rogen.json",
-						rootDirs: ["places/lobby"],
+						rootDirs: ["places/lobby/src"],
 					});
 				});
 

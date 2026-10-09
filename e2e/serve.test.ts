@@ -1,5 +1,5 @@
 import { decode, encode } from "@msgpack/msgpack";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
@@ -10,6 +10,7 @@ import {
 	createProject,
 	describeWithArgon,
 	eventually,
+	invocation,
 	writeProjectFile,
 } from "./harness.js";
 
@@ -226,6 +227,53 @@ describeWithRojo("end to end serve", () => {
 		}, 20_000);
 		expect(await rojoProject(port + 1)).toBeUndefined();
 		expect(await rojoProject(port)).toBe("Game");
+	}, 60_000);
+
+	it("should serve every place init adds, each under its own name and port", async () => {
+		const init = (name: string) => {
+			const [command, args] = invocation(bundle.cli, [
+				"init",
+				name,
+				"-y",
+			]);
+			return spawnSync(command, args, {
+				cwd: project.dir,
+				encoding: "utf8",
+			}).status;
+		};
+		expect(init("lobby")).toBe(0);
+		expect(init("arena")).toBe(0);
+		const templateOf = (place: string) =>
+			path.join(project.dir, "places", place, "template.project.json");
+		const ports = ["lobby", "arena"].map(
+			(place) =>
+				JSON.parse(fs.readFileSync(templateOf(place), "utf8")).servePort
+		);
+		expect(ports).toEqual([34873, 34874]);
+		for (const [index, place] of ["lobby", "arena"].entries()) {
+			const written = JSON.parse(
+				fs.readFileSync(templateOf(place), "utf8")
+			);
+			fs.writeFileSync(
+				templateOf(place),
+				JSON.stringify({ ...written, servePort: port + 1 + index })
+			);
+		}
+
+		const serving = start();
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${port + 1}.`
+			);
+			expect(serving.output).toContain(
+				`Serving arena with Rojo 7.7.1 at 127.0.0.1:${port + 2}.`
+			);
+		}, 30_000);
+		expect(await rojoProject(port + 1)).toBe("Lobby");
+		expect(await rojoProject(port + 2)).toBe("Arena");
+		expect(await rojoProject(port)).toBeUndefined();
+		expect(await serving.stop()).toBe(0);
 	}, 60_000);
 
 	it("should restart the server where its template moves it", async () => {

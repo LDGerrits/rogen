@@ -14,7 +14,8 @@ import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { Layout, InitQuestions } from "./init-questions.js";
+import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
+import { PlaceFolder } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
@@ -31,14 +32,22 @@ export interface ProjectChoices {
 	/** Where the compiler writes; Darklua reads it when both are used. */
 	readonly outDir?: string;
 	readonly template: ProjectTemplate;
+	/** Where a new template starts; at the root when unset. */
+	readonly templateDir?: string;
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
 	/** Whether files that match no route go to the shared target, or are left out. */
 	readonly fallback: boolean;
-	/** Places set up alongside, each extending this config from `places/<name>`. */
-	readonly places: readonly string[];
+	/** Places set up alongside, each extending this config from a folder of its own. */
+	readonly places: readonly ProjectPlace[];
 	/** Whether the config declares dev and prod modes, the prod one leaving out specs. */
 	readonly modes?: boolean;
+}
+
+/** A place a new project sets up, and what its folder already holds. */
+export interface ProjectPlace {
+	readonly name: string;
+	readonly folder: PlaceFolder;
 }
 
 /** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
@@ -85,8 +94,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const conflicts = directory.checkFree(configSet.configFiles);
 		if (conflicts.length > 0) return err(conflicts);
 
-		const rootDirs = await questions.rootDirs(directory, language, layout);
-		if (rootDirs === undefined) return ok(undefined);
+		const shared: SharedCode | undefined =
+			layout === "several"
+				? await questions.sharedCode(directory, language)
+				: await questions
+						.rootDirs(directory, language)
+						.then((rootDirs) => rootDirs && { rootDirs });
+		if (shared === undefined) return ok(undefined);
+		const { rootDirs, templateDir } = shared;
 
 		const outputs = configSet.outputFiles;
 		const chosen = await questions.template(directory, outputs);
@@ -120,7 +135,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const modes = await questions.modes(directory, language);
 		if (modes === undefined) return ok(undefined);
 
-		let places: readonly string[] = [];
+		let places: readonly ProjectPlace[] = [];
 		if (layout === "several") {
 			const answer = await questions.places(directory, {
 				rootDirs,
@@ -133,7 +148,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				]),
 			});
 			if (answer === undefined) return ok(undefined);
-			places = answer;
+			places = await Promise.all(
+				answer.map(async (place) => ({
+					name: place,
+					folder: await PlaceFolder.read(
+						this.fileSystemService,
+						directory.path,
+						ConfigSet.placeFolderOf(place, rootDirs)
+					),
+				}))
+			);
 		}
 
 		const outDir = language.compiler?.outDir;
@@ -141,10 +165,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			name,
 			language,
 			darklua,
-			rootDirs,
+			rootDirs: [...rootDirs],
 			...(syncDir && { syncDir }),
 			...(outDir && { outDir }),
 			template,
+			...(templateDir && { templateDir }),
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
@@ -180,11 +205,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const derived = derivedRoutesOf(choices.template, rootDirs);
 		const template = TemplatePlan.of(this.directory, configSet, {
 			template: choices.template,
+			templateDir: choices.templateDir,
 			mounts: choices.mounts,
 			dirs: [
 				...rootDirs,
 				...(syncDir ? [syncDir] : []),
-				...choices.places.map(ConfigSet.placeFolderOf),
+				...choices.places.map(({ folder }) => folder.path),
 			],
 			derived,
 		});
@@ -215,26 +241,32 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		}
 
-		const places = choices.places.map((place): PlaceChoices => ({
-			name: place,
-			folder: ConfigSet.placeFolderOf(place),
-			language,
-			darklua,
-			base: { rootDirs, ...(syncDir && { syncDir }) },
-		}));
+		const ports: number[] = [];
+		const places = choices.places.map(({ name, folder }): PlaceChoices => {
+			const servePort = ConfigSet.freePort(ports);
+			ports.push(servePort);
+			return {
+				name,
+				folder,
+				servePort,
+				language,
+				darklua,
+				base: { rootDirs, ...(syncDir && { syncDir }) },
+			};
+		});
 		for (const place of places)
 			new PlacePlan(this.directory, place).planFiles(builder);
 
-		// The first place's commands stand for all of them.
+		// The first place's commands stand for all of them; only a compiler needs one per place.
 		const [first, ...others] = places;
-		if (first) {
+		if (first && compiler && others.length > 0) {
 			builder.addEdit(
-				...(others.length > 0
-					? [
-							`Swap ${first.name} for ${others.map(({ name }) => name).join(" or ")} to work on another place.`,
-						]
-					: [])
+				`Swap ${first.name} for ${others.map(({ name }) => name).join(" or ")} to work on another place.`
 			);
+		}
+		const pinned = language.configuredRootDir();
+		if (compiler && pinned !== undefined && pinned !== rootDirs[0]) {
+			builder.addSetup(compiler.rootDirStep(rootDirs[0]));
 		}
 		builder.addEdit(...template.edits);
 		if (choices.modes) {

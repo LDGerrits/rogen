@@ -1,0 +1,4 @@
+{
+	"steps": [["init", "lobby"], ["init", "arena"], ["build"], ["list"]],
+	"show": ["places/lobby/template.project.json", "places/arena/template.project.json"]
+}

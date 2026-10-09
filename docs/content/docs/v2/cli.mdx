@@ -75,7 +75,7 @@ Servers start only after the first build succeeds. If it fails, nothing starts, 
 | Rojo | `--port` after `--`, else the template's `servePort`, else 34872 | `--address`, else `serveAddress`, else `127.0.0.1` |
 | Argon | `--port` or `-P` after `--`, else `servePort`, else `port` in `argon.toml` beside the project file, else in `~/.argon/config.toml`, else 8000 | `--host` or `-H`, else `serveAddress`, else `host` in those files, else `localhost` |
 
-Two served configs on one port exit 2, with the fix: give each its own `servePort` in its template, or serve one at a time (`rogen serve lobby`). Places that set no `servePort` share the default port, which is why `init` prints `rogen serve lobby` for a place. A `servePort` in the template is committed, so every teammate's plugin matches.
+Two served configs on one port exit 2, with the fix: give each its own `servePort` in its template, or serve one at a time (`rogen serve lobby`). `init` gives every place a template with its own `servePort`, so a plain `rogen serve` serves them all. A `servePort` in the template is committed, so every teammate's plugin matches.
 
 **Already running.** Before building, Rogen asks each port what serves there. When the same project is already served, that config isn't started. Rogen knows a project by the name in its project file, so when two served configs share a name, a server on their port counts as something else. A server another `rogen serve` started is also known by its project file, so a second checkout of the same project, such as a git worktree, is told the port is taken by the first one's folder rather than that it is already served. When every served config is already served, `serve` says so and exits 0 without building. When something else holds the port, `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names what holds it and a free port to use instead.
 
@@ -181,7 +181,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config, and with other configs but no default, a separate config. Either way it also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`.
+In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config, and with other configs but no default, a separate config. Either way it also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`, beside the shared code: its code in `places/lobby/src`, and a template with its name and the first free `servePort` above 34872. See [Multi-Place](/docs/v2/setups/multi-place).
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
@@ -372,9 +372,9 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ```json
 {
-	"files": ["/repo/lobby.rogen.json", "/repo/tsconfig.lobby.json"],
+	"files": ["/repo/lobby.rogen.json", "/repo/places/lobby/template.project.json", "/repo/tsconfig.lobby.json"],
 	"appended": [],
-	"directories": ["/repo/places/lobby"],
+	"directories": ["/repo/places/lobby/src"],
 	"built": [
 		{
 			"config": "lobby",
@@ -387,7 +387,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 	"notes": [],
 	"nextSteps": {
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
-		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen serve lobby"],
+		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen serve"],
 		"darklua": [],
 		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant."]
 	}

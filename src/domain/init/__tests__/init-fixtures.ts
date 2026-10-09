@@ -36,6 +36,7 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 export interface LegacyPlan {
 	readonly template?: PlannedFile;
 	readonly configs: readonly PlannedFile[];
+	readonly placeTemplates: readonly PlannedFile[];
 	readonly compilerConfigs: readonly PlannedFile[];
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;
@@ -45,16 +46,29 @@ export const legacyPlan = ({
 	files,
 	notes,
 	nextSteps,
-}: InitPlan): LegacyPlan => ({
-	template: files.find(({ fileName }) => fileName === TEMPLATE_FILE),
-	configs: files.filter(({ fileName }) => fileName.endsWith(".rogen.json")),
-	compilerConfigs: files.filter(
-		({ fileName }) =>
-			fileName !== TEMPLATE_FILE && !fileName.endsWith(".rogen.json")
-	),
-	notes,
-	nextSteps,
-});
+}: InitPlan): LegacyPlan => {
+	const [first] = files;
+	const template = first?.fileName.endsWith(TEMPLATE_FILE)
+		? first
+		: undefined;
+	const others = files.filter((file) => file !== template);
+	return {
+		template,
+		configs: others.filter(({ fileName }) =>
+			fileName.endsWith(".rogen.json")
+		),
+		placeTemplates: others.filter(({ fileName }) =>
+			fileName.endsWith(".project.json")
+		),
+		compilerConfigs: others.filter(
+			({ fileName }) =>
+				!fileName.endsWith(".rogen.json") &&
+				!fileName.endsWith(".project.json")
+		),
+		notes,
+		nextSteps,
+	};
+};
 
 /** What `setup` plans for `choices` in `target`. */
 export function planOf<C>(

@@ -994,7 +994,10 @@ describe("InitQuestions askProject layout", () => {
 			await askInitChoices(prompts, contextOf(withPlaces))
 		).unwrap();
 
-		expect(choices?.places).toEqual(["lobby", "match"]);
+		expect(choices?.places.map(({ name }) => name)).toEqual([
+			"lobby",
+			"match",
+		]);
 		expect(prompts.asked.at(-1)).toBe("Places");
 		expect(prompts.prompts.at(-1)).toMatchObject({
 			placeholder: "lobby, match",
@@ -1005,16 +1008,17 @@ describe("InitQuestions askProject layout", () => {
 	it("should offer lobby when several places are chosen and none were found", async () => {
 		const choices = await asked(luau, ["several", ...acceptAll(9)]);
 
-		expect(choices.places).toEqual(["lobby"]);
+		expect(choices.places.map(({ name }) => name)).toEqual(["lobby"]);
 	});
 
-	it("should say that the root dirs are the shared code", async () => {
+	it("should ask where the shared code goes instead of the root dirs", async () => {
 		const prompts = new MockPromptService(acceptAll(10));
 
 		await askInitChoices(prompts, contextOf(withPlaces));
 
+		expect(prompts.asked).not.toContain("Root dirs");
 		expect(
-			prompts.prompts.find(({ message }) => message === "Root dirs")
+			prompts.prompts.find(({ message }) => message === "Shared code")
 				?.description
 		).toContain("every place shares");
 	});
@@ -1031,17 +1035,65 @@ describe("InitQuestions askProject layout", () => {
 		).rejects.toThrow(message);
 	});
 
-	it("should reject a place folder inside the shared root dir", async () => {
+	it("should reject a place whose folder holds the shared code", async () => {
 		await expect(
-			ask(luau, [
+			ask(luau, ["several", ...acceptAll(5), "shared"])
+		).rejects.toThrow("places/shared overlaps places/shared/src");
+	});
+
+	describe("shared code", () => {
+		const sharedOf = async (
+			workspace: WorkspaceSpec,
+			answer: ScriptedAnswer = ACCEPT_DEFAULT
+		) => {
+			const { rootDirs, templateDir } = await asked(workspace, [
 				"several",
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
-				".",
-				...acceptAll(3),
-				"lobby",
-			])
-		).rejects.toThrow("places/lobby overlaps .");
+				answer,
+				...acceptAll(4),
+			]);
+			return { rootDirs, templateDir };
+		};
+
+		it("should put it beside the places, with its template, when there is no code yet", async () => {
+			expect(await sharedOf(luau)).toEqual({
+				rootDirs: ["places/shared/src"],
+				templateDir: "places/shared",
+			});
+		});
+
+		it("should keep it in src when src already holds code", async () => {
+			expect(await sharedOf({ ...luau, hasSrc: true })).toEqual({
+				rootDirs: ["src"],
+				templateDir: undefined,
+			});
+		});
+
+		it("should keep it in the only folder that holds code", async () => {
+			expect(await sharedOf({ ...luau, codeFolders: ["lib"] })).toEqual({
+				rootDirs: ["lib"],
+				templateDir: undefined,
+			});
+		});
+
+		it("should keep it in the folder roblox-ts compiles", async () => {
+			expect(
+				(
+					await sharedOf({
+						...rbxts,
+						robloxTs: { ...rbxts.robloxTs, rootDir: "game" },
+					})
+				).rootDirs
+			).toEqual(["game"]);
+		});
+
+		it("should put it in a root folder when that is the answer", async () => {
+			expect(await sharedOf(luau, "src")).toEqual({
+				rootDirs: ["src"],
+				templateDir: undefined,
+			});
+		});
 	});
 });
 

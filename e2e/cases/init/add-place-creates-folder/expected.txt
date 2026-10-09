@@ -3,13 +3,14 @@ exit 0
 stdout:
   rogen init
   Created lobby.rogen.json.
-  Created places/lobby/.
+  Created places/lobby/template.project.json.
+  Created places/lobby/src/.
   lobby.project.json · wrote
   Next steps
     Run:
-      rogen serve lobby
+      rogen serve
     Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 1 file.
+  Wrote 2 files.
 
 $ rogen build default lobby
 exit 0
@@ -26,11 +27,12 @@ exit 0
 stdout:
   {
     "files": [
-      "<dir>/match.rogen.json"
+      "<dir>/match.rogen.json",
+      "<dir>/places/match/template.project.json"
     ],
     "appended": [],
     "directories": [
-      "<dir>/places/match"
+      "<dir>/places/match/src"
     ],
     "built": [
       {
@@ -45,7 +47,7 @@ stdout:
     "nextSteps": {
       "setup": [],
       "run": [
-        "rogen serve match"
+        "rogen serve"
       ],
       "darklua": [],
       "edits": [
@@ -67,14 +69,17 @@ written:
   lobby.rogen.json
   match.project.json
   match.rogen.json
+  places/lobby/template.project.json
+  places/match/template.project.json
 
 lobby.rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./default.rogen.json",
 	"rootDirs": [
-		"places/lobby"
-	]
+		"places/lobby/src"
+	],
+	"template": "places/lobby/template.project.json"
 }
 
 match.rogen.json:
@@ -82,8 +87,9 @@ match.rogen.json:
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"extends": "./default.rogen.json",
 	"rootDirs": [
-		"places/match"
-	]
+		"places/match/src"
+	],
+	"template": "places/match/template.project.json"
 }
 
 $ rojo sourcemap default.project.json
@@ -94,15 +100,21 @@ project: DataModel
         Types: ModuleScript  <- src/Combat/Types.luau
 
 $ rojo sourcemap lobby.project.json
-project: DataModel
+Lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
         Types: ModuleScript  <- src/Combat/Types.luau
 
 $ rojo sourcemap match.project.json
-project: DataModel
+Match: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Combat: Folder
         Types: ModuleScript  <- src/Combat/Types.luau
+
+$ rojo sourcemap places/lobby/template.project.json
+Lobby: DataModel
+
+$ rojo sourcemap places/match/template.project.json
+Match: DataModel
