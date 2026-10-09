@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.project.json · not written
   src/server/init.server.luau - error: an init script becomes the folder it sits in, but it sits in a routing folder, which never becomes an instance. Move it into a folder of its own, or rename it. (tree.initWithoutFolder)

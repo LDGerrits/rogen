@@ -1,31 +1,10 @@
 $ rogen init -y
 exit 0
-stdout:
-  rogen init
-  Created default.rogen.json.
-  Added Rogen's rules to AGENTS.md.
-  default.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules.
-    Add your own routes under "routes" in default.rogen.json.
-    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 2 files.
+stdout: (not shown)
 
 $ rogen init -y lobby
 exit 0
-stdout:
-  rogen init
-  Created lobby.rogen.json.
-  Created places/lobby/template.project.json.
-  Created places/lobby/src/.
-  lobby.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 2 files.
+stdout: (not shown)
 
 written:
   AGENTS.md

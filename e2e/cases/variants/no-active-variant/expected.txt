@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 1 instance is missing, because none of the variants that give it is on: (variant.noneActive)
     ReplicatedStorage/shared/Analytics/Service (dev, prod)
@@ -11,10 +8,7 @@ stderr:
 
 $ rogen build --variant dev
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 $ rogen build --json
 exit 0

@@ -1,9 +1,6 @@
 $ rogen build --variant mock
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 2 files under a "server" route ship to clients, because "shared" governs them: (route.serverCodeShipped)
     src/Shared/Server/Datastore.luau -> ReplicatedStorage/shared/Server/Datastore

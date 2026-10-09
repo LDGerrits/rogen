@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless the active mode lists it under "modes" or --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes. (config.variantsAreAList)

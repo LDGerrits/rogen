@@ -4,5 +4,6 @@
 			"build",
 			"place"
 		]
-	]
+	],
+	"output": ["build"]
 }

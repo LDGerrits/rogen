@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.project.json · not written
   src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)

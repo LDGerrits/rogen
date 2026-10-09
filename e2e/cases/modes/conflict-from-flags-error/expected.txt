@@ -1,18 +1,13 @@
 $ rogen build --variant halloween --variant christmas
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json:5:16 - error: variants "halloween" and "christmas" conflict, but both are on from --variant. Pass only one of them. (config.variantConflict)
 
 $ rogen build --variant christmas
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 written:
   default.project.json

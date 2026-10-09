@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 2 warnings.
+stdout: (not shown)
 stderr:
   src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
   default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)

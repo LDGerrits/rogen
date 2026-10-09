@@ -1,9 +1,6 @@
 $ rogen build --variant mock
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau. (variant.buriedScriptSuffix)
 

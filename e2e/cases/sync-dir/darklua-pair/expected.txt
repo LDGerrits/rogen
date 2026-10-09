@@ -1,12 +1,6 @@
 $ rogen build default sync
 exit 0
-stdout:
-  rogen build · default, sync
-  default
-    default.project.json · wrote
-  sync
-    sync.project.json · wrote
-  Built 2 configs.
+stdout: (not shown)
 
 written:
   default.project.json

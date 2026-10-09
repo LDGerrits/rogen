@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 $ rogen where src/Net
 exit 0

@@ -4,5 +4,6 @@
 		["build", "--deny-warnings", "--json"],
 		["build"]
 	],
-	"rojo": false
+	"rojo": false,
+	"output": ["build"]
 }

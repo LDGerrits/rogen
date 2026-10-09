@@ -1,27 +1,10 @@
 $ rogen init -y
 exit 0
-stdout:
-  rogen init
-  Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build.
-  Left out ServerScriptService/Admin, since it points into src and Rogen generates that code now.
-  Couldn't route ServerScriptService/Admin: only a folder directly in a root dir becomes a route. Give its folder a marker such as Admin@server, or move it up into a root dir.
-  Created template.project.json.
-  Created default.rogen.json.
-  Created AGENTS.md.
-  default.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Add your own routes under "routes" in default.rogen.json.
-    Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 3 files.
+stdout: (not shown)
 
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · unchanged
-  Built 1 config.
+stdout: (not shown)
 
 written:
   AGENTS.md

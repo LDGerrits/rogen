@@ -17,10 +17,7 @@ stdout:
 
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · unchanged
-  Built 1 config.
+stdout: (not shown)
 
 written:
   AGENTS.md

@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["build", "--mode", "prod"]] }
+{ "steps": [["build"], ["build", "--mode", "prod"]], "output": ["build"] }

@@ -1212,6 +1212,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
+					"info: Have Darklua process your code into the sync dir:",
 					"info:   darklua process places/shared/src dist/lobby/shared/src",
 					"info:   darklua process places/arena/src dist/arena/arena/src",
 					"info:   rogen serve arena-sync lobby-sync",

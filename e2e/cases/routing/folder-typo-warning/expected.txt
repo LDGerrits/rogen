@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 2 warnings.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name: (variant.typo)
     src/Net/mokc (did you mean "mock"?)

@@ -7,5 +7,6 @@
 			"where",
 			"src"
 		]
-	]
+	],
+	"output": ["build"]
 }

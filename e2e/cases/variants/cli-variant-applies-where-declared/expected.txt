@@ -1,12 +1,6 @@
 $ rogen build lobby match --variant mock --verbose
 exit 0
-stdout:
-  rogen build · lobby, match
-  lobby
-    lobby.project.json · wrote
-  match
-    match.project.json · wrote
-  Built 2 configs.
+stdout: (not shown)
 stderr:
     [debug] src: 2 files
     [debug] route server -> ServerScriptService: 0 files

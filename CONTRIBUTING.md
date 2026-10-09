@@ -89,7 +89,7 @@ Test a rule where it lives, and assert it once:
 
 - Pure domain code (`src/domain`) owns the rules and their edge cases.
 - A command test (`src/commands`) checks that the command is wired to its services and prints what it should. Build it with `commandHarness` where it can run over the in-memory file system, instead of constructing services by hand, so a change to a constructor touches one file.
-- `e2e` cases show that a real Rojo accepts the output, one case per behavior a user sees.
+- `e2e` cases show that a real Rojo accepts the output, one case per behavior a user sees. A transcript leaves out the printed output of `build` and `init` unless the case is about it, since the command tests own that; `e2e/README.md` says where each thing is checked.
 
 Script prompts by question, as in `new MockPromptService({ Language: "roblox-ts" })`, so that every question you don't name takes its default. A question with no default, a named answer no question takes, or a question asked twice fails the test. A new question then breaks only the tests about the order of the questions. Use a list of answers only when the order is what the test checks.
 

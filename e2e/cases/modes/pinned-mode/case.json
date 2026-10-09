@@ -6,5 +6,6 @@
 		[
 			"list"
 		]
-	]
+	],
+	"output": ["build"]
 }

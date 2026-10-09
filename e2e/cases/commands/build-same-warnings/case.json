@@ -1,3 +1,4 @@
 {
-	"steps": [["build"], ["where", "src/Inventory/inventory.rogen.json"]]
+	"steps": [["build"], ["where", "src/Inventory/inventory.rogen.json"]],
+	"output": ["build"]
 }

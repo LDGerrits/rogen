@@ -18,6 +18,20 @@ export interface CaseSpec {
 	readonly links?: Readonly<Record<string, string>>;
 	readonly rojo?: boolean;
 	readonly show?: readonly string[];
+	/** Commands, of those whose output is left out, that this case checks the output of. */
+	readonly output?: readonly string[];
+}
+
+/** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
+const FRAMED_COMMANDS: readonly string[] = ["build", "init"];
+
+/** Whether a step's stdout belongs in the transcript. A document (`--json`) and help are what a case runs them for, so they always do. */
+export function showsStdout(args: readonly string[], spec: CaseSpec): boolean {
+	const [command = ""] = args;
+	if (!FRAMED_COMMANDS.includes(command)) return true;
+	if (args.some((arg) => ["--json", "--help", "-h"].includes(arg)))
+		return true;
+	return spec.output?.includes(command) ?? false;
 }
 
 interface RunResult {
@@ -105,7 +119,9 @@ export async function runCase(cli: string, name: string): Promise<string> {
 				...invocation(cli, args),
 				path.join(dir, spec.cwd ?? "")
 			);
-			sections.push(formatStep(["rogen", ...args], result));
+			sections.push(
+				formatStep(["rogen", ...args], result, showsStdout(args, spec))
+			);
 		}
 
 		const written = changedFiles(before, snapshot(dir));
@@ -171,15 +187,21 @@ async function run(
 	}
 }
 
-function formatStep(command: readonly string[], result: RunResult): string {
+export function formatStep(
+	command: readonly string[],
+	result: RunResult,
+	showStdout = true
+): string {
 	const lines = [`$ ${command.join(" ")}`, `exit ${result.exitCode}`];
 	for (const [label, text] of [
 		["stdout", result.stdout],
 		["stderr", result.stderr],
 	] as const) {
 		const body = stripVTControlCharacters(text).trimEnd();
-		if (body)
-			lines.push(`${label}:`, ...body.split("\n").map((l) => `  ${l}`));
+		if (!body) continue;
+		if (label === "stdout" && !showStdout)
+			lines.push("stdout: (not shown)");
+		else lines.push(`${label}:`, ...body.split("\n").map((l) => `  ${l}`));
 	}
 	return lines.join("\n");
 }

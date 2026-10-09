@@ -9,5 +9,6 @@
 			"prod"
 		]
 	],
-	"rojo": false
+	"rojo": false,
+	"output": ["build"]
 }

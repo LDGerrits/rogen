@@ -5,10 +5,16 @@ Each case is a small project that the bundled CLI builds for real, followed by
 exit codes, output, written files and the tree Rojo sees) is compared with
 `expected.txt`.
 
+A case is about one thing, and its transcript shows that thing. The printed
+output of `build` and `init` is the same frame in nearly every case, so it is
+left out (`stdout: (not shown)`) unless the case lists the command under
+`output`. Errors and warnings are on stderr and always show, and so do the exit
+code, the written files and the tree Rojo sees.
+
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "--variant", "mock"]], "cwd": "src", "links": {}, "rojo": false, "show": [] }
+  case.json      optional: { "steps": [["build", "--variant", "mock"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [] }
   expected.txt   the transcript
 ```
 
@@ -18,6 +24,8 @@ e2e/cases/<area>/<case>/
   the fixtures work on any checkout.
 - `show` lists other written files to print, for what a sourcemap can't show
   (like `$properties`).
+- `output` lists the commands (`build`, `init`) whose printed output this case
+  checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - Files that a run created or changed are listed under `written:`. `*.rogen.json`
   files are printed, and every `*.project.json` is passed to Rojo.
@@ -25,6 +33,29 @@ e2e/cases/<area>/<case>/
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
 and fails in CI. `serve-argon.test.ts` needs the Argon `rokit.toml` pins,
 which `rokit install` installs too.
+
+## Where each thing is checked
+
+Check a thing once, where it lives, and leave it out of the other cases.
+
+- What `init` prints (its notes and next steps) is checked by the cases in
+  `cases/init-output/`, one per kind of project, and by
+  `src/commands/init/__tests__/init-command.test.ts`. The other `cases/init/`
+  cases check what `init` writes and that Rojo accepts it.
+- What `build` prints (header, per-config lines, closing line) is checked by
+  `build-log.test.ts` and `build-command.test.ts` in
+  `src/commands/build/__tests__/`. A case lists `build` under `output` only when
+  a line of it is the point, such as the mode a build ran in.
+- The wording of a warning or an error is checked by the domain test of its code,
+  such as `build-validator.test.ts`. A case shows it on stderr to prove that it
+  reaches the user.
+- The project file and the tree Rojo sees are checked by the case of the feature,
+  in `cases/routing`, `variants`, `modes`, `structure` and the like.
+
+A new case needs no `output`. Add it only when the printed output of `build` or
+`init` is what the case is about.
+
+## Updating transcripts
 
 After changing behavior on purpose, regenerate the transcripts:
 

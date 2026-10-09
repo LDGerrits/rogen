@@ -4,5 +4,6 @@
 			"build",
 			"c"
 		]
-	]
+	],
+	"output": ["build"]
 }

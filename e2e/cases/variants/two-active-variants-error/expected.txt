@@ -1,8 +1,6 @@
 $ rogen build --variant mock --variant dev
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.project.json · not written
   src/Analytics/Analytics.dev.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.mock.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)

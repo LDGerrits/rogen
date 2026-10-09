@@ -1,16 +1,10 @@
 $ rogen build -o prod.project.json --variant prod
 exit 0
-stdout:
-  rogen build · default
-  prod.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 $ rogen build -o mocked.project.json --variant mock
 exit 0
-stdout:
-  rogen build · default
-  mocked.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 written:
   mocked.project.json
