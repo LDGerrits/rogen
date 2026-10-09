@@ -26,11 +26,21 @@ Rojo must be installed (`rokit install`). Without it the suite is skipped locall
 and fails in CI. `serve-argon.test.ts` needs the Argon `rokit.toml` pins,
 which `rokit install` installs too.
 
-After changing behavior on purpose, regenerate and review the diff:
+After changing behavior on purpose, regenerate the transcripts:
 
 ```
-UPDATE_E2E=1 npm test -- e2e
+npm run test:e2e:update
 ```
+
+It prints the edits to the transcripts, grouped, with the number of transcripts each is in:
+
+```
+28×  Declare variants [-under-]{+in+} "variants" in
+ 1×  + Wrote 2 files.
+     in init/add-place-no-input
+```
+
+Read that list first, and open the diff of a transcript only for an edit you did not expect. `npm run test:e2e:diff` prints the list again for what is not yet committed.
 
 `watch.test.ts`, `serve-rojo.test.ts` and `serve-argon.test.ts` cover the
 long-running `watch` and `serve` commands, which a transcript can't describe. The
