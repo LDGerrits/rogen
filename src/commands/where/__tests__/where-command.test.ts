@@ -35,7 +35,7 @@ describe("where command", () => {
 		logService.texts("print").flatMap((text) => text.split("\n"));
 
 	beforeEach(async () => {
-		const harness = await commandHarness();
+		const harness = commandHarness();
 		({ fs } = harness);
 		logService = harness.log;
 		run = ({ _ = [], ...options }) =>

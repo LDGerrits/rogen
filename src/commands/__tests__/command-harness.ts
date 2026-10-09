@@ -20,10 +20,22 @@ import { LogService } from "../../platform/log/log-service.js";
 import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
+import { CoreServeService } from "../../domain/serve/core-serve-service.js";
+import { ServeService } from "../../domain/serve/serve-service.js";
+import { CoreWatchService } from "../../domain/watch/core-watch-service.js";
+import { WatchService } from "../../domain/watch/watch-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
+import { MockLifecycleService } from "../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
+import { MockProcessService } from "../../platform/process/__tests__/mock-process-service.js";
+import { RequestService } from "../../platform/request/request-service.js";
+import { MockRequestService } from "../../platform/request/__tests__/mock-request-service.js";
+import { MemoryWatcher } from "../../platform/watcher/memory-watcher.js";
+import { Watcher } from "../../platform/watcher/watcher.js";
 
 export interface CommandHarnessOptions<L extends LogService> {
-	/** The working directory; created in `fs`. */
 	readonly cwd?: string;
+	/** The file system to run over, which must hold `cwd`; a new one with only `cwd` when absent. */
 	readonly fs?: MemoryFileSystemService;
 	readonly environment?: EnvironmentService;
 	readonly log?: L;
@@ -31,6 +43,10 @@ export interface CommandHarnessOptions<L extends LogService> {
 	/** In place of the real config service, for a test that scripts what the configs resolve to. */
 	readonly config?: ConfigService;
 	readonly index?: IndexService;
+	readonly lifecycle?: LifecycleService;
+	readonly watcher?: Watcher;
+	readonly processes?: ProcessService;
+	readonly requests?: RequestService;
 }
 
 export interface CommandHarness<L extends LogService> {
@@ -44,12 +60,13 @@ export interface CommandHarness<L extends LogService> {
 }
 
 /** The services `main.ts` wires, over an in-memory file system; tests change one service by naming it. */
-export async function commandHarness<L extends LogService = MockLogService>(
+export function commandHarness<L extends LogService = MockLogService>(
 	options: CommandHarnessOptions<L> = {}
-): Promise<CommandHarness<L>> {
+): CommandHarness<L> {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
-	await fs.createDirectory(cwd);
+	// A given file system starts the command at once, as main.ts does, for a test that acts while it starts.
+	const ready = options.fs ? undefined : fs.createDirectory(cwd);
 
 	const log = options.log ?? (new MockLogService() as LogService as L);
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
@@ -57,6 +74,12 @@ export async function commandHarness<L extends LogService = MockLogService>(
 	const config = options.config ?? new CoreConfigService(fs, environment);
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
+	const build = new CoreBuildService(fs, index, toolchain.syncTools);
+	const watch = new CoreWatchService(
+		options.watcher ?? new MemoryWatcher(fs, log),
+		index,
+		build
+	);
 
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);
@@ -66,24 +89,40 @@ export async function commandHarness<L extends LogService = MockLogService>(
 	services.set(ConfigService, config);
 	services.set(IndexService, index);
 	services.set(ToolchainService, toolchain);
-	services.set(
-		BuildService,
-		new CoreBuildService(fs, index, toolchain.syncTools)
-	);
+	services.set(BuildService, build);
 	services.set(
 		InitService,
 		new CoreInitService(fs, prompt, environment, toolchain, config)
+	);
+	services.set(
+		LifecycleService,
+		options.lifecycle ?? new MockLifecycleService()
+	);
+	services.set(WatchService, watch);
+	services.set(
+		ServeService,
+		new CoreServeService(
+			config,
+			fs,
+			options.processes ?? new MockProcessService(),
+			options.requests ?? new MockRequestService(),
+			watch,
+			environment
+		)
 	);
 
 	const commands = new CoreCommandService(services, log);
 	return {
 		fs,
 		log,
-		run: (command, line = {}) =>
-			commands.executeCommand(command, {
-				positionals: [],
-				options: {},
-				...line,
-			}),
+		run: (command, line = {}) => {
+			const execute = () =>
+				commands.executeCommand(command, {
+					positionals: [],
+					options: {},
+					...line,
+				});
+			return ready ? ready.then(execute) : execute();
+		},
 	};
 }

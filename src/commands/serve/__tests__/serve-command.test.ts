@@ -1,30 +1,17 @@
 import { jest } from "@jest/globals";
 import "../serve-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import {
 	ExitCodeError,
 	ReportedError,
 	UsageError,
 } from "../../../base/errors.js";
 import { Result } from "../../../base/result.js";
-import { BuildService } from "../../../domain/build/build-service.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
-import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import { CoreServeService } from "../../../domain/serve/core-serve-service.js";
-import { ServeService } from "../../../domain/serve/serve-service.js";
-import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { exitCodeOf } from "../../../platform/commands/command-failure.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
-import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
@@ -50,33 +37,19 @@ describe("serve command", () => {
 		options: CommandLine["options"] = {},
 		passthrough?: string[]
 	) => {
-		const services = new ServiceCollection();
-		const index = new CoreIndexService(memFs);
-		const configService = new CoreConfigService(
-			memFs,
-			new MockEnvironmentService("/repo")
-		);
-		const buildService = buildServiceOf(memFs, index);
-		services.set(LogService, logService);
-		services.set(ConfigService, configService);
-		services.set(BuildService, buildService);
-		services.set(LifecycleService, lifecycle);
-		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
-		services.set(
-			ServeService,
-			new CoreServeService(
-				configService,
-				memFs,
-				processes,
-				requests,
-				new CoreWatchService(watcher, index, buildService),
-				new MockEnvironmentService("/repo")
-			)
-		);
-		running = new CoreCommandService(services, logService).executeCommand(
-			"serve",
-			{ positionals, options, ...(passthrough && { passthrough }) }
-		);
+		const harness = commandHarness({
+			fs: memFs,
+			log: logService,
+			lifecycle,
+			watcher,
+			processes,
+			requests,
+		});
+		running = harness.run("serve", {
+			positionals,
+			options,
+			...(passthrough && { passthrough }),
+		});
 		await settle();
 		return running;
 	};

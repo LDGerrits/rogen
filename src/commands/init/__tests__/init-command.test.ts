@@ -45,7 +45,7 @@ describe("init command", () => {
 		log: MockLogService = new MockLogService(),
 		options: CommandLine["options"] = {}
 	) => {
-		const harness = await commandHarness({
+		const harness = commandHarness({
 			cwd,
 			fs: memFs,
 			log,

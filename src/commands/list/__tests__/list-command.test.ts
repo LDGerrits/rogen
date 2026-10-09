@@ -40,7 +40,7 @@ describe("list command", () => {
 	};
 
 	beforeEach(async () => {
-		const harness = await commandHarness();
+		const harness = commandHarness();
 		({ fs } = harness);
 		logService = harness.log;
 		run = ({ _ = [], ...options } = {}) =>

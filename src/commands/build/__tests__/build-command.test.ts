@@ -45,7 +45,7 @@ describe("build command", () => {
 		log: LogService,
 		line: CommandLine = { positionals: [], options: {} },
 		index?: IndexService
-	) => (await commandHarness({ fs, log, config, index })).run("build", line);
+	) => commandHarness({ fs, log, config, index }).run("build", line);
 
 	const buildable = (
 		overrides: ResolvedConfigSpec = {},

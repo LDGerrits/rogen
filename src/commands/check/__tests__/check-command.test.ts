@@ -46,7 +46,7 @@ describe("check command", () => {
 		) as { diagnostics: { code: string; file: string }[] };
 
 	beforeEach(async () => {
-		const harness = await commandHarness();
+		const harness = commandHarness();
 		({ fs } = harness);
 		logService = harness.log;
 		run = ({ _ = [], ...options }) =>
