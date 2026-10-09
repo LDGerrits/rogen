@@ -12,6 +12,8 @@ export default {
 			},
 		],
 	},
+	// e2e cases wait on child processes, so more of them can run at once than there are cores.
+	maxConcurrency: 15,
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 	testMatch: [
 		"<rootDir>/src/**/__tests__/**/*.test.ts",

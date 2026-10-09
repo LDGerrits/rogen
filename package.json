@@ -41,6 +41,8 @@
 		"prepublishOnly": "npm run clean && npm run build && npm run bundle",
 		"test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js",
 		"test:watch": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --watch",
+		"test:unit": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js src scripts",
+		"test:e2e": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js e2e",
 		"lint": "eslint .",
 		"generate:schema": "tsx scripts/generate-schema.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
