@@ -290,15 +290,19 @@ export function writeProjectFile(
 	fs.writeFileSync(path.join(dir, file), content);
 }
 
-/** A toolchain file pinning only the Argon the repo pins, for a project that serves with Argon. */
-export const ARGON_TOOLCHAIN = `[tools]\n${/^argon\s*=.*$/m.exec(fs.readFileSync(path.resolve("rokit.toml"), "utf8"))?.[0] ?? ""}\n`;
+/** A toolchain file pinning only the version of `tool` the repo pins. */
+const toolchainOf = (tool: string) =>
+	`[tools]\n${new RegExp(`^${tool}\\s*=.*$`, "m").exec(fs.readFileSync(path.resolve("rokit.toml"), "utf8"))?.[0] ?? ""}\n`;
 
-function argonAvailable(): boolean {
-	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-argon-probe-"));
+/** A toolchain file pinning only the Argon the repo pins, for a project that serves with Argon. */
+export const ARGON_TOOLCHAIN = toolchainOf("argon");
+
+function toolAvailable(tool: string): boolean {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), `rogen-${tool}-probe-`));
 	try {
-		fs.writeFileSync(path.join(dir, "rokit.toml"), ARGON_TOOLCHAIN);
+		fs.writeFileSync(path.join(dir, "rokit.toml"), toolchainOf(tool));
 		return (
-			spawnSync("argon", ["--version"], { cwd: dir, timeout: 20_000 })
+			spawnSync(tool, ["--version"], { cwd: dir, timeout: 20_000 })
 				.status === 0
 		);
 	} finally {
@@ -306,18 +310,22 @@ function argonAvailable(): boolean {
 	}
 }
 
-const requireArgon = (name: string) =>
-	describe(name, () => {
-		it("should have Argon installed", () => {
-			throw new Error("Argon is not available; run `rokit install`.");
+/** Runs the suite when the repo's `tool` is installed; CI fails without it, and elsewhere it is skipped. */
+function describeWithTool(tool: string, label: string) {
+	const requireTool = (name: string) =>
+		describe(name, () => {
+			it(`should have ${label} installed`, () => {
+				throw new Error(
+					`${label} is not available; run \`rokit install\`.`
+				);
+			});
 		});
-	});
+	if (toolAvailable(tool)) return describe;
+	return process.env.CI ? requireTool : describe.skip;
+}
 
-export const describeWithArgon = argonAvailable()
-	? describe
-	: process.env.CI
-		? requireArgon
-		: describe.skip;
+export const describeWithArgon = describeWithTool("argon", "Argon");
+export const describeWithDarklua = describeWithTool("darklua", "Darklua");
 
 export async function eventually(
 	check: () => void | Promise<void>,
