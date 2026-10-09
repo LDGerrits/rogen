@@ -15,7 +15,7 @@ The output is set by `outFile` and named after the config by default, so `lobby.
 **Rogen owns the output.** Every build replaces the file, hand-written or not, so anything Rogen can't know about goes in the [template](#template). When nothing has changed, the file is left untouched, so Rojo doesn't re-sync for no reason.
 
 <Callout type="info" title="The default output is the one tools find">
-	A bare `rojo serve` and luau-lsp's sourcemap both use `default.project.json`. With Darklua they need different files, so `default` points at your source and you serve `sync.project.json`. See the [Darklua guide](/docs/v2/setups/darklua).
+	A bare `rojo serve` and luau-lsp's sourcemap both use `default.project.json`. With Darklua they need different files, so `default` points at your source and `sync.project.json` is the one served, which `rogen serve` picks on its own. See the [Darklua guide](/docs/v2/setups/darklua).
 </Callout>
 
 ### Commit the project file
@@ -23,7 +23,7 @@ The output is set by `outFile` and named after the config by default, so `lobby.
 Commit the project files Rogen writes. The cost shows up on a fresh clone, where nothing has run `rogen build` yet:
 
 - **Committed:** the clone works at once. `rojo serve`, `rbxtsc`, luau-lsp's sourcemap and the Rojo plugin for VS Code all find the file. CI can run `git diff --exit-code -- '*.project.json'` after `rogen build` to catch a stale one (see [Continuous integration](/docs/v2/cli#continuous-integration)). The file is small and deterministic. The price is a merge conflict now and then in a generated file, fixed by running `rogen build`.
-- **Ignored:** the file never conflicts, but on a clone `rojo serve` fails until someone runs `rogen build`. So does `rbxtsc`, which reads the project file, and luau-lsp and the Rojo plugin find nothing. New contributors and CI hit this first, so put `rogen build` before `rojo serve` or `rbxtsc` in your setup instructions.
+- **Ignored:** the file never conflicts, but on a clone `rojo serve` fails until someone runs `rogen build` (`rogen serve` builds first, so it works). So does `rbxtsc`, which reads the project file, and luau-lsp and the Rojo plugin find nothing. New contributors and CI hit this first, so put `rogen build` before `rojo serve` or `rbxtsc` in your setup instructions.
 
 ## Template
 
@@ -104,6 +104,10 @@ A few things to keep in mind:
 
 To write the same tree with paths into a different folder, add a config that `extends` the first and sets a `syncDir`. Each of these project files is a **rendering**. That's how a Darklua setup gets one project file for your editor and another for Studio.
 
+## Serving
+
+`rogen serve` builds every config, starts Rojo or Argon on each rendering no other config extends, and rebuilds as `watch` does. With Darklua that's `sync.project.json`; in a multi-place repo, each place. The server reads the port from the project file, so a `servePort` in the template applies. See [`serve`](/docs/v2/cli#serve) for which server runs, the port, `--json` and exit codes.
+
 ## Building While Watching
 
-It's safe to run `rogen build` while `rogen watch` writes the same file, so you can always run a build after moving files and trust the result.
+It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file, so you can always run a build after moving files and trust the result.

@@ -4,22 +4,22 @@ stdout:
   rogen build · lobby, match
   lobby
     lobby.project.json · wrote
+  match
+    match.project.json · wrote · mode dev
+  Built 2 configs with 4 warnings.
+stderr:
     [debug] extends: shared/base.rogen.json
     [debug] src: 4 files, 1 excluded
     [debug] route server -> ServerScriptService: 1 file
     [debug] route client -> StarterPlayer/StarterPlayerScripts: 1 file
     [debug] route * -> ReplicatedStorage/shared: 1 file
     [debug] variant mock off: 1 file left out
-  match
-    match.project.json · wrote · mode dev
     [debug] src: 5 files
     [debug] lib: 1 file
     [debug] route server -> ServerScriptService: 1 file
     [debug] variant mock on: 1 file
     [debug] mode dev on: 0 files
     [debug] left out: 4 unrouted, 1 replaced by a file with the same name
-  Built 2 configs with 4 warnings.
-stderr:
   src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
   src/Util.spec.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
   src/client/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)

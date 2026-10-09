@@ -8,7 +8,7 @@ A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `ext
 - `exclude` lists globs, relative to the config, that are never built, such as `**/*.spec.luau`. A glob that matches a template `$path` drops that node too.
 - `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash. A template `$path` into a root dir is Rojo's: Rogen skips that folder, so mount vendored code there to sync it as it is.
 - `syncDir` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
-- With Darklua in a Luau project, `default.rogen.json` is rooted at the source for luau-lsp and Darklua, and `sync.rogen.json` extends it with `"syncDir": "dist"` for `rojo serve`. `rogen build` builds both.
+- With Darklua in a Luau project, `default.rogen.json` is rooted at the source for luau-lsp and Darklua, and `sync.rogen.json` extends it with `"syncDir": "dist"` for Rojo. `rogen build` builds both; `rogen serve` builds both and serves `sync`.
 
 Ownership:
 

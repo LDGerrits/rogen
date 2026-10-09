@@ -1,3 +1,4 @@
+import os from "os";
 import { LogLevel } from "../log/log-service.js";
 import { EnvironmentService } from "./environment-service.js";
 
@@ -31,15 +32,19 @@ function isAutomated(env: Variables): boolean {
 	);
 }
 
-/** The process Rogen runs in: its variables, and whether stdin and stdout are both terminals. */
+/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, and the user's home and temporary folders. */
 export interface ProcessContext {
 	readonly env: Variables;
 	readonly isTerminal: boolean;
+	readonly userHome: string;
+	readonly tmpDir: string;
 }
 
 const nativeProcess = (): ProcessContext => ({
 	env: process.env,
 	isTerminal: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+	userHome: os.homedir(),
+	tmpDir: os.tmpdir(),
 });
 
 /** The flags that say how a run prints, read even from a line that fails to parse. */
@@ -55,12 +60,16 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly logLevel: LogLevel;
 	readonly isInteractive: boolean;
 	readonly isPlain: boolean;
+	readonly userHome: string;
+	readonly tmpDir: string;
 
 	constructor(
 		{ json, verbose, quiet }: OutputFlags,
 		readonly cwd: string,
-		{ env, isTerminal }: ProcessContext = nativeProcess()
+		{ env, isTerminal, userHome, tmpDir }: ProcessContext = nativeProcess()
 	) {
+		this.userHome = userHome;
+		this.tmpDir = tmpDir;
 		this.logLevel = quiet
 			? LogLevel.Error
 			: verbose

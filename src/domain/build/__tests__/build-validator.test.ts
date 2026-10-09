@@ -1,6 +1,9 @@
 import { toPosix } from "../../../base/path.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	DiagnosticSeverity,
+	isRenameFix,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { BuildValidator } from "../build-validator.js";
@@ -839,10 +842,12 @@ describe("BuildValidator rules", () => {
 
 				const [warning, ...others] = await warningsOf("route.dotRoute");
 				const renamed = Object.fromEntries(
-					(warning.fixes ?? []).map(({ rename: { from, to } }) => [
-						from.slice(at("src").length + 1),
-						to.slice(at("src").length + 1),
-					])
+					(warning.fixes ?? [])
+						.filter(isRenameFix)
+						.map(({ rename: { from, to } }) => [
+							from.slice(at("src").length + 1),
+							to.slice(at("src").length + 1),
+						])
 				);
 
 				expect(others).toEqual([]);

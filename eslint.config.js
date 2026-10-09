@@ -21,6 +21,7 @@ const modules = {
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
 		rojo: ["rojo", "rojo-project"],
+		serve: ["serve", "serve-service"],
 		toolchain: ["toolchain", "toolchain-service"],
 		watch: ["watch-service"],
 	},
@@ -31,7 +32,8 @@ const modules = {
 		help: [],
 		init: [],
 		list: [],
-		watch: [],
+		serve: [],
+		watch: ["watch-log"],
 		where: [],
 	},
 };

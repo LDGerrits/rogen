@@ -826,6 +826,58 @@ default.project.json - error: this file does not exist, so it can't be copied. (
 
 Fix the file's permissions, or move it out of the way. See [Template](/docs/v2/core-concepts/output#template).
 
+## Serve
+
+### `serve.noServer` [#serve-noserver]
+
+Error. `rogen serve` found no sync server: neither Rojo nor Argon is pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and neither is on the PATH. With `--tool`, only that server counts.
+
+```
+default.rogen.json - error: No Rojo or Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
+```
+
+Pin the server with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. See [CLI](/docs/v2/cli#serve).
+
+### `serve.notInstalled` [#serve-notinstalled]
+
+Error. A toolchain file pins the server, but it isn't installed, so its command isn't on the PATH.
+
+```
+rokit.toml - error: rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'. (serve.notInstalled)
+```
+
+Run the manager's install command: `rokit install`, `aftman install` or `foreman install`. See [CLI](/docs/v2/cli#serve).
+
+### `serve.serverFailed` [#serve-serverfailed]
+
+Error. Rogen runs `<tool> --version` before it builds, and that failed, so the server can't start. The message ends with the first line the server printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
+
+```
+default.rogen.json - error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. (serve.serverFailed)
+```
+
+Pin the tool, or fix the install the quoted line points at. Running `rojo --version` (or `argon --version`) yourself shows the full output. See [CLI](/docs/v2/cli#serve).
+
+### `serve.portTaken` [#serve-porttaken]
+
+Error. Another program holds the port a config would be served on. When it's a Rojo or Argon server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running and doesn't start another.
+
+```
+default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default a template with its own servePort, or run 'rogen serve default -- --port 34873'. (serve.portTaken)
+```
+
+Stop what holds the port, give the config its own `servePort` in its template, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
+
+### `serve.serverExited` [#serve-serverexited]
+
+Error. A server stopped on its own with a non-zero exit code, or couldn't be started. `rogen serve` then stops and exits with the server's code (1 when it has none).
+
+```
+default.rogen.json - error: Rojo stopped serving default with exit code 1; see what it said above. (serve.serverExited)
+```
+
+Read what the server said just above it, which usually says why. When it said nothing, as when it was killed, the message ends `without saying why`. See [CLI](/docs/v2/cli#serve).
+
 ## Migration
 
 ### `legacy.config` [#legacy-config]

@@ -17,8 +17,6 @@ export const TEMPLATE_FILE = "template.project.json";
 export class ConfigSet {
 	/** The config a project starts with. */
 	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);
-	/** Watches every config here, so it keeps each config's project file current. */
-	static readonly WATCH_COMMAND = "rogen watch";
 
 	constructor(
 		readonly name: string,
@@ -47,11 +45,6 @@ export class ConfigSet {
 	/** Where a place named `name` keeps its own code. */
 	static placeFolderOf(name: string): string {
 		return `${PLACES_DIR}/${name}`;
-	}
-
-	/** The command that serves the project file the config named `name` writes. */
-	static serveCommand(name: string): string {
-		return `rojo serve ${defaultOutFileName(name)}`;
 	}
 
 	/** The glob that matches a language's spec files. */
@@ -126,9 +119,10 @@ export class ConfigSet {
 		return this.stems.map(defaultOutFileName);
 	}
 
-	/** The config whose project file Rojo serves: the synced one, when there is one. */
-	get servedStem(): string {
-		return this.sourced ? this.syncStem : this.name;
+	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but places and other named configs share a port, so they are named. */
+	get serveCommand(): string {
+		if (this.name === DEFAULT_CONFIG_STEM) return "rogen serve";
+		return `rogen serve ${this.sourced ? this.syncStem : this.name}`;
 	}
 
 	/** Writes `own`, which carries the sync dir; a sourced set keeps `own` rooted at the source, and a second config extending it takes the sync dir. */
@@ -151,7 +145,7 @@ export class ConfigSet {
 		}
 	}
 
-	/** The commands that build and serve the set: a compiler's own, watching and serving the configs, then what Darklua needs to read `processed` into `syncDir`. */
+	/** The commands that build and serve the set: a compiler's own, serving the configs, then what Darklua needs to read `processed` into `syncDir`. */
 	planSteps(
 		builder: InitPlanBuilder,
 		directory: InitDirectory,
@@ -168,8 +162,7 @@ export class ConfigSet {
 		const { darklua } = this;
 		builder.addRun(
 			...(compileCommand ? [compileCommand] : []),
-			ConfigSet.WATCH_COMMAND,
-			ConfigSet.serveCommand(this.servedStem)
+			this.serveCommand
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(

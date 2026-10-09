@@ -58,7 +58,7 @@ jobs:
                   node-version: 22
                   cache: "npm"
 
-            - name: Install Rojo
+            - name: Install Rojo and Argon
               if: matrix.target == 'linux-x64'
               uses: CompeyDev/setup-rokit@v0.2.1
               with:

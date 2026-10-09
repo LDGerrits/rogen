@@ -176,6 +176,24 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		return typeof name === "string" && name !== "" ? name : undefined;
 	}
 
+	/** The port Rojo serves the project on, when the project sets a valid one. */
+	get servePort(): number | undefined {
+		const { servePort } = this.project as { servePort?: unknown };
+		return Number.isInteger(servePort) &&
+			(servePort as number) > 0 &&
+			(servePort as number) < 65536
+			? (servePort as number)
+			: undefined;
+	}
+
+	/** The address Rojo listens on, when the project sets one. */
+	get serveAddress(): string | undefined {
+		const { serveAddress } = this.project as { serveAddress?: unknown };
+		return typeof serveAddress === "string" && serveAddress !== ""
+			? serveAddress
+			: undefined;
+	}
+
 	/** The `globIgnorePaths` entries that are strings. */
 	get globIgnorePaths(): string[] {
 		const { globIgnorePaths } = this.project;
@@ -265,7 +283,10 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 					isRojoPath(child.$path) &&
 					matches(rojoPathTarget(child.$path))
 				) {
-					removed.push({ path: child.$path, instancePath: childPath });
+					removed.push({
+						path: child.$path,
+						instancePath: childPath,
+					});
 					delete node[name];
 				} else {
 					visit(child, childPath);

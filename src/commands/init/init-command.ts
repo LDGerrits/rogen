@@ -40,7 +40,10 @@ const indent = (line: string) => `  ${line}`;
 const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...setup,
 	...(run.length > 0
-		? ["Run each in its own terminal:", ...run.map(indent)]
+		? [
+				run.length === 1 ? "Run:" : "Run each in its own terminal:",
+				...run.map(indent),
+			]
 		: []),
 	...(darklua.length > 0
 		? [

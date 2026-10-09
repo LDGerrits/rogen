@@ -155,8 +155,7 @@ describe("init command", () => {
 					],
 					run: [
 						"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-						"rogen watch",
-						"rojo serve lobby.project.json",
+						"rogen serve lobby",
 					],
 					darklua: [],
 					edits: [
@@ -255,9 +254,8 @@ describe("init command", () => {
 				"success: Created src/.",
 				"success: default.project.json · wrote",
 				"step: Next steps",
-				"info: Run each in its own terminal:",
-				"info:   rogen watch",
-				"info:   rojo serve default.project.json",
+				"info: Run:",
+				"info:   rogen serve",
 				'info: Add your own routes under "routes" in default.rogen.json.',
 				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				"outro: Wrote 2 files.",
@@ -1176,8 +1174,7 @@ describe("init command", () => {
 				'info: Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
 				"info: Run each in its own terminal:",
 				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-				"info:   rogen watch",
-				"info:   rojo serve lobby.project.json",
+				"info:   rogen serve lobby",
 				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
 				"outro: Wrote 2 files.",
 			]);
@@ -1343,9 +1340,8 @@ describe("init command", () => {
 				"success: Created prod.rogen.json.",
 				"success: prod.project.json · wrote",
 				"step: Next steps",
-				"info: Run each in its own terminal:",
-				"info:   rogen watch",
-				"info:   rojo serve prod.project.json",
+				"info: Run:",
+				"info:   rogen serve prod",
 				'info: Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
 				"outro: Wrote 1 file.",
 			]);

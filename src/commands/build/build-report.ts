@@ -14,8 +14,16 @@ export class BuildReport {
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[] = build.diagnostics
 	): void {
+		this.configs.push(BuildReport.entry(build, diagnostics));
+	}
+
+	/** What a build did to one config, as the document lists it. */
+	static entry(
+		build: ConfigBuild,
+		diagnostics: readonly Diagnostic[] = build.diagnostics
+	): Record<string, unknown> {
 		const loaded = build.outcome !== "notLoaded";
-		this.configs.push({
+		return {
 			config: build.label,
 			file: toNative(build.file),
 			outFile: loaded ? toNative(build.config.outFile) : null,
@@ -28,7 +36,7 @@ export class BuildReport {
 				blockedBy: build.blockedBy,
 			}),
 			diagnostics: diagnostics.map(diagnosticToJson),
-		});
+		};
 	}
 
 	json(): Record<string, unknown> {

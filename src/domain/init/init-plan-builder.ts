@@ -85,9 +85,10 @@ export class InitPlanBuilder {
 		for (const line of lines) this.setup.add(line);
 	}
 
-	/** Long-running commands, each for its own terminal. */
+	/** Long-running commands, each for its own terminal; one that two setups add is listed once. */
 	addRun(...commands: readonly string[]): void {
-		this.run.push(...commands);
+		for (const command of commands)
+			if (!this.run.includes(command)) this.run.push(command);
 	}
 
 	addDarkluaCommands(...commands: readonly string[]): void {

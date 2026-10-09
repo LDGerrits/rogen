@@ -59,10 +59,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			{ extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE) },
 			configSet.sourced ? configSet.syncDir : undefined
 		);
-		builder.addRun(
-			ConfigSet.WATCH_COMMAND,
-			ConfigSet.serveCommand(configSet.servedStem)
-		);
+		builder.addRun(configSet.serveCommand);
 		builder.addEdit(
 			`Add "exclude" or "modes", or pin a "mode", in ${configFileName(name)}.`
 		);

@@ -47,6 +47,11 @@ export interface CommandMetadata<
 		readonly isVariadic?: boolean;
 	}[];
 	readonly options?: O;
+	/** What the words after `--` are for; a command without it takes none. */
+	readonly passthrough?: {
+		readonly name: string;
+		readonly description: string;
+	};
 	/** Two or three command lines that show the command at work, as help prints them. */
 	readonly examples?: readonly string[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */

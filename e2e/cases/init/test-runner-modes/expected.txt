@@ -7,9 +7,8 @@ stdout:
   Created AGENTS.md.
   default.project.json · wrote · mode dev
   Next steps
-    Run each in its own terminal:
-      rogen watch
-      rojo serve default.project.json
+    Run:
+      rogen serve
     Build a release without specs with rogen build --mode prod; default.rogen.json declares the modes.
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.

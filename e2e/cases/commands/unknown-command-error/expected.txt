@@ -21,6 +21,4 @@ stderr:
 $ rogen prod --json
 exit 2
 stdout:
-  {
-    "error": "Unknown command \"prod\". To build a config, run 'rogen build prod'; run 'rogen help' to see the commands."
-  }
+  {"error":"Unknown command \"prod\". To build a config, run 'rogen build prod'; run 'rogen help' to see the commands."}

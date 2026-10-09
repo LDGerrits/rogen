@@ -80,26 +80,25 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 <Step>
 ### Run the Pipeline
 
-`init` prints the commands to run side by side.
+`init` prints the commands to run side by side. Rogen doesn't run Darklua or the compiler, so a task runner such as `concurrently` can start them all with one command.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
     ```
+    Run:
+      rogen serve
     Have Darklua process your code into the sync dir:
       darklua process src dist
     ```
 
-    With several root directories, `init` prints one command each (`darklua process lib dist/lib`).
+    With several root directories, `init` prints one Darklua command each (`darklua process lib dist/lib`). Run them with `--watch`, each in its own terminal:
 
     ```bash
     darklua process src dist --watch
+    rogen serve
     ```
 
-    Watch both configs, so Darklua's project file stays current too:
-
-    ```bash
-    rogen watch default sync
-    ```
+    `rogen serve` builds both configs, so Darklua's project file stays current too, and serves `sync.project.json`, since no other config extends `sync`.
 
     luau-lsp keeps `sourcemap.json` current while your editor is open. Without it, run:
 
@@ -107,18 +106,15 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     rojo sourcemap default.project.json --output sourcemap.json --watch
     ```
 
-    Then serve the synced project:
-
-    ```bash
-    rojo serve sync.project.json
-    ```
-
     <Callout type="warn">
-    	A bare `rojo serve` picks up `default.project.json` and syncs unprocessed source. Always pass `sync.project.json`.
+    	If you run Rojo yourself, pass `sync.project.json`: a bare `rojo serve` picks up `default.project.json` and syncs unprocessed source.
     </Callout>
   </Tab>
   <Tab value="roblox-ts">
     ```
+    Run each in its own terminal:
+      rbxtsc -w
+      rogen serve
     Have Darklua process your code into the sync dir:
       darklua process out dist
     ```
@@ -126,10 +122,8 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```bash
     rbxtsc -w
     darklua process out dist --watch
-    rogen watch
+    rogen serve
     ```
-
-    Then start Rojo with `rojo serve`.
   </Tab>
 </Tabs>
 
@@ -138,7 +132,7 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 </Steps>
 
 <Callout type="info">
-	`rogen build` and `rogen watch` mention any config you didn't ask for, so you'll notice if you forget the sync config.
+	`rogen build` and `rogen watch` mention any config you didn't ask for, so you'll notice if you forget the sync config. `rogen serve` builds every config on its own.
 </Callout>
 
 ## Data Files

@@ -3,9 +3,10 @@ import { groupBy } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
-	DiagnosticFix,
 	DiagnosticRelated,
+	RenameFix,
 	errorDiagnostic,
+	isRenameFix,
 	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -357,7 +358,7 @@ export interface InstanceLocation {
 /** A rename, proposed by the diagnostic `code`, after which a file places the instance. Paths are absolute POSIX. */
 export interface InstanceFix {
 	readonly code: string;
-	readonly rename: DiagnosticFix["rename"];
+	readonly rename: RenameFix["rename"];
 }
 
 /** Where `locate` found things in one config. */
@@ -441,7 +442,9 @@ function narrowedTo(
 		position: undefined,
 		message,
 		fixes: diagnostic.fixes?.filter(
-			({ rename }) => toPosix(rename.from) === toPosix(resource)
+			(fix) =>
+				isRenameFix(fix) &&
+				toPosix(fix.rename.from) === toPosix(resource)
 		),
 	};
 }

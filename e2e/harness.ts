@@ -1,4 +1,4 @@
-import { ChildProcess, execFile, spawn } from "child_process";
+import { ChildProcess, execFile, spawn, spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { buildSync } from "esbuild";
 import fs from "fs";
@@ -290,6 +290,35 @@ export function writeProjectFile(
 	fs.writeFileSync(path.join(dir, file), content);
 }
 
+/** A toolchain file pinning only the Argon the repo pins, for a project that serves with Argon. */
+export const ARGON_TOOLCHAIN = `[tools]\n${/^argon\s*=.*$/m.exec(fs.readFileSync(path.resolve("rokit.toml"), "utf8"))?.[0] ?? ""}\n`;
+
+function argonAvailable(): boolean {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-argon-probe-"));
+	try {
+		fs.writeFileSync(path.join(dir, "rokit.toml"), ARGON_TOOLCHAIN);
+		return (
+			spawnSync("argon", ["--version"], { cwd: dir, timeout: 20_000 })
+				.status === 0
+		);
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+const requireArgon = (name: string) =>
+	describe(name, () => {
+		it("should have Argon installed", () => {
+			throw new Error("Argon is not available; run `rokit install`.");
+		});
+	});
+
+export const describeWithArgon = argonAvailable()
+	? describe
+	: process.env.CI
+		? requireArgon
+		: describe.skip;
+
 export async function eventually(
 	check: () => void | Promise<void>,
 	timeoutMs = 10_000
@@ -306,34 +335,45 @@ export async function eventually(
 	}
 }
 
+/** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
 export class WatchSession {
 	private readonly child: ChildProcess;
-	private readonly exited: Promise<number | null>;
+	readonly exited: Promise<number | null>;
 	private _output = "";
+	private _stdout = "";
 
 	constructor(
 		cli: string,
 		dir: string,
 		args: readonly string[] = [],
-		cwd: string = dir
+		cwd: string = dir,
+		command = "watch"
 	) {
-		const [command, commandArgs] = invocation(cli, ["watch", ...args]);
-		this.child = spawn(command, [...commandArgs], {
+		const [file, commandArgs] = invocation(cli, [command, ...args]);
+		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
 			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
 		});
 		for (const stream of [this.child.stdout, this.child.stderr]) {
 			stream?.setEncoding("utf8");
-			stream?.on("data", (chunk: string) => (this._output += chunk));
+			stream?.on("data", (chunk: string) => {
+				this._output += chunk;
+				if (stream === this.child.stdout) this._stdout += chunk;
+			});
 		}
 		this.exited = new Promise((resolve) =>
 			this.child.once("exit", (code) => resolve(code))
 		);
 	}
 
+	/** Everything it printed, on both streams. */
 	get output(): string {
 		return stripVTControlCharacters(this._output);
+	}
+
+	get stdout(): string {
+		return this._stdout;
 	}
 
 	async stop(): Promise<number | null> {

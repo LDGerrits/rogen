@@ -9,7 +9,9 @@ export class MockEnvironmentService implements EnvironmentService {
 	constructor(
 		public readonly cwd: string = "/mock/cwd",
 		public readonly logLevel: LogLevel = LogLevel.Info,
-		public readonly isInteractive: boolean = false
+		public readonly isInteractive: boolean = false,
+		public readonly userHome: string = "/mock/home",
+		public readonly tmpDir: string = "/mock/tmp"
 	) {
 		this.isPlain = !isInteractive;
 	}

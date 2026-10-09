@@ -21,8 +21,7 @@ stdout:
     "nextSteps": {
       "setup": [],
       "run": [
-        "rogen watch",
-        "rojo serve default.project.json"
+        "rogen serve"
       ],
       "darklua": [],
       "edits": [
@@ -35,17 +34,7 @@ stdout:
 $ rogen init --json
 exit 1
 stdout:
-  {
-    "diagnostics": [
-      {
-        "file": "<dir>/default.rogen.json",
-        "severity": "error",
-        "code": "init.configExists",
-        "message": "this config already exists. To add a place beside it, run 'rogen init <name>'.",
-        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"
-      }
-    ]
-  }
+  {"diagnostics":[{"file":"<dir>/default.rogen.json","severity":"error","code":"init.configExists","message":"this config already exists. To add a place beside it, run 'rogen init <name>'.","url":"https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"}]}
 
 written:
   AGENTS.md

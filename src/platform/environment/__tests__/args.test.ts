@@ -178,6 +178,34 @@ describe("parseArgs", () => {
 		);
 	});
 
+	it("should pass everything after the first -- through untouched", () => {
+		const { line } = parse([
+			"watch",
+			"lobby",
+			"--",
+			"--port",
+			"34873",
+			"--",
+			"x",
+		]).unwrap();
+
+		expect(line.positionals).toEqual(["lobby"]);
+		expect(line.passthrough).toEqual(["--port", "34873", "--", "x"]);
+	});
+
+	it("should not read options after -- as its own", () => {
+		const { line } = parse(["watch", "--", "--quiet"]).unwrap();
+
+		expect(line.options.quiet).toBeUndefined();
+		expect(line.passthrough).toEqual(["--quiet"]);
+	});
+
+	it("should give no passthrough to a line without --", () => {
+		const { line } = parse(["watch", "lobby"]).unwrap();
+
+		expect(line.passthrough).toBeUndefined();
+	});
+
 	it("should leave an unknown command to the command service", () => {
 		const parsed = parse(["deploy", "--variant", "x"]).unwrap();
 

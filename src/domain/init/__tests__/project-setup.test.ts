@@ -422,7 +422,7 @@ describe("ProjectSetup plan", () => {
 		it("should say how to run luau", async () => {
 			expect(await (await planFor("luau", false)).nextSteps).toEqual({
 				setup: [],
-				run: ["rogen watch", "rojo serve default.project.json"],
+				run: ["rogen serve"],
 				darklua: [],
 				edits: [
 					'Add your own routes under "routes" in default.rogen.json.',
@@ -436,11 +436,7 @@ describe("ProjectSetup plan", () => {
 				await (
 					await planFor("roblox-ts", false)
 				).nextSteps.run
-			).toEqual([
-				"rbxtsc -w",
-				"rogen watch",
-				"rojo serve default.project.json",
-			]);
+			).toEqual(["rbxtsc -w", "rogen serve"]);
 		});
 
 		it("should say what Darklua must process", async () => {
@@ -453,14 +449,12 @@ describe("ProjectSetup plan", () => {
 
 		it("should watch both configs and serve the synced one", async () => {
 			expect((await planFor("luau", true)).nextSteps.run).toEqual([
-				"rogen watch",
-				"rojo serve sync.project.json",
+				"rogen serve",
 			]);
 			expect(
 				(await planFor("luau", true, "lobby")).nextSteps.run
 			).toEqual([
-				"rogen watch",
-				"rojo serve lobby-sync.project.json",
+				"rogen serve lobby-sync",
 				"rojo sourcemap lobby.project.json --output sourcemap.json --watch",
 			]);
 		});
@@ -527,7 +521,7 @@ describe("ProjectSetup plan", () => {
 				).nextSteps
 			).toEqual({
 				setup: [],
-				run: ["rogen watch", "rojo serve lobby.project.json"],
+				run: ["rogen serve lobby"],
 				darklua: [],
 				edits: [
 					'Add your own routes under "routes" in lobby.rogen.json.',

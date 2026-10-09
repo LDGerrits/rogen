@@ -26,7 +26,6 @@ describe("ConfigSet", () => {
 			expect(set.sourced).toBe(false);
 			expect(set.syncFile).toBeUndefined();
 			expect(set.configFiles).toEqual(["default.rogen.json"]);
-			expect(set.servedStem).toBe("default");
 			expect(set.stems).toEqual(["default"]);
 		});
 
@@ -45,10 +44,6 @@ describe("ConfigSet", () => {
 				"game.rogen.json",
 				"game-sync.rogen.json",
 			]);
-		});
-
-		it("should serve the synced project", () => {
-			expect(set.servedStem).toBe("game-sync");
 		});
 
 		it("should list the source-rooted project first", () => {
@@ -252,30 +247,22 @@ describe("ConfigSet planning", () => {
 				})
 			).nextSteps;
 
-		it("should run the compile, watch and serve commands in turn", () => {
+		it("should run the compile command, then serve", () => {
 			expect(
 				steps(new ConfigSet("game", luau, undefined), "rbxtsc -w").run
-			).toEqual([
-				"rbxtsc -w",
-				"rogen watch",
-				"rojo serve game.project.json",
-			]);
+			).toEqual(["rbxtsc -w", "rogen serve game"]);
 		});
 
 		it("should have no compile command for plain Luau", () => {
 			expect(steps(new ConfigSet("game", luau, undefined)).run).toEqual([
-				"rogen watch",
-				"rojo serve game.project.json",
+				"rogen serve game",
 			]);
 		});
 
-		it("should watch both configs of a sourced set and serve the synced one", () => {
+		it("should serve a sourced set with one command, which picks the synced config", () => {
 			const { run } = steps(new ConfigSet("game", luau, darklua));
 
-			expect(run.slice(0, 2)).toEqual([
-				"rogen watch",
-				"rojo serve game-sync.project.json",
-			]);
+			expect(run[0]).toBe("rogen serve game-sync");
 		});
 
 		it("should process the dirs into the sync dir when Darklua is used", () => {

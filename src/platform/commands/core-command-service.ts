@@ -26,6 +26,13 @@ export class CoreCommandService implements CommandService {
 
 		if (!command)
 			return err(new UsageError(unknownCommand(commandId, registry)));
+		if (line.passthrough?.length && !command.metadata.passthrough) {
+			return err(
+				new UsageError(
+					`${commandId} takes nothing after '--'. Run 'rogen ${HELP_COMMAND} ${commandId}' to see what it accepts.`
+				)
+			);
+		}
 
 		return command.handler(this.accessor, line);
 	}
@@ -35,7 +42,8 @@ export class CoreCommandService implements CommandService {
 function unknownCommand(commandId: string, registry: CommandRegistry): string {
 	const prefix = `Unknown command "${commandId}".`;
 	// `version` was a command once; the flag does its job now.
-	if (commandId === "version") return `${prefix} Did you mean 'rogen --version'?`;
+	if (commandId === "version")
+		return `${prefix} Did you mean 'rogen --version'?`;
 	const commands = registry.getCommands();
 	const suggestion = closestMatch(commandId, commands.keys());
 	if (suggestion) return `${prefix} Did you mean 'rogen ${suggestion}'?`;

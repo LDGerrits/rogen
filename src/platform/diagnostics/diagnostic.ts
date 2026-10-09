@@ -19,10 +19,19 @@ export interface DiagnosticLocation {
 	readonly position?: DiagnosticPosition;
 }
 
-/** An edit that resolves a diagnostic. Renaming a file or folder is the only kind; paths are absolute. */
-export interface DiagnosticFix {
+export interface RenameFix {
 	readonly rename: { readonly from: string; readonly to: string };
 }
+
+export interface RunFix {
+	readonly run: { readonly command: string; readonly cwd: string };
+}
+
+/** What resolves a diagnostic: renaming a file or folder, or running a command in a directory. Paths are absolute. */
+export type DiagnosticFix = RenameFix | RunFix;
+
+export const isRenameFix = (fix: DiagnosticFix): fix is RenameFix =>
+	"rename" in fix;
 
 /** A file a diagnostic is also about, and what it says about that file. */
 export interface DiagnosticRelated {
@@ -49,13 +58,15 @@ export const isError = (diagnostic: Diagnostic): boolean =>
 export function errorDiagnostic(
 	code: string,
 	location: DiagnosticLocation,
-	message: string
+	message: string,
+	fixes: readonly DiagnosticFix[] = []
 ): Diagnostic {
 	return {
 		...location,
 		severity: DiagnosticSeverity.Error,
 		code,
 		message,
+		...(fixes.length > 0 && { fixes }),
 	};
 }
 
@@ -148,7 +159,10 @@ export interface DiagnosticJson {
 	/** The code's section on the diagnostics page. */
 	readonly url: string;
 	/** As the diagnostic's, with native paths. */
-	readonly related?: readonly { readonly file: string; readonly message: string }[];
+	readonly related?: readonly {
+		readonly file: string;
+		readonly message: string;
+	}[];
 	/** As the diagnostic's, with native paths. */
 	readonly fixes?: readonly DiagnosticFix[];
 }
@@ -175,12 +189,21 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 			})),
 		}),
 		...(fixes && {
-			fixes: fixes.map(({ rename }) => ({
-				rename: {
-					from: toNative(rename.from),
-					to: toNative(rename.to),
-				},
-			})),
+			fixes: fixes.map((fix) =>
+				isRenameFix(fix)
+					? {
+							rename: {
+								from: toNative(fix.rename.from),
+								to: toNative(fix.rename.to),
+							},
+						}
+					: {
+							run: {
+								command: fix.run.command,
+								cwd: toNative(fix.run.cwd),
+							},
+						}
+			),
 		}),
 	};
 }
