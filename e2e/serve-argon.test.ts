@@ -3,14 +3,11 @@ import path from "path";
 import { decode, encode } from "@msgpack/msgpack";
 import {
 	ARGON_TOOLCHAIN,
-	WatchSession,
-	bundleCli,
-	createProject,
 	describeWithArgon,
 	eventually,
 	writeProjectFile,
 } from "./harness.js";
-import { config, template } from "./serve-fixtures.js";
+import { useServeProject } from "./serve-fixtures.js";
 
 async function argonProject(port: number): Promise<string | undefined> {
 	try {
@@ -80,70 +77,33 @@ class ArgonClient {
 }
 
 describeWithArgon("end to end serve with Argon", () => {
-	let bundle: ReturnType<typeof bundleCli>;
-	let project: ReturnType<typeof createProject>;
-	let sessions: WatchSession[];
-	let port: number;
-
-	const start = (args: readonly string[] = []) => {
-		const session = new WatchSession(
-			bundle.cli,
-			project.dir,
-			args,
-			project.dir,
-			"serve"
-		);
-		sessions.push(session);
-		return session;
-	};
-
-	beforeAll(() => {
-		bundle = bundleCli();
-	});
-
-	afterAll(() => {
-		bundle.dispose();
-	});
-
-	beforeEach(() => {
-		port = 38000 + Math.floor(Math.random() * 2000);
-		project = createProject({
-			"rokit.toml": ARGON_TOOLCHAIN,
-			"default.rogen.json": config(),
-			"template.project.json": template(port),
-			"src/A.server.luau": "",
-		});
-		sessions = [];
-	});
-
-	afterEach(async () => {
-		await Promise.all(sessions.map((session) => session.stop()));
-		project.dispose();
+	const serve = useServeProject(38000, {
+		"rokit.toml": ARGON_TOOLCHAIN,
 	});
 
 	it("should build, start the pinned Argon on the project file, and stop it on Ctrl+C", async () => {
-		const serving = start();
+		const serving = serve.start();
 
 		await eventually(() => {
 			expect(serving.output).toContain(
-				`Serving default with Argon 2.0.29 at localhost:${port}.`
+				`Serving default with Argon 2.0.29 at localhost:${serve.port}.`
 			);
 		}, 20_000);
-		expect(await argonProject(port)).toBe("Game");
+		expect(await argonProject(serve.port)).toBe("Game");
 
 		expect(await serving.stop()).toBe(0);
-		expect(await argonProject(port)).toBeUndefined();
+		expect(await argonProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
 	it("should sync a source file added while it serves", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
-		const client = new ArgonClient(port);
+		const client = new ArgonClient(serve.port);
 		await client.subscribe();
 
-		writeProjectFile(project.dir, "src/B.luau");
+		writeProjectFile(serve.dir, "src/B.luau");
 
 		await eventually(async () => {
 			expect(await client.added()).toContain("B");
@@ -151,24 +111,24 @@ describeWithArgon("end to end serve with Argon", () => {
 	}, 40_000);
 
 	it("should show Argon's errors as its own lines, and nothing else Argon prints", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
 
-		writeProjectFile(project.dir, "src/Bad.model.json", "{ nope");
-		writeProjectFile(project.dir, "src/C.luau");
+		writeProjectFile(serve.dir, "src/Bad.model.json", "{ nope");
+		writeProjectFile(serve.dir, "src/C.luau");
 
 		await eventually(() => {
 			expect(serving.output).toMatch(/Argon: .*src[\\/]Bad\.model\.json/);
 		});
 		expect(serving.output).not.toMatch(/INFO|source: |argon::|deleted/);
-		expect(serving.output).not.toContain(project.dir);
+		expect(serving.output).not.toContain(serve.dir);
 	}, 40_000);
 
 	it("should keep Argon running as its own child when Argon's settings run it async", async () => {
-		writeProjectFile(project.dir, "argon.toml", "run_async = true\n");
-		const serving = start();
+		writeProjectFile(serve.dir, "argon.toml", "run_async = true\n");
+		const serving = serve.start();
 
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
@@ -176,16 +136,16 @@ describeWithArgon("end to end serve with Argon", () => {
 		expect(serving.output).not.toContain("stopped serving");
 
 		expect(await serving.stop()).toBe(0);
-		expect(await argonProject(port)).toBeUndefined();
+		expect(await argonProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
 	it("should serve with Argon when --tool asks for it, though Rojo is pinned too", async () => {
 		writeProjectFile(
-			project.dir,
+			serve.dir,
 			"rokit.toml",
 			fs.readFileSync(path.resolve("rokit.toml"), "utf8")
 		);
-		const serving = start(["--tool", "argon", "--json"]);
+		const serving = serve.start(["--tool", "argon", "--json"]);
 
 		await eventually(() => {
 			expect(serving.stdout).toContain('"serving"');
@@ -194,12 +154,16 @@ describeWithArgon("end to end serve with Argon", () => {
 		expect(
 			JSON.parse(serving.stdout.trim().split("\n").at(-1)!).serving
 		).toEqual(
-			expect.objectContaining({ tool: "argon", project: "Game", port })
+			expect.objectContaining({
+				tool: "argon",
+				project: "Game",
+				port: serve.port,
+			})
 		);
 	}, 40_000);
 
 	it("should exit with Argon's code when Argon stops on its own", async () => {
-		const serving = start(["--", "--no-such-flag"]);
+		const serving = serve.start(["--", "--no-such-flag"]);
 
 		expect(await serving.exited).toBe(2);
 		expect(serving.output).toContain(

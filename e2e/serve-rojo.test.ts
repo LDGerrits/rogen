@@ -4,14 +4,12 @@ import path from "path";
 import { decode } from "@msgpack/msgpack";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import {
-	WatchSession,
-	bundleCli,
 	createProject,
 	eventually,
 	invocation,
 	writeProjectFile,
 } from "./harness.js";
-import { config, template } from "./serve-fixtures.js";
+import { config, template, useServeProject } from "./serve-fixtures.js";
 
 async function rojoProject(port: number): Promise<string | undefined> {
 	try {
@@ -28,67 +26,29 @@ async function rojoProject(port: number): Promise<string | undefined> {
 }
 
 describeWithRojo("end to end serve", () => {
-	let bundle: ReturnType<typeof bundleCli>;
-	let project: ReturnType<typeof createProject>;
-	let sessions: WatchSession[];
-	let port: number;
-
-	const start = (args: readonly string[] = []) => {
-		const session = new WatchSession(
-			bundle.cli,
-			project.dir,
-			args,
-			project.dir,
-			"serve"
-		);
-		sessions.push(session);
-		return session;
-	};
-
-	beforeAll(() => {
-		bundle = bundleCli();
-	});
-
-	afterAll(() => {
-		bundle.dispose();
-	});
-
-	beforeEach(() => {
-		port = 35000 + Math.floor(Math.random() * 2000);
-		project = createProject({
-			"default.rogen.json": config(),
-			"template.project.json": template(port),
-			"src/A.server.luau": "",
-		});
-		sessions = [];
-	});
-
-	afterEach(async () => {
-		await Promise.all(sessions.map((session) => session.stop()));
-		project.dispose();
-	});
+	const serve = useServeProject(35000);
 
 	it("should build, start the pinned Rojo on the project file, and stop it on Ctrl+C", async () => {
-		const serving = start();
+		const serving = serve.start();
 
 		await eventually(() => {
 			expect(serving.output).toContain(
-				`Serving default with Rojo 7.7.1 at 127.0.0.1:${port}.`
+				`Serving default with Rojo 7.7.1 at 127.0.0.1:${serve.port}.`
 			);
 		}, 20_000);
-		expect(await rojoProject(port)).toBe("Game");
+		expect(await rojoProject(serve.port)).toBe("Game");
 
 		expect(await serving.stop()).toBe(0);
-		expect(await rojoProject(port)).toBeUndefined();
+		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
 	it("should keep building while it serves", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
 
-		writeProjectFile(project.dir, "src/B.luau");
+		writeProjectFile(serve.dir, "src/B.luau");
 
 		await eventually(() => {
 			expect(serving.output).toContain("1 file changed");
@@ -96,72 +56,68 @@ describeWithRojo("end to end serve", () => {
 	}, 40_000);
 
 	it("should show Rojo's errors as its own lines, and nothing else Rojo prints", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
 
-		writeProjectFile(project.dir, "src/Bad.model.json", "{ nope");
+		writeProjectFile(serve.dir, "src/Bad.model.json", "{ nope");
 
 		await eventually(() => {
 			expect(serving.output).toMatch(/Rojo: .*src[\\/]Bad\.model\.json/);
 		});
 		expect(serving.output).not.toContain("Caused by");
 		expect(serving.output).not.toContain("librojo");
-		expect(serving.output).not.toContain(project.dir);
+		expect(serving.output).not.toContain(serve.dir);
 	}, 40_000);
 
 	it("should start a server for a place added while it serves, and stop it when the place is removed", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
 
 		writeProjectFile(
-			project.dir,
+			serve.dir,
 			"templates/lobby.project.json",
-			template(port + 1, "Lobby")
+			template(serve.port + 1, "Lobby")
 		);
 		writeProjectFile(
-			project.dir,
+			serve.dir,
 			"lobby.rogen.json",
 			config({ template: "templates/lobby.project.json" })
 		);
 
 		await eventually(() => {
 			expect(serving.output).toContain(
-				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${port + 1}.`
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
 			);
 		}, 20_000);
-		expect(await rojoProject(port + 1)).toBe("Lobby");
+		expect(await rojoProject(serve.port + 1)).toBe("Lobby");
 
-		fs.rmSync(path.join(project.dir, "lobby.rogen.json"));
+		fs.rmSync(path.join(serve.dir, "lobby.rogen.json"));
 
 		await eventually(() => {
 			expect(serving.output).toContain(
 				"Stopped serving lobby: its config is gone."
 			);
 		}, 20_000);
-		expect(await rojoProject(port + 1)).toBeUndefined();
-		expect(await rojoProject(port)).toBe("Game");
+		expect(await rojoProject(serve.port + 1)).toBeUndefined();
+		expect(await rojoProject(serve.port)).toBe("Game");
 	}, 60_000);
 
 	it("should serve every place init adds, each under its own name and port", async () => {
 		const init = (name: string) => {
-			const [command, args] = invocation(bundle.cli, [
-				"init",
-				name,
-				"-y",
-			]);
+			const [command, args] = invocation(serve.cli, ["init", name, "-y"]);
 			return spawnSync(command, args, {
-				cwd: project.dir,
+				cwd: serve.dir,
 				encoding: "utf8",
 			}).status;
 		};
 		expect(init("lobby")).toBe(0);
 		expect(init("arena")).toBe(0);
 		const templateOf = (place: string) =>
-			path.join(project.dir, "places", place, "template.project.json");
+			path.join(serve.dir, "places", place, "template.project.json");
 		const ports = ["lobby", "arena"].map(
 			(place) =>
 				JSON.parse(fs.readFileSync(templateOf(place), "utf8")).servePort
@@ -173,50 +129,53 @@ describeWithRojo("end to end serve", () => {
 			);
 			fs.writeFileSync(
 				templateOf(place),
-				JSON.stringify({ ...written, servePort: port + 1 + index })
+				JSON.stringify({
+					...written,
+					servePort: serve.port + 1 + index,
+				})
 			);
 		}
 
-		const serving = start();
+		const serving = serve.start();
 
 		await eventually(() => {
 			expect(serving.output).toContain(
-				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${port + 1}.`
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
 			);
 			expect(serving.output).toContain(
-				`Serving arena with Rojo 7.7.1 at 127.0.0.1:${port + 2}.`
+				`Serving arena with Rojo 7.7.1 at 127.0.0.1:${serve.port + 2}.`
 			);
 		}, 30_000);
-		expect(await rojoProject(port + 1)).toBe("Lobby");
-		expect(await rojoProject(port + 2)).toBe("Arena");
-		expect(await rojoProject(port)).toBeUndefined();
+		expect(await rojoProject(serve.port + 1)).toBe("Lobby");
+		expect(await rojoProject(serve.port + 2)).toBe("Arena");
+		expect(await rojoProject(serve.port)).toBeUndefined();
 		expect(await serving.stop()).toBe(0);
 	}, 60_000);
 
 	it("should restart the server where its template moves it", async () => {
-		const serving = start();
+		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default");
 		}, 20_000);
 
 		writeProjectFile(
-			project.dir,
+			serve.dir,
 			"template.project.json",
-			template(port + 2)
+			template(serve.port + 2)
 		);
 
 		await eventually(async () => {
-			expect(await rojoProject(port + 2)).toBe("Game");
+			expect(await rojoProject(serve.port + 2)).toBe("Game");
 		}, 20_000);
-		expect(await rojoProject(port)).toBeUndefined();
+		expect(await rojoProject(serve.port)).toBeUndefined();
 		expect(serving.output).toContain(
-			`Stopped serving default at 127.0.0.1:${port}: its template moved it.`
+			`Stopped serving default at 127.0.0.1:${serve.port}: its template moved it.`
 		);
 		expect(await serving.stop()).toBe(0);
 	}, 60_000);
 
 	it("should print only JSON lines on stdout, the build and then the server", async () => {
-		const serving = start(["--json"]);
+		const serving = serve.start(["--json"]);
 
 		await eventually(() => {
 			expect(serving.stdout).toContain('"serving"');
@@ -236,49 +195,42 @@ describeWithRojo("end to end serve", () => {
 				tool: "rojo",
 				version: "7.7.1",
 				project: "Game",
-				port,
+				port: serve.port,
 			})
 		);
 		expect(serving.output).not.toContain("Rojo server listening");
 	}, 40_000);
 
 	it("should exit 0 at once when the project is already served", async () => {
-		const first = start();
+		const first = serve.start();
 		await eventually(() => {
 			expect(first.output).toContain("Serving default");
 		}, 20_000);
 
-		const second = start(["--json"]);
+		const second = serve.start(["--json"]);
 
 		expect(await second.exited).toBe(0);
 		expect(JSON.parse(second.stdout.trim()).serving).toEqual(
-			expect.objectContaining({ port, alreadyRunning: true })
+			expect.objectContaining({ port: serve.port, alreadyRunning: true })
 		);
 	}, 40_000);
 
 	it("should refuse a server that another checkout of the project started", async () => {
-		const first = start();
+		const first = serve.start();
 		await eventually(() => {
 			expect(first.output).toContain("Serving default");
 		}, 20_000);
 		const checkout = createProject({
 			"default.rogen.json": config(),
-			"template.project.json": template(port),
+			"template.project.json": template(serve.port),
 			"src/A.server.luau": "",
 		});
 		try {
-			const second = new WatchSession(
-				bundle.cli,
-				checkout.dir,
-				[],
-				checkout.dir,
-				"serve"
-			);
-			sessions.push(second);
+			const second = serve.start([], checkout.dir);
 
 			expect(await second.exited).toBe(1);
 			expect(second.output).toContain(
-				`Port ${port} is taken by Rojo serving Game from ${project.dir}`
+				`Port ${serve.port} is taken by Rojo serving Game from ${serve.dir}`
 			);
 		} finally {
 			checkout.dispose();
@@ -287,7 +239,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should refuse a port another project's server holds", async () => {
 		const other = createProject({
-			"other.project.json": template(port, "Other"),
+			"other.project.json": template(serve.port, "Other"),
 		});
 		const rojo = spawn("rojo", ["serve", "other.project.json"], {
 			cwd: other.dir,
@@ -295,14 +247,14 @@ describeWithRojo("end to end serve", () => {
 		});
 		try {
 			await eventually(async () => {
-				expect(await rojoProject(port)).toBe("Other");
+				expect(await rojoProject(serve.port)).toBe("Other");
 			}, 20_000);
 
-			const serving = start();
+			const serving = serve.start();
 
 			expect(await serving.exited).toBe(1);
 			expect(serving.output).toContain(
-				`Port ${port} is taken by Rojo serving Other, so default can't be served there.`
+				`Port ${serve.port} is taken by Rojo serving Other, so default can't be served there.`
 			);
 		} finally {
 			rojo.kill("SIGINT");
@@ -311,7 +263,7 @@ describeWithRojo("end to end serve", () => {
 	}, 40_000);
 
 	it("should exit with Rojo's code when Rojo stops on its own", async () => {
-		const serving = start(["--", "--no-such-flag"]);
+		const serving = serve.start(["--", "--no-such-flag"]);
 
 		expect(await serving.exited).toBe(2);
 		expect(serving.output).toContain(

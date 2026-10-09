@@ -1,3 +1,5 @@
+import { WatchSession, bundleCli, createProject } from "./harness.js";
+
 /** The config and template every serve test starts from. */
 export const config = (extra: Record<string, unknown> = {}) =>
 	JSON.stringify({
@@ -13,3 +15,61 @@ export const template = (port: number, name = "Game") =>
 		servePort: port,
 		tree: { $className: "DataModel" },
 	});
+
+/** A fresh project per test, served on a random port from `firstPort`; `start` takes another checkout's `dir`. */
+export function useServeProject(
+	firstPort: number,
+	files: Readonly<Record<string, string>> = {}
+) {
+	let bundle: ReturnType<typeof bundleCli>;
+	let project: ReturnType<typeof createProject>;
+	let sessions: WatchSession[];
+	let port: number;
+
+	beforeAll(() => {
+		bundle = bundleCli();
+	});
+
+	afterAll(() => {
+		bundle.dispose();
+	});
+
+	beforeEach(() => {
+		port = firstPort + Math.floor(Math.random() * 2000);
+		project = createProject({
+			...files,
+			"default.rogen.json": config(),
+			"template.project.json": template(port),
+			"src/A.server.luau": "",
+		});
+		sessions = [];
+	});
+
+	afterEach(async () => {
+		await Promise.all(sessions.map((session) => session.stop()));
+		project.dispose();
+	});
+
+	return {
+		get cli() {
+			return bundle.cli;
+		},
+		get dir() {
+			return project.dir;
+		},
+		get port() {
+			return port;
+		},
+		start(args: readonly string[] = [], dir = project.dir) {
+			const session = new WatchSession(
+				bundle.cli,
+				dir,
+				args,
+				dir,
+				"serve"
+			);
+			sessions.push(session);
+			return session;
+		},
+	};
+}
