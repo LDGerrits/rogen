@@ -92,6 +92,17 @@ describe("SyncServer", () => {
 				SyncServer.ROJO.serveArgs("lobby.project.json", ["--port", "1"])
 			).toEqual(["serve", "lobby.project.json", "--port", "1"]);
 		});
+
+		it("should keep Argon in the foreground, even when its settings run it async", () => {
+			expect(
+				SyncServer.ARGON.serveArgs("lobby.project.json", ["--async"])
+			).toEqual([
+				"serve",
+				"lobby.project.json",
+				"--argon-spawn",
+				"--async",
+			]);
+		});
 	});
 });
 

@@ -23,6 +23,8 @@ interface SyncServerFields {
 	readonly infoPath: string;
 	readonly hostFlags: readonly string[];
 	readonly portFlags: readonly string[];
+	/** Keep it in the foreground, as the child Rogen stops, whatever its settings say. */
+	readonly foregroundArgs: readonly string[];
 	/** Its own settings files that may set `host` and `port`, the first found winning. */
 	readonly settingsFiles: (projectDir: string, userHome: string) => string[];
 	readonly readInfo: (
@@ -45,6 +47,7 @@ export class SyncServer {
 		infoPath: "/api/rojo",
 		hostFlags: ["--address"],
 		portFlags: ["--port"],
+		foregroundArgs: [],
 		settingsFiles: () => [],
 		readInfo: (server, value) => {
 			const project = text(value.projectName);
@@ -69,6 +72,8 @@ export class SyncServer {
 		infoPath: "/details",
 		hostFlags: ["--host", "-H"],
 		portFlags: ["--port", "-P"],
+		// Its run_async setting otherwise detaches a copy and exits at once.
+		foregroundArgs: ["--argon-spawn"],
 		settingsFiles: (projectDir, userHome) => [
 			path.join(projectDir, "argon.toml"),
 			path.join(userHome, ".argon", "config.toml"),
@@ -115,7 +120,12 @@ export class SyncServer {
 
 	/** The line that starts it on `projectFile`; `serverArgs` go last, untouched. */
 	serveArgs(projectFile: string, serverArgs: readonly string[]): string[] {
-		return ["serve", projectFile, ...serverArgs];
+		return [
+			"serve",
+			projectFile,
+			...this.fields.foregroundArgs,
+			...serverArgs,
+		];
 	}
 
 	/** What an answer from `infoPath` says, when it is this server's answer. */
