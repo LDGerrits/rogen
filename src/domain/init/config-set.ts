@@ -230,13 +230,13 @@ export class ConfigSet {
 			builder.addSourcemapSteps(this.projectFile, darklua);
 		}
 		if (darklua && config) {
-			const rootConfig =
-				directory.workspace.darkluaConfig ?? darklua.configFiles[0];
-			const sourcemapFile = path.posix.basename(
-				darklua.sourcemapOf(this.projectFile)
-			);
 			builder.addEdit(
-				`Darklua finds a sourcemap's files only beside its config, so copy ${rootConfig} to ${config} and set "rojo_sourcemap" in it to "./${sourcemapFile}". Darklua reads its other paths from ${this.dir} too.`
+				darklua.placeConfigStep(
+					this.dir,
+					this.name,
+					this.projectFile,
+					directory.workspace.darkluaConfig
+				)
 			);
 		}
 	}

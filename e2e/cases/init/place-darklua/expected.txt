@@ -21,7 +21,7 @@ stdout:
       darklua process --config places/lobby.darklua.json places/lobby dist/lobby/places/lobby
     Add your own routes under "routes" in default.rogen.json.
     Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-    Darklua finds a sourcemap's files only beside its config, so copy .darklua.json to places/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Darklua reads its other paths from places too.
+    Darklua finds a sourcemap's files only beside its config, so copy .darklua.json to places/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Write its other paths from places.
   Wrote 6 files.
 
 $ rogen build default sync lobby lobby-sync

@@ -299,6 +299,21 @@ export class Darklua {
 		return `${dir}/${name}${rootConfig}`;
 	}
 
+	/** Says how to start the config of a place named `name` in `dir`: from the project's own, `rootConfig`, when it has one. */
+	placeConfigStep(
+		dir: string,
+		name: string,
+		projectFile: string,
+		rootConfig: string | undefined
+	): string {
+		const config = this.placeConfigOf(dir, name, rootConfig);
+		const sourcemap = path.posix.basename(this.sourcemapOf(projectFile));
+		const start = rootConfig
+			? `copy ${rootConfig} to ${config}`
+			: `write ${config}`;
+		return `Darklua finds a sourcemap's files only beside its config, so ${start} and set "rojo_sourcemap" in it to "./${sourcemap}". Write its other paths from ${dir}.`;
+	}
+
 	/** One `darklua process` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,

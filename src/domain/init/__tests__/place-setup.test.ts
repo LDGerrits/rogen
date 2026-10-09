@@ -181,7 +181,7 @@ describe("PlaceSetup", () => {
 					"darklua process --config places/lobby/lobby.darklua.json places/lobby/src dist/lobby/places/lobby/src",
 				],
 				edits: [
-					'Darklua finds a sourcemap\'s files only beside its config, so copy .darklua.json to places/lobby/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Darklua reads its other paths from places/lobby too.',
+					'Darklua finds a sourcemap\'s files only beside its config, so copy .darklua.json to places/lobby/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Write its other paths from places/lobby.',
 					'Declare variants under "variants" in places/lobby/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
 				],
 			});

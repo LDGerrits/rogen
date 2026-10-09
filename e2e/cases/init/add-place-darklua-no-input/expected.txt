@@ -14,7 +14,7 @@ stdout:
     Have Darklua process your code into the sync dir:
       darklua process --config places/lobby.darklua.json src dist/lobby/src
       darklua process --config places/lobby.darklua.json places/lobby dist/lobby/places/lobby
-    Darklua finds a sourcemap's files only beside its config, so copy .darklua.json to places/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Darklua reads its other paths from places too.
+    Darklua finds a sourcemap's files only beside its config, so copy .darklua.json to places/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Write its other paths from places.
     Declare variants under "variants" in places/lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
   Wrote 3 files.
 

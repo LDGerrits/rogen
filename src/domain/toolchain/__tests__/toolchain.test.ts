@@ -55,6 +55,34 @@ describe("Darklua", () => {
 		});
 	});
 
+	describe("placeConfigStep", () => {
+		it("should have the project's config copied beside the place's sourcemap", () => {
+			expect(
+				darklua.placeConfigStep(
+					"places/lobby",
+					"lobby",
+					"places/lobby/lobby.project.json",
+					".darklua.json5"
+				)
+			).toBe(
+				'Darklua finds a sourcemap\'s files only beside its config, so copy .darklua.json5 to places/lobby/lobby.darklua.json5 and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Write its other paths from places/lobby.'
+			);
+		});
+
+		it("should have a config written when the project has none to copy", () => {
+			expect(
+				darklua.placeConfigStep(
+					"places/lobby",
+					"lobby",
+					"places/lobby/lobby.project.json",
+					undefined
+				)
+			).toBe(
+				'Darklua finds a sourcemap\'s files only beside its config, so write places/lobby/lobby.darklua.json and set "rojo_sourcemap" in it to "./lobby.sourcemap.json". Write its other paths from places/lobby.'
+			);
+		});
+	});
+
 	describe("SYNC_TOOL", () => {
 		it("should say it turns .meta.json into .meta.lua", () => {
 			expect(Darklua.SYNC_TOOL.metaReplacement).toEqual({

@@ -93,7 +93,7 @@ export class PlacePlan {
 		builder.addSetup(...(compiled?.setup ?? []));
 	}
 
-	/** The commands that compile, process and serve the place; `serveCommand` serves it with the others, and only one place keeps the sourcemap current, since there is one. */
+	/** The commands that compile, process and serve the place; `serveCommand` serves it with the others, and only one place at the root keeps the root sourcemap current, while each place below it keeps its own. */
 	planSteps(
 		builder: InitPlanBuilder,
 		serveCommand: string,
