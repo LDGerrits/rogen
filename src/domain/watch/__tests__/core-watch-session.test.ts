@@ -610,6 +610,25 @@ describe("CoreWatchSession", () => {
 			expect(rootsOf(paths)).toEqual(["/repo/src"]);
 		});
 
+		it("should answer with the failure when the watcher can't start", async () => {
+			jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
+			selection = (await configService.select(["default"], {})).unwrap();
+			const indexService = new CoreIndexService(fs);
+			const session = store.add(
+				new CoreWatchSession(
+					selection,
+					BuildSet.of(selection).unwrap(),
+					watcher,
+					indexService,
+					buildServiceOf(fs, indexService)
+				)
+			);
+
+			const started = await session.start();
+
+			expect(started.isErr() && started.error.message).toBe("boom");
+		});
+
 		it("should drop a root that lies inside another", async () => {
 			await write(
 				"/repo/lobby.rogen.json",

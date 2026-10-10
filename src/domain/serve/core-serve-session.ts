@@ -115,7 +115,8 @@ export class CoreServeSession
 	}
 
 	async start(): Promise<Result<void, Error>> {
-		await this.watch.start();
+		const watching = await this.watch.start();
+		if (watching.isErr()) return watching;
 		const first = await this.firstUpdate.p;
 		if (!first || this.stopping) return ok(undefined);
 		if (first instanceof Error) return err(first);

@@ -1,7 +1,7 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { onUnexpectedError } from "../../base/errors.js";
+import { Result, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
@@ -107,8 +107,6 @@ registerCommand(
 				if (session.isErr()) return session;
 				store.add(session.value);
 				return await this.serve(session.value, log, shutdown);
-			} catch (error) {
-				return err(ErrorUtils.fromUnknown(error));
 			} finally {
 				store[Symbol.dispose]();
 			}

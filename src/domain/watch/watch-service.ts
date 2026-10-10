@@ -60,7 +60,7 @@ export interface WatchSession extends Disposable {
 	readonly onDidError: Event<Error>;
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
-	start(): Promise<void>;
+	start(): Promise<Result<void, Error>>;
 	/** Lets the work already started finish, then stops the watcher. Safe to call twice. */
 	stop(): Promise<void>;
 }
