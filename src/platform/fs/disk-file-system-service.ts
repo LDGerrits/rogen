@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { compareStrings } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
 import {
 	FileType,
@@ -71,6 +72,7 @@ export class DiskFileSystemService implements FileSystemService {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
 		});
+		dirents.sort((a, b) => compareStrings(a.name, b.name));
 		return Promise.all(
 			dirents.map(async (dirent): Promise<[string, FileType]> => {
 				if (dirent.isSymbolicLink()) {

@@ -3,6 +3,7 @@ import {
 	FileSystemService,
 	fileSystemError,
 } from "./file-system-service.js";
+import { compareStrings } from "../../base/collections.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
@@ -186,14 +187,14 @@ export class MemoryFileSystemService
 				`ENOTDIR: not a directory, scandir '${filePath}'`
 			);
 		}
-		return Array.from((node as DirectoryNode).entries.entries()).map(
-			([name, child]): [string, FileType] => [
+		return Array.from((node as DirectoryNode).entries.entries())
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([name, child]): [string, FileType] => [
 				name,
 				this._leadsBack(filePath, child)
 					? FileType.SymbolicLink
 					: this._typeOf(child),
-			]
-		);
+			]);
 	}
 
 	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */

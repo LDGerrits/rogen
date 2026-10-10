@@ -23,7 +23,7 @@ export interface FileSystemService {
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;
 
-	/** A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
+	/** The entries in order of name, as text, whatever order the system lists them in. A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
 	readDirectory(filePath: string): Promise<[string, FileType][]>;
 	createDirectory(filePath: string): Promise<void>;
 

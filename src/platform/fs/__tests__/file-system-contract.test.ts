@@ -144,6 +144,20 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 	});
 
 	describe("readDirectory", () => {
+		it("should list the entries in order of name, capitals first", async () => {
+			for (const name of ["client", "Types.luau", "server", "a.luau"])
+				await fixture.fileSystem.writeFile(at("src", name), "");
+
+			const entries = await fixture.fileSystem.readDirectory(at("src"));
+
+			expect(entries.map(([name]) => name)).toEqual([
+				"Types.luau",
+				"a.luau",
+				"client",
+				"server",
+			]);
+		});
+
 		it("should reject with ENOENT for a directory that doesn't exist", async () => {
 			await expect(
 				fixture.fileSystem.readDirectory(at("missing"))
