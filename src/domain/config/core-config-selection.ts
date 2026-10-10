@@ -9,7 +9,7 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { CONFIG_SUFFIX, ResolvedConfig } from "./config.js";
+import { ResolvedConfig, isConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -63,7 +63,15 @@ export class CoreConfigSelection implements ConfigSelection {
 			undeclaredMode(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed, loader, overrides, home, folder));
+			: ok(
+					new CoreConfigSelection(
+						managed,
+						loader,
+						overrides,
+						home,
+						folder
+					)
+				);
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -83,7 +91,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
-			posixFile.endsWith(CONFIG_SUFFIX) &&
+			isConfigFileName(posixFile) &&
 			dirnamePosix(posixFile) === toPosix(this.folder.directory)
 		);
 	}

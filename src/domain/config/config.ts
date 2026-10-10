@@ -90,6 +90,13 @@ export const DEFAULT_CONFIG_STEM = "default";
 export const configFileName = (stem: string): string =>
 	`${stem}${CONFIG_SUFFIX}`;
 
+/** The config a project starts with. */
+export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
+
+/** Whether `fileName` is the name of a config file. */
+export const isConfigFileName = (fileName: string): boolean =>
+	fileName.endsWith(CONFIG_SUFFIX);
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);

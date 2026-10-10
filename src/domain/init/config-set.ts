@@ -13,9 +13,6 @@ import { TEMPLATE_FILE } from "./starter-template.js";
 
 /** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
-	/** The config a project starts with. */
-	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);
-
 	constructor(
 		readonly name: string,
 		readonly language: Language,

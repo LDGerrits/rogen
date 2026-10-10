@@ -8,7 +8,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { CONFIG_SUFFIX } from "../config/config.js";
+import { CONFIG_SUFFIX, isConfigFileName } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
 import { TemplateMounts } from "./build-template.js";
@@ -206,7 +206,7 @@ export class RootScanner {
 		for (const [name, type] of listing) {
 			const mount = this.mounts.at(path.join(dir, name));
 			const glob =
-				isFileType(type) && name.endsWith(CONFIG_SUFFIX)
+				isFileType(type) && isConfigFileName(name)
 					? `*${CONFIG_SUFFIX}`
 					: this.excludingGlob(path.join(dir, name));
 			if (mount)

@@ -105,10 +105,6 @@ describe("ConfigSet naming", () => {
 		);
 	});
 
-	it("should start the default config from default.rogen.json", () => {
-		expect(ConfigSet.DEFAULT_FILE).toBe("default.rogen.json");
-	});
-
 	describe("parseName", () => {
 		it("should be default without a name", () => {
 			expect(ConfigSet.parseName([]).unwrap()).toBe("default");

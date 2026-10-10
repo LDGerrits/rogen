@@ -6,7 +6,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
@@ -116,7 +116,7 @@ export class CoreInitService implements InitService {
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
-		const base = entries.has(configFileName(DEFAULT_CONFIG_STEM))
+		const base = entries.has(DEFAULT_CONFIG_FILE)
 			? await new BaseConfigReader(this.configService, directory).read(
 					entries
 				)

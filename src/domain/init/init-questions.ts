@@ -4,7 +4,11 @@ import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+} from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import {
 	Language,
@@ -95,7 +99,7 @@ export class InitQuestions {
 		const [first] = options;
 		if (!this.interactive) return first.addition;
 		const id = await this.promptService.select<string>({
-			message: `${hasDefault ? ConfigSet.DEFAULT_FILE : "A config"} exists. What do you want to add?`,
+			message: `${hasDefault ? DEFAULT_CONFIG_FILE : "A config"} exists. What do you want to add?`,
 			choices: options.map(({ id, label, hint }) => ({
 				value: id,
 				label,

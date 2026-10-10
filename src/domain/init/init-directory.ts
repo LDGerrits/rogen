@@ -6,9 +6,9 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	CONFIG_SUFFIX,
-	DEFAULT_CONFIG_STEM,
+	DEFAULT_CONFIG_FILE,
 	configFileName,
+	isConfigFileName,
 	labelOfDefaultOutFile,
 	rootDirOverlap,
 } from "../config/config.js";
@@ -54,12 +54,12 @@ export class InitDirectory {
 	}
 
 	get hasDefaultConfig(): boolean {
-		return this.has(configFileName(DEFAULT_CONFIG_STEM));
+		return this.has(DEFAULT_CONFIG_FILE);
 	}
 
 	/** Whether any config is here; a first `init` finds none. */
 	get hasConfigs(): boolean {
-		return [...this.entries].some((entry) => entry.endsWith(CONFIG_SUFFIX));
+		return [...this.entries].some(isConfigFileName);
 	}
 
 	/** Project files here that no config beside them writes, other than the template. */
@@ -82,7 +82,7 @@ export class InitDirectory {
 		return fileNames
 			.filter((fileName) => this.has(fileName))
 			.map((fileName) =>
-				fileName.endsWith(CONFIG_SUFFIX)
+				isConfigFileName(fileName)
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
@@ -103,10 +103,7 @@ export class InitDirectory {
 			errorDiagnostic(
 				"init.configExists",
 				{
-					resource: path.join(
-						this.path,
-						configFileName(DEFAULT_CONFIG_STEM)
-					),
+					resource: path.join(this.path, DEFAULT_CONFIG_FILE),
 				},
 				"this config already exists. To add a place beside it, run 'rogen init <name>'."
 			),

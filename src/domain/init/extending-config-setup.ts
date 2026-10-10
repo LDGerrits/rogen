@@ -1,6 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
@@ -45,7 +45,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			given ??
 			(await questions.name(directory, {
 				message: "Config name",
-				description: `Writes <name>.rogen.json, which extends ${ConfigSet.DEFAULT_FILE}.`,
+				description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
 				filesFor: (candidate) => this.filesOf(candidate),
 			}));
 		return ok(name === undefined ? undefined : { name });
@@ -56,7 +56,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		// A compiler's sync dir is inherited from default; only a synced twin adds one.
 		configSet.planConfigs(
 			builder,
-			{ extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE) },
+			{ extends: ConfigSet.reference(DEFAULT_CONFIG_FILE) },
 			configSet.sourced ? configSet.syncDir : undefined
 		);
 		builder.addRun(configSet.serveCommand);

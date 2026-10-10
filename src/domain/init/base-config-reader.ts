@@ -3,9 +3,10 @@ import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
-	CONFIG_SUFFIX,
+	DEFAULT_CONFIG_FILE,
 	DEFAULT_CONFIG_STEM,
 	configFileName,
+	isConfigFileName,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { SyncServer } from "../serve/serve.js";
@@ -25,7 +26,7 @@ export class BaseConfigReader {
 		entries: ReadonlySet<string>
 	): Promise<Result<BaseConfig, Diagnostic[]>> {
 		const entry = await this.configService.read(
-			path.join(this.directory, configFileName(DEFAULT_CONFIG_STEM))
+			path.join(this.directory, DEFAULT_CONFIG_FILE)
 		);
 		if (entry.status === "broken") return err([...entry.errors]);
 
@@ -51,7 +52,7 @@ export class BaseConfigReader {
 	): Promise<{ ports: number[]; sharedPort: boolean }> {
 		const read = await Promise.all(
 			[...entries]
-				.filter((name) => name.endsWith(CONFIG_SUFFIX))
+				.filter((name) => isConfigFileName(name))
 				.map((name) =>
 					this.configService.read(path.join(this.directory, name))
 				)
@@ -62,7 +63,7 @@ export class BaseConfigReader {
 			.filter(
 				({ file }) =>
 					!extended.has(file) &&
-					path.basename(file) !== configFileName(DEFAULT_CONFIG_STEM)
+					path.basename(file) !== DEFAULT_CONFIG_FILE
 			)
 			.map(
 				({ config }) =>

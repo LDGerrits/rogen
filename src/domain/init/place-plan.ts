@@ -1,6 +1,6 @@
 import { formatJsonFile } from "../../base/json.js";
 import { capitalized } from "../../base/strings.js";
-import { defaultOutFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_FILE, defaultOutFileName } from "../config/config.js";
 import { SyncServer } from "../serve/serve.js";
 import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
@@ -68,7 +68,7 @@ export class PlacePlan {
 		configSet.planConfigs(
 			builder,
 			{
-				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
+				extends: ConfigSet.reference(DEFAULT_CONFIG_FILE),
 				rootDirs: [folder.rootDir],
 				template: folder.template,
 			},

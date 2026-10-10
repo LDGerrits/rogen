@@ -8,7 +8,12 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_SUFFIX, configFileName, configLabel } from "./config.js";
+import {
+	CONFIG_SUFFIX,
+	configFileName,
+	configLabel,
+	isConfigFileName,
+} from "./config.js";
 import { EnclosingConfigs } from "./config-service.js";
 
 /** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
@@ -157,9 +162,7 @@ export class ConfigDiscovery {
 
 function configFileNames(entries: readonly [string, FileType][]): string[] {
 	return entries
-		.filter(
-			([name, type]) => isFileType(type) && name.endsWith(CONFIG_SUFFIX)
-		)
+		.filter(([name, type]) => isFileType(type) && isConfigFileName(name))
 		.map(([name]) => name)
 		.sort();
 }
