@@ -53,6 +53,7 @@ export class DeferredPromise<T> {
 /** Runs `runner` once, `delay` ms after the last `schedule`; disposing it cancels a run that is still waiting. */
 export class RunOnceScheduler implements Disposable {
 	private timer: ReturnType<typeof setTimeout> | undefined;
+	private disposed = false;
 
 	constructor(
 		private readonly runner: () => void,
@@ -62,6 +63,7 @@ export class RunOnceScheduler implements Disposable {
 	/** Starts the wait over, for `delay` ms or the scheduler's own. */
 	schedule(delay = this.delay): void {
 		this.cancel();
+		if (this.disposed) return;
 		this.timer = setTimeout(() => {
 			this.timer = undefined;
 			this.runner();
@@ -78,6 +80,7 @@ export class RunOnceScheduler implements Disposable {
 	}
 
 	[Symbol.dispose](): void {
+		this.disposed = true;
 		this.cancel();
 	}
 }

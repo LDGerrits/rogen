@@ -130,5 +130,17 @@ describe("Async Utilities", () => {
 
 			expect(runner).not.toHaveBeenCalled();
 		});
+
+		it("should not run when scheduled after it was disposed", () => {
+			const runner = jest.fn();
+			const scheduler = new RunOnceScheduler(runner, 100);
+
+			scheduler[Symbol.dispose]();
+			scheduler.schedule();
+			jest.advanceTimersByTime(500);
+
+			expect(runner).not.toHaveBeenCalled();
+			expect(scheduler.isScheduled).toBe(false);
+		});
 	});
 });
