@@ -107,11 +107,11 @@ describe("StartedServer", () => {
 		expect(served).toHaveLength(1);
 		expect(served[0].info.project).toBe("repo");
 		expect(
-			await records.read(target.address, served[0].info)
+			await records.projectFileOf(target.address, served[0].info)
 		).toBeDefined();
 		await server.unrecord();
 		expect(
-			await records.read(target.address, served[0].info)
+			await records.projectFileOf(target.address, served[0].info)
 		).toBeUndefined();
 	});
 

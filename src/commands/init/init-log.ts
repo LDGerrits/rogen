@@ -32,7 +32,7 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 ];
 
 /** What a build found, less the sync dir's warnings: the compiler they ask for hasn't run in a project that was just written. */
-export const foundBy = (build: ConfigBuild): Diagnostic[] => [
+const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
 	...build.errors,
 ];

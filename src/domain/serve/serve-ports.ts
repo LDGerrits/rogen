@@ -90,18 +90,18 @@ export class ServePorts {
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
 		const elsewhere =
-			holder && (await this.records.read(target.address, holder));
+			holder &&
+			(await this.records.projectFileOf(target.address, holder));
 		const ownServer =
 			holder?.project === target.project &&
 			!sharedName &&
-			(!elsewhere ||
-				samePath(elsewhere.projectFile, target.config.outFile));
+			(!elsewhere || samePath(elsewhere, target.config.outFile));
 		if (ownServer) return ok({ ...target, servedBy: holder });
 		return err(
 			await this.portTaken(
 				target,
 				holder,
-				elsewhere ? path.dirname(elsewhere.projectFile) : undefined,
+				elsewhere ? path.dirname(elsewhere) : undefined,
 				others,
 				server
 			)
