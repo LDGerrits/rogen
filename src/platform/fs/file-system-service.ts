@@ -52,6 +52,27 @@ export function fileSystemError(
 	return Object.assign(new Error(message, { cause }), { code });
 }
 
+/** Why renaming onto `existing` is refused, as Node refuses it: a path in the way unless told to overwrite, and a directory in the way always. */
+export function renameRefusal(
+	existing: FileType | undefined,
+	overwrite: boolean,
+	source: string,
+	destination: string
+): Error | undefined {
+	if (existing === undefined) return undefined;
+	if (!overwrite)
+		return fileSystemError(
+			"EEXIST",
+			`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+		);
+	if (existing === FileType.Directory)
+		return fileSystemError(
+			"EISDIR",
+			`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
+		);
+	return undefined;
+}
+
 /** Whether `error` says the path isn't there, by its code and not its wording. */
 export function isMissingPath(error: Error): boolean {
 	return ErrorUtils.hasCode(error, "ENOENT");

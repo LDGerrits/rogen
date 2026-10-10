@@ -2,6 +2,7 @@ import {
 	FileType,
 	FileSystemService,
 	fileSystemError,
+	renameRefusal,
 } from "./file-system-service.js";
 import { compareStrings } from "../../base/collections.js";
 import { AbstractDisposable } from "../../base/disposable.js";
@@ -328,18 +329,13 @@ export class MemoryFileSystemService
 			);
 
 		const existing = this._lookup(destination, true, false);
-		if (existing && !overwrite) {
-			throw fileSystemError(
-				"EEXIST",
-				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
-			);
-		}
-		if (existing?.type === FileType.Directory) {
-			throw fileSystemError(
-				"EISDIR",
-				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
-			);
-		}
+		const refusal = renameRefusal(
+			existing?.type,
+			overwrite,
+			source,
+			destination
+		);
+		if (refusal) throw refusal;
 
 		const target = this._lookupParent(destination, true);
 		this._lookupParent(source).entries.delete(from.split("/").pop()!);
