@@ -46,8 +46,12 @@ export class PlainLogService extends AbstractLogService {
 				console.error(this.inStep ? indented(line) : line);
 				break;
 			}
-			default:
+			case "print":
+			case "note":
 				console.info(text);
+				break;
+			default:
+				kind satisfies never;
 		}
 	}
 }

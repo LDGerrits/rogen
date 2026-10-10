@@ -25,7 +25,7 @@ const NoVariantOption = {
 	description: "Turns a variant off, whatever turned it on.",
 } as const satisfies OptionDescriptor;
 
-export const ModeOption = {
+const ModeOption = {
 	name: "mode",
 	type: "string",
 	placeholder: "name",

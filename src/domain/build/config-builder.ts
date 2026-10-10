@@ -12,7 +12,8 @@ import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
 import { MissingInstances } from "./missing-instances.js";
-import { Placement, Placer } from "./placement.js";
+import { Placement } from "./placement.js";
+import { Placer } from "./placer.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 

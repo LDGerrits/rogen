@@ -202,19 +202,21 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 
 /** A fix with native paths, as a `--json` run prints it. */
 export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
-	return isRenameFix(fix)
-		? {
-				rename: {
-					from: toNative(fix.rename.from),
-					to: toNative(fix.rename.to),
-				},
-			}
-		: {
-				run: {
-					command: fix.run.command,
-					cwd: toNative(fix.run.cwd),
-				},
-			};
+	if (isRenameFix(fix)) {
+		return {
+			rename: {
+				from: toNative(fix.rename.from),
+				to: toNative(fix.rename.to),
+			},
+		};
+	}
+	fix satisfies RunFix;
+	return {
+		run: {
+			command: fix.run.command,
+			cwd: toNative(fix.run.cwd),
+		},
+	};
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {

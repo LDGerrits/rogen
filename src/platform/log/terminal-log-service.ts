@@ -49,6 +49,9 @@ export class TerminalLogService extends AbstractLogService {
 				break;
 			case "info":
 				nested(text);
+				break;
+			default:
+				kind satisfies never;
 		}
 	}
 }

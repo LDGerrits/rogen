@@ -25,7 +25,8 @@ import {
 } from "../build-service.js";
 import { BuiltConfig, ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
-import { Placement, Placer } from "../placement.js";
+import { Placement } from "../placement.js";
+import { Placer } from "../placer.js";
 import { RoutedFile } from "../router.js";
 
 export const { syncTools } = new CoreToolchainService(

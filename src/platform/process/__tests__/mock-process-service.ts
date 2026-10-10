@@ -45,6 +45,11 @@ export class MockChildProcess
 		this.exit({ code: null, signal: "SIGTERM" });
 		return this.exitedWith!;
 	}
+
+	override [Symbol.dispose](): void {
+		void this.terminate();
+		super[Symbol.dispose]();
+	}
 }
 export class MockProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;

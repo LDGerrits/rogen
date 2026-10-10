@@ -126,7 +126,7 @@ const plainContainer: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
 
 /** The suffix of a Rojo project file, such as `default.project.json`. */
-export const PROJECT_SUFFIX = ".project.json";
+const PROJECT_SUFFIX = ".project.json";
 
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
