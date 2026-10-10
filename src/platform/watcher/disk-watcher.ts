@@ -144,10 +144,23 @@ export class DiskWatcher extends AbstractWatcher {
 		this.seen.clear();
 		this.unfollowed = new Set();
 		if (this.watcher) {
+			clearThrottles(this.watcher);
 			await this.watcher.close();
 			this.watcher = null;
 		}
 	}
+}
+
+/** chokidar forgets its throttle timers on close without clearing them, which keeps the process alive for up to a second. */
+function clearThrottles(watcher: chokidar.FSWatcher): void {
+	const { _throttled: throttled } = watcher as unknown as {
+		readonly _throttled?: ReadonlyMap<
+			string,
+			ReadonlyMap<string, { clear(): unknown }>
+		>;
+	};
+	for (const actions of throttled?.values() ?? [])
+		for (const { clear } of [...actions.values()]) clear();
 }
 
 /** Which file or folder `target` is now, so one deleted and made again differs from the one before; `undefined` when it isn't there. */

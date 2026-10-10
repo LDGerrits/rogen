@@ -112,10 +112,11 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 				this._onDidExit.fire(exit);
 			};
 			child.once("exit", (code, signal) => {
-				const timer = setTimeout(
-					() => finish({ code, signal }),
-					DRAIN_MS
-				);
+				const timer = setTimeout(() => {
+					child.stdout?.destroy();
+					child.stderr?.destroy();
+					finish({ code, signal });
+				}, DRAIN_MS);
 				child.once("close", () => {
 					clearTimeout(timer);
 					finish({ code, signal });
