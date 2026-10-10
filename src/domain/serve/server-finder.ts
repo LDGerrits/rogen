@@ -39,7 +39,8 @@ export class ServerFinder {
 	async find(
 		directory: string,
 		wanted: SyncServer | undefined,
-		resource: string
+		resource: string,
+		signal?: AbortSignal
 	): Promise<Result<ServeTool, DiagnosticsError>> {
 		const manifests = await this.manifestsFor(directory);
 		const servers = wanted ? [wanted] : SyncServer.ALL;
@@ -76,7 +77,8 @@ export class ServerFinder {
 			chosen.file,
 			directory,
 			manifests,
-			resource
+			resource,
+			signal
 		);
 		if (version.isErr()) return version;
 		return ok({
@@ -114,11 +116,13 @@ export class ServerFinder {
 		file: string,
 		directory: string,
 		manifests: readonly ToolManifest[],
-		resource: string
+		resource: string,
+		signal?: AbortSignal
 	): Promise<Result<string, DiagnosticsError>> {
 		const output = await this.processService.exec(file, ["--version"], {
 			cwd: directory,
 			timeout: VERSION_TIMEOUT_MS,
+			signal,
 		});
 		const printed = output.isOk()
 			? (firstLine(output.value.stderr) ?? firstLine(output.value.stdout))

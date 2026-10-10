@@ -26,6 +26,8 @@ export interface ServeRequest {
 	readonly server?: string;
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
+	/** Ends the checks that run other programs, when the run is stopped before it has started. */
+	readonly signal?: AbortSignal;
 }
 
 /** The server a serve starts, as found and checked. */

@@ -39,11 +39,15 @@ export interface ProcessService {
 
 	/** The file `command` runs: the first match on the PATH, with the platform's executable extensions; `undefined` when there is none. */
 	which(command: string): Promise<string | undefined>;
-	/** Runs `file` to the end; fails when it can't start or outlives `timeout` milliseconds. */
+	/** Runs `file` to the end; fails when it can't start, outlives `timeout` milliseconds or is ended through `signal`. */
 	exec(
 		file: string,
 		args: readonly string[],
-		options: { readonly cwd: string; readonly timeout: number }
+		options: {
+			readonly cwd: string;
+			readonly timeout: number;
+			readonly signal?: AbortSignal;
+		}
 	): Promise<Result<ProcessOutput, Error>>;
 	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
 	spawn(

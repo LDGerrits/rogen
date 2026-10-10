@@ -89,8 +89,11 @@ registerCommand(
 			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
+			const stopChecks = new AbortController();
+			void shutdown.p.then(() => stopChecks.abort());
 			try {
 				const plan = await serveService.prepare({
+					signal: stopChecks.signal,
 					refs: line.positionals,
 					options: line.options,
 					server: line.options.tool,

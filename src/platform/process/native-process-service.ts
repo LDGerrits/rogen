@@ -159,7 +159,11 @@ export class NativeProcessService implements ProcessService {
 	exec(
 		file: string,
 		args: readonly string[],
-		options: { readonly cwd: string; readonly timeout: number }
+		options: {
+			readonly cwd: string;
+			readonly timeout: number;
+			readonly signal?: AbortSignal;
+		}
 	): Promise<Result<ProcessOutput, Error>> {
 		const run = launch(file, args, this.env);
 		return new Promise((resolve) => {
@@ -171,6 +175,7 @@ export class NativeProcessService implements ProcessService {
 					env: this.env,
 					windowsVerbatimArguments: run.windowsVerbatimArguments,
 					timeout: options.timeout,
+					signal: options.signal,
 					windowsHide: true,
 				},
 				(error, stdout, stderr) => {

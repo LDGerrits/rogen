@@ -71,7 +71,8 @@ export class CoreServeService implements ServeService {
 		const tool = await this.finder.find(
 			selection.home,
 			server.value,
-			served[0]?.file ?? selection.home
+			served[0]?.file ?? selection.home,
+			request.signal
 		);
 		if (tool.isErr()) return tool;
 
