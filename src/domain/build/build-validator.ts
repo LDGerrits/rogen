@@ -372,8 +372,7 @@ export class BuildValidator {
 			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
-				this.placement.readings.entryAt(file.entry.source)
-					.scriptSuffix !== undefined;
+				this.placement.readingOf(file).scriptSuffix !== undefined;
 			return ignored.length > 0 &&
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
@@ -469,7 +468,7 @@ export class BuildValidator {
 
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
 		return scriptRunOf(
-			this.placement.readings.entryAt(file.entry.source).scriptSuffix,
+			this.placement.readingOf(file).scriptSuffix,
 			!this.placement.template.disablesLegacyScripts,
 			this.assembly.meta.runContextOf(file.entry.source)
 		);

@@ -93,18 +93,18 @@ export class Placer {
 		);
 
 		return ok(
-			new Placement(
-				this.config,
-				this.layout,
-				this.template,
+			new Placement({
+				config: this.config,
+				layout: this.layout,
+				template: this.template,
 				roots,
 				readings,
 				routedNodes,
-				templating.nodes,
+				nodes: templating.nodes,
 				leftOut,
-				applied.value.clashes,
-				templating.displaced
-			)
+				clashes: applied.value.clashes,
+				displaced: templating.displaced,
+			})
 		);
 	}
 

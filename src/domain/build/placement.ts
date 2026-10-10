@@ -6,7 +6,7 @@ import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { BuildSummary, LeftOut } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
-import { NameReadings } from "./name-readings.js";
+import { EntryRead, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
@@ -52,8 +52,43 @@ export interface DisplacedFile {
 	readonly source: string;
 }
 
+/** What a placement is made of, by name, since several parts share a type. */
+export interface PlacementParts {
+	readonly config: ResolvedConfig;
+	readonly layout: SyncLayout;
+	readonly template: BuildTemplate;
+	readonly roots: readonly ScannedRoot[];
+	readonly readings: NameReadings;
+	/** Every node a route sends a file to, in scan order, then the copies of init scripts. */
+	readonly routedNodes: readonly RoutedFile[];
+	/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last root dir wins across roots. */
+	readonly nodes: readonly RoutedFile[];
+	/** Every path the build leaves out of the tree. */
+	readonly leftOut: LeftOutPaths;
+	readonly clashes: readonly InstanceClash[];
+	/** The routed files the template displaced, in scan order. */
+	readonly displaced: readonly DisplacedFile[];
+}
+
+/** A meta file the scan found. */
+export interface ScannedMetaFile {
+	readonly rootDir: string;
+	/** Its path in the root dir. */
+	readonly relativePath: string;
+	readonly file: string;
+}
+
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
+	readonly config: ResolvedConfig;
+	readonly layout: SyncLayout;
+	readonly template: BuildTemplate;
+	readonly roots: readonly ScannedRoot[];
+	readonly readings: NameReadings;
+	readonly nodes: readonly RoutedFile[];
+	readonly leftOut: LeftOutPaths;
+	readonly clashes: readonly InstanceClash[];
+	readonly displaced: readonly DisplacedFile[];
 	/** As `files`, but every file a route governs, before variants decide which are placed. */
 	readonly routed: readonly RoutedFile[];
 	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
@@ -61,25 +96,19 @@ export class Placement {
 	private readonly nodesBySource: ReadonlyMap<string, readonly RoutedFile[]>;
 	private unclaimed: UnclaimedMeta[] | undefined;
 
-	constructor(
-		readonly config: ResolvedConfig,
-		readonly layout: SyncLayout,
-		readonly template: BuildTemplate,
-		readonly roots: readonly ScannedRoot[],
-		readonly readings: NameReadings,
-		/** Every node a route sends a file to, in scan order, then the copies of init scripts. */
-		routedNodes: readonly RoutedFile[],
-		/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last root dir wins across roots. */
-		readonly nodes: readonly RoutedFile[],
-		/** Every path the build leaves out of the tree. */
-		readonly leftOut: LeftOutPaths,
-		readonly clashes: readonly InstanceClash[],
-		/** The routed files the template displaced, in scan order. */
-		readonly displaced: readonly DisplacedFile[]
-	) {
-		this.nodesBySource = groupBy(nodes, ({ entry }) => entry.source);
+	constructor(parts: PlacementParts) {
+		this.config = parts.config;
+		this.layout = parts.layout;
+		this.template = parts.template;
+		this.roots = parts.roots;
+		this.readings = parts.readings;
+		this.nodes = parts.nodes;
+		this.leftOut = parts.leftOut;
+		this.clashes = parts.clashes;
+		this.displaced = parts.displaced;
+		this.nodesBySource = groupBy(parts.nodes, ({ entry }) => entry.source);
 		this.routed = Placement.onePerFile(
-			groupBy(routedNodes, ({ entry }) => entry.source)
+			groupBy(parts.routedNodes, ({ entry }) => entry.source)
 		);
 		this.files = Placement.onePerFile(this.nodesBySource);
 	}
@@ -91,6 +120,22 @@ export class Placement {
 			(nodes) =>
 				nodes.find(({ routeMatch }) => routeMatch !== "copy") ??
 				nodes[0]
+		);
+	}
+
+	/** What the name of `file` says it is. */
+	readingOf(file: Pick<RoutedFile, "entry">): EntryRead {
+		return this.readings.entryAt(file.entry.source);
+	}
+
+	/** Every meta file of every root dir, in root dir order. */
+	get metaFiles(): ScannedMetaFile[] {
+		return this.roots.flatMap(({ rootDir, metaFiles }) =>
+			metaFiles.map((relativePath) => ({
+				rootDir,
+				relativePath,
+				file: path.join(rootDir, relativePath),
+			}))
 		);
 	}
 

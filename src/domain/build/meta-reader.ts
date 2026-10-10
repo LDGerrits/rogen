@@ -136,32 +136,24 @@ export class MetaReader {
 			Diagnostic[]
 		>
 	> {
-		const candidates = placement.roots.flatMap((root) =>
-			root.metaFiles
-				.filter(
-					(metaFile) =>
-						path.posix.basename(metaFile) === RojoFile.INIT_META
-				)
-				.map((metaFile) => ({
-					root,
-					metaFile,
-					file: path.join(root.rootDir, metaFile),
-				}))
+		const candidates = placement.metaFiles.filter(
+			({ relativePath }) =>
+				path.posix.basename(relativePath) === RojoFile.INIT_META
 		);
 		const parsed = await Promise.all(
 			candidates.map(({ file }) => this.readMeta(file))
 		);
 		const problems = new DiagnosticCollector();
 		const folderMeta: FolderMeta[] = [];
-		candidates.forEach(({ root, metaFile, file }, index) => {
+		candidates.forEach(({ rootDir, relativePath, file }, index) => {
 			const meta = parsed[index];
 			if (meta.isErr()) problems.add(meta.error);
 			else
 				folderMeta.push(
 					new FolderMeta(
 						file,
-						root.rootDir,
-						dirnamePosix(toPosix(metaFile)),
+						rootDir,
+						dirnamePosix(toPosix(relativePath)),
 						meta.value.fields
 					)
 				);
@@ -181,16 +173,10 @@ export class MetaReader {
 		placement: Placement,
 		folderMeta: readonly FolderMeta[]
 	): ScriptMetaSource[] {
-		const metaFiles = new Set(
-			placement.roots.flatMap((root) =>
-				root.metaFiles.map((file) => path.join(root.rootDir, file))
-			)
-		);
+		const metaFiles = new Set(placement.metaFiles.map(({ file }) => file));
 		return placement.files.flatMap(
 			({ entry, init }): ScriptMetaSource[] => {
-				const { kind, scriptSuffix } = placement.readings.entryAt(
-					entry.source
-				);
+				const { kind, scriptSuffix } = placement.readingOf({ entry });
 				if (kind !== "script") return [];
 				for (const dir of init ? [init.becomes, init.sitsIn] : []) {
 					const meta = folderMeta.find(

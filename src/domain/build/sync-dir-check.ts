@@ -115,7 +115,7 @@ export class SyncDirCheck {
 		syncDir,
 		emittedTops,
 	}: SyncDirRun): Promise<Diagnostic[]> {
-		const { config, layout, roots } = placement;
+		const { config, layout } = placement;
 		const unclaimed = new Set(
 			placement.unclaimedMeta().map(({ path }) => path)
 		);
@@ -125,22 +125,19 @@ export class SyncDirCheck {
 		let converted = 0;
 		let conversion: MetaReplacement | undefined;
 
-		for (const root of roots) {
-			if (!emittedTops.get(root.rootDir)?.synced) continue;
-			for (const metaFile of root.metaFiles) {
-				const source = path.join(root.rootDir, metaFile);
-				if (unclaimed.has(toPosix(source))) continue;
-				const emitted = layout.emittedPath(source);
-				if (await this.fileSystemService.exists(emitted)) continue;
-				missing.push(toPosix(source));
-				const replacement = await this.replacementAt(
-					emitted.slice(0, -RojoFile.META_SUFFIX.length),
-					replacements
-				);
-				if (replacement) {
-					conversion ??= replacement;
-					if (replacement === conversion) converted++;
-				}
+		for (const { rootDir, file: source } of placement.metaFiles) {
+			if (!emittedTops.get(rootDir)?.synced) continue;
+			if (unclaimed.has(toPosix(source))) continue;
+			const emitted = layout.emittedPath(source);
+			if (await this.fileSystemService.exists(emitted)) continue;
+			missing.push(toPosix(source));
+			const replacement = await this.replacementAt(
+				emitted.slice(0, -RojoFile.META_SUFFIX.length),
+				replacements
+			);
+			if (replacement) {
+				conversion ??= replacement;
+				if (replacement === conversion) converted++;
 			}
 		}
 		if (missing.length === 0) return [];
