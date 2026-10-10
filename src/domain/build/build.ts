@@ -1,6 +1,6 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
-import { toPosix } from "../../base/path.js";
+import { pathKey, toPosix } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -406,11 +406,7 @@ export class BuildSet {
 	private readonly blockers: readonly Blocker[];
 
 	constructor(readonly configs: readonly ResolvedConfig[]) {
-		const byOutFile = groupBy(
-			configs,
-			({ outFile }) => path.resolve(outFile),
-			({ file }) => file
-		);
+		const byOutFile = groupBy(configs, ({ outFile }) => pathKey(outFile));
 		this.blockers = [
 			...configs.flatMap((config) =>
 				missingRoutes(config).map((diagnostic) => ({
@@ -419,15 +415,19 @@ export class BuildSet {
 				}))
 			),
 			...[...byOutFile]
-				.filter(([, files]) => files.length > 1)
-				.map(([outFile, files]) => ({
-					diagnostic: errorDiagnostic(
-						"output.sameOutFile",
-						{ resource: outFile },
-						`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
-					),
-					files,
-				})),
+				.filter(([, sharing]) => sharing.length > 1)
+				.map(([, sharing]) => {
+					const outFile = path.resolve(sharing[0].outFile);
+					const files = sharing.map(({ file }) => file);
+					return {
+						diagnostic: errorDiagnostic(
+							"output.sameOutFile",
+							{ resource: outFile },
+							`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
+						),
+						files,
+					};
+				}),
 		];
 	}
 

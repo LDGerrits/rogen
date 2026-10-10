@@ -93,6 +93,12 @@ export function containsPath(
 		: containsPosix(parent, child);
 }
 
+/** The absolute form of `filePath` that is one string for every way of writing it, for use as a key. */
+export function pathKey(filePath: string, caseInsensitive = isWindows): string {
+	const resolved = path.resolve(filePath);
+	return caseInsensitive ? resolved.toLowerCase() : resolved;
+}
+
 /** `dirs` without repeats and without any dir that lies inside another, in their first order. */
 export function outermostDirs(dirs: readonly string[]): string[] {
 	const unique = [...new Set(dirs)];

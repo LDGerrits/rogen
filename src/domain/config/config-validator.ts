@@ -1,4 +1,5 @@
 import path from "path";
+import { samePath } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -344,7 +345,7 @@ export class ConfigValidator {
 			: { resource: this.layered.leaf.file };
 		const template = this.layered
 			.templates()
-			.find(({ file }) => file === this.outFile);
+			.find(({ file }) => samePath(file, this.outFile));
 		if (template) {
 			this.problems.error(
 				"config.outFileIsTemplate",
