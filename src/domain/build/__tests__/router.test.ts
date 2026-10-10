@@ -533,7 +533,7 @@ describe("Router", () => {
 				}
 			);
 
-			it("should point init scripts of variants that are never on together at a variant folder with its own marker", async () => {
+			it("should point init scripts of variants that are never on together at a folder beside theirs for each", async () => {
 				await write(
 					"src/C/init.dev@server.luau",
 					"src/C/init.prod@client.luau",
@@ -554,12 +554,12 @@ describe("Router", () => {
 				).toEqual([
 					[
 						"route.markerClash",
-						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@server and prod/@client.',
+						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: C.dev@server/ and C.prod@client/.',
 					],
 				]);
 			});
 
-			it("should name every variant folder the files that move need, and keep the plain message when the clash isn't a variant's", async () => {
+			it("should name the folder beside it that each set of variants needs, and keep the plain message when the clash isn't a variant's", async () => {
 				await write(
 					"src/C/@server",
 					"src/C/init.mock@server.luau",
@@ -573,7 +573,12 @@ describe("Router", () => {
 					"src/F/init.mock.dev@client.luau",
 					"src/G/@server",
 					"src/G/init.dev@client.luau",
-					"src/G/init.prod@ReplicatedFirst.luau"
+					"src/G/init.prod@ReplicatedFirst.luau",
+					"src/H/@server",
+					"src/H/init.mock.dev@client.luau",
+					"src/H/init.dev.mock@ReplicatedFirst.luau",
+					"src/I.mock/@server",
+					"src/I.mock/init.dev@client.luau"
 				);
 
 				const result = await route({
@@ -591,7 +596,7 @@ describe("Router", () => {
 				).toEqual([
 					[
 						abs("src/C"),
-						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@client.",
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: C.dev@client/.",
 					],
 					[
 						abs("src/D"),
@@ -599,11 +604,19 @@ describe("Router", () => {
 					],
 					[
 						abs("src/F"),
-						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: mock/dev/@client.",
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: F.dev.mock@client/.",
 					],
 					[
 						abs("src/G"),
-						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@client and prod/@ReplicatedFirst.",
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: G.dev@client/ and G.prod@ReplicatedFirst/.",
+					],
+					[
+						abs("src/H"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/I.mock"),
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one.",
 					],
 					[
 						abs("src/E"),
