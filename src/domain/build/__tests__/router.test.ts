@@ -533,6 +533,61 @@ describe("Router", () => {
 				}
 			);
 
+			it("should point init scripts of variants that are never on together at a variant folder with its own marker", async () => {
+				await write(
+					"src/C/init.dev@server.luau",
+					"src/C/init.prod@client.luau",
+					"src/C/X.luau"
+				);
+
+				const result = await route({
+					variants: { dev: true, prod: false },
+					conflicts: [["dev", "prod"]],
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, message }) => [
+							code,
+							message,
+						])
+				).toEqual([
+					[
+						"route.markerClash",
+						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only "dev" sends elsewhere in a dev/ folder with its own marker: dev/@server.',
+					],
+				]);
+			});
+
+			it("should name the variant that routes elsewhere, and keep the plain message when the plain markers clash too", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/init.mock@server.luau",
+					"src/C/init.dev@client.luau",
+					"src/D/@server",
+					"src/D/@client",
+					"src/D/init.mock@server.luau"
+				);
+
+				const result = await route({
+					variants: { mock: true, dev: true },
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code === "route.markerClash")
+							.map(({ message }) =>
+								message.slice(
+									message.indexOf("different places")
+								)
+							)
+				).toEqual([
+					'different places, but a variant never changes where a file lands. Route the folder once, and put the files only "dev" sends elsewhere in a dev/ folder with its own marker: dev/@client.',
+					"different places, and nothing decides between them. Keep one.",
+				]);
+			});
+
 			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
 				await write("src/I/init@client@server.luau", "src/I/X.luau");
 

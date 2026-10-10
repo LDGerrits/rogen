@@ -72,6 +72,8 @@ export interface MarkerClash {
 	readonly dir: string;
 	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
+	/** The variant of an init script that routes the folder apart from markers and plain init scripts that agree, and the route it names. */
+	readonly varied?: { readonly variant: string; readonly key: string };
 }
 
 /** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
@@ -183,15 +185,15 @@ interface DirClaims {
 	readonly initRoutes: InitRoutes;
 }
 
-/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, and whether it's spelled `@key`. */
-type InitRoutes = ReadonlyMap<
-	string,
-	readonly {
-		readonly key: string;
-		readonly source: string;
-		readonly at: boolean;
-	}[]
->;
+/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, whether it's spelled `@key`, and the script's variant. */
+type InitRoutes = ReadonlyMap<string, readonly InitRoute[]>;
+
+interface InitRoute {
+	readonly key: string;
+	readonly source: string;
+	readonly at: boolean;
+	readonly variant?: string;
+}
 
 /** What routing found in the scanned files. */
 export interface Routing {
@@ -337,18 +339,43 @@ export class Router {
 						? [{ key, name: fileName }]
 						: [];
 				}),
-				...(initRoutes.get(dir) ?? []).map(({ key, source }) => ({
-					key,
-					name: path.posix.basename(source),
-				})),
+				...(initRoutes.get(dir) ?? []).map(
+					({ key, source, variant }) => ({
+						key,
+						name: path.posix.basename(source),
+						variant,
+					})
+				),
 			];
 			if (new Set(claims.map(({ key }) => key)).size > 1)
 				clashes.push({
 					dir: joinPosix(root.rootDir, dir),
 					names: claims.map(({ name }) => name).sort(compareStrings),
+					...Router.variedOf(claims),
 				});
 		}
 		return clashes;
+	}
+
+	/** The init script of a variant that routes a folder apart from its markers and plain init scripts, when they agree among themselves. */
+	private static variedOf(
+		claims: readonly { key: string; variant?: string }[]
+	): Pick<MarkerClash, "varied"> {
+		const plainKeys = new Set(
+			claims
+				.filter(({ variant }) => variant === undefined)
+				.map(({ key }) => key)
+		);
+		const varied =
+			plainKeys.size <= 1
+				? claims.find(
+						({ key, variant }) =>
+							variant !== undefined && !plainKeys.has(key)
+					)
+				: undefined;
+		return varied?.variant === undefined
+			? {}
+			: { varied: { variant: varied.variant, key: varied.key } };
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
@@ -366,10 +393,7 @@ export class Router {
 
 	/** The routes each folder's init scripts give it, whichever variants are on, so turning one on never moves the files beside it. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
-		const routes = new Map<
-			string,
-			{ key: string; source: string; at: boolean }[]
-		>();
+		const routes = new Map<string, InitRoute[]>();
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitEntry(read)) continue;
@@ -386,6 +410,9 @@ export class Router {
 					key: governing.key,
 					source: entry.source,
 					at: stem[governing.start] === "@",
+					variant: match.spans.find(({ key }) =>
+						this.keys.isVariant(key)
+					)?.key,
 				},
 			]);
 		}
