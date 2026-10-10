@@ -22,6 +22,13 @@ interface EmittedTops {
 	readonly synced: boolean;
 }
 
+/** What one check of a placement reads: its sync dir, and what its root dirs emit. */
+interface SyncDirRun {
+	readonly placement: Placement;
+	readonly syncDir: string;
+	readonly emittedTops: ReadonlyMap<string, EmittedTops>;
+}
+
 /** Checks what the sync dir holds against what the build expects there, which only changes when the compiler runs. */
 export class SyncDirCheck {
 	constructor(private readonly fileSystemService: FileSystemService) {}
@@ -30,11 +37,15 @@ export class SyncDirCheck {
 	async check(placement: Placement): Promise<Diagnostic[]> {
 		const { syncDir } = placement.layout;
 		if (syncDir === undefined) return [];
-		const emitted = await this.emittedTops(placement);
+		const run: SyncDirRun = {
+			placement,
+			syncDir,
+			emittedTops: await this.emittedTops(placement),
+		};
 		return [
-			...(await this.nothingEmitted(placement, syncDir, emitted)),
-			...(await this.metaNotSynced(placement, syncDir, emitted)),
-			...(await this.dataFileConverted(placement, syncDir, emitted)),
+			...(await this.nothingEmitted(run)),
+			...(await this.metaNotSynced(run)),
+			...(await this.dataFileConverted(run)),
 		];
 	}
 
@@ -52,11 +63,11 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
-	private async nothingEmitted(
-		{ config, layout }: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
+	private async nothingEmitted({
+		placement: { config, layout },
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
 		const shown = (target: string) =>
 			layout.relativeToProject(target) || ".";
 		const warnings: Diagnostic[] = [];
@@ -99,11 +110,11 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once for claimed meta with no copy under `syncDir`, skipping root dirs `nothingEmitted` reports. */
-	private async metaNotSynced(
-		placement: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
+	private async metaNotSynced({
+		placement,
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
 		const { config, layout, roots } = placement;
 		const unclaimed = new Set(
 			placement.unclaimedMeta().map(({ path }) => path)
@@ -148,11 +159,11 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once for data files whose emitted path is missing while a `.lua` with the same stem exists: a processor converted them, so Rojo finds nothing, or a module, where it expects the data. */
-	private async dataFileConverted(
-		placement: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
+	private async dataFileConverted({
+		placement,
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
 		const { config, layout, files } = placement;
 		const replacements = layout.dataReplacements;
 		if (replacements.length === 0) return [];
