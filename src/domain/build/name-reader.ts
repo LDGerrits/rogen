@@ -1,4 +1,5 @@
 import { DeclaredKeys } from "../config/config.js";
+import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import {
 	DOT_ROUTE_KEYS,
 	Misspelling,
@@ -6,7 +7,7 @@ import {
 } from "./misspelling-finder.js";
 
 /** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
-export interface FolderReading {
+export interface FolderNameReading {
 	readonly invisible: boolean;
 	/** Written `^Name`: it lands at its route's target, and the folders above it are dropped. */
 	readonly hoisted: boolean;
@@ -73,6 +74,16 @@ export class NameReader {
 			: { name, hoisted: false };
 	}
 
+	/** The name Rojo gives a file's stem once the keys are off it, then with its `^` off. */
+	static leafName(
+		kind: RojoFileKind,
+		stripped: string
+	): { readonly name: string; readonly hoisted: boolean } {
+		return NameReader.unhoisted(
+			kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
+		);
+	}
+
 	/** A folder's name with its parentheses, then its `^`, off; `offset` is where that name starts in the folder's. */
 	private static readFolderName(folderName: string): {
 		readonly name: string;
@@ -91,7 +102,7 @@ export class NameReader {
 	}
 
 	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
-	folder(folderName: string): FolderReading {
+	folder(folderName: string): FolderNameReading {
 		const { name, invisible, hoisted, offset } =
 			NameReader.readFolderName(folderName);
 		const bareRoute = this.keys.resolveRoute(name);
@@ -135,7 +146,7 @@ export class NameReader {
 			hoisted,
 		}: { readonly invisible: boolean; readonly hoisted: boolean },
 		offset: number
-	): FolderReading {
+	): FolderNameReading {
 		const suffixed = this.suffixes(name, false);
 		const leading =
 			suffixed.spans.length > 0
@@ -192,8 +203,8 @@ export class NameReader {
 			hoisted,
 		}: { readonly invisible: boolean; readonly hoisted: boolean },
 		name: string,
-		claims: Partial<FolderReading>
-	): FolderReading {
+		claims: Partial<FolderNameReading>
+	): FolderNameReading {
 		return {
 			invisible,
 			hoisted,
@@ -245,7 +256,7 @@ export class NameReader {
 	}
 
 	/** The declared key a marker file spells with its sign: `@server` for a route, `.mock` for a variant. */
-	marker(fileName: string): MarkerRead {
+	marker(fileName: string): MarkerReading {
 		const text = fileName.slice(1);
 		const nearMiss = this.keys.nearMiss(text);
 		if (fileName.startsWith("@")) {
@@ -346,7 +357,7 @@ export class NameReader {
 	}
 }
 
-export interface MarkerRead {
+export interface MarkerReading {
 	/** The declared route or variant key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;

@@ -124,13 +124,13 @@ export interface Locations {
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
-export interface LocateTargets {
+export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
 }
 
 /** What `diagnose` found. */
-export interface Diagnosed {
+export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
 	readonly stoppedBy: readonly Diagnostic[];
@@ -154,13 +154,13 @@ export interface BuildService {
 	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
-		targets?: LocateTargets
-	): Promise<Result<Diagnosed, DiagnosticsError>>;
+		targets?: LocateQuery
+	): Promise<Result<Diagnosis, DiagnosticsError>>;
 
 	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load, or that the set blocks, answers nothing, and its errors come back beside the answers of the rest. */
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateTargets
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>>;
 }
 

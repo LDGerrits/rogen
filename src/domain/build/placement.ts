@@ -6,11 +6,11 @@ import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { BuildSummary, LeftOut } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
-import { EntryRead, NameReadings } from "./name-readings.js";
+import { EntryReading, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
-import { InstanceClash } from "./variant-resolution.js";
+import { InstanceClash } from "./variant-resolver.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {
@@ -124,8 +124,8 @@ export class Placement {
 	}
 
 	/** What the name of `file` says it is. */
-	readingOf(file: RoutedFile): EntryRead {
-		return this.readings.entryAt(file.entry.source);
+	readingOf(file: RoutedFile): EntryReading {
+		return this.readings.entryReading(file.entry.source);
 	}
 
 	/** Every meta file of every root dir, in root dir order. */

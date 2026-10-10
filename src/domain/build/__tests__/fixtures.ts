@@ -21,7 +21,7 @@ import { SyncTool } from "../build.js";
 import {
 	BuildService,
 	ConfigLocations,
-	LocateTargets,
+	LocateQuery,
 } from "../build-service.js";
 import { BuiltConfig, ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
@@ -55,7 +55,7 @@ export const buildServiceOf = (
 export async function locateIn(
 	buildService: BuildService,
 	config: ResolvedConfig,
-	targets?: LocateTargets
+	targets?: LocateQuery
 ): Promise<Result<ConfigLocations, DiagnosticsError>> {
 	const located = await buildService.locate(selectionOf(config), targets);
 	return located.map(({ configs: [locations] }) => locations);

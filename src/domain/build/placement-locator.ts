@@ -22,7 +22,7 @@ export function placesInstance(
 }
 
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
-export class FileLocator {
+export class PlacementLocator {
 	private readonly scanned: Map<string, FileLocation>;
 
 	constructor(
@@ -75,7 +75,11 @@ export class FileLocator {
 			cut = parent.lastIndexOf(separator)
 		) {
 			parent = parent.slice(0, cut);
-			const folders = FileLocator.foldersUnder(placed, parent, separator);
+			const folders = PlacementLocator.foldersUnder(
+				placed,
+				parent,
+				separator
+			);
 			if (folders.length > 0) return folders;
 		}
 		return [];

@@ -43,8 +43,8 @@ describe("BuildValidator", () => {
 			const index = await indexOf(store, fs, config.rootDirs);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
-			const assembled = new TreeAssembler()
-				.assemble(placement, meta)
+			const assembled = new TreeAssembler(placement, meta)
+				.assemble()
 				.unwrap();
 
 			const warnings = new BuildValidator(assembled).validate();
@@ -62,8 +62,8 @@ describe("BuildValidator", () => {
 			const index = await indexOf(store, fs, config.rootDirs);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
-			const assembled = new TreeAssembler()
-				.assemble(placement, meta)
+			const assembled = new TreeAssembler(placement, meta)
+				.assemble()
 				.unwrap();
 
 			expect(new BuildValidator(assembled).validate()).toEqual([]);

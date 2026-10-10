@@ -23,8 +23,8 @@ import {
 } from "./build.js";
 import {
 	BuildService,
-	Diagnosed,
-	LocateTargets,
+	Diagnosis,
+	LocateQuery,
 	Locations,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
@@ -104,7 +104,7 @@ export class CoreBuildService implements BuildService {
 
 	async locate(
 		selection: ConfigSelection,
-		targets?: LocateTargets
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>> {
 		// What stops a config's build stops its answer too: it would describe a project that can't be built.
 		const { set } = BuildSet.partition(selection);
@@ -131,8 +131,8 @@ export class CoreBuildService implements BuildService {
 
 	async diagnose(
 		selection: ConfigSelection,
-		targets?: LocateTargets
-	): Promise<Result<Diagnosed, DiagnosticsError>> {
+		targets?: LocateQuery
+	): Promise<Result<Diagnosis, DiagnosticsError>> {
 		if (!targets || targets.args.length === 0) {
 			const { diagnostics } = await this.check(selection);
 			return ok({

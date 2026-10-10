@@ -10,7 +10,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileReader, FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncTool } from "./build.js";
@@ -19,11 +19,11 @@ import {
 	FileLocation,
 	InstanceFix,
 	InstanceLocation,
-	LocateTargets,
+	LocateQuery,
 	Locations,
 } from "./build-service.js";
 import { ConfigBuilder } from "./config-builder.js";
-import { FileLocator, placesInstance } from "./file-locator.js";
+import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
 
 /** What `where` asked about: the paths, resolved, and the instances. */
@@ -45,7 +45,7 @@ export class Locator {
 	/** Fails when a config can't be placed; its caller checked that the configs build together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
-		query?: LocateTargets
+		query?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>> {
 		const targets = await this.classify(query ?? { args: [], cwd: "" });
 		const located: ConfigLocations[] = [];
@@ -165,7 +165,7 @@ export class Locator {
 	/** The files placed at `reference`; when none is, the folders a new file goes in and the renames that would place one. */
 	private async locateInstance(
 		config: ResolvedConfig,
-		locator: FileLocator,
+		locator: PlacementLocator,
 		diagnostics: readonly Diagnostic[],
 		reference: InstanceReference
 	): Promise<InstanceLocation> {
@@ -226,7 +226,7 @@ export class Locator {
 		const routed = (
 			await Promise.all(
 				keys
-					.filter((key) => key !== "*")
+					.filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
 					.map((key) =>
 						this.foldersUnderRoute(config, key, reference)
 					)
@@ -235,7 +235,11 @@ export class Locator {
 		const found =
 			routed.length > 0
 				? routed
-				: await this.foldersUnderRoute(config, "*", reference);
+				: await this.foldersUnderRoute(
+						config,
+						DeclaredKeys.FALLBACK_ROUTE,
+						reference
+					);
 		return [...new Set(found)].sort(compareStrings);
 	}
 
@@ -263,7 +267,7 @@ export class Locator {
 			const folder = path.posix.join(
 				dir,
 				...below.slice(matched),
-				...(key === "*" ? [] : [key])
+				...(key === DeclaredKeys.FALLBACK_ROUTE ? [] : [key])
 			);
 			const placed = await this.placeNew(
 				config,
@@ -310,7 +314,7 @@ export class Locator {
 		]);
 		const placement = this.builderOf(index).place(config);
 		return placement.isOk()
-			? new FileLocator(
+			? new PlacementLocator(
 					placement.value,
 					index,
 					await this.existence(index, [file])
@@ -326,7 +330,7 @@ export class Locator {
 	): Promise<
 		Result<
 			{
-				readonly locator: FileLocator;
+				readonly locator: PlacementLocator;
 				readonly diagnostics: readonly Diagnostic[];
 			},
 			DiagnosticsError
@@ -334,7 +338,7 @@ export class Locator {
 	> {
 		const examined = await this.builderOf(index).examine(config);
 		return examined.map((result) => ({
-			locator: new FileLocator(result.placement, index, exists),
+			locator: new PlacementLocator(result.placement, index, exists),
 			diagnostics:
 				result.kind === "assembled" ? result.warnings : result.errors,
 		}));
@@ -376,7 +380,7 @@ export class Locator {
 	}
 
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
-	private async classify({ args, cwd }: LocateTargets): Promise<Targets> {
+	private async classify({ args, cwd }: LocateQuery): Promise<Targets> {
 		const paths: string[] = [];
 		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
