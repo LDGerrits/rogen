@@ -112,7 +112,6 @@ export class CoreInitService implements InitService {
 					workspace
 				),
 				names.length > 0 ? name.value : undefined,
-				name.value,
 				base
 			)
 		);

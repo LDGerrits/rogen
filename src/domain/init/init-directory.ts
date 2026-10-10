@@ -7,6 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_STEM,
 	configFileName,
 	isConfigFileName,
 	rootDirOverlap,
@@ -40,11 +41,14 @@ export class InitDirectory {
 		readonly layout: DirectoryLayout,
 		/** The config name given on the command line, if one was. */
 		readonly givenName: string | undefined,
-		/** The name written when none is asked for: the given one, else `default`. */
-		readonly name: string,
 		/** What a place inherits from `default.rogen.json`; `undefined` when there is none. */
 		readonly base: Result<BaseConfig, Diagnostic[]> | undefined
 	) {}
+
+	/** The name written when none is asked for: the given one, else `default`. */
+	get name(): string {
+		return this.givenName ?? DEFAULT_CONFIG_STEM;
+	}
 
 	/** The name of the game the project files carry. */
 	get projectName(): string {

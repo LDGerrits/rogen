@@ -51,7 +51,6 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 		workspaceOf(spec.workspace),
 		{ codeFolders, places },
 		spec.givenName,
-		spec.givenName ?? "default",
 		spec.base
 	);
 }
