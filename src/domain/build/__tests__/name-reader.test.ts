@@ -558,6 +558,45 @@ describe("NameReader folder", () => {
 	});
 });
 
+describe("NameReader folder typo", () => {
+	it("should offer the one rename that fixes a folder one edit from a route key", () => {
+		const keys = new DeclaredKeys(new Set(["server"]), []);
+
+		expect(misspelt(readerOf(keys).folder("Sever"), "folderTypo")).toEqual({
+			kind: "folderTypo",
+			text: "Sever",
+			key: "server",
+			respelling: { start: 0, written: "Sever", spelling: "Server" },
+		});
+	});
+
+	it("should offer no rename when two route keys are as close", () => {
+		const keys = new DeclaredKeys(new Set(["bests", "tests"]), []);
+
+		const typo = misspelt(readerOf(keys).folder("rests"), "folderTypo");
+
+		expect(typo?.key).toBe("bests");
+		expect(typo?.respelling).toBeUndefined();
+	});
+
+	it("should offer no rename when two variants are as close, and write the variant without a dot", () => {
+		const keys = new DeclaredKeys(new Set(), ["mocks", "locks"]);
+
+		const typo = misspelt(readerOf(keys).folder("rocks"), "variantTypo");
+
+		expect(typo).toMatchObject({ variant: "mocks", bare: true });
+		expect(typo?.respelling).toBeUndefined();
+	});
+
+	it("should not offer a key shorter than four letters", () => {
+		const keys = new DeclaredKeys(new Set(["abc"]), []);
+
+		expect(
+			misspelt(readerOf(keys).folder("abd"), "folderTypo")
+		).toBeUndefined();
+	});
+});
+
 describe("NameReader folder name offsets", () => {
 	it.each([
 		["Foo.mok", 3],

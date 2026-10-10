@@ -377,6 +377,43 @@ describe("serve command", () => {
 		});
 	});
 
+	it("should say which server it picked when both are pinned", async () => {
+		await memFs.writeFile(
+			"/repo/rokit.toml",
+			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.0"\n'
+		);
+		processes.installed.set("argon", "/bin/argon");
+		processes.outputs.set("/bin/argon", {
+			code: 0,
+			stdout: "argon 2.0.0",
+			stderr: "",
+		});
+
+		void serve();
+		await settle();
+
+		expect(logService.lines).toContainEqual(
+			"info: Both rojo and argon are pinned; serving with rojo (--tool argon to switch)."
+		);
+	});
+
+	it("should print a config that broke while serving as a notice line", async () => {
+		void serve([], { json: true });
+		await settle();
+
+		await memFs.writeFile("/repo/default.rogen.json", '{"nope": 1}');
+		await settle();
+
+		expect(printed()).toContainEqual({
+			notice: expect.objectContaining({
+				kind: "broken",
+				file: "/repo/default.rogen.json",
+				keptLastValid: true,
+				diagnostics: [expect.objectContaining({ severity: "error" })],
+			}),
+		});
+	});
+
 	it("should leave a failure before it served to be reported", async () => {
 		processes.installed.clear();
 

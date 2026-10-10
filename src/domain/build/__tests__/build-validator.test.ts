@@ -1075,6 +1075,22 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
+			it("should list ten of the instances and count the rest", async () => {
+				await write(
+					...Array.from({ length: 11 }, (_, index) => [
+						`src/Kit${index}/dev/Service.luau`,
+						`src/Kit${index}/prod/Service.luau`,
+					]).flat()
+				);
+
+				const [warning] = await missing({ dev: false, prod: false });
+
+				expect(warning.message).toContain("11 instances are missing");
+				expect(warning.message).toContain(
+					"  1 more like it isn't listed."
+				);
+			});
+
 			it("should not warn when one of them is on", async () => {
 				await write(
 					"src/Analytics/dev/Service.luau",
