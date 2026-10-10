@@ -253,9 +253,10 @@ export class Locator {
 		>
 	> {
 		const examined = await this.builderOf(index).examine(config);
-		return examined.map(({ placement, diagnostics }) => ({
-			locator: new FileLocator(placement, index, exists),
-			diagnostics,
+		return examined.map((result) => ({
+			locator: new FileLocator(result.placement, index, exists),
+			diagnostics:
+				result.kind === "assembled" ? result.warnings : result.errors,
 		}));
 	}
 

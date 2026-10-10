@@ -198,6 +198,15 @@ export class FailedBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings, errors);
 	}
+
+	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier build of this version found. */
+	static before(
+		config: ResolvedConfig,
+		errors: readonly Diagnostic[],
+		syncWarnings?: readonly Diagnostic[]
+	): FailedBuild {
+		return new FailedBuild(config, errors, { warnings: [], syncWarnings });
+	}
 }
 
 /** What a build found before it was written or failed. */
@@ -541,6 +550,33 @@ export class BuildSet {
 			: ok(set);
 	}
 
+	/** The valid configs of `selection` as a set, and the others as builds that didn't load; fails when a set's problem or a config's own error stops the run. */
+	static partition(
+		selection: ConfigSelection
+	): Result<
+		{ readonly set: BuildSet; readonly unloaded: UnloadedBuild[] },
+		DiagnosticsError
+	> {
+		const unloaded = selection.entries.flatMap((entry) =>
+			entry.status === "broken"
+				? [new UnloadedBuild(entry.file, entry.errors)]
+				: []
+		);
+		const set = new BuildSet(
+			selection.entries.flatMap((entry) =>
+				entry.status === "valid" ? [entry.config] : []
+			)
+		);
+		return set.diagnostics.length > 0
+			? err(
+					new DiagnosticsError([
+						...unloaded.flatMap(({ errors }) => errors),
+						...set.diagnostics,
+					])
+				)
+			: ok({ set, unloaded });
+	}
+
 	/** Each problem once, in the order it is reported. */
 	get diagnostics(): readonly Diagnostic[] {
 		return this.blockers.map(({ diagnostic }) => diagnostic);
@@ -560,5 +596,10 @@ export class BuildSet {
 
 	configOf(file: string): ResolvedConfig | undefined {
 		return this.configs.find((config) => config.file === file);
+	}
+
+	/** Every root directory of every config, which one listing covers. */
+	get rootDirs(): string[] {
+		return this.configs.flatMap(({ rootDirs }) => rootDirs);
 	}
 }
