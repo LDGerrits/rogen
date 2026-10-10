@@ -279,6 +279,36 @@ describe("LocationReport", () => {
 			).toBe("src/A.spec.luau -> excluded · matches **/*.spec.luau");
 		});
 
+		it.each([
+			["*.rogen.json", "*.rogen.json"],
+			["C:/repo/**/*.spec.luau", "**/*.spec.luau"],
+		])(
+			"should keep a glob of Rogen's own as it is and make a drive glob relative to the working directory: %s",
+			(pattern, shown) => {
+				const report = new LocationReport("C:\\repo", {
+					everyFile: false,
+					errors: [],
+					configs: [
+						{
+							config: mockConfig({}),
+							files: [
+								{
+									status: "excluded",
+									source: "C:/repo/src/A.luau",
+									exists: true,
+									pattern,
+								},
+							],
+							instances: [],
+							diagnostics: [],
+						},
+					],
+				});
+
+				expect(report.lines()[0]).toContain(`matches ${shown}`);
+			}
+		);
+
 		it.each<[FileLocation, string]>([
 			[
 				{

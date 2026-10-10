@@ -46,6 +46,14 @@ type Answer =
 const sourceOf = (answer: Answer): string =>
 	"location" in answer ? answer.location.source : answer.instance;
 
+/** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
+function patternRelativeTo(cwd: string, pattern: string): string {
+	if (!/^([A-Za-z]:)?\//.test(pattern)) return pattern;
+	const rooted = (posixPath: string) =>
+		posixPath.startsWith("/") ? posixPath : `/${posixPath}`;
+	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
+}
+
 /** One line: the path, where it lands, and why. */
 function describeLocation(
 	location: FileLocation,
@@ -103,8 +111,7 @@ function outcomeOf(
 		case "mounted":
 			return `mounted · the template mounts it at ${instanceKey(location.node)}`;
 		case "excluded":
-			// A glob keeps its slashes, which path.relative would turn into backslashes on Windows.
-			return `excluded · matches ${path.posix.relative(toPosix(cwd), location.pattern) || "."}`;
+			return `excluded · matches ${patternRelativeTo(cwd, location.pattern)}`;
 		case "skipped":
 			return "skipped · the link loops or points at nothing";
 		case "outside":
