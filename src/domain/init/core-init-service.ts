@@ -1,7 +1,5 @@
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -11,8 +9,8 @@ import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { AdditionOption, InitQuestions } from "./init-questions.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
+import { InitQuestions } from "./init-questions.js";
 import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
 import { AgentSetup } from "./agent-setup.js";
@@ -23,30 +21,9 @@ import {
 	InitWritten,
 } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
+import { Asking, InitAdditions, asking } from "./init-additions.js";
 import { PlaceFolders } from "./place-folder.js";
-import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
-import { ExtendingConfigSetup } from "./extending-config-setup.js";
-
-/** A setup's questions, whose answers come back bound to the setup that plans them; `undefined` when the user cancelled. */
-type Asking = () => Promise<
-	Result<((builder: InitPlanBuilder) => void) | undefined, Diagnostic[]>
->;
-
-/** An addition picked from What to add: the pick is the yes, so there is nothing left to ask. */
-const chosen =
-	(plan: (builder: InitPlanBuilder) => void): Asking =>
-	async () =>
-		ok(plan);
-
-function asking<C>(setup: Setup<C>): Asking {
-	return async () =>
-		(await setup.ask()).map((choices) =>
-			choices === undefined
-				? undefined
-				: (builder: InitPlanBuilder) => setup.plan(choices, builder)
-		);
-}
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -173,65 +150,18 @@ export class CoreInitService implements InitService {
 				asking(projectSetup),
 				asking(new AgentSetup(agentFile.value, hooks.value, questions))
 			);
-		const { base } = directory;
-		const options: AdditionOption<Asking>[] = [
-			...(base
-				? [
-						{
-							id: "place",
-							label: "A place",
-							hint: "another Roblox place that shares default's code",
-							addition: asking(
-								new PlaceSetup(
-									directory,
-									base,
-									questions,
-									placeFolders
-								)
-							),
-						},
-						{
-							id: "extending",
-							label: "A config that extends default",
-							hint: "the same game with other variants or excludes",
-							addition: asking(
-								new ExtendingConfigSetup(directory, questions)
-							),
-						},
-					]
-				: []),
-			{
-				id: "separate",
-				label: "A separate config",
-				hint: "answers every question again",
-				addition: asking(projectSetup),
-			},
-			...(agentFile.value.hasBlock
-				? []
-				: [
-						{
-							id: "agent",
-							label: "Agent instructions",
-							hint: `Rogen's rules for coding agents, in ${agentFile.value.fileName}`,
-							addition: chosen((builder) =>
-								builder.addAgentFile(agentFile.value)
-							),
-						},
-					]),
-			...(hooks.value.agents.length > 0
-				? [
-						{
-							id: "hook",
-							label: "Agent hook",
-							hint: `reports Rogen warnings to ${joinedWithAnd(hooks.value.agents)}`,
-							addition: chosen((builder) =>
-								builder.addAgentHook(hooks.value)
-							),
-						},
-					]
-				: []),
-		];
-		const addition = await questions.whatToAdd(base !== undefined, options);
+		const options = new InitAdditions(
+			directory,
+			questions,
+			placeFolders,
+			projectSetup,
+			agentFile.value,
+			hooks.value
+		).options();
+		const addition = await questions.whatToAdd(
+			directory.base !== undefined,
+			options
+		);
 		if (addition === undefined) return ok(undefined);
 		return this.planWith(directory, questions, addition);
 	}
