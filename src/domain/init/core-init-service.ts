@@ -1,5 +1,4 @@
 import { ErrorUtils } from "../../base/errors.js";
-import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -15,6 +14,7 @@ import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
 import { AgentReader } from "./agent-reader.js";
+import { InitWriter } from "./init-writer.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
 	InitOptions,
@@ -52,6 +52,7 @@ export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly agentReader: AgentReader;
+	private readonly writer: InitWriter;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -61,6 +62,7 @@ export class CoreInitService implements InitService {
 		private readonly configService: ConfigService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
+		this.writer = new InitWriter(fileSystemService);
 	}
 
 	async plan(
@@ -254,45 +256,10 @@ export class CoreInitService implements InitService {
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
 
-	async write(
+	write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void
 	): Promise<Result<void, Error>> {
-		for (const file of plan.files) {
-			const { fileName, content } = file;
-			const written = await tryWithAsync(() =>
-				this.fileSystemService.writeFile(
-					path.join(plan.directory, fileName),
-					content
-				)
-			);
-			if (written.isErr()) {
-				return err(
-					ErrorUtils.wrap(
-						`Failed to write ${fileName}`,
-						written.error
-					)
-				);
-			}
-			onWritten({ kind: "file", file });
-		}
-		for (const directory of plan.directories) {
-			const created = await tryWithAsync(async () => {
-				const target = path.join(plan.directory, directory);
-				if (await this.fileSystemService.exists(target)) return false;
-				await this.fileSystemService.createDirectory(target);
-				return true;
-			});
-			if (created.isErr()) {
-				return err(
-					ErrorUtils.wrap(
-						`Failed to create ${directory}`,
-						created.error
-					)
-				);
-			}
-			if (created.value) onWritten({ kind: "directory", directory });
-		}
-		return ok(undefined);
+		return this.writer.write(plan, onWritten);
 	}
 }
