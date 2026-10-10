@@ -6,6 +6,19 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
+/** Paths found however they are written: a watcher reports POSIX paths on every system. */
+export class PathSet {
+	private readonly posix: ReadonlySet<string>;
+
+	constructor(files: Iterable<string>) {
+		this.posix = new Set([...files].map(toPosix));
+	}
+
+	has(file: string): boolean {
+		return this.posix.has(toPosix(file));
+	}
+}
+
 /** `filePath` as the platform writes it, the form a path is printed in. */
 export function toNative(
 	filePath: string,

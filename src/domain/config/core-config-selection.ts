@@ -1,5 +1,5 @@
 import { Sequencer } from "../../base/async.js";
-import { dirnamePosix, toPosix } from "../../base/path.js";
+import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
 import { UsageError } from "../../base/errors.js";
 import { compareStrings } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -35,7 +35,7 @@ export interface PickedFolder {
 export class CoreConfigSelection implements ConfigSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
-	private posixFiles: ReadonlySet<string>;
+	private filePaths: PathSet;
 
 	private constructor(
 		private managed: readonly ManagedConfig[],
@@ -45,7 +45,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		private readonly folder: PickedFolder | undefined
 	) {
 		this._files = this.readFiles();
-		this.posixFiles = new Set([...this._files].map(toPosix));
+		this.filePaths = new PathSet(this._files);
 	}
 
 	/** Loads `files` with `overrides`; fails when a variant or mode override is declared by none of them. */
@@ -89,7 +89,7 @@ export class CoreConfigSelection implements ConfigSelection {
 	}
 
 	reads(file: string): boolean {
-		return this.posixFiles.has(toPosix(file));
+		return this.filePaths.has(file);
 	}
 
 	concerns(file: string): boolean {
@@ -115,7 +115,7 @@ export class CoreConfigSelection implements ConfigSelection {
 
 	reload(files: readonly string[]): Promise<ConfigReload> {
 		return this.reloads.queue(async () => {
-			const changedFiles = new Set(files.map(toPosix));
+			const changedFiles = new PathSet(files);
 			const membership = await this.followFolder();
 			const reloaded = await Promise.all(
 				this.managed
@@ -132,7 +132,7 @@ export class CoreConfigSelection implements ConfigSelection {
 					})
 			);
 			this._files = this.readFiles();
-			this.posixFiles = new Set([...this._files].map(toPosix));
+			this.filePaths = new PathSet(this._files);
 			const added = membership.added.map((config) => ({
 				file: config.file,
 				changed: buildableConfig(config.entry) !== undefined,

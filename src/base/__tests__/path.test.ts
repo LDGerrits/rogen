@@ -1,5 +1,6 @@
 import path from "path";
 import {
+	PathSet,
 	ancestors,
 	commonAncestor,
 	contains,
@@ -15,6 +16,19 @@ import {
 	toNative,
 	toPosix,
 } from "../path.js";
+
+describe("PathSet", () => {
+	it("should find a path written with either kind of separator", () => {
+		const files = new PathSet(["C:\\repo\\default.rogen.json"]);
+
+		expect(files.has("C:/repo/default.rogen.json")).toBe(true);
+		expect(files.has("C:\\repo\\default.rogen.json")).toBe(true);
+	});
+
+	it("should not find a path it was not given", () => {
+		expect(new PathSet(["/repo/a.json"]).has("/repo/b.json")).toBe(false);
+	});
+});
 
 describe("Path", () => {
 	describe("samePath", () => {
