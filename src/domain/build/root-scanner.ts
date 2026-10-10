@@ -34,22 +34,53 @@ export interface UnclaimedMeta {
 }
 
 /** What a scan found under one root dir. */
-export class ScannedRoot {
+export interface ScannedRootParts {
+	readonly rootDir: string;
+	/** False for a root dir the index doesn't hold, which contributes nothing. */
+	readonly exists: boolean;
+	readonly entries: readonly ScannedFile[];
+	readonly markers: readonly string[];
+	/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
+	readonly metaFiles: readonly string[];
+	/** The paths the scan left out, by absolute POSIX path. */
+	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+}
+
+/** What a scan found under one root dir, and the questions it answers about it. */
+export class ScannedRoot implements ScannedRootParts {
+	readonly rootDir: string;
+	readonly exists: boolean;
+	readonly entries: readonly ScannedFile[];
+	readonly markers: readonly string[];
+	readonly metaFiles: readonly string[];
+	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+
 	constructor(
-		readonly rootDir: string,
-		/** False for a root dir the index doesn't hold, which contributes nothing. */
-		readonly exists: boolean,
-		readonly entries: readonly ScannedFile[],
-		readonly markers: readonly string[],
-		/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
-		readonly metaFiles: readonly string[],
-		/** The paths the scan left out, by absolute POSIX path. */
-		readonly leftOut: ReadonlyMap<string, ScanLeftOut>,
+		parts: ScannedRootParts,
 		private readonly index: IndexReader
-	) {}
+	) {
+		({
+			rootDir: this.rootDir,
+			exists: this.exists,
+			entries: this.entries,
+			markers: this.markers,
+			metaFiles: this.metaFiles,
+			leftOut: this.leftOut,
+		} = parts);
+	}
 
 	static missing(rootDir: string, index: IndexReader): ScannedRoot {
-		return new ScannedRoot(rootDir, false, [], [], [], new Map(), index);
+		return new ScannedRoot(
+			{
+				rootDir,
+				exists: false,
+				entries: [],
+				markers: [],
+				metaFiles: [],
+				leftOut: new Map(),
+			},
+			index
+		);
 	}
 
 	get excludedCount(): number {
@@ -187,14 +218,16 @@ export class RootScanner {
 			return ScannedRoot.missing(rootDir, this.index);
 		}
 		return new ScannedRoot(
-			rootDir,
-			true,
-			walk.entries.sort((a, b) =>
-				compareStrings(a.relativePath, b.relativePath)
-			),
-			walk.markers.sort(),
-			walk.metaFiles.sort(),
-			walk.leftOut,
+			{
+				rootDir,
+				exists: true,
+				entries: walk.entries.sort((a, b) =>
+					compareStrings(a.relativePath, b.relativePath)
+				),
+				markers: walk.markers.sort(),
+				metaFiles: walk.metaFiles.sort(),
+				leftOut: walk.leftOut,
+			},
 			this.index
 		);
 	}
