@@ -1,4 +1,5 @@
 import { compareStrings } from "../../base/collections.js";
+import { unlistedNote } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -82,9 +83,7 @@ export class MissingInstances {
 					`  ${instance} (${variants.join(", ")})`
 			);
 		const unlisted = missing.length - lines.length;
-		return unlisted > 0
-			? [...lines, `  ${unlisted} more like it aren't listed.`]
-			: lines;
+		return unlisted > 0 ? [...lines, `  ${unlistedNote(unlisted)}`] : lines;
 	}
 
 	/** The outermost such instances, sorted. */

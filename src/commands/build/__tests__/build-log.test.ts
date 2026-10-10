@@ -580,30 +580,38 @@ describe("BuildLog.diagnostics", () => {
 		expect(printed(warnings(10))[9]).not.toContain("more like it");
 	});
 
-	it("should print ten of the related files a grouped warning lists, then count the rest", () => {
-		const related = Array.from({ length: 12 }, (_, n) => ({
+	const groupedOf = (count: number) => {
+		const related = Array.from({ length: count }, (_, n) => ({
 			resource: `/repo/src/F${n}`,
 			message: "hint",
 		}));
-		const grouped = warningDiagnostic(
+		return warningDiagnostic(
 			"route.strayAt",
 			{ resource: "/repo/default.rogen.json" },
 			[
-				"12 names:",
+				`${count} names:`,
 				...related.map(({ resource }) => `  ${resource} (hint)`),
 				"Fix them.",
 			].join("\n"),
 			[],
 			related
 		);
+	};
 
-		const [text] = printed([grouped]);
+	it("should print ten of the related files a grouped warning lists, then count the rest", () => {
+		const [text] = printed([groupedOf(12)]);
 
 		const lines = text.split("\n");
 		expect(lines).toHaveLength(13);
 		expect(lines[10]).toContain("/repo/src/F9 (hint)");
 		expect(lines[11]).toBe("  2 more like it aren't listed.");
 		expect(lines[12]).toBe("Fix them.");
+	});
+
+	it("should say 'isn't' when one related file is left out", () => {
+		const [text] = printed([groupedOf(11)]);
+
+		expect(text.split("\n")[11]).toBe("  1 more like it isn't listed.");
 	});
 
 	it("should cap each code on its own and never an error", () => {

@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
 import {
 	BuildRun,
 	BuildSummary,
@@ -26,7 +26,7 @@ function withListCapped(diagnostic: Diagnostic): Diagnostic {
 		message: [
 			headline,
 			...lines.slice(0, LISTED_PER_CODE),
-			`  ${unlisted} more like it aren't listed.`,
+			`  ${unlistedNote(unlisted)}`,
 			...lines.slice(count),
 		].join("\n"),
 	};
@@ -53,7 +53,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 			? [
 					{
 						...diagnostic,
-						message: `${diagnostic.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
+						message: `${diagnostic.message} ${unlistedNote(unlisted)}`,
 					},
 				]
 			: [withListCapped(diagnostic)];

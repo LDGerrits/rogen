@@ -15,6 +15,11 @@ export function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+/** Says how many entries of a capped list were left out: `1 more like it isn't listed.` */
+export function unlistedNote(count: number): string {
+	return `${count} more like it ${count === 1 ? "isn't" : "aren't"} listed.`;
+}
+
 /** Edits between `a` and `b`, counting two swapped neighbours as one. */
 export function editDistance(a: string, b: string): number {
 	let twoBack: number[] = [];
