@@ -27,7 +27,7 @@ export interface Watcher {
 export const Watcher = createServiceIdentifier<Watcher>("watcher");
 
 /** Whether a watch leaves `target` out: it lies below a subfolder of a `shallow` directory and no `paths` entry reaches it. */
-export function isBeyondShallow(
+function isBeyondShallow(
 	target: string,
 	paths: readonly string[],
 	shallow: readonly string[]

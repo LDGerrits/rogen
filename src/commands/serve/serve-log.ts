@@ -11,15 +11,11 @@ import {
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo } from "../../domain/serve/serve.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
-import {
-	diagnosticToJson,
-	diagnosticsJson,
-	messageRelativeTo,
-} from "../../platform/diagnostics/diagnostic.js";
-import { failureToJson } from "../../platform/diagnostics/diagnostics-error.js";
+import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { buildEntry } from "../build/build-report.js";
 import { WatchLog } from "../watch/watch-log.js";
+import { diagnosticToJson, diagnosticsJson, failureToJson } from "../../platform/diagnostics/diagnostic-json.js";
 
 /** Who serves `info`'s project, as a person reads it: `Rojo 7.7.1`. */
 const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;

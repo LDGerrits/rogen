@@ -3,11 +3,12 @@ import fs from "fs/promises";
 import path from "path";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
-import { Emitter, Event } from "../../base/event.js";
+import { Emitter, Event, NullEvent } from "../../base/event.js";
 import { isWindows } from "../../base/platform.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ChildProcess,
+	ExecOptions,
 	ProcessExit,
 	ProcessOutput,
 	ProcessService,
@@ -71,8 +72,7 @@ export function launch(
 /** A process that never started: it has already failed with `error`. */
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
-	readonly onDidOutput: Event<string> = this._register(new Emitter<string>())
-		.event;
+	readonly onDidOutput: Event<string> = NullEvent;
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 	private readonly exit: ProcessExit;
 
@@ -196,11 +196,7 @@ export class NativeProcessService implements ProcessService {
 	exec(
 		file: string,
 		args: readonly string[],
-		options: {
-			readonly cwd: string;
-			readonly timeout: number;
-			readonly signal?: AbortSignal;
-		}
+		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>> {
 		const launched = launch(file, args, this.env);
 		if (launched.isErr()) return Promise.resolve(launched);

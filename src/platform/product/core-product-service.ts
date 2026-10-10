@@ -1,4 +1,5 @@
 import path from "path";
+import { ancestors } from "../../base/path.js";
 import { FileReader } from "../fs/file-system-service.js";
 import { ProductService } from "./product-service.js";
 
@@ -13,7 +14,7 @@ export class CoreProductService implements ProductService {
 
 	/** `installDir` is where the program runs from; its nearest package.json names the version, unless the build baked `bakedVersion` in, as a compiled binary has no package.json beside it. */
 	constructor(
-		private readonly fileSystemService: FileReader,
+		private readonly fileReader: FileReader,
 		private readonly installDir: string,
 		private readonly bakedVersion?: string
 	) {}
@@ -21,23 +22,18 @@ export class CoreProductService implements ProductService {
 	async getVersion(): Promise<string> {
 		if (this.bakedVersion) return this.bakedVersion;
 		try {
-			let currentDir = this.installDir;
-
-			for (;;) {
-				const packageJsonPath = path.join(currentDir, "package.json");
-
-				if (await this.fileSystemService.exists(packageJsonPath)) {
+			for (const dir of [
+				this.installDir,
+				...ancestors(this.installDir),
+			]) {
+				const packageJsonPath = path.join(dir, "package.json");
+				if (await this.fileReader.exists(packageJsonPath)) {
 					const pkg = JSON.parse(
-						await this.fileSystemService.readFile(packageJsonPath)
+						await this.fileReader.readFile(packageJsonPath)
 					) as PackageJson;
 					return pkg.version || UNKNOWN_VERSION;
 				}
-
-				const parentDir = path.dirname(currentDir);
-				if (parentDir === currentDir) break; // reached the filesystem root
-				currentDir = parentDir;
 			}
-
 			return UNKNOWN_VERSION;
 		} catch {
 			return UNKNOWN_VERSION;

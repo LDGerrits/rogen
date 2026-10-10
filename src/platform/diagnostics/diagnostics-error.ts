@@ -1,19 +1,17 @@
 import {
 	Diagnostic,
-	DiagnosticJson,
-	diagnosticsJson,
 	renderDiagnostics,
 	uniqueDiagnostics,
 } from "./diagnostic.js";
 
 /** An `Error` whose message is the rendered diagnostics, for callers that only print it. Identical diagnostics are kept once. */
 export class DiagnosticsError extends Error {
+	override readonly name = "DiagnosticsError";
 	readonly diagnostics: readonly Diagnostic[];
 
 	constructor(diagnostics: readonly Diagnostic[]) {
 		const unique = uniqueDiagnostics(diagnostics);
 		super(renderDiagnostics(unique));
-		this.name = "DiagnosticsError";
 		this.diagnostics = unique;
 	}
 
@@ -25,15 +23,4 @@ export class DiagnosticsError extends Error {
 			? new DiagnosticsError(diagnostics)
 			: undefined;
 	}
-}
-
-/** What a `--json` run prints when it fails before it has anything else to show. */
-export function failureToJson(
-	error: Error
-):
-	| { readonly diagnostics: readonly DiagnosticJson[] }
-	| { readonly error: string } {
-	return error instanceof DiagnosticsError
-		? diagnosticsJson(error.diagnostics)
-		: { error: error.message };
 }

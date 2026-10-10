@@ -5,7 +5,6 @@ import {
 	toNative,
 	toPosix,
 } from "../../base/path.js";
-import { DOCS_URL } from "../product/product-service.js";
 
 export enum DiagnosticSeverity {
 	Error,
@@ -92,10 +91,11 @@ export function warningDiagnostic(
 	};
 }
 
-const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> = {
-	[DiagnosticSeverity.Error]: "error",
-	[DiagnosticSeverity.Warning]: "warning",
-};
+export const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> =
+	{
+		[DiagnosticSeverity.Error]: "error",
+		[DiagnosticSeverity.Warning]: "warning",
+	};
 
 /** Drops `prefix` wherever it starts a path, not where it is the tail of a longer one. */
 function stripPrefix(text: string, prefix: string): string {
@@ -113,18 +113,14 @@ function stripPrefix(text: string, prefix: string): string {
 	return result + text.slice(from);
 }
 
-function stripDirectory(text: string, dir: string): string {
+/** `text` with the paths under `dir` written relative to it. */
+export function messageRelativeTo(text: string, dir: string): string {
 	const bare = dir.replace(/[\\/]+$/, "");
 	if (bare === "") return text;
 	return [`${bare}${path.sep}`, `${toPosix(bare)}/`].reduce(
 		stripPrefix,
 		text
 	);
-}
-
-/** `message` with the paths under `cwd` written relative to it. */
-export function messageRelativeTo(message: string, cwd: string): string {
-	return stripDirectory(message, cwd);
 }
 
 /** `message` ending in `(code)`: on its first line, since a grouped diagnostic lists its related entries on the lines after it. */
@@ -143,7 +139,7 @@ export function diagnosticSummary(
 	const message = messageWithCode(
 		cwd === undefined
 			? diagnostic.message
-			: stripDirectory(diagnostic.message, cwd),
+			: messageRelativeTo(diagnostic.message, cwd),
 		diagnostic.code
 	);
 	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}`;
@@ -162,84 +158,26 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	return `${where} - ${diagnosticSummary(diagnostic, cwd)}`;
 }
 
-export interface DiagnosticJson {
-	readonly file: string;
-	readonly line?: number;
-	readonly column?: number;
-	readonly severity: "error" | "warning";
-	readonly code: string;
-	readonly message: string;
-	/** The code's section on the diagnostics page. */
-	readonly url: string;
-	/** As the diagnostic's, with native paths. */
-	readonly related?: readonly {
-		readonly file: string;
-		readonly message: string;
-	}[];
-	/** As the diagnostic's, with native paths. */
-	readonly fixes?: readonly DiagnosticFix[];
-}
-
-/** The anchor of `code`'s section on the diagnostics page: `route.dotRoute` is `route-dotroute`. */
-const diagnosticAnchor = (code: string): string =>
-	code.replace(".", "-").toLowerCase();
-
-/** The form a `--json` run prints. */
-export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
-	const { resource, position, severity, code, message, related, fixes } =
-		diagnostic;
-	return {
-		file: toNative(resource),
-		...(position && { line: position.line, column: position.column }),
-		severity: SEVERITY_LABELS[severity],
-		code,
-		message,
-		url: `${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`,
-		...(related && {
-			related: related.map((item) => ({
-				file: toNative(item.resource),
-				message: item.message,
-			})),
-		}),
-		...(fixes && { fixes: fixes.map(fixToJson) }),
-	};
-}
-
-/** A fix with native paths, as a `--json` run prints it. */
-export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
-	if (isRenameFix(fix)) {
-		return {
-			rename: {
-				from: toNative(fix.rename.from),
-				to: toNative(fix.rename.to),
-			},
-		};
-	}
-	fix satisfies RunFix;
-	return {
-		run: {
-			command: fix.run.command,
-			cwd: toNative(fix.run.cwd),
-		},
-	};
-}
-
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
 	return diagnostics
 		.map((diagnostic) => renderDiagnostic(diagnostic))
 		.join("\n");
 }
 
-/** What makes two diagnostics one as the user reads them; with `anywhere`, a diagnostic about a file is the same wherever the file is. */
+/** What makes two diagnostics one as the user reads them; a diagnostic about `ignoredResource` is the same wherever that file is. */
 export function diagnosticKey(
 	diagnostic: Diagnostic,
-	anywhere?: string
+	ignoredResource?: string
 ): string {
-	return renderDiagnostic(
-		diagnostic.resource === anywhere
-			? { ...diagnostic, resource: "" }
-			: diagnostic
-	);
+	const { resource, position, severity, code, message } = diagnostic;
+	return [
+		resource === ignoredResource ? "" : toPosix(resource),
+		position?.line,
+		position?.column,
+		severity,
+		code,
+		message,
+	].join("\0");
 }
 
 /** `diagnostics` once each, in order. */
@@ -263,13 +201,6 @@ export function newDiagnostics(
 ): Diagnostic[] {
 	const seen = new Set(before.map((diagnostic) => diagnosticKey(diagnostic)));
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
-}
-
-/** The document a `--json` run prints for `diagnostics`. */
-export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
-	readonly diagnostics: DiagnosticJson[];
-} {
-	return { diagnostics: diagnostics.map(diagnosticToJson) };
 }
 
 /** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */

@@ -1,5 +1,9 @@
 import { DeferredPromise } from "../../base/async.js";
-import { Disposable, DisposableStore } from "../../base/disposable.js";
+import {
+	Disposable,
+	DisposableStore,
+	toDisposable,
+} from "../../base/disposable.js";
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -22,8 +26,6 @@ export interface CommandService {
 		commandId: string,
 		line: CommandLine
 	): Promise<Result<void, Error>>;
-	/** Every registered command, by id. */
-	getCommands(): ReadonlyMap<string, Command>;
 }
 
 export const CommandService =
@@ -117,13 +119,11 @@ class CoreCommandRegistry implements CommandRegistry {
 
 		this.commands.set(id, command);
 
-		return {
-			[Symbol.dispose]: () => {
-				if (this.commands.get(id) === command) {
-					this.commands.delete(id);
-				}
-			},
-		};
+		return toDisposable(() => {
+			if (this.commands.get(id) === command) {
+				this.commands.delete(id);
+			}
+		});
 	}
 
 	getCommand(id: string): Command | undefined {

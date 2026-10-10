@@ -1,10 +1,7 @@
 import { toNative } from "../../base/path.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
-import {
-	Diagnostic,
-	DiagnosticJson,
-	diagnosticToJson,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticJson, diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
 
 /** What a build did to one config, as the document lists it. */
 export interface BuildEntry {

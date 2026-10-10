@@ -23,6 +23,11 @@ export class RequestError extends Error {
 	}
 }
 
+export interface RequestOptions {
+	/** Milliseconds to wait before giving up. */
+	readonly timeout: number;
+}
+
 /** Makes HTTP requests. */
 export interface RequestService {
 	readonly _serviceBrand: undefined;
@@ -30,7 +35,7 @@ export interface RequestService {
 	/** A `GET` of `url` that gives up after `timeout` milliseconds; any status is a response. */
 	request(
 		url: string,
-		options: { readonly timeout: number }
+		options: RequestOptions
 	): Promise<Result<HttpResponse, RequestError>>;
 }
 

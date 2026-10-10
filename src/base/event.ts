@@ -1,9 +1,17 @@
-import { DisposableStore, Disposable } from "./disposable.js";
+import {
+	Disposable,
+	DisposableStore,
+	NullDisposable,
+	toDisposable,
+} from "./disposable.js";
 import { onUnexpectedError } from "./errors.js";
 
 export interface Event<T> {
 	(listener: (e: T) => void, disposables?: DisposableStore): Disposable;
 }
+
+/** An event that never fires. */
+export const NullEvent: Event<never> = () => NullDisposable;
 
 type Listener<T> = (e: T) => void;
 
@@ -17,15 +25,13 @@ export class Emitter<T> implements Disposable {
 			listener: Listener<T>,
 			disposables?: DisposableStore
 		) => {
-			if (this._disposed) return { [Symbol.dispose]: () => {} };
+			if (this._disposed) return NullDisposable;
 
 			this._listeners.add(listener);
 
-			const disposable = {
-				[Symbol.dispose]: () => {
-					this._listeners.delete(listener);
-				},
-			};
+			const disposable = toDisposable(() => {
+				this._listeners.delete(listener);
+			});
 
 			if (disposables) {
 				disposables.add(disposable);

@@ -46,6 +46,29 @@ class ListingDraft {
 		this.directories.delete(dir);
 		this.edited.delete(dir);
 	}
+
+	/** Whether an ancestor of `posixPath` is recorded as something other than a directory, such as a link nothing descends into. */
+	liesUnderLink(posixPath: string): boolean {
+		for (let child = path.posix.dirname(posixPath); ;) {
+			const parent = path.posix.dirname(child);
+			if (parent === child) return false;
+			const type = this.get(parent)?.get(path.posix.basename(child));
+			if (type !== undefined && !isDirectoryType(type)) return true;
+			child = parent;
+		}
+	}
+
+	/** Drops the entry `name` of `dir`, and what is listed under it. */
+	delete(dir: string, name: string): void {
+		const type = this.get(dir)?.get(name);
+		// A root dir has no listed parent, but is listed itself.
+		if (type === undefined) {
+			this.remove(joinPosix(dir, name));
+			return;
+		}
+		this.edit(dir).delete(name);
+		if (isDirectoryType(type)) this.remove(joinPosix(dir, name));
+	}
 }
 
 export class CoreIndexService implements IndexService {
@@ -114,12 +137,12 @@ export class CoreIndexService implements IndexService {
 			const name = path.basename(posixPath);
 
 			if (change.type === FileChangeType.ADDED) {
-				if (liesUnderLink(draft, posixPath)) continue;
+				if (draft.liesUnderLink(posixPath)) continue;
 				const listed = (await listingOf(dir))?.get(name);
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				deleteEntry(draft, dir, name);
+				draft.delete(dir, name);
 			}
 		}
 		return new Listing(draft.directories);
@@ -143,30 +166,4 @@ export class CoreIndexService implements IndexService {
 		if (isDirectoryType(type))
 			await this.traverse(fullPosixPath, draft.directories);
 	}
-}
-
-/** Whether an ancestor of `posixPath` is recorded as something other than a directory, such as a link nothing descends into. */
-function liesUnderLink(draft: ListingDraft, posixPath: string): boolean {
-	for (let child = path.posix.dirname(posixPath); ;) {
-		const parent = path.posix.dirname(child);
-		if (parent === child) return false;
-		const type = draft.get(parent)?.get(path.posix.basename(child));
-		if (type !== undefined && !isDirectoryType(type)) return true;
-		child = parent;
-	}
-}
-
-function deleteEntry(
-	draft: ListingDraft,
-	posixDir: string,
-	name: string
-): void {
-	const type = draft.get(posixDir)?.get(name);
-	// A root dir has no listed parent, but is listed itself.
-	if (type === undefined) {
-		draft.remove(joinPosix(posixDir, name));
-		return;
-	}
-	draft.edit(posixDir).delete(name);
-	if (isDirectoryType(type)) draft.remove(joinPosix(posixDir, name));
 }

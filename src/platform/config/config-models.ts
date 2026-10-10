@@ -73,7 +73,7 @@ export class Config {
 		private readonly policies: MergePolicies = {}
 	) {}
 
-	getConsolidatedModel(): ConfigModel {
+	private getConsolidatedModel(): ConfigModel {
 		if (!this.consolidatedModel) {
 			const merged = this.consolidateEach([], this.policies);
 			this.consolidatedModel = new ConfigModel(merged);
@@ -160,8 +160,7 @@ export class Config {
 	): Record<string, unknown> {
 		const keys = new Set(
 			this.tiers.flatMap((tier) => {
-				const value =
-					path.length === 0 ? tier.contents : tier.getValue(path);
+				const value = tier.getValue(path);
 				return isObject(value) ? Object.keys(value) : [];
 			})
 		);

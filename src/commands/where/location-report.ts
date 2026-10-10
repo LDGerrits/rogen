@@ -11,16 +11,9 @@ import {
 	requirementOf,
 } from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
-import {
-	Diagnostic,
-	DiagnosticJson,
-	diagnosticSummary,
-	diagnosticsAbout,
-	diagnosticsReaching,
-	diagnosticToJson,
-	fixToJson,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, diagnosticSummary, diagnosticsAbout, diagnosticsReaching } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { DiagnosticJson, diagnosticToJson, fixToJson } from "../../platform/diagnostics/diagnostic-json.js";
 
 /** The mode a config built in, and every mode it declares. */
 interface ModeContext {

@@ -1,4 +1,4 @@
-import { AbstractDisposable } from "../../base/disposable.js";
+import { AbstractDisposable, toDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LifecycleService } from "./lifecycle-service.js";
 
@@ -26,9 +26,7 @@ export class NativeLifecycleService
 		const listener = () => this._onWillShutdown.fire();
 		for (const signal of SHUTDOWN_SIGNALS) {
 			process.once(signal, listener);
-			this._register({
-				[Symbol.dispose]: () => process.off(signal, listener),
-			});
+			this._register(toDisposable(() => process.off(signal, listener)));
 		}
 	}
 }

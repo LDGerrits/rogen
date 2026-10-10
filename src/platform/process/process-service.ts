@@ -22,6 +22,13 @@ export interface SpawnOptions {
 	readonly cwd: string;
 }
 
+export interface ExecOptions {
+	readonly cwd: string;
+	/** Milliseconds the program may run before it is ended. */
+	readonly timeout: number;
+	readonly signal?: AbortSignal;
+}
+
 /** A process this one started; disposing it ends it. */
 export interface ChildProcess extends Disposable {
 	/** Text it printed, on either stream, as it arrives. */
@@ -43,11 +50,7 @@ export interface ProcessService {
 	exec(
 		file: string,
 		args: readonly string[],
-		options: {
-			readonly cwd: string;
-			readonly timeout: number;
-			readonly signal?: AbortSignal;
-		}
+		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>>;
 	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
 	spawn(

@@ -2,8 +2,8 @@ import { relativeTo, toNative } from "../../base/path.js";
 import { unescapedGlob } from "../../base/glob.js";
 import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
 
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
