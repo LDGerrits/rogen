@@ -1,4 +1,5 @@
 import path from "path";
+import { escapedGlobPrefix } from "../../base/glob.js";
 import { isObject } from "../../base/objects.js";
 import { toPosix } from "../../base/path.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
@@ -289,7 +290,9 @@ export class LayeredConfig {
 			if (!Array.isArray(value)) return value;
 			return form === "paths"
 				? value.map((entry) => path.resolve(dir, entry))
-				: value.map((glob) => path.posix.join(toPosix(dir), glob));
+				: value.map((glob) =>
+						path.posix.join(escapedGlobPrefix(toPosix(dir)), glob)
+					);
 		};
 		const resolveFields = (
 			body: Record<string, unknown>,

@@ -1,4 +1,5 @@
 import { relativeTo, toNative } from "../../base/path.js";
+import { unescapedGlob } from "../../base/glob.js";
 import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
@@ -107,7 +108,7 @@ function describeConfig(config: ResolvedConfig): Record<string, unknown> {
 		conflicts: config.conflicts,
 		mode: config.mode ?? null,
 		modes: config.modes,
-		exclude: config.exclude,
+		exclude: config.exclude.map(unescapedGlob),
 		template: config.template ? toNative(config.template.file) : null,
 		templates: config.template
 			? [...config.template.bases, config.template.file].map((file) =>

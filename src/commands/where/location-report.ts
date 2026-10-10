@@ -1,4 +1,5 @@
 import { groupBy } from "../../base/collections.js";
+import { unescapedGlob } from "../../base/glob.js";
 import path from "path";
 import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import {
@@ -49,7 +50,8 @@ const sourceOf = (answer: Answer): string =>
 	answer.kind === "file" ? answer.location.source : answer.instance;
 
 /** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
-function patternRelativeTo(cwd: string, pattern: string): string {
+function patternRelativeTo(cwd: string, escaped: string): string {
+	const pattern = unescapedGlob(escaped);
 	if (!/^([A-Za-z]:)?\//.test(pattern)) return pattern;
 	const rooted = (posixPath: string) =>
 		posixPath.startsWith("/") ? posixPath : `/${posixPath}`;
@@ -158,7 +160,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "mounted":
 			return { node: location.node };
 		case "excluded":
-			return { pattern: location.pattern };
+			return { pattern: unescapedGlob(location.pattern) };
 		case "unrouted":
 		case "skipped":
 		case "outside":
