@@ -66,43 +66,43 @@ export class NameReadings {
 		roots: readonly ScannedRoot[]
 	) {
 		for (const root of roots) {
-			for (const marker of root.markers) {
-				this.readFoldersAbove(root.rootDir, marker);
-				const resource = joinPosix(root.rootDir, marker);
-				const read = this.reader.marker(path.posix.basename(marker));
-				this.markers.set(resource, read);
-				this.noteNearMiss(resource, read.nearMissKey);
-				this.noteMisspellings(resource, read.misspellings);
-			}
+			this.readMarkers(root);
 			for (const metaFile of root.metaFiles)
 				this.readFoldersAbove(root.rootDir, metaFile);
-			for (const entry of root.entries) {
-				const { fileName, kind, stem } =
-					NameReadings.suffixedNameOf(entry);
-				const folders = this.readFoldersAbove(
-					root.rootDir,
-					entry.relativePath
-				);
-				const match = this.reader.suffixes(stem, kind === "script");
-				this.entries.set(entry.source, {
-					folders,
-					fileName,
-					kind,
-					stem,
-					scriptSuffix:
-						kind === "script"
-							? RojoFile.scriptSuffixOf(stem)
-							: undefined,
-					match,
-				});
-				for (const folder of folders) {
-					const resource = joinPosix(root.rootDir, folder.dir);
-					this.noteNearMiss(resource, folder.nearMissKey);
-					this.noteMisspellings(resource, folder.misspellings);
-				}
-				this.noteMisspellings(entry.source, match.misspellings);
-			}
+			for (const entry of root.entries) this.readEntry(root, entry);
 		}
+	}
+
+	private readMarkers(root: ScannedRoot): void {
+		for (const marker of root.markers) {
+			this.readFoldersAbove(root.rootDir, marker);
+			const resource = joinPosix(root.rootDir, marker);
+			const read = this.reader.marker(path.posix.basename(marker));
+			this.markers.set(resource, read);
+			this.noteNearMiss(resource, read.nearMissKey);
+			this.noteMisspellings(resource, read.misspellings);
+		}
+	}
+
+	private readEntry(root: ScannedRoot, entry: ScannedFile): void {
+		const { fileName, kind, stem } = NameReadings.suffixedNameOf(entry);
+		const folders = this.readFoldersAbove(root.rootDir, entry.relativePath);
+		const match = this.reader.suffixes(stem, kind === "script");
+		this.entries.set(entry.source, {
+			folders,
+			fileName,
+			kind,
+			stem,
+			scriptSuffix:
+				kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined,
+			match,
+		});
+		for (const folder of folders) {
+			const resource = joinPosix(root.rootDir, folder.dir);
+			this.noteNearMiss(resource, folder.nearMissKey);
+			this.noteMisspellings(resource, folder.misspellings);
+		}
+		this.noteMisspellings(entry.source, match.misspellings);
 	}
 
 	/** The entry's reading. Every scanned entry has one, so a miss is a programmer error. */
