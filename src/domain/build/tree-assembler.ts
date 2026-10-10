@@ -3,6 +3,7 @@ import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { LeftOut } from "./build.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
 import {
 	InstanceMap,
@@ -88,14 +89,42 @@ export class TreeAssembler {
 		placement: Placement,
 		project: RojoProject
 	): { collapsed: Collapsed; globIgnorePaths: string[] } {
-		const { layout, template, nodes, leftOut: allLeftOut } = placement;
+		const { layout, template, leftOut: allLeftOut } = placement;
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
-		// A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one.
-		const mounts = template.mounts.paths;
-		// Rojo must read a mount, so a left-out folder that holds one can't be ignored either; it is never collapsed, so nothing else reads it.
-		const ignored = leftOut
+		const ignored = this.ignoredSources(leftOut, template.mounts.paths);
+		const collapsed = new Collapsed(
+			this.collapsibleDirs(
+				placement,
+				leftOut.map(([source]) => source),
+				(instancePath) => template.getNode(instancePath) !== undefined
+			)
+		);
+		const initDirs = this.insertNodes(placement, project, collapsed);
+
+		return {
+			collapsed,
+			globIgnorePaths: [
+				...new Set([
+					...template.globIgnorePaths,
+					...ignored.map(
+						(source) => layout.syncPath(source).optional
+					),
+					...[...initDirs].flatMap(([dir, init]) =>
+						this.besideInit(placement, dir, init)
+					),
+				]),
+			],
+		};
+	}
+
+	/** The left-out paths Rojo is told to ignore. A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one; Rojo must read a mount, so a left-out folder that holds one can't be ignored either, and it is never collapsed, so nothing else reads it. */
+	private ignoredSources(
+		leftOut: readonly [string, LeftOut][],
+		mounts: readonly string[]
+	): string[] {
+		return leftOut
 			.filter(
 				([source, why]) =>
 					!mounts.some((mount) => contains(source, mount)) &&
@@ -105,14 +134,15 @@ export class TreeAssembler {
 			)
 			.map(([source]) => source)
 			.sort(compareStrings);
-		const collapsed = new Collapsed(
-			this.collapsibleDirs(
-				placement,
-				leftOut.map(([source]) => source),
-				(instancePath) => template.getNode(instancePath) !== undefined
-			)
-		);
+	}
 
+	/** Inserts the collapsed directories and the files the collapsed ones don't cover; returns the folders of the init scripts, by the init script's name. */
+	private insertNodes(
+		placement: Placement,
+		project: RojoProject,
+		collapsed: Collapsed
+	): Map<string, string> {
+		const { layout, nodes } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNode(instancePath, { $path: layout.syncPath(dir) });
 		const initDirs = new Map<string, string>();
@@ -130,21 +160,7 @@ export class TreeAssembler {
 					$path: layout.syncPath(entry.source),
 				});
 		}
-
-		return {
-			collapsed,
-			globIgnorePaths: [
-				...new Set([
-					...template.globIgnorePaths,
-					...ignored.map(
-						(source) => layout.syncPath(source).optional
-					),
-					...[...initDirs].flatMap(([dir, init]) =>
-						this.besideInit(placement, dir, init)
-					),
-				]),
-			],
-		};
+		return initDirs;
 	}
 
 	/** What Rojo would read beside the init script `init` in `dir`, which every node it is leaves to the nodes those files are placed at. */
