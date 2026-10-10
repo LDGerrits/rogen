@@ -780,6 +780,21 @@ describe("an unattended run", () => {
 		).toEqual({ kind: "new" });
 	});
 
+	it("should leave out a detected place whose name would write over a file of the project", async () => {
+		const workspace = { ...luau, places: ["default", "lobby"] };
+
+		expect(
+			(
+				await defaultProjectChoices(
+					workspace,
+					"default",
+					new Set(),
+					true
+				)
+			).places.map(({ name }) => name)
+		).toEqual(["lobby"]);
+	});
+
 	it("should take the detected places only when asked to", async () => {
 		const workspace = { ...luau, places: ["lobby"] };
 		expect(

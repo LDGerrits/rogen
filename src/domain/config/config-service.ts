@@ -143,7 +143,7 @@ export interface ReloadableSelection extends ConfigSelection {
 	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
 	concerns(file: string): boolean;
 
-	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `directory` first adds and drops the configs that came and went. */
+	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `followedFolder` first adds and drops the configs that came and went. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 

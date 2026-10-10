@@ -275,7 +275,7 @@ export interface ResolvedConfigFields {
 	readonly parents: readonly string[];
 	/** Variants turned on or off from the command line that this config doesn't declare. */
 	readonly skippedVariants: readonly string[];
-	readonly name: string;
+	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
@@ -317,7 +317,7 @@ export class ResolvedConfig {
 		this.file = fields.file;
 		this.parents = fields.parents;
 		this.skippedVariants = fields.skippedVariants;
-		this.projectName = fields.name;
+		this.projectName = fields.projectName;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;
 		this.variants = fields.variants;

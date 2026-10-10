@@ -35,11 +35,15 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 
 	plan({ name }: ExtendingConfigChoices, builder: InitPlanBuilder): void {
 		const configSet = ConfigSet.in(this.directory.workspace, name);
-		// A compiler's sync dir is inherited from default; only a synced twin adds one.
+		const { base } = this.directory;
+		// A compiler's sync dir is inherited from default; only a synced twin adds one, where default's project syncs from.
 		configSet.planConfigs(
 			builder,
 			{ extends: ConfigSet.reference(DEFAULT_CONFIG_FILE) },
-			configSet.sourced ? configSet.syncDir : undefined
+			configSet.sourced
+				? ((base?.isOk() ? base.value.syncDir : undefined) ??
+						configSet.syncDir)
+				: undefined
 		);
 		builder.addRun(configSet.serveCommand);
 		builder.addEdit(

@@ -519,14 +519,11 @@ export class InitQuestions {
 	/** The places set up alongside, the ones the workspace already has unless told otherwise. */
 	async places(
 		directory: InitDirectory,
-		{ rootDirs, filesFor, reserved }: PlacesQuestion
+		question: PlacesQuestion
 	): Promise<string[] | undefined> {
+		const { rootDirs } = question;
 		const found = directory.layout.places.filter(
-			(place) =>
-				!directory.placeFolderProblem(
-					rootDirs,
-					PlaceFolder.pathIn(directory, place, rootDirs)
-				)
+			(place) => !this.placeProblem(directory, place, question)
 		);
 		if (!this.interactive) return found;
 
@@ -538,22 +535,12 @@ export class InitQuestions {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
 				for (const [index, place] of names.entries()) {
-					const parsed = ConfigSet.checkName(place);
-					if (parsed.isErr()) return parsed.error.message;
-					if (names.indexOf(place) !== index) {
+					if (names.indexOf(place) !== index)
 						return `${place} is listed twice.`;
-					}
-					const clash = filesFor(place).find(
-						(file) => directory.has(file) || reserved.has(file)
-					);
-					if (clash) {
-						return directory.has(clash)
-							? `${clash} already exists.`
-							: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
-					}
-					const problem = directory.placeFolderProblem(
-						rootDirs,
-						PlaceFolder.pathIn(directory, place, rootDirs)
+					const problem = this.placeProblem(
+						directory,
+						place,
+						question
 					);
 					if (problem) return problem;
 				}
@@ -561,6 +548,28 @@ export class InitQuestions {
 			},
 		});
 		return answer === undefined ? undefined : splitList(answer);
+	}
+
+	/** The first reason a place can't be called `place`: its name, the files it would write, or its folder. */
+	private placeProblem(
+		directory: InitDirectory,
+		place: string,
+		{ rootDirs, filesFor, reserved }: PlacesQuestion
+	): string | undefined {
+		const parsed = ConfigSet.checkName(place);
+		if (parsed.isErr()) return parsed.error.message;
+		const clash = filesFor(place).find(
+			(file) => directory.has(file) || reserved.has(file)
+		);
+		if (clash) {
+			return directory.has(clash)
+				? `${clash} already exists.`
+				: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
+		}
+		return directory.placeFolderProblem(
+			rootDirs,
+			PlaceFolder.pathIn(directory, place, rootDirs)
+		);
 	}
 
 	/** Where a place keeps its own files: beside default's shared folder unless told otherwise. */

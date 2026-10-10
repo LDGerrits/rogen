@@ -77,7 +77,7 @@ export class ConfigValidator {
 				file: this.layered.leaf.file,
 				parents: this.parents,
 				skippedVariants: this.layered.skippedVariants,
-				name:
+				projectName:
 					template?.project.name ||
 					path.basename(dir) ||
 					FALLBACK_NAME,

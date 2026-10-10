@@ -84,7 +84,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 		file,
 		parents: spec.parents ?? [],
 		skippedVariants: spec.skippedVariants ?? [],
-		name: spec.name ?? "repo",
+		projectName: spec.name ?? "repo",
 		rootDirs: spec.rootDirs ?? [],
 		routes: new Map(
 			Object.entries(spec.routes ?? {}).map(([key, text]) => [
