@@ -66,7 +66,10 @@ export interface ConfigSelection {
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
 	readonly directory: string | undefined;
 
-	/** Whether `reload` should hear of a change to `file`. */
+	/** Whether a selected config reads `file`, however its path is written: a watcher reports POSIX paths on every system. */
+	reads(file: string): boolean;
+
+	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
 	concerns(file: string): boolean;
 
 	/** The configs, or every error when any entry is broken now. */

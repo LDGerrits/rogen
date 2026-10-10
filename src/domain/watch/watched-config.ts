@@ -1,4 +1,5 @@
 import { Sequencer } from "../../base/async.js";
+import { toPosix } from "../../base/path.js";
 import {
 	isError,
 	newDiagnostics,
@@ -13,8 +14,13 @@ export class WatchedConfig {
 	private pending = 0;
 	/** The latest finished rebuild; `undefined` before the first. */
 	latest: LoadedBuild | undefined;
-	/** The files the latest successful build read, whose updates must rebuild it. */
-	readFiles: ReadonlySet<string> = new Set();
+	/** The files the latest successful build read, whose updates must rebuild it, as POSIX paths. */
+	private readFiles: ReadonlySet<string> = new Set();
+
+	/** Whether the latest successful build read `file`, however its path is written. */
+	reads(file: string): boolean {
+		return this.readFiles.has(toPosix(file));
+	}
 
 	/** Runs `rebuild` after the ones queued before it, so rebuilds of one config never overlap. */
 	queue<T>(rebuild: () => Promise<T>): Promise<T> {
@@ -54,7 +60,7 @@ export class WatchedConfig {
 					);
 		this.latest = build;
 		if (build.outcome !== "failed")
-			this.readFiles = new Set(build.readFiles);
+			this.readFiles = new Set(build.readFiles.map(toPosix));
 		return {
 			build,
 			unreported,

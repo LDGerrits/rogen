@@ -164,6 +164,10 @@ export class MockConfigSelection implements ConfigSelection {
 		this.files = new Set(entries.map(({ file }) => file));
 	}
 
+	reads(file: string): boolean {
+		return this.files.has(file);
+	}
+
 	concerns(file: string): boolean {
 		return this.files.has(file);
 	}

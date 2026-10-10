@@ -1,3 +1,4 @@
+import { toPosix } from "../../base/path.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
@@ -38,8 +39,9 @@ export class ManagedConfig {
 		return this._modes;
 	}
 
+	/** Whether it reads one of `changed`, whose paths are POSIX. */
 	reads(changed: ReadonlySet<string>): boolean {
-		return this._files.some((file) => changed.has(file));
+		return this._files.some((file) => changed.has(toPosix(file)));
 	}
 
 	async load(): Promise<void> {

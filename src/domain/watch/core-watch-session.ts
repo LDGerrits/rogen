@@ -117,13 +117,12 @@ export class CoreWatchSession
 		if (!this.started || watched.some((config) => !config.settled)) {
 			return changes.filter((change) => this.isWatched(change.path));
 		}
-		const contentFiles = this.selection.files;
 		return changes.filter(
 			(change) =>
 				this.isWatched(change.path) &&
 				(change.type !== FileChangeType.UPDATED ||
-					contentFiles.has(change.path) ||
-					watched.some(({ readFiles }) => readFiles.has(change.path)))
+					this.selection.reads(change.path) ||
+					watched.some((config) => config.reads(change.path)))
 		);
 	}
 
@@ -132,7 +131,7 @@ export class CoreWatchSession
 		return (
 			!this.selection.directory ||
 			this.selection.concerns(file) ||
-			this.selection.files.has(file) ||
+			this.selection.reads(file) ||
 			this.plan.watches(file)
 		);
 	}

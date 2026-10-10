@@ -35,6 +35,7 @@ export interface PickedFolder {
 export class CoreConfigSelection implements ConfigSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
+	private posixFiles: ReadonlySet<string>;
 
 	private constructor(
 		private managed: readonly ManagedConfig[],
@@ -44,6 +45,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		private readonly folder: PickedFolder | undefined
 	) {
 		this._files = this.readFiles();
+		this.posixFiles = new Set([...this._files].map(toPosix));
 	}
 
 	/** Loads `files` with `overrides`; fails when a variant or mode override is declared by none of them. */
@@ -86,8 +88,12 @@ export class CoreConfigSelection implements ConfigSelection {
 		return this.folder?.directory;
 	}
 
+	reads(file: string): boolean {
+		return this.posixFiles.has(toPosix(file));
+	}
+
 	concerns(file: string): boolean {
-		if (this._files.has(file)) return true;
+		if (this.reads(file)) return true;
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
@@ -105,7 +111,7 @@ export class CoreConfigSelection implements ConfigSelection {
 
 	reload(files: readonly string[]): Promise<ConfigReload> {
 		return this.reloads.queue(async () => {
-			const changedFiles = new Set(files);
+			const changedFiles = new Set(files.map(toPosix));
 			const membership = await this.followFolder();
 			const reloaded = await Promise.all(
 				this.managed
@@ -122,6 +128,7 @@ export class CoreConfigSelection implements ConfigSelection {
 					})
 			);
 			this._files = this.readFiles();
+			this.posixFiles = new Set([...this._files].map(toPosix));
 			const added = membership.added.map((config) => ({
 				file: config.file,
 				changed: buildableConfig(config.entry) !== undefined,
