@@ -115,8 +115,9 @@ export class Config {
 		return result;
 	}
 
-	getValue<T>(section?: ConfigSection): T {
-		return this.getConsolidatedModel().getValue<T>(section) as T;
+	/** The merged value at `section`; `undefined` when no tier sets it. */
+	getValue<T>(section?: ConfigSection): T | undefined {
+		return this.getConsolidatedModel().getValue<T>(section);
 	}
 
 	inspect<T>(section: ConfigSection): ConfigValue<T> {

@@ -43,11 +43,11 @@ export class ConfigValidator {
 		private readonly parents: readonly string[]
 	) {
 		const { config } = layered;
-		this.rootDirs = config.getValue<string[]>("rootDirs");
-		this.routes = config.getValue<Record<string, string>>("routes");
+		this.rootDirs = config.getValue<string[]>("rootDirs") ?? [];
+		this.routes = config.getValue<Record<string, string>>("routes") ?? {};
 		this.variants = layered.variants;
 		this.outFile =
-			config.getValue<string | undefined>("outFile") ??
+			config.getValue<string>("outFile") ??
 			path.join(
 				path.dirname(layered.leaf.file),
 				defaultOutFileName(configLabel(layered.leaf.file))
@@ -82,11 +82,11 @@ export class ConfigValidator {
 				routes,
 				variants: variantStates(this.layered.switches),
 				conflicts: groups.map(({ names }) => names),
-				exclude: config.getValue<string[]>("exclude"),
+				exclude: config.getValue<string[]>("exclude") ?? [],
 				mode: this.layered.mode,
 				modeViews: this.modeViews(),
 				template,
-				syncDir: config.getValue<string | undefined>("syncDir"),
+				syncDir: config.getValue<string>("syncDir"),
 				outFile: this.outFile,
 			})
 		);
@@ -176,9 +176,10 @@ export class ConfigValidator {
 				mode,
 				{
 					variants: variantStates(this.layered.switchesIn(mode)),
-					exclude: this.layered
-						.configIn(mode)
-						.getValue<string[]>("exclude"),
+					exclude:
+						this.layered
+							.configIn(mode)
+							.getValue<string[]>("exclude") ?? [],
 				},
 			])
 		);
@@ -224,7 +225,7 @@ export class ConfigValidator {
 		}
 		const written = this.layered
 			.configIn(undefined)
-			.getValue<string | undefined>("mode");
+			.getValue<string>("mode");
 		if (written !== undefined && !modes.includes(written)) {
 			this.problems.error(
 				"config.unknownMode",

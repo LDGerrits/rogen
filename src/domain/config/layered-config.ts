@@ -100,7 +100,7 @@ export class LayeredConfig {
 		this.modes = Object.keys(
 			this.chain.getValue<Record<string, unknown>>("modes") ?? {}
 		);
-		const written = this.chain.getValue<string | undefined>("mode");
+		const written = this.chain.getValue<string>("mode");
 		this.modeChoice = {
 			name: overrides.mode ?? written,
 			source:
@@ -158,7 +158,7 @@ export class LayeredConfig {
 	templates(): { file: string; location: DiagnosticLocation }[] {
 		const named = new Map<string, DiagnosticLocation>();
 		this.layers.forEach((layer, index) => {
-			const file = layer.getValue<string | undefined>("template");
+			const file = layer.getValue<string>("template");
 			if (typeof file !== "string") return;
 			named.delete(file);
 			named.set(file, this.positionIn(index, ["template"]));
