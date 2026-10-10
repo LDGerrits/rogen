@@ -1,3 +1,4 @@
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import {
 	RojoFile,
@@ -285,6 +286,44 @@ describe("domain/rojo/rojo", () => {
 				expect(parsed.isErr() && parsed.error).toMatchObject([
 					{ code: "meta.notAnObject" },
 				]);
+			});
+		});
+
+		describe("typos", () => {
+			it("should warn of a field that is one slip from a field Rojo reads, where it is written", () => {
+				const warnings = RojoMeta.typos(
+					'{\n  "classname": "Actor",\n  "attributs": {}\n}',
+					"/repo/A.meta.json"
+				);
+
+				expect(warnings).toMatchObject([
+					{
+						code: "meta.unknownField",
+						severity: DiagnosticSeverity.Warning,
+						resource: "/repo/A.meta.json",
+						position: { line: 2, column: 3 },
+						message:
+							'unknown field "classname"; Rojo ignores it. Did you mean "className"?',
+					},
+					{
+						message:
+							'unknown field "attributs"; Rojo ignores it. Did you mean "attributes"?',
+					},
+				]);
+			});
+
+			it("should stay silent about a field that resembles none, such as $schema", () => {
+				expect(
+					RojoMeta.typos(
+						'{ "$schema": "x", "comment": "y", "className": "Actor" }',
+						"/repo/A.meta.json"
+					)
+				).toEqual([]);
+			});
+
+			it("should not warn when the meta can't be read at all", () => {
+				expect(RojoMeta.typos("{bad", "/repo/A.meta.json")).toEqual([]);
+				expect(RojoMeta.typos("[]", "/repo/A.meta.json")).toEqual([]);
 			});
 		});
 

@@ -109,6 +109,7 @@ export class ConfigBuilder {
 			tree: assembly.tree,
 			readFiles: meta.files,
 			warnings: [
+				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
 				...this.modeWarnings(config, placement.value),
 			],

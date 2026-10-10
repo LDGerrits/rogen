@@ -1,0 +1,19 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/Combat/init.meta.json:2:3 - warning: unknown field "classname"; Rojo ignores it. Did you mean "className"? (meta.unknownField)
+
+$ rogen check
+exit 1
+stdout:
+  src/Combat/init.meta.json:2:3 - warning: unknown field "classname"; Rojo ignores it. Did you mean "className"? (meta.unknownField)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: ModuleScript  <- src/Combat/init.luau, src/Combat/init.meta.json

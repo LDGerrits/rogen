@@ -1,8 +1,13 @@
 import path from "path";
 import { JSONSchema } from "../../base/json-schema.js";
+import { parseJsonc } from "../../base/jsonc.js";
 import { stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { closestMatch } from "../../base/strings.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -188,6 +193,32 @@ export class RojoMeta {
 					.map((key) => [key, value[key]])
 			) as RojoMetaFields
 		);
+	}
+
+	/** Warnings for the fields of `text` that Rojo ignores although they are a slip from one it reads, such as `classname`; a field that resembles none is left alone, since a meta may carry `$schema` or notes. */
+	static typos(text: string, file: string): Diagnostic[] {
+		const { root } = parseJsonc(text);
+		if (root?.kind !== "object") return [];
+		const known = Object.keys(META_SCHEMA.properties ?? {});
+		return root.properties.flatMap((property) => {
+			if (known.includes(property.name)) return [];
+			const suggestion = closestMatch(property.name, known);
+			return suggestion
+				? [
+						warningDiagnostic(
+							"meta.unknownField",
+							{
+								resource: file,
+								position: {
+									line: property.line,
+									column: property.column,
+								},
+							},
+							`unknown field "${property.name}"; Rojo ignores it. Did you mean "${suggestion}"?`
+						),
+					]
+				: [];
+		});
 	}
 
 	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */

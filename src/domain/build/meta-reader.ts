@@ -5,6 +5,7 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import {
@@ -29,7 +30,9 @@ export class BuildMeta {
 		/** The `RunContext` a script's own meta sets, by the script's source. */
 		private readonly runContexts: ReadonlyMap<string, unknown>,
 		/** The script metas read for a run context; a folder meta counts through `folderMeta`. */
-		private readonly scriptMetaFiles: readonly string[]
+		private readonly scriptMetaFiles: readonly string[],
+		/** What the metas read say that is not a reason to stop. */
+		readonly warnings: readonly Diagnostic[] = []
 	) {}
 
 	/** The meta files whose contents the build read, which a change to must rebuild it. */
@@ -64,7 +67,8 @@ export class MetaReader {
 
 	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript; a script meta that can't be read sets no run context, since the build only warns with it. */
 	async read(placement: Placement): Promise<Result<BuildMeta, Diagnostic[]>> {
-		const folderMeta = await this.readFolderMetas(placement);
+		const typos: Diagnostic[] = [];
+		const folderMeta = await this.readFolderMetas(placement, typos);
 		if (folderMeta.isErr()) return folderMeta;
 
 		const sources = this.scriptMetaSources(placement, folderMeta.value);
@@ -75,7 +79,8 @@ export class MetaReader {
 		const parsed = new Map(
 			await Promise.all(
 				siblings.map(
-					async (file) => [file, await this.readMeta(file)] as const
+					async (file) =>
+						[file, await this.readMeta(file, typos)] as const
 				)
 			)
 		);
@@ -106,12 +111,20 @@ export class MetaReader {
 				);
 		}
 		if (problems.hasErrors) return err([...problems.diagnostics]);
-		return ok(new BuildMeta(folderMeta.value, runContexts, siblings));
+		return ok(
+			new BuildMeta(
+				folderMeta.value,
+				runContexts,
+				siblings,
+				uniqueDiagnostics(typos)
+			)
+		);
 	}
 
 	/** Every folder's `init.meta.json`, read together; fails on one Rojo would refuse. */
 	private async readFolderMetas(
-		placement: Placement
+		placement: Placement,
+		typos: Diagnostic[]
 	): Promise<Result<FolderMeta[], Diagnostic[]>> {
 		const candidates = placement.roots.flatMap((root) =>
 			root.metaFiles
@@ -126,7 +139,7 @@ export class MetaReader {
 				}))
 		);
 		const parsed = await Promise.all(
-			candidates.map(({ file }) => this.readMeta(file))
+			candidates.map(({ file }) => this.readMeta(file, typos))
 		);
 		const problems = new DiagnosticCollector();
 		const folderMeta: FolderMeta[] = [];
@@ -197,7 +210,8 @@ export class MetaReader {
 	}
 
 	private async readMeta(
-		file: string
+		file: string,
+		typos: Diagnostic[]
 	): Promise<Result<RojoMetaFields, Diagnostic[]>> {
 		const text = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)
@@ -213,6 +227,8 @@ export class MetaReader {
 				),
 			]);
 		}
-		return RojoMeta.parse(text.value, file);
+		const parsed = RojoMeta.parse(text.value, file);
+		if (parsed.isOk()) typos.push(...RojoMeta.typos(text.value, file));
+		return parsed;
 	}
 }

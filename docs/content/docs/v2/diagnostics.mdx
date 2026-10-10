@@ -599,7 +599,7 @@ Fix the file's permissions, or run the build again. See [Metadata Files](/docs/v
 
 ### `meta.invalidSyntax` [#meta-invalidsyntax]
 
-Error. A `.meta.json` file isn't valid JSONC.
+Error. A folder's `init.meta.json` isn't valid JSONC. Rogen merges a folder's meta into the project file, so it reads that one; Rojo reads the meta of a single file, and reports its errors itself.
 
 ```
 src/Combat/init.meta.json:3:1 - error: invalid JSONC: expected '}'. (meta.invalidSyntax)
@@ -609,7 +609,7 @@ Fix the syntax at the line and column shown. See [Metadata Files](/docs/v2/core-
 
 ### `meta.notAnObject` [#meta-notanobject]
 
-Error. A `.meta.json` file holds a JSON value that isn't an object.
+Error. A folder's `init.meta.json` holds a JSON value that isn't an object.
 
 ```
 src/Combat/init.meta.json:1:1 - error: a meta file must be a JSON object. (meta.notAnObject)
@@ -619,7 +619,7 @@ Wrap the fields in `{ }`. See [Metadata Files](/docs/v2/core-concepts/project-la
 
 ### `meta.wrongType` [#meta-wrongtype]
 
-Error. A field in a `.meta.json` file holds the wrong kind of value.
+Error. A field in a folder's `init.meta.json` holds the wrong kind of value.
 
 ```
 src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found an array. (meta.wrongType)
@@ -629,10 +629,10 @@ Give the field the type the message names, as Rojo's meta format expects. See [M
 
 ### `meta.unknownField` [#meta-unknownfield]
 
-Error. A `.meta.json` file has a field Rojo doesn't read, often a typo.
+Warning. A meta file has a field that is a slip from one Rojo reads, such as `classname` for `className`. Rojo ignores a field it doesn't know without a word, so the property never applies. A field that resembles none, such as `$schema`, is left alone.
 
 ```
-src/Combat/init.meta.json:2:2 - error: unknown field "classname". Did you mean "className"? (meta.unknownField)
+src/Combat/init.meta.json:2:3 - warning: unknown field "classname"; Rojo ignores it. Did you mean "className"? (meta.unknownField)
 ```
 
 Rename it to the field suggested, or remove it. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
