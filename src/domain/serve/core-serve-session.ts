@@ -19,6 +19,7 @@ import {
 	ServerSaid,
 	ServerStop,
 	ServingServer,
+	isRunning,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
@@ -228,7 +229,7 @@ export class CoreServeSession
 			return;
 		}
 		if (started) await this.retire(started, "moved");
-		if (checked.value.running) {
+		if (isRunning(checked.value)) {
 			if (!elsewhere)
 				this._onDidChange.fire({
 					kind: "running",

@@ -106,8 +106,8 @@ describe("platform/config/config-file", () => {
 				"the config does not exist (looked for /repo/nope.json)."
 			);
 			expect(
-				(result as ResultError<ConfigFileFailure>).error.missing
-			).toBe(true);
+				(result as ResultError<ConfigFileFailure>).error
+			).toMatchObject({ kind: "unreadable", missing: true });
 		});
 
 		it("should give the reason, without a Node code, for a directory where a file is expected", async () => {

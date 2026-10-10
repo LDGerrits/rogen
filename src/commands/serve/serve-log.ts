@@ -3,6 +3,7 @@ import { ConfigNotice } from "../../domain/config/config-service.js";
 import {
 	ServeChange,
 	ServePlan,
+	RunningTarget,
 	ServeTarget,
 	ServerSaid,
 	ServerStop,
@@ -106,7 +107,7 @@ export class ServeLog implements ServeReporter {
 		const { label } = target.config;
 		switch (change.kind) {
 			case "running":
-				this.running(target);
+				this.running(change.target);
 				return;
 			case "refused":
 				this.logService.diagnostic(change.diagnostic);
@@ -136,8 +137,8 @@ export class ServeLog implements ServeReporter {
 		this.watchLog.end(message);
 	}
 
-	private running(target: ServeTarget): void {
-		const info = target.running!;
+	private running(target: RunningTarget): void {
+		const { running: info } = target;
 		this.logService.info(
 			`${target.config.label} is already served: ${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`
 		);
@@ -197,7 +198,7 @@ export class ServeJsonLog implements ServeReporter {
 		const tool = plan.tool.server.id;
 		switch (change.kind) {
 			case "running":
-				this.running(target);
+				this.running(change.target);
 				return;
 			case "refused":
 				this.line({
@@ -236,9 +237,9 @@ export class ServeJsonLog implements ServeReporter {
 
 	end(): void {}
 
-	private running(target: ServeTarget): void {
+	private running(target: RunningTarget): void {
 		this.line({
-			serving: this.servingJson(target, target.running!, true),
+			serving: this.servingJson(target, target.running, true),
 		});
 	}
 

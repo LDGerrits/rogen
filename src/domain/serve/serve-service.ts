@@ -45,6 +45,12 @@ export interface ServeTarget {
 	readonly running?: ServerInfo;
 }
 
+/** A target a server already serves. */
+export type RunningTarget = ServeTarget & { readonly running: ServerInfo };
+
+export const isRunning = (target: ServeTarget): target is RunningTarget =>
+	target.running !== undefined;
+
 /** What a serve will do: the configs it builds, the server it runs, and each config it serves. */
 export class ServePlan {
 	constructor(
@@ -57,8 +63,8 @@ export class ServePlan {
 	) {}
 
 	/** The targets a server already serves. */
-	get running(): ServeTarget[] {
-		return this.targets.filter(({ running }) => running !== undefined);
+	get running(): RunningTarget[] {
+		return this.targets.filter(isRunning);
 	}
 
 	/** The targets this serve starts a server for. */
@@ -115,7 +121,7 @@ export type ServeChange =
 			readonly diagnostic: Diagnostic;
 	  }
 	/** A config to serve now is already served by a server the session didn't start. */
-	| { readonly kind: "running"; readonly target: ServeTarget };
+	| { readonly kind: "running"; readonly target: RunningTarget };
 
 /** A running serve: a watch of the plan's configs, and a server for each target nothing served. The caller owns it and disposes it. */
 export interface ServeSession extends Disposable {

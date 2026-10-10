@@ -4,6 +4,7 @@ import { parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	ConfigFile,
+	ConfigFileFailure,
 	ConfigFileReader,
 } from "../../platform/config/config-file.js";
 import { Config } from "../../platform/config/config-models.js";
@@ -127,6 +128,27 @@ export class ConfigLoader {
 		};
 	}
 
+	/** What a config of the chain that failed to load says: a missing or unreadable `extends` target is told at the config that names it. */
+	private async failureDiagnostics(
+		failure: ConfigFileFailure,
+		current: string,
+		written: string,
+		referrer: DiagnosticLocation | undefined
+	): Promise<Diagnostic[]> {
+		if (failure.kind === "invalid")
+			return [...failure.diagnostics, ...(await this.hintsFor(current))];
+		if (!referrer) return [...failure.diagnostics];
+		return [
+			errorDiagnostic(
+				"config.extendsUnreadable",
+				referrer,
+				failure.missing
+					? `"extends" target "${written}" does not exist (looked for ${current}). Paths are relative to this config.`
+					: `"extends" target "${written}" could not be read: ${failure.reason}.`
+			),
+		];
+	}
+
 	private async readChain(file: string): Promise<ConfigChain> {
 		const files: string[] = [];
 		const layers: ConfigFile[] = [];
@@ -155,27 +177,15 @@ export class ConfigLoader {
 			files.push(current);
 			const loaded = await this.reader.read(current);
 			if (loaded.isErr()) {
-				const { kind, diagnostics, missing, reason } = loaded.error;
 				return {
 					files,
 					layers,
-					diagnostics:
-						referrer && kind === "unreadable"
-							? [
-									errorDiagnostic(
-										"config.extendsUnreadable",
-										referrer,
-										missing
-											? `"extends" target "${written}" does not exist (looked for ${current}). Paths are relative to this config.`
-											: `"extends" target "${written}" could not be read: ${reason}.`
-									),
-								]
-							: kind === "invalid"
-								? [
-										...diagnostics,
-										...(await this.hintsFor(current)),
-									]
-								: diagnostics,
+					diagnostics: await this.failureDiagnostics(
+						loaded.error,
+						current,
+						written,
+						referrer
+					),
 				};
 			}
 
