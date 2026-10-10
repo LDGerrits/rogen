@@ -112,6 +112,20 @@ describe("StartedServer", () => {
 		).toBeUndefined();
 	});
 
+	it("should report a failure to write its record, and still say it serves", async () => {
+		jest.spyOn(records, "write").mockRejectedValue(new Error("disk full"));
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+
+		await jest.advanceTimersByTimeAsync(250);
+
+		expect(served).toHaveLength(1);
+		expect(failures.map((error) => error.message)).toEqual(["disk full"]);
+	});
+
 	it("should keep asking while it answers for another project", async () => {
 		start();
 		requests.answer(ROJO_URL, {
