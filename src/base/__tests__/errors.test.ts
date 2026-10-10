@@ -7,6 +7,26 @@ import {
 	setUnexpectedErrorHandler,
 } from "../errors.js";
 
+describe("ErrorUtils.isSystemError", () => {
+	it("should accept an error carrying an errno code", () => {
+		expect(
+			ErrorUtils.isSystemError(
+				Object.assign(new Error("denied"), { code: "EACCES" })
+			)
+		).toBe(true);
+	});
+
+	it.each([
+		new Error("plain"),
+		Object.assign(new Error("odd"), { code: "ERR_INVALID_ARG_TYPE_X" }),
+		Object.assign(new Error("odd"), { code: "ERR_X" }),
+		Object.assign(new Error("odd"), { code: 13 }),
+		{ code: "EACCES" },
+	])("should not accept %s", (error) => {
+		expect(ErrorUtils.isSystemError(error)).toBe(false);
+	});
+});
+
 describe("ErrorUtils.hasCode", () => {
 	it("should match an error whose code is one of those given", () => {
 		const error = Object.assign(new Error("gone"), { code: "ENOENT" });

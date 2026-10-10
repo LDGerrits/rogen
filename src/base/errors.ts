@@ -38,6 +38,16 @@ export const ErrorUtils = {
 		);
 	},
 
+	/** Whether `error` is a failed system call: its code is an errno such as `EACCES`, which the environment causes and a bug does not. */
+	isSystemError(error: unknown): error is Error & { readonly code: string } {
+		return (
+			error instanceof Error &&
+			"code" in error &&
+			typeof error.code === "string" &&
+			/^E[A-Z0-9]+$/.test(error.code)
+		);
+	},
+
 	/** `cause` as an error that says what failed and why: `Failed to write a.json: permission denied`. */
 	wrap(what: string, cause: Error): Error {
 		return new Error(`${what}: ${failureReason(cause)}`, { cause });

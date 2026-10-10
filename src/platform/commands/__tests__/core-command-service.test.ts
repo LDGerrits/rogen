@@ -69,6 +69,48 @@ describe("CoreCommandService", () => {
 			expect((result as ResultError<Error>).error).toBe(error);
 		});
 
+		it("should return a failed system call as the command's error", async () => {
+			const error = Object.assign(
+				new Error("EACCES: permission denied, scandir '/repo/src'"),
+				{ code: "EACCES" }
+			);
+			store.add(
+				registry.registerCommand({
+					id: "foo",
+					metadata: { description: "foo" },
+					handler: async () => {
+						throw error;
+					},
+				})
+			);
+
+			const result = await commandService.executeCommand("foo", {
+				positionals: [],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error).toBe(error);
+		});
+
+		it("should let any other throw through, since it is a bug", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "foo",
+					metadata: { description: "foo" },
+					handler: async () => {
+						throw new TypeError("oops");
+					},
+				})
+			);
+
+			await expect(
+				commandService.executeCommand("foo", {
+					positionals: [],
+					options: {},
+				})
+			).rejects.toThrow("oops");
+		});
+
 		it("should refuse words after -- for a command that takes none", async () => {
 			store.add(
 				registry.registerCommand({

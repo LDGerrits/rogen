@@ -1,4 +1,4 @@
-import { UsageError } from "../../base/errors.js";
+import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { CommandLine, HELP_COMMAND } from "../environment/args.js";
@@ -39,7 +39,12 @@ export class CoreCommandService implements CommandService {
 			);
 		}
 
-		return command.handler(this.accessor, line);
+		try {
+			return await command.handler(this.accessor, line);
+		} catch (error) {
+			if (ErrorUtils.isSystemError(error)) return err(error);
+			throw error;
+		}
 	}
 }
 
