@@ -165,7 +165,14 @@ export class ConfigSet {
 			);
 		}
 		if (darklua && this.sourced && sourcemap) {
-			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
+			const projectFile = defaultOutFileName(this.name);
+			const command = darklua.sourcemapCommand(projectFile);
+			// luau-lsp keeps the sourcemap Darklua reads current from the default project; any other needs its own watch.
+			if (projectFile === defaultOutFileName(DEFAULT_CONFIG_STEM))
+				builder.addEdit(
+					`Darklua reads sourcemap.json, which luau-lsp keeps current from ${projectFile}. Without luau-lsp, run: ${command}`
+				);
+			else builder.addRun(command);
 		}
 	}
 
