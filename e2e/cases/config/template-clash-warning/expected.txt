@@ -1,9 +1,6 @@
 $ rogen build --verbose
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   [debug] src: 2 files
   [debug] route server -> ServerScriptService: 1 file

@@ -567,6 +567,28 @@ describe("LocationReport", () => {
 				configs.map(([label, location]) => [label, [location]])
 			).blocks()[0].requireLines;
 
+		it("should say a script is not a module, and a file whose path no require reaches why", () => {
+			expect(
+				requireLines([
+					"default",
+					{
+						...placed(["ReplicatedStorage", "Boot"]),
+						source: "/repo/src/Boot.client.luau",
+					},
+				])
+			).toEqual([
+				"  no require by this path: a script runs on its own and is not a module",
+			]);
+			expect(
+				requireLines([
+					"default",
+					placed(["StarterPlayer", "StarterPlayerScripts", "Util"]),
+				])
+			).toEqual([
+				"  no require by this path: StarterPlayerScripts is cloned into each player",
+			]);
+		});
+
 		it("should give a module's require, and none for a file found in a folder", () => {
 			const path = ["ReplicatedStorage", "Util"];
 
@@ -575,6 +597,18 @@ describe("LocationReport", () => {
 			]);
 			expect(requireLines(["default", placed(path, false)])).toEqual([]);
 		});
+
+		it.each(["/repo/src/Hit.ts", "/repo/src/Data.json"])(
+			"should give none for %s, which is not Luau",
+			(source) => {
+				expect(
+					requireLines([
+						"default",
+						{ ...placed(["ReplicatedStorage", "X"]), source },
+					])
+				).toEqual([]);
+			}
+		);
 
 		it("should say it once when every config places the file alike", () => {
 			const location = placed(["ReplicatedStorage", "Util"]);
@@ -594,6 +628,83 @@ describe("LocationReport", () => {
 				'  default: require(game:GetService("ReplicatedStorage").Util)',
 				'  lobby: require(game:GetService("ReplicatedFirst").Util)',
 			]);
+		});
+	});
+
+	describe("an instance no file places", () => {
+		const unplaced = (
+			text: string,
+			folders: string[] = [],
+			fixes: InstanceLocation["fixes"] = []
+		): InstanceLocation => ({
+			reference: InstanceReference.parse(text)!,
+			files: [],
+			folders,
+			fixes,
+		});
+		const linesOf = (
+			instance: InstanceLocation,
+			diagnostics: Diagnostic[] = []
+		) => reportOf([["default", [], [instance], diagnostics]]).lines();
+
+		it("should say no file places it", () => {
+			expect(linesOf(unplaced("Workspace.Missing"))).toEqual([
+				"Workspace.Missing -> no file places it",
+			]);
+		});
+
+		it("should name each folder a new file for it goes in", () => {
+			expect(
+				linesOf(
+					unplaced("ServerScriptService.Inventory.NewThing", [
+						"/repo/src/Inventory/Server",
+						"/repo/lib/Inventory/Server",
+					])
+				)
+			).toEqual([
+				"ServerScriptService.Inventory.NewThing -> no file places it · a new file goes in src/Inventory/Server/ or lib/Inventory/Server/",
+			]);
+		});
+
+		it("should name a rename that would place it, by its new name in the same folder and its path in another", () => {
+			expect(
+				linesOf(
+					unplaced(
+						"ServerScriptService.Stray.Buy",
+						[],
+						[
+							{
+								code: "route.strayAt",
+								rename: {
+									from: "/repo/src/Stray/Buy@sever.luau",
+									to: "/repo/src/Stray/Buy@Server.luau",
+								},
+							},
+							{
+								code: "route.misplaced",
+								rename: {
+									from: "/repo/src/Stray/Buy.luau",
+									to: "/repo/src/Shop/Server/Buy.luau",
+								},
+							},
+						]
+					)
+				)
+			).toEqual([
+				"ServerScriptService.Stray.Buy -> no file places it · src/Stray/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt) · src/Stray/Buy.luau would, renamed to src/Shop/Server/Buy.luau (route.misplaced)",
+			]);
+		});
+
+		it("should print no diagnostic under it, which is about a file", () => {
+			expect(
+				linesOf(unplaced("Workspace.Missing"), [
+					warningDiagnostic(
+						"route.strayAt",
+						{ resource: "/repo/src/A.luau" },
+						"A stray @."
+					),
+				])
+			).toEqual(["Workspace.Missing -> no file places it"]);
 		});
 	});
 
@@ -882,6 +993,24 @@ describe("LocationReport", () => {
 			]);
 		});
 
+		it("should mark a hoisted name in json, and leave the mark off an unhoisted one", () => {
+			const placed: FileLocation = {
+				status: "placed",
+				source: "/repo/src/Player/^Animate.client.luau",
+				exists: true,
+				instancePath: ["StarterPlayer", "Animate"],
+				route: "character",
+				routeMatch: "marker",
+				variants: [],
+			};
+
+			expect(jsonOf({ ...placed, hoisted: true })[0]).toHaveProperty(
+				"hoisted",
+				true
+			);
+			expect(jsonOf(placed)[0]).not.toHaveProperty("hoisted");
+		});
+
 		it("should give the other nodes a copied init script is", () => {
 			expect(
 				jsonOf({
@@ -1026,6 +1155,48 @@ describe("LocationReport", () => {
 					diagnostics: [],
 				},
 			]);
+		});
+
+		it("should give the renames that would place an instance no file does, and leave out empty lists", () => {
+			const entries = (instance: InstanceLocation) =>
+				reportOf([["default", [], [instance]]])
+					.json()
+					.locations.map(({ config: _config, ...rest }) => rest);
+			const reference = InstanceReference.parse("Workspace.Missing")!;
+
+			expect(
+				entries({
+					reference,
+					files: [],
+					folders: [],
+					fixes: [
+						{
+							code: "route.misspelt",
+							rename: {
+								from: "/repo/src/Gone.luau",
+								to: "/repo/src/Missing.luau",
+							},
+						},
+					],
+				})
+			).toEqual([
+				{
+					instance: "Workspace.Missing",
+					status: "noFile",
+					fixes: [
+						{
+							rename: {
+								from: path.normalize("/repo/src/Gone.luau"),
+								to: path.normalize("/repo/src/Missing.luau"),
+							},
+						},
+					],
+					diagnostics: [],
+				},
+			]);
+			expect(
+				entries({ reference, files: [], folders: [], fixes: [] })[0]
+			).not.toHaveProperty("fixes");
 		});
 
 		it("should keep a config's outside entry when another config places the path", () => {

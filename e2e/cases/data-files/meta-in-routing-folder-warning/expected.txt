@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   src/Combat/server/init.meta.json - warning: applies to nothing, because a routing folder never becomes an instance. Move the meta into the folder that should get it. (meta.appliesToNothing)
 

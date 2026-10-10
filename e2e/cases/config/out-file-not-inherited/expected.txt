@@ -1,9 +1,6 @@
 $ rogen build child
 exit 0
-stdout:
-  rogen build · child
-  child.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 written:
   child.project.json

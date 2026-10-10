@@ -5,10 +5,16 @@ Each case is a small project that the bundled CLI builds for real, followed by
 exit codes, output, written files and the tree Rojo sees) is compared with
 `expected.txt`.
 
+A case is about one thing, and its transcript shows that thing. The printed
+output of `build` and `init` is the same frame in nearly every case, so it is
+left out (`stdout: (not shown)`) unless the case lists the command under
+`output`. Errors and warnings are on stderr and always show, and so do the exit
+code, the written files and the tree Rojo sees.
+
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "--variant", "mock"]], "cwd": "src", "links": {}, "rojo": false, "show": [] }
+  case.json      optional: { "steps": [["build", "--variant", "mock"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [] }
   expected.txt   the transcript
 ```
 
@@ -18,20 +24,57 @@ e2e/cases/<area>/<case>/
   the fixtures work on any checkout.
 - `show` lists other written files to print, for what a sourcemap can't show
   (like `$properties`).
+- `output` lists the commands (`build`, `init`) whose printed output this case
+  checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - Files that a run created or changed are listed under `written:`. `*.rogen.json`
   files are printed, and every `*.project.json` is passed to Rojo.
 
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
-and fails in CI. The `serve` tests with Argon need the Argon `rokit.toml` pins,
+and fails in CI. `serve-argon.test.ts` needs the Argon `rokit.toml` pins,
 which `rokit install` installs too.
 
-After changing behavior on purpose, regenerate and review the diff:
+## Where each thing is checked
+
+Check a thing once, where it lives, and leave it out of the other cases.
+
+- What `init` prints for each kind of project (its notes and next steps) is shown
+  by the cases in `cases/init-output/`, which prove that the real binary prints
+  it. The wording of each note is checked by
+  `src/commands/init/__tests__/init-command.test.ts` and the tests of
+  `src/domain/init`. The other `cases/init/` cases check what `init` writes and
+  that Rojo accepts it.
+- What `build` prints (header, per-config lines, closing line) is checked by
+  `build-log.test.ts` and `build-command.test.ts` in
+  `src/commands/build/__tests__/`. A case lists `build` under `output` only when
+  a line of it is the point, such as the mode a build ran in.
+- The wording of a warning or an error is checked by the domain test of its code,
+  such as `build-validator.test.ts`. A case shows it on stderr to prove that it
+  reaches the user.
+- The project file and the tree Rojo sees are checked by the case of the feature,
+  in `cases/routing`, `variants`, `modes`, `structure` and the like.
+
+A new case needs no `output`. Add it only when the printed output of `build` or
+`init` is what the case is about.
+
+## Updating transcripts
+
+After changing behavior on purpose, regenerate the transcripts:
 
 ```
-UPDATE_E2E=1 npm test -- e2e
+npm run test:e2e:update
 ```
 
-`watch.test.ts` and `serve.test.ts` cover the long-running `watch` and `serve`
-commands, which a transcript can't describe. `serve.test.ts` starts the pinned
-Rojo on a random port.
+It prints the edits to the transcripts, grouped, with the number of transcripts each is in:
+
+```
+28×  Declare variants [-under-]{+in+} "variants" in
+ 1×  + Wrote 2 files.
+     in init/add-place-no-input
+```
+
+Read that list first, and open the diff of a transcript only for an edit you did not expect. `npm run test:e2e:diff` prints the list again for what is not yet committed.
+
+`watch.test.ts`, `serve-rojo.test.ts` and `serve-argon.test.ts` cover the
+long-running `watch` and `serve` commands, which a transcript can't describe. The
+serve tests start the pinned Rojo or Argon on a random port.

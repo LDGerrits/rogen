@@ -1,10 +1,6 @@
 $ rogen build --mode prod
 exit 1
-stdout:
-  rogen build · default, lobby
-  default
-  lobby
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.project.json · not written · mode prod · lobby failed
   error: lobby.rogen.json · not loaded

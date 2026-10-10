@@ -8,5 +8,6 @@
 		["where", "Server/Save.luau"],
 		["build", "../../lobby.rogen.json", "--json"]
 	],
-	"rojo": false
+	"rojo": false,
+	"output": ["build"]
 }

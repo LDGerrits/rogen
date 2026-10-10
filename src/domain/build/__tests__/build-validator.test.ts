@@ -351,6 +351,16 @@ describe("BuildValidator rules", () => {
 				]);
 			});
 
+			it("should fall back to moving the root dir into one folder when its parent is outside the project", async () => {
+				const [warning] = await named(["../outside/server"]);
+
+				expect(warning.message.split("\n")).toEqual([
+					"1 root dir is named after a route key, but routing starts below a root dir, so its name routes nothing:",
+					'  ../outside/server ("server" route)',
+					'Move it into one folder, such as src/../outside/server, and use "rootDirs": ["src"].',
+				]);
+			});
+
 			it("should not warn when the root dir holds a folder named after a key", async () => {
 				expect(await named(["src"])).toEqual([]);
 			});

@@ -190,7 +190,9 @@ describe("ConfigDiscovery", () => {
 		});
 
 		it("should resolve a path from the working directory", async () => {
-			const result = await nested.discover(["../places/match.rogen.json"]);
+			const result = await nested.discover([
+				"../places/match.rogen.json",
+			]);
 
 			expect(result.unwrap().files).toEqual([
 				"/repo/places/match.rogen.json",
@@ -248,7 +250,9 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["lobby.sync"]);
 
-			expect(result.unwrap().files).toEqual(["/repo/lobby.sync.rogen.json"]);
+			expect(result.unwrap().files).toEqual([
+				"/repo/lobby.sync.rogen.json",
+			]);
 		});
 
 		it("should mix with names, in the order given", async () => {

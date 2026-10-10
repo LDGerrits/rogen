@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 2 warnings.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it: (route.serverCodeShipped)
     src/client/Inventory/server/Save.luau -> StarterPlayer/StarterPlayerScripts/Inventory/server/Save

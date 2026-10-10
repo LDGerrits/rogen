@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.project.json · not written
   src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found an array. (meta.wrongType)

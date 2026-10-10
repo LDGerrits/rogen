@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 4 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
     src/@sever (did you mean "@server"?)

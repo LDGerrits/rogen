@@ -1,16 +1,10 @@
 $ rogen build -o plain.project.json
 exit 0
-stdout:
-  rogen build · default
-  plain.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 $ rogen build -o mocked.project.json --variant mock
 exit 0
-stdout:
-  rogen build · default
-  mocked.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 $ rogen where src/Net/.mock@server/FakeStore.luau src/Net/@server.mock/Probe.luau
 exit 0

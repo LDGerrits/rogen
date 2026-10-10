@@ -8,9 +8,9 @@ import { ResultError } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
-	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
+	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
@@ -18,6 +18,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
+const WHAT_TO_ADD = "default.rogen.json exists. What do you want to add?";
 const directory = path.resolve("/mock/my-game");
 
 describe("CoreInitService", () => {
@@ -124,10 +125,9 @@ describe("CoreInitService", () => {
 		});
 
 		it("should ask first in a terminal, and go on when the user says yes", async () => {
-			const prompts = new MockPromptService([
-				true,
-				...Array<typeof ACCEPT_DEFAULT>(10).fill(ACCEPT_DEFAULT),
-			]);
+			const prompts = new MockPromptService({
+				[`${directory} already has default.rogen.json. Start a separate project here anyway?`]: true,
+			});
 
 			const result = await serviceFor(prompts, nested).plan([]);
 
@@ -201,11 +201,7 @@ describe("CoreInitService", () => {
 		it("should leave a file that holds the block alone, and not ask", async () => {
 			await write("AGENTS.md", `${agentBlock}`);
 
-			expect(
-				await agentFile(
-					new MockPromptService(Array(8).fill(ACCEPT_DEFAULT))
-				)
-			).toBeUndefined();
+			expect(await agentFile(new MockPromptService({}))).toBeUndefined();
 		});
 
 		it("should leave both files alone when CLAUDE.md holds the block", async () => {
@@ -281,8 +277,7 @@ describe("CoreInitService", () => {
 		const SCRIPT = ".agents/hooks/rogen-check.sh";
 		const CLAUDE = ".claude/settings.json";
 		const CODEX = ".codex/hooks.json";
-		const answersEverything = () =>
-			new MockPromptService(Array(12).fill(ACCEPT_DEFAULT));
+		const answersEverything = () => new MockPromptService({});
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
 		const planned = async (prompts = answersEverything()) =>
@@ -385,12 +380,9 @@ describe("CoreInitService", () => {
 
 		it("should not write it when the question is declined", async () => {
 			await write(".claude/keep", "");
-			const asked = answersEverything();
-			await planned(asked);
-			const declined = new MockPromptService([
-				...Array(asked.asked.length - 1).fill(ACCEPT_DEFAULT),
-				false,
-			]);
+			const declined = new MockPromptService({
+				"Add a hook that reports Rogen warnings to Claude Code?": false,
+			});
 
 			const plan = await planned(declined);
 
@@ -582,7 +574,7 @@ describe("CoreInitService", () => {
 			});
 
 			const planWith = async (
-				answers: ConstructorParameters<typeof MockPromptService>[0],
+				answers: PromptScript,
 				names: readonly string[] = [],
 				existing: readonly string[] = []
 			) => {
@@ -594,15 +586,15 @@ describe("CoreInitService", () => {
 			};
 
 			it("should ask what to add, preselecting a place", async () => {
-				const { prompts, result } = await planWith([
-					ACCEPT_DEFAULT,
-					"arena",
-					ACCEPT_DEFAULT,
-				]);
+				const { prompts, result } = await planWith({
+					"Place name": "arena",
+				});
 
-				expect(prompts.asked[0]).toBe(
-					"default.rogen.json exists. What do you want to add?"
-				);
+				expect(prompts.asked).toEqual([
+					WHAT_TO_ADD,
+					"Place name",
+					"Place folder",
+				]);
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual([
@@ -611,12 +603,15 @@ describe("CoreInitService", () => {
 				]);
 			});
 
+			it("should plan nothing when the user cancels what to add", async () => {
+				const { prompts, result } = await planWith([CANCEL]);
+
+				expect(prompts.asked).toEqual([WHAT_TO_ADD]);
+				expect(result.unwrap()).toBeUndefined();
+			});
+
 			it("should add a place with its folder", async () => {
-				const { result } = await planWith([
-					ACCEPT_DEFAULT,
-					"arena",
-					ACCEPT_DEFAULT,
-				]);
+				const { result } = await planWith({ "Place name": "arena" });
 
 				expect(
 					JSON.parse(result.unwrap()?.files[0].content ?? "{}")
@@ -629,7 +624,10 @@ describe("CoreInitService", () => {
 
 			it("should reject a place folder inside default's root dirs", async () => {
 				await expect(
-					planWith([ACCEPT_DEFAULT, "arena", "src/arena"])
+					planWith({
+						"Place name": "arena",
+						"Place folder": "src/arena",
+					})
 				).rejects.toThrow(
 					"src/arena overlaps src, one of default's root dirs."
 				);
@@ -638,7 +636,7 @@ describe("CoreInitService", () => {
 			it("should reject a place whose project file exists", async () => {
 				await expect(
 					planWith(
-						[ACCEPT_DEFAULT, "arena"],
+						{ "Place name": "arena" },
 						[],
 						["arena.project.json"]
 					)
@@ -654,10 +652,7 @@ describe("CoreInitService", () => {
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual(["prod.rogen.json"]);
-				expect(prompts.asked).toEqual([
-					"default.rogen.json exists. What do you want to add?",
-					"Config name",
-				]);
+				expect(prompts.asked).toEqual([WHAT_TO_ADD, "Config name"]);
 			});
 
 			it("should reject an extending config whose project file exists", async () => {
@@ -667,29 +662,29 @@ describe("CoreInitService", () => {
 			});
 
 			it("should ask every question again for a separate config", async () => {
-				const { prompts, result } = await planWith([
-					"separate",
-					"test",
-					...Array(6).fill(ACCEPT_DEFAULT),
-				]);
+				const { prompts, result } = await planWith({
+					[WHAT_TO_ADD]: "separate",
+					"Config name": "test",
+				});
 
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
 				).toEqual(["test.rogen.json"]);
 				expect(prompts.asked.slice(0, 3)).toEqual([
-					"default.rogen.json exists. What do you want to add?",
+					WHAT_TO_ADD,
 					"Config name",
 					"Language",
 				]);
 			});
 
 			it("should fail at once when a given place name is taken", async () => {
-				const { result } = await planWith(
-					[ACCEPT_DEFAULT],
+				const { prompts, result } = await planWith(
+					{},
 					["arena"],
 					["arena.rogen.json"]
 				);
 
+				expect(prompts.asked).toEqual([]);
 				expect(
 					result.isErr() &&
 						result.error instanceof DiagnosticsError &&

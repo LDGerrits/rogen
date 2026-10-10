@@ -2,5 +2,6 @@
 	"steps": [
 		["init", "lobby"],
 		["build"]
-	]
+	],
+	"output": ["init"]
 }

@@ -1,41 +1,14 @@
 $ rogen init lobby
 exit 0
-stdout:
-  rogen init
-  Created lobby.rogen.json.
-  Created places/lobby/template.project.json.
-  lobby.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 2 files.
+stdout: (not shown)
 
 $ rogen init arena
 exit 0
-stdout:
-  rogen init
-  Created arena.rogen.json.
-  Created places/arena/template.project.json.
-  Created places/arena/src/.
-  arena.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Declare variants under "variants" in arena.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.
-  Wrote 2 files.
+stdout: (not shown)
 
 $ rogen build
 exit 0
-stdout:
-  rogen build · arena, default, lobby
-  arena
-    arena.project.json · unchanged
-  default
-    default.project.json · wrote
-  lobby
-    lobby.project.json · unchanged
-  Built 3 configs.
+stdout: (not shown)
 
 $ rogen list
 exit 0

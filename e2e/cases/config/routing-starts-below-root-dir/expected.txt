@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 1 warning.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing: (scan.rootDirNamedAfterKey)
     server ("server" route)

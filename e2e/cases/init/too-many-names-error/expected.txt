@@ -1,7 +1,5 @@
 $ rogen init a b
 exit 2
-stdout:
-  rogen init
-  init failed.
+stdout: (not shown)
 stderr:
   error: init takes at most one config name.

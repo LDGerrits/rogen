@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json:2:13 - error: "extends" target "./nowhere.rogen.json" does not exist (looked for nowhere.rogen.json). Paths are relative to this config. (config.extendsUnreadable)

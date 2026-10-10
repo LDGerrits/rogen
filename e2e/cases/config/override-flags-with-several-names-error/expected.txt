@@ -15,10 +15,7 @@ stdout:
 
 $ rogen build a -o x.project.json
 exit 0
-stdout:
-  rogen build · a
-  x.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 written:
   x.project.json

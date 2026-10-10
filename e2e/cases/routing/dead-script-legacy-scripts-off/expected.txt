@@ -1,9 +1,6 @@
 $ rogen build
 exit 0
-stdout:
-  rogen build · default
-  default.project.json · wrote
-  Built 1 config with 2 warnings.
+stdout: (not shown)
 stderr:
   default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
     src/Inventory/Server/Hud.client.luau -> ServerScriptService/Inventory/Hud (a Script with RunContext Client, placed by the "server" route)

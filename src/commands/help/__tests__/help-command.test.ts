@@ -1,8 +1,18 @@
 import { jest } from "@jest/globals";
+import fs from "fs";
+import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
+import {
+	CommandHarness,
+	commandHarness,
+} from "../../__tests__/command-harness.js";
 import "../../build/build-command.js";
+import "../../check/check-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
+import "../../list/list-command.js";
+import "../../serve/serve-command.js";
 import "../../watch/watch-command.js";
+import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
 import { Result, ResultError, ok } from "../../../base/result.js";
@@ -12,16 +22,12 @@ import {
 	Extensions,
 	registerCommand,
 } from "../../../platform/commands/commands.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
 	parseArgs,
 } from "../../../platform/environment/args.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
-import { ProductService } from "../../../platform/product/product-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { helpTexts } from "../help-texts.js";
 
@@ -30,10 +36,10 @@ describe("help command", () => {
 	let store: DisposableStore;
 	let logService: NullLogService;
 	let info: ReturnType<typeof jest.spyOn>;
-	let commandService: CoreCommandService;
+	let harness: CommandHarness<NullLogService>;
 
 	const help = (...positionals: string[]) =>
-		commandService.executeCommand("help", { positionals, options: {} });
+		harness.run("help", { positionals });
 
 	const printed = () => String(info.mock.calls[0][0]);
 
@@ -41,17 +47,27 @@ describe("help command", () => {
 		store = new DisposableStore();
 		logService = new NullLogService();
 		info = jest.spyOn(logService, "print");
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(ProductService, {
-			_serviceBrand: undefined,
-			getVersion: async () => "2.3.4",
+		harness = commandHarness({
+			log: logService,
+			product: new MockProductService("2.3.4"),
 		});
-		commandService = new CoreCommandService(services, logService);
 	});
 
 	afterEach(() => {
 		store[Symbol.dispose]();
+	});
+
+	it("should have imported every command module, so the tests below cover them all", () => {
+		const commandDirs = fs
+			.readdirSync("src/commands", { withFileTypes: true })
+			.filter(
+				(entry) => entry.isDirectory() && entry.name !== "__tests__"
+			)
+			.map((entry) => entry.name);
+
+		expect([...registry.getCommands().keys()].sort()).toEqual(
+			commandDirs.sort()
+		);
 	});
 
 	describe("rogen help", () => {
@@ -82,7 +98,7 @@ describe("help command", () => {
 		});
 
 		it("should print the version for --version, whatever the command", async () => {
-			await commandService.executeCommand("help", {
+			await harness.run("help", {
 				positionals: ["build"],
 				options: { version: true, help: true },
 			});
@@ -118,7 +134,7 @@ describe("help command", () => {
 		});
 
 		it("should resolve the command from --help as well", async () => {
-			await commandService.executeCommand("help", {
+			await harness.run("help", {
 				positionals: ["build"],
 				options: { help: true },
 			});

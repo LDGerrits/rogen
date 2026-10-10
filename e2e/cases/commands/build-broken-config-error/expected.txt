@@ -1,10 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · broken, default
-  broken
-  default
-  build failed.
+stdout: (not shown)
 stderr:
   error: broken.rogen.json · not loaded
   broken.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)

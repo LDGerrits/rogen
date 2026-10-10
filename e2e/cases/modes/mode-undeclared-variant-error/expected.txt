@@ -1,8 +1,6 @@
 $ rogen build
 exit 1
-stdout:
-  rogen build · default
-  build failed.
+stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json:13:5 - error: mode "dev" turns on variant "mock", which is not declared under "variants". Declare it there. (config.undeclaredModeVariant)

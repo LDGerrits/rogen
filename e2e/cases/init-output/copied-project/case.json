@@ -1,0 +1,4 @@
+{
+	"steps": [["init"], ["build"]],
+	"output": ["init"]
+}

@@ -683,6 +683,21 @@ describe("Placer", () => {
 			expect([copy.route, copy.routeMatch]).toEqual(["server", "copy"]);
 		});
 
+		it("should give a copy the folder nodes down to the node it is, and none outranked", async () => {
+			await write(
+				"src/Net/Inner/init.luau",
+				"src/Net/Inner/server/Remote.luau"
+			);
+
+			const [, copy] = (await route()).nodes;
+
+			expect(copy.folderNodes.map(({ dir }) => dir)).toEqual([
+				"Net",
+				"Net/Inner",
+			]);
+			expect(copy.outrankedFolderRoutes).toEqual([]);
+		});
+
 		it("should copy only an init script that is a ModuleScript, since a copied Script runs once per copy", async () => {
 			await write("src/Net/init.client.luau", "src/Net/game/Remote.luau");
 

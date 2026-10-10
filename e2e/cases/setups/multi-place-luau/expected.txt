@@ -1,14 +1,6 @@
 $ rogen build core lobby match
 exit 0
-stdout:
-  rogen build · core, lobby, match
-  core
-    core.project.json · wrote
-  lobby
-    lobby.project.json · wrote
-  match
-    match.project.json · wrote
-  Built 3 configs.
+stdout: (not shown)
 
 written:
   core.project.json

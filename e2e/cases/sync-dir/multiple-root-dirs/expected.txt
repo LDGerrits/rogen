@@ -1,9 +1,6 @@
 $ rogen build lobby
 exit 0
-stdout:
-  rogen build · lobby
-  lobby.project.json · wrote
-  Built 1 config.
+stdout: (not shown)
 
 written:
   lobby.project.json

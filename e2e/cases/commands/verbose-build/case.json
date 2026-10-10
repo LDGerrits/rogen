@@ -6,5 +6,6 @@
 			"match",
 			"-v"
 		]
-	]
+	],
+	"output": ["build"]
 }

@@ -1,28 +1,17 @@
 import { jest } from "@jest/globals";
 import "../watch-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import { OutputFile } from "../../../domain/build/build.js";
-import { BuildService } from "../../../domain/build/build-service.js";
-import { CoreWatchService } from "../../../domain/watch/core-watch-service.js";
-import { WatchService } from "../../../domain/watch/watch-service.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import { parseArgs } from "../../../platform/environment/args.js";
 import {
 	CommandRegistry,
@@ -59,25 +48,14 @@ describe("watch command", () => {
 	});
 
 	const startWatch = async (names: string[] = []) => {
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(ConfigService, configService);
-		services.set(FileSystemService, memFs);
-		services.set(LifecycleService, lifecycle);
-		const indexService = new CoreIndexService(memFs);
-		const buildService = buildServiceOf(memFs, indexService);
-		services.set(BuildService, buildService);
-		const watchService = new CoreWatchService(
+		const harness = commandHarness({
+			fs: memFs,
+			log: logService,
+			config: configService,
+			lifecycle,
 			watcher,
-			indexService,
-			buildService
-		);
-		services.set(WatchService, watchService);
-		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
-		return new CoreCommandService(services, logService).executeCommand(
-			"watch",
-			{ positionals: names, options: {} }
-		);
+		});
+		return harness.run("watch", { positionals: names });
 	};
 
 	const run = async (names: string[] = []) => {
@@ -216,13 +194,8 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/B.luau", "");
 			await settle();
 
-			expect(
-				logService.entries.filter(({ kind }) => kind === "error")
-			).toEqual([
-				{
-					kind: "error",
-					text: "Still building from the last valid prod.rogen.json.",
-				},
+			expect(logService.texts("error")).toEqual([
+				"Still building from the last valid prod.rogen.json.",
 			]);
 		});
 
@@ -239,11 +212,7 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/C.server.luau", "");
 			await settle();
 
-			expect(
-				logService.entries.filter(
-					({ kind }) => kind === "diagnosticWarning"
-				)
-			).toHaveLength(1);
+			expect(logService.texts("diagnosticWarning")).toHaveLength(1);
 		});
 	});
 

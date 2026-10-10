@@ -1,14 +1,7 @@
 import "../list-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import { Result, ResultError } from "../../../base/result.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
-import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { ReportedError } from "../../../base/errors.js";
@@ -31,10 +24,7 @@ describe("list command", () => {
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
 
-	const steps = () =>
-		logService.entries
-			.filter(({ kind }) => kind === "step")
-			.map(({ text }) => text);
+	const steps = () => logService.texts("step");
 
 	const under = (step: string) => {
 		const entries = logService.entries;
@@ -50,21 +40,11 @@ describe("list command", () => {
 	};
 
 	beforeEach(async () => {
-		fs = new MemoryFileSystemService();
-		await fs.createDirectory("/repo");
-		logService = new MockLogService();
-		const environment = new MockEnvironmentService("/repo");
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(FileSystemService, fs);
-		services.set(EnvironmentService, environment);
-		services.set(ConfigService, new CoreConfigService(fs, environment));
-		const commandService = new CoreCommandService(services, logService);
+		const harness = commandHarness();
+		({ fs } = harness);
+		logService = harness.log;
 		run = ({ _ = [], ...options } = {}) =>
-			commandService.executeCommand("list", {
-				positionals: _,
-				options,
-			});
+			harness.run("list", { positionals: _, options });
 	});
 
 	it("should show a config's root dirs, sync dir, project file and every variant with its state", async () => {
@@ -326,12 +306,7 @@ describe("list command", () => {
 
 	describe("with --json", () => {
 		const document = () =>
-			JSON.parse(
-				logService.entries
-					.filter(({ kind }) => kind === "print")
-					.map(({ text }) => text)
-					.join("\n")
-			) as { configs: Record<string, unknown>[] };
+			logService.json<{ configs: Record<string, unknown>[] }>();
 
 		const entry = (config: string) =>
 			document().configs.find((candidate) => candidate.config === config);

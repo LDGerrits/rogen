@@ -1,7 +1,5 @@
 $ rogen init
 exit 1
-stdout:
-  rogen init
-  init failed.
+stdout: (not shown)
 stderr:
   default.rogen.json - error: this config already exists. To add a place beside it, run 'rogen init <name>'. (init.configExists)

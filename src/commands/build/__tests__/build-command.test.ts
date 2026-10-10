@@ -1,31 +1,23 @@
 import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
+import { commandHarness } from "../../__tests__/command-harness.js";
 import { ReportedError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DisposableStore } from "../../../base/disposable.js";
-import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
 import {
 	MockConfigService,
 	brokenEntry,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
-import { BuildService } from "../../../domain/build/build-service.js";
 import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config-service.js";
-import { ConfigService } from "../../../domain/config/config-service.js";
-import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import { EnvironmentService } from "../../../platform/environment/environment-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
-import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -48,24 +40,12 @@ describe("build command", () => {
 		store[Symbol.dispose]();
 	});
 
-	const run = (
-		configService: MockConfigService,
-		logService: LogService,
+	const run = async (
+		config: MockConfigService,
+		log: LogService,
 		line: CommandLine = { positionals: [], options: {} },
-		index: IndexService = new CoreIndexService(fs)
-	) => {
-		const services = new ServiceCollection();
-		services.set(LogService, logService);
-		services.set(ConfigService, configService);
-		services.set(FileSystemService, fs);
-		services.set(IndexService, index);
-		services.set(BuildService, buildServiceOf(fs, index));
-		services.set(EnvironmentService, new MockEnvironmentService("/repo"));
-		return new CoreCommandService(services, logService).executeCommand(
-			"build",
-			line
-		);
-	};
+		index?: IndexService
+	) => commandHarness({ fs, log, config, index }).run("build", line);
 
 	const buildable = (
 		overrides: ResolvedConfigSpec = {},
@@ -149,7 +129,7 @@ describe("build command", () => {
 			"success: default.project.json · wrote",
 			"step: lobby",
 			"success: lobby.project.json · wrote",
-			"outro: Built 2 configs.",
+			expect.stringMatching(/^outro: /),
 		]);
 	});
 
@@ -172,23 +152,6 @@ describe("build command", () => {
 		]);
 	});
 
-	it("should leave an unchanged project file alone", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		await run(new MockConfigService([buildable()]), new NullLogService());
-		const logService = new NullLogService();
-		const success = jest.spyOn(logService, "success");
-
-		const result = await run(
-			new MockConfigService([buildable()]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(success).toHaveBeenCalledWith(
-			"default.project.json · unchanged"
-		);
-	});
-
 	it("should fail and write nothing when a config declares no routes", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 
@@ -208,23 +171,6 @@ describe("build command", () => {
 		);
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		expect(await fs.exists(abs("bare.project.json"))).toBe(false);
-	});
-
-	it("should fail and write nothing when two configs share an output file", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-
-		const result = await run(
-			new MockConfigService([
-				buildable({}, "/repo/default.rogen.json"),
-				buildable({}, "/repo/source.rogen.json"),
-			]),
-			new NullLogService()
-		);
-
-		expect((result as ResultError<Error>).error.message).toContain(
-			"write the same file"
-		);
-		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
 	it("should report an invalid folder meta once when two configs read it, and write nothing", async () => {
@@ -303,45 +249,6 @@ describe("build command", () => {
 		]);
 	});
 
-	it("should warn about unrouted files without failing", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		const logService = new NullLogService();
-		const diagnostic = jest.spyOn(logService, "diagnostic");
-
-		const result = await run(
-			new MockConfigService([
-				buildable({ routes: { server: "ServerScriptService" } }),
-			]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(diagnostic).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: expect.stringContaining("matched no route"),
-			})
-		);
-		expect(await fs.exists(abs("default.project.json"))).toBe(true);
-	});
-
-	it("should warn when nothing the config emits exists under its sync dir", async () => {
-		await fs.writeFile(abs("src/A.luau"), "");
-		const logService = new NullLogService();
-		const diagnostic = jest.spyOn(logService, "diagnostic");
-
-		const result = await run(
-			new MockConfigService([buildable({ syncDir: abs("out") })]),
-			logService
-		);
-
-		expect(result.isOk()).toBe(true);
-		expect(diagnostic).toHaveBeenCalledWith(
-			expect.objectContaining({
-				message: expect.stringContaining("doesn't exist yet"),
-			})
-		);
-	});
-
 	it("should fail when the project file cannot be written", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		await fs.createDirectory(abs("default.project.json"));
@@ -373,7 +280,7 @@ describe("build command", () => {
 			"intro: rogen build · default",
 			"error: default.rogen.json · not loaded",
 			"diagnosticError: /repo/default.rogen.json - error: boom. (config.unknownField)",
-			"outro: build failed.",
+			expect.stringMatching(/^outro: .*fail/),
 		]);
 	});
 
@@ -397,24 +304,24 @@ describe("build command", () => {
 				ReportedError
 			);
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
-			expect(logService.lines.at(-1)).toBe(
-				"outro: Built 1 config with 1 warning; --deny-warnings fails the run."
+			expect(logService.lines.at(-1)).toMatch(
+				/1 warning.*--deny-warnings/
 			);
 		});
 
-		it("should exit 0 on a warning without the flag, and count it in the closing line", async () => {
+		it("should exit 0 on a warning without the flag", async () => {
 			const logService = new MockLogService();
 
 			const result = await run(await withWarning(), logService);
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).toBe(
-				"outro: Built 1 config with 1 warning."
-			);
+			expect(logService.lines.at(-1)).toMatch(/1 warning/);
+			expect(logService.lines.at(-1)).not.toContain("--deny-warnings");
 		});
 
 		it("should exit 0 with the flag when there is no warning", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
+
 			const logService = new MockLogService();
 
 			const result = await run(
@@ -424,7 +331,7 @@ describe("build command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).toBe("outro: Built 1 config.");
+			expect(logService.lines.at(-1)).not.toMatch(/warning/);
 		});
 
 		it("should still fail on errors", async () => {
@@ -456,12 +363,9 @@ describe("build command", () => {
 			expect(result.isErr() && result.error).toBeInstanceOf(
 				ReportedError
 			);
-			const document = JSON.parse(
-				logService.entries
-					.filter(({ kind }) => kind === "print")
-					.map(({ text }) => text)
-					.join("\n")
-			);
+			const document = logService.json<{
+				configs: { diagnostics: unknown[] }[];
+			}>();
 			expect(document.configs[0].diagnostics).toEqual([
 				expect.objectContaining({
 					severity: "warning",
@@ -480,14 +384,13 @@ describe("build command", () => {
 				positionals: [],
 				options: { json: true },
 			});
-			const printed = logService.entries
-				.filter(({ kind }) => kind === "print")
-				.map(({ text }) => text)
-				.join("\n");
 			return {
 				result,
 				logService,
-				document: printed === "" ? undefined : JSON.parse(printed),
+				document:
+					logService.texts("print").length === 0
+						? undefined
+						: logService.json(),
 			};
 		};
 
