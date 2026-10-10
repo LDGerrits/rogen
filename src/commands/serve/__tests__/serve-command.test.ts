@@ -481,4 +481,29 @@ describe("serve command", () => {
 			)
 		).toHaveLength(1);
 	});
+
+	it("should end the JSON lines with the build's errors when the first build fails", async () => {
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
+				},
+			})
+		);
+		await memFs.writeFile("/repo/src/X/@server", "");
+		await memFs.writeFile("/repo/src/X/@client", "");
+
+		const error = await failureOf(serve([], { json: true }));
+
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+		expect(printed().at(-1)).toEqual({
+			diagnostics: [
+				expect.objectContaining({ code: "route.markerClash" }),
+			],
+		});
+	});
 });
