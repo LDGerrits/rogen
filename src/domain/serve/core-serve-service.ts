@@ -6,8 +6,12 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
-import { ConfigOptionValues } from "../config/config.js";
-import { ConfigSelection, ConfigService } from "../config/config-service.js";
+
+import {
+	ConfigOptionValues,
+	ConfigSelection,
+	ConfigService,
+} from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { ServedConfigs, SyncServer } from "./serve.js";

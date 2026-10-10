@@ -1,8 +1,11 @@
 import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigSelectionOptions } from "../../domain/config/config.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+
+import {
+	ConfigSelectionOptions,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,

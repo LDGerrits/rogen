@@ -7,7 +7,7 @@ import {
 	onUnexpectedError,
 } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigOptions } from "../../domain/config/config.js";
+import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
 	ServerStop,
 	ServeService,

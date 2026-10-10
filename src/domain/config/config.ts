@@ -6,10 +6,6 @@ import {
 	samePath,
 	toPosix,
 } from "../../base/path.js";
-import {
-	OptionDescriptor,
-	OptionValues,
-} from "../../platform/environment/args.js";
 import { Target } from "../roblox/roblox.js";
 import {
 	NodeClash,
@@ -39,55 +35,6 @@ export interface RogenConfig {
 	readonly syncDir?: string;
 	readonly outFile?: string;
 }
-
-const VariantOption = {
-	name: "variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant on, beyond those the mode lists.",
-} as const satisfies OptionDescriptor;
-
-const NoVariantOption = {
-	name: "no-variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant off, whatever turned it on.",
-} as const satisfies OptionDescriptor;
-
-export const ModeOption = {
-	name: "mode",
-	type: "string",
-	placeholder: "name",
-	description: "Picks the mode every config that declares modes builds in.",
-} as const satisfies OptionDescriptor;
-
-/** The flags that say which mode is active and which variants are on in the configs a command reads. */
-export const ConfigSelectionOptions = [
-	ModeOption,
-	VariantOption,
-	NoVariantOption,
-] as const satisfies readonly OptionDescriptor[];
-
-export const OutFileOption = {
-	name: "out-file",
-	short: "o",
-	type: "string",
-	placeholder: "path",
-	description: "Overrides outFile, for one config.",
-} as const satisfies OptionDescriptor;
-
-/** The flags that override the configs a command builds. */
-export const ConfigOptions = [
-	OutFileOption,
-	ModeOption,
-	VariantOption,
-	NoVariantOption,
-] as const satisfies readonly OptionDescriptor[];
-
-/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
-export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
 
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";

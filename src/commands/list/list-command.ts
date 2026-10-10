@@ -1,9 +1,10 @@
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
-import { ConfigSelectionOptions } from "../../domain/config/config.js";
+
 import {
 	ConfigEntry,
 	ConfigSelection,
+	ConfigSelectionOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {

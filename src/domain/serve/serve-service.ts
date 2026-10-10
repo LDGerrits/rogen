@@ -5,8 +5,11 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
-import { ConfigOptionValues, ResolvedConfig } from "../config/config.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ResolvedConfig } from "../config/config.js";
+import {
+	ConfigOptionValues,
+	ConfigSelection,
+} from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeAddress,

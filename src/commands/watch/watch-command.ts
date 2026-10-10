@@ -1,8 +1,11 @@
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigOptions } from "../../domain/config/config.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+
+import {
+	ConfigOptions,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import {
 	AbstractCommand,

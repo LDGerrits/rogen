@@ -2,8 +2,61 @@ import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import {
+	OptionDescriptor,
+	OptionValues,
+} from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ConfigOptionValues, ResolvedConfig } from "./config.js";
+import { ResolvedConfig } from "./config.js";
+
+const VariantOption = {
+	name: "variant",
+	type: "string",
+	placeholder: "name",
+	multiple: true,
+	description: "Turns a variant on, beyond those the mode lists.",
+} as const satisfies OptionDescriptor;
+
+const NoVariantOption = {
+	name: "no-variant",
+	type: "string",
+	placeholder: "name",
+	multiple: true,
+	description: "Turns a variant off, whatever turned it on.",
+} as const satisfies OptionDescriptor;
+
+export const ModeOption = {
+	name: "mode",
+	type: "string",
+	placeholder: "name",
+	description: "Picks the mode every config that declares modes builds in.",
+} as const satisfies OptionDescriptor;
+
+/** The flags that say which mode is active and which variants are on in the configs a command reads. */
+export const ConfigSelectionOptions = [
+	ModeOption,
+	VariantOption,
+	NoVariantOption,
+] as const satisfies readonly OptionDescriptor[];
+
+export const OutFileOption = {
+	name: "out-file",
+	short: "o",
+	type: "string",
+	placeholder: "path",
+	description: "Overrides outFile, for one config.",
+} as const satisfies OptionDescriptor;
+
+/** The flags that override the configs a command builds. */
+export const ConfigOptions = [
+	OutFileOption,
+	ModeOption,
+	VariantOption,
+	NoVariantOption,
+] as const satisfies readonly OptionDescriptor[];
+
+/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
+export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
 
 interface ConfigEntryFields {
 	readonly file: string;
