@@ -368,7 +368,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 `require` is the Luau expression that reaches the module, such as `game:GetService("ReplicatedStorage").Shared.Inventory.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is a reserved word. It is there only for a placed Luau module. A Script has none, nor does a roblox-ts source, which you import by relative path, nor anything under `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui` or `StarterPack`, because Roblox clones those into the player at runtime and the edit-time path names the template. `rogen where <file> --verbose` prints it in text.
 
-`routeMatch` is `folder`, `marker`, `suffix` or `fallback`. Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.
+`routeMatch` is `folder`, `marker`, `suffix`, `fallback`, `init` (the route suffix of an init script in one of its folders) or `copy` (an init script placed where its folder's other files route it). Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.
 
 ### `init --json`
 

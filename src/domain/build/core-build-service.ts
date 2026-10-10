@@ -3,6 +3,7 @@ import {
 	Diagnostic,
 	diagnosticsPerFile,
 	diagnosticsReaching,
+	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -23,6 +24,7 @@ import {
 } from "./build.js";
 import {
 	BuildService,
+	ConfigLocations,
 	Diagnosis,
 	LocateQuery,
 	Locations,
@@ -142,18 +144,33 @@ export class CoreBuildService implements BuildService {
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
-			const files = configs.flatMap((config) =>
-				config.files.map((file) => ({ file, config }))
-			);
+			const about = (config: ConfigLocations) => [
+				...config.files.map(({ source }) => source),
+				...config.queried,
+			];
 			return {
-				diagnostics: [
+				diagnostics: uniqueDiagnostics([
 					...errors,
-					...files.flatMap(({ file, config }) =>
-						diagnosticsReaching(config.diagnostics, file.source)
+					...configs.flatMap((config) =>
+						about(config).flatMap((target) =>
+							diagnosticsReaching(config.diagnostics, target)
+						)
 					),
-				],
-				stoppedBy: files.flatMap(({ file }) =>
-					file.status === "blocked" && !file.own ? [file.by] : []
+				]),
+				stoppedBy: uniqueDiagnostics(
+					configs.flatMap((config) =>
+						config.diagnostics.filter(
+							(diagnostic) =>
+								isError(diagnostic) &&
+								about(config).every(
+									(target) =>
+										diagnosticsReaching(
+											[diagnostic],
+											target
+										).length === 0
+								)
+						)
+					)
 				),
 			};
 		});

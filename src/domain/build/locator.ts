@@ -128,6 +128,7 @@ class ConfigLocator {
 					config: this.config,
 					files: await this.blocked(paths, stopped),
 					instances: [],
+					queried: paths.map(toPosix),
 					diagnostics: stopped,
 				});
 			}
@@ -137,6 +138,7 @@ class ConfigLocator {
 					config: this.config,
 					files,
 					instances: [],
+					queried: paths.map(toPosix),
 					diagnostics,
 				});
 		}
@@ -160,6 +162,7 @@ class ConfigLocator {
 					)
 				)
 			),
+			queried: paths.map(toPosix),
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});

@@ -28,6 +28,7 @@ export const reportOf = (
 				}),
 				files,
 				instances,
+				queried: [],
 				diagnostics,
 			})
 		),

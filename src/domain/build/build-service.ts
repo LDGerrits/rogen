@@ -123,6 +123,8 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	/** One per instance argument. */
 	readonly instances: readonly InstanceLocation[];
+	/** The path arguments, resolved; a diagnostic about one is about a file that places nothing too. */
+	readonly queried: readonly string[];
 	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }

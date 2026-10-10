@@ -273,8 +273,8 @@ export class WhereLog {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
-				answers.length === this.configs &&
-				lines.every((line) => line === lines[0]);
+				new Set(answers.map(({ label }) => label)).size ===
+					this.configs && lines.every((line) => line === lines[0]);
 			const requires = [
 				...new Set(
 					answers.flatMap((answer) =>
