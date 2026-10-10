@@ -56,6 +56,10 @@ interface PlacedEntry {
 	readonly rojoName: string | undefined;
 }
 
+/** A path as a Rojo glob that matches only that path: `Foo[1].luau` or `{a,b}.luau` would otherwise be read as a pattern. */
+const literalGlob = (filePath: string): string =>
+	filePath.replace(/[[\]{}*?]/g, "[$&]");
+
 /** Turns a placed build and the meta it read into its Rojo tree. */
 export class TreeAssembler {
 	assemble(
@@ -108,8 +112,8 @@ export class TreeAssembler {
 			globIgnorePaths: [
 				...new Set([
 					...template.globIgnorePaths,
-					...ignored.map(
-						(source) => layout.syncPath(source).optional
+					...ignored.map((source) =>
+						literalGlob(layout.syncPath(source).optional)
 					),
 					...[...initDirs].flatMap(([dir, init]) =>
 						this.besideInit(placement, dir, init)
@@ -173,7 +177,7 @@ export class TreeAssembler {
 		return childrenBesideInit(placement.listing(dir), init)
 			.map((name) => path.posix.join(dir, name))
 			.filter((sibling) => !layout.isReadOnly(sibling))
-			.map((sibling) => layout.syncPath(sibling).optional);
+			.map((sibling) => literalGlob(layout.syncPath(sibling).optional));
 	}
 
 	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
