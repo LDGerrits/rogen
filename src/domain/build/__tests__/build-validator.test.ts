@@ -40,7 +40,7 @@ describe("BuildValidator", () => {
 				rootDirs: [abs("src"), abs("missing")],
 				routes: { server: "ServerScriptService" },
 			});
-			const index = await indexOf(store, fs, config.rootDirs);
+			const index = await indexOf(fs, config.rootDirs);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
@@ -59,7 +59,7 @@ describe("BuildValidator", () => {
 		it("should report nothing for a build that raises no problems", async () => {
 			await writeFiles(fs, "src/Fine.luau");
 			const config = baseConfigOf();
-			const index = await indexOf(store, fs, config.rootDirs);
+			const index = await indexOf(fs, config.rootDirs);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
@@ -92,7 +92,6 @@ describe("BuildValidator rules", () => {
 		) =>
 			(
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({
 						routes: ROUTES,

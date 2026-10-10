@@ -70,7 +70,6 @@ describe("Placer", () => {
 		) =>
 			(
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({
 						routes: VARIANT_ROUTES,
@@ -619,7 +618,6 @@ describe("Placer", () => {
 		const route = async (overrides: ResolvedConfigSpec = {}) => {
 			const { placement } = (
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({ routes: ROUTES, ...overrides })
 				)

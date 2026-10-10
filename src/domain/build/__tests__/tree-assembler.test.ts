@@ -1,4 +1,3 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -15,7 +14,6 @@ describe("TreeAssembler", () => {
 
 	describe("tree", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
@@ -24,7 +22,7 @@ describe("TreeAssembler", () => {
 			extraTools: readonly SyncTool[] = []
 		) => {
 			const config = configOf(overrides);
-			const index = await indexOf(store, fs, config.rootDirs);
+			const index = await indexOf(fs, config.rootDirs);
 			return builderOf(fs, index, extraTools).build(config);
 		};
 
@@ -49,12 +47,9 @@ describe("TreeAssembler", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
 		});
 
-		afterEach(() => {
-			store[Symbol.dispose]();
-		});
+		afterEach(() => {});
 
 		describe("template", () => {
 			it("should start from a bare DataModel with the resolved name when there is no template", async () => {

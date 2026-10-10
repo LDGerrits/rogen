@@ -4,7 +4,6 @@ import "../build-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import {
 	MockConfigService,
 	brokenEntry,
@@ -27,18 +26,14 @@ import { Registry } from "../../../platform/registry/registry.js";
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 describe("build command", () => {
-	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
 
 	beforeEach(async () => {
-		store = new DisposableStore();
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 	});
 
-	afterEach(() => {
-		store[Symbol.dispose]();
-	});
+	afterEach(() => {});
 
 	const run = async (
 		config: MockConfigService,

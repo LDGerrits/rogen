@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import "../watch-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError } from "../../../base/result.js";
 import { OutputFile } from "../../../domain/build/build.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -26,7 +25,6 @@ describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
-	let store: DisposableStore;
 	let lifecycle: MockLifecycleService;
 	let logService: MockLogService;
 
@@ -78,7 +76,6 @@ describe("watch command", () => {
 		await memFs.createDirectory("/repo");
 		await memFs.createDirectory("/repo/src");
 		watcher = new MemoryWatcher(memFs, new NullLogService());
-		store = new DisposableStore();
 		lifecycle = new MockLifecycleService();
 		logService = new MockLogService();
 		configService = new CoreConfigService(
@@ -92,7 +89,6 @@ describe("watch command", () => {
 		lifecycle.shutdown();
 		jest.restoreAllMocks();
 		await watcher.stop();
-		store[Symbol.dispose]();
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();
 	});

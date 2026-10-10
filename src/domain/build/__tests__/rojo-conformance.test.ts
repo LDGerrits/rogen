@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
 import {
@@ -81,16 +80,13 @@ const metaApplied = (node: SourcemapNode, prefix = ""): string[] =>
 		.sort();
 
 describeWithRojo("build against Rojo reading the same directory", () => {
-	let store: DisposableStore;
 	let dir: string;
 
 	beforeEach(() => {
-		store = new DisposableStore();
 		dir = makeRojoDir("rogen-conformance-");
 	});
 
 	afterEach(() => {
-		store[Symbol.dispose]();
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

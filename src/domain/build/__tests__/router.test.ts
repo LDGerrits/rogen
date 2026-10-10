@@ -1,4 +1,3 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
@@ -19,7 +18,6 @@ describe("Router", () => {
 
 	describe("route", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
@@ -29,7 +27,6 @@ describe("Router", () => {
 		) =>
 			(
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({
 						routes: ROUTES,
@@ -59,12 +56,9 @@ describe("Router", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
 		});
 
-		afterEach(() => {
-			store[Symbol.dispose]();
-		});
+		afterEach(() => {});
 
 		describe("hoisted names", () => {
 			const CHARACTER = {

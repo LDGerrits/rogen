@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { PlannedFilesIndex } from "../planned-files-index.js";
@@ -29,7 +28,6 @@ const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 
 describe("CoreBuildService.locate", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
@@ -58,12 +56,9 @@ describe("CoreBuildService.locate", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
 	});
 
-	afterEach(() => {
-		store[Symbol.dispose]();
-	});
+	afterEach(() => {});
 
 	describe("a named file", () => {
 		beforeEach(() =>
@@ -566,7 +561,7 @@ describe("CoreBuildService.locate", () => {
 
 		it("should never be written to the listing it sits on", async () => {
 			await write("src/Other.luau");
-			const listing = await indexOf(store, fs, [abs("src")]);
+			const listing = await indexOf(fs, [abs("src")]);
 
 			const planned = new PlannedFilesIndex(
 				listing,

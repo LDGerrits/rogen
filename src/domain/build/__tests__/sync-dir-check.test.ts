@@ -29,7 +29,7 @@ describe("SyncDirCheck", () => {
 				fs: MemoryFileSystemService,
 				config: ResolvedConfig
 			): Promise<Diagnostic[]> => {
-				const index = await indexOf(store, fs, config.rootDirs);
+				const index = await indexOf(fs, config.rootDirs);
 				const warnings = await new SyncDirCheck(fs).check(
 					placeFiles(index, config, syncTools).unwrap()
 				);
@@ -261,7 +261,7 @@ describe("SyncDirCheck", () => {
 				tools: readonly SyncTool[] = syncTools
 			) => {
 				const config = distConfigOf(overrides);
-				const index = await indexOf(store, fs, config.rootDirs);
+				const index = await indexOf(fs, config.rootDirs);
 				const warnings = await new SyncDirCheck(fs).check(
 					placeFiles(index, config, tools).unwrap()
 				);
@@ -423,7 +423,7 @@ describe("SyncDirCheck", () => {
 				tools: readonly SyncTool[] = syncTools
 			) => {
 				const config = distConfigOf(overrides);
-				const index = await indexOf(store, fs, config.rootDirs);
+				const index = await indexOf(fs, config.rootDirs);
 				const warnings = await new SyncDirCheck(fs).check(
 					placeFiles(index, config, tools).unwrap()
 				);

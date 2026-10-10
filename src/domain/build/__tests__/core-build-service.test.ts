@@ -1,5 +1,4 @@
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -18,18 +17,14 @@ import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const buildServiceOfFs = () => buildServiceOf(fs, new CoreIndexService(fs));
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
 	});
 
-	afterEach(() => {
-		store[Symbol.dispose]();
-	});
+	afterEach(() => {});
 
 	describe("build", () => {
 		const lobby = (spec: ResolvedConfigSpec = {}) =>

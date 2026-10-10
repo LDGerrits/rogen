@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileChangeType } from "../../../platform/fs/file-changes.js";
@@ -28,7 +27,6 @@ describe("RootScanner", () => {
 
 	describe("scan", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const newIndex = () => new CoreIndexService(fs);
 
@@ -57,12 +55,9 @@ describe("RootScanner", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
 		});
 
-		afterEach(() => {
-			store[Symbol.dispose]();
-		});
+		afterEach(() => {});
 
 		describe("the project file it writes", () => {
 			it("should be left out when a root dir holds it", async () => {

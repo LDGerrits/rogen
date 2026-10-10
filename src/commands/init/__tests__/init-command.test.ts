@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import path from "path";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -37,7 +36,6 @@ const LUAU_ROUTES = {
 describe("init command", () => {
 	const cwd = path.resolve("/mock/my-game");
 	let memFs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const runInit = async (
 		names: string[] = [],
@@ -67,13 +65,10 @@ describe("init command", () => {
 
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
-		store = new DisposableStore();
 		await memFs.createDirectory(cwd);
 	});
 
-	afterEach(() => {
-		store[Symbol.dispose]();
-	});
+	afterEach(() => {});
 
 	describe("--json", () => {
 		const runJson = async (names: string[] = []) => {

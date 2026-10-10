@@ -1,5 +1,4 @@
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { Result } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -82,7 +81,6 @@ export async function writeFiles(
 
 /** What `rootDirs` hold in `fs`, listed. */
 export function indexOf(
-	_store: DisposableStore,
 	fs: MemoryFileSystemService,
 	rootDirs: readonly string[]
 ): Promise<Listing> {
@@ -91,11 +89,10 @@ export function indexOf(
 
 /** Builds `config` from what `fs` holds in its root dirs, and places it again to show where each file landed. */
 export async function buildAndPlace(
-	store: DisposableStore,
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
 ): Promise<Result<BuiltConfig & { placement: Placement }, DiagnosticsError>> {
-	const index = await indexOf(store, fs, config.rootDirs);
+	const index = await indexOf(fs, config.rootDirs);
 	const builder = builderOf(fs, index);
 	const built = await builder.build(config);
 	return built.map((value) => ({

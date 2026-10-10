@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { DisposableStore } from "../../../base/disposable.js";
 import { fileSystemError } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/config.js";
@@ -11,7 +10,6 @@ describe("MetaReader", () => {
 
 	describe("read", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const read = async (overrides: Partial<Read> = {}) => {
 			const config: Read = {
@@ -20,7 +18,7 @@ describe("MetaReader", () => {
 				variants: {},
 				...overrides,
 			};
-			const index = await indexOf(store, fs, config.rootDirs);
+			const index = await indexOf(fs, config.rootDirs);
 			const built = await new MetaReader(fs).read(
 				placeFiles(index, configOf(config), syncTools).unwrap()
 			);
@@ -29,12 +27,9 @@ describe("MetaReader", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
 		});
 
-		afterEach(() => {
-			store[Symbol.dispose]();
-		});
+		afterEach(() => {});
 
 		it("should say a meta file that vanished while the build ran does not exist", async () => {
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
@@ -118,7 +113,7 @@ describe("MetaReader", () => {
 			);
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 
-			const index = await indexOf(store, fs, [abs("src")]);
+			const index = await indexOf(fs, [abs("src")]);
 			const built = await new MetaReader(fs).read(
 				placeFiles(
 					index,

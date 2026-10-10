@@ -1,16 +1,13 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { abs, buildAndPlace, configOf, writeFiles } from "./fixtures.js";
 
 describe("Placement", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const placementOf = async (overrides: ResolvedConfigSpec = {}) =>
 		(
 			await buildAndPlace(
-				store,
 				fs,
 				configOf({
 					routes: { "*": "ReplicatedStorage" },
@@ -21,12 +18,9 @@ describe("Placement", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
 	});
 
-	afterEach(() => {
-		store[Symbol.dispose]();
-	});
+	afterEach(() => {});
 
 	describe("metaFiles", () => {
 		it("should list every meta file of every root dir, with its path in the root dir", async () => {
