@@ -2,11 +2,22 @@ import { toNative } from "../../base/path.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import {
 	Diagnostic,
+	DiagnosticJson,
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic.js";
 
 /** What a build did to one config, as the document lists it. */
-export type BuildEntry = Record<string, unknown>;
+export interface BuildEntry {
+	readonly config: string;
+	readonly file: string;
+	/** `null` for a config that didn't load. */
+	readonly outFile: string | null;
+	readonly mode?: string;
+	readonly outcome: "wrote" | "unchanged" | "notWritten";
+	/** The labels of the configs whose failure stopped this one from being written. */
+	readonly blockedBy?: readonly string[];
+	readonly diagnostics: readonly DiagnosticJson[];
+}
 
 /** What a build did to each config, as one JSON document. */
 export interface BuildReport {
