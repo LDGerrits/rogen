@@ -42,6 +42,13 @@ export interface ServeReporter {
 	end(message: string): void;
 }
 
+/** Why a server was stopped on purpose, as the end of a sentence. */
+const RETIRED_BECAUSE = {
+	removed: "its config is gone",
+	extended: "a config extends it now, and is served instead",
+	moved: "its template moved it",
+} as const;
+
 /** Reports a serve in lines for a person. */
 export class ServeLog implements ServeReporter {
 	private readonly watchLog: WatchLog;
@@ -114,11 +121,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					change.reason === "removed"
-						? `Stopped serving ${label}: its config is gone.`
-						: change.reason === "extended"
-							? `Stopped serving ${label}: a config extends it now, and is served instead.`
-							: `Stopped serving ${label} at ${target.address}: its template moved it.`
+					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 		}
 	}

@@ -89,15 +89,20 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		({ key, target, files }) =>
 			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
-	const variants = summary.variants.map(({ variant, on, files }) =>
+	const switched = (
+		kind: string,
+		name: string,
+		on: boolean,
+		files: number
+	) =>
 		on
-			? `variant ${variant} on: ${plural(files, "file")}`
-			: `variant ${variant} off: ${plural(files, "file")} left out`
+			? `${kind} ${name} on: ${plural(files, "file")}`
+			: `${kind} ${name} off: ${plural(files, "file")} left out`;
+	const variants = summary.variants.map(({ variant, on, files }) =>
+		switched("variant", variant, on, files)
 	);
 	const modes = summary.modes.map(({ mode, on, files }) =>
-		on
-			? `mode ${mode} on: ${plural(files, "file")}`
-			: `mode ${mode} off: ${plural(files, "file")} left out`
+		switched("mode", mode, on, files)
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),

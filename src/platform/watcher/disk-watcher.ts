@@ -7,6 +7,15 @@ import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
 
+/** What each event of chokidar reports. */
+const CHOKIDAR_EVENTS = [
+	["add", FileChangeType.ADDED, FileType.File],
+	["addDir", FileChangeType.ADDED, FileType.Directory],
+	["change", FileChangeType.UPDATED, FileType.File],
+	["unlink", FileChangeType.DELETED, FileType.File],
+	["unlinkDir", FileChangeType.DELETED, FileType.Directory],
+] as const;
+
 export class DiskWatcher extends AbstractWatcher {
 	private watcher: chokidar.FSWatcher | null = null;
 	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
@@ -29,21 +38,8 @@ export class DiskWatcher extends AbstractWatcher {
 				filter.skips(target) || this.skipUnfollowable(target),
 		});
 
-		this.watcher.on("add", (p) =>
-			this.fireEvent(FileChangeType.ADDED, p, FileType.File)
-		);
-		this.watcher.on("addDir", (p) =>
-			this.fireEvent(FileChangeType.ADDED, p, FileType.Directory)
-		);
-		this.watcher.on("change", (p) =>
-			this.fireEvent(FileChangeType.UPDATED, p, FileType.File)
-		);
-		this.watcher.on("unlink", (p) =>
-			this.fireEvent(FileChangeType.DELETED, p, FileType.File)
-		);
-		this.watcher.on("unlinkDir", (p) =>
-			this.fireEvent(FileChangeType.DELETED, p, FileType.Directory)
-		);
+		for (const [event, type, fileType] of CHOKIDAR_EVENTS)
+			this.watcher.on(event, (p) => this.fireEvent(type, p, fileType));
 
 		// A link nothing descends into is never watched, so any activity rechecks the ones seen.
 		this.watcher.on("raw", () => this.dropRemovedLinks());
