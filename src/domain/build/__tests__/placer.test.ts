@@ -521,12 +521,17 @@ describe("Placer", () => {
 				);
 			});
 
-			it("should not warn about a dormant file that is pruned anyway", async () => {
+			it("should warn about a file whose variant is off too, since its name is wrong either way", async () => {
 				await write("src/Foo.server.mock.luau");
 
 				expect(
 					(await apply({ mock: false })).unwrap().warnings
-				).toEqual([]);
+				).toMatchObject([
+					{
+						code: "variant.buriedScriptSuffix",
+						resource: abs("src/Foo.server.mock.luau"),
+					},
+				]);
 			});
 
 			it("should keep a suffix that isn't a declared variant in the name, without a warning", async () => {

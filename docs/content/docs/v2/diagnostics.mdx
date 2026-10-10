@@ -407,7 +407,7 @@ Error. A name or marker file has an `@key` inside a folder that another route al
 src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
 ```
 
-Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine, and a file that a dormant variant leaves out isn't reported. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine. A file that a dormant variant leaves out, or that a variant replaces, is reported too, since its name is wrong either way. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
 
 ### `route.caseMismatch` [#route-casemismatch]
 

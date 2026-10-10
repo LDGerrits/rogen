@@ -59,6 +59,8 @@ Since variants are declared, other dotted names like `Button.spec.luau` are left
 
 Put the variant before an `@` route and Rojo's suffix last: `Analytics.mock@server.luau`, `Save.mock.server.luau`. Rogen warns about `Save.server.mock.luau`, which Rojo would read as a `ModuleScript`.
 
+Rogen reads names the same way in every build. Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off, so a build with every variant off still catches it.
+
 ## Variant Folders
 
 A folder named after a variant never appears in the tree. When the variant is active, its contents move up into the parent; when it's dormant, the whole folder is pruned. That lets you swap implementations without touching a `require`:

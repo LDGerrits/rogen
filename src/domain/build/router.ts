@@ -63,7 +63,6 @@ export interface IgnoredAt {
 /** An init script written `^init`: the script is its folder, so only the folder can take the `^`. */
 export interface HoistedInit {
 	readonly source: string;
-	readonly variants: readonly VariantMatch[];
 }
 
 /** A directory whose markers, an init script's route suffix among them, route its folder to more than one place. */
@@ -77,7 +76,6 @@ export interface MarkerClash {
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
 export interface InitWithoutFolder {
 	readonly source: string;
-	readonly variants: readonly VariantMatch[];
 	/** The folder it sits in. */
 	readonly folder: InstancelessFolder;
 }
@@ -203,7 +201,7 @@ export class Router {
 	private readonly keys: DeclaredKeys;
 
 	constructor(
-		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder. */
+		/** Its routes and keys; never which variants are on, so a file routes the same in every build. */
 		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings,
 		/** The script names that make a file its folder. */
@@ -242,16 +240,13 @@ export class Router {
 	): void {
 		const claimed = this.claim(entry, dirs);
 		if (claimed.leaf.isInit && claimed.leaf.hoisted) {
-			const { variants } = claimed.claims;
-			routing.hoistedInits.push({ source: entry.source, variants });
-			// A dormant one is pruned like any other file, so `where` still accounts for it.
-			if (this.config.allVariantsOn(variants)) return;
+			routing.hoistedInits.push({ source: entry.source });
+			return;
 		}
 		if (claimed.leaf.isInit && claimed.folders.length === 0) {
 			if (this.config.routes.has(claimed.claims.routeKey))
 				routing.withoutFolder.push({
 					source: entry.source,
-					variants: claimed.claims.variants,
 					folder: this.instancelessFolderOf(entry),
 				});
 			else routing.unrouted.push(entry.source);

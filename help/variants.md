@@ -6,6 +6,7 @@ A variant swaps a file at build time. Declare every variant by name in `variants
 - A variant folder (`mock/`) or marker file (`.mock`) marks everything inside. `dev/Service.luau` beside `prod/Service.luau` lets the active variant pick which file becomes `Service`. With both off, `Service` is missing, and Rogen warns.
 - `Analytics.mock/` carries the variant and keeps the name `Analytics`.
 - Only a dot carries a variant: `HttpMock.luau` and `Http-mock.luau` are ordinary names, and `Analytics@mock.luau` warns.
+- Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off.
 - Two files with active variants at one name are an error; two plain files at one name are a warning.
 - A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it, which applies last. `--variant dev` for a mode named `dev` is an error that suggests `--mode dev`.
 - `--variant mock` and `--no-variant mock` last for one run and have no short flags. For a lasting choice, list the variant in a mode.

@@ -66,18 +66,20 @@ export class Placer {
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
 		];
-		const routedNodes = this.initScripts.withCopies(routed, toCopy);
-		const applied = this.variants.apply(routedNodes);
-		if (applied.isErr())
-			return err([...clashErrors, ...initErrors, ...applied.error]);
-		const nodes = this.initScripts.withoutLoneInits(applied.value.nodes);
-		const templating = this.yieldToTemplate(nodes);
 		const routeErrors = [
 			...clashErrors,
-			...this.ignoredAtErrors(templating.nodes, markerClashes),
+			...this.ignoredAtErrors(
+				routed.filter((file) => !this.template.displacing(file)),
+				markerClashes
+			),
 			...initErrors,
 		];
+		const routedNodes = this.initScripts.withCopies(routed, toCopy);
+		const applied = this.variants.apply(routedNodes);
+		if (applied.isErr()) return err([...routeErrors, ...applied.error]);
 		if (routeErrors.length > 0) return err(routeErrors);
+		const nodes = this.initScripts.withoutLoneInits(applied.value.nodes);
+		const templating = this.yieldToTemplate(nodes);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
@@ -131,7 +133,7 @@ export class Placer {
 		);
 	}
 
-	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, among the files that land. A marker in a clash is that error's. */
+	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, whichever variants are on, unless the template displaces the file. A marker in a clash is that error's. */
 	private ignoredAtErrors(
 		nodes: readonly RoutedFile[],
 		markerClashes: readonly MarkerClash[]
@@ -180,31 +182,27 @@ export class Placer {
 	private withoutFolderErrors(
 		withoutFolder: readonly InitWithoutFolder[]
 	): Diagnostic[] {
-		return withoutFolder
-			.filter(({ variants }) => this.config.allVariantsOn(variants))
-			.map(({ source, folder }) =>
-				errorDiagnostic(
-					"tree.initWithoutFolder",
-					{ resource: source },
-					`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
-				)
-			);
+		return withoutFolder.map(({ source, folder }) =>
+			errorDiagnostic(
+				"tree.initWithoutFolder",
+				{ resource: source },
+				`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
+			)
+		);
 	}
 
 	/** The script is its folder, so a `^` on it hoists nothing the folder couldn't. */
 	private hoistedInitErrors(
 		hoistedInits: readonly HoistedInit[]
 	): Diagnostic[] {
-		return hoistedInits
-			.filter(({ variants }) => this.config.allVariantsOn(variants))
-			.map(({ source }) => {
-				const folder = path.posix.dirname(source);
-				return errorDiagnostic(
-					"tree.hoistedInit",
-					{ resource: folder },
-					`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
-				);
-			});
+		return hoistedInits.map(({ source }) => {
+			const folder = path.posix.dirname(source);
+			return errorDiagnostic(
+				"tree.hoistedInit",
+				{ resource: folder },
+				`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
+			);
+		});
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */
