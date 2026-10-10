@@ -1,10 +1,6 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import {
-	ErrorUtils,
-	ExitCodeError,
-	onUnexpectedError,
-} from "../../base/errors.js";
+import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
@@ -16,6 +12,7 @@ import {
 import {
 	AbstractCommand,
 	registerCommand,
+	ExitCodeError,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";

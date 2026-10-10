@@ -228,6 +228,30 @@ describe("platform/config/config-models", () => {
 					index: 1,
 				});
 			});
+
+			it.each(["constructor", "toString", "__proto__"])(
+				"should not take %s from the prototype of a map that doesn't set it",
+				(key) => {
+					const layered = new Config(
+						new ConfigModel(),
+						[
+							new ConfigModel({
+								map: Object.defineProperty({}, key, {
+									value: 1,
+									enumerable: true,
+								}),
+							}),
+							new ConfigModel({ map: { other: 2 } }),
+						],
+						new ConfigModel()
+					);
+
+					expect(layered.inspect(["map", key]).source).toEqual({
+						tier: "layer",
+						index: 0,
+					});
+				}
+			);
 		});
 
 		describe("equals", () => {

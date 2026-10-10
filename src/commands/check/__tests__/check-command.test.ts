@@ -1,12 +1,12 @@
 import "../check-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import { ReportedError } from "../../../base/errors.js";
 import { Result } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",

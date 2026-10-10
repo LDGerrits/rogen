@@ -4,7 +4,6 @@ import {
 	DisposableStore,
 	toDisposable,
 } from "../../base/disposable.js";
-import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
@@ -19,6 +18,27 @@ import {
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
+
+/** A failure already reported in full; only the exit code is left to set. */
+export class ReportedError extends Error {
+	override readonly name = "ReportedError";
+
+	constructor(cause: Error) {
+		super(cause.message, { cause });
+	}
+}
+
+/** A failure that ends the run with a given exit code, such as the code a child process stopped with. */
+export class ExitCodeError extends Error {
+	override readonly name = "ExitCodeError";
+
+	constructor(
+		readonly exitCode: number,
+		cause: Error
+	) {
+		super(cause.message, { cause });
+	}
+}
 
 export interface CommandService {
 	readonly _serviceBrand: undefined;

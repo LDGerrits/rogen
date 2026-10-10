@@ -64,27 +64,6 @@ export class UsageError extends Error {
 	override readonly name = "UsageError";
 }
 
-/** A failure already reported in full; only the exit code is left to set. */
-export class ReportedError extends Error {
-	override readonly name = "ReportedError";
-
-	constructor(cause: Error) {
-		super(cause.message, { cause });
-	}
-}
-
-/** A failure that ends the run with a given exit code, such as the code a child process stopped with. */
-export class ExitCodeError extends Error {
-	override readonly name = "ExitCodeError";
-
-	constructor(
-		readonly exitCode: number,
-		cause: Error
-	) {
-		super(cause.message, { cause });
-	}
-}
-
 export type UnexpectedErrorHandler = (error: Error) => void;
 
 // Throws on the next tick so a silent failure doesn't stay silent.

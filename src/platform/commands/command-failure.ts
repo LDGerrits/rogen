@@ -1,13 +1,8 @@
-import {
-	CancelledError,
-	ErrorUtils,
-	ExitCodeError,
-	ReportedError,
-	UsageError,
-} from "../../base/errors.js";
+import { CancelledError, ErrorUtils, UsageError } from "../../base/errors.js";
 import { DiagnosticsError } from "../diagnostics/diagnostics-error.js";
 import { LogService } from "../log/log-service.js";
 import { failureToJson } from "../diagnostics/diagnostic-json.js";
+import { ExitCodeError, ReportedError } from "./commands.js";
 
 /** How a failed run is told to the user: as the JSON document a program reads, on one line so it also ends a stream of JSON lines, or as lines for a person. */
 export class CommandFailure {

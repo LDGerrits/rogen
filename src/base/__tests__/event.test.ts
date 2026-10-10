@@ -15,6 +15,46 @@ describe("Emitter and Event", () => {
 		expect(listener).toHaveBeenCalledWith("hello");
 	});
 
+	it("should not tell a listener added while an event is delivered about that event", () => {
+		const emitter = new Emitter<number>();
+		const late = jest.fn();
+
+		emitter.event(() => {
+			emitter.event(late);
+		});
+		emitter.fire(1);
+
+		expect(late).not.toHaveBeenCalled();
+		emitter.fire(2);
+		expect(late).toHaveBeenCalledWith(2);
+	});
+
+	it("should skip a listener disposed while an event is delivered", () => {
+		const emitter = new Emitter<number>();
+		const second = jest.fn();
+		const subscriptions: { [Symbol.dispose](): void }[] = [];
+
+		emitter.event(() => subscriptions[0][Symbol.dispose]());
+		subscriptions.push(emitter.event(second));
+		emitter.fire(1);
+
+		expect(second).not.toHaveBeenCalled();
+	});
+
+	it("should keep one function subscribed twice as two subscriptions", () => {
+		const emitter = new Emitter<number>();
+		const listener = jest.fn();
+
+		const first = emitter.event(listener);
+		emitter.event(listener);
+		emitter.fire(1);
+		expect(listener).toHaveBeenCalledTimes(2);
+
+		first[Symbol.dispose]();
+		emitter.fire(2);
+		expect(listener).toHaveBeenCalledTimes(3);
+	});
+
 	it("should stop notifying listeners after their disposable is disposed", () => {
 		const emitter = new Emitter<number>();
 		const listener = jest.fn();

@@ -1,13 +1,9 @@
-import {
-	CancelledError,
-	ExitCodeError,
-	ReportedError,
-	UsageError,
-} from "../../../base/errors.js";
+import { CancelledError, UsageError } from "../../../base/errors.js";
 import { errorDiagnostic } from "../../diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { CommandFailure, exitCodeOf } from "../command-failure.js";
+import { ExitCodeError, ReportedError } from "../commands.js";
 
 describe("CommandFailure", () => {
 	let logService: MockLogService;

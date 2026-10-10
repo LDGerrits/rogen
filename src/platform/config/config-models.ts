@@ -23,6 +23,7 @@ export class ConfigModel {
 		for (const component of sectionPath(section)) {
 			if (typeof current !== "object" || current === null)
 				return undefined;
+			if (!Object.hasOwn(current, component)) return undefined;
 			current = (current as Record<string, unknown>)[component];
 		}
 

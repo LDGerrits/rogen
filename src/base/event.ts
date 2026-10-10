@@ -15,8 +15,13 @@ export const NullEvent: Event<never> = () => NullDisposable;
 
 type Listener<T> = (e: T) => void;
 
+/** One subscription, so a function that subscribes twice is told twice and is dropped once for each. */
+interface Subscription<T> {
+	readonly listener: Listener<T>;
+}
+
 export class Emitter<T> implements Disposable {
-	private readonly _listeners = new Set<Listener<T>>();
+	private readonly _listeners = new Set<Subscription<T>>();
 	private _disposed = false;
 	private _event?: Event<T>;
 
@@ -27,10 +32,11 @@ export class Emitter<T> implements Disposable {
 		) => {
 			if (this._disposed) return NullDisposable;
 
-			this._listeners.add(listener);
+			const subscription: Subscription<T> = { listener };
+			this._listeners.add(subscription);
 
 			const disposable = toDisposable(() => {
-				this._listeners.delete(listener);
+				this._listeners.delete(subscription);
 			});
 
 			if (disposables) {
@@ -46,9 +52,10 @@ export class Emitter<T> implements Disposable {
 	fire(event: T): void {
 		if (this._disposed) return;
 
-		for (const listener of this._listeners) {
+		for (const subscription of [...this._listeners]) {
+			if (!this._listeners.has(subscription)) continue;
 			try {
-				const result = listener(event) as unknown;
+				const result = subscription.listener(event) as unknown;
 				if (result instanceof Promise) {
 					result.catch((rejection) => {
 						onUnexpectedError(

@@ -2,7 +2,6 @@ import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import { ReportedError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DisposableStore } from "../../../base/disposable.js";
@@ -21,6 +20,7 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import {
 	CommandRegistry,
 	Extensions,
+	ReportedError,
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
