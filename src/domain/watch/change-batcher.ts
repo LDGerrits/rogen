@@ -23,9 +23,11 @@ const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 	debounceMs: 100,
 };
 
-/** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead. */
+/** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead, then one more when a burst that goes on has stopped. */
 export class ChangeBatcher extends AbstractDisposable {
 	private buffer: FileChange[] = [];
+	/** Within a burst: the changes dropped since the overflow was reported. */
+	private droppedInBurst: number | undefined;
 	private readonly flush: RunOnceScheduler;
 
 	private readonly _onDidEmitChanges = this._register(
@@ -50,6 +52,11 @@ export class ChangeBatcher extends AbstractDisposable {
 	}
 
 	queueEvents(changes: readonly FileChange[]): void {
+		if (this.droppedInBurst !== undefined) {
+			this.droppedInBurst += changes.length;
+			this.flush.schedule();
+			return;
+		}
 		// Not `push(...changes)`: a burst can be larger than the call stack allows.
 		for (const change of changes) this.buffer.push(change);
 
@@ -60,6 +67,8 @@ export class ChangeBatcher extends AbstractDisposable {
 				dropped,
 				threshold: this.options.burstThreshold,
 			});
+			this.droppedInBurst = 0;
+			this.flush.schedule();
 			return;
 		}
 
@@ -67,6 +76,16 @@ export class ChangeBatcher extends AbstractDisposable {
 	}
 
 	private flushBuffer(): void {
+		if (this.droppedInBurst !== undefined) {
+			const dropped = this.droppedInBurst;
+			this.droppedInBurst = undefined;
+			if (dropped > 0)
+				this._onDidOverflow.fire({
+					dropped,
+					threshold: this.options.burstThreshold,
+				});
+			return;
+		}
 		const normalized = normalizeFileChanges(this.buffer);
 		this.buffer = [];
 		if (normalized.length > 0) {
