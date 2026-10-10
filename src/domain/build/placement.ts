@@ -15,7 +15,8 @@ import { RojoFile } from "../rojo/rojo.js";
 import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { BuildSummary, LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
-import { NameReader, NameReadings } from "./name-reader.js";
+import { NameReader } from "./name-reader.js";
+import { NameReadings } from "./name-readings.js";
 import { RootScanner, ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import {
 	HoistedInit,

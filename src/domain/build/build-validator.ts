@@ -21,7 +21,11 @@ import {
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
-import { MisspellingKind, MisspellingOf, NotedName } from "./name-reader.js";
+import {
+	MisspellingKind,
+	MisspellingOf,
+	NotedName,
+} from "./misspelling-finder.js";
 import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";

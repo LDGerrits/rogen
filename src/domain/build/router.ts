@@ -4,13 +4,12 @@ import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import { RouteMatch, VariantMatch } from "./build.js";
+import { NameReader, SuffixSpan } from "./name-reader.js";
 import {
 	EntryRead,
 	InstancelessFolder,
-	NameReader,
 	NameReadings,
-	SuffixSpan,
-} from "./name-reader.js";
+} from "./name-readings.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder relative to the root dir. */

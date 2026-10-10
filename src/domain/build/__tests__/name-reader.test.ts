@@ -3,8 +3,8 @@ import {
 	Misspelling,
 	MisspellingKind,
 	MisspellingOf,
-	NameReader,
-} from "../name-reader.js";
+} from "../misspelling-finder.js";
+import { NameReader } from "../name-reader.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);

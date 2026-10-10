@@ -10,7 +10,7 @@ import {
 	RojoProject,
 	instanceKey,
 } from "../rojo/rojo-project.js";
-import { InstancelessFolder } from "./name-reader.js";
+import { InstancelessFolder } from "./name-readings.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
