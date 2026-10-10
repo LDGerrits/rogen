@@ -3,6 +3,8 @@ import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
 	RenameFix,
+	diagnosticsAbout,
+	diagnosticsReaching,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -64,6 +66,16 @@ export interface BlockedLocation extends Located {
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation | BlockedLocation;
+
+/** What a build raises about `location`: for a file the user named, everything that reaches it, a folder's diagnostics included; for any other, only what is about that path. */
+export function diagnosticsOf(
+	location: FileLocation,
+	diagnostics: readonly Diagnostic[]
+): Diagnostic[] {
+	return location.status === "placed" && location.named
+		? diagnosticsReaching(diagnostics, location.source)
+		: diagnosticsAbout(diagnostics, location.source);
+}
 
 /** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
 export function requireOf(location: FileLocation): string | undefined {

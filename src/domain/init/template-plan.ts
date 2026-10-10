@@ -4,12 +4,17 @@ import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitDirectory } from "./init-directory.js";
-import {
-	StarterTemplate,
-	TEMPLATE_FILE,
-	TemplateChoice,
-} from "./starter-template.js";
+import { StarterTemplate, TEMPLATE_FILE } from "./starter-template.js";
 import { instanceKey } from "../roblox/roblox.js";
+
+/** What the template question answers. */
+export type TemplateChoice =
+	/** Start `template.project.json` from the package mounts, when there are any. */
+	| { readonly kind: "new" }
+	/** Copy a hand-written project file to `template.project.json`. */
+	| { readonly kind: "copy"; readonly from: string }
+	/** Reference a hand-written project file as it is. */
+	| { readonly kind: "use"; readonly file: string };
 
 /** The template a new project chose, with the text of a copied file read in. */
 export type ProjectTemplate =

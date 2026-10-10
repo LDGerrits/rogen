@@ -11,14 +11,6 @@ import { AgentHooks } from "./agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
-/** One kind of thing `init` can add: it asks what it needs, then says what those answers write. */
-export interface Setup<C> {
-	/** Asks its questions; `ok(undefined)` when the user cancelled. Fails when a file it would write already exists. */
-	ask(): Promise<Result<C | undefined, Diagnostic[]>>;
-	/** Adds what `choices` write and say. */
-	plan(choices: C, builder: InitPlanBuilder): void;
-}
-
 /** Collects what the setups write and say, and checks it against the directory once. */
 export class InitPlanBuilder {
 	private template: PlannedFile | undefined;

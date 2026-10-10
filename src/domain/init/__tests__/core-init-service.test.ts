@@ -1,5 +1,5 @@
 import { agentBlock } from "../agent-block.js";
-import { agentHook } from "../agent-hook.js";
+import { hookScript } from "../hook-script.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
@@ -329,7 +329,7 @@ describe("CoreInitService", () => {
 				SCRIPT,
 				CLAUDE,
 			]);
-			expect(fileOf(plan, SCRIPT)).toMatchObject({ content: agentHook });
+			expect(fileOf(plan, SCRIPT)).toMatchObject({ content: hookScript });
 			expect(JSON.parse(fileOf(plan, CLAUDE)?.content ?? "")).toEqual({
 				hooks: {
 					Stop: [

@@ -100,7 +100,7 @@ describe("ConfigSet naming", () => {
 	});
 
 	it("should point at where variants of a script are swapped in", () => {
-		expect(ConfigSet.variantsStep(luau, "default.rogen.json")).toBe(
+		expect(new ConfigSet("default", luau, undefined).variantsStep).toBe(
 			'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.'
 		);
 	});

@@ -1,6 +1,6 @@
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
-import { agentHook } from "./agent-hook.js";
+import { hookScript } from "./hook-script.js";
 import { HOOK_SCRIPT_FILE, HookTarget, registerHook } from "./hook-target.js";
 
 /** An agent found in the project, and the text of its hook file if it has one. */
@@ -60,7 +60,7 @@ export class AgentHooks {
 		return [
 			...(this.state.scriptExists
 				? []
-				: [{ fileName: HOOK_SCRIPT_FILE, content: agentHook }]),
+				: [{ fileName: HOOK_SCRIPT_FILE, content: hookScript }]),
 			...this.registering.map(({ target, text, existed }) => ({
 				fileName: target.settingsFile,
 				content: text,

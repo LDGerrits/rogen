@@ -3,8 +3,9 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
+import { Setup } from "./setup.js";
 
 export interface ExtendingConfigChoices {
 	readonly name: string;

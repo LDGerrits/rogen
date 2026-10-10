@@ -19,10 +19,11 @@ import {
 import { ConfigSet } from "./config-set.js";
 import { PlaceFolder } from "./place-folder.js";
 import { HOOK_SCRIPT_FILE } from "./hook-target.js";
-import { BaseConfig, InitDirectory } from "./init-directory.js";
+import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
+import { TemplateChoice } from "./template-plan.js";
 
 export type Layout = "one" | "several";
 /** One thing `init` can add beside the configs here, and what adding it does. */

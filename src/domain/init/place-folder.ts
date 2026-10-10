@@ -63,7 +63,7 @@ export class PlaceFolder {
 }
 
 /** Reads what the folders of a place already hold. */
-export class PlaceFolders {
+export class PlaceFolderReader {
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly toolchainService: ToolchainService

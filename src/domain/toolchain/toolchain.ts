@@ -112,8 +112,6 @@ export interface Compiler {
 	readonly name: string;
 	/** Where it writes here, and so what Rojo or a processor reads instead of the root dirs. */
 	readonly outDir: string;
-	/** Where it writes when its own config doesn't say. */
-	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
 	/** The edit that makes it compile the shared code from `rootDir`, when its config compiles another folder. */

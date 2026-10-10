@@ -84,7 +84,6 @@ export const ROBLOX_TS_SYNC_TOOL: SyncTool = {
 /** The roblox-ts compiler as this workspace configures it. */
 export class RobloxTsCompiler implements Compiler {
 	readonly name = "roblox-ts";
-	readonly defaultOutDir = DEFAULT_OUT_DIR;
 	readonly compileCommand = "rbxtsc -w";
 
 	constructor(private readonly facts: RobloxTsFacts) {}

@@ -5,11 +5,12 @@ import { AgentFile } from "./agent-file.js";
 import { AgentHooks } from "./agent-hooks.js";
 import { ExtendingConfigSetup } from "./extending-config-setup.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
-import { PlaceFolders } from "./place-folder.js";
+import { PlaceFolderReader } from "./place-folder.js";
 import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
+import { Setup } from "./setup.js";
 
 /** A setup's questions, whose answers come back bound to the setup that plans them; `undefined` when the user cancelled. */
 export type Asking = () => Promise<
@@ -36,7 +37,7 @@ export class InitAdditions {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		private readonly placeFolders: PlaceFolders,
+		private readonly placeFolders: PlaceFolderReader,
 		private readonly projectSetup: ProjectSetup,
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks

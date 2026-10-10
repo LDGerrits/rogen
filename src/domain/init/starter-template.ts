@@ -14,14 +14,6 @@ import { instanceKey } from "../roblox/roblox.js";
 /** The template project file `init` starts, which the configs it writes name. */
 export const TEMPLATE_FILE = "template.project.json";
 
-export type TemplateChoice =
-	/** Start `template.project.json` from the package mounts, when there are any. */
-	| { readonly kind: "new" }
-	/** Copy a hand-written project file to `template.project.json`. */
-	| { readonly kind: "copy"; readonly from: string }
-	/** Reference a hand-written project file as it is. */
-	| { readonly kind: "use"; readonly file: string };
-
 const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 	$path: optional ? { optional: path } : path,
 });

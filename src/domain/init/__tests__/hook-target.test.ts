@@ -1,4 +1,4 @@
-import { agentHook } from "../agent-hook.js";
+import { hookScript } from "../hook-script.js";
 import {
 	HOOK_SCRIPT_FILE,
 	HOOK_TARGETS,
@@ -105,7 +105,7 @@ describe("hook targets", () => {
 
 	it("should have every command run the script the docs hold", () => {
 		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.sh");
-		expect(agentHook).toMatch(/^#!\/usr\/bin\/env bash\n/);
+		expect(hookScript).toMatch(/^#!\/usr\/bin\/env bash\n/);
 		for (const { hook } of HOOK_TARGETS)
 			expect(registerHook(undefined, hook)).toMatchObject({
 				kind: "added",

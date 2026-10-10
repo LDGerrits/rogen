@@ -6,7 +6,6 @@ import {
 	withRobloxTs,
 } from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
-import { BaseConfig } from "../init-directory.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -22,6 +21,7 @@ import {
 	placeFoldersOf,
 	planOf,
 } from "./init-fixtures.js";
+import { BaseConfig } from "../init-directory.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
 const darklua: WorkspaceSpec = { ...luau, darkluaConfig: ".darklua.json" };

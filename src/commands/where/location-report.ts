@@ -7,14 +7,13 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
+	diagnosticsOf,
 	requireOf,
 	requirementOf,
 } from "../../domain/build/build-service.js";
 import {
 	Diagnostic,
 	diagnosticSummary,
-	diagnosticsAbout,
-	diagnosticsReaching,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
@@ -236,10 +235,7 @@ export class LocationReport {
 			label,
 			location,
 			mode,
-			diagnostics:
-				location.status === "placed" && location.named
-					? diagnosticsReaching(diagnostics, location.source)
-					: diagnosticsAbout(diagnostics, location.source),
+			diagnostics: diagnosticsOf(location, diagnostics),
 		});
 		return [
 			...locations.map(answer),

@@ -22,7 +22,7 @@ import {
 } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
 import { Asking, InitAdditions, asking } from "./init-additions.js";
-import { PlaceFolders } from "./place-folder.js";
+import { PlaceFolderReader } from "./place-folder.js";
 import { ProjectSetup } from "./project-setup.js";
 
 export class CoreInitService implements InitService {
@@ -128,7 +128,7 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
-		const placeFolders = new PlaceFolders(
+		const placeFolders = new PlaceFolderReader(
 			this.fileSystemService,
 			this.toolchainService
 		);

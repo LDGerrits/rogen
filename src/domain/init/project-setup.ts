@@ -13,14 +13,19 @@ import { RogenConfig, configFileName } from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
-import { PlaceFolder, PlaceFolders } from "./place-folder.js";
-import { PlaceChoices, PlacePlan } from "./place-plan.js";
-import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
+import { PlaceFolder, PlaceFolderReader } from "./place-folder.js";
+import { PlacePlan } from "./place-plan.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { ProjectTemplate, TemplatePlan } from "./template-plan.js";
+import {
+	ProjectTemplate,
+	TemplatePlan,
+	TemplateChoice,
+} from "./template-plan.js";
+import { Setup } from "./setup.js";
 
 /** Every answer the new-project questions give, whether asked or defaulted. */
 export interface ProjectChoices {
@@ -30,8 +35,6 @@ export interface ProjectChoices {
 	readonly darklua: Darklua | undefined;
 	readonly rootDirs: readonly string[];
 	readonly syncDir?: string;
-	/** Where the compiler writes; Darklua reads it when both are used. */
-	readonly outDir?: string;
 	readonly template: ProjectTemplate;
 	/** Where a new template starts; at the root when unset. */
 	readonly templateDir?: string;
@@ -67,7 +70,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
 		private readonly fileSystemService: FileReader,
-		private readonly placeFolders: PlaceFolders
+		private readonly placeFolders: PlaceFolderReader
 	) {}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
@@ -120,14 +123,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: [];
 		if (places === undefined) return ok(undefined);
 
-		const outDir = language.compiler?.outDir;
 		return ok({
 			name,
 			language,
 			darklua,
 			rootDirs: [...rootDirs],
 			...(syncDir && { syncDir }),
-			...(outDir && { outDir }),
 			template: template.value,
 			...(templateDir && { templateDir }),
 			mounts,
@@ -275,9 +276,22 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			],
 			derived,
 		});
+		this.planProject(builder, choices, configSet, template, derived);
+		const placePlans = this.planPlaces(builder, choices);
+		this.planNextSteps(builder, choices, configSet, template, placePlans);
+	}
+
+	/** The project's own template, directories, configs and notes. */
+	private planProject(
+		builder: InitPlanBuilder,
+		choices: ProjectChoices,
+		configSet: ConfigSet,
+		template: TemplatePlan,
+		derived: DerivedRoutes | undefined
+	): void {
+		const { language, darklua, rootDirs, syncDir } = choices;
 		const starting = new StartingRoutes(language, derived);
 		const { compiler } = language;
-
 		const starter: RogenConfig = {
 			rootDirs: [...rootDirs],
 			routes: starting.starting(choices.routes, choices.fallback),
@@ -301,24 +315,40 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Syncing from ${syncDir}, where ${compiler.name} compiles to.`
 			);
 		}
+	}
 
+	/** The files of every place, each on a port no other uses. */
+	private planPlaces(
+		builder: InitPlanBuilder,
+		{ language, darklua, rootDirs, syncDir, places }: ProjectChoices
+	): PlacePlan[] {
 		const ports: number[] = [];
-		const places = choices.places.map(({ name, folder }): PlaceChoices => {
+		const plans = places.map(({ name, folder }) => {
 			const servePort = PlacePlan.freePort(ports);
 			ports.push(servePort);
-			return {
+			return new PlacePlan(this.directory, {
 				name,
 				folder,
 				servePort,
 				language,
 				darklua,
 				base: { rootDirs, ...(syncDir && { syncDir }) },
-			};
+			});
 		});
-		const placePlans = places.map(
-			(place) => new PlacePlan(this.directory, place)
-		);
-		for (const place of placePlans) place.planFiles(builder);
+		for (const plan of plans) plan.planFiles(builder);
+		return plans;
+	}
+
+	/** What the user does next: the compiler's root dir, the edits, and the commands that build and serve. */
+	private planNextSteps(
+		builder: InitPlanBuilder,
+		choices: ProjectChoices,
+		configSet: ConfigSet,
+		template: TemplatePlan,
+		placePlans: readonly PlacePlan[]
+	): void {
+		const { name, language, rootDirs } = choices;
+		const { compiler } = language;
 		const compiled =
 			language.configuredRootDir() ??
 			this.directory.defaultRootDir(language);
@@ -333,7 +363,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		builder.addEdit(
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
-			ConfigSet.variantsStep(language, configFileName(name))
+			configSet.variantsStep
 		);
 		const serveCommand = PlacePlan.serveCommandOf(placePlans);
 		placePlans.forEach((place, index) =>
@@ -346,13 +376,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	/** The commands that build and serve the project itself. */
 	private planSteps(
 		builder: InitPlanBuilder,
-		{ rootDirs, syncDir, outDir }: ProjectChoices,
+		{ rootDirs, syncDir }: ProjectChoices,
 		configSet: ConfigSet
 	): void {
 		const { compiler } = configSet.language;
 		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiler?.compileCommand,
-			processed: compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs,
+			processed: compiler ? [compiler.outDir] : rootDirs,
 			syncDir,
 		});
 	}

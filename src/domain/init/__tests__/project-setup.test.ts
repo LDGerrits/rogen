@@ -14,7 +14,6 @@ import { DerivedRoutes } from "../derived-routes.js";
 import { InitQuestions } from "../init-questions.js";
 import { PlaceFolder } from "../place-folder.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
-import { TemplateChoice } from "../starter-template.js";
 import { StartingRoutes } from "../starting-routes.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -25,6 +24,7 @@ import {
 	placeFoldersOf,
 	planOf,
 } from "./init-fixtures.js";
+import { TemplateChoice } from "../template-plan.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",

@@ -47,11 +47,6 @@ export class ConfigSet {
 		return `**/*.spec.${language.extension}`;
 	}
 
-	/** Says where variants of a script are swapped in, in the words the next steps use. */
-	static variantsStep(language: Language, configFile: string): string {
-		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}, and turn them on in a mode or with --variant.`;
-	}
-
 	/** `names` are the positionals after `init`. */
 	static parseName(names: readonly string[]): Result<string, Error> {
 		if (names.length > 1) {
@@ -141,10 +136,20 @@ export class ConfigSet {
 		return this.stems.map(projectFileName);
 	}
 
+	/** Says where variants of a script are swapped in, in the words the next steps use. */
+	get variantsStep(): string {
+		return `Declare variants under "variants" in ${configFileName(this.name)} to swap in files like Analytics.mock.${this.language.extension}, and turn them on in a mode or with --variant.`;
+	}
+
+	/** The stem of the config that is served: the synced one when there is one. */
+	get servedStem(): string {
+		return this.sourced ? this.syncStem : this.name;
+	}
+
 	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
 	get serveCommand(): string {
 		if (this.name === DEFAULT_CONFIG_STEM) return "rogen serve";
-		return `rogen serve ${this.sourced ? this.syncStem : this.name}`;
+		return `rogen serve ${this.servedStem}`;
 	}
 
 	/** Writes `own`, which carries the sync dir; a sourced set keeps `own` rooted at the source, and a second config extending it takes the sync dir. */

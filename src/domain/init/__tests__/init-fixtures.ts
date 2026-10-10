@@ -10,10 +10,11 @@ import {
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "../starter-template.js";
-import { BaseConfig, InitDirectory } from "../init-directory.js";
-import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
+import { InitDirectory, BaseConfig } from "../init-directory.js";
+import { InitPlanBuilder } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";
-import { PlaceFolders } from "../place-folder.js";
+import { PlaceFolderReader } from "../place-folder.js";
+import { Setup } from "../setup.js";
 
 export const directory = path.resolve("/mock/my-game");
 
@@ -28,7 +29,7 @@ export interface DirectorySpec {
 
 export const placeFoldersOf = (
 	fileSystem: FileSystemService = new MemoryFileSystemService()
-) => new PlaceFolders(fileSystem, new CoreToolchainService(fileSystem));
+) => new PlaceFolderReader(fileSystem, new CoreToolchainService(fileSystem));
 
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	return new InitDirectory(
