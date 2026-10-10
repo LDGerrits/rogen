@@ -49,7 +49,7 @@ export class Locator {
 		configs: readonly ResolvedConfig[],
 		query?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
-		const targets = await this.classify(query);
+		const targets = await this.classify(query ?? { args: [], cwd: "" });
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
 			const locations = await this.locateIn(config, targets);
@@ -295,26 +295,23 @@ export class Locator {
 	}
 
 	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
-	private async classify(query?: LocateTargets): Promise<Targets> {
+	private async classify({ args, cwd }: LocateTargets): Promise<Targets> {
 		const paths: string[] = [];
 		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
-		for (const given of query?.args ?? []) {
+		for (const given of args) {
 			const reference = InstanceReference.parse(given);
 			if (
 				reference &&
 				!(await this.fileSystemService.exists(
-					path.resolve(query!.cwd, reference.service)
+					path.resolve(cwd, reference.service)
 				))
 			)
 				instances.push(reference);
 			else {
 				// A backslash is a separator on every platform, so a Windows-style path answers as its slash form does.
-				const arg = await this.withoutPosition(
-					toPosix(given),
-					query!.cwd
-				);
-				const resolved = path.resolve(query!.cwd, arg);
+				const arg = await this.withoutPosition(toPosix(given), cwd);
+				const resolved = path.resolve(cwd, arg);
 				paths.push(resolved);
 				if (arg.endsWith("/")) folders.add(toPosix(resolved));
 			}

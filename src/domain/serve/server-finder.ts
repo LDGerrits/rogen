@@ -23,6 +23,11 @@ interface Candidate {
 	readonly manifest?: ToolchainFile;
 }
 
+/** A candidate a toolchain file pins. */
+interface PinnedCandidate extends Candidate {
+	readonly manifest: ToolchainFile;
+}
+
 /** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
@@ -38,7 +43,7 @@ export class ServerFinder {
 	): Promise<Result<ServeTool, DiagnosticsError>> {
 		const manifests = await this.manifestsFor(directory);
 		const servers = wanted ? [wanted] : SyncServer.ALL;
-		const pinned = servers.flatMap((server): Candidate[] => {
+		const pinned = servers.flatMap((server): PinnedCandidate[] => {
 			for (const manifest of manifests) {
 				const command = manifest.nameOf(server.repository);
 				if (command) return [{ server, command, manifest }];
@@ -141,16 +146,16 @@ export class ServerFinder {
 		);
 	}
 
-	private notInstalled({ server, command, manifest }: Candidate) {
-		const file = manifest!.file;
+	private notInstalled({ server, command, manifest }: PinnedCandidate) {
+		const { file } = manifest;
 		return errorDiagnostic(
 			"serve.notInstalled",
 			{ resource: file },
-			`${path.basename(file)} pins ${server.name} as ${command}, but it isn't installed. Run '${manifest!.installCommand}'.`,
+			`${path.basename(file)} pins ${server.name} as ${command}, but it isn't installed. Run '${manifest.installCommand}'.`,
 			[
 				{
 					run: {
-						command: manifest!.installCommand,
+						command: manifest.installCommand,
 						cwd: path.dirname(file),
 					},
 				},

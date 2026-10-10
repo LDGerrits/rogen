@@ -112,6 +112,8 @@ export interface ProjectFile {
 	readonly name?: unknown;
 	readonly globIgnorePaths?: unknown;
 	readonly emitLegacyScripts?: unknown;
+	readonly servePort?: unknown;
+	readonly serveAddress?: unknown;
 }
 
 /** A project file read from disk, whose other fields pass through untouched. */
@@ -189,17 +191,18 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 
 	/** The port Rojo serves the project on, when the project sets a valid one. */
 	get servePort(): number | undefined {
-		const { servePort } = this.project as { servePort?: unknown };
-		return Number.isInteger(servePort) &&
-			(servePort as number) > 0 &&
-			(servePort as number) < 65536
-			? (servePort as number)
+		const { servePort } = this.project;
+		return typeof servePort === "number" &&
+			Number.isInteger(servePort) &&
+			servePort > 0 &&
+			servePort < 65536
+			? servePort
 			: undefined;
 	}
 
 	/** The address Rojo listens on, when the project sets one. */
 	get serveAddress(): string | undefined {
-		const { serveAddress } = this.project as { serveAddress?: unknown };
+		const { serveAddress } = this.project;
 		return typeof serveAddress === "string" && serveAddress !== ""
 			? serveAddress
 			: undefined;
