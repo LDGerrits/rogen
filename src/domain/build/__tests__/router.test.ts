@@ -578,7 +578,11 @@ describe("Router", () => {
 					"src/H/init.mock.dev@client.luau",
 					"src/H/init.dev.mock@ReplicatedFirst.luau",
 					"src/I.mock/@server",
-					"src/I.mock/init.dev@client.luau"
+					"src/I.mock/init.dev@client.luau",
+					"src/server/J/init.dev@client.luau",
+					"src/server/J/init.prod@ReplicatedFirst.luau",
+					"src/K@server/@server",
+					"src/K@server/init.dev@client.luau"
 				);
 
 				const result = await route({
@@ -619,9 +623,36 @@ describe("Router", () => {
 						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one.",
 					],
 					[
+						abs("src/K@server"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
 						abs("src/E"),
 						", and nothing decides between them. Keep one.",
 					],
+					[
+						abs("src/server/J"),
+						", and nothing decides between them. Keep one.",
+					],
+				]);
+			});
+
+			it("should keep the plain message for init scripts of variants that clash in a root dir", async () => {
+				await write(
+					"src/@server",
+					"src/init.dev@client.luau",
+					"src/X.luau"
+				);
+
+				const result = await route({ variants: { dev: true } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code === "route.markerClash")
+							.map(({ message }) => message)
+				).toEqual([
+					'"@server" and "init.dev@client.luau" route this folder to different places, and nothing decides between them. Keep one.',
 				]);
 			});
 
