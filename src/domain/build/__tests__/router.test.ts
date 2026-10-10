@@ -1378,6 +1378,14 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should leave an init script no route governs unrouted, rather than failing for its missing folder", async () => {
+				await write("src/init.luau", "src/server/A.luau");
+
+				const result = (await route(noStar)).unwrap();
+
+				expect(result.unrouted).toEqual([abs("src/init.luau")]);
+			});
+
 			it("should return the unrouted files' source paths", async () => {
 				await write("src/server/A.luau", "src/B.luau");
 

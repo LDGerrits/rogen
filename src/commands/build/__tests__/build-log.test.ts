@@ -501,6 +501,51 @@ describe("BuildLog report, warnings", () => {
 	});
 });
 
+describe("BuildLog report, closing line", () => {
+	const closing = (warnings: number, denyWarnings = false) => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{
+						warnings: Array.from({ length: warnings }, (_, n) =>
+							warningDiagnostic(
+								`x.w${n}`,
+								{ resource: `/repo/src/F${n}.luau` },
+								"bad."
+							)
+						),
+						syncWarnings: [],
+					},
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			denyWarnings
+		);
+		return logService.lines.at(-1);
+	};
+
+	it("should count the configs it built", () => {
+		expect(closing(0)).toBe("outro: Built 1 config.");
+	});
+
+	it("should count the warnings", () => {
+		expect(closing(1)).toBe("outro: Built 1 config with 1 warning.");
+		expect(closing(2)).toBe("outro: Built 1 config with 2 warnings.");
+	});
+
+	it("should say that --deny-warnings fails the run, when it does", () => {
+		expect(closing(1, true)).toBe(
+			"outro: Built 1 config with 1 warning; --deny-warnings fails the run."
+		);
+		expect(closing(0, true)).toBe("outro: Built 1 config.");
+	});
+});
+
 describe("BuildLog.diagnostics", () => {
 	const warnings = (count: number, code = "route.unrouted") =>
 		Array.from({ length: count }, (_, n) =>

@@ -1348,6 +1348,32 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
+			it("should not warn about a class the template and the meta agree on", async () => {
+				await write("src/Gui/client/Hud.luau");
+				await writeMeta("src/Gui/init.meta.json", {
+					className: "ScreenGui",
+				});
+				const template = templateOf({
+					tree: {
+						$className: "DataModel",
+						StarterPlayer: {
+							$className: "StarterPlayer",
+							StarterPlayerScripts: {
+								$className: "StarterPlayerScripts",
+								Gui: { $className: "ScreenGui" },
+							},
+						},
+					},
+				});
+
+				const { warnings } = await assemble({
+					routes: SPLIT,
+					template,
+				});
+
+				expect(warnings).toEqual([]);
+			});
+
 			it("should leave a folder under a template $path out, meta and all", async () => {
 				await write("src/Packages/server/A.luau");
 				await writeMeta("src/Packages/init.meta.json", {
