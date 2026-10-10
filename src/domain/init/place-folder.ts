@@ -1,5 +1,5 @@
 import path from "path";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { PLACES_DIR } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
@@ -65,7 +65,7 @@ export class PlaceFolder {
 /** Reads what the folders of a place already hold. */
 export class PlaceFolders {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly toolchainService: ToolchainService
 	) {}
 

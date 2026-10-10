@@ -6,7 +6,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	FileSystemService,
+	FileReader,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -31,7 +31,7 @@ interface SyncDirRun {
 
 /** Checks what the sync dir holds against what the build expects there, which only changes when the compiler runs. */
 export class SyncDirCheck {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** Warns when the sync dir lacks what the tools should have written for the root dirs and their meta files. */
 	async check(placement: Placement): Promise<Diagnostic[]> {

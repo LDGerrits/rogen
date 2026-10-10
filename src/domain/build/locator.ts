@@ -7,10 +7,7 @@ import {
 	isRenameFix,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	FileSystemService,
-	FileType,
-} from "../../platform/fs/file-system-service.js";
+import { FileReader, FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
@@ -39,7 +36,7 @@ interface Targets {
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
 export class Locator {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly listing: IndexReader,
 		private readonly tools: readonly SyncTool[]
 	) {}

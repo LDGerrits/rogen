@@ -16,7 +16,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
-	FileSystemService,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";
@@ -54,7 +54,7 @@ export class ConfigLoader {
 	private readonly fileChecks = new Set<ConfigFileCheck>();
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {
 		this.reader = new ConfigFileReader(

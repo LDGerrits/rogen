@@ -7,7 +7,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./serve.js";
 import { ServeTool } from "./serve-service.js";
@@ -31,7 +31,7 @@ interface PinnedCandidate extends Candidate {
 /** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly processService: ProcessService
 	) {}
 

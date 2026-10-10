@@ -16,18 +16,22 @@ export function isDirectoryType(type: FileType): boolean {
 	return (type & FileType.Directory) !== 0;
 }
 
-export interface FileSystemService {
-	readonly _serviceBrand: undefined;
-
+/** What a consumer that only looks at files needs. */
+export interface FileReader {
 	exists(filePath: string): Promise<boolean>;
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;
 
 	/** The entries in order of name, as text, whatever order the system lists them in. A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
 	readDirectory(filePath: string): Promise<[string, FileType][]>;
-	createDirectory(filePath: string): Promise<void>;
 
 	readFile(filePath: string): Promise<string>;
+}
+
+export interface FileSystemService extends FileReader {
+	readonly _serviceBrand: undefined;
+
+	createDirectory(filePath: string): Promise<void>;
 	writeFile(filePath: string, content: string): Promise<void>;
 
 	delete(filePath: string, recursive?: boolean): Promise<void>;

@@ -8,7 +8,7 @@ import {
 	DiagnosticPosition,
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import { FileSystemService, isMissingPath } from "../fs/file-system-service.js";
+import { FileReader, isMissingPath } from "../fs/file-system-service.js";
 import {
 	JsoncDocumentReader,
 	WrongTypeAdvisor,
@@ -42,7 +42,7 @@ export class ConfigFileReader {
 	private readonly documents: JsoncDocumentReader;
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly schema: JSONSchema,
 		advise?: WrongTypeAdvisor
 	) {

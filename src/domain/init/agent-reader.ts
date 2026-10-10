@@ -1,7 +1,7 @@
 import { ErrorUtils } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentHooks, AgentInUse } from "./agent-hooks.js";
 import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "./hook-target.js";
@@ -9,7 +9,7 @@ import { InitDirectory } from "./init-directory.js";
 
 /** Reads what a directory holds for the coding agents it uses: their instruction files and their hooks. */
 export class AgentReader {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	async fileIn(directory: InitDirectory): Promise<Result<AgentFile, Error>> {
 		const texts = new Map<string, string | undefined>();

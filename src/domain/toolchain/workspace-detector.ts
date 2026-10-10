@@ -1,6 +1,6 @@
 import path from "path";
 import {
-	FileSystemService,
+	FileReader,
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
@@ -21,7 +21,7 @@ const isHiddenOrVendored = (name: string): boolean =>
 export class WorkspaceDetector {
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly darklua: Darklua,
 		private readonly testRunnerDetector: TestRunnerDetector,
 		private readonly languages: readonly [

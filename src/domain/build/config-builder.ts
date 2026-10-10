@@ -4,7 +4,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-project.js";
@@ -50,7 +50,7 @@ export class ConfigBuilder {
 	private readonly syncDirCheck: SyncDirCheck;
 
 	constructor(
-		fileSystemService: FileSystemService,
+		fileSystemService: FileReader,
 		private readonly index: IndexReader,
 		private readonly tools: readonly SyncTool[]
 	) {

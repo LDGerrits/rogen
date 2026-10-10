@@ -8,7 +8,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import {
-	FileSystemService,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import {
@@ -60,7 +60,7 @@ interface ScriptMetaSource {
 
 /** Reads the meta files a placed build needs, once, before it is assembled. */
 export class MetaReader {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript; a script meta that can't be read sets no run context, since the build only warns with it. */
 	async read(placement: Placement): Promise<Result<BuildMeta, Diagnostic[]>> {

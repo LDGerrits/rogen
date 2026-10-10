@@ -4,7 +4,7 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
-	FileSystemService,
+	FileReader,
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
@@ -34,7 +34,7 @@ export interface DiscoveredConfigs {
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has any. */
 export class ConfigDiscovery {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {}
 

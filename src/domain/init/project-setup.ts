@@ -6,7 +6,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	FileSystemService,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
@@ -66,7 +66,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly placeFolders: PlaceFolders
 	) {}
 

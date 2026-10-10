@@ -3,7 +3,7 @@ import { formatJsonFile } from "../../base/json.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { normalizeDir } from "../../base/path.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	CompiledPlace,
 	Compiler,
@@ -213,7 +213,7 @@ export class RobloxTs implements Language {
 
 /** Reads what roblox-ts leaves in a workspace: tsconfig.json, `include` and the installed scopes. */
 export class RobloxTsDetector implements LanguageDetector {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	async detect(cwd: string): Promise<RobloxTs> {
 		const has = (...segments: string[]) =>

@@ -7,7 +7,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
 	ServeAddress,
@@ -25,7 +25,7 @@ const FREE_PORT_SEARCH = 20;
 /** Where each config is served, and whether its port is free for it, when a serve starts and whenever its configs change. */
 export class ServePorts {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly userHome: string
