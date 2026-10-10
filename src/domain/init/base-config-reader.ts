@@ -8,7 +8,7 @@ import {
 	configFileName,
 	isConfigFileName,
 } from "../config/config.js";
-import { ConfigService } from "../config/config-service.js";
+import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { SyncServer } from "../serve/serve.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig } from "./init-directory.js";
@@ -23,40 +23,47 @@ export class BaseConfigReader {
 
 	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it. */
 	async read(
-		entries: ReadonlySet<string>
+		names: ReadonlySet<string>
 	): Promise<Result<BaseConfig, Diagnostic[]>> {
-		const entry = await this.configService.read(
-			path.join(this.directory, DEFAULT_CONFIG_FILE)
+		const read = await Promise.all(
+			[...names]
+				.filter(isConfigFileName)
+				.map(
+					async (name) =>
+						[
+							name,
+							await this.configService.read(
+								path.join(this.directory, name)
+							),
+						] as const
+				)
 		);
+		const entries = new Map(read);
+		const entry =
+			entries.get(DEFAULT_CONFIG_FILE) ??
+			(await this.configService.read(
+				path.join(this.directory, DEFAULT_CONFIG_FILE)
+			));
 		if (entry.status === "broken") return err([...entry.errors]);
 
-		const { rootDirs } = entry.config;
-		const syncFile = configFileName(
-			ConfigSet.syncStemOf(DEFAULT_CONFIG_STEM)
+		const sync = entries.get(
+			configFileName(ConfigSet.syncStemOf(DEFAULT_CONFIG_STEM))
 		);
 		const syncDir =
 			entry.config.syncDir ??
-			(entries.has(syncFile)
-				? await this.syncDirOf(syncFile)
-				: undefined);
+			(sync?.status === "valid" ? sync.config.syncDir : undefined);
 		return ok({
-			rootDirs: rootDirs.map((dir) => this.relative(dir)),
+			rootDirs: entry.config.rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),
-			...(await this.portsIn(entries)),
+			...this.portsIn([...entries.values()]),
 		});
 	}
 
 	/** The serve port of every config here whose template sets one, and whether two configs nothing extends share one, `default` aside, which a place extends. A config that doesn't build is skipped. */
-	private async portsIn(
-		entries: ReadonlySet<string>
-	): Promise<{ ports: number[]; sharedPort: boolean }> {
-		const read = await Promise.all(
-			[...entries]
-				.filter((name) => isConfigFileName(name))
-				.map((name) =>
-					this.configService.read(path.join(this.directory, name))
-				)
-		);
+	private portsIn(read: readonly ConfigEntry[]): {
+		ports: number[];
+		sharedPort: boolean;
+	} {
 		const valid = read.filter((entry) => entry.status === "valid");
 		const extended = new Set(valid.flatMap(({ parents }) => parents));
 		const served = valid
@@ -81,14 +88,6 @@ export class BaseConfigReader {
 			],
 			sharedPort: new Set(served).size < served.length,
 		};
-	}
-
-	/** The absolute sync dir the config in `fileName` resolves to, if it has one and builds. */
-	private async syncDirOf(fileName: string): Promise<string | undefined> {
-		const entry = await this.configService.read(
-			path.join(this.directory, fileName)
-		);
-		return entry.status === "valid" ? entry.config.syncDir : undefined;
 	}
 
 	private relative(absolute: string): string {
