@@ -41,6 +41,10 @@ rogen serve
 
 `rogen init` writes a starting config and prints the commands your setup needs. `rogen where <file>` prints where a file lands and why. Read the [documentation](https://rogen-playfully.vercel.app) for routing, variants and every setup.
 
+## Support
+
+Rogen is free and MIT. If it is useful to you or your studio, you can [sponsor its development](https://github.com/sponsors/LDGerrits).
+
 ## Contributing
 
 Pull requests are welcome!
