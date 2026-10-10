@@ -131,6 +131,12 @@ export const PROJECT_SUFFIX = ".project.json";
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
+/** The stem of a Rojo project file's name, or `undefined` when the name isn't a project file's. */
+export const stemOfProjectFile = (fileName: string): string | undefined =>
+	fileName.endsWith(PROJECT_SUFFIX)
+		? fileName.slice(0, -PROJECT_SUFFIX.length)
+		: undefined;
+
 /** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
 export class RojoProject<T extends ProjectFile = RojoTree> {
 	private readonly project: T;

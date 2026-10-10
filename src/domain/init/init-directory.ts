@@ -9,9 +9,9 @@ import {
 	DEFAULT_CONFIG_FILE,
 	configFileName,
 	isConfigFileName,
-	labelOfDefaultOutFile,
 	rootDirOverlap,
 } from "../config/config.js";
+import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
@@ -66,7 +66,7 @@ export class InitDirectory {
 	get handWrittenProjectFiles(): string[] {
 		return [...this.entries]
 			.filter((file) => {
-				const label = labelOfDefaultOutFile(file);
+				const label = stemOfProjectFile(file);
 				return (
 					label !== undefined &&
 					!this.has(configFileName(label)) &&

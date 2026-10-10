@@ -4,8 +4,8 @@ import {
 	DEFAULT_CONFIG_STEM,
 	RogenConfig,
 	configFileName,
-	defaultOutFileName,
 } from "../config/config.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import {
 	Darklua,
 	DetectedWorkspace,
@@ -72,7 +72,7 @@ export class ConfigSet {
 				)
 			);
 		}
-		if (defaultOutFileName(name) === TEMPLATE_FILE) {
+		if (projectFileName(name) === TEMPLATE_FILE) {
 			return err(
 				new UsageError(
 					`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`
@@ -115,7 +115,7 @@ export class ConfigSet {
 	}
 
 	get outputFiles(): string[] {
-		return this.stems.map(defaultOutFileName);
+		return this.stems.map(projectFileName);
 	}
 
 	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
@@ -174,10 +174,10 @@ export class ConfigSet {
 			);
 		}
 		if (darklua && this.sourced && sourcemap) {
-			const projectFile = defaultOutFileName(this.name);
+			const projectFile = projectFileName(this.name);
 			const command = darklua.sourcemapCommand(projectFile);
 			// luau-lsp keeps the sourcemap Darklua reads current from the default project; any other needs its own watch.
-			if (projectFile === defaultOutFileName(DEFAULT_CONFIG_STEM))
+			if (projectFile === projectFileName(DEFAULT_CONFIG_STEM))
 				builder.addEdit(
 					`Darklua reads sourcemap.json, which luau-lsp keeps current from ${projectFile}. Without luau-lsp, run: ${command}`
 				);
@@ -191,7 +191,7 @@ export class ConfigSet {
 			configFileName(this.name),
 			...(this.syncFile ? [this.syncFile] : []),
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			defaultOutFileName(this.name),
+			projectFileName(this.name),
 		];
 	}
 }

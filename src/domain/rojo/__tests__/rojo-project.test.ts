@@ -4,10 +4,26 @@ import {
 	RojoProject,
 	InstanceMap,
 	RojoTree,
+	projectFileName,
+	stemOfProjectFile,
 } from "../rojo-project.js";
 
 const folders: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
+
+describe("project file names", () => {
+	it("should name the project file of a stem", () => {
+		expect(projectFileName("lobby")).toBe("lobby.project.json");
+	});
+
+	it("should take the stem back out of a project file's name", () => {
+		expect(stemOfProjectFile("lobby.project.json")).toBe("lobby");
+	});
+
+	it("should not read a stem out of a file that isn't a project file", () => {
+		expect(stemOfProjectFile("lobby.json")).toBeUndefined();
+	});
+});
 
 describe("RojoProject", () => {
 	let baseTree: RojoTree;

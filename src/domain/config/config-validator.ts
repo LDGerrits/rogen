@@ -13,9 +13,9 @@ import {
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
-	defaultOutFileName,
 	rootDirOverlap,
 } from "./config.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { LayeredConfig } from "./layered-config.js";
 import { variantStates } from "./variant-switch.js";
 
@@ -50,7 +50,7 @@ export class ConfigValidator {
 			config.getValue<string>("outFile") ??
 			path.join(
 				path.dirname(layered.leaf.file),
-				defaultOutFileName(configLabel(layered.leaf.file))
+				projectFileName(configLabel(layered.leaf.file))
 			);
 	}
 

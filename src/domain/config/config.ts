@@ -9,10 +9,8 @@ import {
 import { Target } from "../roblox/roblox.js";
 import {
 	NodeClash,
-	PROJECT_SUFFIX,
 	ParsedProjectFile,
 	RojoProject,
-	projectFileName,
 } from "../rojo/rojo-project.js";
 
 /** What a mode changes about a build: which variants it turns on and which files are left out. */
@@ -52,17 +50,6 @@ export const isConfigFileName = (fileName: string): boolean =>
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
-
-/** The project file a config named `label` writes unless its `outFile` says otherwise. */
-export const defaultOutFileName = (label: string): string =>
-	projectFileName(label);
-
-/** The label of the config that writes `fileName` by default, when it is named the way a default output is. */
-export function labelOfDefaultOutFile(fileName: string): string | undefined {
-	return fileName.endsWith(PROJECT_SUFFIX)
-		? fileName.slice(0, -PROJECT_SUFFIX.length)
-		: undefined;
-}
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
