@@ -23,7 +23,7 @@ To suggest an improvement or new feature:
 
 ### Submitting Code Changes
 
-Fork the repository, create a feature branch, and write unit tests for any changes. Ensure that `npm test` and `npm run lint` pass before opening a Pull Request against `main`. Leave the version alone: it changes only when a release is cut.
+Fork the repository, create a feature branch, and write unit tests for any changes. Ensure that `npm run check` passes, which runs the linter, the type checks and `npm test`, before opening a Pull Request against `main`. Leave the version alone: it changes only when a release is cut.
 
 ## Local Development
 

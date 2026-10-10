@@ -2,7 +2,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import jestPlugin from "eslint-plugin-jest";
 import { defineConfig } from "eslint/config";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 
 // What each layer must not import.
 const layersAbove = {
@@ -54,6 +54,18 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 			throw new Error(
 				`Add the public files of src/${layer}/${entry.name} to modules.${layer} in eslint.config.js.`
 			);
+		}
+	}
+}
+
+for (const [layer, layerModules] of Object.entries(modules)) {
+	for (const [name, files] of Object.entries(layerModules)) {
+		for (const file of files) {
+			if (!existsSync(`src/${layer}/${name}/${file}.ts`)) {
+				throw new Error(
+					`modules.${layer}.${name} lists ${file}, which src/${layer}/${name}/${file}.ts does not hold.`
+				);
+			}
 		}
 	}
 }

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { JSONSchema } from "../../../base/json-schema.js";
 import { JsoncNode } from "../../../base/jsonc.js";
 import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
@@ -47,6 +49,22 @@ describe("domain/config/config-schema", () => {
 				expect(Object.keys(schema.properties!).sort()).toEqual(
 					[...ROOT_FIELDS].sort()
 				);
+			});
+
+			it.each([
+				"help/config.md",
+				"docs/content/docs/v2/configuration.mdx",
+			])("has every root field named in %s", (file) => {
+				const text = fs.readFileSync(
+					path.resolve(import.meta.dirname, "../../../..", file),
+					"utf8"
+				);
+
+				expect(
+					Object.keys(schema.properties!).filter(
+						(field) => !text.includes(`\`${field}\``)
+					)
+				).toEqual([]);
 			});
 
 			it("rejects unknown top-level keys", () => {
