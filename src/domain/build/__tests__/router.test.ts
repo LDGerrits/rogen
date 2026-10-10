@@ -265,6 +265,18 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should strip an @key suffix that Rojo's own suffix of the same route follows", async () => {
+				await write(
+					"src/Inventory/Save@server.server.luau",
+					"src/Inventory/Load@client.client.luau"
+				);
+
+				expect(await paths()).toEqual([
+					"StarterPlayer/StarterPlayerScripts/Inventory/Load",
+					"ServerScriptService/Inventory/Save",
+				]);
+			});
+
 			it("should not route by -, _, + or a capital letter", async () => {
 				await write(
 					"src/Inventory/Combat-server.luau",

@@ -575,10 +575,10 @@ export class Router {
 						NameReader.withoutSpans(stem, variantSpans)
 					)
 				: undefined;
-		const stripped = NameReader.withoutSpans(
-			stem,
-			routeSpan ? [...variantSpans, routeSpan] : variantSpans
-		);
+		const stripped = NameReader.withoutSpans(stem, [
+			...variantSpans,
+			...match.spans.filter((span) => span.key === routeSpan?.key),
+		]);
 		const { name, hoisted } = this.leafName(kind, stripped);
 		return {
 			name,
