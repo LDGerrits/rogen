@@ -9,6 +9,7 @@ import {
 import {
 	Diagnostic,
 	DiagnosticFix,
+	DiagnosticRelated,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
@@ -149,16 +150,12 @@ export class BuildValidator {
 			line: `  ${shown} ("${key}" ${kind})`,
 		}));
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"scan.rootDirNamedAfterKey",
-				{ resource: this.config.file },
-				[
-					`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
-					...items.map(({ line }) => line),
-					...fixes,
-				].join("\n"),
-				[],
-				items.map(({ resource, message }) => ({ resource, message }))
+				`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
+				items.map(({ line }) => line),
+				items.map(({ resource, message }) => ({ resource, message })),
+				fixes
 			),
 		];
 	}
@@ -282,17 +279,15 @@ export class BuildValidator {
 			message: hint(resource, misspelt),
 		}));
 		return [
-			warningDiagnostic(
+			this.grouped(
 				code,
-				{ resource: this.config.file },
-				[
-					headline(noted.size),
-					...items.map(
-						({ resource, message }) => `  ${resource} (${message})`
-					),
-				].join("\n"),
-				renames(noted),
-				items
+				headline(noted.size),
+				items.map(
+					({ resource, message }) => `  ${resource} (${message})`
+				),
+				items,
+				[],
+				renames(noted)
 			),
 		];
 	}
@@ -362,16 +357,14 @@ export class BuildValidator {
 				? `a "@${routeKeys[0]}" marker file`
 				: `a marker file that restates their route (${routeKeys.map((key) => `"@${key}"`).join(" or ")})`;
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"route.serverCodeShipped",
-				{ resource: this.config.file },
+				`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
+				listed,
+				related,
 				[
-					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
-					...listed,
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
-				].join("\n"),
-				[],
-				related
+				]
 			),
 		];
 	}
@@ -397,18 +390,32 @@ export class BuildValidator {
 		);
 		const many = dead.length > 1;
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"tree.deadScript",
-				{ resource: this.config.file },
-				[
-					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
-					...listed,
-					WHERE_SCRIPTS_RUN,
-				].join("\n"),
-				[],
-				related
+				`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
+				listed,
+				related,
+				[WHERE_SCRIPTS_RUN]
 			),
 		];
+	}
+
+	/** One warning about the config for a group of things: `headline`, a line for each of `lines`, then the `tail`; `related` names the files for a program. */
+	private grouped(
+		code: string,
+		headline: string,
+		lines: readonly string[],
+		related: readonly DiagnosticRelated[],
+		tail: readonly string[] = [],
+		fixes: readonly DiagnosticFix[] = []
+	): Diagnostic {
+		return warningDiagnostic(
+			code,
+			{ resource: this.config.file },
+			[headline, ...lines, ...tail].join("\n"),
+			fixes,
+			related
+		);
 	}
 
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
