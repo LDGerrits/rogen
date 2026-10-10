@@ -151,6 +151,9 @@ export function sameNote(
 
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
+	/** Whether the diagnostics being printed fail the run, as every warning does under `--deny-warnings`. */
+	private failing = false;
+
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
@@ -167,6 +170,7 @@ export class BuildLog {
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(run: BuildRun, home?: string, denyWarnings = false): void {
+		this.failing = denyWarnings;
 		this.begin(
 			"build",
 			run.builds.map(({ label }) => label),
@@ -188,6 +192,7 @@ export class BuildLog {
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
 		else this.end(run.builds.length, run.warningCount, denyWarnings);
+		this.failing = false;
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
@@ -240,7 +245,10 @@ export class BuildLog {
 
 	diagnostics(diagnostics: readonly Diagnostic[]): void {
 		for (const diagnostic of capped(diagnostics))
-			this.logService.diagnostic(diagnostic);
+			this.logService.diagnostic(
+				diagnostic,
+				this.failing ? { failing: true } : undefined
+			);
 	}
 
 	/** Closes the output of a build that wrote every config, counting its warnings. */

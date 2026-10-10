@@ -628,3 +628,43 @@ describe("BuildLog.diagnostics", () => {
 		expect(lines).toHaveLength(32);
 	});
 });
+
+describe("BuildLog report, when quiet", () => {
+	const quietly = (denyWarnings: boolean) => {
+		const logService = new MockLogService();
+		logService.setLevel(LogLevel.Error);
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{
+						warnings: [
+							warningDiagnostic(
+								"x.w",
+								{ resource: "/repo/src/F.luau" },
+								"bad."
+							),
+						],
+						syncWarnings: [],
+					},
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			denyWarnings
+		);
+		return logService.lines;
+	};
+
+	it("should print nothing of a warning that does not fail the run", () => {
+		expect(quietly(false)).toEqual([]);
+	});
+
+	it("should print the warnings that fail the run under --deny-warnings", () => {
+		expect(quietly(true)).toEqual([
+			"diagnosticWarning: /repo/src/F.luau - warning: bad. (x.w)",
+		]);
+	});
+});

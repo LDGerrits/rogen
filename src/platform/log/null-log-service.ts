@@ -14,8 +14,9 @@ export class NullLogService implements LogService {
 	note(_text: string): void {}
 	intro(_title: string): void {}
 	step(_title: string): void {}
+	section(_title: string, _body?: string): void {}
 	success(_message: string): void {}
 	outro(_message: string): void {}
 	closeFrame(_message: string): void {}
-	diagnostic(_diagnostic: Diagnostic): void {}
+	diagnostic(_diagnostic: Diagnostic, _options?: { failing?: true }): void {}
 }

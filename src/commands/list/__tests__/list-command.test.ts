@@ -2,6 +2,7 @@ import "../list-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { Result, ResultError } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { ReportedError } from "../../../base/errors.js";
@@ -24,16 +25,16 @@ describe("list command", () => {
 			typeof config === "string" ? config : JSON.stringify(config)
 		);
 
-	const steps = () => logService.texts("step");
+	const steps = () => logService.texts("section");
 
 	const under = (step: string) => {
 		const entries = logService.entries;
 		const start = entries.findIndex(
-			({ kind, text }) => kind === "step" && text === step
+			({ kind, text }) => kind === "section" && text === step
 		);
 		const next = entries.findIndex(
 			({ kind }, index) =>
-				index > start && (kind === "step" || kind === "outro")
+				index > start && (kind === "section" || kind === "outro")
 		);
 		const end = next === -1 ? entries.length : next;
 		return entries.slice(start + 1, end).map(({ text }) => text);
@@ -164,8 +165,8 @@ describe("list command", () => {
 
 		await run();
 
-		expect(under("default.rogen.json")).toContain(
-			"extends: base.rogen.json -> root.rogen.json"
+		expect(under("default.rogen.json")[0]).toMatch(
+			/^extends: base\.rogen\.json -> root\.rogen\.json\n/
 		);
 	});
 
@@ -503,5 +504,15 @@ describe("list command", () => {
 			expect(parse("list", "-o", "out.project.json").isErr()).toBe(true);
 			expect(parse("list", "--all").isErr()).toBe(true);
 		});
+	});
+
+	it("should print the report although it is quiet", async () => {
+		await write("default.rogen.json", { routes: { "*": "Workspace" } });
+		logService.setLevel(LogLevel.Error);
+
+		await run();
+
+		expect(logService.texts("section")).toEqual(["default.rogen.json"]);
+		expect(logService.texts("intro")).toEqual([]);
 	});
 });

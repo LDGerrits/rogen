@@ -11,6 +11,8 @@ export type LogKind =
 	| "note"
 	| "intro"
 	| "step"
+	| "section"
+	| "sectionBody"
 	| "success"
 	| "outro"
 	| "info"
@@ -124,6 +126,12 @@ export abstract class AbstractLogService implements LogService {
 		if (this.canLog(LogLevel.Info)) this.write("step", title);
 	}
 
+	section(title: string, body?: string): void {
+		if (this.level === LogLevel.Off) return;
+		this.write("section", title);
+		if (body) this.write("sectionBody", body);
+	}
+
 	success(message: string): void {
 		if (this.canLog(LogLevel.Info)) this.write("success", message);
 	}
@@ -138,9 +146,13 @@ export abstract class AbstractLogService implements LogService {
 		if (this.frameOpen) this.outro(message);
 	}
 
-	diagnostic(diagnostic: Diagnostic): void {
+	diagnostic(diagnostic: Diagnostic, options?: { failing?: true }): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
+		if (
+			this.canLog(
+				isError || options?.failing ? LogLevel.Error : LogLevel.Warn
+			)
+		)
 			this.write(
 				isError ? "diagnosticError" : "diagnosticWarning",
 				renderDiagnostic(diagnostic, this.cwd)

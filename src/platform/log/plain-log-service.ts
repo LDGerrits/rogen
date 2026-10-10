@@ -20,8 +20,12 @@ export class PlainLogService extends AbstractLogService {
 				console.info(text);
 				break;
 			case "step":
+			case "section":
 				this.inStep = true;
 				console.info(text);
+				break;
+			case "sectionBody":
+				console.info(indented(text));
 				break;
 			case "success":
 			case "info":

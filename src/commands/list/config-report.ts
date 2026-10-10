@@ -27,14 +27,15 @@ export class ConfigReport {
 		const relative = (file: string) => relativeTo(cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of this.entries) {
-			logService.step(relative(entry.file));
-			if (entry.parents.length > 0) {
-				logService.info(
-					`extends: ${entry.parents.map(relative).join(" -> ")}`
-				);
-			}
-
+			const extended =
+				entry.parents.length > 0
+					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
+					: [];
 			if (entry.status === "broken") {
+				logService.section(
+					relative(entry.file),
+					extended.join("\n") || undefined
+				);
 				for (const error of entry.errors) logService.diagnostic(error);
 				continue;
 			}
@@ -47,8 +48,10 @@ export class ConfigReport {
 					other.routes.every((line, index) => line === routes[index])
 			);
 			printed.push({ label, routes });
-			logService.info(
+			logService.section(
+				relative(entry.file),
 				[
+					...extended,
 					`root dirs: ${listed(config.rootDirs.map(relative))}`,
 					sameAs
 						? `routes: same as ${sameAs.label}`

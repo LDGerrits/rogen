@@ -1,0 +1,1 @@
+{ "rootDirs": ["src", "later"], "routes": { "*": "ReplicatedStorage/shared" } }

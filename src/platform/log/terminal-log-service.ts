@@ -30,7 +30,11 @@ export class TerminalLogService extends AbstractLogService {
 				clack.outro(text);
 				break;
 			case "step":
+			case "section":
 				clack.log.step(text);
+				break;
+			case "sectionBody":
+				nested(text);
 				break;
 			case "success":
 				nested(text, SYMBOLS.success);

@@ -1,0 +1,1 @@
+{ "steps": [["build", "-q"], ["build", "-q", "--deny-warnings"]], "rojo": false }

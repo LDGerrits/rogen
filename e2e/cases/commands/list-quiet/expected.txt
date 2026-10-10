@@ -1,0 +1,10 @@
+$ rogen list -q
+exit 0
+stdout:
+  default.rogen.json
+    root dirs: src
+    routes:
+      * -> ReplicatedStorage/shared
+    sync dir: (none)
+    project file: default.project.json
+    variants: (none)
