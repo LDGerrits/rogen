@@ -324,6 +324,16 @@ default.rogen.json:7:13 - error: "StarterPlayerScripts" is not a supported servi
 
 Start the target with a service, then any folders: `"StarterPlayer/StarterPlayerScripts"`, `"ReplicatedStorage/Shared"`. See [Targets](/docs/v2/core-concepts/routing#targets).
 
+### `roblox.invalidFolder` [#roblox-invalidfolder]
+
+Error. A route's target has a folder with no name, `.` or `..`, which would make an instance of that name.
+
+```
+default.rogen.json:7:13 - error: the target "ServerScriptService/" has an empty folder name; write each folder between single slashes, such as "ServerScriptService/Folder". (roblox.invalidFolder)
+```
+
+Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts/routing#targets).
+
 ### `route.noRoutes` [#route-noroutes]
 
 Error. The config declares no `routes`, so no file can be placed. Rogen never picks a destination on its own.

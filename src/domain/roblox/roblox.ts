@@ -116,6 +116,18 @@ export class Target {
 				),
 			]);
 		}
+		const unnamed = folders.find(
+			(folder) => folder === "" || folder === "." || folder === ".."
+		);
+		if (unnamed !== undefined) {
+			return err([
+				errorDiagnostic(
+					"roblox.invalidFolder",
+					location,
+					`the target "${text}" has ${unnamed === "" ? "an empty folder name" : `"${unnamed}" as a folder name`}; write each folder between single slashes, such as "${service}/Folder".`
+				),
+			]);
+		}
 		return ok(new Target(service, folders));
 	}
 

@@ -76,6 +76,26 @@ describe("domain/roblox/roblox", () => {
 		);
 	});
 
+	describe("a target with a folder that has no name", () => {
+		it.each([
+			["ServerScriptService/", "an empty folder name"],
+			["ReplicatedStorage//Shared", "an empty folder name"],
+			["ReplicatedStorage/./Shared", '"." as a folder name'],
+			["ReplicatedStorage/../Shared", '".." as a folder name'],
+		])("should reject %j", (target, what) => {
+			const result = Target.parse(target, location);
+
+			expect(result.isErr() && result.error).toEqual([
+				{
+					severity: DiagnosticSeverity.Error,
+					code: "roblox.invalidFolder",
+					message: expect.stringContaining(what),
+					...location,
+				},
+			]);
+		});
+	});
+
 	describe("Target", () => {
 		it.each([
 			["ReplicatedStorge/Shared", "ReplicatedStorage/Shared"],
