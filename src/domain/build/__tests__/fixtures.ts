@@ -17,7 +17,7 @@ import {
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { SyncTool } from "../build.js";
+import { SyncTool } from "../sync-tool.js";
 import {
 	BuildService,
 	ConfigLocations,

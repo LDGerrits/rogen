@@ -1,10 +1,7 @@
 import { relativeTo } from "../../base/path.js";
 import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
-import {
-	BuildRun,
-	BuildSummary,
-	ConfigBuild,
-} from "../../domain/build/build.js";
+import { BuildSummary, ConfigBuild } from "../../domain/build/build.js";
+import { BuildRun } from "../../domain/build/build-run.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import {
 	Diagnostic,

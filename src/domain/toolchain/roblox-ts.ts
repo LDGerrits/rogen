@@ -13,7 +13,7 @@ import {
 	LanguageDetector,
 	MountCandidate,
 } from "./toolchain.js";
-import { SyncTool } from "../build/build.js";
+import { SyncTool } from "../build/sync-tool.js";
 
 const TSCONFIG = "tsconfig.json";
 const DEFAULT_OUT_DIR = "out";

@@ -2,7 +2,7 @@ import { Result, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet } from "../build/build.js";
+import { BuildSet } from "../build/build-set.js";
 import { BuildService } from "../build/build-service.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { CoreWatchSession } from "./core-watch-session.js";

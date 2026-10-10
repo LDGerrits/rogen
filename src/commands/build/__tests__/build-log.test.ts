@@ -1,12 +1,12 @@
 import path from "path";
 import {
-	BuildRun,
 	BuildSummary,
 	ConfigBuild,
 	FailedBuild,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "../../../domain/build/build.js";
+import { BuildRun } from "../../../domain/build/build-run.js";
 import { ResolvedConfig } from "../../../domain/config/config.js";
 import {
 	Diagnostic,

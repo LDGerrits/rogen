@@ -3,7 +3,7 @@ import { toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
-import { DataReplacement, MetaReplacement, SyncTool } from "./build.js";
+import { DataReplacement, MetaReplacement, SyncTool } from "./sync-tool.js";
 
 /** Where a build's files are synced from: the root dirs themselves, or the `syncDir` that tools write them into. */
 export class SyncLayout {

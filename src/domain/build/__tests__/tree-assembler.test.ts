@@ -5,7 +5,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoNode, RojoTree } from "../../rojo/rojo-project.js";
-import { SyncTool } from "../build.js";
+import { SyncTool } from "../sync-tool.js";
 import { abs, builderOf, configOf, indexOf, writeFiles } from "./fixtures.js";
 
 describe("TreeAssembler", () => {

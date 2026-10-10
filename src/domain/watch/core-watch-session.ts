@@ -5,7 +5,7 @@ import { Emitter, Event } from "../../base/event.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet } from "../build/build.js";
+import { BuildSet } from "../build/build-set.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";

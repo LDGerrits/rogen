@@ -13,7 +13,7 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { SyncTool } from "./build.js";
+import { SyncTool } from "./sync-tool.js";
 import {
 	ConfigLocations,
 	FileLocation,

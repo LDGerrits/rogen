@@ -2,7 +2,8 @@ import path from "path";
 import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
+import { ConfigBuild } from "../../domain/build/build.js";
+import { BuildRun } from "../../domain/build/build-run.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {

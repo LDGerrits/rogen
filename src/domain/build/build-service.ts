@@ -15,14 +15,9 @@ import {
 	whyNotRequirable,
 } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
-import {
-	BuildRun,
-	BuildSet,
-	LeftOut,
-	LoadedBuild,
-	RouteMatch,
-	VariantMatch,
-} from "./build.js";
+import { LeftOut, LoadedBuild, RouteMatch, VariantMatch } from "./build.js";
+import { BuildRun } from "./build-run.js";
+import { BuildSet } from "./build-set.js";
 
 interface Located {
 	/** An absolute POSIX path. */

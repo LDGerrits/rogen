@@ -1,6 +1,6 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
-import { SyncTool } from "../build/build.js";
+import { SyncTool } from "../build/sync-tool.js";
 
 /** A package manager: where it keeps its manifest and installed packages, and how they mount. */
 export class PackageManager {
