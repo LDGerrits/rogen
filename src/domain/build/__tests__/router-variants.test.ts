@@ -1,10 +1,6 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import {
-	abs,
-	routeFiles,
-	writeFiles,
-} from "./fixtures.js";
+import { abs, routeFiles, writeFiles } from "./fixtures.js";
 
 describe("Router", () => {
 	describe("route", () => {

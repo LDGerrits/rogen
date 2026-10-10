@@ -16,6 +16,8 @@ import {
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
+import { RojoTree } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../build.js";
 import {
 	BuildService,
@@ -143,3 +145,34 @@ export async function routeFiles(
 		warnings,
 	}));
 }
+
+export const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
+
+export const optional = (target: string) => ({ optional: target });
+
+/** Builds the files `fs` holds under the config's root dirs, with the sync tools of `extraTools` beside the standard ones. */
+export async function assembleResultOf(
+	fs: MemoryFileSystemService,
+	overrides: ResolvedConfigSpec = {},
+	extraTools: readonly SyncTool[] = []
+) {
+	const config = configOf(overrides);
+	const index = await indexOf(fs, config.rootDirs);
+	return builderOf(fs, index, extraTools).build(config);
+}
+
+/** The project file `assembleResult` builds, checked against Rojo's schema, with the build's warnings. */
+export async function assembleFilesOf(
+	fs: MemoryFileSystemService,
+	overrides: ResolvedConfigSpec = {},
+	extraTools: readonly SyncTool[] = []
+) {
+	const output = (await assembleResultOf(fs, overrides, extraTools)).unwrap();
+	expectRojoProject(output.tree);
+	return { tree: output.tree, warnings: output.findings.warnings };
+}
+
+export const templateOf = (
+	project: Partial<RojoTree>,
+	file = abs("default.project.json")
+) => ({ file, project });
