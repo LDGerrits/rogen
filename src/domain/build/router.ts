@@ -172,6 +172,12 @@ export interface InitToCopy extends Pick<
 	readonly placed: RoutedFile | undefined;
 }
 
+/** What the markers and init scripts of a root dir's folders offer to claim, by folder relative to the root dir. */
+interface DirClaims {
+	readonly markers: ReadonlyMap<string, string[]>;
+	readonly initRoutes: InitRoutes;
+}
+
 /** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, and whether it's spelled `@key`. */
 type InitRoutes = ReadonlyMap<
 	string,
@@ -217,13 +223,13 @@ export class Router {
 			markerClashes: [],
 		};
 		for (const root of roots) {
-			const markers = root.markersByDir();
-			const initRoutes = this.initRoutesOf(root);
-			routing.markerClashes.push(
-				...this.markerClashesOf(root, markers, initRoutes)
-			);
+			const dirs: DirClaims = {
+				markers: root.markersByDir(),
+				initRoutes: this.initRoutesOf(root),
+			};
+			routing.markerClashes.push(...this.markerClashesOf(root, dirs));
 			for (const entry of root.entries)
-				this.routeEntry(entry, markers, initRoutes, routing);
+				this.routeEntry(entry, dirs, routing);
 		}
 		return routing;
 	}
@@ -231,11 +237,10 @@ export class Router {
 	/** Adds `entry` to `routing` as what it turns out to be: hoisted, an init script without a folder, or a routed or unrouted file. */
 	private routeEntry(
 		entry: ScannedFile,
-		markers: ReadonlyMap<string, string[]>,
-		initRoutes: InitRoutes,
+		dirs: DirClaims,
 		routing: Routing
 	): void {
-		const claimed = this.claim(entry, markers, initRoutes);
+		const claimed = this.claim(entry, dirs);
 		if (claimed.leaf.isInit && claimed.leaf.hoisted) {
 			const { variants } = claimed.claims;
 			routing.hoistedInits.push({ source: entry.source, variants });
@@ -278,8 +283,7 @@ export class Router {
 	/** Markers in one directory all sit at one level, so no order could choose between two routes; claiming them in scan order would pick one silently. */
 	private markerClashesOf(
 		root: ScannedRoot,
-		markers: ReadonlyMap<string, string[]>,
-		initRoutes: InitRoutes
+		{ markers, initRoutes }: DirClaims
 	): MarkerClash[] {
 		const clashes: MarkerClash[] = [];
 		for (const dir of new Set([...markers.keys(), ...initRoutes.keys()])) {
@@ -380,18 +384,13 @@ export class Router {
 		return routes;
 	}
 
-	private claim(
-		entry: ScannedFile,
-		markers: ReadonlyMap<string, string[]>,
-		initRoutes: InitRoutes
-	): ClaimedPath {
+	private claim(entry: ScannedFile, dirs: DirClaims): ClaimedPath {
 		const read = this.readings.entryAt(entry.source);
 		const claims = new Claims();
 		const { folders, hoistAt } = this.claimFolders(
 			entry,
 			read,
-			markers,
-			initRoutes,
+			dirs,
 			claims
 		);
 		const leaf = this.claimLeaf(read, claims, folders.length);
@@ -469,8 +468,7 @@ export class Router {
 	private claimFolders(
 		entry: ScannedFile,
 		read: EntryRead,
-		markers: ReadonlyMap<string, string[]>,
-		initRoutes: InitRoutes,
+		dirs: DirClaims,
 		claims: Claims
 	): {
 		readonly folders: readonly ClaimedFolder[];
@@ -478,7 +476,7 @@ export class Router {
 		readonly hoistAt: number | undefined;
 	} {
 		const claimDirectory = (dir: string, level: number) =>
-			this.claimDirectory(entry, dir, level, markers, initRoutes, claims);
+			this.claimDirectory(entry, dir, level, dirs, claims);
 		claimDirectory("", 0);
 		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
@@ -506,8 +504,7 @@ export class Router {
 		entry: ScannedFile,
 		dir: string,
 		level: number,
-		markers: ReadonlyMap<string, string[]>,
-		initRoutes: InitRoutes,
+		{ markers, initRoutes }: DirClaims,
 		claims: Claims
 	): void {
 		const depth = depthOf(dir);
