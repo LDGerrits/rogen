@@ -122,17 +122,14 @@ export class SyncDirCheck {
 				const emitted = layout.emittedPath(source);
 				if (await this.fileSystemService.exists(emitted)) continue;
 				missing.push(toPosix(source));
-				const stem = emitted.slice(0, -RojoFile.META_SUFFIX.length);
-				for (const replacement of replacements)
-					if (
-						await this.fileSystemService.exists(
-							`${stem}${replacement.suffix}`
-						)
-					) {
-						conversion ??= replacement;
-						if (replacement === conversion) converted++;
-						break;
-					}
+				const replacement = await this.replacementAt(
+					emitted.slice(0, -RojoFile.META_SUFFIX.length),
+					replacements
+				);
+				if (replacement) {
+					conversion ??= replacement;
+					if (replacement === conversion) converted++;
+				}
 			}
 		}
 		if (missing.length === 0) return [];
@@ -174,12 +171,14 @@ export class SyncDirCheck {
 			);
 			if (await this.fileSystemService.exists(expected)) continue;
 			const base = expected.slice(0, -path.extname(expected).length);
-			for (const { suffix, note } of replacements) {
-				const found = `${base}${suffix}`;
-				if (!(await this.fileSystemService.exists(found))) continue;
-				converted.push({ source: entry.source, expected, found, note });
-				break;
-			}
+			const replacement = await this.replacementAt(base, replacements);
+			if (replacement)
+				converted.push({
+					source: entry.source,
+					expected,
+					found: `${base}${replacement.suffix}`,
+					note: replacement.note,
+				});
 		}
 		if (converted.length === 0) return [];
 
@@ -200,6 +199,21 @@ export class SyncDirCheck {
 				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(syncDir) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note} Copy the data files unchanged into the sync dir after it runs, or require them as modules.`
 			),
 		];
+	}
+
+	/** The first of `replacements` whose file, `stem` and its suffix, exists. */
+	private async replacementAt<T extends { readonly suffix: string }>(
+		stem: string,
+		replacements: readonly T[]
+	): Promise<T | undefined> {
+		for (const replacement of replacements)
+			if (
+				await this.fileSystemService.exists(
+					`${stem}${replacement.suffix}`
+				)
+			)
+				return replacement;
+		return undefined;
 	}
 
 	/** Skips dot-files, which are mostly markers a compiler never emits. */
