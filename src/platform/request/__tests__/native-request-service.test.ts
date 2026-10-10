@@ -56,6 +56,22 @@ describe("NativeRequestService", () => {
 		await close(server);
 	});
 
+	it("should reach a port that fetch refuses to use", async () => {
+		const server = http.createServer((_request, response) =>
+			response.end("ok")
+		);
+		await new Promise<void>((resolve) =>
+			server.listen(6666, "127.0.0.1", resolve)
+		);
+
+		const result = await service.request("http://127.0.0.1:6666/", {
+			timeout: 2_000,
+		});
+
+		expect(result.isOk() && result.value.status).toBe(200);
+		await close(server);
+	});
+
 	it("should say a port nothing listens on refused", async () => {
 		const server = net.createServer();
 		const port = await listen(server);
