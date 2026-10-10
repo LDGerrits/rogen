@@ -6,12 +6,9 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
+	requireOf,
+	requirementOf,
 } from "../../domain/build/build.js";
-import {
-	requireExpression,
-	whyNotRequirable,
-} from "../../domain/roblox/roblox.js";
-import { RojoFile } from "../../domain/rojo/rojo.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
@@ -21,6 +18,7 @@ import {
 	diagnosticToJson,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
+import { LogService } from "../../platform/log/log-service.js";
 
 /** The mode a config built in, and every mode it declares. */
 interface ModeContext {
@@ -120,27 +118,6 @@ function outcomeOf(
 		case "empty":
 			return "empty · no file in it places";
 	}
-}
-
-/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
-function requireOf(location: FileLocation): string | undefined {
-	return location.status === "placed" &&
-		new RojoFile(path.posix.basename(location.source)).isLuauModule
-		? requireExpression(location.instancePath)
-		: undefined;
-}
-
-/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
-function requirementOf(location: FileLocation): string | undefined {
-	if (location.status !== "placed" || !location.named) return undefined;
-	const file = new RojoFile(path.posix.basename(location.source));
-	if (!file.isLuau) return undefined;
-	if (!file.isLuauModule)
-		return "no require by this path: a script runs on its own and is not a module";
-	const expression = requireExpression(location.instancePath);
-	if (expression) return `require(${expression})`;
-	const reason = whyNotRequirable(location.instancePath);
-	return reason && `no require by this path: ${reason}`;
 }
 
 /** The fields a location adds to its source and status in the JSON form. */
@@ -295,6 +272,24 @@ export class LocationReport {
 				requires,
 			};
 		});
+	}
+
+	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires show only with `verbose`. */
+	print(logService: LogService, verbose: boolean): void {
+		const blocks = this.blocks();
+		if (blocks.length === 0) {
+			const empty = this.emptyLine();
+			if (empty) logService.print(empty);
+			return;
+		}
+		for (const block of blocks) {
+			logService.print(block.lines.join("\n"));
+			if (block.requireLines.length > 0)
+				logService.note(block.requireLines.join("\n"));
+			else if (verbose)
+				for (const expression of block.requires)
+					logService.debug(`require: ${expression}`);
+		}
 	}
 
 	/** What to say when there is nothing to list because no root dir holds a file; `undefined` when no config answered at all. */

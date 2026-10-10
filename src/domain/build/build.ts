@@ -12,7 +12,12 @@ import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { InstanceReference } from "../roblox/roblox.js";
+import {
+	InstanceReference,
+	requireExpression,
+	whyNotRequirable,
+} from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 
 /** How a route or variant key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
@@ -362,6 +367,27 @@ export interface UnplacedLocation extends Located {
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
+
+/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
+export function requireOf(location: FileLocation): string | undefined {
+	return location.status === "placed" &&
+		new RojoFile(path.posix.basename(location.source)).isLuauModule
+		? requireExpression(location.instancePath)
+		: undefined;
+}
+
+/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
+export function requirementOf(location: FileLocation): string | undefined {
+	if (location.status !== "placed" || !location.named) return undefined;
+	const file = new RojoFile(path.posix.basename(location.source));
+	if (!file.isLuau) return undefined;
+	if (!file.isLuauModule)
+		return "no require by this path: a script runs on its own and is not a module";
+	const expression = requireExpression(location.instancePath);
+	if (expression) return `require(${expression})`;
+	const reason = whyNotRequirable(location.instancePath);
+	return reason && `no require by this path: ${reason}`;
+}
 
 /** The files placed at an instance or inside it; none when no file places it. */
 export interface InstanceLocation {
