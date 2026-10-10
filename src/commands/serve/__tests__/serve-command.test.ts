@@ -428,6 +428,25 @@ describe("serve command", () => {
 		expect(printed()).toEqual([]);
 	});
 
+	it("should say why when the watch can't start, before it fails", async () => {
+		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("no access"));
+
+		const error = await failureOf(serve());
+
+		expect(error).toBeInstanceOf(ReportedError);
+		expect(logService.texts("error")).toEqual(["no access"]);
+	});
+
+	it("should print the reason once as JSON when the watch can't start", async () => {
+		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("no access"));
+
+		await failureOf(serve([], { json: true }));
+
+		expect(
+			printed().filter((line) => line.error === "no access")
+		).toHaveLength(1);
+	});
+
 	it("should print a stop as JSON, then the failure", async () => {
 		const result = serve([], { json: true });
 		await settle();
