@@ -1,0 +1,11 @@
+$ rogen where DevPackages Packages
+exit 0
+stdout:
+  DevPackages -> mounted · the template mounts it at ReplicatedStorage/DevPackages
+  Packages -> mounted · the template mounts it at ReplicatedStorage/Packages
+
+$ rogen where DevPackages Packages --mode prod
+exit 0
+stdout:
+  DevPackages -> excluded · matches DevPackages
+  Packages -> mounted · the template mounts it at ReplicatedStorage/Packages

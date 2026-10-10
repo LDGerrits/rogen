@@ -365,9 +365,10 @@ export class Locator {
 		return (source) => known.get(source) ?? !index.isPlanned(source);
 	}
 
-	/** `arg` without a `:line` or `:line:col` after the path, and what follows it (`: attempt to index nil`), as a linter or a log prints it. It is only cut when what is left exists or has a file type Rojo reads, so a Windows drive letter or a colon in a name stays. */
+	/** `arg` without a `:line`, `:line:col` or bare `:` after the path, and what follows it (`: attempt to index nil`), as a linter or a log prints it. It is only cut when what is left exists or has a file type Rojo reads, so a Windows drive letter or a colon in a name stays. */
 	private async withoutPosition(arg: string, cwd: string): Promise<string> {
-		const head = /^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg)?.[1];
+		const head = (/^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg) ??
+			/^(.+):$/.exec(arg))?.[1];
 		if (head === undefined) return arg;
 		return new RojoFile(path.basename(head)).kind !== undefined ||
 			(await this.fileSystemService.exists(path.resolve(cwd, head)))

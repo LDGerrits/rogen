@@ -153,13 +153,7 @@ export class FileLocator {
 		if (below.length > 0) return below;
 
 		if (!roots.some((root) => contains(toPosix(root.rootDir), target)))
-			return [
-				{
-					status: "outside",
-					source: target,
-					exists: this.exists(target),
-				},
-			];
+			return [this.outsideRoots(target)];
 
 		for (const dir of ancestors(target)) {
 			const enclosing = this.scanned.get(dir);
@@ -195,6 +189,29 @@ export class FileLocator {
 				...(folder && { folder: true as const }),
 			},
 		];
+	}
+
+	/** A path in no root dir: Rojo reads it when the template mounts it, and nobody does when `exclude` dropped the mount. */
+	private outsideRoots(target: string): FileLocation {
+		const { mounts } = this.placement.template;
+		const exists = this.exists(target);
+		const mount = mounts.covering(target);
+		if (mount)
+			return {
+				status: "mounted",
+				source: target,
+				exists,
+				node: mount.node,
+			};
+		const dropped = mounts.droppedCovering(target);
+		if (dropped)
+			return {
+				status: "excluded",
+				source: target,
+				exists,
+				pattern: dropped.pattern,
+			};
+		return { status: "outside", source: target, exists };
 	}
 
 	private bySource(a: FileLocation, b: FileLocation): number {
