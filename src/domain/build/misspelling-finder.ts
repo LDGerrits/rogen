@@ -252,11 +252,3 @@ export class MisspellingFinder {
 		};
 	}
 }
-
-export interface MarkerRead {
-	/** The declared route or variant key the marker spells. */
-	readonly key: string | undefined;
-	readonly nearMissKey: string | undefined;
-	/** An `@` that doesn't route, or a route key after the dot of a variant marker. */
-	readonly misspellings: readonly Misspelling[];
-}
