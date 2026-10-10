@@ -1,5 +1,6 @@
 import path from "path";
-import { formatJsonFile, safeStringify } from "../../base/json.js";
+import { isDeepStrictEqual } from "util";
+import { formatJsonFile } from "../../base/json.js";
 import { commonAncestor, isInside, toPosix } from "../../base/path.js";
 import {
 	OptionDescriptor,
@@ -306,8 +307,7 @@ export class ResolvedTemplate {
 		return (
 			other !== undefined &&
 			this.file === other.file &&
-			safeStringify(this.project.getTree()) ===
-				safeStringify(other.project.getTree())
+			isDeepStrictEqual(this.project.getTree(), other.project.getTree())
 		);
 	}
 }
@@ -332,13 +332,13 @@ export interface ResolvedConfigFields {
 	/** Every declared variant to whether it is on, in the active mode with the command line applied. */
 	readonly variants: Readonly<Record<string, boolean>>;
 	/** Groups of variants of which at most one is on. */
-	readonly conflicts?: readonly (readonly string[])[];
+	readonly conflicts: readonly (readonly string[])[];
 	/** The globs left out in the active mode, which drop scanned files and template mounts alike. */
 	readonly exclude: readonly string[];
 	/** The active mode; none when the config declares no modes. */
 	readonly mode?: string;
-	/** Every mode the config declares, in declaration order; none by default. */
-	readonly modeViews?: ReadonlyMap<string, ModeView>;
+	/** Every mode the config declares, in declaration order. */
+	readonly modeViews: ReadonlyMap<string, ModeView>;
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -373,8 +373,8 @@ export class ResolvedConfig {
 		this.variants = fields.variants;
 		this.exclude = fields.exclude;
 		this.mode = fields.mode;
-		this.conflicts = fields.conflicts ?? [];
-		this.modes = [...(fields.modeViews?.keys() ?? [])];
+		this.conflicts = fields.conflicts;
+		this.modes = [...fields.modeViews.keys()];
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
@@ -393,7 +393,7 @@ export class ResolvedConfig {
 
 	/** The same config with `mode` active, or `undefined` when it declares no such mode. */
 	inMode(mode: string): ResolvedConfig | undefined {
-		const view = this.fields.modeViews?.get(mode);
+		const view = this.fields.modeViews.get(mode);
 		return (
 			view &&
 			new ResolvedConfig({
