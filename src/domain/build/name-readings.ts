@@ -231,7 +231,7 @@ export class NameReadings {
 		return {
 			fileName,
 			kind,
-			stem: kind === "data" ? RojoFile.dataNameOf(stem) : stem,
+			stem: kind === "data" ? new RojoFile(fileName).dataName : stem,
 		};
 	}
 }

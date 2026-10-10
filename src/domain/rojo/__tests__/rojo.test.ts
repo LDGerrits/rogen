@@ -183,6 +183,17 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("dataName", () => {
+			it.each([
+				["Crate.model.json", "Crate"],
+				["Outer.project.json", "Outer"],
+				["Data.model.toml", "Data.model"],
+				["Names.project.csv", "Names.project"],
+			])("should name %s as %s", (fileName, name) => {
+				expect(new RojoFile(fileName).dataName).toBe(name);
+			});
+		});
+
 		describe("instanceName", () => {
 			it.each([
 				["Save.server.luau", "Save"],
@@ -191,6 +202,7 @@ describe("domain/rojo/rojo", () => {
 				["Crate.model.json", "Crate"],
 				["Config.json", "Config"],
 				["Gun.rbxm", "Gun"],
+				["Data.model.toml", "Data.model"],
 			])("should name %s as %s", (fileName, name) => {
 				expect(new RojoFile(fileName).instanceName).toBe(name);
 			});

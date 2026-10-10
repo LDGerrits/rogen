@@ -98,16 +98,18 @@ export class RojoFile {
 	get instanceName(): string {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
 		if (this.kind !== "data") return this.stem;
-		return this.stem.endsWith(".model")
+		return this.isJson && this.stem.endsWith(".model")
 			? this.stem.slice(0, -".model".length)
 			: this.stem;
 	}
 
 	/** Rojo only reads `.model` and `.project` as a suffix on `.json` files. */
 	get dataName(): string {
-		return path.extname(this.name).toLowerCase() === ".json"
-			? RojoFile.dataNameOf(this.stem)
-			: this.stem;
+		return this.isJson ? RojoFile.dataNameOf(this.stem) : this.stem;
+	}
+
+	private get isJson(): boolean {
+		return path.extname(this.name).toLowerCase() === ".json";
 	}
 
 	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */
