@@ -25,7 +25,7 @@ import {
 } from "./serve-service.js";
 import { ServerFinder } from "./server-finder.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
 import { ServedConfigs } from "./served-configs.js";
 
 export class CoreServeService implements ServeService {

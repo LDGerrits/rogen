@@ -17,7 +17,7 @@ import {
 } from "./serve.js";
 import { ServeTarget, ServerExecutable } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
 
 /** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;

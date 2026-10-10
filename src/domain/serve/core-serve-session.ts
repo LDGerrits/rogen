@@ -21,7 +21,7 @@ import {
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
 import { ServedConfigs } from "./served-configs.js";
 

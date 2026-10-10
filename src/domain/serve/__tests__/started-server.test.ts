@@ -15,7 +15,7 @@ import {
 	ServerReadyEvent,
 } from "../serve-service.js";
 import { ServerProbe } from "../server-probe.js";
-import { ServerRecords } from "../server-record.js";
+import { ServerRecords } from "../server-records.js";
 import { StartedServer } from "../started-server.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";

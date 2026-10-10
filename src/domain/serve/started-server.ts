@@ -19,7 +19,7 @@ import {
 } from "./serve-service.js";
 import { ServerOutput } from "./server-output.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
 
 /** How often a started server is asked whether it serves yet, at first and at most. */
 const READY_POLL_MS = { first: 200, max: 1_000 };
