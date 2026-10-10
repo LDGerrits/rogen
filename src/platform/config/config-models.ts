@@ -82,11 +82,7 @@ export class Config {
 		return this.consolidatedModel;
 	}
 
-	/**
-	 * The entries of the list at `section`, each tier's after the earlier ones.
-	 * An entry a later tier repeats moves to the later position. The default
-	 * applies only when no layer or the command line sets the list.
-	 */
+	/** The entries of the list at `section`, each tier's after the earlier ones. An entry a later tier repeats moves to the later position. The default applies only when no layer or the command line sets the list. */
 	entries<T>(section: ConfigSection): ListEntry<T>[] {
 		const tiers: { source: ConfigSource; list: T[] | undefined }[] = [
 			...this.layers.map((layer, index) => ({

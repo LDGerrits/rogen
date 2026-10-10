@@ -89,10 +89,7 @@ export interface CommandRegistry {
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
-	/**
-	 * Global options plus the given command's own, or every registered
-	 * command's when no id is given.
-	 */
+	/** Global options plus the given command's own, or every registered command's when no id is given. */
 	getOptions(commandId?: string): readonly OptionDescriptor[];
 }
 

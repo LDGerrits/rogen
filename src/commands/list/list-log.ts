@@ -5,7 +5,10 @@ import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	DiagnosticJson,
+	diagnosticToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
@@ -19,6 +22,37 @@ const variantLines = ({ variants }: ResolvedConfig): string[] =>
 /** The resolved routes as `key -> target`, in the config's order. */
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
+
+/** What `--json` lists of a config that loads, fully resolved. */
+export interface ConfigDetails {
+	readonly projectName: string;
+	readonly rootDirs: readonly string[];
+	readonly commonRoot: string | null;
+	readonly routes: Readonly<Record<string, string>>;
+	readonly variants: Readonly<Record<string, boolean>>;
+	readonly conflicts: readonly (readonly string[])[];
+	readonly mode: string | null;
+	readonly modes: readonly string[];
+	readonly exclude: readonly string[];
+	readonly template: string | null;
+	readonly templates: readonly string[];
+	readonly syncDir: string | null;
+	readonly outFile: string;
+}
+
+/** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
+export interface ConfigDocument extends Partial<ConfigDetails> {
+	readonly config: string;
+	readonly file: string;
+	readonly status: ConfigEntry["status"];
+	readonly extends: readonly string[];
+	readonly diagnostics: readonly DiagnosticJson[];
+}
+
+/** What `list --json` prints. */
+export interface ListDocument {
+	readonly configs: readonly ConfigDocument[];
+}
 
 /** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ListLog {
@@ -103,7 +137,7 @@ export class ListLog {
 			logService.outro(`${plural(entries.length, "config")}.`);
 	}
 
-	json(entries: readonly ConfigEntry[]): Record<string, unknown> {
+	json(entries: readonly ConfigEntry[]): ListDocument {
 		return {
 			configs: entries.map((entry) => ({
 				config: configLabel(entry.file),
@@ -122,7 +156,7 @@ export class ListLog {
 	}
 }
 
-function describeConfig(config: ResolvedConfig): Record<string, unknown> {
+function describeConfig(config: ResolvedConfig): ConfigDetails {
 	return {
 		projectName: config.name,
 		rootDirs: config.rootDirs.map((file) => toNative(file)),
