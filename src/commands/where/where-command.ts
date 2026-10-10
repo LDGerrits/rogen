@@ -67,7 +67,7 @@ registerCommand(
 			const failure = DiagnosticsError.of(report.errors);
 			if (line.options.json)
 				return this.printJson(logService, report.json(), failure);
-			report.print(logService, Boolean(line.options.verbose));
+			report.print(logService);
 			return failure ? err(failure) : ok(undefined);
 		}
 	}

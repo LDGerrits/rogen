@@ -11,26 +11,14 @@ import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
-export class FolderMeta implements RojoMetaFields {
-	readonly className?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
-	readonly attributes?: Readonly<Record<string, unknown>>;
-	readonly ignoreUnknownInstances?: boolean;
-	readonly id?: string;
-
+export class FolderMeta {
 	constructor(
 		readonly file: string,
 		readonly rootDir: string,
 		/** The folder, relative to the root dir; the root dir itself is "". */
 		readonly dir: string,
-		fields: RojoMetaFields
-	) {
-		this.className = fields.className;
-		this.properties = fields.properties;
-		this.attributes = fields.attributes;
-		this.ignoreUnknownInstances = fields.ignoreUnknownInstances;
-		this.id = fields.id;
-	}
+		readonly fields: RojoMetaFields
+	) {}
 
 	/** The folder as an absolute POSIX path. */
 	get folder(): string {
@@ -106,7 +94,7 @@ export class FolderMetaApplier {
 		))
 			project.insertNode(
 				instancePath,
-				RojoMeta.fieldsUnder(meta, templateNode)
+				RojoMeta.fieldsUnder(meta.fields, templateNode)
 			);
 		return ok(outcomes);
 	}
@@ -239,7 +227,8 @@ export class FolderMetaApplier {
 		const withId = groupBy(
 			this.copies(outcomes).filter(
 				({ meta, templateNode }) =>
-					meta.id !== undefined && templateNode.$id === undefined
+					meta.fields.id !== undefined &&
+					templateNode.$id === undefined
 			),
 			({ meta }) => meta,
 			({ instancePath }) => instanceKey(instancePath)
@@ -249,7 +238,7 @@ export class FolderMetaApplier {
 				problems.error(
 					"meta.idOnSeveralNodes",
 					{ resource: meta.file },
-					`id "${meta.id}" would be copied onto ${instances.length} instances (${instances.join(", ")}), but a ref must be unique. Remove the id, or keep the folder's files in one service.`
+					`id "${meta.fields.id}" would be copied onto ${instances.length} instances (${instances.join(", ")}), but a ref must be unique. Remove the id, or keep the folder's files in one service.`
 				);
 	}
 

@@ -21,6 +21,12 @@ const SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof SCRIPT_SUFFIXES)[number];
 
+/** The script suffixes that say which side a script runs on, and that a declared key of the same name routes. */
+export const RUN_SCRIPT_SUFFIXES: ReadonlySet<string> = new Set([
+	"server",
+	"client",
+]);
+
 const MODEL_EXTENSIONS: readonly string[] = [".rbxm", ".rbxmx"];
 const DATA_EXTENSIONS: readonly string[] = [
 	".json",
@@ -248,7 +254,8 @@ export function scriptRunOf(
 	legacyScripts: boolean,
 	runContext: unknown
 ): ScriptRun | undefined {
-	if (suffix !== "server" && suffix !== "client") return undefined;
+	if (suffix === undefined || !RUN_SCRIPT_SUFFIXES.has(suffix))
+		return undefined;
 	if (suffix === "client" && legacyScripts) return "LocalScript";
 	const set =
 		typeof runContext === "string" ? RUN_CONTEXTS[runContext] : undefined;

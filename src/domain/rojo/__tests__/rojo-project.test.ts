@@ -199,7 +199,7 @@ describe("RojoProject", () => {
 		});
 	});
 
-	describe("mapPaths", () => {
+	describe("rebased", () => {
 		it("should rewrite every $path, keeping each one's form", () => {
 			const project = new RojoProject(
 				{
@@ -215,9 +215,9 @@ describe("RojoProject", () => {
 				folders
 			);
 
-			project.mapPaths((target) => `../${target}`);
-
-			const tree = project.getFile().tree;
+			const { tree } = project
+				.rebased((target) => `../${target}`)
+				.getFile();
 			expect(tree.$path).toBe("../a");
 			expect((tree.Child as RojoNode).$path).toEqual({
 				optional: "../b",
@@ -225,6 +225,20 @@ describe("RojoProject", () => {
 			expect((tree.Child as RojoNode).$properties).toEqual({
 				$path: "not a path",
 			});
+		});
+
+		it("should rewrite the globIgnorePaths too, and leave the original as it was", () => {
+			const project = new RojoProject({
+				name: "x",
+				tree: { $path: "a" },
+				globIgnorePaths: ["**/*.spec.luau"],
+			});
+
+			const moved = project.rebased((target) => `../${target}`);
+
+			expect(moved.globIgnorePaths).toEqual(["../**/*.spec.luau"]);
+			expect(project.globIgnorePaths).toEqual(["**/*.spec.luau"]);
+			expect(project.getFile().tree.$path).toBe("a");
 		});
 	});
 

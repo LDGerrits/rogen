@@ -94,6 +94,8 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 export class BuildTemplate {
 	private readonly project: RojoProject;
 	private readonly templateFile: string | undefined;
+	/** The template's `globIgnorePaths`, relative to the project dir. */
+	readonly globIgnorePaths: string[];
 	/** Every path the template's own `$path`s mount, except those `exclude` drops. Rojo reads these, not Rogen. */
 	readonly mounts: TemplateMounts;
 
@@ -106,22 +108,22 @@ export class BuildTemplate {
 	) {
 		const { template } = config;
 		this.templateFile = template?.file;
+		const source =
+			template && this.templateDir !== layout.projectDir
+				? template.project.rebased((target) => this.rebase(target))
+				: template?.project;
+		this.globIgnorePaths = source?.globIgnorePaths ?? [];
 		this.project = new RojoProject(
 			{
 				name: config.name,
-				tree: template?.project.getFile().tree ?? {
-					$className: "DataModel",
-				},
+				tree: source?.getFile().tree ?? { $className: "DataModel" },
 			},
 			generatedContainer
 		);
 		this.project.removeNodes(
 			(target) => this.droppingGlob(target) !== undefined
 		);
-		if (template && this.templateDir !== layout.projectDir) {
-			this.project.mapPaths((target) => this.rebase(target));
-		}
-		this.mounts = this.mountsOf(template?.project);
+		this.mounts = this.mountsOf(source);
 	}
 
 	/** Whether the template disables legacy scripts, which leaves scripts under the player containers without a run context. */
@@ -131,7 +133,7 @@ export class BuildTemplate {
 
 	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
 	private droppingGlob(target: string): string | undefined {
-		const mounted = toPosix(path.resolve(this.templateDir, target));
+		const mounted = toPosix(path.resolve(this.layout.projectDir, target));
 		return this.config.exclude.find((glob) => isMatch(mounted, glob));
 	}
 
@@ -143,7 +145,7 @@ export class BuildTemplate {
 				target: rojoPathTarget(rojoPath),
 				mount: {
 					path: path.resolve(
-						this.templateDir,
+						this.layout.projectDir,
 						rojoPathTarget(rojoPath)
 					),
 					node: instancePath,
@@ -160,15 +162,6 @@ export class BuildTemplate {
 				return pattern === undefined ? [] : [{ ...mount, pattern }];
 			})
 		);
-	}
-
-	/** The template's `globIgnorePaths`, relative to the project dir. */
-	get globIgnorePaths(): string[] {
-		const globs = this.config.template?.project.globIgnorePaths ?? [];
-		if (!this.templateFile || this.templateDir === this.layout.projectDir) {
-			return globs;
-		}
-		return globs.map((glob) => this.rebase(glob));
 	}
 
 	getNode(instancePath: readonly string[]): Readonly<RojoNode> | undefined {

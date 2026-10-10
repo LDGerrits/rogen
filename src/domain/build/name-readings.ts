@@ -64,13 +64,15 @@ export class NameReadings {
 		readonly NotedName<Misspelling>[]
 	>();
 
+	private readonly reader: NameReader;
+
 	constructor(
-		private readonly reader: NameReader,
 		private readonly keys: DeclaredKeys,
 		/** The script names that make a file its folder. */
 		private readonly initNames: ReadonlySet<string>,
 		roots: readonly ScannedRoot[]
 	) {
+		this.reader = new NameReader(keys);
 		for (const root of roots) {
 			this.readMarkers(root);
 			for (const metaFile of root.metaFiles)

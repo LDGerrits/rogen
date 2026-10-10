@@ -1,10 +1,6 @@
 import { DeclaredKeys } from "../config/config.js";
-import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
-import {
-	DOT_ROUTE_KEYS,
-	Misspelling,
-	MisspellingFinder,
-} from "./misspelling-finder.js";
+import { RUN_SCRIPT_SUFFIXES, RojoFile, RojoFileKind } from "../rojo/rojo.js";
+import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
 /** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
 export interface FolderNameReading {
@@ -330,7 +326,7 @@ export class NameReader {
 			const part = remaining.slice(dot + 1);
 			const key =
 				this.keys.resolveVariant(part) ??
-				(dotRoutes && DOT_ROUTE_KEYS.has(part)
+				(dotRoutes && RUN_SCRIPT_SUFFIXES.has(part)
 					? this.keys.resolveRoute(part)
 					: undefined);
 			return key && dot > 0

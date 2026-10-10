@@ -312,8 +312,8 @@ export class LocationReport {
 		});
 	}
 
-	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires show only with `verbose`. */
-	print(logService: LogService, verbose: boolean): void {
+	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires are debug lines. */
+	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
 			const empty = this.emptyLine();
@@ -324,7 +324,7 @@ export class LocationReport {
 			logService.print(block.lines.join("\n"));
 			if (block.requireLines.length > 0)
 				logService.note(block.requireLines.join("\n"));
-			else if (verbose)
+			else
 				for (const expression of block.requires)
 					logService.debug(`require: ${expression}`);
 		}

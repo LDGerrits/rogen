@@ -94,16 +94,19 @@ describe("MetaReader", () => {
 					file: abs("src/Combat/init.meta.json"),
 					rootDir: abs("src"),
 					dir: "Combat",
-					className: "Actor",
-					properties: { Enabled: false },
-					attributes: { Priority: 1 },
-					ignoreUnknownInstances: true,
-					id: "combat",
+					fields: {
+						className: "Actor",
+						properties: { Enabled: false },
+						attributes: { Priority: 1 },
+						ignoreUnknownInstances: true,
+						id: "combat",
+					},
 				},
 				{
 					file: abs("src/init.meta.json"),
 					rootDir: abs("src"),
 					dir: "",
+					fields: {},
 				},
 			]);
 		});
@@ -158,7 +161,7 @@ describe("MetaReader", () => {
 					file: abs("src/Combat/init.meta.json"),
 					rootDir: abs("src"),
 					dir: "Combat",
-					className: "Actor",
+					fields: { className: "Actor" },
 				},
 			]);
 		});

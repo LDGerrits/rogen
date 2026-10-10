@@ -11,7 +11,6 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
-import { NameReader } from "./name-reader.js";
 import { InitScripts } from "./init-scripts.js";
 import { NameReadings } from "./name-readings.js";
 import { RootScanner, ScannedRoot } from "./root-scanner.js";
@@ -49,12 +48,7 @@ export class Placer {
 		const rootDirMounts = mounts.rootDirErrors(this.config.rootDirs);
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
-		const readings = new NameReadings(
-			new NameReader(keys),
-			keys,
-			this.layout.initNames,
-			roots
-		);
+		const readings = new NameReadings(keys, this.layout.initNames, roots);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots);
 		const variants = new VariantResolver(this.config, readings);

@@ -38,6 +38,7 @@ describe("Router", () => {
 					})
 				)
 			).map(({ placement, tree, findings: { warnings } }) => ({
+				placement,
 				routed: placement.routed,
 				files: placement.files,
 				leftOut: placement.leftOut,
@@ -1359,14 +1360,15 @@ describe("Router", () => {
 					"src/Bar.mock.server.luau"
 				);
 
-				const files = (
+				const { placement, routed } = (
 					await route({ variants: { mock: true } })
-				).unwrap().routed;
+				).unwrap();
 
-				expect(files.map((file) => file.buriedScriptSuffix)).toEqual([
-					undefined,
-					"server",
-				]);
+				expect(
+					routed.map(
+						(file) => placement.readingOf(file).buriedScriptSuffix
+					)
+				).toEqual([undefined, "server"]);
 			});
 		});
 

@@ -34,8 +34,6 @@ export interface RoutedFile {
 	readonly variants: readonly VariantMatch[];
 	/** The instance each of `variants` gives an alternative of: the node of the folder or marker that carries it, or the file's own. */
 	readonly variantNodes: readonly (readonly string[])[];
-	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
-	readonly buriedScriptSuffix?: RojoScriptSuffix;
 	/** The `@key`s in its name, its folders' and its markers that an outer route outranks and that don't restate it. */
 	readonly ignoredAts: readonly IgnoredAt[];
 	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
@@ -138,7 +136,6 @@ interface LeafName {
 	readonly name: string;
 	readonly hoisted: boolean;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
-	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
 }
 
@@ -154,10 +151,7 @@ interface ClaimedPath {
 }
 
 /** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
-export interface InitToCopy extends Pick<
-	RoutedFile,
-	"entry" | "variants" | "buriedScriptSuffix"
-> {
+export interface InitToCopy extends Pick<RoutedFile, "entry" | "variants"> {
 	readonly init: InitFolders;
 	readonly placed: RoutedFile | undefined;
 }
@@ -227,7 +221,6 @@ export class Router {
 			routing.toCopy.push({
 				entry,
 				variants: claimed.claims.variants,
-				buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
 				init: this.initFolders(entry, claimed.folders),
 				placed,
 			});
@@ -300,7 +293,6 @@ export class Router {
 					folderNodes[Math.max(0, level - claimed.dropped)]
 						?.instancePath ?? instancePath
 			),
-			buriedScriptSuffix: leaf.buriedScriptSuffix,
 			ignoredAts: claims.ignoredAts,
 			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 			...(claimed.hoisted && { hoisted: true }),
@@ -409,8 +401,7 @@ export class Router {
 		claims: Claims,
 		level: number
 	): LeafName {
-		const { kind, stem, match, scriptSuffix, buriedScriptSuffix, isInit } =
-			read;
+		const { kind, stem, match, scriptSuffix, isInit } = read;
 		const variantSpans = match.spans.filter((span) =>
 			this.keys.isVariant(span.key)
 		);
@@ -436,7 +427,6 @@ export class Router {
 			name,
 			hoisted,
 			scriptSuffix,
-			buriedScriptSuffix,
 			isInit,
 		};
 	}

@@ -180,14 +180,14 @@ export class MetaReader {
 			if (kind !== "script") return [];
 			for (const dir of init ? [init.becomes, init.sitsIn] : []) {
 				const meta = folderMeta.find(({ folder }) => folder === dir);
-				if (meta?.properties?.RunContext !== undefined)
+				if (meta?.fields.properties?.RunContext !== undefined)
 					return [
 						{
 							entry,
 							scriptSuffix,
 							fromFolder: {
 								metaFile: meta.file,
-								runContext: meta.properties.RunContext,
+								runContext: meta.fields.properties.RunContext,
 							},
 						},
 					];

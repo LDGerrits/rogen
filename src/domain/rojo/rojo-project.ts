@@ -114,10 +114,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** A file without a `tree` gets a bare DataModel; it fails when the text, its tree or a node in it isn't an object. */
-	static parse(
-		text: string,
-		createContainer?: ContainerFactory
-	): Result<RojoProject<ParsedProjectFile>, Error> {
+	static parse(text: string): Result<RojoProject<ParsedProjectFile>, Error> {
 		const parsed = parse(text);
 		if (parsed.isErr()) return err(parsed.error);
 		if (!isObject(parsed.value)) {
@@ -133,10 +130,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			);
 		}
 		return ok(
-			new RojoProject<ParsedProjectFile>(
-				{ ...parsed.value, tree },
-				createContainer
-			)
+			new RojoProject<ParsedProjectFile>({ ...parsed.value, tree })
 		);
 	}
 
@@ -283,7 +277,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** Rewrites the target of every `$path`, keeping whether it is optional. */
-	mapPaths(map: (target: string) => string): void {
+	private mapPaths(map: (target: string) => string): void {
 		const visit = (node: RojoNode) => {
 			if (isRojoPath(node.$path)) {
 				node.$path =
@@ -299,10 +293,13 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	/** A copy with every `$path` target and `globIgnorePaths` entry mapped, as when the file moves to another directory. */
 	rebased(map: (target: string) => string): RojoProject<T> {
 		const globs = this.globIgnorePaths;
-		const copy = new RojoProject<T>({
-			...this.getFile(),
-			...(globs.length > 0 && { globIgnorePaths: globs.map(map) }),
-		});
+		const copy = new RojoProject<T>(
+			{
+				...this.getFile(),
+				...(globs.length > 0 && { globIgnorePaths: globs.map(map) }),
+			},
+			this.createContainer
+		);
 		copy.mapPaths(map);
 		return copy;
 	}

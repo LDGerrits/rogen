@@ -903,6 +903,28 @@ describe("CoreBuildService.locate", () => {
 			).toEqual([[abs("src/Net/Server")]]);
 		});
 
+		it("should count an init script whose name carries a route as the folder it is", async () => {
+			await write("src/Net/Moves/init@Server.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Net.NewThing")
+			).toEqual([[abs("src/Net")]]);
+		});
+
+		it("should count an init script whose name carries a variant as the folder it is", async () => {
+			await write("src/Net/Server/Moves/init.mock.luau");
+
+			expect(
+				await foldersIn(
+					configOf({
+						variants: { mock: true },
+						rootDirs: [abs("src")],
+					}),
+					"ServerScriptService.Net.NewThing"
+				)
+			).toEqual([[abs("src/Net/Server")]]);
+		});
+
 		it("should go up to the nearest parent something is placed in", async () => {
 			await write("src/Inventory/Server/Save.luau");
 

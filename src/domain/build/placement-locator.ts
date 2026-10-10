@@ -2,7 +2,6 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, toPosix } from "../../base/path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { FileLocation, PlacedLocation } from "./build-service.js";
 import { Placement } from "./placement.js";
@@ -24,6 +23,8 @@ export function placesInstance(
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
 export class PlacementLocator {
 	private readonly scanned: Map<string, FileLocation>;
+	/** The folder each init script becomes, by the script's source. */
+	private readonly initOf = new Map<string, string>();
 
 	constructor(
 		private readonly placement: Placement,
@@ -75,35 +76,35 @@ export class PlacementLocator {
 			cut = parent.lastIndexOf(separator)
 		) {
 			parent = parent.slice(0, cut);
-			const folders = PlacementLocator.foldersUnder(
-				placed,
-				parent,
-				separator
-			);
+			const folders = this.foldersUnder(placed, parent, separator);
 			if (folders.length > 0) return folders;
 		}
 		return [];
 	}
 
 	/** The folders of the placed files that sit directly under `parent`, sorted. A folder's init script is placed as the folder, so it counts for its parent's folder, or its own when it is `parent`. */
-	private static foldersUnder(
+	private foldersUnder(
 		placed: readonly PlacedLocation[],
 		parent: string,
 		separator: string
 	): string[] {
 		const folders = new Set<string>();
 		for (const { source, instancePath, alsoAt } of placed) {
-			const isInit = new RojoFile(path.posix.basename(source)).isInit;
-			const folder = path.posix.dirname(source);
+			const becomes = this.initOf.get(source);
+			const folder = becomes ?? path.posix.dirname(source);
 			for (const nodePath of [instancePath, ...(alsoAt ?? [])]) {
 				const key = nodePath.join(separator);
 				if (key === parent) {
-					if (isInit) folders.add(folder);
+					if (becomes !== undefined) folders.add(folder);
 				} else if (
 					key.startsWith(parent + separator) &&
 					!key.slice(parent.length + 1).includes(separator)
 				) {
-					folders.add(isInit ? path.posix.dirname(folder) : folder);
+					folders.add(
+						becomes !== undefined
+							? path.posix.dirname(folder)
+							: folder
+					);
 				}
 			}
 		}
@@ -118,7 +119,11 @@ export class PlacementLocator {
 
 		for (const [source, why] of leftOut)
 			add({ ...why, source, exists: this.exists(source) });
-		for (const file of files) add(this.placedAt(file));
+		for (const file of files) {
+			if (file.init)
+				this.initOf.set(file.entry.source, file.init.becomes);
+			add(this.placedAt(file));
+		}
 		return all;
 	}
 
