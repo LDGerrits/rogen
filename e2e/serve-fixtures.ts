@@ -1,4 +1,4 @@
-import { WatchSession, bundleCli, createProject } from "./harness.js";
+import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
 /** The config and template every serve test starts from. */
 export const config = (extra: Record<string, unknown> = {}) =>
@@ -30,7 +30,7 @@ export function useServeProject(
 ) {
 	let bundle: ReturnType<typeof bundleCli>;
 	let project: ReturnType<typeof createProject>;
-	let sessions: WatchSession[];
+	let sessions: RunningRogen[];
 	let port: number;
 
 	beforeAll(() => {
@@ -63,7 +63,7 @@ export function useServeProject(
 			return port;
 		},
 		start(args: readonly string[] = [], dir = project.dir) {
-			const session = new WatchSession(
+			const session = new RunningRogen(
 				bundle.cli,
 				dir,
 				args,

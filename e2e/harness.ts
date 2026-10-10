@@ -372,7 +372,7 @@ export async function eventually(
 }
 
 /** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
-export class WatchSession {
+export class RunningRogen {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
 	private _output = "";

@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import {
-	WatchSession,
+	RunningRogen,
 	bundleCli,
 	createProject,
 	eventually,
@@ -18,13 +18,13 @@ const CONFIG = JSON.stringify({
 describeWithRojo("end to end watch", () => {
 	let bundle: ReturnType<typeof bundleCli>;
 	let project: ReturnType<typeof createProject>;
-	let session: WatchSession | undefined;
+	let session: RunningRogen | undefined;
 
 	const tree = (file = "default.project.json") =>
 		sourcemapTree(project.dir, file);
 
 	const start = (args: readonly string[] = [], cwd?: string) => {
-		session = new WatchSession(bundle.cli, project.dir, args, cwd);
+		session = new RunningRogen(bundle.cli, project.dir, args, cwd);
 		return session;
 	};
 
