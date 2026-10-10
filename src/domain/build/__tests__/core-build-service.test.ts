@@ -362,6 +362,41 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
+		it("should return the errors in the order the configs were selected", async () => {
+			const broken = brokenEntry(
+				[
+					errorDiagnostic(
+						"config.invalidSyntax",
+						{ resource: abs("broken.rogen.json") },
+						"not JSON"
+					),
+				],
+				abs("broken.rogen.json")
+			);
+			const bare = mockEntry(
+				{ rootDirs: [abs("src")], routes: {} },
+				abs("bare.rogen.json")
+			);
+			const codes = async (...entries: ConfigEntry[]) =>
+				(
+					await buildServiceOfFs().locate(
+						new MockConfigSelection(entries),
+						{ args: [], cwd: abs() }
+					)
+				)
+					.unwrap()
+					.errors.map(({ code }) => code);
+
+			expect(await codes(bare, broken)).toEqual([
+				"route.noRoutes",
+				"config.invalidSyntax",
+			]);
+			expect(await codes(broken, bare)).toEqual([
+				"config.invalidSyntax",
+				"route.noRoutes",
+			]);
+		});
+
 		it("should answer from no config that writes the file another writes, as build does", async () => {
 			const result = (
 				await buildServiceOfFs().locate(

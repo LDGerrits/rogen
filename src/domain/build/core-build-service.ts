@@ -3,6 +3,7 @@ import {
 	Diagnostic,
 	diagnosticsPerFile,
 	diagnosticsReaching,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -106,11 +107,14 @@ export class CoreBuildService implements BuildService {
 		targets?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
 		// What stops a config's build stops its answer too: it would describe a project that can't be built.
-		const { set, unloaded } = BuildSet.partition(selection);
-		const errors = [
-			...unloaded.flatMap((build) => build.errors),
-			...set.diagnostics,
-		];
+		const { set } = BuildSet.partition(selection);
+		const errors = uniqueDiagnostics(
+			selection.entries.flatMap((entry) =>
+				entry.status === "broken"
+					? entry.errors
+					: set.blocking(entry.config.file)
+			)
+		);
 
 		const listing = await this.indexService.list(set.rootDirs);
 		const located = await new Locator(
