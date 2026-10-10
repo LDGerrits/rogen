@@ -107,3 +107,39 @@ export const placedLines = (files: readonly RoutedFile[]): string[] =>
 		(file) =>
 			`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
 	);
+
+/** The routes the router tests place files by. */
+export const ROUTER_ROUTES = {
+	ReplicatedFirst: "ReplicatedFirst",
+	server: "ServerScriptService",
+	client: "StarterPlayer/StarterPlayerScripts",
+	"*": "ReplicatedStorage/shared",
+};
+
+/** Builds and places the files `fs` holds under `rootDirs`, and sums up where each landed. */
+export async function routeFiles(
+	fs: MemoryFileSystemService,
+	overrides: ResolvedConfigSpec = {},
+	rootDirs: readonly string[] = [abs("src")]
+) {
+	return (
+		await buildAndPlace(
+			fs,
+			configOf({
+				routes: ROUTER_ROUTES,
+				rootDirs: [...rootDirs],
+				...overrides,
+			})
+		)
+	).map(({ placement, tree, findings: { warnings } }) => ({
+		placement,
+		routed: placement.routed,
+		files: placement.files,
+		leftOut: placement.leftOut,
+		globIgnorePaths: tree.globIgnorePaths,
+		unrouted: placement.leftOut
+			.withStatus("unrouted")
+			.map(([source]) => source),
+		warnings,
+	}));
+}
