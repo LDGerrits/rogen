@@ -124,6 +124,18 @@ export class NameReader {
 				keptName: name,
 				misspellings: NameReader.inFolderName([dotName], offset),
 			});
+		return this.suffixedFolder(name, lead, offset);
+	}
+
+	/** A folder named by suffixes after a name it keeps, such as `Name@server` or `Name.mock`; or by a leading key beside them. */
+	private suffixedFolder(
+		name: string,
+		{
+			invisible,
+			hoisted,
+		}: { readonly invisible: boolean; readonly hoisted: boolean },
+		offset: number
+	): FolderReading {
 		const suffixed = this.suffixes(name, false);
 		const leading =
 			suffixed.spans.length > 0
