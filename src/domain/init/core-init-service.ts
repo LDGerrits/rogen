@@ -23,6 +23,7 @@ import {
 	InitWritten,
 } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
+import { PlaceFolders } from "./place-folder.js";
 import { PlaceSetup } from "./place-setup.js";
 import { ProjectSetup } from "./project-setup.js";
 import { ExtendingConfigSetup } from "./extending-config-setup.js";
@@ -147,10 +148,15 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
+		const placeFolders = new PlaceFolders(
+			this.fileSystemService,
+			this.toolchainService
+		);
 		const projectSetup = new ProjectSetup(
 			directory,
 			questions,
-			this.fileSystemService
+			this.fileSystemService,
+			placeFolders
 		);
 		const agentFile = await this.agentFileIn(directory);
 		if (agentFile.isErr()) return agentFile;
@@ -172,12 +178,7 @@ export class CoreInitService implements InitService {
 			...(base && {
 				place: () =>
 					asking(
-						new PlaceSetup(
-							directory,
-							base,
-							questions,
-							this.fileSystemService
-						)
+						new PlaceSetup(directory, base, questions, placeFolders)
 					),
 				extending: () =>
 					asking(new ExtendingConfigSetup(directory, questions)),

@@ -5,13 +5,12 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
-import { PlaceFolder } from "./place-folder.js";
+import { PlaceFolders } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
 
 /** A place extends `default.rogen.json` with its own root dir and template, syncing from its own subfolder when code is compiled or processed. */
@@ -21,7 +20,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		/** The `default.rogen.json` the place joins, as it was read. */
 		private readonly base: Result<BaseConfig, Diagnostic[]>,
 		private readonly questions: InitQuestions,
-		private readonly fileSystemService: FileSystemService
+		private readonly placeFolders: PlaceFolders
 	) {}
 
 	/** Asks for the name and folder of a place added beside an existing `default.rogen.json`. */
@@ -69,8 +68,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 
 		return ok({
 			name,
-			folder: await PlaceFolder.read(
-				this.fileSystemService,
+			folder: await this.placeFolders.read(
 				directory.path,
 				normalizeDir(folder)
 			),

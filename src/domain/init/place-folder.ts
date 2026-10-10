@@ -1,6 +1,6 @@
 import path from "path";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { holdsCode } from "../toolchain/toolchain.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { TEMPLATE_FILE } from "./config-set.js";
 
 const SOURCE_DIR = "src";
@@ -16,23 +16,13 @@ export class PlaceFolder {
 		readonly hasTemplate: boolean
 	) {}
 
-	/** What `folder` already holds in `directory`. */
-	static async read(
-		fileSystemService: FileSystemService,
-		directory: string,
-		folder: string
-	): Promise<PlaceFolder> {
-		const absolute = path.join(directory, folder);
-		const code =
-			!(await fileSystemService.exists(
-				path.join(absolute, SOURCE_DIR)
-			)) && (await holdsCode(fileSystemService, absolute));
-		const template = PlaceFolder.templateOf(folder, code);
-		return new PlaceFolder(
-			folder,
-			code,
-			await fileSystemService.exists(path.join(directory, template))
-		);
+	/** A folder that holds what `holdsCode` and `hasTemplate` say. */
+	static of(
+		folder: string,
+		holdsCode: boolean,
+		hasTemplate: boolean
+	): PlaceFolder {
+		return new PlaceFolder(folder, holdsCode, hasTemplate);
 	}
 
 	/** A folder as a new project's places start: empty. */
@@ -50,9 +40,33 @@ export class PlaceFolder {
 		return PlaceFolder.templateOf(this.path, this.holdsCode);
 	}
 
-	private static templateOf(folder: string, code: boolean): string {
+	static templateOf(folder: string, code: boolean): string {
 		return code
 			? `${folder}.${TEMPLATE_FILE}`
 			: `${folder}/${TEMPLATE_FILE}`;
+	}
+}
+
+/** Reads what the folders of a place already hold. */
+export class PlaceFolders {
+	constructor(
+		private readonly fileSystemService: FileSystemService,
+		private readonly toolchainService: ToolchainService
+	) {}
+
+	/** What `folder` already holds in `directory`. */
+	async read(directory: string, folder: string): Promise<PlaceFolder> {
+		const absolute = path.join(directory, folder);
+		const code =
+			!(await this.fileSystemService.exists(
+				path.join(absolute, SOURCE_DIR)
+			)) && (await this.toolchainService.holdsCode(absolute));
+		return PlaceFolder.of(
+			folder,
+			code,
+			await this.fileSystemService.exists(
+				path.join(directory, PlaceFolder.templateOf(folder, code))
+			)
+		);
 	}
 }

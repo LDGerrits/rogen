@@ -16,7 +16,12 @@ import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
-import { DirectorySpec, directory, directoryOf } from "./init-fixtures.js";
+import {
+	DirectorySpec,
+	directory,
+	directoryOf,
+	placeFoldersOf,
+} from "./init-fixtures.js";
 
 type Context = Omit<DirectorySpec, "givenName">;
 
@@ -32,7 +37,8 @@ const askInitChoices = async (
 	const setup = new ProjectSetup(
 		directoryOf({ ...context, givenName: name }),
 		new InitQuestions(prompts, prompts.isInteractive),
-		fileSystem
+		fileSystem,
+		placeFoldersOf(fileSystem)
 	);
 	return setup.ask();
 };
@@ -782,7 +788,8 @@ describe("InitQuestions askProject", () => {
 						existing: ["default.project.json"],
 					}),
 					new InitQuestions(prompts, prompts.isInteractive),
-					fileSystem
+					fileSystem,
+					placeFoldersOf(fileSystem)
 				).ask();
 			};
 

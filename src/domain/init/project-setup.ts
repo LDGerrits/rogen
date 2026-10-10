@@ -15,7 +15,7 @@ import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
-import { PlaceFolder } from "./place-folder.js";
+import { PlaceFolder, PlaceFolders } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
@@ -65,7 +65,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		private readonly fileSystemService: FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		private readonly placeFolders: PlaceFolders
 	) {}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
@@ -160,8 +161,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			places = await Promise.all(
 				answer.map(async (place) => ({
 					name: place,
-					folder: await PlaceFolder.read(
-						this.fileSystemService,
+					folder: await this.placeFolders.read(
 						directory.path,
 						ConfigSet.placeFolderIn(directory, place, rootDirs)
 					),
