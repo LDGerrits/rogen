@@ -17,9 +17,24 @@ src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 
 ## Init Folders
 
-A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed and varied like any other file, so a folder split across routes gets a copy of its init ModuleScript in each. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
+A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed and varied like any other file. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
 
 An init script's route routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing#marker-files) would: `Combat/init@server.luau`, or `Combat/init.server.luau` when your config has a `server` key, sends everything in `Combat/` to the server. This holds whichever variants are on, so `init.mock.luau` swaps the script without moving the files beside it, and `init.mock@client.luau` beside `init@server.luau` is an error even while `mock` is off.
+
+An init ModuleScript with no route of its own goes wherever its folder does. When the folder is split across routes, say `Combat/Server/` and `Combat/Shared/`, it becomes a `Combat` instance in each service, and each one gets a copy of `init.luau` with only the files routed there as children. `rogen where` lists the copies (`· also ServerScriptService/Combat`). An init `Script` or `LocalScript` is never copied, since every copy would run.
+
+<Callout type="warn" title="Write a copied init for the files beside it">
+	Which children a copy has depends on where it sits, not on who runs it. On the server, shared code that requires `ReplicatedStorage.Shared.Combat` gets the copy there, so `RunService:IsServer()` is true but `script.Damage` doesn't exist. The server can also load both copies, each with its own state. Keep a copied init free of state, and look its children up instead of assuming them:
+
+	```luau title="src/Combat/init.luau"
+	return setmetatable({}, {
+		__index = function(_, name)
+			local child = script:FindFirstChild(name)
+			return child and require(child)
+		end,
+	})
+	```
+</Callout>
 
 ## Data Files
 
