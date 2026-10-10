@@ -193,59 +193,82 @@ export class Locator {
 		config: ResolvedConfig,
 		reference: InstanceReference
 	): Promise<string[]> {
-		const names = reference.text.split(reference.separator);
-		const candidates = async (key: string): Promise<string[]> => {
-			const target = config.routes.get(key);
-			if (!target) return [];
-			const lead = target.instancePath;
-			if (
-				names.length <= lead.length ||
-				!lead.every((name, index) => name === names[index])
-			)
-				return [];
-			const rest = names.slice(lead.length);
-			const leaf = rest[rest.length - 1];
-			const folders = new Set<string>();
-			for (const rootDir of config.rootDirs) {
-				const below = rest.slice(0, -1);
-				let dir = toPosix(rootDir);
-				let matched = 0;
-				while (
-					matched < below.length &&
-					this.listing.getEntryType(dir, below[matched]) ===
-						FileType.Directory
-				) {
-					dir = path.posix.join(dir, below[matched]);
-					matched++;
-				}
-				const folder = path.posix.join(
-					dir,
-					...below.slice(matched),
-					...(key === "*" ? [] : [key])
-				);
-				const placed = await this.placeNew(
-					config,
-					path.posix.join(folder, `${leaf}.luau`)
-				);
-				if (
-					placed.some(
-						(location) =>
-							location.status === "placed" &&
-							location.instancePath.join(reference.separator) ===
-								reference.text
-					)
-				)
-					folders.add(folder);
-			}
-			return [...folders];
-		};
-
 		const keys = [...config.routes.keys()];
 		const routed = (
-			await Promise.all(keys.filter((key) => key !== "*").map(candidates))
+			await Promise.all(
+				keys
+					.filter((key) => key !== "*")
+					.map((key) =>
+						this.foldersUnderRoute(config, key, reference)
+					)
+			)
 		).flat();
-		const found = routed.length > 0 ? routed : await candidates("*");
+		const found =
+			routed.length > 0
+				? routed
+				: await this.foldersUnderRoute(config, "*", reference);
 		return [...new Set(found)].sort(compareStrings);
+	}
+
+	/** The folders under the route `key` where a first file for `reference` lands at it; none when the route's target doesn't lead the path. */
+	private async foldersUnderRoute(
+		config: ResolvedConfig,
+		key: string,
+		reference: InstanceReference
+	): Promise<string[]> {
+		const target = config.routes.get(key);
+		if (!target) return [];
+		const names = reference.text.split(reference.separator);
+		const lead = target.instancePath;
+		if (
+			names.length <= lead.length ||
+			!lead.every((name, index) => name === names[index])
+		)
+			return [];
+		const rest = names.slice(lead.length);
+		const leaf = rest[rest.length - 1];
+		const below = rest.slice(0, -1);
+		const folders = new Set<string>();
+		for (const rootDir of config.rootDirs) {
+			const { dir, matched } = this.deepestExisting(rootDir, below);
+			const folder = path.posix.join(
+				dir,
+				...below.slice(matched),
+				...(key === "*" ? [] : [key])
+			);
+			const placed = await this.placeNew(
+				config,
+				path.posix.join(folder, `${leaf}.luau`)
+			);
+			if (
+				placed.some(
+					(location) =>
+						location.status === "placed" &&
+						location.instancePath.join(reference.separator) ===
+							reference.text
+				)
+			)
+				folders.add(folder);
+		}
+		return [...folders];
+	}
+
+	/** The deepest folder of `rootDir` that holds the leading `names`, and how many of them it holds. */
+	private deepestExisting(
+		rootDir: string,
+		names: readonly string[]
+	): { dir: string; matched: number } {
+		let dir = toPosix(rootDir);
+		let matched = 0;
+		while (
+			matched < names.length &&
+			this.listing.getEntryType(dir, names[matched]) ===
+				FileType.Directory
+		) {
+			dir = path.posix.join(dir, names[matched]);
+			matched++;
+		}
+		return { dir, matched };
 	}
 
 	/** Where a file at `file`, which need not exist, lands in `config`; nothing when the config can't be placed. Placing is all it takes, so the later phases don't run. */
