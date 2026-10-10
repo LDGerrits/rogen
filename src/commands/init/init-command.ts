@@ -194,42 +194,33 @@ registerCommand(
 				files.push(file);
 				if (item.file.addition !== undefined) appended.push(file);
 			});
+			const document = (rest: Record<string, unknown>) => ({
+				files,
+				appended,
+				directories,
+				...rest,
+			});
 			if (written.isErr())
 				return this.printJson(
 					logService,
-					{
-						files,
-						appended,
-						directories,
-						error: written.error.message,
-					},
+					document({ error: written.error.message }),
 					written.error
 				);
 			const built = await buildConfigs(plan);
 			if (built.isErr())
 				return this.printJson(
 					logService,
-					{
-						files,
-						appended,
-						directories,
-						error: built.error.message,
-					},
+					document({ error: built.error.message }),
 					built.error
 				);
-			const report = buildReport(built.value.builds, foundBy);
-			const { errors } = built.value;
 			return this.printJson(
 				logService,
-				{
-					files,
-					appended,
-					directories,
-					built: report.configs,
+				document({
+					built: buildReport(built.value.builds, foundBy).configs,
 					notes: plan.notes,
 					nextSteps: plan.nextSteps,
-				},
-				DiagnosticsError.of(errors)
+				}),
+				DiagnosticsError.of(built.value.errors)
 			);
 		}
 	}
