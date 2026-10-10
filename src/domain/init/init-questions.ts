@@ -21,7 +21,13 @@ import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
-export type Addition = "place" | "extending" | "separate" | "agent" | "hook";
+/** One thing `init` can add beside the configs here, and what adding it does. */
+export interface AdditionOption<T> {
+	readonly id: string;
+	readonly label: string;
+	readonly hint: string;
+	readonly addition: T;
+}
 
 export interface NameQuestion {
 	readonly message: string;
@@ -81,58 +87,23 @@ export class InitQuestions {
 		});
 	}
 
-	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
-	/** What to add beside the configs here; a place or an extending config only beside `default.rogen.json`. */
-	async whatToAdd(
+	/** What to add beside the configs here, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
+	async whatToAdd<T>(
 		hasDefault: boolean,
-		agentFile?: string,
-		hookAgents: readonly string[] = []
-	): Promise<Addition | undefined> {
-		const first: Addition = hasDefault ? "place" : "separate";
-		if (!this.interactive) return first;
-		return this.promptService.select<Addition>({
+		options: readonly AdditionOption<T>[]
+	): Promise<T | undefined> {
+		const [first] = options;
+		if (!this.interactive) return first.addition;
+		const id = await this.promptService.select<string>({
 			message: `${hasDefault ? ConfigSet.DEFAULT_FILE : "A config"} exists. What do you want to add?`,
-			choices: [
-				...(hasDefault
-					? [
-							{
-								value: "place" as const,
-								label: "A place",
-								hint: "another Roblox place that shares default's code",
-							},
-							{
-								value: "extending" as const,
-								label: "A config that extends default",
-								hint: "the same game with other variants or excludes",
-							},
-						]
-					: []),
-				{
-					value: "separate",
-					label: "A separate config",
-					hint: "answers every question again",
-				},
-				...(agentFile
-					? [
-							{
-								value: "agent" as const,
-								label: "Agent instructions",
-								hint: `Rogen's rules for coding agents, in ${agentFile}`,
-							},
-						]
-					: []),
-				...(hookAgents.length > 0
-					? [
-							{
-								value: "hook" as const,
-								label: "Agent hook",
-								hint: `reports Rogen warnings to ${joinedWithAnd(hookAgents)}`,
-							},
-						]
-					: []),
-			],
-			initialValue: first,
+			choices: options.map(({ id, label, hint }) => ({
+				value: id,
+				label,
+				hint,
+			})),
+			initialValue: first.id,
 		});
+		return options.find((option) => option.id === id)?.addition;
 	}
 
 	/** Whether to add Rogen's rules to the agent file; a run that can't ask adds them, as Enter does. */
