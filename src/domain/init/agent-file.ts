@@ -38,10 +38,11 @@ export class AgentFile {
 	get planned(): PlannedFile {
 		if (this.text === undefined)
 			return { fileName: this.fileName, content: agentBlock };
-		const gap = this.text.endsWith("\n") ? "\n" : "\n\n";
+		const eol = this.text.includes("\r\n") ? "\r\n" : "\n";
+		const gap = this.text.endsWith("\n") ? eol : `${eol}${eol}`;
 		return {
 			fileName: this.fileName,
-			content: `${this.text}${gap}${agentBlock}`,
+			content: `${this.text}${gap}${agentBlock.replaceAll("\n", eol)}`,
 			addition: "Rogen's rules",
 		};
 	}
