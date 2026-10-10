@@ -591,4 +591,22 @@ describe("InstanceMap", () => {
 		]);
 		expect([...map.values()]).toEqual([3, 2]);
 	});
+
+	describe("a node named like a prototype", () => {
+		it("should be inserted, found and written like any other", () => {
+			const project = new RojoProject(
+				{ name: "t", tree: { $className: "DataModel" } },
+				folders
+			);
+
+			project.insertNode(["ReplicatedStorage", "__proto__"], {
+				$path: "src/__proto__.luau",
+			});
+
+			expect(project.getNode(["ReplicatedStorage", "__proto__"])).toEqual(
+				{ $path: "src/__proto__.luau" }
+			);
+			expect(JSON.stringify(project.getTree())).toContain('"__proto__"');
+		});
+	});
 });

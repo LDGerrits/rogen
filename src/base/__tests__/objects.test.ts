@@ -1,4 +1,4 @@
-import { mergeDeep, isObject } from "../objects.js";
+import { getOwn, isObject, mergeDeep, setOwn, sortObject } from "../objects.js";
 
 describe("isObject", () => {
 	it("identifies plain objects", () => {
@@ -11,6 +11,31 @@ describe("isObject", () => {
 		expect(isObject(null)).toBe(false);
 		expect(isObject(/regex/)).toBe(false);
 		expect(isObject(new Date())).toBe(false);
+	});
+});
+
+describe("keys named like a prototype", () => {
+	const parsed = JSON.parse('{"__proto__": {"$path": "x"}, "b": 1}');
+
+	it("should survive a merge as data", () => {
+		const merged = mergeDeep({}, parsed);
+
+		expect(Object.keys(merged)).toEqual(["__proto__", "b"]);
+		expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
+	});
+
+	it("should survive a sort as data", () => {
+		expect(Object.keys(sortObject(parsed))).toEqual(["__proto__", "b"]);
+	});
+
+	it("should set and read back an own property under the name", () => {
+		const target: Record<string, number> = {};
+
+		expect(getOwn(target, "__proto__")).toBeUndefined();
+		setOwn(target, "__proto__", 1);
+
+		expect(getOwn(target, "__proto__")).toBe(1);
+		expect(Object.keys(target)).toEqual(["__proto__"]);
 	});
 });
 
