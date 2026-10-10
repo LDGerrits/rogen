@@ -12,12 +12,13 @@ import {
 	MountCandidate,
 	PLACES_DIR,
 } from "../toolchain/toolchain.js";
-import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { ConfigSet } from "./config-set.js";
+import { PlaceFolder } from "./place-folder.js";
 import { HOOK_SCRIPT_FILE } from "./hook-target.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { TemplateChoice } from "./starter-template.js";
+import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
 export type Addition = "place" | "extending" | "separate" | "agent" | "hook";
@@ -163,7 +164,7 @@ export class InitQuestions {
 		if (!this.interactive) return initial;
 
 		const found = workspace.places
-			.map((name) => ConfigSet.placeFolderOf(name))
+			.map((name) => PlaceFolder.pathOf(name))
 			.join(", ");
 		return this.promptService.select<Layout>({
 			message: "What are you setting up?",
@@ -191,7 +192,7 @@ export class InitQuestions {
 			validate: (value) => {
 				const trimmed = value.trim();
 				if (trimmed === "") return "Enter a name.";
-				const parsed = ConfigSet.parseName([trimmed]);
+				const parsed = ConfigSet.checkName(trimmed);
 				if (parsed.isErr()) return parsed.error.message;
 				const taken = filesFor(trimmed).find((file) =>
 					directory.has(file)
@@ -348,7 +349,7 @@ export class InitQuestions {
 		directory: InitDirectory,
 		outputs: readonly string[]
 	): Promise<TemplateChoice | undefined> {
-		const candidates = ConfigSet.handWrittenProjectFiles(directory);
+		const candidates = directory.handWrittenProjectFiles;
 		if (directory.has(TEMPLATE_FILE) || candidates.length === 0) {
 			return { kind: "new" };
 		}
@@ -536,20 +537,20 @@ export class InitQuestions {
 			(place) =>
 				!directory.placeFolderProblem(
 					rootDirs,
-					ConfigSet.placeFolderIn(directory, place, rootDirs)
+					PlaceFolder.pathIn(directory, place, rootDirs)
 				)
 		);
 		if (!this.interactive) return found;
 
 		const answer = await this.promptService.text({
 			message: "Places",
-			description: `Each place gets <name>.rogen.json, and its own folder, ${ConfigSet.placeFolderOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
+			description: `Each place gets <name>.rogen.json, and its own folder, ${PlaceFolder.pathOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
 			placeholder: found.length > 0 ? found.join(", ") : "lobby",
 			validate: (value) => {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
 				for (const [index, place] of names.entries()) {
-					const parsed = ConfigSet.parseName([place]);
+					const parsed = ConfigSet.checkName(place);
 					if (parsed.isErr()) return parsed.error.message;
 					if (names.indexOf(place) !== index) {
 						return `${place} is listed twice.`;
@@ -564,7 +565,7 @@ export class InitQuestions {
 					}
 					const problem = directory.placeFolderProblem(
 						rootDirs,
-						ConfigSet.placeFolderIn(directory, place, rootDirs)
+						PlaceFolder.pathIn(directory, place, rootDirs)
 					);
 					if (problem) return problem;
 				}
@@ -580,7 +581,7 @@ export class InitQuestions {
 		base: BaseConfig,
 		placeName: string
 	): Promise<string | undefined> {
-		const placeholder = ConfigSet.placeFolderOf(placeName, base.rootDirs);
+		const placeholder = PlaceFolder.pathOf(placeName, base.rootDirs);
 		if (!this.interactive) return placeholder;
 		const folder = await this.promptService.text({
 			message: "Place folder",

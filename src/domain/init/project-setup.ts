@@ -11,12 +11,13 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
-import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
 import { PlaceFolder, PlaceFolders } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { ProjectTemplate, TemplatePlan } from "./template-plan.js";
@@ -163,7 +164,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					name: place,
 					folder: await this.placeFolders.read(
 						directory.path,
-						ConfigSet.placeFolderIn(directory, place, rootDirs)
+						PlaceFolder.pathIn(directory, place, rootDirs)
 					),
 				}))
 			);
@@ -252,7 +253,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const ports: number[] = [];
 		const places = choices.places.map(({ name, folder }): PlaceChoices => {
-			const servePort = ConfigSet.freePort(ports);
+			const servePort = PlacePlan.freePort(ports);
 			ports.push(servePort);
 			return {
 				name,

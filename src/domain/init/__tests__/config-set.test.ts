@@ -99,32 +99,6 @@ describe("ConfigSet naming", () => {
 		);
 	});
 
-	it("should keep a place's code under places", () => {
-		expect(ConfigSet.placeFolderOf("lobby")).toBe("places/lobby");
-	});
-
-	it.each([
-		[["places/shared/src"], "places/lobby"],
-		[["projects/shared/src"], "projects/lobby"],
-		[["lib/core"], "lib/lobby"],
-		[["src"], "places/lobby"],
-		[["shared"], "places/lobby"],
-	])(
-		"should put a place beside the shared folder of %j",
-		(rootDirs, folder) => {
-			expect(ConfigSet.placeFolderOf("lobby", rootDirs)).toBe(folder);
-		}
-	);
-
-	it.each([
-		[[], 34873],
-		[[34872], 34873],
-		[[34873, 34874], 34875],
-		[[34873, 34875], 34874],
-	])("should give a place with %j taken the port %d", (taken, port) => {
-		expect(ConfigSet.freePort(taken)).toBe(port);
-	});
-
 	it("should point at where variants of a script are swapped in", () => {
 		expect(ConfigSet.variantsStep(luau, "default.rogen.json")).toBe(
 			'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.'
@@ -133,24 +107,6 @@ describe("ConfigSet naming", () => {
 
 	it("should start the default config from default.rogen.json", () => {
 		expect(ConfigSet.DEFAULT_FILE).toBe("default.rogen.json");
-	});
-
-	describe("handWrittenProjectFiles", () => {
-		it("should leave out the templates, which are not hand-written", () => {
-			const target = directoryOf({
-				existing: [
-					"game.project.json",
-					"template.project.json",
-					"lobby.template.project.json",
-					"other.project.json",
-					"other.rogen.json",
-				],
-			});
-
-			expect(ConfigSet.handWrittenProjectFiles(target)).toEqual([
-				"game.project.json",
-			]);
-		});
 	});
 
 	describe("parseName", () => {

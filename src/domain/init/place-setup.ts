@@ -72,7 +72,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 				directory.path,
 				normalizeDir(folder)
 			),
-			servePort: ConfigSet.freePort(base.value.ports ?? []),
+			servePort: PlacePlan.freePort(base.value.ports ?? []),
 			language: workspace.language,
 			darklua: workspace.detectedDarklua,
 			base: base.value,

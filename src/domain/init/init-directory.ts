@@ -13,6 +13,7 @@ import {
 	rootDirOverlap,
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
 
 const DEFAULT_ROOT_DIR = "src";
 const DEFAULT_PROJECT_NAME = "roblox-game";
@@ -61,12 +62,17 @@ export class InitDirectory {
 		return [...this.entries].some((entry) => entry.endsWith(CONFIG_SUFFIX));
 	}
 
-	/** Project files here that no config beside them writes. */
-	get projectFilesWithoutConfig(): string[] {
+	/** Project files here that no config beside them writes, other than the template. */
+	get handWrittenProjectFiles(): string[] {
 		return [...this.entries]
 			.filter((file) => {
 				const label = labelOfDefaultOutFile(file);
-				return label !== undefined && !this.has(configFileName(label));
+				return (
+					label !== undefined &&
+					!this.has(configFileName(label)) &&
+					file !== TEMPLATE_FILE &&
+					!file.endsWith(`.${TEMPLATE_FILE}`)
+				);
 			})
 			.sort();
 	}

@@ -2,10 +2,14 @@ import path from "path";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
 import { instanceKey } from "../rojo/rojo-project.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
-import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { ConfigSet } from "./config-set.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitDirectory } from "./init-directory.js";
-import { StarterTemplate, TemplateChoice } from "./starter-template.js";
+import {
+	StarterTemplate,
+	TEMPLATE_FILE,
+	TemplateChoice,
+} from "./starter-template.js";
 
 /** The template a new project chose, with the text of a copied file read in. */
 export type ProjectTemplate =
@@ -45,7 +49,7 @@ export class TemplatePlan {
 		{ template, templateDir, mounts, dirs, derived }: TemplateInputs
 	): TemplatePlan {
 		if (directory.has(TEMPLATE_FILE)) {
-			const handWritten = ConfigSet.handWrittenProjectFiles(directory);
+			const handWritten = directory.handWrittenProjectFiles;
 			const replaced = configSet.outputFiles.filter((file) =>
 				handWritten.includes(file)
 			);

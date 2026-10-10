@@ -11,6 +11,9 @@ import {
 } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 
+/** The template project file `init` starts, which the configs it writes name. */
+export const TEMPLATE_FILE = "template.project.json";
+
 export type TemplateChoice =
 	/** Start `template.project.json` from the package mounts, when there are any. */
 	| { readonly kind: "new" }

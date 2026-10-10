@@ -9,7 +9,7 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
-import { TEMPLATE_FILE } from "../config-set.js";
+import { TEMPLATE_FILE } from "../starter-template.js";
 import { BaseConfig, InitDirectory } from "../init-directory.js";
 import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";

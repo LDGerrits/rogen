@@ -1,7 +1,9 @@
 import path from "path";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { TEMPLATE_FILE } from "./config-set.js";
+import { PLACES_DIR } from "../toolchain/toolchain.js";
+import { InitDirectory } from "./init-directory.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
 
 const SOURCE_DIR = "src";
 
@@ -23,6 +25,28 @@ export class PlaceFolder {
 		hasTemplate: boolean
 	): PlaceFolder {
 		return new PlaceFolder(folder, holdsCode, hasTemplate);
+	}
+
+	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
+	static pathOf(
+		name: string,
+		sharedRootDirs: readonly string[] = []
+	): string {
+		const [rootDir] = sharedRootDirs;
+		const shared = rootDir?.replace(/\/src$/, "");
+		const container = shared && path.posix.dirname(shared);
+		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
+	}
+
+	/** Where a new project's place named `name` keeps its files: the folder `init` found it in, else beside the shared folder. */
+	static pathIn(
+		directory: InitDirectory,
+		name: string,
+		sharedRootDirs: readonly string[]
+	): string {
+		return directory.workspace.places.includes(name)
+			? PlaceFolder.pathOf(name)
+			: PlaceFolder.pathOf(name, sharedRootDirs);
 	}
 
 	/** A folder as a new project's places start: empty. */

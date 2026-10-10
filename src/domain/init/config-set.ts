@@ -1,4 +1,3 @@
-import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
@@ -7,13 +6,10 @@ import {
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
-import { SyncServer } from "../serve/serve.js";
-import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
+import { Darklua, Language } from "../toolchain/toolchain.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-
-/** The template project file `init` starts, which the configs it writes name. */
-export const TEMPLATE_FILE = "template.project.json";
+import { TEMPLATE_FILE } from "./starter-template.js";
 
 /** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
@@ -32,46 +28,9 @@ export class ConfigSet {
 		return name === DEFAULT_CONFIG_STEM ? "sync" : `${name}-sync`;
 	}
 
-	/** Project files in `directory` that no config beside them writes, other than the template. */
-	static handWrittenProjectFiles(directory: InitDirectory): string[] {
-		return directory.projectFilesWithoutConfig.filter(
-			(file) =>
-				file !== TEMPLATE_FILE && !file.endsWith(`.${TEMPLATE_FILE}`)
-		);
-	}
-
 	/** `extends` as init writes it: relative, and explicitly so. */
 	static reference(file: string): string {
 		return `./${file}`;
-	}
-
-	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
-	static placeFolderOf(
-		name: string,
-		sharedRootDirs: readonly string[] = []
-	): string {
-		const [rootDir] = sharedRootDirs;
-		const shared = rootDir?.replace(/\/src$/, "");
-		const container = shared && path.posix.dirname(shared);
-		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
-	}
-
-	/** Where a new project's place named `name` keeps its files: the folder `init` found it in, else beside the shared folder. */
-	static placeFolderIn(
-		directory: InitDirectory,
-		name: string,
-		sharedRootDirs: readonly string[]
-	): string {
-		return directory.workspace.places.includes(name)
-			? ConfigSet.placeFolderOf(name)
-			: ConfigSet.placeFolderOf(name, sharedRootDirs);
-	}
-
-	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
-	static freePort(taken: readonly number[]): number {
-		let port = SyncServer.ROJO.defaultPort + 1;
-		while (taken.includes(port)) port++;
-		return port;
 	}
 
 	/** The glob that matches a language's spec files. */
@@ -89,7 +48,11 @@ export class ConfigSet {
 		if (names.length > 1) {
 			return err(new UsageError("init takes at most one config name."));
 		}
-		const [name = DEFAULT_CONFIG_STEM] = names;
+		return ConfigSet.checkName(names[0] ?? DEFAULT_CONFIG_STEM);
+	}
+
+	/** `name` as a config name `init` can write. */
+	static checkName(name: string): Result<string, Error> {
 		if (name.trim() === "") {
 			return err(new UsageError("A config name can't be empty."));
 		}
