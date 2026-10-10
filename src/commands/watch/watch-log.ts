@@ -96,21 +96,19 @@ function counted(
 export class WatchLog {
 	private readonly buildLog: BuildLog;
 
+	/** `command` is the one whose output it is: `serve` reports its rebuilds as `watch` does. */
 	constructor(
 		private readonly logService: LogService,
-		private readonly cwd: string
+		private readonly cwd: string,
+		private readonly command = "watch"
 	) {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
 
-	/** Opens the output of `command`: the configs it watches. */
-	begin(
-		configs: readonly ResolvedConfig[],
-		home?: string,
-		command = "watch"
-	): void {
+	/** Opens the output: the configs watched. */
+	begin(configs: readonly ResolvedConfig[], home?: string): void {
 		this.buildLog.begin(
-			command,
+			this.command,
 			configs.map(({ label }) => label),
 			home
 		);

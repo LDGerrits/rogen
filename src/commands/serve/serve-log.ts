@@ -58,7 +58,7 @@ export class ServeLog implements ServeReporter {
 		private readonly cwd: string,
 		private readonly plan: ServePlan
 	) {
-		this.watchLog = new WatchLog(logService, cwd);
+		this.watchLog = new WatchLog(logService, cwd, "serve");
 	}
 
 	begin(): void {
@@ -66,8 +66,7 @@ export class ServeLog implements ServeReporter {
 		const { tool, selection } = plan;
 		this.watchLog.begin(
 			plan.targets.map(({ config }) => config),
-			selection.home,
-			"serve"
+			selection.home
 		);
 		if (tool.passedOver) {
 			this.logService.info(
