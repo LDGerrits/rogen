@@ -36,7 +36,6 @@ const namesIn = (instances: readonly ArgonInstance[]): string[] =>
 		...namesIn(instance.children ?? []),
 	]);
 
-/** What Argon's Studio plugin sees: it subscribes, then reads each sync. */
 class ArgonClient {
 	private readonly id = Math.floor(Math.random() * 1_000_000);
 
@@ -51,7 +50,6 @@ class ArgonClient {
 			throw new Error(`Argon refused the client: ${response.status}`);
 	}
 
-	/** The names of the instances the next sync adds. */
 	async added(): Promise<string[]> {
 		const response = await this.post(
 			"/read",

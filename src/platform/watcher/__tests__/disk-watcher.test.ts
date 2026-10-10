@@ -170,7 +170,6 @@ describe("DiskWatcher", () => {
 			).toBe("");
 		});
 
-		/** Writes a file through the link and waits for its event at the root: a watcher that followed the link would report the same change below it. */
 		const settled = async () => {
 			await fs.writeFile(path.join(root, "Loop", "settled.luau"), "");
 			await waitFor(() =>

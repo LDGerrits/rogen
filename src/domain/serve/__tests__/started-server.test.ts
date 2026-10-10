@@ -106,6 +106,9 @@ describe("StartedServer", () => {
 
 		expect(served).toHaveLength(1);
 		expect(served[0].info.project).toBe("repo");
+		expect(
+			await records.read(target.address, served[0].info)
+		).toBeDefined();
 		await server.unrecord();
 		expect(
 			await records.read(target.address, served[0].info)
@@ -137,6 +140,25 @@ describe("StartedServer", () => {
 
 		expect(served).toEqual([]);
 		expect(requests.requested.length).toBeGreaterThan(2);
+	});
+
+	it("should ask again after 200ms, then at doubling gaps up to one second", async () => {
+		start();
+		const askedAfter = async (ms: number) => {
+			await jest.advanceTimersByTimeAsync(ms);
+			return requests.requested.filter((url) => url === ROJO_URL).length;
+		};
+
+		expect(await askedAfter(199)).toBe(0);
+		expect(await askedAfter(1)).toBe(1);
+		expect(await askedAfter(399)).toBe(1);
+		expect(await askedAfter(1)).toBe(2);
+		expect(await askedAfter(799)).toBe(2);
+		expect(await askedAfter(1)).toBe(3);
+		expect(await askedAfter(999)).toBe(3);
+		expect(await askedAfter(1)).toBe(4);
+		expect(await askedAfter(999)).toBe(4);
+		expect(await askedAfter(1)).toBe(5);
 	});
 
 	it("should pass on what the server says", async () => {
@@ -184,6 +206,47 @@ describe("StartedServer", () => {
 		expect(stops[0]).toMatchObject({ interrupted: true });
 		expect(stops[0].failure).toBeUndefined();
 		expect(stops[0].exitCode).toBeUndefined();
+	});
+
+	it("should name the signal when a signal ended it", () => {
+		start().exit({ code: null, signal: "SIGKILL" });
+
+		expect(stops[0]).toMatchObject({
+			exitCode: 1,
+			failure: {
+				message: expect.stringContaining(
+					"stopped serving default with signal SIGKILL"
+				),
+			},
+		});
+	});
+
+	it("should stop without a failure when it exits cleanly on its own", () => {
+		start().exit({ code: 0, signal: null });
+
+		expect(stops).toHaveLength(1);
+		expect(stops[0]).toMatchObject({ interrupted: false });
+		expect(stops[0].failure).toBeUndefined();
+		expect(stops[0].exitCode).toBeUndefined();
+	});
+
+	it.each([
+		{ code: 143, signal: null },
+		{ code: 0xc000013a, signal: null },
+		{ code: null, signal: "SIGINT" },
+		{ code: null, signal: "SIGTERM" },
+	] as const)("should count %j as an interruption", (exit) => {
+		start().exit(exit);
+
+		expect(stops[0]).toMatchObject({ interrupted: true });
+		expect(stops[0].failure).toBeUndefined();
+	});
+
+	it("should show a Windows status code in hex", () => {
+		start().exit({ code: 0xc0000005, signal: null });
+
+		expect(stops[0].failure?.message).toContain("exit code 0xC0000005");
+		expect(stops[0].exitCode).toBe(0xc0000005);
 	});
 
 	it("should fail with exit code 1 when it couldn't start", () => {

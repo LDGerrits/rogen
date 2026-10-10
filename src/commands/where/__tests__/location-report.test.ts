@@ -12,7 +12,6 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { LocationReport } from "../location-report.js";
 
-/** A report of what each labelled config said; `everyFile` when no path was asked about. */
 const reportOf = (
 	configs: [
 		label: string,

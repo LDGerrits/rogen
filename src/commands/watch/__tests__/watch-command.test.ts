@@ -518,7 +518,6 @@ describe("watch command", () => {
 					throw new Error("boom");
 				}
 			);
-			// Keeps the watcher reporting, so only the session's own subscriptions can react.
 			jest.spyOn(watcher, "stop").mockResolvedValue();
 			await startWatch();
 			const rename = jest.spyOn(memFs, "rename");
