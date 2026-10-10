@@ -119,6 +119,9 @@ describe("ConfigSet naming", () => {
 			[[" "], "can't be empty"],
 			[["a/b"], "path separators"],
 			[[".."], "path separators"],
+			[["a:b"], `can't contain ":"`],
+			[["a*b"], `can't contain "*"`],
+			[["a\nb"], "control characters"],
 			[["template"], "over template.project.json"],
 		])("should reject %j", (names, message) => {
 			const result = ConfigSet.parseName(names);

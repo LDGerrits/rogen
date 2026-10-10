@@ -72,6 +72,15 @@ export class ConfigSet {
 				)
 			);
 		}
+		// eslint-disable-next-line no-control-regex
+		const unfit = /[<>:"|?*\u0000-\u001f]/.exec(name);
+		if (unfit) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: it can't contain ${unfit[0] < " " ? "control characters" : `"${unfit[0]}"`}.`
+				)
+			);
+		}
 		if (projectFileName(name) === TEMPLATE_FILE) {
 			return err(
 				new UsageError(

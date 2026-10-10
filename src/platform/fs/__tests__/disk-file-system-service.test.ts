@@ -62,26 +62,24 @@ describe("DiskFileSystemService", () => {
 		const canDenyAccess =
 			process.platform !== "win32" && process.getuid?.() !== 0;
 
-		(canDenyAccess ? it : it.skip)(
-			"should list a link to a place it may not look into as a bare link",
-			async () => {
-				const locked = path.join(dir, "locked");
-				fs.mkdirSync(locked);
-				fs.writeFileSync(path.join(locked, "secret.txt"), "");
-				fs.symlinkSync(
-					path.join(locked, "secret.txt"),
-					path.join(dir, "link")
-				);
-				fs.chmodSync(locked, 0o000);
-				try {
-					expect(await disk.readDirectory(dir)).toContainEqual([
-						"link",
-						FileType.SymbolicLink,
-					]);
-				} finally {
-					fs.chmodSync(locked, 0o755);
-				}
+		it("should list a link to a place it may not look into as a bare link", async () => {
+			if (!canDenyAccess) return;
+			const locked = path.join(dir, "locked");
+			fs.mkdirSync(locked);
+			fs.writeFileSync(path.join(locked, "secret.txt"), "");
+			fs.symlinkSync(
+				path.join(locked, "secret.txt"),
+				path.join(dir, "link")
+			);
+			fs.chmodSync(locked, 0o000);
+			try {
+				expect(await disk.readDirectory(dir)).toContainEqual([
+					"link",
+					FileType.SymbolicLink,
+				]);
+			} finally {
+				fs.chmodSync(locked, 0o755);
 			}
-		);
+		});
 	});
 });
