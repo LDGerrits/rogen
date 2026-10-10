@@ -10,17 +10,17 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
+	BuildRun,
+	BuildSet,
 	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
 	OutputFile,
+	SyncTool,
 	UnloadedBuild,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";
-import { BuildRun } from "./build-run.js";
-import { BuildSet } from "./build-set.js";
-import { SyncTool } from "./sync-tool.js";
 import {
 	BuildService,
 	Diagnosed,

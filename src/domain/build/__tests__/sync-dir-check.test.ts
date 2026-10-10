@@ -3,7 +3,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { SyncTool } from "../sync-tool.js";
+import { SyncTool } from "../build.js";
 import { SyncDirCheck } from "../sync-dir-check.js";
 import {
 	abs,

@@ -1,4 +1,4 @@
-import { SyncTool } from "../sync-tool.js";
+import { SyncTool } from "../build.js";
 import { SyncLayout } from "../sync-layout.js";
 import { commonAncestor } from "../../../base/path.js";
 import { abs, configOf, syncTools } from "./fixtures.js";

@@ -10,7 +10,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
-import { SharedDiagnostics } from "../../domain/build/build-run.js";
+import { SharedDiagnostics } from "../../domain/build/build.js";
 import { BuildLog, joinNotes, sameNote } from "../build/build-log.js";
 
 interface WatchChange {

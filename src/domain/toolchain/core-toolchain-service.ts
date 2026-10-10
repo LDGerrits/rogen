@@ -1,6 +1,6 @@
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Luau } from "./luau.js";
-import { SyncTool } from "../build/sync-tool.js";
+import { SyncTool } from "../build/build.js";
 import { TestRunnerDetector } from "./test-runner-detector.js";
 import { ROBLOX_TS_SYNC_TOOL, RobloxTsDetector } from "./roblox-ts.js";
 import { Darklua, DetectedWorkspace } from "./toolchain.js";

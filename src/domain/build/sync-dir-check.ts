@@ -12,7 +12,7 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { Placement } from "./placement.js";
 import { SyncLayout } from "./sync-layout.js";
-import { MetaReplacement } from "./sync-tool.js";
+import { MetaReplacement } from "./build.js";
 
 const LISTED_PATHS = 3;
 

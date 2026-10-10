@@ -12,8 +12,7 @@ import {
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { LoadedBuild } from "../build.js";
-import { BuildSet } from "../build-set.js";
+import { BuildSet, LoadedBuild } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 

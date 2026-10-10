@@ -15,13 +15,7 @@ const layersAbove = {
 // The files other modules of a layer may import; everything else in a module is internal.
 const modules = {
 	domain: {
-		build: [
-			"build",
-			"build-run",
-			"build-service",
-			"build-set",
-			"sync-tool",
-		],
+		build: ["build", "build-service"],
 		config: ["config", "config-service"],
 		init: ["init-service"],
 		legacy: ["legacy-config"],
