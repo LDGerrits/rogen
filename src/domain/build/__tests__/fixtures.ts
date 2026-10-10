@@ -17,8 +17,12 @@ import {
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { ConfigLocations, SyncTool } from "../build.js";
-import { BuildService, LocateTargets } from "../build-service.js";
+import { SyncTool } from "../build.js";
+import {
+	BuildService,
+	ConfigLocations,
+	LocateTargets,
+} from "../build-service.js";
 import { BuiltConfig, ConfigBuilder } from "../config-builder.js";
 import { CoreBuildService } from "../core-build-service.js";
 import { Placement, Placer } from "../placement.js";

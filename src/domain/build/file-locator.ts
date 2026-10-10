@@ -4,7 +4,7 @@ import { ancestors, contains, toPosix } from "../../base/path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { InstanceReference } from "../roblox/roblox.js";
-import { FileLocation, PlacedLocation } from "./build.js";
+import { FileLocation, PlacedLocation } from "./build-service.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 

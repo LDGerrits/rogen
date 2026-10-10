@@ -15,13 +15,12 @@ import {
 	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
-	Locations,
 	OutputFile,
 	SyncTool,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";
-import { BuildService, LocateTargets } from "./build-service.js";
+import { BuildService, LocateTargets, Locations } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { Locator } from "./locator.js";
 import { OutputWriter } from "./output-writer.js";

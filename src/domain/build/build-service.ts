@@ -1,10 +1,119 @@
+import path from "path";
 import { Result } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	RenameFix,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { BuildRun, BuildSet, LoadedBuild, Locations } from "./build.js";
+import {
+	InstanceReference,
+	requireExpression,
+	whyNotRequirable,
+} from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
+import {
+	BuildRun,
+	BuildSet,
+	LeftOut,
+	LoadedBuild,
+	RouteMatch,
+	VariantMatch,
+} from "./build.js";
+
+interface Located {
+	/** An absolute POSIX path. */
+	readonly source: string;
+	/** Whether the path is there now, rather than only placed as it would be once created. */
+	readonly exists: boolean;
+}
+
+export interface PlacedLocation extends Located {
+	readonly status: "placed";
+	readonly instancePath: readonly string[];
+	/** The other nodes an init script is, where its folder becomes a node in another route; only a copied init script has them. */
+	readonly alsoAt?: readonly (readonly string[])[];
+	readonly route: string;
+	readonly routeMatch: RouteMatch;
+	/** The active variants the file carries. */
+	readonly variants: readonly VariantMatch[];
+	/** A `^` on its name or a folder's took it straight to the route's target. */
+	readonly hoisted?: boolean;
+	/** The path was named as a file, and not found in a folder or behind an instance. */
+	readonly named?: true;
+}
+
+export interface UnplacedLocation extends Located {
+	/** `ignored` exists but isn't an instance. */
+	readonly status: "outside" | "ignored" | "missing" | "empty";
+	/** A `missing` path that is named as a folder, by ending in a separator. */
+	readonly folder?: true;
+}
+
+/** Where a path lands in the tree, or why it lands nowhere. */
+export type FileLocation =
+	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
+
+/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
+export function requireOf(location: FileLocation): string | undefined {
+	return location.status === "placed" &&
+		new RojoFile(path.posix.basename(location.source)).isLuauModule
+		? requireExpression(location.instancePath)
+		: undefined;
+}
+
+/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
+export function requirementOf(location: FileLocation): string | undefined {
+	if (location.status !== "placed" || !location.named) return undefined;
+	const file = new RojoFile(path.posix.basename(location.source));
+	if (!file.isLuau) return undefined;
+	if (!file.isLuauModule)
+		return "no require by this path: a script runs on its own and is not a module";
+	const expression = requireExpression(location.instancePath);
+	if (expression) return `require(${expression})`;
+	const reason = whyNotRequirable(location.instancePath);
+	return reason && `no require by this path: ${reason}`;
+}
+
+/** The files placed at an instance or inside it; none when no file places it. */
+export interface InstanceLocation {
+	readonly reference: InstanceReference;
+	readonly files: readonly PlacedLocation[];
+	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
+	readonly folders: readonly string[];
+	/** When no file places it: the renames of files that would, from the diagnostics that propose them. */
+	readonly fixes: readonly InstanceFix[];
+}
+
+/** A rename, proposed by the diagnostic `code`, after which a file places the instance. Paths are absolute POSIX. */
+export interface InstanceFix {
+	readonly code: string;
+	readonly rename: RenameFix["rename"];
+}
+
+/** Where `locate` found things in one config. */
+export interface ConfigLocations {
+	readonly config: ResolvedConfig;
+	/** One per path argument; every file when no argument was given. */
+	readonly files: readonly FileLocation[];
+	/** One per instance argument. */
+	readonly instances: readonly InstanceLocation[];
+	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
+	readonly diagnostics: readonly Diagnostic[];
+}
+
+/** What `locate` found, config by config. */
+export interface Locations {
+	/** No path or instance was asked about, so `files` holds every file. */
+	readonly everyFile: boolean;
+	/** The configs that load; each answers for itself. */
+	readonly configs: readonly ConfigLocations[];
+	/** Why the configs that didn't load did not answer. */
+	readonly errors: readonly Diagnostic[];
+}
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateTargets {

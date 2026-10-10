@@ -8,7 +8,7 @@ import {
 	Locations,
 	requireOf,
 	requirementOf,
-} from "../../domain/build/build.js";
+} from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,

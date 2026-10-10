@@ -15,15 +15,15 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
+import { SyncTool } from "./build.js";
 import {
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
 	InstanceLocation,
+	LocateTargets,
 	Locations,
-	SyncTool,
-} from "./build.js";
-import { LocateTargets } from "./build-service.js";
+} from "./build-service.js";
 import { ConfigBuilder } from "./config-builder.js";
 import { FileLocator, placesInstance } from "./file-locator.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
