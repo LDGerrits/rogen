@@ -152,16 +152,16 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should prune a ^ init script whose variant is off, rather than refuse it", async () => {
+			it("should refuse a ^ on an init script whose variant is off too", async () => {
 				await write("src/Net/^init.mock.luau", "src/Net/A.luau");
 
-				const { leftOut } = (
-					await route({ variants: { mock: false } })
-				).unwrap();
+				const result = await route({ variants: { mock: false } });
 
 				expect(
-					leftOut.get(abs("src/Net/^init.mock.luau"))?.status
-				).toBe("pruned");
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{ code: "tree.hoistedInit", resource: abs("src/Net") },
+				]);
 			});
 
 			it("should say a copied init script of a ^ folder was hoisted", async () => {
@@ -485,16 +485,13 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should let markers that agree, variant markers and a dormant init script's route stand together", async () => {
+			it("should let markers that agree and variant markers stand together", async () => {
 				await write(
 					"src/C/@server",
 					"src/C/init@server.luau",
 					"src/C/.mock",
 					"src/C/.dev",
 					"src/C/X.luau",
-					"src/D/@server",
-					"src/D/init.prod@client.luau",
-					"src/D/Y.luau",
 					"src/E/@server",
 					"src/E/@Server",
 					"src/E/Z.luau"
@@ -502,7 +499,7 @@ describe("Router", () => {
 
 				const result = (
 					await route({
-						variants: { mock: true, dev: true, prod: false },
+						variants: { mock: true, dev: true },
 					})
 				).unwrap();
 
@@ -511,33 +508,30 @@ describe("Router", () => {
 				).toEqual([
 					"ServerScriptService/C/X",
 					"ServerScriptService/C",
-					"ServerScriptService/D/Y",
 					"ServerScriptService/E/Z",
 				]);
 				expect(result.warnings).toEqual([]);
 			});
 
-			it("should let an active variant's init script route its folder, since the plain one it replaces can't be placed", async () => {
-				await write(
-					"src/C/init@server.luau",
-					"src/C/init.mock@client.luau",
-					"src/C/X.luau"
-				);
+			it.each([true, false])(
+				"should refuse init scripts whose variants route their folder differently, with the variant on or off (mock: %s)",
+				async (mock) => {
+					await write(
+						"src/C/init@server.luau",
+						"src/C/init.mock@client.luau",
+						"src/C/X.luau"
+					);
 
-				const placed = async (mock: boolean) =>
-					(await route({ variants: { mock } }))
-						.unwrap()
-						.files.map((file) => file.instancePath.join("/"));
+					const result = await route({ variants: { mock } });
 
-				expect(await placed(true)).toEqual([
-					"StarterPlayer/StarterPlayerScripts/C/X",
-					"StarterPlayer/StarterPlayerScripts/C",
-				]);
-				expect(await placed(false)).toEqual([
-					"ServerScriptService/C/X",
-					"ServerScriptService/C",
-				]);
-			});
+					expect(
+						result.isErr() &&
+							result.error.diagnostics.map(
+								({ code, resource }) => [code, resource]
+							)
+					).toEqual([["route.markerClash", abs("src/C")]]);
+				}
+			);
 
 			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
 				await write("src/I/init@client@server.luau", "src/I/X.luau");
@@ -600,6 +594,20 @@ describe("Router", () => {
 					],
 					["route.ignoredAt", abs("src/server/Ui@client")],
 					["route.ignoredAt", abs("src/server/Util@client.luau")],
+				]);
+			});
+
+			it("should refuse it on a file whose variant is off", async () => {
+				await write(
+					"src/server/Util.mock@client.luau",
+					"src/server/Util.luau"
+				);
+
+				expect(await errors({ variants: { mock: false } })).toEqual([
+					[
+						"route.ignoredAt",
+						abs("src/server/Util.mock@client.luau"),
+					],
 				]);
 			});
 
@@ -700,18 +708,6 @@ describe("Router", () => {
 						},
 					})
 				).toEqual([]);
-			});
-
-			it("should not report a file a dormant variant prunes", async () => {
-				await write("src/server/Util.mock@client.luau");
-
-				expect(await errors({ variants: { mock: false } })).toEqual([]);
-				expect(await errors({ variants: { mock: true } })).toEqual([
-					[
-						"route.ignoredAt",
-						abs("src/server/Util.mock@client.luau"),
-					],
-				]);
 			});
 
 			it("should take an @ that restates the governing route at any depth as that route, silently", async () => {
@@ -1251,6 +1247,108 @@ describe("Router", () => {
 			});
 		});
 
+		describe("a variant that lands elsewhere", () => {
+			const elsewhere = async (mock: boolean) => {
+				const result = await route({ variants: { mock } });
+				return result.isErr()
+					? result.error.diagnostics
+							.filter(
+								({ code }) => code === "variant.landsElsewhere"
+							)
+							.map(({ resource }) => resource)
+					: [];
+			};
+
+			it.each([true, false])(
+				"should refuse a variant that a route suffix, a marker or a ^ lands apart from the plain file beside it (mock: %s)",
+				async (mock) => {
+					await write(
+						"src/Analytics.luau",
+						"src/Analytics.mock@server.luau",
+						"src/A/Service.luau",
+						"src/A/mock/@server",
+						"src/A/mock/Service.luau",
+						"src/B/Hud.luau",
+						"src/B/^Hud.mock.luau",
+						"src/Net/init.luau",
+						"src/Net/Remote.luau",
+						"src/Net/mock/@client",
+						"src/Net/mock/init.luau"
+					);
+
+					expect(await elsewhere(mock)).toEqual([
+						abs("src/A/mock/Service.luau"),
+						abs("src/Analytics.mock@server.luau"),
+						abs("src/B/^Hud.mock.luau"),
+						abs("src/Net/mock/init.luau"),
+					]);
+				}
+			);
+
+			it("should say where each lands and how to fix it", async () => {
+				await write(
+					"src/Analytics.luau",
+					"src/Analytics.mock@server.luau"
+				);
+
+				const result = await route({ variants: { mock: true } });
+
+				expect(
+					result.isErr() && result.error.diagnostics[0].message
+				).toBe(
+					`lands at "ServerScriptService/Analytics", but ${abs("src/Analytics.luau")}, which it is a variant of, lands at "ReplicatedStorage/shared/Analytics", so both would ship. Route and hoist them the same way.`
+				);
+			});
+
+			it("should leave a clash in a folder above it, or an @ an outer route ignores, to that error", async () => {
+				await write(
+					"src/A/Service.luau",
+					"src/A/mock/@server",
+					"src/A/mock/@client",
+					"src/A/mock/dev/Service.luau",
+					"src/server/Save@client.luau",
+					"src/server/Save.mock.luau"
+				);
+
+				const result = await route({
+					variants: { mock: true, dev: true },
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+				).toEqual([
+					["route.markerClash", abs("src/A/mock")],
+					["route.ignoredAt", abs("src/server/Save@client.luau")],
+				]);
+			});
+
+			it("should accept a variant beside plain files when it lands with one of them, or with nothing beside it", async () => {
+				await write(
+					"src/Types.luau",
+					"src/Types@server.luau",
+					"src/Types.mock.luau",
+					"src/A/X.luau",
+					"src/A/server/X.mock.luau",
+					"src/C/Probe.mock@server.luau",
+					"src/Analytics.mock/Service.luau",
+					"src/Analytics/Service.luau",
+					"src/D/(Internals)/Foo.mock.luau",
+					"src/D/Internals/Foo.luau",
+					"src/E/^Net/Http.mock.luau",
+					"src/E/Net/Http.luau"
+				);
+
+				expect(await elsewhere(true)).toEqual([]);
+				expect((await route({ variants: { mock: true } })).isOk()).toBe(
+					true
+				);
+			});
+		});
+
 		describe("init folders", () => {
 			const placed = async (overrides: ResolvedConfigSpec = {}) =>
 				placedLines((await route(overrides)).unwrap().files);
@@ -1296,7 +1394,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should leave the folder to its other files when the init script that routes it has a dormant variant", async () => {
+			it("should route the folder by its init scripts whichever variants are on, so a variant swaps the script without moving what sits beside it", async () => {
 				await write(
 					"src/Combat/init.luau",
 					"src/Combat/init.mock.server.luau",
@@ -1304,8 +1402,8 @@ describe("Router", () => {
 				);
 
 				expect(await placed({ variants: { mock: false } })).toEqual([
-					"Combat/Helper.luau -> ReplicatedStorage/shared/Combat/Helper",
-					"Combat/init.luau -> ReplicatedStorage/shared/Combat",
+					"Combat/Helper.luau -> ServerScriptService/Combat/Helper",
+					"Combat/init.luau -> ServerScriptService/Combat",
 				]);
 				expect(await placed({ variants: { mock: true } })).toEqual([
 					"Combat/Helper.luau -> ServerScriptService/Combat/Helper",
@@ -1341,11 +1439,19 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should not fail for an init script with no folder that a dormant variant prunes", async () => {
-				await write("src/init.mock.luau", "src/Save.luau");
+			it("should fail for an init script with no folder even while its variant is off", async () => {
+				await write("src/init.mock.luau", "src/mock/init.luau");
 
-				expect(await paths({ variants: { mock: false } })).toEqual([
-					"ReplicatedStorage/shared/Save",
+				const result = await route({ variants: { mock: false } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(
+							({ code, resource }) => `${code} ${resource}`
+						)
+				).toEqual([
+					`tree.initWithoutFolder ${abs("src/init.mock.luau")}`,
+					`tree.initWithoutFolder ${abs("src/mock/init.luau")}`,
 				]);
 			});
 

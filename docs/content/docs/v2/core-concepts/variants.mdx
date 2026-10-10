@@ -59,6 +59,8 @@ Since variants are declared, other dotted names like `Button.spec.luau` are left
 
 Put the variant before an `@` route and Rojo's suffix last: `Analytics.mock@server.luau`, `Save.mock.server.luau`. Rogen warns about `Save.server.mock.luau`, which Rojo would read as a `ModuleScript`.
 
+Rogen reads names the same way in every build. Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off, so a build with every variant off still catches it.
+
 ## Variant Folders
 
 A folder named after a variant never appears in the tree. When the variant is active, its contents move up into the parent; when it's dormant, the whole folder is pruned. That lets you swap implementations without touching a `require`:
@@ -70,7 +72,11 @@ src/Analytics/prod/Service.luau  ->  pruned              (prod dormant)
 
 ## Precedence
 
-Within one root directory, a variant quietly replaces the plain file of the same name. Two active variants claiming the same name are an error, and two plain files get a warning. Across root directories, the last one wins.
+Within one root directory, the files that land on one instance compete, and the active file with the most variants wins quietly. It has to have every variant the others have: a plain file has none, so any variant replaces it, and `mock/Service.dev.luau` (mock and dev) replaces `mock/Service.luau` (mock). Two active files where neither has all of the other's variants, like `Service.mock.luau` and `Service.dev.luau`, are an error. Two plain files get a warning. Across root directories, the last one wins.
+
+Nesting means "and": `mock/dev/Service.luau` is used only while both `mock` and `dev` are on.
+
+A variant has to land where the plain file beside it does, or it would ship next to it instead of replacing it. `Analytics.mock@server.luau` beside `Analytics.luau` is an error, as is a `^` or a route marker that only one of them has. Route them the same way: `Analytics.mock@server.luau` beside `Analytics@server.luau`.
 
 Variants are independent switches, but a set of alternatives like `dev/Service.luau` and `prod/Service.luau` is meant to have one of them on. With both off, `Service` is missing and whatever requires it fails in Studio, so Rogen warns:
 

@@ -49,14 +49,14 @@ describe("where command", () => {
 		});
 		await write(
 			"src/Net/Http@client.luau",
-			"src/Net/Http.mock.luau",
+			"src/Net/Http.mock@client.luau",
 			"src/Util.luau"
 		);
 
 		const result = await run({
 			_: [
 				"src/Net/Http@client.luau",
-				"src/Net/Http.mock.luau",
+				"src/Net/Http.mock@client.luau",
 				"src/Util.luau",
 				"src/Combat/Server/Hit.luau",
 			],
@@ -65,7 +65,7 @@ describe("where command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
-			"src/Net/Http.mock.luau -> pruned · variant mock is off (suffix)",
+			"src/Net/Http.mock@client.luau -> pruned · variant mock is off (suffix)",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);

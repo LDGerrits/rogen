@@ -9,6 +9,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader } from "./name-reader.js";
@@ -18,6 +19,7 @@ import { RootScanner, ScannedRoot } from "./root-scanner.js";
 import {
 	HoistedInit,
 	InitWithoutFolder,
+	LandsElsewhere,
 	MarkerClash,
 	RoutedFile,
 	Router,
@@ -58,26 +60,26 @@ export class Placer {
 			withoutFolder,
 			hoistedInits,
 			markerClashes,
+			landsElsewhere,
 		} = new Router(this.config, readings, this.layout.initNames).route(
 			roots
 		);
-		const clashErrors = this.markerClashErrors(markerClashes);
-		const initErrors = [
+		const routeErrors = [
+			...this.markerClashErrors(markerClashes),
+			...this.ignoredAtErrors(
+				routed.filter((file) => !this.template.displacing(file)),
+				markerClashes
+			),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
+			...this.landsElsewhereErrors(landsElsewhere, markerClashes),
 		];
 		const routedNodes = this.initScripts.withCopies(routed, toCopy);
 		const applied = this.variants.apply(routedNodes);
-		if (applied.isErr())
-			return err([...clashErrors, ...initErrors, ...applied.error]);
+		if (applied.isErr()) return err([...routeErrors, ...applied.error]);
+		if (routeErrors.length > 0) return err(routeErrors);
 		const nodes = this.initScripts.withoutLoneInits(applied.value.nodes);
 		const templating = this.yieldToTemplate(nodes);
-		const routeErrors = [
-			...clashErrors,
-			...this.ignoredAtErrors(templating.nodes, markerClashes),
-			...initErrors,
-		];
-		if (routeErrors.length > 0) return err(routeErrors);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
@@ -131,7 +133,7 @@ export class Placer {
 		);
 	}
 
-	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, among the files that land. A marker in a clash is that error's. */
+	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, whichever variants are on, unless the template displaces the file. A marker in a clash is that error's. */
 	private ignoredAtErrors(
 		nodes: readonly RoutedFile[],
 		markerClashes: readonly MarkerClash[]
@@ -180,31 +182,49 @@ export class Placer {
 	private withoutFolderErrors(
 		withoutFolder: readonly InitWithoutFolder[]
 	): Diagnostic[] {
-		return withoutFolder
-			.filter(({ variants }) => this.config.allVariantsOn(variants))
-			.map(({ source, folder }) =>
-				errorDiagnostic(
-					"tree.initWithoutFolder",
-					{ resource: source },
-					`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
-				)
-			);
+		return withoutFolder.map(({ source, folder }) =>
+			errorDiagnostic(
+				"tree.initWithoutFolder",
+				{ resource: source },
+				`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
+			)
+		);
 	}
 
 	/** The script is its folder, so a `^` on it hoists nothing the folder couldn't. */
 	private hoistedInitErrors(
 		hoistedInits: readonly HoistedInit[]
 	): Diagnostic[] {
-		return hoistedInits
-			.filter(({ variants }) => this.config.allVariantsOn(variants))
-			.map(({ source }) => {
-				const folder = path.posix.dirname(source);
-				return errorDiagnostic(
-					"tree.hoistedInit",
-					{ resource: folder },
-					`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
+		return hoistedInits.map(({ source }) => {
+			const folder = path.posix.dirname(source);
+			return errorDiagnostic(
+				"tree.hoistedInit",
+				{ resource: folder },
+				`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
+			);
+		});
+	}
+
+	/** A variant that lands apart from the plain file beside it replaces nothing, so both would ship. A clash in a folder above it is that error's. */
+	private landsElsewhereErrors(
+		landsElsewhere: readonly LandsElsewhere[],
+		markerClashes: readonly MarkerClash[]
+	): Diagnostic[] {
+		return landsElsewhere
+			.filter(({ file }) => {
+				const dir = path.posix.dirname(file.entry.source);
+				return !markerClashes.some(
+					(clash) =>
+						dir === clash.dir || dir.startsWith(`${clash.dir}/`)
 				);
-			});
+			})
+			.map(({ file, plain }) =>
+				errorDiagnostic(
+					"variant.landsElsewhere",
+					{ resource: file.entry.source },
+					`lands at "${instanceKey(file.instancePath)}", but ${plain.entry.source}, which it is a variant of, lands at "${instanceKey(plain.instancePath)}", so both would ship. Route and hoist them the same way.`
+				)
+			);
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */

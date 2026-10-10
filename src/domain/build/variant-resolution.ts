@@ -69,7 +69,7 @@ export class VariantResolution {
 		return { kept, pruned };
 	}
 
-	/** The file that gives each instance path, per root dir: a variant file over plain ones, else the last plain one. Two variant files on one path can't both apply. */
+	/** The file that gives each instance path, per root dir: the one whose active variants include every other claimant's, else the last plain one. Two files neither of which has all of the other's variants can't both apply. */
 	private resolveClaimants(kept: readonly RoutedFile[]): Result<
 		{
 			winners: InstanceMap<RoutedFile>;
@@ -89,12 +89,11 @@ export class VariantResolution {
 			for (const [instance, claimants] of groupBy(root, (file) =>
 				instanceKey(file.instancePath)
 			)) {
-				const variantFiles = claimants.filter(
+				const top = VariantResolution.mostSpecific(claimants);
+				const variantFiles = top.filter(
 					(file) => file.variants.length > 0
 				);
-				const plain = claimants.filter(
-					(file) => file.variants.length === 0
-				);
+				const plain = top.filter((file) => file.variants.length === 0);
 				if (variantFiles.length > 1) {
 					for (const { entry } of variantFiles) {
 						if (reported.has(entry.source)) continue;
@@ -123,5 +122,21 @@ export class VariantResolution {
 		return problems.hasErrors
 			? err([...problems.diagnostics])
 			: ok({ winners, clashes });
+	}
+
+	/** The claimants no other outranks by having every variant they have and more; a plain file has none, so any variant file outranks it. */
+	private static mostSpecific(
+		claimants: readonly RoutedFile[]
+	): RoutedFile[] {
+		const sets = claimants.map(
+			(file) => new Set(file.variants.map(({ variant }) => variant))
+		);
+		return claimants.filter((_, index) =>
+			sets.every(
+				(other) =>
+					other.size <= sets[index].size ||
+					[...sets[index]].some((variant) => !other.has(variant))
+			)
+		);
 	}
 }

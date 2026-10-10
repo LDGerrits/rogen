@@ -481,17 +481,17 @@ export class BuildValidator {
 	}
 
 	private buriedScriptSuffix(): Diagnostic[] {
-		const { routed, leftOut } = this.placement;
-		return routed.flatMap(({ entry, buriedScriptSuffix: suffix }) =>
-			suffix && leftOut.get(entry.source)?.status !== "pruned"
-				? [
-						warningDiagnostic(
-							"variant.buriedScriptSuffix",
-							{ resource: entry.source },
-							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
-						),
-					]
-				: []
+		return this.placement.routed.flatMap(
+			({ entry, buriedScriptSuffix: suffix }) =>
+				suffix
+					? [
+							warningDiagnostic(
+								"variant.buriedScriptSuffix",
+								{ resource: entry.source },
+								`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
+							),
+						]
+					: []
 		);
 	}
 

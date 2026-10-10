@@ -1,8 +1,9 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareStrings, groupBy } from "../../base/collections.js";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { RouteMatch, VariantMatch } from "./build.js";
 import { NameReader, SuffixSpan } from "./name-reader.js";
 import {
@@ -63,7 +64,6 @@ export interface IgnoredAt {
 /** An init script written `^init`: the script is its folder, so only the folder can take the `^`. */
 export interface HoistedInit {
 	readonly source: string;
-	readonly variants: readonly VariantMatch[];
 }
 
 /** A directory whose markers, an init script's route suffix among them, route its folder to more than one place. */
@@ -74,10 +74,15 @@ export interface MarkerClash {
 	readonly names: readonly string[];
 }
 
+/** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
+export interface LandsElsewhere {
+	readonly file: RoutedFile;
+	readonly plain: RoutedFile;
+}
+
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
 export interface InitWithoutFolder {
 	readonly source: string;
-	readonly variants: readonly VariantMatch[];
 	/** The folder it sits in. */
 	readonly folder: InstancelessFolder;
 }
@@ -196,6 +201,7 @@ export interface Routing {
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
 	readonly markerClashes: MarkerClash[];
+	readonly landsElsewhere: LandsElsewhere[];
 }
 
 /** Finds each scanned file's governing route and instance path. */
@@ -203,7 +209,7 @@ export class Router {
 	private readonly keys: DeclaredKeys;
 
 	constructor(
-		/** Its routes, and which declared variants are on, since only an init script that can be placed routes its folder. */
+		/** Its routes and keys; never which variants are on, so a file routes the same in every build. */
 		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings,
 		/** The script names that make a file its folder. */
@@ -212,7 +218,7 @@ export class Router {
 		this.keys = config.keys;
 	}
 
-	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the directories whose markers disagree. */
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; the directories whose markers disagree; and the variant files that land apart from the plain file beside them. */
 	route(roots: readonly ScannedRoot[]): Routing {
 		const routing: Routing = {
 			routed: [],
@@ -221,6 +227,7 @@ export class Router {
 			withoutFolder: [],
 			hoistedInits: [],
 			markerClashes: [],
+			landsElsewhere: [],
 		};
 		for (const root of roots) {
 			const dirs: DirClaims = {
@@ -228,10 +235,49 @@ export class Router {
 				initRoutes: this.initRoutesOf(root),
 			};
 			routing.markerClashes.push(...this.markerClashesOf(root, dirs));
+			const before = routing.routed.length;
 			for (const entry of root.entries)
 				this.routeEntry(entry, dirs, routing);
+			routing.landsElsewhere.push(
+				...this.landingElsewhere(routing.routed.slice(before))
+			);
 		}
 		return routing;
+	}
+
+	/** A variant file is an alternative of the plain file beside it, so it has to land where one of those does. */
+	private landingElsewhere(routed: readonly RoutedFile[]): LandsElsewhere[] {
+		const found: LandsElsewhere[] = [];
+		for (const beside of groupBy(routed, (file) =>
+			this.besideKeyOf(file)
+		).values()) {
+			const plain = beside.filter((file) => file.variants.length === 0);
+			const landings = new Set(
+				plain.map(({ instancePath }) => instanceKey(instancePath))
+			);
+			if (plain.length > 0)
+				for (const file of beside)
+					if (!landings.has(instanceKey(file.instancePath)))
+						found.push({ file, plain: plain[0] });
+		}
+		return found;
+	}
+
+	/** Where a file sits with its variants off: its directory without variant folders or the variants on its folders, and its instance name, or none for an init script. */
+	private besideKeyOf({ entry, instancePath, init }: RoutedFile): string {
+		const dirs = this.readings
+			.entryAt(entry.source)
+			.folders.flatMap((folder) =>
+				folder.variants.length > 0 &&
+				folder.keptName === undefined &&
+				folder.route === undefined
+					? []
+					: [
+							`${folder.invisible ? "()" : ""}${folder.hoisted ? "^" : ""}${folder.outrankedName}`,
+						]
+			);
+		const name = init ? "" : instancePath[instancePath.length - 1];
+		return `${joinPosix(entry.rootDir, ...dirs)}\n${name}`;
 	}
 
 	/** Adds `entry` to `routing` as what it turns out to be: hoisted, an init script without a folder, or a routed or unrouted file. */
@@ -242,16 +288,13 @@ export class Router {
 	): void {
 		const claimed = this.claim(entry, dirs);
 		if (claimed.leaf.isInit && claimed.leaf.hoisted) {
-			const { variants } = claimed.claims;
-			routing.hoistedInits.push({ source: entry.source, variants });
-			// A dormant one is pruned like any other file, so `where` still accounts for it.
-			if (this.config.allVariantsOn(variants)) return;
+			routing.hoistedInits.push({ source: entry.source });
+			return;
 		}
 		if (claimed.leaf.isInit && claimed.folders.length === 0) {
 			if (this.config.routes.has(claimed.claims.routeKey))
 				routing.withoutFolder.push({
 					source: entry.source,
-					variants: claimed.claims.variants,
 					folder: this.instancelessFolderOf(entry),
 				});
 			else routing.unrouted.push(entry.source);
@@ -321,65 +364,30 @@ export class Router {
 		return folder;
 	}
 
-	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, and a plain one an active variant's replaces isn't, so neither gives one. */
+	/** The routes each folder's init scripts give it, whichever variants are on, so turning one on never moves the files beside it. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
-		const placeable = new Map<
-			string,
-			{
-				stem: string;
-				spans: readonly SuffixSpan[];
-				source: string;
-				varied: boolean;
-			}[]
-		>();
-		for (const entry of root.entries) {
-			const read = this.readings.entryAt(entry.source);
-			if (!this.isInitEntry(read)) continue;
-			const {
-				stem,
-				match: { spans },
-			} = read;
-			const variants = spans
-				.filter(({ key }) => this.keys.isVariant(key))
-				.map((span) => this.asVariantMatch(span));
-			if (!this.config.allVariantsOn(variants)) continue;
-			const dir = dirnamePosix(entry.relativePath);
-			placeable.set(dir, [
-				...(placeable.get(dir) ?? []),
-				{
-					stem,
-					spans,
-					source: entry.source,
-					varied: variants.length > 0,
-				},
-			]);
-		}
 		const routes = new Map<
 			string,
 			{ key: string; source: string; at: boolean }[]
 		>();
-		for (const [dir, inits] of placeable) {
-			const varied = inits.some((init) => init.varied);
+		for (const entry of root.entries) {
+			const read = this.readings.entryAt(entry.source);
+			if (!this.isInitEntry(read)) continue;
+			const { stem, match } = read;
 			// Only the last `@key` of a name routes; the ones before it are outranked.
-			routes.set(
-				dir,
-				inits
-					.filter((init) => init.varied || !varied)
-					.flatMap(({ stem, spans, source }) => {
-						const governing = spans.find(({ key }) =>
-							this.keys.isRoute(key)
-						);
-						return governing
-							? [
-									{
-										key: governing.key,
-										source,
-										at: stem[governing.start] === "@",
-									},
-								]
-							: [];
-					})
+			const governing = match.spans.find(({ key }) =>
+				this.keys.isRoute(key)
 			);
+			if (!governing) continue;
+			const dir = dirnamePosix(entry.relativePath);
+			routes.set(dir, [
+				...(routes.get(dir) ?? []),
+				{
+					key: governing.key,
+					source: entry.source,
+					at: stem[governing.start] === "@",
+				},
+			]);
 		}
 		return routes;
 	}

@@ -391,13 +391,13 @@ Rename the folder to the key suggested, or, when the key in your config is the t
 
 ### `route.markerClash` [#route-markerclash]
 
-Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
+Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too, as does `init@server.luau` beside `init.mock@client.luau`, whether or not `mock` is on. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
 
 ```
 src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)
 ```
 
-Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. Where a file lands never depends on which variants are on, so init scripts of two variants, even ones that are never on together, can't send their folder to two places. Route the folder once, and put the files that only one variant sends elsewhere in a variant folder with its own marker, such as `Combat/dev/@server`. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -407,7 +407,7 @@ Error. A name or marker file has an `@key` inside a folder that another route al
 src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
 ```
 
-Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine, and a file that a dormant variant leaves out isn't reported. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine. A file that a dormant variant leaves out, or that a variant replaces, is reported too, since its name is wrong either way. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -458,13 +458,23 @@ Turn one of the variants on, by listing it in a mode or with `--variant`, or add
 
 ### `variant.activeClash` [#variant-activeclash]
 
-Error. Two files with active variants become the same instance, so Rogen can't tell which one to use.
+Error. Two files with active variants become the same instance, and neither has all of the other's variants, so Rogen can't tell which one to use. `Analytics.mock.luau` and `Analytics.dev.luau` clash; `mock/Analytics.dev.luau` has both variants, so it replaces `Analytics.mock.luau` instead.
 
 ```
 src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)
 ```
 
 Turn one of the variants off, by leaving it out of the mode or with `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+
+### `variant.landsElsewhere` [#variant-landselsewhere]
+
+Error. A variant file lands somewhere other than the plain file beside it, so it would ship next to that file instead of replacing it. A route suffix, a marker in a variant folder or a `^` that only one of them has does this. It's reported whether or not the variant is on.
+
+```
+src/Analytics.mock@server.luau - error: lands at "ServerScriptService/Analytics", but src/Analytics.luau, which it is a variant of, lands at "ReplicatedStorage/shared/Analytics", so both would ship. Route and hoist them the same way. (variant.landsElsewhere)
+```
+
+Give both files the same route and `^`: `Analytics.mock.luau` beside `Analytics.luau`, or `Analytics.mock@server.luau` beside `Analytics@server.luau`. The plain file beside a variant is the one with the same name once its variants and route are off, in the same folder once variant folders are left out. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
 ### `variant.buriedScriptSuffix` [#variant-buriedscriptsuffix]
 
