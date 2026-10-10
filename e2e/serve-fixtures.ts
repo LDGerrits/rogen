@@ -1,3 +1,4 @@
+import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
 /** The config and template every serve test starts from. */
@@ -23,7 +24,23 @@ export const projectFiles = (port: number) => ({
 	"src/A.server.luau": "",
 });
 
-/** A fresh project per test, served on a random port from `firstPort`; `start` takes another checkout's `dir`. */
+const isFree = (port: number) =>
+	new Promise<boolean>((resolve) => {
+		const probe = net.createServer();
+		probe.once("error", () => resolve(false));
+		probe.listen(port, "127.0.0.1", () => probe.close(() => resolve(true)));
+	});
+
+/** A port within 2000 of `firstPort` and the two after it, which a test may serve on, that nothing listens on. */
+async function freePort(firstPort: number): Promise<number> {
+	for (;;) {
+		const port = firstPort + Math.floor(Math.random() * 2000);
+		const free = await Promise.all([0, 1, 2].map((n) => isFree(port + n)));
+		if (free.every(Boolean)) return port;
+	}
+}
+
+/** A fresh project per test, served on a free port from `firstPort`; `start` takes another checkout's `dir`. */
 export function useServeProject(
 	firstPort: number,
 	files: Readonly<Record<string, string>> = {}
@@ -41,8 +58,8 @@ export function useServeProject(
 		bundle.dispose();
 	});
 
-	beforeEach(() => {
-		port = firstPort + Math.floor(Math.random() * 2000);
+	beforeEach(async () => {
+		port = await freePort(firstPort);
 		project = createProject({ ...files, ...projectFiles(port) });
 		sessions = [];
 	});
