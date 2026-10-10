@@ -30,8 +30,4 @@ export class CoreToolchainService implements ToolchainService {
 	detect(directory: string): Promise<DetectedWorkspace> {
 		return this.detector.detect(directory);
 	}
-
-	holdsCode(directory: string): Promise<boolean> {
-		return this.detector.holdsCode(directory);
-	}
 }

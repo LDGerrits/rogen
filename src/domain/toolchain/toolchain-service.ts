@@ -11,9 +11,6 @@ export interface ToolchainService {
 
 	/** What `directory` uses: facts only, never decisions. Only `init` asks; builds do what the config says. */
 	detect(directory: string): Promise<DetectedWorkspace>;
-
-	/** Whether `directory` holds a script anywhere below it, outside hidden and vendored folders. */
-	holdsCode(directory: string): Promise<boolean>;
 }
 
 export const ToolchainService =

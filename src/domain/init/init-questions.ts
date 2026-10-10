@@ -10,12 +10,8 @@ import {
 	configFileName,
 } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
-import {
-	Language,
-	Mount,
-	MountCandidate,
-	PLACES_DIR,
-} from "../toolchain/toolchain.js";
+import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
+import { PLACES_DIR, SOURCE_DIR } from "./code-finder.js";
 import { ConfigSet } from "./config-set.js";
 import { PlaceFolder } from "./place-folder.js";
 import { HOOK_SCRIPT_FILE } from "./hook-target.js";
@@ -135,11 +131,11 @@ export class InitQuestions {
 	}
 
 	/** Several places when the workspace already has a `places` folder. */
-	async layout({ workspace }: InitDirectory): Promise<Layout | undefined> {
-		const initial: Layout = workspace.places.length > 0 ? "several" : "one";
+	async layout({ layout }: InitDirectory): Promise<Layout | undefined> {
+		const initial: Layout = layout.places.length > 0 ? "several" : "one";
 		if (!this.interactive) return initial;
 
-		const found = workspace.places
+		const found = layout.places
 			.map((name) => PlaceFolder.pathOf(name))
 			.join(", ");
 		return this.promptService.select<Layout>({
@@ -280,11 +276,10 @@ export class InitQuestions {
 		language: Language
 	): Promise<SharedCode | undefined> {
 		const rootDir = directory.defaultRootDir(language);
-		const { workspace } = directory;
 		const existing =
 			language.compiler !== undefined ||
-			workspace.hasSrc ||
-			workspace.codeFolders.includes(rootDir);
+			directory.has(SOURCE_DIR) ||
+			directory.layout.codeFolders.includes(rootDir);
 		const initial = existing ? rootDir : SHARED_FOLDER;
 		const answer = this.interactive
 			? await this.promptService.select({
@@ -509,7 +504,7 @@ export class InitQuestions {
 		directory: InitDirectory,
 		{ rootDirs, filesFor, reserved }: PlacesQuestion
 	): Promise<string[] | undefined> {
-		const found = directory.workspace.places.filter(
+		const found = directory.layout.places.filter(
 			(place) =>
 				!directory.placeFolderProblem(
 					rootDirs,

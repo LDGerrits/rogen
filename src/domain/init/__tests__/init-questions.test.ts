@@ -8,16 +8,14 @@ import {
 	PromptScript,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import {
-	WorkspaceSpec,
-	withRobloxTs,
-} from "../../toolchain/__tests__/workspaces.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
 import {
 	DirectorySpec,
+	WorkspaceSpec,
 	directory,
 	directoryOf,
 	placeFoldersOf,

@@ -1,10 +1,7 @@
 import path from "path";
 import { ResultError, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import {
-	WorkspaceSpec,
-	withRobloxTs,
-} from "../../toolchain/__tests__/workspaces.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
@@ -15,6 +12,7 @@ import { BaseConfigReader } from "../base-config-reader.js";
 import { PlaceFolder } from "../place-folder.js";
 import { PlaceSetup } from "../place-setup.js";
 import {
+	WorkspaceSpec,
 	directory,
 	directoryOf,
 	legacyPlan,

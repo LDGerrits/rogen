@@ -2,8 +2,12 @@ import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { ExtendingConfigSetup } from "../extending-config-setup.js";
-import { WorkspaceSpec } from "../../toolchain/__tests__/workspaces.js";
-import { directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
+import {
+	WorkspaceSpec,
+	directoryOf,
+	legacyPlan,
+	planOf,
+} from "./init-fixtures.js";
 
 describe("ExtendingConfigSetup", () => {
 	const extending = async (

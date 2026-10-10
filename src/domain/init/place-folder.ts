@@ -1,11 +1,8 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { PLACES_DIR } from "../toolchain/toolchain.js";
+import { CodeFinder, PLACES_DIR, SOURCE_DIR } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
-
-const SOURCE_DIR = "src";
 
 /** The folder a place owns: its code in `src` with its template beside it, or, when the folder already holds code outside a `src`, the folder itself with the template beside the folder, so that code never moves. */
 export class PlaceFolder {
@@ -35,7 +32,7 @@ export class PlaceFolder {
 		name: string,
 		sharedRootDirs: readonly string[]
 	): string {
-		return directory.workspace.places.includes(name)
+		return directory.layout.places.includes(name)
 			? PlaceFolder.pathOf(name)
 			: PlaceFolder.pathOf(name, sharedRootDirs);
 	}
@@ -64,10 +61,11 @@ export class PlaceFolder {
 
 /** Reads what the folders of a place already hold. */
 export class PlaceFolderReader {
-	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly toolchainService: ToolchainService
-	) {}
+	private readonly codeFinder: CodeFinder;
+
+	constructor(private readonly fileSystemService: FileReader) {
+		this.codeFinder = new CodeFinder(fileSystemService);
+	}
 
 	/** What `folder` already holds in `directory`. */
 	async read(directory: string, folder: string): Promise<PlaceFolder> {
@@ -75,7 +73,7 @@ export class PlaceFolderReader {
 		const code =
 			!(await this.fileSystemService.exists(
 				path.join(absolute, SOURCE_DIR)
-			)) && (await this.toolchainService.holdsCode(absolute));
+			)) && (await this.codeFinder.holdsCode(absolute));
 		return new PlaceFolder(
 			folder,
 			code,

@@ -4,7 +4,6 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { RojoTree } from "../../rojo/rojo-project.js";
 import {
-	WorkspaceSpec,
 	withRobloxTs,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
@@ -18,6 +17,7 @@ import { StartingRoutes } from "../starting-routes.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
+	WorkspaceSpec,
 	directory,
 	directoryOf,
 	legacyPlan,

@@ -4,10 +4,9 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
-	WorkspaceSpec,
+	WorkspaceSpec as ToolchainSpec,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { TEMPLATE_FILE } from "../starter-template.js";
 import { InitDirectory, BaseConfig } from "../init-directory.js";
@@ -17,6 +16,15 @@ import { PlaceFolderReader } from "../place-folder.js";
 import { Setup } from "../setup.js";
 
 export const directory = path.resolve("/mock/my-game");
+
+/** Which folders of the directory hold code, and whether `src` is there. */
+export interface LayoutSpec {
+	readonly codeFolders?: readonly string[];
+	readonly hasSrc?: boolean;
+	readonly places?: readonly string[];
+}
+
+export type WorkspaceSpec = ToolchainSpec & LayoutSpec;
 
 export interface DirectorySpec {
 	readonly workspace?: WorkspaceSpec;
@@ -29,13 +37,19 @@ export interface DirectorySpec {
 
 export const placeFoldersOf = (
 	fileSystem: FileSystemService = new MemoryFileSystemService()
-) => new PlaceFolderReader(fileSystem, new CoreToolchainService(fileSystem));
+) => new PlaceFolderReader(fileSystem);
 
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
+	const {
+		codeFolders = [],
+		hasSrc = false,
+		places = [],
+	} = spec.workspace ?? {};
 	return new InitDirectory(
 		spec.path ?? directory,
-		new Set(spec.existing ?? []),
+		new Set([...(spec.existing ?? []), ...(hasSrc ? ["src"] : [])]),
 		workspaceOf(spec.workspace),
+		{ codeFolders, places },
 		spec.givenName,
 		spec.givenName ?? "default",
 		spec.base
