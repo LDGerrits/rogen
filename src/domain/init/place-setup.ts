@@ -5,7 +5,6 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
