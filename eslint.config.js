@@ -103,7 +103,7 @@ const internalsPatterns = (layer, module, depth) => [
 		: []),
 ];
 
-// Platform contract files are ports; the files named for how they fulfil one are the outermost ring (ADR-0009).
+// Platform contract files are ports; the files named for how they fulfil one are the outermost ring.
 const IMPLEMENTATION_PREFIXES = [
 	"core",
 	"console",

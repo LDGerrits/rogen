@@ -29,12 +29,14 @@ interface ModeContext {
 /** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
 type Answer =
 	| {
+			readonly kind: "file";
 			readonly label: string;
 			readonly location: FileLocation;
 			readonly mode: ModeContext;
 			readonly diagnostics: readonly Diagnostic[];
 	  }
 	| {
+			readonly kind: "instance";
 			readonly label: string;
 			readonly instance: string;
 			/** Absolute POSIX folders a new file for it goes in. */
@@ -44,7 +46,7 @@ type Answer =
 	  };
 
 const sourceOf = (answer: Answer): string =>
-	"location" in answer ? answer.location.source : answer.instance;
+	answer.kind === "file" ? answer.location.source : answer.instance;
 
 /** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
 function patternRelativeTo(cwd: string, pattern: string): string {
@@ -168,7 +170,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 }
 
 const isOutside = (answer: Answer): boolean =>
-	"location" in answer && answer.location.status === "outside";
+	answer.kind === "file" && answer.location.status === "outside";
 
 /** A path outside one config's root dirs is no news when another config places it. */
 function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
@@ -210,6 +212,7 @@ export class LocationReport {
 			names: new Set(config.modes),
 		};
 		const answer = (location: FileLocation): Answer => ({
+			kind: "file",
 			label,
 			location,
 			mode,
@@ -217,10 +220,19 @@ export class LocationReport {
 		});
 		return [
 			...locations.map(answer),
-			...instances.flatMap(({ reference, files, folders, fixes }) =>
-				files.length > 0
-					? files.map(answer)
-					: [{ label, instance: reference.text, folders, fixes }]
+			...instances.flatMap(
+				({ reference, files, folders, fixes }): Answer[] =>
+					files.length > 0
+						? files.map(answer)
+						: [
+								{
+									kind: "instance",
+									label,
+									instance: reference.text,
+									folders,
+									fixes,
+								},
+							]
 			),
 		];
 	}
@@ -245,14 +257,14 @@ export class LocationReport {
 			const requires = [
 				...new Set(
 					answers.flatMap((answer) =>
-						"location" in answer
+						answer.kind === "file"
 							? (requireOf(answer.location) ?? [])
 							: []
 					)
 				),
 			];
 			const requirements = answers.map((answer) =>
-				"location" in answer
+				answer.kind === "file"
 					? requirementOf(answer.location)
 					: undefined
 			);
@@ -320,10 +332,10 @@ export class LocationReport {
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
-				...("location" in answer && answer.mode.active
+				...(answer.kind === "file" && answer.mode.active
 					? { mode: answer.mode.active }
 					: {}),
-				...("location" in answer
+				...(answer.kind === "file"
 					? {
 							source: toNative(answer.location.source),
 							status: answer.location.status,
@@ -363,7 +375,7 @@ export class LocationReport {
 
 	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */
 	private noted(answer: Answer): string[] {
-		if (!("location" in answer)) return [];
+		if (answer.kind !== "file") return [];
 		return answer.diagnostics.map(
 			(diagnostic) => `  ${diagnosticSummary(diagnostic, this.cwd)}`
 		);
@@ -407,7 +419,7 @@ export class LocationReport {
 	}
 
 	private describe(answer: Answer): string {
-		return "location" in answer
+		return answer.kind === "file"
 			? describeLocation(answer.location, answer.mode, this.cwd)
 			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders, answer.fixes)}`;
 	}
