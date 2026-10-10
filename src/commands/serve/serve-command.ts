@@ -3,7 +3,6 @@ import { DisposableStore } from "../../base/disposable.js";
 import {
 	ErrorUtils,
 	ExitCodeError,
-	ReportedError,
 	onUnexpectedError,
 } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -150,7 +149,7 @@ registerCommand(
 				const started = await session.start();
 				if (started.isErr()) {
 					log.abort(started.error);
-					return err(new ReportedError(started.error));
+					return this.reported(started.error);
 				}
 				const stop = await Promise.race([
 					shutdown.p.then(() => undefined),
@@ -163,12 +162,10 @@ registerCommand(
 					return ok(undefined);
 				}
 				log.end("serve failed.");
-				return err(
-					new ReportedError(
-						new ExitCodeError(
-							stop.exitCode,
-							new DiagnosticsError([stop.failure])
-						)
+				return this.reported(
+					new ExitCodeError(
+						stop.exitCode,
+						new DiagnosticsError([stop.failure])
 					)
 				);
 			} finally {

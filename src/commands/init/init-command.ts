@@ -1,5 +1,5 @@
 import path from "path";
-import { CancelledError, ReportedError } from "../../base/errors.js";
+import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
@@ -166,7 +166,7 @@ registerCommand(
 				logService.outro(
 					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
 				);
-				return err(new ReportedError(new DiagnosticsError(errors)));
+				return this.reported(new DiagnosticsError(errors));
 			}
 
 			logService.step("Next steps");

@@ -190,6 +190,11 @@ export abstract class AbstractCommand<
 		return shutdown;
 	}
 
+	/** The run failed with `failure`, which it has already told the user in full, so only the exit code is left to set. */
+	protected reported(failure: Error): Result<void, Error> {
+		return err(new ReportedError(failure));
+	}
+
 	/** Prints the run's one JSON document. A run that failed passes `failure`, which then only sets the exit code, since the document says what went wrong. */
 	protected printJson(
 		logService: LogService,
@@ -197,7 +202,7 @@ export abstract class AbstractCommand<
 		failure?: Error
 	): Result<void, Error> {
 		logService.print(formatJsonDocument(document));
-		return failure ? err(new ReportedError(failure)) : ok(undefined);
+		return failure ? this.reported(failure) : ok(undefined);
 	}
 }
 

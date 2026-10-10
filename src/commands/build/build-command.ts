@@ -1,5 +1,4 @@
-import { ReportedError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
@@ -94,7 +93,7 @@ registerCommand(
 				selection.value.home,
 				denyWarnings
 			);
-			return failure ? err(new ReportedError(failure)) : ok(undefined);
+			return failure ? this.reported(failure) : ok(undefined);
 		}
 	}
 );

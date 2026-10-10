@@ -1,5 +1,4 @@
-import { ReportedError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
@@ -80,7 +79,7 @@ registerCommand(
 			// The findings are what was asked for, so they go to stdout and survive --quiet.
 			for (const diagnostic of failure.diagnostics)
 				logService.print(renderDiagnostic(diagnostic, cwd));
-			return err(new ReportedError(failure));
+			return this.reported(failure);
 		}
 	}
 );
