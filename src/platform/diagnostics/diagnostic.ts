@@ -223,17 +223,46 @@ export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
 		.join("\n");
 }
 
+/** What makes two diagnostics one as the user reads them; with `anywhere`, a diagnostic about a file is the same wherever the file is. */
+export function diagnosticKey(
+	diagnostic: Diagnostic,
+	anywhere?: string
+): string {
+	return renderDiagnostic(
+		diagnostic.resource === anywhere
+			? { ...diagnostic, resource: "" }
+			: diagnostic
+	);
+}
+
+/** `diagnostics` once each, in order. */
+export function uniqueDiagnostics(
+	diagnostics: readonly Diagnostic[]
+): Diagnostic[] {
+	return [
+		...new Map(
+			diagnostics.map((diagnostic) => [
+				diagnosticKey(diagnostic),
+				diagnostic,
+			])
+		).values(),
+	];
+}
+
 /** The diagnostics of `after` that `before` didn't hold, compared as the user reads them. */
 export function newDiagnostics(
 	before: readonly Diagnostic[],
 	after: readonly Diagnostic[]
 ): Diagnostic[] {
-	const seen = new Set(
-		before.map((diagnostic) => renderDiagnostic(diagnostic))
-	);
-	return after.filter(
-		(diagnostic) => !seen.has(renderDiagnostic(diagnostic))
-	);
+	const seen = new Set(before.map((diagnostic) => diagnosticKey(diagnostic)));
+	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
+}
+
+/** The document a `--json` run prints for `diagnostics`. */
+export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
+	readonly diagnostics: DiagnosticJson[];
+} {
+	return { diagnostics: diagnostics.map(diagnosticToJson) };
 }
 
 /** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */

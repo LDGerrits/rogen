@@ -1,6 +1,6 @@
 import path from "path";
 import { isMatch } from "../../base/glob.js";
-import { contains, isInside, toPosix } from "../../base/path.js";
+import { contains, isInside, samePath, toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -44,9 +44,7 @@ export class TemplateMounts {
 
 	/** The mount at `absolutePath`, compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
 	at(absolutePath: string): TemplateMount | undefined {
-		return this.mounts.find(
-			(mount) => path.relative(mount.path, absolutePath) === ""
-		);
+		return this.mounts.find((mount) => samePath(mount.path, absolutePath));
 	}
 
 	/** A mount at a root dir or above one would hand the whole root dir to Rojo, leaving Rogen nothing to place there. */

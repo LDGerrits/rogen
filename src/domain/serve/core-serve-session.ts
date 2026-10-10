@@ -6,6 +6,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
+import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 import { buildableConfig } from "../config/config-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
@@ -23,8 +24,6 @@ import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
 import { StartedServer } from "./started-server.js";
-
-const builtOutcomes: ReadonlySet<string> = new Set(["wrote", "unchanged"]);
 
 /** A watch of the plan's configs, and a server for each config to serve that nothing else serves, kept in step with the configs as they change. */
 export class CoreServeSession
@@ -81,8 +80,7 @@ export class CoreServeSession
 		this._register(
 			watch.onDidUpdate((update) => {
 				for (const { build } of update.reports)
-					if (builtOutcomes.has(build.outcome))
-						this.built.add(build.config.file);
+					if (isWritten(build)) this.built.add(build.config.file);
 					else this.built.delete(build.config.file);
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);

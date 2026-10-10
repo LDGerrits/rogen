@@ -26,6 +26,11 @@ export function dirnamePosix(relativePath: string): string {
 	return dir === "." ? "" : dir;
 }
 
+/** Whether two paths name one place, compared as paths, since a case-insensitive file system makes `Src` and `src` one folder. */
+export function samePath(a: string, b: string): boolean {
+	return path.relative(a, b) === "";
+}
+
 /** Whether `dir` lies strictly inside `parent`; both must be absolute. */
 export function isInside(dir: string, parent: string): boolean {
 	const relative = path.relative(parent, dir);

@@ -6,7 +6,7 @@ import {
 	Diagnostic,
 	RenameFix,
 	errorDiagnostic,
-	renderDiagnostic,
+	diagnosticKey,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -90,6 +90,11 @@ export interface BuildSummary {
 	readonly replaced: number;
 	/** Left out because the template defines their node. */
 	readonly displaced: number;
+}
+
+/** Whether `build` wrote its project file, or found it unchanged. */
+export function isWritten(build: ConfigBuild): build is WrittenBuild {
+	return build.outcome === "wrote" || build.outcome === "unchanged";
 }
 
 /** What a run did for a config that loaded: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
@@ -253,10 +258,9 @@ export class SharedDiagnostics {
 	): SharedPart {
 		const owners = new Set<string>();
 		const fresh = diagnostics.filter((diagnostic) => {
-			const key = renderDiagnostic(
-				this.sameAcrossConfigs && diagnostic.resource === configFile
-					? { ...diagnostic, resource: "" }
-					: diagnostic
+			const key = diagnosticKey(
+				diagnostic,
+				this.sameAcrossConfigs ? configFile : undefined
 			);
 			const owner = this.raisedBy.get(key);
 			if (owner === undefined) this.raisedBy.set(key, label);

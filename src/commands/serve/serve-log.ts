@@ -12,6 +12,7 @@ import { ServerInfo } from "../../domain/serve/serve.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import {
 	diagnosticToJson,
+	diagnosticsJson,
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
 import { failureToJson } from "../../platform/diagnostics/diagnostics-error.js";
@@ -187,7 +188,7 @@ export class ServeJsonLog implements ServeReporter {
 				signal: exit.signal,
 			},
 		});
-		if (failure) this.line({ diagnostics: [diagnosticToJson(failure)] });
+		if (failure) this.line(diagnosticsJson([failure]));
 	}
 
 	changed(change: ServeChange, plan: ServePlan): void {

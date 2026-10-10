@@ -1,9 +1,9 @@
 import {
 	Diagnostic,
 	DiagnosticJson,
-	diagnosticToJson,
-	renderDiagnostic,
+	diagnosticsJson,
 	renderDiagnostics,
+	uniqueDiagnostics,
 } from "./diagnostic.js";
 
 /** An `Error` whose message is the rendered diagnostics, for callers that only print it. Identical diagnostics are kept once. */
@@ -11,14 +11,7 @@ export class DiagnosticsError extends Error {
 	readonly diagnostics: readonly Diagnostic[];
 
 	constructor(diagnostics: readonly Diagnostic[]) {
-		const unique = [
-			...new Map(
-				diagnostics.map((diagnostic) => [
-					renderDiagnostic(diagnostic),
-					diagnostic,
-				])
-			).values(),
-		];
+		const unique = uniqueDiagnostics(diagnostics);
 		super(renderDiagnostics(unique));
 		this.name = "DiagnosticsError";
 		this.diagnostics = unique;
@@ -41,6 +34,6 @@ export function failureToJson(
 	| { readonly diagnostics: readonly DiagnosticJson[] }
 	| { readonly error: string } {
 	return error instanceof DiagnosticsError
-		? { diagnostics: error.diagnostics.map(diagnosticToJson) }
+		? diagnosticsJson(error.diagnostics)
 		: { error: error.message };
 }

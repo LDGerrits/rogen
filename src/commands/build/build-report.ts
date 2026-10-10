@@ -1,5 +1,5 @@
 import { toNative } from "../../base/path.js";
-import { ConfigBuild } from "../../domain/build/build.js";
+import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import {
 	Diagnostic,
 	diagnosticToJson,
@@ -24,10 +24,7 @@ export function buildEntry(
 		file: toNative(build.file),
 		outFile: loaded ? toNative(build.config.outFile) : null,
 		...(loaded && build.config.mode && { mode: build.config.mode }),
-		outcome:
-			build.outcome === "wrote" || build.outcome === "unchanged"
-				? build.outcome
-				: "notWritten",
+		outcome: isWritten(build) ? build.outcome : "notWritten",
 		...(build.outcome === "notWritten" && {
 			blockedBy: build.blockedBy,
 		}),

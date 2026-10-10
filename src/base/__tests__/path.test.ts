@@ -10,12 +10,24 @@ import {
 	normalizeDir,
 	outermostDirs,
 	relativeTo,
+	samePath,
 	stemOf,
 	toNative,
 	toPosix,
 } from "../path.js";
 
 describe("Path", () => {
+	describe("samePath", () => {
+		it("should accept paths that resolve to one place", () => {
+			expect(samePath("/repo/src", "/repo/src/")).toBe(true);
+			expect(samePath("/repo/src", "/repo/other/../src")).toBe(true);
+		});
+
+		it("should refuse another path", () => {
+			expect(samePath("/repo/src", "/repo/src/a")).toBe(false);
+		});
+	});
+
 	describe("toPosix", () => {
 		it("should convert Windows backslashes to forward slashes", () => {
 			const mockWindowsPath = `src${path.sep}core${path.sep}module.ts`;

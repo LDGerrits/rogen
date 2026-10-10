@@ -8,7 +8,7 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
-	diagnosticToJson,
+	diagnosticsJson,
 	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -70,11 +70,7 @@ registerCommand(
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					{
-						diagnostics: (failure?.diagnostics ?? []).map(
-							diagnosticToJson
-						),
-					},
+					diagnosticsJson(failure?.diagnostics ?? []),
 					failure
 				);
 			if (!failure) return ok(undefined);
