@@ -213,13 +213,17 @@ export class ConfigSet {
 		}
 	}
 
-	/** The files a place named like this writes, plus its project file, which mustn't exist either. */
+	/** The configs and the project files they write, none of which may exist. */
+	get writtenFiles(): string[] {
+		return [...this.configFiles, ...this.outputFiles];
+	}
+
+	/** The files a place named like this writes, the compiler's own among them. */
 	get placeFiles(): string[] {
 		return [
-			configFileName(this.name),
-			...(this.syncFile ? [this.syncFile] : []),
+			...this.configFiles,
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			projectFileName(this.name),
+			...this.outputFiles,
 		];
 	}
 }

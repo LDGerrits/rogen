@@ -3,7 +3,7 @@ import {
 	HOOK_SCRIPT_FILE,
 	HOOK_TARGETS,
 	HookEntry,
-	registerHook,
+	withHook,
 } from "../hook-target.js";
 
 const target = (name: string) => {
@@ -13,7 +13,7 @@ const target = (name: string) => {
 };
 
 const registered = (name: string) => {
-	const registration = registerHook(undefined, target(name).hook);
+	const registration = withHook(undefined, target(name).hook);
 	if (registration.kind !== "added") throw new Error(registration.kind);
 	return JSON.parse(registration.text);
 };
@@ -22,7 +22,7 @@ const entry = (command: string) => ({ hooks: [{ type: "command", command }] });
 const SPEC: HookEntry = { event: "Stop", entry: entry("mine.sh") };
 
 const added = (text: string | undefined, spec = SPEC) => {
-	const registration = registerHook(text, spec);
+	const registration = withHook(text, spec);
 	if (registration.kind !== "added") throw new Error(registration.kind);
 	return registration.text;
 };
@@ -107,7 +107,7 @@ describe("hook targets", () => {
 		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.sh");
 		expect(hookScript).toMatch(/^#!\/usr\/bin\/env bash\n/);
 		for (const { hook } of HOOK_TARGETS)
-			expect(registerHook(undefined, hook)).toMatchObject({
+			expect(withHook(undefined, hook)).toMatchObject({
 				kind: "added",
 			});
 	});
@@ -196,7 +196,7 @@ describe("registerHook", () => {
 			},
 		});
 
-		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
+		expect(withHook(settings, SPEC)).toEqual({ kind: "present" });
 	});
 
 	it("should add to the event it is given, not another", () => {
@@ -205,7 +205,7 @@ describe("registerHook", () => {
 		});
 
 		expect(
-			registerHook(settings, { ...SPEC, event: "AfterAgent" }).kind
+			withHook(settings, { ...SPEC, event: "AfterAgent" }).kind
 		).toBe("added");
 	});
 
@@ -215,6 +215,6 @@ describe("registerHook", () => {
 		["hooks that are not an object", '{ "hooks": [] }'],
 		["an event that is not a list", '{ "hooks": { "Stop": {} } }'],
 	])("should not edit settings with %s", (_, settings) => {
-		expect(registerHook(settings, SPEC).kind).toBe("unreadable");
+		expect(withHook(settings, SPEC).kind).toBe("unreadable");
 	});
 });

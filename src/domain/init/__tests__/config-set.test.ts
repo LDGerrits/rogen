@@ -77,6 +77,7 @@ describe("ConfigSet", () => {
 				"lobby.rogen.json",
 				"lobby-sync.rogen.json",
 				"lobby.project.json",
+				"lobby-sync.project.json",
 			]);
 		});
 

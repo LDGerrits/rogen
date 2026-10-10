@@ -31,7 +31,7 @@ function indentOf(text: string): string {
 }
 
 /** The file's text with the entry added to its event, or why it can't be: the file names the script already, or isn't plain JSON of the shape the agents read. `text` is `undefined` when the file doesn't exist. */
-export function registerHook(
+export function withHook(
 	text: string | undefined,
 	{ event, entry, version }: HookEntry
 ): HookRegistration {

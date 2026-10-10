@@ -11,7 +11,7 @@ export class LegacyConfig {
 
 	private static readonly KEYS = ["source", "aliases", "globIgnorePaths"];
 	private static readonly MODE_KEYS = ["output", "build"];
-	/** Fields of a Rogen 2 config that are maps from a name to a string, which a route called `build` would look like a mode in. */
+	/** Fields of a Rogen 2 config whose keys are names the user picks, so a route called `build` would look like a Rogen 1 mode. */
 	private static readonly NAME_MAPS = ["routes", "variants", "modes"];
 
 	/** Whether `value`, the JSON of a config file, has the keys of a Rogen 1 config. */

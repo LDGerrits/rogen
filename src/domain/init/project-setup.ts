@@ -349,9 +349,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	): void {
 		const { name, language, rootDirs } = choices;
 		const { compiler } = language;
-		const compiled =
-			language.configuredRootDir() ??
-			this.directory.defaultRootDir(language);
+		const compiled = this.directory.defaultRootDir(language);
 		if (compiler && compiled !== rootDirs[0]) {
 			builder.addSetup(compiler.rootDirStep(rootDirs[0]));
 		}

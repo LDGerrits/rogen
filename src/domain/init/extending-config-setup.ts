@@ -18,19 +18,15 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		private readonly questions: InitQuestions
 	) {}
 
-	/** The configs it writes and their project files, none of which may exist. */
-	private filesOf(name: string): string[] {
-		const configSet = ConfigSet.in(this.directory.workspace, name);
-		return [...configSet.configFiles, ...configSet.outputFiles];
-	}
-
 	async ask(): Promise<
 		Result<ExtendingConfigChoices | undefined, Diagnostic[]>
 	> {
 		const { directory, questions } = this;
 		const given = directory.givenName;
 		if (given) {
-			const conflicts = directory.checkFree(this.filesOf(given));
+			const conflicts = directory.checkFree(
+				ConfigSet.in(this.directory.workspace, given).writtenFiles
+			);
 			if (conflicts.length > 0) return err(conflicts);
 		}
 		const name =
@@ -38,7 +34,9 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 			(await questions.name(directory, {
 				message: "Config name",
 				description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
-				filesFor: (candidate) => this.filesOf(candidate),
+				filesFor: (candidate) =>
+					ConfigSet.in(this.directory.workspace, candidate)
+						.writtenFiles,
 			}));
 		return ok(name === undefined ? undefined : { name });
 	}

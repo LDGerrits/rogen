@@ -1,7 +1,7 @@
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { hookScript } from "./hook-script.js";
-import { HOOK_SCRIPT_FILE, HookTarget, registerHook } from "./hook-target.js";
+import { HOOK_SCRIPT_FILE, HookTarget, withHook } from "./hook-target.js";
 
 /** An agent found in the project, and the text of its hook file if it has one. */
 export interface AgentInUse {
@@ -31,7 +31,7 @@ export class AgentHooks {
 	constructor(private readonly state: AgentHooksState) {
 		const registrations = state.inUse.map(({ target, text }) => ({
 			target,
-			registration: registerHook(text, target.hook),
+			registration: withHook(text, target.hook),
 			existed: text !== undefined,
 		}));
 		this.registering = registrations.flatMap(

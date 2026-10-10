@@ -7,6 +7,7 @@ import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
 	isConfigFileName,
+	leafConfigs,
 } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { SyncServer } from "../serve/serve.js";
@@ -39,11 +40,9 @@ export class BaseConfigReader {
 				)
 		);
 		const entries = new Map(read);
-		const entry =
-			entries.get(DEFAULT_CONFIG_FILE) ??
-			(await this.configService.read(
-				path.join(this.directory, DEFAULT_CONFIG_FILE)
-			));
+		const entry = entries.get(DEFAULT_CONFIG_FILE);
+		if (!entry)
+			throw new Error(`${DEFAULT_CONFIG_FILE} is not in the listing.`);
 		if (entry.status === "broken") return err([...entry.errors]);
 
 		const sync = entries.get(
@@ -65,13 +64,8 @@ export class BaseConfigReader {
 		sharedPort: boolean;
 	} {
 		const valid = read.filter((entry) => entry.status === "valid");
-		const extended = new Set(valid.flatMap(({ parents }) => parents));
-		const served = valid
-			.filter(
-				({ file }) =>
-					!extended.has(file) &&
-					path.basename(file) !== DEFAULT_CONFIG_FILE
-			)
+		const served = leafConfigs(valid)
+			.filter(({ file }) => path.basename(file) !== DEFAULT_CONFIG_FILE)
 			.map(
 				({ config }) =>
 					config.template?.project.servePort ??

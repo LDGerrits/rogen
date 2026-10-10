@@ -60,6 +60,14 @@ export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
 export const isConfigFileName = (fileName: string): boolean =>
 	fileName.endsWith(CONFIG_SUFFIX);
 
+/** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. */
+export function leafConfigs<
+	T extends { readonly file: string; readonly parents: readonly string[] },
+>(configs: readonly T[]): T[] {
+	const extended = new Set(configs.flatMap(({ parents }) => parents));
+	return configs.filter(({ file }) => !extended.has(file));
+}
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
