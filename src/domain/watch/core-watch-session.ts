@@ -181,13 +181,8 @@ export class CoreWatchSession
 			this.watched.set(file, watched);
 		}
 		const config = watched;
-		config.pending++;
-		const queued = config.rebuilds.queue(
+		const queued = config.queue(
 			this.guarded(() => this.rebuild(config, file))
-		);
-		void queued.then(
-			() => config.pending--,
-			() => config.pending--
 		);
 		this.track(queued);
 		return queued;

@@ -21,11 +21,6 @@ export interface BuildService {
 		selection: ConfigSelection
 	): Promise<Result<BuildRun, DiagnosticsError>>;
 
-	/** Builds every selected config as `build` does, and writes nothing: the same builds with the same diagnostics, each config that built cleanly left as not written. Fails as `build` does. */
-	check(
-		selection: ConfigSelection
-	): Promise<Result<BuildRun, DiagnosticsError>>;
-
 	/** Builds the config `file` of a watch's `set` from the listing the watch holds, and writes it; one the set blocks fails without building. The sync dir is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
 	rebuild(
 		set: BuildSet,

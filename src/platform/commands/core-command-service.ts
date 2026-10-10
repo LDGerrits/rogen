@@ -15,10 +15,6 @@ export class CoreCommandService implements CommandService {
 		private readonly registry: CommandRegistry
 	) {}
 
-	getCommand(id: string): Command | undefined {
-		return this.registry.getCommand(id);
-	}
-
 	getCommands(): ReadonlyMap<string, Command> {
 		return this.registry.getCommands();
 	}

@@ -19,7 +19,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 
 	/** The configs it writes and their project files, none of which may exist. */
 	private filesOf(name: string): string[] {
-		const configSet = this.directory.configSetOf(name);
+		const configSet = ConfigSet.in(this.directory.workspace, name);
 		return [...configSet.configFiles, ...configSet.outputFiles];
 	}
 
@@ -43,7 +43,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 	}
 
 	plan({ name }: ExtendingConfigChoices, builder: InitPlanBuilder): void {
-		const configSet = this.directory.configSetOf(name);
+		const configSet = ConfigSet.in(this.directory.workspace, name);
 		// A compiler's sync dir is inherited from default; only a synced twin adds one.
 		configSet.planConfigs(
 			builder,

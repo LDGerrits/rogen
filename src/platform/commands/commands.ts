@@ -20,7 +20,6 @@ export interface CommandService {
 		commandId: string,
 		line: CommandLine
 	): Promise<Result<void, Error>>;
-	getCommand(id: string): Command | undefined;
 	/** Every registered command, by id. */
 	getCommands(): ReadonlyMap<string, Command>;
 }

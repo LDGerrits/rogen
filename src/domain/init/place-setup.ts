@@ -30,7 +30,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		if (base.isErr()) return err(base.error);
 
 		const filesFor = (candidate: string) =>
-			directory.configSetOf(candidate).placeFiles;
+			ConfigSet.in(workspace, candidate).placeFiles;
 		const given = directory.givenName;
 		if (given) {
 			const conflicts = directory.checkFree(filesFor(given));

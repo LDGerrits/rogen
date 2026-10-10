@@ -215,7 +215,7 @@ describe("ConfigSet planning", () => {
 	describe("planSteps", () => {
 		const steps = (set: ConfigSet, compileCommand?: string) =>
 			planned((builder) =>
-				set.planSteps(builder, target, {
+				set.planSteps(builder, target.path, {
 					compileCommand,
 					processed: ["src"],
 					syncDir: set.syncDir,

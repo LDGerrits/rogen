@@ -8,13 +8,24 @@ import { RebuildReport } from "./watch-service.js";
 
 /** What the session knows of one config: its rebuilds, and what the latest of them said. */
 export class WatchedConfig {
-	readonly rebuilds = new Sequencer();
+	private readonly rebuilds = new Sequencer();
 	/** Rebuilds queued that haven't finished. */
-	pending = 0;
+	private pending = 0;
 	/** The latest finished rebuild; `undefined` before the first. */
 	latest: LoadedBuild | undefined;
 	/** The files the latest successful build read, whose updates must rebuild it. */
 	readFiles: ReadonlySet<string> = new Set();
+
+	/** Runs `rebuild` after the ones queued before it, so rebuilds of one config never overlap. */
+	queue<T>(rebuild: () => Promise<T>): Promise<T> {
+		this.pending++;
+		const queued = this.rebuilds.queue(rebuild);
+		const done = () => {
+			this.pending--;
+		};
+		void queued.then(done, done);
+		return queued;
+	}
 
 	get failing(): boolean {
 		return this.latest?.outcome === "failed";

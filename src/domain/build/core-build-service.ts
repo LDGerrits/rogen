@@ -49,6 +49,7 @@ export class CoreBuildService implements BuildService {
 		return this.buildAll(selection, true);
 	}
 
+	/** Builds every selected config as `build` does, and writes nothing: the same builds with the same diagnostics, each config that built cleanly left as not written. */
 	check(
 		selection: ConfigSelection
 	): Promise<Result<BuildRun, DiagnosticsError>> {

@@ -6,8 +6,11 @@ import {
 	configFileName,
 	defaultOutFileName,
 } from "../config/config.js";
-import { Darklua, Language } from "../toolchain/toolchain.js";
-import { InitDirectory } from "./init-directory.js";
+import {
+	Darklua,
+	DetectedWorkspace,
+	Language,
+} from "../toolchain/toolchain.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
@@ -19,6 +22,15 @@ export class ConfigSet {
 		/** Darklua when it processes the code, else `undefined`. */
 		readonly darklua: Darklua | undefined
 	) {}
+
+	/** The names `init` writes for a config called `name`, in the language and Darklua setup `workspace` uses. */
+	static in(workspace: DetectedWorkspace, name: string): ConfigSet {
+		return new ConfigSet(
+			name,
+			workspace.language,
+			workspace.detectedDarklua
+		);
+	}
 
 	/** The stem of the synced config beside `name`'s source-rooted one. */
 	static syncStemOf(name: string): string {
@@ -135,7 +147,7 @@ export class ConfigSet {
 	/** The commands that build and serve the set: a compiler's own, serving the configs, then what Darklua needs to read `processed` into `syncDir`. */
 	planSteps(
 		builder: InitPlanBuilder,
-		directory: InitDirectory,
+		directory: string,
 		{
 			compileCommand,
 			serveCommand = this.serveCommand,
@@ -158,7 +170,7 @@ export class ConfigSet {
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(
-				...darklua.processCommands(directory.path, processed, syncDir)
+				...darklua.processCommands(directory, processed, syncDir)
 			);
 		}
 		if (darklua && this.sourced && sourcemap) {

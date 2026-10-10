@@ -299,7 +299,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		configSet: ConfigSet
 	): void {
 		const { compiler } = configSet.language;
-		configSet.planSteps(builder, this.directory, {
+		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiler?.compileCommand,
 			processed: compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs,
 			syncDir,

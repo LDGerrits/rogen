@@ -95,7 +95,7 @@ export class PlacePlan {
 		sourcemap = true
 	): void {
 		const { configSet, rootDirs, syncDir, compiled, outDir } = this;
-		configSet.planSteps(builder, this.directory, {
+		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiled?.compileCommand,
 			serveCommand,
 			processed: outDir ? [outDir] : rootDirs,
