@@ -1,14 +1,8 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import {
-	ErrorUtils,
-	ExitCodeError,
-	ReportedError,
-	UsageError,
-} from "../../base/errors.js";
+import { ErrorUtils, ExitCodeError, ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config.js";
-import { SyncServer } from "../../domain/serve/serve.js";
 import {
 	ServePlan,
 	ServerStop,
@@ -29,7 +23,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ServeLog } from "./serve-log.js";
+import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
 const ToolOption = {
 	name: "tool",
@@ -89,16 +83,13 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
-			const json = Boolean(line.options.json);
-			const log = new ServeLog(
-				accessor.get(LogService),
-				accessor.get(EnvironmentService).cwd,
-				json
-			);
-			const failed = (error: Error) => {
-				log.failure(error);
-				return err(new ReportedError(error));
-			};
+			const logService = accessor.get(LogService);
+			const log: ServeReporter = line.options.json
+				? new ServeJsonLog(logService)
+				: new ServeLog(
+						logService,
+						accessor.get(EnvironmentService).cwd
+					);
 
 			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
@@ -109,27 +100,25 @@ registerCommand(
 					.onWillShutdown(() => shutdown.complete())
 			);
 			try {
-				const server = this.serverOf(line);
-				if (server.isErr()) return failed(server.error);
 				const plan = await serveService.prepare({
 					refs: line.positionals,
 					options: line.options,
-					server: server.value,
+					server: line.options.tool,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.
 				if (shutdown.isSettled) return ok(undefined);
-				if (plan.isErr()) return failed(plan.error);
+				if (plan.isErr()) return plan;
 
 				log.begin(plan.value);
-				if (plan.value.toStart.length === 0) {
+				if (plan.value.isIdle) {
 					log.end(
 						"Nothing to start: every config is already served, so nothing is built or watched here."
 					);
 					return ok(undefined);
 				}
 				const session = serveService.serve(plan.value);
-				if (session.isErr()) return failed(session.error);
+				if (session.isErr()) return session;
 				store.add(session.value);
 				return await this.serve(
 					session.value,
@@ -138,7 +127,7 @@ registerCommand(
 					shutdown
 				);
 			} catch (error) {
-				return failed(ErrorUtils.fromUnknown(error));
+				return err(ErrorUtils.fromUnknown(error));
 			} finally {
 				store[Symbol.dispose]();
 			}
@@ -148,7 +137,7 @@ registerCommand(
 		private async serve(
 			session: ServeSession,
 			plan: ServePlan,
-			log: ServeLog,
+			log: ServeReporter,
 			shutdown: DeferredPromise<void>
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
@@ -170,7 +159,7 @@ registerCommand(
 			try {
 				const started = await session.start();
 				if (started.isErr()) {
-					log.failure(started.error, true);
+					log.abort(started.error);
 					return err(new ReportedError(started.error));
 				}
 				const stop = await Promise.race([
@@ -187,7 +176,7 @@ registerCommand(
 				return err(
 					new ReportedError(
 						new ExitCodeError(
-							stop.exitCode ?? 1,
+							stop.exitCode,
 							new DiagnosticsError([stop.failure])
 						)
 					)
@@ -196,21 +185,6 @@ registerCommand(
 				await session.stop();
 				store[Symbol.dispose]();
 			}
-		}
-
-		private serverOf(
-			line: ServeLine
-		): Result<SyncServer | undefined, UsageError> {
-			const id = line.options.tool;
-			if (id === undefined) return ok(undefined);
-			const server = SyncServer.byId(id);
-			return server
-				? ok(server)
-				: err(
-						new UsageError(
-							`--tool takes ${SyncServer.ALL.map(({ id }) => id).join(" or ")}, not "${id}".`
-						)
-					);
 		}
 	}
 );

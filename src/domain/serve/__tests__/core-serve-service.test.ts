@@ -115,6 +115,12 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
+		it("should refuse a server it doesn't know", async () => {
+			expect(await errorOf({ server: "lune" })).toEqual(
+				new UsageError('--tool takes rojo or argon, not "lune".')
+			);
+		});
+
 		it("should serve the synced config of a Darklua setup, not the source-rooted one", async () => {
 			await memFs.writeFile(
 				"/repo/sync.rogen.json",
@@ -234,13 +240,13 @@ describe("CoreServeService", () => {
 				'host = "0.0.0.0"\nport = 8100\n'
 			);
 
-			expect(served(await plan({ server: SyncServer.ARGON }))).toEqual([
+			expect(served(await plan({ server: "argon" }))).toEqual([
 				["default", "0.0.0.0:8100"],
 			]);
 
 			await memFs.writeFile("/repo/argon.toml", "port = 8200 # mine\n");
 
-			expect(served(await plan({ server: SyncServer.ARGON }))).toEqual([
+			expect(served(await plan({ server: "argon" }))).toEqual([
 				["default", "localhost:8200"],
 			]);
 		});

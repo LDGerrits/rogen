@@ -377,19 +377,18 @@ describe("serve command", () => {
 		});
 	});
 
-	it("should print a failure as one JSON line", async () => {
+	it("should leave a failure before it served to be reported", async () => {
 		processes.installed.clear();
 
-		const result = await serve([], { json: true });
+		const error = await failureOf(serve([], { json: true }));
 
-		expect(exitCodeOf((result as { error: Error }).error)).toBe(1);
-		expect(printed()).toEqual([
-			{
-				diagnostics: [
-					expect.objectContaining({ code: "serve.notInstalled" }),
-				],
-			},
-		]);
+		expect(error).toMatchObject({
+			diagnostics: [
+				expect.objectContaining({ code: "serve.notInstalled" }),
+			],
+		});
+		expect(exitCodeOf(error)).toBe(1);
+		expect(printed()).toEqual([]);
 	});
 
 	it("should print a stop as JSON, then the failure", async () => {
@@ -432,7 +431,7 @@ describe("serve command", () => {
 	it("should refuse a server it doesn't know", async () => {
 		const error = await failureOf(serve([], { tool: "lune" }));
 
-		expect((error as ReportedError).cause).toEqual(
+		expect(error).toEqual(
 			new UsageError('--tool takes rojo or argon, not "lune".')
 		);
 		expect(exitCodeOf(error)).toBe(2);

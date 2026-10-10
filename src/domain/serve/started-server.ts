@@ -171,14 +171,14 @@ export class StartedServer extends AbstractDisposable {
 							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
 						)
 					: undefined;
-		return {
-			target: this.target,
-			exit,
-			interrupted,
-			failure,
-			...(failure && {
-				exitCode: exit.code !== null && exit.code !== 0 ? exit.code : 1,
-			}),
-		};
+		const stop = { target: this.target, exit, interrupted };
+		return failure
+			? {
+					...stop,
+					failure,
+					exitCode:
+						exit.code !== null && exit.code !== 0 ? exit.code : 1,
+				}
+			: stop;
 	}
 }
