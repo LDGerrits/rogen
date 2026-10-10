@@ -716,7 +716,10 @@ describe("CoreConfigService", () => {
 
 			expect(cwd).not.toHaveBeenCalled();
 			expect(now).not.toHaveBeenCalled();
-			jest.restoreAllMocks();
 		});
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
 	});
 });
