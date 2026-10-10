@@ -16,6 +16,8 @@ export type WatchCause =
 			readonly kind: "burst";
 			readonly dropped: number;
 			readonly threshold: number;
+			/** The burst has stopped; `dropped` counts the changes after its first report. */
+			readonly ended: boolean;
 	  }
 	| {
 			readonly kind: "change";

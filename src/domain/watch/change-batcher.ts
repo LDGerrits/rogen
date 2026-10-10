@@ -11,6 +11,8 @@ export interface ChangeBurst {
 	readonly dropped: number;
 	/** How many it follows before it gives up. */
 	readonly threshold: number;
+	/** Whether the burst has stopped, so `dropped` counts the changes since the first report. */
+	readonly ended: boolean;
 }
 
 export interface ChangeBatcherOptions {
@@ -66,6 +68,7 @@ export class ChangeBatcher extends AbstractDisposable {
 			this._onDidOverflow.fire({
 				dropped,
 				threshold: this.options.burstThreshold,
+				ended: false,
 			});
 			this.droppedInBurst = 0;
 			this.flush.schedule();
@@ -83,6 +86,7 @@ export class ChangeBatcher extends AbstractDisposable {
 				this._onDidOverflow.fire({
 					dropped,
 					threshold: this.options.burstThreshold,
+					ended: true,
 				});
 			return;
 		}

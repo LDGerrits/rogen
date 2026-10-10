@@ -71,6 +71,7 @@ describe("ChangeBatcher", () => {
 		expect(reconListener).toHaveBeenCalledWith({
 			dropped: 6,
 			threshold: 5,
+			ended: false,
 		});
 	});
 
@@ -103,6 +104,7 @@ describe("ChangeBatcher", () => {
 		expect(overflowListener).toHaveBeenLastCalledWith({
 			dropped: 40,
 			threshold: 5,
+			ended: true,
 		});
 	});
 

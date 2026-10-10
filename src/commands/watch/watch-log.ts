@@ -1,4 +1,3 @@
-import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import {
@@ -61,7 +60,7 @@ function describeFileChanges(
 	return hidden > 0 ? [...lines, `and ${hidden} more`] : lines;
 }
 
-function titleOf(cause: WatchCause): string {
+function titleOf(cause: WatchCause, cwd: string): string {
 	switch (cause.kind) {
 		case "initial":
 			return "initial build";
@@ -71,7 +70,7 @@ function titleOf(cause: WatchCause): string {
 			return describeChange({
 				sourceFiles: cause.sourceFiles,
 				configFiles: cause.configFiles.map((file) =>
-					path.basename(file)
+					relativeTo(cwd, file)
 				),
 				reloaded: cause.reloaded,
 			});
@@ -121,10 +120,12 @@ export class WatchLog {
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
 		if (cause.kind === "burst") {
 			this.logService.warn(
-				`Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
+				cause.ended
+					? `The burst has stopped, after ${plural(cause.dropped, "more change")}.`
+					: `Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
 			);
 		}
-		this.logService.step(`${clockTime(at)} · ${titleOf(cause)}`);
+		this.logService.step(`${clockTime(at)} · ${titleOf(cause, this.cwd)}`);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
@@ -133,7 +134,7 @@ export class WatchLog {
 	}
 
 	private notice(notice: ConfigNotice): void {
-		const name = path.basename(notice.file);
+		const name = relativeTo(this.cwd, notice.file);
 		switch (notice.kind) {
 			case "recovered":
 				this.logService.info(`${name} loads again.`);

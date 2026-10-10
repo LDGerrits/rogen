@@ -72,7 +72,12 @@ describe("WatchLog.update", () => {
 
 		it("should say a burst dropped the changes and rebuilt everything", () => {
 			const lines = logged({
-				cause: { kind: "burst", dropped: 250, threshold: 200 },
+				cause: {
+					kind: "burst",
+					dropped: 250,
+					threshold: 200,
+					ended: false,
+				},
 			});
 
 			expect(lines.map(({ kind, text }) => [kind, text])).toEqual([
@@ -82,6 +87,22 @@ describe("WatchLog.update", () => {
 				],
 				["step", "03:04:05 · many changes · full rebuild"],
 			]);
+		});
+
+		it("should say a burst has stopped, without a threshold it did not cross", () => {
+			const lines = logged({
+				cause: {
+					kind: "burst",
+					dropped: 101,
+					threshold: 200,
+					ended: true,
+				},
+			});
+
+			expect(lines[0]).toEqual({
+				kind: "warn",
+				text: "The burst has stopped, after 101 more changes.",
+			});
 		});
 
 		it("should count source files", () => {
