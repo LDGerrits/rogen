@@ -7,6 +7,7 @@ import { RouteMatch, VariantMatch } from "./build.js";
 import { NameReader, SuffixSpan } from "./name-reader.js";
 import {
 	EntryRead,
+	FolderRead,
 	InstancelessFolder,
 	NameReadings,
 } from "./name-readings.js";
@@ -84,6 +85,12 @@ export interface InitWithoutFolder {
 /** How many folders deep a directory relative to the root dir is. */
 const depthOf = (dir: string) => (dir === "" ? 0 : dir.split("/").length);
 
+/** A folder above a file that becomes a node, by its name and its folder relative to the root dir. */
+interface ClaimedFolder {
+	readonly name: string;
+	readonly dir: string;
+}
+
 /** What the folders and markers above a file, then its own suffixes, claim for it; the outermost route wins. */
 class Claims {
 	route: { readonly key: string; readonly match: RouteMatch } | undefined;
@@ -149,10 +156,7 @@ interface LeafName {
 interface ClaimedPath {
 	readonly claims: Claims;
 	/** Only those below the innermost `^`, which drops the ones above it. */
-	readonly folders: readonly {
-		readonly name: string;
-		readonly dir: string;
-	}[];
+	readonly folders: readonly ClaimedFolder[];
 	readonly leaf: LeafName;
 	readonly hoisted: boolean;
 	/** How many folders above `folders` the `^` dropped. */
@@ -178,6 +182,16 @@ type InitRoutes = ReadonlyMap<
 	}[]
 >;
 
+/** What routing found in the scanned files. */
+export interface Routing {
+	readonly routed: RoutedFile[];
+	readonly toCopy: InitToCopy[];
+	readonly unrouted: string[];
+	readonly withoutFolder: InitWithoutFolder[];
+	readonly hoistedInits: HoistedInit[];
+	readonly markerClashes: MarkerClash[];
+}
+
 /** Finds each scanned file's governing route and instance path. */
 export class Router {
 	private readonly keys: DeclaredKeys;
@@ -193,65 +207,62 @@ export class Router {
 	}
 
 	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the directories whose markers disagree. */
-	route(roots: readonly ScannedRoot[]): {
-		routed: RoutedFile[];
-		toCopy: InitToCopy[];
-		unrouted: string[];
-		withoutFolder: InitWithoutFolder[];
-		hoistedInits: HoistedInit[];
-		markerClashes: MarkerClash[];
-	} {
-		const routed: RoutedFile[] = [];
-		const toCopy: InitToCopy[] = [];
-		const unrouted: string[] = [];
-		const withoutFolder: InitWithoutFolder[] = [];
-		const hoistedInits: HoistedInit[] = [];
-		const markerClashes: MarkerClash[] = [];
+	route(roots: readonly ScannedRoot[]): Routing {
+		const routing: Routing = {
+			routed: [],
+			toCopy: [],
+			unrouted: [],
+			withoutFolder: [],
+			hoistedInits: [],
+			markerClashes: [],
+		};
 		for (const root of roots) {
 			const markers = root.markersByDir();
 			const initRoutes = this.initRoutesOf(root);
-			markerClashes.push(
+			routing.markerClashes.push(
 				...this.markerClashesOf(root, markers, initRoutes)
 			);
-			for (const entry of root.entries) {
-				const claimed = this.claim(entry, markers, initRoutes);
-				if (claimed.leaf.isInit && claimed.leaf.hoisted) {
-					const { variants } = claimed.claims;
-					hoistedInits.push({ source: entry.source, variants });
-					// A dormant one is pruned like any other file, so `where` still accounts for it.
-					if (this.config.allVariantsOn(variants)) continue;
-				}
-				if (claimed.leaf.isInit && claimed.folders.length === 0) {
-					if (this.config.routes.has(claimed.claims.routeKey))
-						withoutFolder.push({
-							source: entry.source,
-							variants: claimed.claims.variants,
-							folder: this.instancelessFolderOf(entry),
-						});
-					else unrouted.push(entry.source);
-					continue;
-				}
-				const placed = this.place(entry, claimed);
-				if (placed) routed.push(placed);
-				else unrouted.push(entry.source);
-				if (this.isCopied(claimed))
-					toCopy.push({
-						entry,
-						variants: claimed.claims.variants,
-						buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
-						init: this.initFolders(entry, claimed.folders),
-						placed,
-					});
-			}
+			for (const entry of root.entries)
+				this.routeEntry(entry, markers, initRoutes, routing);
 		}
-		return {
-			routed,
-			toCopy,
-			unrouted,
-			withoutFolder,
-			hoistedInits,
-			markerClashes,
-		};
+		return routing;
+	}
+
+	/** Adds `entry` to `routing` as what it turns out to be: hoisted, an init script without a folder, or a routed or unrouted file. */
+	private routeEntry(
+		entry: ScannedFile,
+		markers: ReadonlyMap<string, string[]>,
+		initRoutes: InitRoutes,
+		routing: Routing
+	): void {
+		const claimed = this.claim(entry, markers, initRoutes);
+		if (claimed.leaf.isInit && claimed.leaf.hoisted) {
+			const { variants } = claimed.claims;
+			routing.hoistedInits.push({ source: entry.source, variants });
+			// A dormant one is pruned like any other file, so `where` still accounts for it.
+			if (this.config.allVariantsOn(variants)) return;
+		}
+		if (claimed.leaf.isInit && claimed.folders.length === 0) {
+			if (this.config.routes.has(claimed.claims.routeKey))
+				routing.withoutFolder.push({
+					source: entry.source,
+					variants: claimed.claims.variants,
+					folder: this.instancelessFolderOf(entry),
+				});
+			else routing.unrouted.push(entry.source);
+			return;
+		}
+		const placed = this.place(entry, claimed);
+		if (placed) routing.routed.push(placed);
+		else routing.unrouted.push(entry.source);
+		if (this.isCopied(claimed))
+			routing.toCopy.push({
+				entry,
+				variants: claimed.claims.variants,
+				buriedScriptSuffix: claimed.leaf.buriedScriptSuffix,
+				init: this.initFolders(entry, claimed.folders),
+				placed,
+			});
 	}
 
 	/** The declared key the marker `fileName` in `dir` spells, if any. */
@@ -462,41 +473,14 @@ export class Router {
 		initRoutes: InitRoutes,
 		claims: Claims
 	): {
-		readonly folders: readonly {
-			readonly name: string;
-			readonly dir: string;
-		}[];
+		readonly folders: readonly ClaimedFolder[];
 		/** Where the folders below the innermost `^` folder start; none without one. */
 		readonly hoistAt: number | undefined;
 	} {
-		const applyDirClaims = (dir: string, level: number) => {
-			const depth = depthOf(dir);
-			for (const fileName of markers.get(dir) ?? []) {
-				const key = this.markerKeyAt(entry.rootDir, dir, fileName);
-				if (key === undefined) continue;
-				if (this.keys.isVariant(key))
-					claims.claimVariant(
-						{ variant: key, form: "marker" },
-						level
-					);
-				else if (!claims.claimRoute(key, "marker"))
-					claims.outrankSigned(key, depth, {
-						key,
-						dir,
-						marker: fileName,
-					});
-			}
-			// An init script claims its own suffix as any file does, and reports its own `@`; a Rojo suffix like `init.server` is bare, as a folder's name is.
-			for (const { key, source, at } of initRoutes.get(dir) ?? []) {
-				if (source === entry.source || claims.claimRoute(key, "init"))
-					continue;
-				if (at) claims.outrankSigned(key, depth);
-				else claims.outrankBare(key, depth);
-			}
-		};
-
-		applyDirClaims("", 0);
-		const folders: { name: string; dir: string }[] = [];
+		const claimDirectory = (dir: string, level: number) =>
+			this.claimDirectory(entry, dir, level, markers, initRoutes, claims);
+		claimDirectory("", 0);
+		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
 		for (const folder of read.folders) {
 			if (folder.hoisted) hoistAt = folders.length;
@@ -505,29 +489,61 @@ export class Router {
 					{ variant, form: "folder" },
 					folders.length
 				);
-			let routes = true;
-			if (folder.route !== undefined) {
-				const { route, dir } = folder;
-				const depth = depthOf(dir);
-				routes = claims.claimRoute(route, "folder");
-				if (!routes && folder.at)
-					routes = claims.outrankSigned(route, depth, {
-						key: route,
-						dir,
-					});
-				else if (!routes) claims.outrankBare(route, depth);
-				for (const key of folder.innerRoutes)
-					claims.outrankSigned(key, depth, { key, dir });
-			}
+			const routes = this.claimFolderRoute(folder, claims);
 			const name = routes ? folder.keptName : folder.outrankedName;
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
-			applyDirClaims(
+			claimDirectory(
 				folder.dir,
 				named ? folders.length - 1 : folders.length
 			);
 		}
 		return { folders, hoistAt };
+	}
+
+	/** What the markers of `dir`, and the route suffixes of the init scripts in it, claim for `entry` at `level`. */
+	private claimDirectory(
+		entry: ScannedFile,
+		dir: string,
+		level: number,
+		markers: ReadonlyMap<string, string[]>,
+		initRoutes: InitRoutes,
+		claims: Claims
+	): void {
+		const depth = depthOf(dir);
+		for (const fileName of markers.get(dir) ?? []) {
+			const key = this.markerKeyAt(entry.rootDir, dir, fileName);
+			if (key === undefined) continue;
+			if (this.keys.isVariant(key))
+				claims.claimVariant({ variant: key, form: "marker" }, level);
+			else if (!claims.claimRoute(key, "marker"))
+				claims.outrankSigned(key, depth, {
+					key,
+					dir,
+					marker: fileName,
+				});
+		}
+		// An init script claims its own suffix as any file does, and reports its own `@`; a Rojo suffix like `init.server` is bare, as a folder's name is.
+		for (const { key, source, at } of initRoutes.get(dir) ?? []) {
+			if (source === entry.source || claims.claimRoute(key, "init"))
+				continue;
+			if (at) claims.outrankSigned(key, depth);
+			else claims.outrankBare(key, depth);
+		}
+	}
+
+	/** Claims the route a folder's name spells, if it does; returns whether the folder routes, rather than being outranked and an ordinary folder. */
+	private claimFolderRoute(folder: FolderRead, claims: Claims): boolean {
+		if (folder.route === undefined) return true;
+		const { route, dir } = folder;
+		const depth = depthOf(dir);
+		let routes = claims.claimRoute(route, "folder");
+		if (!routes && folder.at)
+			routes = claims.outrankSigned(route, depth, { key: route, dir });
+		else if (!routes) claims.outrankBare(route, depth);
+		for (const key of folder.innerRoutes)
+			claims.outrankSigned(key, depth, { key, dir });
+		return routes;
 	}
 
 	/** Reads the suffixes of a file into `claims`, each claiming the file's node at `level`, and returns its instance name. */
