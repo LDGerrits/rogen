@@ -52,12 +52,13 @@ export class CoreServeSession
 	private readonly servers = new Map<string, StartedServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
 	private readonly retirements = new Set<Promise<void>>();
-	/** The address of each config a server the session didn't start serves. */
-	private readonly servedElsewhere = new Map<string, string>();
+	/** The configs whose server can't be started at the address they were last seen at, so what the session said of them is said once. */
+	private readonly declined = new Map<
+		string,
+		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
+	>();
 	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
-	/** The address each config to serve was refused at, so a refusal is said once. */
-	private readonly refused = new Map<string, string>();
 	private launched = false;
 	private reconciling: Promise<void> = Promise.resolve();
 	/** The first round of builds, or the error that ended it before it said anything. */
@@ -116,7 +117,10 @@ export class CoreServeSession
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
 		for (const { config, address } of this.plan.running)
-			this.servedElsewhere.set(config.file, address.toString());
+			this.declined.set(config.file, {
+				kind: "elsewhere",
+				address: address.toString(),
+			});
 		this.launched = true;
 		return ok(undefined);
 	}
@@ -165,9 +169,8 @@ export class CoreServeSession
 					present.has(file) ? "extended" : "removed"
 				);
 		}
-		for (const known of [this.servedElsewhere, this.refused])
-			for (const file of [...known.keys()])
-				if (!wanted.has(file)) known.delete(file);
+		for (const file of [...this.declined.keys()])
+			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of served.configs) {
 			if (this.stopping) return;
 			await this.follow(config, served);
@@ -192,23 +195,17 @@ export class CoreServeSession
 		const holder = others.find(
 			(other) => other.address.port === target.address.port
 		);
-		const refusedHere = this.refused.get(config.file) === address;
-		const elsewhere = this.servedElsewhere.get(config.file) === address;
-		if (!holder && (refusedHere || elsewhere)) {
-			// Only a port that freed up, or a change of the server on it, changes anything, and one probe tells.
-			const state = await this.probe.probe(target.address, tool.server);
-			const ownProject =
-				state.kind === "serving" &&
-				state.info.project === target.project;
-			if (elsewhere && ownProject) return;
-			if (
-				refusedHere &&
-				!elsewhere &&
-				state.kind !== "free" &&
-				!ownProject
-			)
-				return;
-		}
+		const prior = this.declined.get(config.file);
+		const declinedHere =
+			prior?.address === address ? prior.kind : undefined;
+		if (
+			!holder &&
+			declinedHere &&
+			(await this.stillDeclined(target, declinedHere))
+		)
+			return;
+		const refusedHere = declinedHere === "refused";
+		const elsewhere = declinedHere === "elsewhere";
 		// Its own server holds the port when only the host moved, so the port has nothing else to tell.
 		const samePort = started?.target.address.port === target.address.port;
 		const checked = holder
@@ -229,11 +226,9 @@ export class CoreServeSession
 					target,
 					diagnostic: checked.error,
 				});
-			this.refused.set(config.file, address);
-			this.servedElsewhere.delete(config.file);
+			this.declined.set(config.file, { kind: "refused", address });
 			return;
 		}
-		this.refused.delete(config.file);
 		if (started) await this.retire(started, "moved");
 		if (checked.value.running) {
 			if (!elsewhere)
@@ -241,11 +236,27 @@ export class CoreServeSession
 					kind: "running",
 					target: checked.value,
 				});
-			this.servedElsewhere.set(config.file, address);
+			this.declined.set(config.file, { kind: "elsewhere", address });
 			return;
 		}
-		this.servedElsewhere.delete(config.file);
+		this.declined.delete(config.file);
 		this.launch(checked.value);
+	}
+
+	/** Whether the server at `target`'s address is still as it was when `kind` was declined: only a port that freed up, or a change of the server on it, changes anything, and one probe tells. */
+	private async stillDeclined(
+		target: ServeTarget,
+		kind: "refused" | "elsewhere"
+	): Promise<boolean> {
+		const state = await this.probe.probe(
+			target.address,
+			this.plan.tool.server
+		);
+		const ownProject =
+			state.kind === "serving" && state.info.project === target.project;
+		return kind === "elsewhere"
+			? ownProject
+			: state.kind !== "free" && !ownProject;
 	}
 
 	private async retire(
