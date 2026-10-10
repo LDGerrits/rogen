@@ -120,7 +120,7 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { config, template, nodes, displaced } = this.placement;
+		const { template, nodes, displaced } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
 		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 
@@ -134,26 +134,14 @@ export class FolderMetaApplier {
 			const shared = sharedWithFile.get(nodePath);
 			// A node's file can be the init script of a folder that names it, which is that folder itself, so that folder's meta reaches it.
 			const ownDir = shared?.init?.becomes;
-			const reached = [...node.dirs]
-				.filter((dir) => !this.collapsed.covers(dir))
-				.flatMap((dir) => this.metaByDir.get(dir) ?? [])
-				.sort(
-					(a, b) =>
-						config.rootDirs.indexOf(a.rootDir) -
-						config.rootDirs.indexOf(b.rootDir)
-				);
+			const reached = this.metasReaching(node);
 			if (reached.length === 0) continue;
-
-			for (const clash of this.sameRootClashes(reached)) {
-				const key = clash.map(({ file }) => file).join("\0");
-				if (reportedClashes.has(key)) continue;
-				reportedClashes.add(key);
-				problems.error(
-					"meta.sameNode",
-					{ resource: clash[0].file },
-					`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one root dir, and neither ranks above the other. Keep one of them.`
-				);
-			}
+			this.reportSameRootClashes(
+				reached,
+				instance,
+				reportedClashes,
+				problems
+			);
 
 			const others = shared
 				? reached.filter(({ folder }) => folder !== ownDir)
@@ -187,6 +175,37 @@ export class FolderMetaApplier {
 				});
 		}
 		return outcomes;
+	}
+
+	/** The metas of the folders that reach `node` and aren't collapsed into a `$path`, those of earlier root dirs first. */
+	private metasReaching(node: ReachedNode): FolderMeta[] {
+		const { rootDirs } = this.placement.config;
+		return [...node.dirs]
+			.filter((dir) => !this.collapsed.covers(dir))
+			.flatMap((dir) => this.metaByDir.get(dir) ?? [])
+			.sort(
+				(a, b) =>
+					rootDirs.indexOf(a.rootDir) - rootDirs.indexOf(b.rootDir)
+			);
+	}
+
+	/** Reports each pair of metas of one root dir that apply to `instance`, once, since neither ranks above the other. */
+	private reportSameRootClashes(
+		reached: readonly FolderMeta[],
+		instance: string,
+		reported: Set<string>,
+		problems: DiagnosticCollector
+	): void {
+		for (const clash of this.sameRootClashes(reached)) {
+			const key = clash.map(({ file }) => file).join("\0");
+			if (reported.has(key)) continue;
+			reported.add(key);
+			problems.error(
+				"meta.sameNode",
+				{ resource: clash[0].file },
+				`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one root dir, and neither ranks above the other. Keep one of them.`
+			);
+		}
 	}
 
 	/** The metas in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
