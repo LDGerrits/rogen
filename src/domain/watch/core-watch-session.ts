@@ -2,14 +2,10 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import {
-	isError,
-	newDiagnostics,
-} from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet, LoadedBuild } from "../build/build.js";
+import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -18,6 +14,7 @@ import {
 	buildableConfig,
 } from "../config/config-service.js";
 import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
+import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
 	RebuildReport,
@@ -25,57 +22,6 @@ import {
 	WatchSession,
 	WatchUpdate,
 } from "./watch-service.js";
-
-/** What the session knows of one config: its rebuilds, and what the latest of them said. */
-class WatchedConfig {
-	readonly rebuilds = new Sequencer();
-	/** Rebuilds queued that haven't finished. */
-	pending = 0;
-	/** The latest finished rebuild; `undefined` before the first. */
-	latest: LoadedBuild | undefined;
-	/** The files the latest successful build read, whose updates must rebuild it. */
-	readFiles: ReadonlySet<string> = new Set();
-
-	get failing(): boolean {
-		return this.latest?.outcome === "failed";
-	}
-
-	/** Whether what it reads is known: no rebuild is under way and the latest didn't fail. */
-	get settled(): boolean {
-		return this.pending === 0 && !this.failing;
-	}
-
-	/** Records `build` as the latest, and reports what it says that the one before didn't. */
-	finished(build: LoadedBuild): RebuildReport {
-		const before = this.latest?.diagnostics ?? [];
-		const unreported = newDiagnostics(before, build.diagnostics);
-		// A failed build stops before it finds warnings, so what it doesn't list isn't fixed.
-		const fixed =
-			build.outcome === "failed"
-				? []
-				: newDiagnostics(build.diagnostics, before).filter(
-						(gone) =>
-							!unreported.some(
-								({ code, resource }) =>
-									code === gone.code &&
-									resource === gone.resource
-							)
-					);
-		this.latest = build;
-		if (build.outcome !== "failed")
-			this.readFiles = new Set(build.readFiles);
-		return {
-			build,
-			unreported,
-			repeated: build.diagnostics.filter(
-				(diagnostic) => !unreported.includes(diagnostic)
-			),
-			fixed,
-			repeatedFailure:
-				build.outcome === "failed" && !unreported.some(isError),
-		};
-	}
-}
 
 /** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
 export class CoreWatchSession
