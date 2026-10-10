@@ -120,17 +120,20 @@ export class Placer {
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
 	}
 
-	/** Two routes at one level of a folder leave nothing to decide between them. */
+	/** Two routes at one level of a folder leave nothing to decide between them; init scripts of variants never on together don't either, since a variant never moves a file. */
 	private markerClashErrors(
 		markerClashes: readonly MarkerClash[]
 	): Diagnostic[] {
-		return markerClashes.map(({ dir, names }) =>
-			errorDiagnostic(
+		return markerClashes.map(({ dir, names, varied }) => {
+			const quoted = joinedWithAnd(names.map((name) => `"${name}"`));
+			return errorDiagnostic(
 				"route.markerClash",
 				{ resource: dir },
-				`${joinedWithAnd(names.map((name) => `"${name}"`))} route this folder to different places, and nothing decides between them. Keep one.`
-			)
-		);
+				varied
+					? `${quoted} route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only "${varied.variant}" sends elsewhere in a ${varied.variant}/ folder with its own marker: ${varied.variant}/@${varied.key}.`
+					: `${quoted} route this folder to different places, and nothing decides between them. Keep one.`
+			);
+		});
 	}
 
 	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, whichever variants are on, unless the template displaces the file. A marker in a clash is that error's. */
