@@ -441,33 +441,6 @@ export class BuildSet {
 			: ok(set);
 	}
 
-	/** The valid configs of `selection` as a set, and the others as builds that didn't load; fails when a set's problem or a config's own error stops the run. */
-	static partition(
-		selection: ConfigSelection
-	): Result<
-		{ readonly set: BuildSet; readonly unloaded: UnloadedBuild[] },
-		DiagnosticsError
-	> {
-		const unloaded = selection.entries.flatMap((entry) =>
-			entry.status === "broken"
-				? [new UnloadedBuild(entry.file, entry.errors)]
-				: []
-		);
-		const set = new BuildSet(
-			selection.entries.flatMap((entry) =>
-				entry.status === "valid" ? [entry.config] : []
-			)
-		);
-		return set.diagnostics.length > 0
-			? err(
-					new DiagnosticsError([
-						...unloaded.flatMap(({ errors }) => errors),
-						...set.diagnostics,
-					])
-				)
-			: ok({ set, unloaded });
-	}
-
 	/** Each problem once, in the order it is reported. */
 	get diagnostics(): readonly Diagnostic[] {
 		return this.blockers.map(({ diagnostic }) => diagnostic);
@@ -489,8 +462,14 @@ export class BuildSet {
 		return this.configs.find((config) => config.file === file);
 	}
 
-	/** Every root directory of every config, which one listing covers. */
+	/** The configs no problem blocks. */
+	get buildable(): ResolvedConfig[] {
+		const blocked = this.blockedFiles;
+		return this.configs.filter(({ file }) => !blocked.has(file));
+	}
+
+	/** Every root directory of every config that can be built, which one listing covers. */
 	get rootDirs(): string[] {
-		return this.configs.flatMap(({ rootDirs }) => rootDirs);
+		return this.buildable.flatMap(({ rootDirs }) => rootDirs);
 	}
 }

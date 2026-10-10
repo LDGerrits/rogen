@@ -140,10 +140,8 @@ export interface Diagnosed {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails when the configs that load can't be built together. Otherwise returns the run, one build per selected config in order: builds each one that loads, checking its sync dir, then writes them in order. A build failure, or a config that doesn't load, writes nothing, and a failed write leaves the rest unwritten. */
-	build(
-		selection: ConfigSelection
-	): Promise<Result<BuildRun, DiagnosticsError>>;
+	/** The run, one build per selected config in order: builds each one that loads, checking its sync dir, then writes them in order. A config that doesn't load, one the set blocks or a build failure writes nothing, and a failed write leaves the rest unwritten. */
+	build(selection: ConfigSelection): Promise<BuildRun>;
 
 	/** Builds the config `file` of a watch's `set` from the listing the watch holds, and writes it; one the set blocks fails without building. The sync dir is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
 	rebuild(
@@ -153,13 +151,13 @@ export interface BuildService {
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;
 
-	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` and `check` do. */
+	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
 		targets?: LocateTargets
 	): Promise<Result<Diagnosed, DiagnosticsError>>;
 
-	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load answers nothing, and its errors come back beside the answers of the rest. Fails when the configs that load can't be built together, as `build` does. */
+	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load, or that the set blocks, answers nothing, and its errors come back beside the answers of the rest. */
 	locate(
 		selection: ConfigSelection,
 		targets?: LocateTargets

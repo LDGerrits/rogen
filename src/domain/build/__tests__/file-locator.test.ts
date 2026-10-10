@@ -1021,15 +1021,4 @@ describe("CoreBuildService.locate", () => {
 			{ status: "placed", source: abs("src/A.luau"), exists: true },
 		]);
 	});
-
-	it("should fail with the build's errors", async () => {
-		await write("src/A.luau");
-		const config = configOf({ routes: {} });
-
-		const result = await locateIn(buildService(), config);
-
-		expect(
-			result.isErr() && result.error.diagnostics.map(({ code }) => code)
-		).toEqual(["route.noRoutes"]);
-	});
 });

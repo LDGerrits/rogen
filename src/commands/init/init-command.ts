@@ -129,7 +129,7 @@ registerCommand(
 			if (plan.configs.length === 0) return ok(new BuildRun([]));
 			const selection = await configService.select(plan.configs, {});
 			if (selection.isErr()) return selection;
-			return buildService.build(selection.value);
+			return ok(await buildService.build(selection.value));
 		}
 
 		private async writeAsText(

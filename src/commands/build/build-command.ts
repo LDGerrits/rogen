@@ -69,9 +69,7 @@ registerCommand(
 			);
 			if (selection.isErr()) return selection;
 
-			const built = await buildService.build(selection.value);
-			if (built.isErr()) return built;
-			const run = built.value;
+			const run = await buildService.build(selection.value);
 
 			const denyWarnings = Boolean(line.options["deny-warnings"]);
 			const failure = run.failure(denyWarnings);

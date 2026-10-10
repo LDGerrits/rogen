@@ -1,5 +1,30 @@
 $ rogen build
 exit 1
+stdout: (not shown)
 stderr:
+  error: default.project.json · not written
   default.rogen.json - error: no routes declared, so nothing can be placed. (route.noRoutes)
   Add a "routes" map; 'rogen init' writes a starting set.
+
+$ rogen build --json
+exit 1
+stdout:
+  {
+    "configs": [
+      {
+        "config": "default",
+        "file": "<dir>/default.rogen.json",
+        "outFile": "<dir>/default.project.json",
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/default.rogen.json",
+            "severity": "error",
+            "code": "route.noRoutes",
+            "message": "no routes declared, so nothing can be placed.\nAdd a \"routes\" map; 'rogen init' writes a starting set.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-noroutes"
+          }
+        ]
+      }
+    ]
+  }
