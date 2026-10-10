@@ -123,30 +123,10 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 }
 
 /** `in <folder>`, relative to `cwd`, for a `home` that isn't `cwd` itself. */
-export function inFolder(
-	cwd: string,
-	home: string | undefined
-): string | undefined {
+function inFolder(cwd: string, home: string | undefined): string | undefined {
 	return home === undefined || relativeTo(cwd, home) === "."
 		? undefined
 		: `in ${relativeTo(cwd, home)}`;
-}
-
-/** The notes a config's line ends with, in the order given; none when no note applies. */
-export function joinNotes(
-	...notes: readonly (string | undefined)[]
-): string | undefined {
-	return notes.filter((note) => note !== undefined).join(" · ") || undefined;
-}
-
-/** `same warnings as lobby`, for a config whose diagnostics of `kind` earlier configs all said. */
-export function sameNote(
-	kind: "errors" | "warnings",
-	sameAs: readonly string[]
-): string | undefined {
-	return sameAs.length > 0
-		? `same ${kind} as ${joinedWithAnd(sameAs)}`
-		: undefined;
 }
 
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
@@ -156,10 +136,24 @@ export class BuildLog {
 		private readonly cwd: string
 	) {}
 
+	/** `same warnings as lobby`, for a config whose diagnostics of `kind` earlier configs all said. */
+	static sameAs(
+		kind: "errors" | "warnings",
+		labels: readonly string[]
+	): string | undefined {
+		return labels.length > 0
+			? `same ${kind} as ${joinedWithAnd(labels)}`
+			: undefined;
+	}
+
 	/** Opens the output: the command and the configs it builds, and the folder they are in when that isn't the working directory. */
 	begin(command: string, labels: readonly string[], home?: string): void {
 		this.logService.intro(
-			[`rogen ${command}`, labels.join(", "), inFolder(this.cwd, home)]
+			[
+				`rogen ${command}`,
+				labels.length > 0 ? labels.join(", ") : undefined,
+				inFolder(this.cwd, home),
+			]
 				.filter((part) => part !== undefined)
 				.join(" · ")
 		);
@@ -174,18 +168,16 @@ export class BuildLog {
 		);
 		for (const { build, warnings, errors } of run.shares) {
 			if (run.builds.length > 1) this.heading(build.label);
-			this.outcome(
-				build,
-				[...warnings.fresh, ...errors.fresh],
-				joinNotes(
+			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
+				notes: [
 					build.outcome === "notWritten"
 						? `${joinedWithAnd(build.blockedBy)} failed`
 						: undefined,
-					sameNote("errors", errors.sameAs),
-					sameNote("warnings", warnings.sameAs)
-				),
-				denyWarnings
-			);
+					BuildLog.sameAs("errors", errors.sameAs),
+					BuildLog.sameAs("warnings", warnings.sameAs),
+				],
+				failing: denyWarnings,
+			});
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
 		else this.end(run.builds.length, run.warningCount, denyWarnings);
@@ -196,13 +188,20 @@ export class BuildLog {
 		this.logService.step(label);
 	}
 
-	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`, which `failing` makes the run fail. */
+	/** One config's line for what the run did to its project file, ending in the `notes` that apply, then `diagnostics`, which `failing` makes the run fail. */
 	outcome(
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
-		note?: string,
-		failing = false
+		{
+			notes = [],
+			failing = false,
+		}: {
+			readonly notes?: readonly (string | undefined)[];
+			readonly failing?: boolean;
+		} = {}
 	): void {
+		const note =
+			notes.filter((part) => part !== undefined).join(" · ") || undefined;
 		const line = (outcome: string) =>
 			[
 				relativeTo(

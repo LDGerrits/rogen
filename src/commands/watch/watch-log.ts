@@ -11,7 +11,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
-import { BuildLog, joinNotes, sameNote } from "../build/build-log.js";
+import { BuildLog } from "../build/build-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;
@@ -168,13 +168,15 @@ export class WatchLog {
 		this.buildLog.outcome(
 			build,
 			[...warnings.fresh, ...unreported.filter(isError)],
-			joinNotes(
-				repeatedFailure
-					? "same errors as before"
-					: counted(repeated, "as before"),
-				sameNote("warnings", warnings.sameAs),
-				counted(fixed, "fixed")
-			)
+			{
+				notes: [
+					repeatedFailure
+						? "same errors as before"
+						: counted(repeated, "as before"),
+					BuildLog.sameAs("warnings", warnings.sameAs),
+					counted(fixed, "fixed"),
+				],
+			}
 		);
 	}
 }

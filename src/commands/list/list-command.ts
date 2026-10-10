@@ -1,10 +1,7 @@
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
-
 import {
 	ConfigArguments,
-	ConfigEntry,
-	ConfigSelection,
 	ConfigSelectionOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
@@ -16,20 +13,8 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { inFolder } from "../build/build-log.js";
+import { BuildLog } from "../build/build-log.js";
 import { ConfigReport } from "./config-report.js";
-
-/** The run's result line when some configs are broken; none when every one loads. */
-function brokenError(entries: readonly ConfigEntry[]): Error | undefined {
-	const broken = entries.filter(({ status }) => status === "broken").length;
-	if (broken === 0) return undefined;
-	const verb = broken === 1 ? "has" : "have";
-	return new Error(
-		broken === entries.length
-			? `${plural(broken, "config")} ${verb} errors.`
-			: `${broken} of ${entries.length} configs ${verb} errors.`
-	);
-}
 
 const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -61,34 +46,19 @@ registerCommand(
 				line.options
 			);
 			if (selection.isErr()) return selection;
-			const { entries } = selection.value;
-			const broken = brokenError(entries);
+			const { entries, home } = selection.value;
+			const report = new ConfigReport(logService, cwd);
+			const broken = ConfigReport.failure(entries);
 
 			if (line.options.json)
-				return this.listAsJson(selection.value, logService);
+				return this.printJson(logService, report.json(entries), broken);
 
-			logService.intro(
-				["rogen list", inFolder(cwd, selection.value.home)]
-					.filter((part) => part !== undefined)
-					.join(" · ")
-			);
-			new ConfigReport(entries).print(logService, cwd);
+			new BuildLog(logService, cwd).begin("list", [], home);
+			report.print(entries);
 
 			if (broken) return err(broken);
 			logService.outro(`${plural(entries.length, "config")}.`);
 			return ok(undefined);
-		}
-
-		private listAsJson(
-			selection: ConfigSelection,
-			logService: LogService
-		): Result<void, Error> {
-			const report = new ConfigReport(selection.entries);
-			return this.printJson(
-				logService,
-				report.json(),
-				brokenError(selection.entries)
-			);
 		}
 	}
 );

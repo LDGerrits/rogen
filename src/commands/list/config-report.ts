@@ -1,4 +1,5 @@
 import { relativeTo, toNative } from "../../base/path.js";
+import { plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
@@ -20,13 +21,31 @@ const routeLines = ({ routes }: ResolvedConfig): string[] =>
 
 /** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ConfigReport {
-	constructor(private readonly entries: readonly ConfigEntry[]) {}
+	constructor(
+		private readonly logService: LogService,
+		private readonly cwd: string
+	) {}
+
+	/** The run's result when some configs are broken; none when every one loads. */
+	static failure(entries: readonly ConfigEntry[]): Error | undefined {
+		const broken = entries.filter(
+			({ status }) => status === "broken"
+		).length;
+		if (broken === 0) return undefined;
+		const verb = broken === 1 ? "has" : "have";
+		return new Error(
+			broken === entries.length
+				? `${plural(broken, "config")} ${verb} errors.`
+				: `${broken} of ${entries.length} configs ${verb} errors.`
+		);
+	}
 
 	/** One block per config: its file, what it extends, then its values or its errors. */
-	print(logService: LogService, cwd: string): void {
-		const relative = (file: string) => relativeTo(cwd, file);
+	print(entries: readonly ConfigEntry[]): void {
+		const { logService } = this;
+		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
-		for (const entry of this.entries) {
+		for (const entry of entries) {
 			const extended =
 				entry.parents.length > 0
 					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
@@ -80,9 +99,9 @@ export class ConfigReport {
 		}
 	}
 
-	json(): Record<string, unknown> {
+	json(entries: readonly ConfigEntry[]): Record<string, unknown> {
 		return {
-			configs: this.entries.map((entry) => ({
+			configs: entries.map((entry) => ({
 				config: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
