@@ -58,6 +58,21 @@ describe("NameReader marker", () => {
 		).toBe("@server");
 	});
 
+	it("should offer a letter-case fix only for the kind of key the sign belongs to", () => {
+		expect(readerOf(ALL_KEYS).marker("@SERVER").nearMissKey).toBe("server");
+		expect(readerOf(ALL_KEYS).marker(".MOCK").nearMissKey).toBe("mock");
+		expect(readerOf(ALL_KEYS).marker("@MOCK").nearMissKey).toBeUndefined();
+		expect(
+			readerOf(ALL_KEYS).marker(".SERVER").nearMissKey
+		).toBeUndefined();
+	});
+
+	it("should note nothing about a letter-case miss, which has its own warning, or about a key spelt right", () => {
+		expect(readerOf(ALL_KEYS).marker("@SERVER").misspellings).toEqual([]);
+		expect(readerOf(ALL_KEYS).marker(".mock").misspellings).toEqual([]);
+		expect(readerOf(ALL_KEYS).marker("@server").misspellings).toEqual([]);
+	});
+
 	it("matches a variant marker", () => {
 		expect(matchMarkerKey(".mock", ALL_KEYS)).toBe("mock");
 	});
@@ -358,6 +373,22 @@ describe("NameReader.unwrapInvisibleFolder", () => {
 	});
 });
 
+describe("NameReader.unhoisted", () => {
+	it("should leave a lone ^ as a name", () => {
+		expect(NameReader.unhoisted("^")).toEqual({
+			name: "^",
+			hoisted: false,
+		});
+	});
+
+	it("should take the ^ off a longer name", () => {
+		expect(NameReader.unhoisted("^Animate")).toEqual({
+			name: "Animate",
+			hoisted: true,
+		});
+	});
+});
+
 describe("NameReader folder", () => {
 	const read = (name: string) => readFolderName(name, ALL_KEYS);
 
@@ -521,6 +552,51 @@ describe("NameReader folder", () => {
 			outrankedName: "Inventory",
 			misspellings: [],
 		});
+	});
+});
+
+describe("NameReader folder name offsets", () => {
+	it.each([
+		["Foo.mok", 3],
+		["(Foo.mok)", 4],
+		["^Foo.mok", 4],
+		["(^Foo.mok)", 5],
+	])(
+		"should measure a respelling in %s from the start of the whole name",
+		(folderName, start) => {
+			const read = readFolderName(folderName, ALL_KEYS);
+
+			expect(misspelt(read, "variantTypo")?.respelling?.start).toBe(
+				start
+			);
+		}
+	);
+
+	it.each([".mock", ".Mock", "(.mock)"])(
+		"should read %s as a variant and no route",
+		(folderName) => {
+			expect(readFolderName(folderName, ALL_KEYS)).toMatchObject({
+				at: false,
+				innerRoutes: [],
+				variants: ["mock"],
+			});
+		}
+	);
+
+	it("should read a dot-name misspelling as a plain name that keeps its dot", () => {
+		expect(readFolderName(".mok", ALL_KEYS)).toMatchObject({
+			at: false,
+			innerRoutes: [],
+			variants: [],
+			keptName: ".mok",
+		});
+	});
+
+	it("should note a misspelt leading variant beside a route suffix", () => {
+		const read = readFolderName(".mok@server", ALL_KEYS);
+
+		expect(read.route).toBe("server");
+		expect(misspelt(read, "variantTypo")?.variant).toBe("mock");
 	});
 });
 

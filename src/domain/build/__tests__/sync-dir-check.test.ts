@@ -157,6 +157,84 @@ describe("SyncDirCheck", () => {
 					);
 				});
 
+				it("should warn about a missing sync dir when only one root dir has files", async () => {
+					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.createDirectory(abs("tests"));
+
+					const warnings = await check(
+						fs,
+						emittedConfigOf({
+							rootDirs: [abs("src"), abs("tests")],
+						})
+					);
+
+					expect(warnings).toHaveLength(1);
+					expect(warnings[0].resource).toBe(abs("out"));
+				});
+
+				it("should skip a root dir that holds only dotfiles", async () => {
+					await fs.writeFile(abs("src/.gitkeep"), "");
+
+					expect(await check(fs, emittedConfigOf())).toEqual([]);
+				});
+
+				it("should name the sync dir as the nearest path when the root dir's folder under it is missing", async () => {
+					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.writeFile(abs("tests/Inventory.spec.ts"), "");
+					await fs.createDirectory(abs("out"));
+
+					const warnings = await check(
+						fs,
+						emittedConfigOf({
+							rootDirs: [abs("src"), abs("tests")],
+						})
+					);
+
+					expect(warnings.map(({ resource }) => resource)).toEqual([
+						abs("src"),
+						abs("tests"),
+					]);
+					for (const { message } of warnings)
+						expect(message).toContain(
+							'nearest path that exists is "out"'
+						);
+				});
+
+				it.each([
+					[
+						"a level up",
+						"out/server/Inventory/A.luau",
+						"out/server/Inventory",
+					],
+					["two levels up", "out/Inventory/A.luau", "out/Inventory"],
+				])(
+					"should find output rooted %s from where it was expected",
+					async (_where, written, found) => {
+						await fs.writeFile(
+							abs("src/server/Inventory/A.ts"),
+							""
+						);
+						await fs.writeFile(abs("tests/unit/A.spec.ts"), "");
+						await fs.writeFile(abs(written), "");
+
+						const warnings = await check(
+							fs,
+							emittedConfigOf({
+								rootDirs: [
+									abs("src/server"),
+									abs("tests/unit"),
+								],
+							})
+						);
+
+						expect(
+							warnings.find(
+								({ resource }) => resource === abs("src/server")
+							)?.message
+						).toContain(`Found "${found}"`);
+					}
+				);
+
 				it("should ignore dotfiles such as marker files", async () => {
 					await fs.writeFile(abs("src/@server"), "");
 					await fs.writeFile(abs("src/Inventory/A.luau"), "");

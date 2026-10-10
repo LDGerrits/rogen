@@ -567,6 +567,28 @@ describe("LocationReport", () => {
 				configs.map(([label, location]) => [label, [location]])
 			).blocks()[0].requireLines;
 
+		it("should say a script is not a module, and a file whose path no require reaches why", () => {
+			expect(
+				requireLines([
+					"default",
+					{
+						...placed(["ReplicatedStorage", "Boot"]),
+						source: "/repo/src/Boot.client.luau",
+					},
+				])
+			).toEqual([
+				"  no require by this path: a script runs on its own and is not a module",
+			]);
+			expect(
+				requireLines([
+					"default",
+					placed(["StarterPlayer", "StarterPlayerScripts", "Util"]),
+				])
+			).toEqual([
+				"  no require by this path: StarterPlayerScripts is cloned into each player",
+			]);
+		});
+
 		it("should give a module's require, and none for a file found in a folder", () => {
 			const path = ["ReplicatedStorage", "Util"];
 
@@ -971,6 +993,24 @@ describe("LocationReport", () => {
 			]);
 		});
 
+		it("should mark a hoisted name in json, and leave the mark off an unhoisted one", () => {
+			const placed: FileLocation = {
+				status: "placed",
+				source: "/repo/src/Player/^Animate.client.luau",
+				exists: true,
+				instancePath: ["StarterPlayer", "Animate"],
+				route: "character",
+				routeMatch: "marker",
+				variants: [],
+			};
+
+			expect(jsonOf({ ...placed, hoisted: true })[0]).toHaveProperty(
+				"hoisted",
+				true
+			);
+			expect(jsonOf(placed)[0]).not.toHaveProperty("hoisted");
+		});
+
 		it("should give the other nodes a copied init script is", () => {
 			expect(
 				jsonOf({
@@ -1115,6 +1155,48 @@ describe("LocationReport", () => {
 					diagnostics: [],
 				},
 			]);
+		});
+
+		it("should give the renames that would place an instance no file does, and leave out empty lists", () => {
+			const entries = (instance: InstanceLocation) =>
+				reportOf([["default", [], [instance]]])
+					.json()
+					.locations.map(({ config: _config, ...rest }) => rest);
+			const reference = InstanceReference.parse("Workspace.Missing")!;
+
+			expect(
+				entries({
+					reference,
+					files: [],
+					folders: [],
+					fixes: [
+						{
+							code: "route.misspelt",
+							rename: {
+								from: "/repo/src/Gone.luau",
+								to: "/repo/src/Missing.luau",
+							},
+						},
+					],
+				})
+			).toEqual([
+				{
+					instance: "Workspace.Missing",
+					status: "noFile",
+					fixes: [
+						{
+							rename: {
+								from: path.normalize("/repo/src/Gone.luau"),
+								to: path.normalize("/repo/src/Missing.luau"),
+							},
+						},
+					],
+					diagnostics: [],
+				},
+			]);
+			expect(
+				entries({ reference, files: [], folders: [], fixes: [] })[0]
+			).not.toHaveProperty("fixes");
 		});
 
 		it("should keep a config's outside entry when another config places the path", () => {

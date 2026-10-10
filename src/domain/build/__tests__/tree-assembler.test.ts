@@ -909,6 +909,16 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual(["dist/Hud.luau"]);
 			});
 
+			it("should not list a file an active variant replaced, which shares the winner's emitted path", async () => {
+				await write("src/Analytics.luau", "src/Analytics.mock.luau");
+
+				const { tree: value } = await assemble({
+					variants: { mock: true },
+				});
+
+				expect(value.globIgnorePaths).toBeUndefined();
+			});
+
 			it("should not list a file the template displaced, which its $path may mount", async () => {
 				await write("src/Packages/A.luau", "src/Other/B.luau");
 				const template = templateOf({
