@@ -59,20 +59,27 @@ export function scriptFate(
 	return instancePath[0] === SCRIPT_STORAGE_SERVICE ? "stored" : "neverRuns";
 }
 
+/** Whether `instancePath` starts at StarterPlayer's or the character's script container. */
+function isPlayerScriptContainer(instancePath: readonly string[]): boolean {
+	const [service, child] = instancePath;
+	return (
+		service === "StarterPlayer" && PLAYER_SCRIPT_CONTAINERS.includes(child)
+	);
+}
+
 /** Whether a script that runs as `run` ever runs at `instancePath`, as Roblox documents it; no script runs from ServerStorage. */
 function scriptRunsAt(
 	run: ScriptRun,
 	instancePath: readonly string[]
 ): boolean {
-	const [service, child] = instancePath;
+	const [service] = instancePath;
 	switch (run) {
 		case "Script":
 			return SERVER_SCRIPT_SERVICES.includes(service);
 		case "LocalScript":
 			return (
 				CLIENT_SCRIPT_SERVICES.includes(service) ||
-				(service === "StarterPlayer" &&
-					PLAYER_SCRIPT_CONTAINERS.includes(child))
+				isPlayerScriptContainer(instancePath)
 			);
 		case "Server":
 			return service !== SCRIPT_STORAGE_SERVICE;
@@ -125,10 +132,7 @@ export class Target {
 
 	/** Whether the target is StarterPlayer's or the character's script container, where scripts run only with legacy run contexts. */
 	get isPlayerScripts(): boolean {
-		return (
-			this.service === "StarterPlayer" &&
-			PLAYER_SCRIPT_CONTAINERS.includes(this.folders[0])
-		);
+		return isPlayerScriptContainer(this.instancePath);
 	}
 
 	toString(): string {
@@ -210,14 +214,9 @@ export function requireExpression(
 
 /** The class of a node Rogen creates to hold children: services and StarterPlayer's script containers keep their own, the rest are folders. */
 export function containerClassName(instancePath: readonly string[]): string {
-	const [service, child] = instancePath;
-	if (instancePath.length === 1) return service;
-	if (
-		instancePath.length === 2 &&
-		service === "StarterPlayer" &&
-		PLAYER_SCRIPT_CONTAINERS.includes(child)
-	)
-		return child;
+	if (instancePath.length === 1) return instancePath[0];
+	if (instancePath.length === 2 && isPlayerScriptContainer(instancePath))
+		return instancePath[1];
 	return "Folder";
 }
 
