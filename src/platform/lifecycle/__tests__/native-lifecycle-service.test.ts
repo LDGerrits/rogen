@@ -23,9 +23,18 @@ describe("NativeLifecycleService", () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
+	it("should leave the signals to the process until something listens", () => {
+		const before = process.listenerCount("SIGTERM");
+
+		store.add(new NativeLifecycleService());
+
+		expect(process.listenerCount("SIGTERM")).toBe(before);
+	});
+
 	it("should stop listening for signals once disposed", () => {
 		const before = process.listenerCount("SIGINT");
 		const service = new NativeLifecycleService();
+		service.onWillShutdown(() => undefined);
 
 		service[Symbol.dispose]();
 
