@@ -186,7 +186,7 @@ export class BuildLog {
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
-	heading(label: string): void {
+	private heading(label: string): void {
 		this.logService.step(label);
 	}
 
@@ -239,7 +239,11 @@ export class BuildLog {
 	}
 
 	/** Closes the output of a build that wrote every config, counting its warnings. */
-	end(configs: number, warnings: number, denyWarnings: boolean): void {
+	private end(
+		configs: number,
+		warnings: number,
+		denyWarnings: boolean
+	): void {
 		const built = `Built ${plural(configs, "config")}`;
 		this.logService.outro(
 			warnings === 0
