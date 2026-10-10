@@ -2,9 +2,9 @@ import { safeStringify } from "./json.js";
 
 /** Why a system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
 export function failureReason(error: Error): string {
-	return error.message
-		.replace(/^[A-Z][A-Z0-9]+: /, "")
-		.replace(/, [a-z]+( '.*')?$/, "");
+	const code = /^[A-Z][A-Z0-9]+: /;
+	if (!code.test(error.message)) return error.message;
+	return error.message.replace(code, "").replace(/, [a-z]+( '.*')?$/, "");
 }
 
 export const ErrorUtils = {

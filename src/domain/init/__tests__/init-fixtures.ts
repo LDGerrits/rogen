@@ -26,7 +26,6 @@ export interface DirectorySpec {
 	readonly path?: string;
 }
 
-/** What a setup reads folders through, over `fileSystem`. */
 export const placeFoldersOf = (
 	fileSystem: FileSystemService = new MemoryFileSystemService()
 ) => new PlaceFolders(fileSystem, new CoreToolchainService(fileSystem));

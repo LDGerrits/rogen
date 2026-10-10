@@ -1,6 +1,5 @@
 import path from "path";
-import { isDeepStrictEqual } from "util";
-import { formatJsonFile } from "../../base/json.js";
+import { formatJsonFile, safeStringify } from "../../base/json.js";
 import {
 	commonAncestor,
 	isInside,
@@ -309,7 +308,8 @@ export class ResolvedTemplate {
 		return (
 			other !== undefined &&
 			this.file === other.file &&
-			isDeepStrictEqual(this.project.getTree(), other.project.getTree())
+			safeStringify(this.project.getTree()) ===
+				safeStringify(other.project.getTree())
 		);
 	}
 }

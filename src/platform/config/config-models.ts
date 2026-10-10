@@ -1,5 +1,5 @@
 import { isObject, mergeDeep } from "../../base/objects.js";
-import { isDeepStrictEqual } from "util";
+import { safeStringify } from "../../base/json.js";
 
 /** A section is a dotted path, or its segments when a key may itself contain a dot. */
 export type ConfigSection = string | readonly string[];
@@ -140,7 +140,10 @@ export class Config {
 	equals(other: Config): boolean {
 		const keys = new Set([...this.keys(), ...other.keys()]);
 		for (const key of keys) {
-			if (!isDeepStrictEqual(this.getValue(key), other.getValue(key)))
+			if (
+				safeStringify(this.getValue(key)) !==
+				safeStringify(other.getValue(key))
+			)
 				return false;
 		}
 		return true;

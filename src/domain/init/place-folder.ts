@@ -9,7 +9,7 @@ const SOURCE_DIR = "src";
 
 /** The folder a place owns: its code in `src` with its template beside it, or, when the folder already holds code outside a `src`, the folder itself with the template beside the folder, so that code never moves. */
 export class PlaceFolder {
-	private constructor(
+	constructor(
 		/** Relative to the directory `init` runs in. */
 		readonly path: string,
 		/** Whether it holds code but no `src`, which keeps it as the root dir. */
@@ -17,15 +17,6 @@ export class PlaceFolder {
 		/** Whether the template is already there, which `init` then uses as it is. */
 		readonly hasTemplate: boolean
 	) {}
-
-	/** A folder that holds what `holdsCode` and `hasTemplate` say. */
-	static of(
-		folder: string,
-		holdsCode: boolean,
-		hasTemplate: boolean
-	): PlaceFolder {
-		return new PlaceFolder(folder, holdsCode, hasTemplate);
-	}
 
 	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
 	static pathOf(
@@ -85,7 +76,7 @@ export class PlaceFolders {
 			!(await this.fileSystemService.exists(
 				path.join(absolute, SOURCE_DIR)
 			)) && (await this.toolchainService.holdsCode(absolute));
-		return PlaceFolder.of(
+		return new PlaceFolder(
 			folder,
 			code,
 			await this.fileSystemService.exists(

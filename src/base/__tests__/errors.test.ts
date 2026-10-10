@@ -134,6 +134,7 @@ describe("failureReason", () => {
 			"illegal operation on a directory",
 		],
 		["disk full", "disk full"],
+		["not found, retry", "not found, retry"],
 	])("should give the reason of %j without its code", (message, reason) => {
 		expect(failureReason(new Error(message))).toBe(reason);
 	});
