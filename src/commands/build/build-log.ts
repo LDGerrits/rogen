@@ -32,6 +32,12 @@ function withListCapped(diagnostic: Diagnostic): Diagnostic {
 	};
 }
 
+/** `diagnostic` with `note` after its message. */
+const noted = (diagnostic: Diagnostic, note: string): Diagnostic => ({
+	...diagnostic,
+	message: `${diagnostic.message} ${note}`,
+});
+
 /** At most `LISTED_PER_CODE` warnings of one code; the last one printed says how many more there were. Errors always print, since the build stops on them. */
 function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	const totals = new Map<string, number>();
@@ -50,12 +56,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 		if (position > LISTED_PER_CODE) return [];
 		const unlisted = (totals.get(code) ?? 0) - LISTED_PER_CODE;
 		return position === LISTED_PER_CODE && unlisted > 0
-			? [
-					{
-						...diagnostic,
-						message: `${diagnostic.message} ${unlistedNote(unlisted)}`,
-					},
-				]
+			? [noted(withListCapped(diagnostic), unlistedNote(unlisted))]
 			: [withListCapped(diagnostic)];
 	});
 }

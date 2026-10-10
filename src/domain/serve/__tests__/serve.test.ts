@@ -62,6 +62,11 @@ describe("SyncServer", () => {
 			}
 		);
 
+		it("should read Argon's short flag with the value attached", () => {
+			expect(SyncServer.ARGON.portIn(["-P8001"]).unwrap()).toBe(8001);
+			expect(SyncServer.ARGON.portIn(["-Pabc"]).isErr()).toBe(true);
+		});
+
 		it("should read Argon's short flag, and take the last one given", () => {
 			expect(
 				SyncServer.ARGON.portIn([
@@ -76,6 +81,10 @@ describe("SyncServer", () => {
 	});
 
 	describe("hostIn", () => {
+		it("should read Argon's short host flag with the value attached", () => {
+			expect(SyncServer.ARGON.hostIn(["-H0.0.0.0"])).toBe("0.0.0.0");
+		});
+
 		it("should read each server's own host flag", () => {
 			expect(SyncServer.ROJO.hostIn(["--address", "0.0.0.0"])).toBe(
 				"0.0.0.0"

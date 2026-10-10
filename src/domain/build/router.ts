@@ -177,7 +177,7 @@ export class Router {
 		this.keys = config.keys;
 	}
 
-	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; and the init scripts with no folder to be. */
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
 	route(roots: readonly ScannedRoot[]): Routing {
 		const routing: Routing = {
 			routed: [],

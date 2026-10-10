@@ -17,13 +17,11 @@ import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** A placed build with its tree; what the rules report on. */
-export class Assembly {
-	constructor(
-		readonly placement: Placement,
-		readonly tree: RojoTree,
-		readonly meta: BuildMeta,
-		readonly metaOutcomes: readonly FolderMetaOutcome[]
-	) {}
+export interface Assembly {
+	readonly placement: Placement;
+	readonly tree: RojoTree;
+	readonly meta: BuildMeta;
+	readonly metaOutcomes: readonly FolderMetaOutcome[];
 }
 
 /** Directories written as one `$path`, mapped to the instance each becomes. */
@@ -74,17 +72,15 @@ export class TreeAssembler {
 		).apply(project);
 		if (applied.isErr()) return err(applied.error);
 
-		return ok(
-			new Assembly(
-				placement,
-				placement.template.toFile(
-					project.getFile().tree,
-					globIgnorePaths
-				),
-				meta,
-				applied.value
-			)
-		);
+		return ok({
+			placement,
+			tree: placement.template.toFile(
+				project.getFile().tree,
+				globIgnorePaths
+			),
+			meta,
+			metaOutcomes: applied.value,
+		});
 	}
 
 	/** Merges the placed files into `project`, collapsing a directory into one `$path` where Rojo would see the same files. */

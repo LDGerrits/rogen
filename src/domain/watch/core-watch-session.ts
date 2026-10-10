@@ -9,7 +9,7 @@ import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
-import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
+import { ChangeBatcher } from "./change-batcher.js";
 import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
@@ -17,6 +17,7 @@ import {
 	WatchCause,
 	WatchSession,
 	WatchUpdate,
+	ChangeBurst,
 } from "./watch-service.js";
 
 /** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */

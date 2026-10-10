@@ -85,7 +85,7 @@ interface CommandMetadata<
 }
 
 export interface CommandRegistry {
-	/** @throws Error if `id` is already registered. */
+	/** @throws Error if `id` is already registered, or an option conflicts with another command's. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;

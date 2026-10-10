@@ -238,6 +238,9 @@ export class SyncServer {
 	}
 }
 
+/** Whether `flag` is one dash and one letter, whose value may follow it with no space, as `-P9000`. */
+const isShort = (flag: string): boolean => /^-[^-]$/.test(flag);
+
 /** The value of the last of `flags` in `args`, written `--flag value` or `--flag=value`. */
 function flagValue(
 	args: readonly string[],
@@ -249,6 +252,8 @@ function flagValue(
 			if (arg === flag) value = args[index + 1];
 			else if (arg.startsWith(`${flag}=`))
 				value = arg.slice(flag.length + 1);
+			else if (isShort(flag) && arg.startsWith(flag))
+				value = arg.slice(flag.length);
 		}
 	});
 	return value;

@@ -5,15 +5,7 @@ import {
 	FileChange,
 	normalizeFileChanges,
 } from "../../platform/fs/file-changes.js";
-
-/** Changes that came too fast to follow, so the batcher dropped them. */
-export interface ChangeBurst {
-	readonly dropped: number;
-	/** How many it follows before it gives up. */
-	readonly threshold: number;
-	/** Whether the burst has stopped, so `dropped` counts the changes since the first report. */
-	readonly ended: boolean;
-}
+import { ChangeBurst } from "./watch-service.js";
 
 export interface ChangeBatcherOptions {
 	readonly burstThreshold: number;

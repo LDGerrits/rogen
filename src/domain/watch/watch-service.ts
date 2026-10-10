@@ -9,16 +9,19 @@ import { LoadedBuild } from "../build/build.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 
 /** Why the configs were rebuilt. */
+/** Changes that came too fast to follow, so they were dropped. */
+export interface ChangeBurst {
+	readonly dropped: number;
+	/** How many it follows before it gives up. */
+	readonly threshold: number;
+	/** Whether the burst has stopped, so `dropped` counts the changes since the first report. */
+	readonly ended: boolean;
+}
+
 export type WatchCause =
 	| { readonly kind: "initial" }
 	/** Too many changes at once to follow, so they were dropped and everything was rebuilt. */
-	| {
-			readonly kind: "burst";
-			readonly dropped: number;
-			readonly threshold: number;
-			/** The burst has stopped; `dropped` counts the changes after its first report. */
-			readonly ended: boolean;
-	  }
+	| ({ readonly kind: "burst" } & ChangeBurst)
 	| {
 			readonly kind: "change";
 			readonly sourceFiles: number;

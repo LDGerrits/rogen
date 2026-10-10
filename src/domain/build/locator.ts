@@ -46,7 +46,7 @@ export class Locator {
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
-	): Promise<Result<Locations, DiagnosticsError>> {
+	): Promise<Result<Omit<Locations, "errors">, DiagnosticsError>> {
 		const targets = await this.classify(query ?? { args: [], cwd: "" });
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
@@ -63,7 +63,6 @@ export class Locator {
 			everyFile:
 				targets.paths.length === 0 && targets.instances.length === 0,
 			configs: located,
-			errors: [],
 		});
 	}
 

@@ -54,7 +54,9 @@ export class DiskWatcher extends AbstractWatcher {
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
 		this.watcher.on("error", (error) =>
-			this.logService.error(`DiskWatcher crashed: ${error.message}`)
+			this.logService.error(
+				`Can't watch part of the project: ${error.message}`
+			)
 		);
 
 		// Until chokidar is ready, new files count as initial and are ignored.

@@ -50,14 +50,10 @@ export interface EntryReading {
 
 /** Every folder, marker and suffix the declared keys can claim, read once and shared by the stages and rules. */
 export class NameReadings {
-	/** By absolute POSIX path; holds every folder above an entry, marker or meta file. */
-	readonly folders = new Map<string, FolderReading>();
-	/** By absolute POSIX path. */
-	readonly markers = new Map<string, MarkerReading>();
-	/** By the entry's source. */
-	readonly entries = new Map<string, EntryReading>();
-	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
-	readonly nearMisses = new Map<string, string>();
+	private readonly _folders = new Map<string, FolderReading>();
+	private readonly _markers = new Map<string, MarkerReading>();
+	private readonly _entries = new Map<string, EntryReading>();
+	private readonly _nearMisses = new Map<string, string>();
 	/** Each marker, folder above an entry, or entry whose name misspells a key; first found first. */
 	private readonly misspellings = new Map<
 		string,
@@ -81,12 +77,32 @@ export class NameReadings {
 		}
 	}
 
+	/** By absolute POSIX path; holds every folder above an entry, marker or meta file. */
+	get folders(): ReadonlyMap<string, FolderReading> {
+		return this._folders;
+	}
+
+	/** By the entry's source. */
+	get entries(): ReadonlyMap<string, EntryReading> {
+		return this._entries;
+	}
+
+	/** By absolute POSIX path. */
+	get markers(): ReadonlyMap<string, MarkerReading> {
+		return this._markers;
+	}
+
+	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
+	get nearMisses(): ReadonlyMap<string, string> {
+		return this._nearMisses;
+	}
+
 	private readMarkers(root: ScannedRoot): void {
 		for (const marker of root.markers) {
 			this.readFoldersAbove(root.rootDir, marker);
 			const resource = joinPosix(root.rootDir, marker);
 			const read = this.reader.marker(path.posix.basename(marker));
-			this.markers.set(resource, read);
+			this._markers.set(resource, read);
 			this.noteNearMiss(resource, read.nearMissKey);
 			this.noteMisspellings(resource, read.misspellings);
 		}
@@ -101,7 +117,7 @@ export class NameReadings {
 		const variantSpans = match.spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
-		this.entries.set(entry.source, {
+		this._entries.set(entry.source, {
 			folders,
 			fileName,
 			kind,
@@ -133,7 +149,7 @@ export class NameReadings {
 
 	/** The entry's reading. Every scanned entry has one, so a miss is a programmer error. */
 	entryReading(source: string): EntryReading {
-		const read = this.entries.get(source);
+		const read = this._entries.get(source);
 		if (!read) throw new Error(`${source} was not scanned.`);
 		return read;
 	}
@@ -141,7 +157,7 @@ export class NameReadings {
 	/** Why the folder `dir` of a root dir can never become an instance by its name; `undefined` for one that can, if a route places something through it. */
 	instanceless(rootDir: string, dir: string): InstancelessFolder | undefined {
 		if (dir === "") return "a root dir";
-		const folder = this.folders.get(joinPosix(rootDir, dir));
+		const folder = this._folders.get(joinPosix(rootDir, dir));
 		if (folder?.keptName !== undefined)
 			return folder.invisible ? "an invisible folder" : undefined;
 		if (folder?.route !== undefined) return "a routing folder";
@@ -168,8 +184,8 @@ export class NameReadings {
 	}
 
 	private noteNearMiss(resource: string, key: string | undefined): void {
-		if (key && !this.nearMisses.has(resource))
-			this.nearMisses.set(resource, key);
+		if (key && !this._nearMisses.has(resource))
+			this._nearMisses.set(resource, key);
 	}
 
 	/** Notes what the name at `resource` misspells, with the path one rename fixes it to; a resource is read once, so the first noting holds. */
@@ -206,7 +222,7 @@ export class NameReadings {
 
 	private folderAt(rootDir: string, dir: string): FolderReading {
 		const key = joinPosix(rootDir, dir);
-		let read = this.folders.get(key);
+		let read = this._folders.get(key);
 		if (!read) {
 			const segment = path.posix.basename(dir);
 			const reading = this.reader.folder(segment);
@@ -220,7 +236,7 @@ export class NameReadings {
 					? this.nearMissOf(reading.outrankedName)
 					: undefined,
 			};
-			this.folders.set(key, read);
+			this._folders.set(key, read);
 		}
 		return read;
 	}

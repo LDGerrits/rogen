@@ -51,10 +51,10 @@ export class CoreServeSession
 	);
 	readonly onDidChange: Event<ServeChangeEvent> = this._onDidChange.event;
 
-	private readonly _onDidStop = this._register(
+	private readonly _onDidExit = this._register(
 		new Emitter<ServerExitEvent>()
 	);
-	readonly onDidExit: Event<ServerExitEvent> = this._onDidStop.event;
+	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
 	private readonly servers = new Map<string, StartedServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
@@ -116,7 +116,10 @@ export class CoreServeSession
 
 	async start(): Promise<Result<void, Error>> {
 		const watching = await this.watch.start();
-		if (watching.isErr()) return watching;
+		if (watching.isErr()) {
+			this._onDidError.fire(watching.error);
+			return watching;
+		}
 		const first = await this.firstUpdate.p;
 		if (!first || this.stopping) return ok(undefined);
 		if (first instanceof Error) return err(first);
@@ -301,7 +304,7 @@ export class CoreServeSession
 			{
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
-				stopped: (stop) => this._onDidStop.fire(stop),
+				stopped: (stop) => this._onDidExit.fire(stop),
 				failed: (error) => this._onDidError.fire(error),
 			}
 		);

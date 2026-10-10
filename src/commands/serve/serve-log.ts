@@ -151,6 +151,9 @@ export class ServeLog implements ServeReporter {
 
 /** Reports a serve as one JSON object per line for a program, each keyed by what it reports. */
 export class ServeJsonLog implements ServeReporter {
+	/** The errors already printed, which `abort` does not print again. */
+	private readonly told = new WeakSet<Error>();
+
 	constructor(
 		private readonly logService: LogService,
 		private readonly plan: ServePlan
@@ -239,11 +242,12 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	error(error: Error): void {
+		this.told.add(error);
 		this.line({ error: error.message });
 	}
 
 	abort(error: Error): void {
-		this.line(failureToJson(error));
+		if (!this.told.has(error)) this.line(failureToJson(error));
 	}
 
 	end(): void {}
