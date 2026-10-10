@@ -554,37 +554,61 @@ describe("Router", () => {
 				).toEqual([
 					[
 						"route.markerClash",
-						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only "dev" sends elsewhere in a dev/ folder with its own marker: dev/@server.',
+						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@server and prod/@client.',
 					],
 				]);
 			});
 
-			it("should name the variant that routes elsewhere, and keep the plain message when the plain markers clash too", async () => {
+			it("should name every variant folder the files that move need, and keep the plain message when the clash isn't a variant's", async () => {
 				await write(
 					"src/C/@server",
 					"src/C/init.mock@server.luau",
 					"src/C/init.dev@client.luau",
 					"src/D/@server",
 					"src/D/@client",
-					"src/D/init.mock@server.luau"
+					"src/D/init.mock@server.luau",
+					"src/E/init.dev@server.luau",
+					"src/E/init.dev@client.luau",
+					"src/F/@server",
+					"src/F/init.mock.dev@client.luau",
+					"src/G/@server",
+					"src/G/init.dev@client.luau",
+					"src/G/init.prod@ReplicatedFirst.luau"
 				);
 
 				const result = await route({
-					variants: { mock: true, dev: true },
+					variants: { mock: true, dev: true, prod: false },
 				});
 
 				expect(
 					result.isErr() &&
 						result.error.diagnostics
 							.filter(({ code }) => code === "route.markerClash")
-							.map(({ message }) =>
-								message.slice(
-									message.indexOf("different places")
-								)
-							)
+							.map(({ resource, message }) => [
+								resource,
+								message.slice(message.indexOf(" places") + 7),
+							])
 				).toEqual([
-					'different places, but a variant never changes where a file lands. Route the folder once, and put the files only "dev" sends elsewhere in a dev/ folder with its own marker: dev/@client.',
-					"different places, and nothing decides between them. Keep one.",
+					[
+						abs("src/C"),
+						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@client.",
+					],
+					[
+						abs("src/D"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/F"),
+						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: mock/dev/@client.",
+					],
+					[
+						abs("src/G"),
+						", but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@client and prod/@ReplicatedFirst.",
+					],
+					[
+						abs("src/E"),
+						", and nothing decides between them. Keep one.",
+					],
 				]);
 			});
 

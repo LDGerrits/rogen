@@ -124,13 +124,13 @@ export class Placer {
 	private markerClashErrors(
 		markerClashes: readonly MarkerClash[]
 	): Diagnostic[] {
-		return markerClashes.map(({ dir, names, varied }) => {
+		return markerClashes.map(({ dir, names, variantFolders }) => {
 			const quoted = joinedWithAnd(names.map((name) => `"${name}"`));
 			return errorDiagnostic(
 				"route.markerClash",
 				{ resource: dir },
-				varied
-					? `${quoted} route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only "${varied.variant}" sends elsewhere in a ${varied.variant}/ folder with its own marker: ${varied.variant}/@${varied.key}.`
+				variantFolders
+					? `${quoted} route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: ${joinedWithAnd(variantFolders)}.`
 					: `${quoted} route this folder to different places, and nothing decides between them. Keep one.`
 			);
 		});
