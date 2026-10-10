@@ -34,10 +34,10 @@ export class ServePorts {
 	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own settings and defaults. */
 	async targetOf(
 		config: ResolvedConfig,
-		tool: ServerExecutable,
+		executable: ServerExecutable,
 		serverArgs: readonly string[]
 	): Promise<ServeTarget> {
-		const { server } = tool;
+		const { server } = executable;
 		const project = config.template?.project;
 		const defaults = await this.defaultsOf(server, config.projectDir);
 		return {

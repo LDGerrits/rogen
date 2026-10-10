@@ -47,7 +47,7 @@ export interface WatchUpdate {
 	readonly cause: WatchCause;
 	/** The source changes behind it. */
 	readonly changes: readonly FileChange[];
-	/** The configs whose latest reload found errors not reported before; the last valid version of each is still what builds. */
+	/** What the reloads of this round said about the configs: added, removed, broken (the last valid version of each still builds) or loading again. */
 	readonly notices: readonly ConfigNotice[];
 	readonly reports: readonly RebuildReport[];
 }

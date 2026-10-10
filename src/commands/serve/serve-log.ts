@@ -13,7 +13,7 @@ import { ServerInfo } from "../../domain/serve/serve.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { buildEntry } from "../build/build-report.js";
+import { buildEntry } from "../build/build-document.js";
 import { WatchLog } from "../watch/watch-log.js";
 import {
 	diagnosticToJson,
@@ -63,14 +63,14 @@ export class ServeLog implements ServeReporter {
 
 	begin(): void {
 		const { plan } = this;
-		const { executable: tool, selection } = plan;
+		const { executable, selection } = plan;
 		this.watchLog.begin(
 			plan.targets.map(({ config }) => config),
 			selection.home
 		);
-		if (tool.passedOver) {
+		if (executable.passedOver) {
 			this.logService.info(
-				`Both ${tool.server.id} and ${tool.passedOver.id} are pinned; serving with ${tool.server.id} (--tool ${tool.passedOver.id} to switch).`
+				`Both ${executable.server.id} and ${executable.passedOver.id} are pinned; serving with ${executable.server.id} (--tool ${executable.passedOver.id} to switch).`
 			);
 		}
 		for (const target of plan.alreadyServed) this.running(target);
@@ -130,7 +130,7 @@ export class ServeLog implements ServeReporter {
 	shutdown(): void {}
 
 	error(error: Error): void {
-		this.logService.error(error.message);
+		this.watchLog.error(error);
 	}
 
 	abort(): void {

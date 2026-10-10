@@ -113,6 +113,11 @@ export class WatchLog {
 		);
 	}
 
+	/** A step of the watch failed unexpectedly; the watch goes on. */
+	error(error: Error): void {
+		this.logService.error(error.message);
+	}
+
 	end(message = "Stopped watching."): void {
 		this.logService.outro(message);
 	}

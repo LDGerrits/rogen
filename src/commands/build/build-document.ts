@@ -20,7 +20,7 @@ export interface BuildEntry {
 }
 
 /** What a build did to each config, as one JSON document. */
-export interface BuildReport {
+export interface BuildDocument {
 	readonly configs: readonly BuildEntry[];
 }
 
@@ -44,11 +44,11 @@ export function buildEntry(
 }
 
 /** What a build did to each of `builds`, with `diagnosticsOf` standing in for what one found. */
-export function buildReport(
+export function buildDocument(
 	builds: readonly ConfigBuild[],
 	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>
 		build.diagnostics
-): BuildReport {
+): BuildDocument {
 	return {
 		configs: builds.map((build) => buildEntry(build, diagnosticsOf(build))),
 	};

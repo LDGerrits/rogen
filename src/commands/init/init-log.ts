@@ -9,7 +9,7 @@ import {
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-import { BuildEntry, buildReport } from "../build/build-report.js";
+import { BuildEntry, buildDocument } from "../build/build-document.js";
 
 const indent = (line: string) => `  ${line}`;
 
@@ -46,6 +46,10 @@ export class InitLog {
 		cwd: string
 	) {
 		this.buildLog = new BuildLog(logService, cwd);
+	}
+
+	intro(): void {
+		this.logService.intro("rogen init");
 	}
 
 	/** The notes the plan carries, set apart from the last answer by a blank gutter line when the run asked. */
@@ -125,7 +129,7 @@ export class InitJson {
 	done(plan: InitPlan, run: BuildRun): InitDocument {
 		return {
 			...this.writtenSoFar(),
-			built: buildReport(run.builds, foundBy).configs,
+			built: buildDocument(run.builds, foundBy).configs,
 			notes: plan.notes,
 			nextSteps: plan.nextSteps,
 		};

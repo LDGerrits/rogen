@@ -57,18 +57,18 @@ export class StartedServer extends AbstractDisposable {
 		private readonly listener: StartedServerListener
 	) {
 		super();
-		const { executable: tool, serverArgs, selection } = plan;
+		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
 			processService.spawn(
-				tool.file,
-				tool.server.serveArgs(
+				executable.file,
+				executable.server.serveArgs(
 					path.relative(selection.home, target.config.outFile),
 					serverArgs
 				),
 				{ cwd: selection.home }
 			)
 		);
-		const output = this._register(new ServerOutput(tool.server));
+		const output = this._register(new ServerOutput(executable.server));
 		let said = false;
 		this._register(this.child.onDidOutput((text) => output.write(text)));
 		this._register(

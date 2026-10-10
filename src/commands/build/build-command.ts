@@ -19,7 +19,7 @@ import {
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
-import { buildReport } from "./build-report.js";
+import { buildDocument } from "./build-document.js";
 
 const DenyWarningsOption = {
 	name: "deny-warnings",
@@ -76,7 +76,7 @@ registerCommand(
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					buildReport(run.builds),
+					buildDocument(run.builds),
 					failure
 				);
 			new BuildLog(logService, cwd).report(

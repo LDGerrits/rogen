@@ -69,11 +69,7 @@ registerCommand(
 				);
 
 				store.add(session.onDidUpdate((update) => log.update(update)));
-				store.add(
-					session.onDidError((error) =>
-						logService.error(error.message)
-					)
-				);
+				store.add(session.onDidError((error) => log.error(error)));
 				try {
 					await session.start();
 					await shutdown.p;

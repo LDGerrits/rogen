@@ -69,22 +69,22 @@ export class CoreServeService implements ServeService {
 		const servedConfigs = new ServedConfigs(configs.value, named);
 		const served = servedConfigs.configs;
 
-		const tool = await this.finder.find(
+		const executable = await this.finder.find(
 			selection.home,
 			server.value,
 			served[0]?.file ?? selection.home,
 			request.signal
 		);
-		if (tool.isErr()) return tool;
+		if (executable.isErr()) return executable;
 
-		const port = tool.value.server.portIn(request.serverArgs);
+		const port = executable.value.server.portIn(request.serverArgs);
 		if (port.isErr()) return port;
 		const targets: ServeTarget[] = [];
 		for (const config of served)
 			targets.push(
 				await this.ports.targetOf(
 					config,
-					tool.value,
+					executable.value,
 					request.serverArgs
 				)
 			);
@@ -98,7 +98,7 @@ export class CoreServeService implements ServeService {
 			const result = await this.ports.check(
 				target,
 				targets,
-				tool.value.server,
+				executable.value.server,
 				servedConfigs.sharesName(target.project)
 			);
 			if (result.isOk()) checked.push(result.value);
@@ -108,7 +108,7 @@ export class CoreServeService implements ServeService {
 		return ok(
 			new ServePlan(
 				selection,
-				tool.value,
+				executable.value,
 				checked,
 				request.serverArgs,
 				named

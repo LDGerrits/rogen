@@ -57,11 +57,14 @@ registerCommand(
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
-			const logService = accessor.get(LogService);
+			const log = new InitLog(
+				accessor.get(LogService),
+				accessor.get(EnvironmentService).cwd
+			);
 			// A JSON document is read by a program, which can't answer a question.
 			const ask = !line.options.yes && !line.options.json;
 
-			if (!line.options.json) logService.intro("rogen init");
+			if (!line.options.json) log.intro();
 			const planned = await initService.plan(line.positionals, { ask });
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
@@ -69,7 +72,7 @@ registerCommand(
 
 			return line.options.json
 				? this.writeAsJson(accessor, plan)
-				: this.writeAsText(accessor, plan);
+				: this.writeAsText(accessor, plan, log);
 		}
 
 		/** The project file of every config the plan wrote, so `rojo serve` and the compiler have one to read. */
@@ -88,12 +91,9 @@ registerCommand(
 
 		private async writeAsText(
 			accessor: ServicesAccessor,
-			plan: InitPlan
+			plan: InitPlan,
+			log: InitLog
 		): Promise<Result<void, Error>> {
-			const log = new InitLog(
-				accessor.get(LogService),
-				accessor.get(EnvironmentService).cwd
-			);
 			log.begin(plan);
 			const written = await accessor
 				.get(InitService)

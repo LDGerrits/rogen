@@ -1,5 +1,4 @@
 import { Result, err, ok } from "../../base/result.js";
-import { plural } from "../../base/strings.js";
 import {
 	ConfigArguments,
 	ConfigSelectionOptions,
@@ -13,8 +12,7 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
-import { ConfigReport } from "./config-report.js";
+import { ListLog } from "./list-log.js";
 
 const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -47,18 +45,14 @@ registerCommand(
 			);
 			if (selection.isErr()) return selection;
 			const { entries, home } = selection.value;
-			const report = new ConfigReport(logService, cwd);
-			const broken = ConfigReport.failure(entries);
+			const report = new ListLog(logService, cwd);
+			const broken = ListLog.failure(entries);
 
 			if (line.options.json)
 				return this.printJson(logService, report.json(entries), broken);
 
-			new BuildLog(logService, cwd).begin("list", [], home);
-			report.print(entries);
-
-			if (broken) return err(broken);
-			logService.outro(`${plural(entries.length, "config")}.`);
-			return ok(undefined);
+			report.print(entries, home);
+			return broken ? err(broken) : ok(undefined);
 		}
 	}
 );

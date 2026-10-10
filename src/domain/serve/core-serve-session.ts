@@ -41,10 +41,10 @@ export class CoreServeSession
 	);
 	readonly onDidServe: Event<ServerReadyEvent> = this._onDidServe.event;
 
-	private readonly _onDidSay = this._register(
+	private readonly _onDidOutput = this._register(
 		new Emitter<ServerOutputEvent>()
 	);
-	readonly onDidOutput: Event<ServerOutputEvent> = this._onDidSay.event;
+	readonly onDidOutput: Event<ServerOutputEvent> = this._onDidOutput.event;
 
 	private readonly _onDidChange = this._register(
 		new Emitter<ServeChangeEvent>()
@@ -188,8 +188,12 @@ export class CoreServeSession
 		config: ResolvedConfig,
 		served: ServedConfigs
 	): Promise<void> {
-		const { executable: tool, serverArgs } = this.plan;
-		const target = await this.ports.targetOf(config, tool, serverArgs);
+		const { executable, serverArgs } = this.plan;
+		const target = await this.ports.targetOf(
+			config,
+			executable,
+			serverArgs
+		);
 		const address = target.address.toString();
 		const started = this.servers.get(config.file);
 		if (started?.target.address.toString() === address) return;
@@ -219,7 +223,7 @@ export class CoreServeSession
 				: await this.ports.check(
 						target,
 						others,
-						tool.server,
+						executable.server,
 						served.sharesName(target.project)
 					);
 		if (this.stopping) return;
@@ -301,7 +305,7 @@ export class CoreServeSession
 			this.records,
 			{
 				served: (serving) => this._onDidServe.fire(serving),
-				said: (said) => this._onDidSay.fire(said),
+				said: (said) => this._onDidOutput.fire(said),
 				stopped: (stop) => this._onDidStop.fire(stop),
 				failed: (error) => this._onDidError.fire(error),
 			}

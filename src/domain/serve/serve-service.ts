@@ -145,7 +145,7 @@ export interface ServeSession extends Disposable {
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
 	readonly onDidServe: Event<ServerReadyEvent>;
-	/** Fired for each warning, error and unrecognised line a server prints; the rest of its output is dropped. */
+	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */
 	readonly onDidOutput: Event<ServerOutputEvent>;
 	/** Fired when the configs to serve change while it serves. */
 	readonly onDidChange: Event<ServeChangeEvent>;

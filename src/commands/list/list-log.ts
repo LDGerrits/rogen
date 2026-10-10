@@ -4,6 +4,7 @@ import { unescapedGlob } from "../../base/glob.js";
 import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { BuildLog } from "../build/build-log.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
 
 const listed = (values: readonly string[]): string =>
@@ -20,7 +21,7 @@ const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
 /** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
-export class ConfigReport {
+export class ListLog {
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
@@ -40,9 +41,10 @@ export class ConfigReport {
 		);
 	}
 
-	/** One block per config: its file, what it extends, then its values or its errors. */
-	print(entries: readonly ConfigEntry[]): void {
+	/** The intro, one block per config (its file, what it extends, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
+	print(entries: readonly ConfigEntry[], home?: string): void {
 		const { logService } = this;
+		new BuildLog(logService, this.cwd).begin("list", [], home);
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of entries) {
@@ -97,6 +99,8 @@ export class ConfigReport {
 				].join("\n")
 			);
 		}
+		if (ListLog.failure(entries) === undefined)
+			logService.outro(`${plural(entries.length, "config")}.`);
 	}
 
 	json(entries: readonly ConfigEntry[]): Record<string, unknown> {
