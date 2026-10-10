@@ -3,7 +3,7 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
-import { isError } from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { isWritten } from "../build/build.js";
@@ -203,8 +203,6 @@ export class CoreServeSession
 			(await this.stillDeclined(target, declinedHere))
 		)
 			return;
-		const refusedHere = declinedHere === "refused";
-		const elsewhere = declinedHere === "elsewhere";
 		// Its own server holds the port when only the host moved, so the port has nothing else to tell.
 		const samePort = started?.target.address.port === target.address.port;
 		const checked = holder
@@ -218,27 +216,39 @@ export class CoreServeSession
 						served.sharesName(target.project)
 					);
 		if (this.stopping) return;
+		await this.settle(target, started, declinedHere, checked);
+	}
+
+	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */
+	private async settle(
+		target: ServeTarget,
+		started: StartedServer | undefined,
+		declinedHere: "refused" | "elsewhere" | undefined,
+		checked: Result<ServeTarget, Diagnostic>
+	): Promise<void> {
+		const { file } = target.config;
+		const address = target.address.toString();
 		if (checked.isErr()) {
-			if (!refusedHere)
+			if (declinedHere !== "refused")
 				this._onDidChange.fire({
 					kind: "refused",
 					target,
 					diagnostic: checked.error,
 				});
-			this.declined.set(config.file, { kind: "refused", address });
+			this.declined.set(file, { kind: "refused", address });
 			return;
 		}
 		if (started) await this.retire(started, "moved");
 		if (isRunning(checked.value)) {
-			if (!elsewhere)
+			if (declinedHere !== "elsewhere")
 				this._onDidChange.fire({
 					kind: "running",
 					target: checked.value,
 				});
-			this.declined.set(config.file, { kind: "elsewhere", address });
+			this.declined.set(file, { kind: "elsewhere", address });
 			return;
 		}
-		this.declined.delete(config.file);
+		this.declined.delete(file);
 		this.launch(checked.value);
 	}
 
