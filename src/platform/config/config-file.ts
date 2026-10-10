@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import { JSONSchema } from "../../base/json-schema.js";
 import { JsoncNode } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -7,11 +8,7 @@ import {
 	DiagnosticPosition,
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import {
-	FileSystemService,
-	failureReason,
-	isMissingPath,
-} from "../fs/file-system-service.js";
+import { FileSystemService, isMissingPath } from "../fs/file-system-service.js";
 import {
 	JsoncDocumentReader,
 	WrongTypeAdvisor,

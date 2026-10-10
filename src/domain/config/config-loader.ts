@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
 import { parse } from "../../base/jsonc.js";
@@ -16,7 +17,6 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	FileSystemService,
-	failureReason,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";

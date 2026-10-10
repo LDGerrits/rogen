@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { dirnamePosix, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -8,7 +9,6 @@ import {
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import {
 	FileSystemService,
-	failureReason,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import {

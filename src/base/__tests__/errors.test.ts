@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import {
 	ErrorUtils,
 	ReportedError,
+	failureReason,
 	onUnexpectedError,
 	setUnexpectedErrorHandler,
 } from "../errors.js";
@@ -114,5 +115,39 @@ describe("ReportedError", () => {
 		expect(reported.message).toBe("No config found.");
 		expect(reported.cause).toBe(cause);
 		expect(reported).toBeInstanceOf(Error);
+	});
+});
+
+describe("failureReason", () => {
+	it.each([
+		[
+			"ENOENT: no such file or directory, open '/x'",
+			"no such file or directory",
+		],
+		["EACCES: permission denied, open '/x'", "permission denied"],
+		[
+			"EISDIR: illegal operation on a directory, read",
+			"illegal operation on a directory",
+		],
+		[
+			"EISDIR: illegal operation on a directory, read '/x'",
+			"illegal operation on a directory",
+		],
+		["disk full", "disk full"],
+	])("should give the reason of %j without its code", (message, reason) => {
+		expect(failureReason(new Error(message))).toBe(reason);
+	});
+});
+
+describe("ErrorUtils.wrap", () => {
+	it("should say what failed and why, without the code, and keep the cause", () => {
+		const cause = new Error("EACCES: permission denied, open '/x'");
+
+		const wrapped = ErrorUtils.wrap("Failed to write a.json", cause);
+
+		expect(wrapped.message).toBe(
+			"Failed to write a.json: permission denied"
+		);
+		expect(wrapped.cause).toBe(cause);
 	});
 });

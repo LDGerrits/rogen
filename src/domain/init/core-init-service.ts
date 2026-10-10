@@ -1,3 +1,4 @@
+import { ErrorUtils } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -109,10 +110,7 @@ export class CoreInitService implements InitService {
 		);
 		if (listing.isErr()) {
 			return err(
-				new Error(
-					`Failed to read ${directory}: ${listing.error.message}`,
-					{ cause: listing.error }
-				)
+				ErrorUtils.wrap(`Failed to read ${directory}`, listing.error)
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
@@ -270,9 +268,9 @@ export class CoreInitService implements InitService {
 			);
 			if (written.isErr()) {
 				return err(
-					new Error(
-						`Failed to write ${fileName}: ${written.error.message}`,
-						{ cause: written.error }
+					ErrorUtils.wrap(
+						`Failed to write ${fileName}`,
+						written.error
 					)
 				);
 			}
@@ -287,9 +285,9 @@ export class CoreInitService implements InitService {
 			});
 			if (created.isErr()) {
 				return err(
-					new Error(
-						`Failed to create ${directory}: ${created.error.message}`,
-						{ cause: created.error }
+					ErrorUtils.wrap(
+						`Failed to create ${directory}`,
+						created.error
 					)
 				);
 			}

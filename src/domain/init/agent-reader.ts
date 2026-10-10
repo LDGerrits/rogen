@@ -1,3 +1,4 @@
+import { ErrorUtils } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -64,12 +65,7 @@ export class AgentReader {
 			this.fileSystemService.readFile(file)
 		);
 		return text.isErr()
-			? err(
-					new Error(
-						`Failed to read ${fileName}: ${text.error.message}`,
-						{ cause: text.error }
-					)
-				)
+			? err(ErrorUtils.wrap(`Failed to read ${fileName}`, text.error))
 			: text;
 	}
 }

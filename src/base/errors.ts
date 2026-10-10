@@ -1,5 +1,12 @@
 import { safeStringify } from "./json.js";
 
+/** Why a system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
+export function failureReason(error: Error): string {
+	return error.message
+		.replace(/^[A-Z][A-Z0-9]+: /, "")
+		.replace(/, [a-z]+( '.*')?$/, "");
+}
+
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
 		// Use the object string instead of instanceof to
@@ -31,8 +38,9 @@ export const ErrorUtils = {
 		);
 	},
 
-	toString(error: Error): string {
-		return error.stack ? error.stack : error.message;
+	/** `cause` as an error that says what failed and why: `Failed to write a.json: permission denied`. */
+	wrap(what: string, cause: Error): Error {
+		return new Error(`${what}: ${failureReason(cause)}`, { cause });
 	},
 };
 

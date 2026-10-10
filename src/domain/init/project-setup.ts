@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -6,7 +7,6 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileSystemService,
-	failureReason,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";

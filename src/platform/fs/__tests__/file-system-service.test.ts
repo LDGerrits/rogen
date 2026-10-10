@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
+import { failureReason } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import {
 	FileType,
-	failureReason,
 	fileSystemError,
 	isMissingPath,
 } from "../file-system-service.js";
@@ -232,25 +232,6 @@ describe("file system failures", () => {
 			isMissingPath(fileSystemError("EISDIR", "ENOENT: not really"))
 		).toBe(false);
 		expect(isMissingPath(new Error("ENOENT"))).toBe(false);
-	});
-
-	it.each([
-		[
-			"ENOENT: no such file or directory, open '/x'",
-			"no such file or directory",
-		],
-		["EACCES: permission denied, open '/x'", "permission denied"],
-		[
-			"EISDIR: illegal operation on a directory, read",
-			"illegal operation on a directory",
-		],
-		[
-			"EISDIR: illegal operation on a directory, read '/x'",
-			"illegal operation on a directory",
-		],
-		["disk full", "disk full"],
-	])("should give the reason of %j without its code", (message, reason) => {
-		expect(failureReason(new Error(message))).toBe(reason);
 	});
 
 	it("should give the reason a memory file system fails with when a directory is read as a file", async () => {
