@@ -63,15 +63,29 @@ export class RojoFile {
 	}
 
 	get isMeta(): boolean {
-		return this.name.toLowerCase().endsWith(RojoFile.META_SUFFIX);
+		return this.name.endsWith(RojoFile.META_SUFFIX);
+	}
+
+	/** The name with an extension Rojo would read written as it reads it, when only the letter case keeps Rojo from reading the file: Rojo ignores `Foo.LUAU` and `Foo.MODEL.JSON`. */
+	get lowercasedExtension(): string | undefined {
+		if (this.kind !== undefined || this.isMeta) return undefined;
+		if (this.name.toLowerCase().endsWith(".d.ts")) return undefined;
+		const fixed = this.name.replace(
+			/(\.(?:meta|model|project))?\.[^.]+$/i,
+			(suffix) => suffix.toLowerCase()
+		);
+		return fixed !== this.name &&
+			(new RojoFile(fixed).kind !== undefined ||
+				new RojoFile(fixed).isMeta)
+			? fixed
+			: undefined;
 	}
 
 	/** What Rojo turns the file into, or `undefined` when it isn't an instance on its own. */
 	get kind(): RojoFileKind | undefined {
-		const lower = this.name.toLowerCase();
-		if (lower.endsWith(".d.ts") || this.isMeta) return undefined;
+		if (this.name.endsWith(".d.ts") || this.isMeta) return undefined;
 
-		const extension = path.extname(lower);
+		const extension = path.extname(this.name);
 		if (RojoFile.SCRIPT_EXTENSIONS.includes(extension)) return "script";
 		if (MODEL_EXTENSIONS.includes(extension)) return "model";
 		if (DATA_EXTENSIONS.includes(extension)) return "data";
@@ -80,7 +94,7 @@ export class RojoFile {
 
 	/** Whether the file is Luau source, which Rojo reads as it is; a `.ts` source is compiled first. */
 	get isLuau(): boolean {
-		const extension = path.extname(this.name).toLowerCase();
+		const extension = path.extname(this.name);
 		return extension === ".luau" || extension === ".lua";
 	}
 
@@ -109,7 +123,7 @@ export class RojoFile {
 	}
 
 	private get isJson(): boolean {
-		return path.extname(this.name).toLowerCase() === ".json";
+		return path.extname(this.name) === ".json";
 	}
 
 	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */

@@ -188,14 +188,21 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:A.luau"]);
 			});
 
-			it("should match extensions in any case", async () => {
-				await write("src/A.LUAU", "src/B.Rbxm");
+			it("should leave out a file whose extension is not in lowercase, as Rojo does, and name the file Rojo reads", async () => {
+				await write("src/A.LUAU", "src/B.Rbxm", "src/C.MODEL.JSON");
 
 				const { roots } = await scan();
 
-				expect(files(roots[0])).toEqual([
-					"script:A.LUAU",
-					"model:B.Rbxm",
+				expect(files(roots[0])).toEqual([]);
+				expect(
+					[...roots[0].leftOut].map(([file, why]) => [
+						file,
+						why.status === "extensionCase" && why.rename,
+					])
+				).toEqual([
+					[abs("src/A.LUAU"), "A.luau"],
+					[abs("src/B.Rbxm"), "B.rbxm"],
+					[abs("src/C.MODEL.JSON"), "C.model.json"],
 				]);
 			});
 

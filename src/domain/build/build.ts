@@ -29,7 +29,9 @@ export type ScanLeftOut =
 	/** The template mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
 	| { readonly status: "mounted"; readonly node: readonly string[] }
 	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
-	| { readonly status: "skipped" };
+	| { readonly status: "skipped" }
+	/** Rojo ignores it, since only the letter case of its extension keeps it from being read; `rename` is the file name that Rojo reads. */
+	| { readonly status: "extensionCase"; readonly rename: string };
 
 /** Why the build leaves a path out of the tree, in the words `where` reports it. */
 export type LeftOut =

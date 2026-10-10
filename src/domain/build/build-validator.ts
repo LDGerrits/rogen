@@ -59,6 +59,7 @@ export class BuildValidator {
 			...this.missingRootDir(),
 			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
+			...this.extensionCase(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
@@ -168,6 +169,30 @@ export class BuildValidator {
 					"scan.unresolvedLink",
 					{ resource: link },
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
+				)
+			);
+	}
+
+	private extensionCase(): Diagnostic[] {
+		return this.placement.leftOut
+			.withStatus("extensionCase")
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([file, { rename }]) =>
+				warningDiagnostic(
+					"scan.extensionCase",
+					{ resource: file },
+					`Rojo reads an extension only in lowercase, so it ignores this file. Rename it to ${rename}.`,
+					[
+						{
+							rename: {
+								from: file,
+								to: path.posix.join(
+									path.posix.dirname(file),
+									rename
+								),
+							},
+						},
+					]
 				)
 			);
 	}

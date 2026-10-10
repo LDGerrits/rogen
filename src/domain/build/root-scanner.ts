@@ -254,7 +254,13 @@ export class RootScanner {
 			} else {
 				// A key can't contain a dot, so a file with a type (`@Foo.luau`, `.eslintrc.json`) is never a marker.
 				const file = new RojoFile(name);
-				if (file.isMeta) {
+				const lowercased = file.lowercasedExtension;
+				if (lowercased !== undefined) {
+					walk.leftOut.set(joinPosix(dir, name), {
+						status: "extensionCase",
+						rename: lowercased,
+					});
+				} else if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
 				} else if (file.kind) {
 					walk.entries.push({

@@ -118,6 +118,8 @@ function outcomeOf(
 			return `excluded · matches ${patternRelativeTo(cwd, location.pattern)}`;
 		case "skipped":
 			return "skipped · the link loops or points at nothing";
+		case "extensionCase":
+			return "not an instance · its extension is not in lowercase";
 		case "outside":
 			return "outside the root dirs";
 		case "ignored":
@@ -156,6 +158,8 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 			};
 		case "replaced":
 			return { by: toNative(location.by) };
+		case "extensionCase":
+			return { rename: location.rename };
 		case "displaced":
 		case "mounted":
 			return { node: location.node };

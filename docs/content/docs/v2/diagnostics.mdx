@@ -729,6 +729,16 @@ later - warning: this root dir does not exist or is not a folder, so it contribu
 
 Create it, or remove it from `rootDirs`. The path is relative to the config that sets it. See [Configuration](/docs/v2/configuration#fields).
 
+### `scan.extensionCase` [#scan-extensioncase]
+
+Warning. A file's extension is written with capital letters, so Rojo doesn't read it and the file is not an instance. Rogen leaves it out of the tree as Rojo does.
+
+```
+src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Save.luau. (scan.extensionCase)
+```
+
+Rename the file as the message says. The same holds for `.JSON`, `.MODEL.JSON` and every other extension Rojo reads.
+
 ### `scan.rootDirNamedAfterKey` [#scan-rootdirnamedafterkey]
 
 Warning. A root directory is named after a route or variant key. Routing starts below a root directory, so its name routes (or prunes) nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such root dir.

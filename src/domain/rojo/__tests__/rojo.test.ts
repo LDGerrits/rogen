@@ -23,13 +23,15 @@ describe("domain/rojo/rojo", () => {
 				["Notes.txt", "data"],
 				["Config.yaml", "data"],
 				["Config.yml", "data"],
-				["SAVE.LUAU", "script"],
 			])("should read %s as a %s", (name, kind) => {
 				expect(new RojoFile(name).kind).toBe(kind);
 			});
 
 			it.each([
 				"Types.d.ts",
+				"SAVE.LUAU",
+				"Save.Json",
+				"Save.META.JSON",
 				"Save.meta.json",
 				"init.meta.json",
 				"Notes.md",
@@ -78,11 +80,28 @@ describe("domain/rojo/rojo", () => {
 		});
 
 		describe("isMeta", () => {
-			it("should accept a meta file in any case and reject other JSON", () => {
+			it("should accept a meta file in lowercase only, and reject other JSON", () => {
 				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);
 				expect(new RojoFile(RojoFile.INIT_META).isMeta).toBe(true);
-				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(true);
+				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(false);
 				expect(new RojoFile("Save.json").isMeta).toBe(false);
+			});
+		});
+
+		describe("lowercasedExtension", () => {
+			it.each([
+				["Save.LUAU", "Save.luau"],
+				["Save.Rbxm", "Save.rbxm"],
+				["Save.JSON", "Save.json"],
+				["Save.MODEL.JSON", "Save.model.json"],
+				["Save.Project.Json", "Save.project.json"],
+				["Save.META.JSON", "Save.meta.json"],
+				["Save.Server.luau", undefined],
+				["Save.luau", undefined],
+				["Notes.MD", undefined],
+				["Types.D.TS", undefined],
+			])("should read %s as %s", (name, fixed) => {
+				expect(new RojoFile(name).lowercasedExtension).toBe(fixed);
 			});
 		});
 
