@@ -71,19 +71,9 @@ export class Locator {
 		let files: FileLocation[] = [];
 		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
-			const index = new PlannedFilesIndex(
-				this.listing,
-				config.rootDirs,
-				paths
-			);
-			const planned = await this.locatorOf(
-				index,
-				config,
-				await this.existence(index, paths)
-			);
+			const planned = await this.locatePaths(config, paths, folders);
 			if (planned.isErr()) return err(planned.error);
-			files = planned.value.locator.locate(paths, folders);
-			diagnostics = planned.value.diagnostics;
+			({ files, diagnostics } = planned.value);
 			if (instances.length === 0)
 				return ok({ config, files, instances: [], diagnostics });
 		}
@@ -99,33 +89,71 @@ export class Locator {
 					? files
 					: locator.locate(),
 			instances: await Promise.all(
-				instances.map(async (reference): Promise<InstanceLocation> => {
-					const files = locator.locateInstance(reference);
-					if (files.length > 0)
-						return { reference, files, folders: [], fixes: [] };
-					const fixes = await this.renamesPlacing(
+				instances.map((reference) =>
+					this.locateInstance(
 						config,
+						locator,
 						existing.value.diagnostics,
 						reference
-					);
-					const known = locator.foldersFor(reference);
-					return {
-						reference,
-						files,
-						folders:
-							known.length > 0 || fixes.length > 0
-								? known
-								: await this.foldersForNewFile(
-										config,
-										reference
-									),
-						fixes,
-					};
-				})
+					)
+				)
 			),
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});
+	}
+
+	/** Where `paths` land, placing the ones that don't exist yet as if they did. */
+	private async locatePaths(
+		config: ResolvedConfig,
+		paths: readonly string[],
+		folders: ReadonlySet<string>
+	): Promise<
+		Result<
+			{
+				readonly files: FileLocation[];
+				readonly diagnostics: readonly Diagnostic[];
+			},
+			DiagnosticsError
+		>
+	> {
+		const index = new PlannedFilesIndex(
+			this.listing,
+			config.rootDirs,
+			paths
+		);
+		const planned = await this.locatorOf(
+			index,
+			config,
+			await this.existence(index, paths)
+		);
+		return planned.map(({ locator, diagnostics }) => ({
+			files: locator.locate(paths, folders),
+			diagnostics,
+		}));
+	}
+
+	/** The files placed at `reference`; when none is, the folders a new file goes in and the renames that would place one. */
+	private async locateInstance(
+		config: ResolvedConfig,
+		locator: FileLocator,
+		diagnostics: readonly Diagnostic[],
+		reference: InstanceReference
+	): Promise<InstanceLocation> {
+		const files = locator.locateInstance(reference);
+		if (files.length > 0)
+			return { reference, files, folders: [], fixes: [] };
+		const fixes = await this.renamesPlacing(config, diagnostics, reference);
+		const known = locator.foldersFor(reference);
+		return {
+			reference,
+			files,
+			folders:
+				known.length > 0 || fixes.length > 0
+					? known
+					: await this.foldersForNewFile(config, reference),
+			fixes,
+		};
 	}
 
 	/** The renames among `diagnostics` after which a file places `reference`, each checked by placing the renamed path as `build` would. */
