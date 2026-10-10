@@ -4,15 +4,11 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { RojoMeta, RojoMetaFields } from "../rojo/rojo.js";
-import {
-	InstanceMap,
-	RojoNode,
-	RojoProject,
-	instanceKey,
-} from "../rojo/rojo-project.js";
+import { RojoNode, RojoProject } from "../rojo/rojo-project.js";
 import { InstancelessFolder } from "./name-readings.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
 export class FolderMeta implements RojoMetaFields {

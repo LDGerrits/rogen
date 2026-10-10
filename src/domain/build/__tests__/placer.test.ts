@@ -41,7 +41,7 @@ describe("Placer", () => {
 		it("should hold the template rebased to the output's directory", () => {
 			const { template } = prepare({ name: "game" }).unwrap();
 
-			expect(template.edit().getTree()).toEqual({
+			expect(template.edit().getFile()).toEqual({
 				name: "game",
 				tree: { $className: "DataModel" },
 			});

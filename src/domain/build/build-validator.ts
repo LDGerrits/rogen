@@ -19,9 +19,10 @@ import {
 	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
 	scriptFate,
+	instanceKey,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { RojoNode, instanceKey } from "../rojo/rojo-project.js";
+import { RojoNode } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import {
 	MisspellingKind,

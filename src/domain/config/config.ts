@@ -226,15 +226,8 @@ export class ResolvedTemplate {
 		const to = path.dirname(this.file);
 		const rebase = (target: string) =>
 			toPosix(path.relative(to, path.resolve(from, target)));
-		let rebased = base.project;
-		if (from !== to) {
-			const globs = rebased.globIgnorePaths;
-			rebased = new RojoProject({
-				...rebased.getTree(),
-				...(globs.length > 0 && { globIgnorePaths: globs.map(rebase) }),
-			});
-			rebased.mapPaths(rebase);
-		}
+		const rebased =
+			from === to ? base.project : base.project.rebased(rebase);
 		const { project, clashes } = rebased.overlaidWith(this.project);
 		return new ResolvedTemplate(
 			this.file,
@@ -255,8 +248,8 @@ export class ResolvedTemplate {
 		return (
 			other !== undefined &&
 			this.file === other.file &&
-			safeStringify(this.project.getTree()) ===
-				safeStringify(other.project.getTree())
+			safeStringify(this.project.getFile()) ===
+				safeStringify(other.project.getFile())
 		);
 	}
 }

@@ -405,7 +405,7 @@ describe("init command", () => {
 			).read(path.join(cwd, "lobby.rogen.json"));
 			expect(entry.status).toBe("valid");
 			if (entry.status !== "valid") return;
-			expect(entry.config.template?.project.getTree()).toMatchObject({
+			expect(entry.config.template?.project.getFile()).toMatchObject({
 				name: "Lobby",
 				servePort: 34873,
 				tree: {

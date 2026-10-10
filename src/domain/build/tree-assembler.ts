@@ -5,12 +5,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LeftOut } from "./build.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
-import {
-	InstanceMap,
-	RojoProject,
-	RojoTree,
-	instanceKey,
-} from "../rojo/rojo-project.js";
+import { RojoProject, RojoTree } from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
 	FolderMetaApplier,
@@ -19,6 +14,7 @@ import {
 import { BuildMeta } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** A placed build with its tree; what the rules report on. */
 export class Assembly {
@@ -82,7 +78,7 @@ export class TreeAssembler {
 			new Assembly(
 				placement,
 				placement.template.toFile(
-					project.getTree().tree,
+					project.getFile().tree,
 					globIgnorePaths
 				),
 				meta,

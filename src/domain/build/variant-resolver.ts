@@ -3,11 +3,11 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { ResolvedConfig } from "../config/config.js";
-import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { joinPosix } from "../../base/path.js";
 import { LeftOut } from "./build.js";
 import { NameReadings } from "./name-readings.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** Plain files from one root dir that claim one instance path; the last one wins and the others are replaced. */
 export interface InstanceClash {

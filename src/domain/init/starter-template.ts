@@ -6,10 +6,10 @@ import {
 	ProjectFile,
 	RojoNode,
 	RojoProject,
-	instanceKey,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
+import { instanceKey } from "../roblox/roblox.js";
 
 /** The template project file `init` starts, which the configs it writes name. */
 export const TEMPLATE_FILE = "template.project.json";
@@ -99,10 +99,10 @@ export class StarterTemplate {
 	}
 
 	toJson(): string {
-		return formatJsonFile(this.project.getTree());
+		return formatJsonFile(this.project.getFile());
 	}
 
 	private copy(): RojoProject<ParsedProjectFile> {
-		return new RojoProject(this.project.getTree());
+		return new RojoProject(this.project.getFile());
 	}
 }

@@ -9,7 +9,6 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { instanceKey } from "../rojo/rojo-project.js";
 import { LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader } from "./name-reader.js";
@@ -26,6 +25,7 @@ import { MarkerClashes } from "./marker-clashes.js";
 import { SyncLayout } from "./sync-layout.js";
 import { LandsElsewhere, VariantResolver } from "./variant-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
+import { instanceKey } from "../roblox/roblox.js";
 
 /** Finds where every file of a config lands: scans the root dirs, routes each file, then decides across files: copies init scripts, applies variants and lets the template win. */
 export class Placer {

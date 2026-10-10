@@ -276,7 +276,7 @@ describe("CoreConfigService", () => {
 
 				await start({ names: ["c"] });
 
-				expect(resolved(0)?.template?.project.getTree()).toEqual({
+				expect(resolved(0)?.template?.project.getFile()).toEqual({
 					name: "C",
 					tree: {
 						$className: "DataModel",

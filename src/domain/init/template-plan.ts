@@ -1,6 +1,5 @@
 import path from "path";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
-import { instanceKey } from "../rojo/rojo-project.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { DerivedRoutes } from "./derived-routes.js";
@@ -10,6 +9,7 @@ import {
 	TEMPLATE_FILE,
 	TemplateChoice,
 } from "./starter-template.js";
+import { instanceKey } from "../roblox/roblox.js";
 
 /** The template a new project chose, with the text of a copied file read in. */
 export type ProjectTemplate =

@@ -6,12 +6,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/config.js";
-import { containerClassName } from "../roblox/roblox.js";
+import { containerClassName, instanceKey } from "../roblox/roblox.js";
 import {
 	RojoNode,
 	RojoProject,
 	RojoTree,
-	instanceKey,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncLayout } from "./sync-layout.js";
@@ -110,7 +109,7 @@ export class BuildTemplate {
 		this.project = new RojoProject(
 			{
 				name: config.name,
-				tree: template?.project.getTree().tree ?? {
+				tree: template?.project.getFile().tree ?? {
 					$className: "DataModel",
 				},
 			},
@@ -169,9 +168,7 @@ export class BuildTemplate {
 		if (!this.templateFile || this.templateDir === this.layout.projectDir) {
 			return globs;
 		}
-		return globs.map((glob) =>
-			this.layout.relativeToProject(path.resolve(this.templateDir, glob))
-		);
+		return globs.map((glob) => this.rebase(glob));
 	}
 
 	getNode(instancePath: readonly string[]): Readonly<RojoNode> | undefined {
@@ -180,7 +177,7 @@ export class BuildTemplate {
 
 	/** The template with generated containers being what a build creates, ready to have nodes inserted. */
 	edit(): RojoProject {
-		return new RojoProject(this.project.getTree(), generatedContainer);
+		return new RojoProject(this.project.getFile(), generatedContainer);
 	}
 
 	/** The node of `file` the template defines: its own, or a folder of its that the template gives a `$path`, which is that folder's whole content. `source` is the file, or the folder, that names the node. */

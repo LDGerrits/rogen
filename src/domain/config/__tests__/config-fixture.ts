@@ -53,7 +53,7 @@ export const plain = (config: ResolvedConfig | undefined) =>
 		outFile: config.outFile,
 		template: config.template && {
 			file: config.template.file,
-			project: config.template.project.getTree(),
+			project: config.template.project.getFile(),
 		},
 	};
 

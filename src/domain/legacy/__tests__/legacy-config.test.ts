@@ -26,6 +26,16 @@ describe("LegacyConfig", () => {
 			).toBe(false);
 		});
 
+		it("should not take a route, variant or mode named build or output for a Rogen 1 mode", () => {
+			for (const key of ["routes", "variants", "modes"])
+				expect(
+					LegacyConfig.detects({
+						rootDirs: ["src"],
+						[key]: { build: "ServerStorage", output: "Workspace" },
+					})
+				).toBe(false);
+		});
+
 		it("should not recognise what isn't an object", () => {
 			for (const value of [undefined, null, "source", 3, ["source"]])
 				expect(LegacyConfig.detects(value)).toBe(false);

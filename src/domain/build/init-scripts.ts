@@ -1,8 +1,8 @@
 import { groupBy } from "../../base/collections.js";
 import { ResolvedConfig } from "../config/config.js";
-import { InstanceMap } from "../rojo/rojo-project.js";
 import { BuildTemplate } from "./build-template.js";
 import { InitToCopy, RoutedFile } from "./router.js";
+import { InstanceMap } from "../roblox/roblox.js";
 
 /** The init scripts that stand for their whole folder: copied to every node the folder becomes, and dropped when nothing is left at a node to parent. */
 export class InitScripts {
