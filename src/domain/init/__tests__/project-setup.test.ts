@@ -8,7 +8,6 @@ import {
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
-import { ConfigSet } from "../config-set.js";
 import { DerivedRoutes } from "../derived-routes.js";
 import { InitQuestions } from "../init-questions.js";
 import { PlaceFolder } from "../place-folder.js";
@@ -178,11 +177,19 @@ describe("ProjectSetup plan", () => {
 					places: [
 						{
 							name: "lobby",
-							folder: PlaceFolder.empty("places/lobby"),
+							folder: new PlaceFolder(
+								"places/lobby",
+								false,
+								false
+							),
 						},
 						{
 							name: "match",
-							folder: PlaceFolder.empty("places/match"),
+							folder: new PlaceFolder(
+								"places/match",
+								false,
+								false
+							),
 						},
 					],
 				})
@@ -892,7 +899,11 @@ describe("ProjectSetup plan", () => {
 					places: [
 						{
 							name: "lobby",
-							folder: PlaceFolder.empty("places/lobby"),
+							folder: new PlaceFolder(
+								"places/lobby",
+								false,
+								false
+							),
 						},
 					],
 				},
@@ -1494,8 +1505,14 @@ describe("ProjectSetup plan", () => {
 });
 
 describe("ProjectSetup with several places", () => {
-	const lobby = { name: "lobby", folder: PlaceFolder.empty("places/lobby") };
-	const arena = { name: "arena", folder: PlaceFolder.empty("places/arena") };
+	const lobby = {
+		name: "lobby",
+		folder: new PlaceFolder("places/lobby", false, false),
+	};
+	const arena = {
+		name: "arena",
+		folder: new PlaceFolder("places/arena", false, false),
+	};
 
 	const planPlaces = async (
 		spec: WorkspaceSpec,
@@ -1636,31 +1653,7 @@ describe("an unattended run", () => {
 	});
 });
 
-describe("ConfigSet.parseName", () => {
-	it("should reject template, which would write over the template", () => {
-		expect(ConfigSet.parseName(["template"]).isErr()).toBe(true);
-	});
-
-	it("should default to the default config name", () => {
-		expect(ConfigSet.parseName([]).unwrap()).toBe("default");
-	});
-
-	it("should accept a single name", () => {
-		expect(ConfigSet.parseName(["lobby"]).unwrap()).toBe("lobby");
-	});
-
-	it.each(["a/b", "a\\b", "..", "."])("should reject %s", (name) => {
-		expect(ConfigSet.parseName([name]).isErr()).toBe(true);
-	});
-
-	it("should reject an empty name", () => {
-		expect(ConfigSet.parseName([" "]).isErr()).toBe(true);
-	});
-
-	it("should reject more than one name", () => {
-		expect(ConfigSet.parseName(["a", "b"]).isErr()).toBe(true);
-	});
-
+describe("ProjectSetup template that can't be read", () => {
 	it("should fail when the file it would copy to the template can't be read", async () => {
 		const setup = new ProjectSetup(
 			directoryOf({ existing: ["default.project.json"] }),

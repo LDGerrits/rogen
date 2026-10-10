@@ -37,11 +37,6 @@ export class PlaceFolder {
 			: PlaceFolder.pathOf(name, sharedRootDirs);
 	}
 
-	/** A folder as a new project's places start: empty. */
-	static empty(folder: string): PlaceFolder {
-		return new PlaceFolder(folder, false, false);
-	}
-
 	/** Where the place's own code is, which its config adds to default's root dirs. */
 	get rootDir(): string {
 		return this.holdsCode ? this.path : `${this.path}/${DEFAULT_ROOT_DIR}`;
