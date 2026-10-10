@@ -29,7 +29,8 @@ const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 /** Runs a batch file through `cmd.exe` with the line quoted here, which Node's own `shell` option warns against. */
 function launch(
 	file: string,
-	args: readonly string[]
+	args: readonly string[],
+	env: NodeJS.ProcessEnv
 ): {
 	readonly command: string;
 	readonly args: string[];
@@ -37,7 +38,7 @@ function launch(
 } {
 	return needsShell(file)
 		? {
-				command: process.env.ComSpec ?? "cmd.exe",
+				command: env.ComSpec ?? "cmd.exe",
 				args: [
 					"/d",
 					"/s",
@@ -160,7 +161,7 @@ export class NativeProcessService implements ProcessService {
 		args: readonly string[],
 		options: { readonly cwd: string; readonly timeout: number }
 	): Promise<Result<ProcessOutput, Error>> {
-		const run = launch(file, args);
+		const run = launch(file, args, this.env);
 		return new Promise((resolve) => {
 			childProcess.execFile(
 				run.command,
@@ -194,7 +195,7 @@ export class NativeProcessService implements ProcessService {
 		args: readonly string[],
 		options: SpawnOptions
 	): ChildProcess {
-		const run = launch(file, args);
+		const run = launch(file, args, this.env);
 		return new NativeChildProcess(
 			childProcess.spawn(run.command, run.args, {
 				cwd: options.cwd,

@@ -16,7 +16,8 @@ export abstract class AbstractWatcher
 	private readonly _onDidChangeFile = this._register(
 		new Emitter<FileChange[]>()
 	);
-	readonly onDidChangeFile: Event<FileChange[]> = this._onDidChangeFile.event;
+	readonly onDidChangeFile: Event<readonly FileChange[]> =
+		this._onDidChangeFile.event;
 
 	/** Watches and stops run one at a time, so neither tears down a watch that is still starting. */
 	private readonly operations = new Sequencer();

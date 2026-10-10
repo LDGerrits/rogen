@@ -16,7 +16,8 @@ export interface WatchOptions {
 export interface Watcher {
 	readonly _serviceBrand: undefined;
 
-	readonly onDidChangeFile: Event<FileChange[]>;
+	/** Changes as they come, normally one at a time; a consumer that wants them batched debounces them. */
+	readonly onDidChangeFile: Event<readonly FileChange[]>;
 
 	/** Replaces what was watched, in call order with `stop`; resolves once changes to `paths` are reported: a file's own, and everything under a directory. */
 	watch(paths: readonly string[], options?: WatchOptions): Promise<void>;
