@@ -98,7 +98,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return (
 			this.folder !== undefined &&
 			isConfigFileName(posixFile) &&
-			dirnamePosix(posixFile) === toPosix(this.folder.directory)
+			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
 		);
 	}
 

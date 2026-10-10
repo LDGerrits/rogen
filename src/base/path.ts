@@ -7,16 +7,24 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
-/** Paths found however they are written: a watcher reports POSIX paths on every system. */
+/** Paths found however they are written: a watcher reports POSIX paths on every system, and a file system that ignores letter case (Windows') makes `Src` and `src` one path. */
 export class PathSet {
-	private readonly posix: ReadonlySet<string>;
+	private readonly keys: ReadonlySet<string>;
 
-	constructor(files: Iterable<string>) {
-		this.posix = new Set([...files].map(toPosix));
+	constructor(
+		files: Iterable<string>,
+		private readonly caseInsensitive = isWindows
+	) {
+		this.keys = new Set([...files].map((file) => this.keyOf(file)));
 	}
 
 	has(file: string): boolean {
-		return this.posix.has(toPosix(file));
+		return this.keys.has(this.keyOf(file));
+	}
+
+	private keyOf(file: string): string {
+		const posix = toPosix(file);
+		return this.caseInsensitive ? posix.toLowerCase() : posix;
 	}
 }
 
