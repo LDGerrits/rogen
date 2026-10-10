@@ -124,7 +124,7 @@ export class CoreWatchSession
 	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
 	private isWatched(file: string): boolean {
 		return (
-			!this.selection.directory ||
+			!this.selection.followedFolder ||
 			this.selection.concerns(file) ||
 			this.selection.reads(file) ||
 			this.plan.watches(file)
@@ -218,7 +218,9 @@ export class CoreWatchSession
 
 	/** The folder watched for configs added to it and deleted from it. */
 	private get shallowDirs(): string[] {
-		return this.selection.directory ? [this.selection.directory] : [];
+		return this.selection.followedFolder
+			? [this.selection.followedFolder]
+			: [];
 	}
 
 	private watchPaths(): string[] {

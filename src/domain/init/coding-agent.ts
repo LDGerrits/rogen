@@ -64,7 +64,7 @@ export function withHook(
 }
 
 /** A coding agent that runs a hook when its turn ends, and where it reads it from. */
-export interface HookTarget {
+export interface CodingAgent {
 	readonly name: string;
 	/** The hook file `init` adds the hook to. */
 	readonly settingsFile: string;
@@ -81,7 +81,7 @@ const group = (command: string) => ({
 	hooks: [{ type: "command", command }],
 });
 
-export const HOOK_TARGETS: readonly HookTarget[] = [
+export const CODING_AGENTS: readonly CodingAgent[] = [
 	{
 		name: "Claude Code",
 		settingsFile: ".claude/settings.json",

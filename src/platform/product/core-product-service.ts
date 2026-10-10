@@ -19,7 +19,7 @@ export class CoreProductService implements ProductService {
 		private readonly bakedVersion?: string
 	) {}
 
-	async getVersion(): Promise<string> {
+	async readVersion(): Promise<string> {
 		if (this.bakedVersion) return this.bakedVersion;
 		try {
 			for (const dir of [

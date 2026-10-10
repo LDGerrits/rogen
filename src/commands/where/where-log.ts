@@ -8,8 +8,8 @@ import {
 	InstanceFix,
 	Locations,
 	diagnosticsOf,
-	requireOf,
-	requirementOf,
+	requireExpressionOf,
+	requireNoteOf,
 } from "../../domain/build/build-service.js";
 import {
 	Diagnostic,
@@ -145,7 +145,9 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
-				...(requireOf(location) && { require: requireOf(location) }),
+				...(requireExpressionOf(location) && {
+					require: requireExpressionOf(location),
+				}),
 				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
@@ -198,7 +200,7 @@ function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 }
 
 /** Where files land, one line per path however many configs answered. */
-export class LocationReport {
+export class WhereLog {
 	private readonly answers: Answer[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
@@ -277,14 +279,14 @@ export class LocationReport {
 				...new Set(
 					answers.flatMap((answer) =>
 						answer.kind === "file"
-							? (requireOf(answer.location) ?? [])
+							? (requireExpressionOf(answer.location) ?? [])
 							: []
 					)
 				),
 			];
 			const requirements = answers.map((answer) =>
 				answer.kind === "file"
-					? requirementOf(answer.location)
+					? requireNoteOf(answer.location)
 					: undefined
 			);
 			if (agreed || this.configs === 1)

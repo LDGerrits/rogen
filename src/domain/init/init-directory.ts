@@ -15,7 +15,7 @@ import {
 } from "../config/config.js";
 import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
-import { DirectoryLayout, SOURCE_DIR } from "./code-finder.js";
+import { DirectoryLayout, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
 const DEFAULT_PROJECT_NAME = "roblox-game";
@@ -127,9 +127,9 @@ export class InitDirectory {
 	defaultRootDir(language: Language): string {
 		const configured = language.configuredRootDir();
 		if (configured !== undefined) return configured;
-		if (this.has(SOURCE_DIR)) return SOURCE_DIR;
+		if (this.has(DEFAULT_ROOT_DIR)) return DEFAULT_ROOT_DIR;
 		const { codeFolders } = this.layout;
-		return codeFolders.length === 1 ? codeFolders[0] : SOURCE_DIR;
+		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_ROOT_DIR;
 	}
 
 	/** The hint line naming the code folders `rootDir` doesn't cover, or `undefined` when there are none. */

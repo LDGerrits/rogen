@@ -10,7 +10,7 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { LocationReport } from "../location-report.js";
+import { WhereLog } from "../where-log.js";
 
 const reportOf = (
 	configs: [
@@ -23,7 +23,7 @@ const reportOf = (
 	errors: Diagnostic[] = [],
 	modes: Parameters<typeof mockConfig>[0] = {}
 ) =>
-	new LocationReport("/repo", {
+	new WhereLog("/repo", {
 		everyFile,
 		errors,
 		configs: configs.map(
@@ -42,7 +42,7 @@ const reportOf = (
 const describe1 = (location: FileLocation) =>
 	reportOf([["default", [location]]]).lines()[0];
 
-describe("LocationReport", () => {
+describe("WhereLog", () => {
 	describe("a location", () => {
 		it("should give the instance path, the route and how it matched", () => {
 			expect(
@@ -287,7 +287,7 @@ describe("LocationReport", () => {
 		])(
 			"should keep a glob of Rogen's own as it is and make a drive glob relative to the working directory: %s",
 			(pattern, shown) => {
-				const report = new LocationReport("C:\\repo", {
+				const report = new WhereLog("C:\\repo", {
 					everyFile: false,
 					errors: [],
 					configs: [
@@ -767,7 +767,7 @@ describe("LocationReport", () => {
 
 	describe("emptyLine", () => {
 		it("should name the root dirs of every config once, relative to the working directory", () => {
-			const report = new LocationReport("/repo", {
+			const report = new WhereLog("/repo", {
 				everyFile: true,
 				errors: [],
 				configs: [

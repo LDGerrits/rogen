@@ -78,7 +78,9 @@ export function diagnosticsOf(
 }
 
 /** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
-export function requireOf(location: FileLocation): string | undefined {
+export function requireExpressionOf(
+	location: FileLocation
+): string | undefined {
 	return location.status === "placed" &&
 		new RojoFile(path.posix.basename(location.source)).isLuauModule
 		? requireExpression(location.instancePath)
@@ -86,7 +88,7 @@ export function requireOf(location: FileLocation): string | undefined {
 }
 
 /** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
-export function requirementOf(location: FileLocation): string | undefined {
+export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
 	const file = new RojoFile(path.posix.basename(location.source));
 	if (!file.isLuau) return undefined;

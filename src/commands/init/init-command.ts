@@ -13,7 +13,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { InitJson, InitLog } from "./init-log.js";
+import { InitDocumentBuilder, InitLog } from "./init-log.js";
 
 const InitOptions = [
 	{
@@ -116,7 +116,7 @@ registerCommand(
 			plan: InitPlan
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
-			const json = new InitJson(plan.directory);
+			const json = new InitDocumentBuilder(plan.directory);
 			const written = await accessor
 				.get(InitService)
 				.write(plan, (item) => json.add(item));

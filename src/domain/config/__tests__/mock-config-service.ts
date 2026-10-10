@@ -155,7 +155,7 @@ export function selectionOf(
 /** A selection of fixed entries; a reload changes nothing. */
 export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
-	readonly directory = undefined;
+	readonly followedFolder = undefined;
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],

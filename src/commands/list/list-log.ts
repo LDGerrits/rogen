@@ -41,7 +41,7 @@ export interface ConfigDetails {
 }
 
 /** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
-export interface ConfigDocument extends Partial<ConfigDetails> {
+export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
@@ -51,7 +51,7 @@ export interface ConfigDocument extends Partial<ConfigDetails> {
 
 /** What `list --json` prints. */
 export interface ListDocument {
-	readonly configs: readonly ConfigDocument[];
+	readonly configs: readonly ListedConfig[];
 }
 
 /** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
@@ -145,7 +145,7 @@ export class ListLog {
 				status: entry.status,
 				extends: entry.parents.map((file) => toNative(file)),
 				...(entry.status === "valid"
-					? describeConfig(entry.config)
+					? configDetails(entry.config)
 					: {}),
 				diagnostics:
 					entry.status === "broken"
@@ -156,9 +156,9 @@ export class ListLog {
 	}
 }
 
-function describeConfig(config: ResolvedConfig): ConfigDetails {
+function configDetails(config: ResolvedConfig): ConfigDetails {
 	return {
-		projectName: config.name,
+		projectName: config.projectName,
 		rootDirs: config.rootDirs.map((file) => toNative(file)),
 		commonRoot: config.commonRoot ? toNative(config.commonRoot) : null,
 		routes: Object.fromEntries(

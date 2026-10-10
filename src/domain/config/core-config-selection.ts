@@ -84,7 +84,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return this._files;
 	}
 
-	get directory(): string | undefined {
+	get followedFolder(): string | undefined {
 		return this.folder?.directory;
 	}
 

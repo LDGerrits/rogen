@@ -1,16 +1,16 @@
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { hookScript } from "./hook-script.js";
-import { HOOK_SCRIPT_FILE, HookTarget, withHook } from "./hook-target.js";
+import { HOOK_SCRIPT_FILE, CodingAgent, withHook } from "./coding-agent.js";
 
 /** An agent found in the project, and the text of its hook file if it has one. */
 export interface AgentInUse {
-	readonly target: HookTarget;
+	readonly agent: CodingAgent;
 	readonly text: string | undefined;
 }
 
 /** What `init` finds of the hook in a directory. */
-export interface AgentHooksState {
+export interface AgentHooksParts {
 	/** Whether the script is there already, which `init` never writes over. */
 	readonly scriptExists: boolean;
 	readonly inUse: readonly AgentInUse[];
@@ -20,16 +20,16 @@ export interface AgentHooksState {
 export class AgentHooks {
 	/** The agents it still has to be registered with, and their hook files with it registered. */
 	private readonly registering: readonly {
-		readonly target: HookTarget;
+		readonly target: CodingAgent;
 		readonly text: string;
 		/** Whether the agent's hook file is there to add to. */
 		readonly existed: boolean;
 	}[];
 	/** The agents whose hook file isn't plain JSON, so it can't be added to. */
-	private readonly unreadable: readonly HookTarget[];
+	private readonly unreadable: readonly CodingAgent[];
 
-	constructor(private readonly state: AgentHooksState) {
-		const registrations = state.inUse.map(({ target, text }) => ({
+	constructor(private readonly state: AgentHooksParts) {
+		const registrations = state.inUse.map(({ agent: target, text }) => ({
 			target,
 			registration: withHook(text, target.hook),
 			existed: text !== undefined,

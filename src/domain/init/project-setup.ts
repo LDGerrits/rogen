@@ -14,7 +14,7 @@ import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
+import { InitQuestions, PlaceCount, SharedCode } from "./init-questions.js";
 import { PlaceFolder, PlaceFolderReader } from "./place-folder.js";
 import { PlacePlan } from "./place-plan.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
@@ -143,7 +143,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private async askIdentity(): Promise<
 		Result<
 			| {
-					readonly layout: Layout;
+					readonly layout: PlaceCount;
 					readonly name: string;
 					readonly language: Language;
 					readonly darklua: Darklua | undefined;
@@ -156,9 +156,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const { directory, questions } = this;
 		const firstRun = !directory.hasDefaultConfig;
 
-		let layout: Layout = "one";
+		let layout: PlaceCount = "one";
 		if (firstRun && directory.givenName === undefined) {
-			const answer = await questions.layout(directory);
+			const answer = await questions.placeCount(directory);
 			if (answer === undefined) return ok(undefined);
 			layout = answer;
 		}

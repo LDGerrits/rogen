@@ -116,7 +116,7 @@ describe("CoreServeService", () => {
 		});
 
 		it("should refuse a server it doesn't know", async () => {
-			expect(await errorOf({ server: "lune" })).toEqual(
+			expect(await errorOf({ serverId: "lune" })).toEqual(
 				new UsageError('--tool takes rojo or argon, not "lune".')
 			);
 		});
@@ -240,13 +240,13 @@ describe("CoreServeService", () => {
 				'host = "0.0.0.0"\nport = 8100\n'
 			);
 
-			expect(served(await plan({ server: "argon" }))).toEqual([
+			expect(served(await plan({ serverId: "argon" }))).toEqual([
 				["default", "0.0.0.0:8100"],
 			]);
 
 			await memFs.writeFile("/repo/argon.toml", "port = 8200 # mine\n");
 
-			expect(served(await plan({ server: "argon" }))).toEqual([
+			expect(served(await plan({ serverId: "argon" }))).toEqual([
 				["default", "localhost:8200"],
 			]);
 		});
@@ -523,7 +523,7 @@ describe("CoreServeService", () => {
 			session.onDidOutput(({ message }) =>
 				said.push(`${message.severity}: ${message.text}`)
 			);
-			session.onDidStop((stop) => {
+			session.onDidExit((stop) => {
 				said.push("stopped");
 				stops.push(stop);
 			});

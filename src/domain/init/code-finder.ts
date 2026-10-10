@@ -11,7 +11,7 @@ import { DetectedWorkspace } from "../toolchain/toolchain.js";
 export const PLACES_DIR = "places";
 
 /** The folder a project keeps its code in unless it says otherwise. */
-export const SOURCE_DIR = "src";
+export const DEFAULT_ROOT_DIR = "src";
 
 /** The folders of a directory that hold code. */
 export interface DirectoryLayout {

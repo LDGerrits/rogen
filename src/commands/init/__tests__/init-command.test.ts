@@ -857,7 +857,7 @@ describe("init command", () => {
 			).read(path.join(cwd, "lobby.rogen.json"));
 			expect(entry.status).toBe("valid");
 			if (entry.status !== "valid") return;
-			expect(entry.config.name).toBe("Lobby");
+			expect(entry.config.projectName).toBe("Lobby");
 			expect(entry.config.template?.project.servePort).toBe(34873);
 		});
 

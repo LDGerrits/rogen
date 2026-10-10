@@ -38,7 +38,7 @@ export class VariantResolver {
 	) {}
 
 	/** A variant file is an alternative of the plain file beside it, so it has to land where one of those does. */
-	landingApart(routed: readonly RoutedFile[]): LandsElsewhere[] {
+	landingElsewhere(routed: readonly RoutedFile[]): LandsElsewhere[] {
 		const found: LandsElsewhere[] = [];
 		for (const beside of groupBy(routed, (file) =>
 			this.besideKeyOf(file)
@@ -73,7 +73,7 @@ export class VariantResolver {
 	}
 
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */
-	apply(
+	resolve(
 		routed: readonly RoutedFile[]
 	): Result<VariantResolution, Diagnostic[]> {
 		const { kept, pruned } = this.pruneDormant(routed);

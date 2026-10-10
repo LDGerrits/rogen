@@ -10,14 +10,14 @@ describe("CoreProductService", () => {
 		);
 
 		expect(
-			await new CoreProductService(fs, "/app", "2.0.0").getVersion()
+			await new CoreProductService(fs, "/app", "2.0.0").readVersion()
 		).toBe("2.0.0");
 		expect(
 			await new CoreProductService(
 				new MemoryFileSystemService(),
 				"/app",
 				"2.0.0"
-			).getVersion()
+			).readVersion()
 		).toBe("2.0.0");
 	});
 
@@ -28,7 +28,7 @@ describe("CoreProductService", () => {
 			JSON.stringify({ version: "1.2.3" })
 		);
 
-		expect(await new CoreProductService(fs, "/app").getVersion()).toBe(
+		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
 			"1.2.3"
 		);
 	});
@@ -44,7 +44,7 @@ describe("CoreProductService", () => {
 			await new CoreProductService(
 				fs,
 				"/app/dist/commands/version"
-			).getVersion()
+			).readVersion()
 		).toBe("1.2.3");
 	});
 
@@ -55,7 +55,7 @@ describe("CoreProductService", () => {
 			JSON.stringify({ version: "4.5.6" })
 		);
 
-		expect(await new CoreProductService(fs, "/a/b").getVersion()).toBe(
+		expect(await new CoreProductService(fs, "/a/b").readVersion()).toBe(
 			"4.5.6"
 		);
 	});
@@ -63,7 +63,7 @@ describe("CoreProductService", () => {
 	it("should return 'unknown' when no package.json is found anywhere", async () => {
 		const fs = new MemoryFileSystemService();
 
-		expect(await new CoreProductService(fs, "/a/b/c").getVersion()).toBe(
+		expect(await new CoreProductService(fs, "/a/b/c").readVersion()).toBe(
 			"unknown"
 		);
 	});
@@ -72,7 +72,7 @@ describe("CoreProductService", () => {
 		const fs = new MemoryFileSystemService();
 		await fs.writeFile("/app/package.json", JSON.stringify({}));
 
-		expect(await new CoreProductService(fs, "/app").getVersion()).toBe(
+		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
 			"unknown"
 		);
 	});
@@ -81,7 +81,7 @@ describe("CoreProductService", () => {
 		const fs = new MemoryFileSystemService();
 		await fs.writeFile("/app/package.json", "{ not valid json");
 
-		expect(await new CoreProductService(fs, "/app").getVersion()).toBe(
+		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
 			"unknown"
 		);
 	});

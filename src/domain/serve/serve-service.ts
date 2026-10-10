@@ -33,7 +33,7 @@ export interface ServeRequest {
 	readonly refs: readonly string[];
 	readonly options: ConfigOptionValues;
 	/** The id of the server to start, `rojo` or `argon`; the one the project pins when not given, Rojo before Argon. */
-	readonly server?: string;
+	readonly serverId?: string;
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
 	/** Ends the checks that run other programs, when the run is stopped before it has started. */
@@ -150,7 +150,7 @@ export interface ServeSession extends Disposable {
 	/** Fired when the configs to serve change while it serves. */
 	readonly onDidChange: Event<ServeChangeEvent>;
 	/** Fired when a server stops before the session does, after what it said. */
-	readonly onDidStop: Event<ServerExitEvent>;
+	readonly onDidExit: Event<ServerExitEvent>;
 
 	/** The targets it runs a server for now. */
 	readonly targets: readonly ServeTarget[];

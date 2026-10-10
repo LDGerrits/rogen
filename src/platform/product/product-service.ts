@@ -8,7 +8,7 @@ export interface ProductService {
 	readonly _serviceBrand: undefined;
 
 	/** The installed version, or `unknown` when it can't be read. */
-	getVersion(): Promise<string>;
+	readVersion(): Promise<string>;
 }
 
 export const ProductService =

@@ -24,7 +24,7 @@ export interface TemplateMount {
 }
 
 /** A mount of the template that `exclude` drops, with the glob that does. */
-export interface DroppedMount extends TemplateMount {
+export interface ExcludedMount extends TemplateMount {
 	readonly pattern: string;
 }
 
@@ -35,7 +35,7 @@ export class TemplateMounts {
 		/** The template file, which every mount error points at; none without a template. */
 		private readonly file: string | undefined,
 		/** The mounts `exclude` dropped, which are never built. */
-		private readonly dropped: readonly DroppedMount[]
+		private readonly excluded: readonly ExcludedMount[]
 	) {}
 
 	/** The mount at `absolutePath` or above it, which makes Rojo read it. */
@@ -44,8 +44,10 @@ export class TemplateMounts {
 	}
 
 	/** The mount `exclude` dropped at `absolutePath` or above it. */
-	droppedCovering(absolutePath: string): DroppedMount | undefined {
-		return this.dropped.find((mount) => contains(mount.path, absolutePath));
+	excludedCovering(absolutePath: string): ExcludedMount | undefined {
+		return this.excluded.find((mount) =>
+			contains(mount.path, absolutePath)
+		);
 	}
 
 	/** Every mounted path, as an absolute POSIX path. */
@@ -102,7 +104,7 @@ export class BuildTemplate {
 	constructor(
 		private readonly config: Pick<
 			ResolvedConfig,
-			"name" | "template" | "exclude"
+			"projectName" | "template" | "exclude"
 		>,
 		private readonly layout: SyncLayout
 	) {
@@ -115,13 +117,13 @@ export class BuildTemplate {
 		this.globIgnorePaths = source?.globIgnorePaths ?? [];
 		this.project = new RojoProject(
 			{
-				name: config.name,
+				name: config.projectName,
 				tree: source?.getFile().tree ?? { $className: "DataModel" },
 			},
 			generatedContainer
 		);
 		this.project.removeNodes(
-			(target) => this.droppingGlob(target) !== undefined
+			(target) => this.excludingGlob(target) !== undefined
 		);
 		this.mounts = this.mountsOf(source);
 	}
@@ -132,7 +134,7 @@ export class BuildTemplate {
 	}
 
 	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
-	private droppingGlob(target: string): string | undefined {
+	private excludingGlob(target: string): string | undefined {
 		const mounted = toPosix(path.resolve(this.layout.projectDir, target));
 		return this.config.exclude.find((glob) => isMatch(mounted, glob));
 	}
@@ -140,7 +142,7 @@ export class BuildTemplate {
 	private mountsOf(
 		project: NonNullable<ResolvedConfig["template"]>["project"] | undefined
 	): TemplateMounts {
-		const all = (project?.getPaths() ?? []).map(
+		const all = (project?.mountedPaths() ?? []).map(
 			({ path: rojoPath, instancePath }) => ({
 				target: rojoPathTarget(rojoPath),
 				mount: {
@@ -154,11 +156,13 @@ export class BuildTemplate {
 		);
 		return new TemplateMounts(
 			all
-				.filter(({ target }) => this.droppingGlob(target) === undefined)
+				.filter(
+					({ target }) => this.excludingGlob(target) === undefined
+				)
 				.map(({ mount }) => mount),
 			this.templateFile,
 			all.flatMap(({ target, mount }) => {
-				const pattern = this.droppingGlob(target);
+				const pattern = this.excludingGlob(target);
 				return pattern === undefined ? [] : [{ ...mount, pattern }];
 			})
 		);
@@ -205,7 +209,7 @@ export class BuildTemplate {
 	/** The project file to write: the template's own fields, and `tree` as the tree. */
 	toFile(tree: RojoNode, globIgnorePaths: readonly string[]): RojoTree {
 		return (this.config.template?.project ?? NO_TEMPLATE).toFile({
-			name: this.config.name,
+			name: this.config.projectName,
 			tree,
 			globIgnorePaths,
 		});

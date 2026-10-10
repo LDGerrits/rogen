@@ -150,7 +150,7 @@ describe("RojoProject", () => {
 				folders
 			);
 
-			expect(project.getPaths()).toEqual([
+			expect(project.mountedPaths()).toEqual([
 				{ path: "root", instancePath: [] },
 				{
 					path: { optional: "Packages" },

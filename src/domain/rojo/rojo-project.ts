@@ -240,7 +240,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** Every `$path` in the tree, depth first, the root's included. */
-	getPaths(): MountedPath[] {
+	mountedPaths(): MountedPath[] {
 		const found: MountedPath[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {
 			if (isRojoPath(node.$path))
@@ -312,7 +312,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		const added: MountedPath[] = [];
 		const skipped: MountedPath[] = [];
 		const pathsBelow = (node: RojoNode, at: readonly string[]) =>
-			new RojoProject({ tree: node }).getPaths().map((mounted) => ({
+			new RojoProject({ tree: node }).mountedPaths().map((mounted) => ({
 				path: mounted.path,
 				instancePath: [...at, ...mounted.instancePath],
 			}));

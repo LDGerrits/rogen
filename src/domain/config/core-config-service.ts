@@ -60,7 +60,7 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const overrides = overridesOf(options);
-		const { directory, files, everyConfig } = discovered.value;
+		const { home: directory, files, everyConfig } = discovered.value;
 		const count = files.length;
 		if (overrides.outFile !== undefined && count > 1) {
 			const found = everyConfig ? "are here" : "were named";

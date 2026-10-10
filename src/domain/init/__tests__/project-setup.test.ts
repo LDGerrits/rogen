@@ -1170,7 +1170,7 @@ describe("ProjectSetup plan", () => {
 					...rbxts,
 					robloxTs: {
 						rbxtsScopes: ["@rbxts", "@flamework"],
-						hasInclude: true,
+						includeInstalled: true,
 					},
 				})
 			).toEqual({
@@ -1208,7 +1208,7 @@ describe("ProjectSetup plan", () => {
 					...rbxts,
 					robloxTs: {
 						rbxtsScopes: ["@rbxts"],
-						hasInclude: true,
+						includeInstalled: true,
 					},
 				})
 			).ReplicatedStorage.rbxts_include.node_modules;
@@ -1220,7 +1220,7 @@ describe("ProjectSetup plan", () => {
 			expect(
 				await treeOf({
 					robloxTs: {
-						hasInclude: true,
+						includeInstalled: true,
 						rbxtsScopes: ["@rbxts"],
 					},
 				})
@@ -1316,7 +1316,7 @@ describe("ProjectSetup plan", () => {
 						language: "roblox-ts",
 						robloxTs: {
 							rbxtsScopes: ["@rbxts"],
-							hasInclude: true,
+							includeInstalled: true,
 						},
 						packageDirs: new Set(["Packages"]),
 					})

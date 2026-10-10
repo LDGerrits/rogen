@@ -212,7 +212,7 @@ export class PlacementLocator {
 				exists,
 				node: mount.node,
 			};
-		const dropped = mounts.droppedCovering(target);
+		const dropped = mounts.excludedCovering(target);
 		if (dropped)
 			return {
 				status: "excluded",

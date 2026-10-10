@@ -19,7 +19,9 @@ export class ServedConfigs {
 	/** Whether several configs a server could serve here have `project`'s name, so a server of that name can't be told apart. */
 	sharesName(project: string): boolean {
 		return (
-			[...this.servable].filter(({ name }) => name === project).length > 1
+			[...this.servable].filter(
+				({ projectName: name }) => name === project
+			).length > 1
 		);
 	}
 }

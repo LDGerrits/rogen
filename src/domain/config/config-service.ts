@@ -135,7 +135,7 @@ export interface ReloadableSelection extends ConfigSelection {
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
-	readonly directory: string | undefined;
+	readonly followedFolder: string | undefined;
 
 	/** Whether a selected config reads `file`, however its path is written: a watcher reports POSIX paths on every system. */
 	reads(file: string): boolean;

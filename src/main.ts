@@ -80,14 +80,14 @@ async function main(): Promise<void> {
 		// Read from the raw line, so a parse error is reported the way the flags ask.
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk() ? argsResult.value.line.options : {};
-		const environment = new NativeEnvironmentService(
+		const environmentService = new NativeEnvironmentService(
 			{ ...options, json },
 			process.cwd()
 		);
-		const logService: LogService = environment.isPlain
-			? new PlainLogService(environment.cwd)
-			: new TerminalLogService(environment.cwd);
-		logService.setLevel(environment.logLevel);
+		const logService: LogService = environmentService.isPlain
+			? new PlainLogService(environmentService.cwd)
+			: new TerminalLogService(environmentService.cwd);
+		logService.setLevel(environmentService.logLevel);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
 		}
 		const { command, line } = argsResult.value;
 		const promptService = new ConsolePromptService({
-			interactive: environment.isInteractive,
+			interactive: environmentService.isInteractive,
 		});
 
 		// Default handler throws async, which would crash `watch`.
@@ -108,12 +108,12 @@ async function main(): Promise<void> {
 
 		const configService = new CoreConfigService(
 			fileSystemService,
-			environment
+			environmentService
 		);
 		services.set(ConfigService, configService);
 		disposables.add(configService.registerFileCheck(LegacyConfig.check));
 
-		services.set(EnvironmentService, environment);
+		services.set(EnvironmentService, environmentService);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
 		const indexService = new CoreIndexService(fileSystemService);
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
 			new CoreInitService(
 				fileSystemService,
 				promptService,
-				environment,
+				environmentService,
 				toolchainService,
 				configService
 			)
@@ -169,7 +169,7 @@ async function main(): Promise<void> {
 				processService,
 				requestService,
 				watchService,
-				environment
+				environmentService
 			)
 		);
 

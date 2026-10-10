@@ -69,7 +69,7 @@ export class StarterTemplate {
 		skipped: string[];
 	} {
 		const mounted = this.project
-			.getPaths()
+			.mountedPaths()
 			.map(({ path }) => normalizeDir(rojoPathTarget(path)));
 		const missing = mounts.filter(
 			(mount) =>

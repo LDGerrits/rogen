@@ -54,7 +54,7 @@ export class CoreServeSession
 	private readonly _onDidStop = this._register(
 		new Emitter<ServerExitEvent>()
 	);
-	readonly onDidStop: Event<ServerExitEvent> = this._onDidStop.event;
+	readonly onDidExit: Event<ServerExitEvent> = this._onDidStop.event;
 
 	private readonly servers = new Map<string, StartedServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */

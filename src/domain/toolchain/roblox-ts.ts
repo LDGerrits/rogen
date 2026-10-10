@@ -40,13 +40,13 @@ export interface RobloxTsFacts {
 	/** The installed package scopes under `node_modules`. */
 	readonly rbxtsScopes?: readonly string[];
 	/** Whether the runtime's `include` folder exists. */
-	readonly hasInclude?: boolean;
+	readonly includeInstalled?: boolean;
 }
 
 interface TsconfigFacts {
 	readonly outDir: string;
 	readonly rootDir?: string;
-	readonly hasInclude: boolean;
+	readonly setsInclude: boolean;
 	readonly tsBuildInfoFile?: string;
 }
 
@@ -175,7 +175,8 @@ export class RobloxTs implements Language {
 	}
 
 	alwaysMounted(): MountCandidate[] {
-		const { hasInclude = false, rbxtsScopes = [] } = this.facts;
+		const { includeInstalled: hasInclude = false, rbxtsScopes = [] } =
+			this.facts;
 		return [
 			{
 				path: INCLUDE_DIR,
@@ -232,11 +233,11 @@ export class RobloxTsDetector implements LanguageDetector {
 		return new RobloxTs(
 			{
 				rbxtsScopes: installed.filter((scope) => scope !== undefined),
-				hasInclude,
+				includeInstalled: hasInclude,
 				...(tsconfig && {
 					outDir: tsconfig.outDir,
 					...(tsconfig.rootDir && { rootDir: tsconfig.rootDir }),
-					tsconfigHasInclude: tsconfig.hasInclude,
+					tsconfigHasInclude: tsconfig.setsInclude,
 					...(tsconfig.tsBuildInfoFile && {
 						tsBuildInfoFile: tsconfig.tsBuildInfoFile,
 					}),
@@ -260,7 +261,7 @@ export class RobloxTsDetector implements LanguageDetector {
 						compilerOption(parsed.value, "outDir") ??
 						DEFAULT_OUT_DIR,
 					...(rootDir && { rootDir }),
-					hasInclude:
+					setsInclude:
 						isObject(parsed.value) && "include" in parsed.value,
 					...(tsBuildInfoFile && { tsBuildInfoFile }),
 				};
@@ -268,6 +269,6 @@ export class RobloxTsDetector implements LanguageDetector {
 		} catch {
 			// An unreadable tsconfig.json means the defaults, not a failed init.
 		}
-		return { outDir: DEFAULT_OUT_DIR, hasInclude: false };
+		return { outDir: DEFAULT_OUT_DIR, setsInclude: false };
 	}
 }

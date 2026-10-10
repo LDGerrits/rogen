@@ -299,7 +299,7 @@ export class ResolvedConfig {
 	readonly file: string;
 	readonly parents: readonly string[];
 	readonly skippedVariants: readonly string[];
-	readonly name: string;
+	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
 	readonly variants: Readonly<Record<string, boolean>>;
@@ -317,7 +317,7 @@ export class ResolvedConfig {
 		this.file = fields.file;
 		this.parents = fields.parents;
 		this.skippedVariants = fields.skippedVariants;
-		this.name = fields.name;
+		this.projectName = fields.name;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;
 		this.variants = fields.variants;

@@ -103,7 +103,7 @@ export interface InitDocument {
 	readonly nextSteps?: NextSteps;
 }
 
-export class InitJson {
+export class InitDocumentBuilder {
 	private readonly files: string[] = [];
 	private readonly appended: string[] = [];
 	private readonly directories: string[] = [];

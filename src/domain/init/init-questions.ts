@@ -11,17 +11,17 @@ import {
 } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
-import { PLACES_DIR, SOURCE_DIR } from "./code-finder.js";
+import { PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { ConfigSet } from "./config-set.js";
 import { PlaceFolder } from "./place-folder.js";
-import { HOOK_SCRIPT_FILE } from "./hook-target.js";
+import { HOOK_SCRIPT_FILE } from "./coding-agent.js";
 import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 import { TemplateChoice } from "./template-plan.js";
 
-export type Layout = "one" | "several";
+export type PlaceCount = "one" | "several";
 /** One thing `init` can add beside the configs here, and what adding it does. */
 export interface AdditionOption<T> {
 	readonly id: string;
@@ -131,14 +131,17 @@ export class InitQuestions {
 	}
 
 	/** Several places when the workspace already has a `places` folder. */
-	async layout({ layout }: InitDirectory): Promise<Layout | undefined> {
-		const initial: Layout = layout.places.length > 0 ? "several" : "one";
+	async placeCount({
+		layout,
+	}: InitDirectory): Promise<PlaceCount | undefined> {
+		const initial: PlaceCount =
+			layout.places.length > 0 ? "several" : "one";
 		if (!this.interactive) return initial;
 
 		const found = layout.places
 			.map((name) => PlaceFolder.pathOf(name))
 			.join(", ");
-		return this.promptService.select<Layout>({
+		return this.promptService.select<PlaceCount>({
 			message: "What are you setting up?",
 			choices: [
 				{ value: "one", label: "One place" },
@@ -278,7 +281,7 @@ export class InitQuestions {
 		const rootDir = directory.defaultRootDir(language);
 		const existing =
 			language.compiler !== undefined ||
-			directory.has(SOURCE_DIR) ||
+			directory.has(DEFAULT_ROOT_DIR) ||
 			directory.layout.codeFolders.includes(rootDir);
 		const initial = existing ? rootDir : SHARED_FOLDER;
 		const answer = this.interactive

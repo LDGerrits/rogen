@@ -1,6 +1,6 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { CodeFinder, PLACES_DIR, SOURCE_DIR } from "./code-finder.js";
+import { CodeFinder, PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
@@ -44,7 +44,7 @@ export class PlaceFolder {
 
 	/** Where the place's own code is, which its config adds to default's root dirs. */
 	get rootDir(): string {
-		return this.holdsCode ? this.path : `${this.path}/${SOURCE_DIR}`;
+		return this.holdsCode ? this.path : `${this.path}/${DEFAULT_ROOT_DIR}`;
 	}
 
 	/** The place's template, outside its root dir, since anything inside one is synced into the game. */
@@ -72,7 +72,7 @@ export class PlaceFolderReader {
 		const absolute = path.join(directory, folder);
 		const code =
 			!(await this.fileSystemService.exists(
-				path.join(absolute, SOURCE_DIR)
+				path.join(absolute, DEFAULT_ROOT_DIR)
 			)) && (await this.codeFinder.holdsCode(absolute));
 		return new PlaceFolder(
 			folder,

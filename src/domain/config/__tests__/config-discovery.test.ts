@@ -67,7 +67,7 @@ describe("ConfigDiscovery", () => {
 			const result = await nested.discover([]);
 
 			expect(result.unwrap()).toEqual({
-				directory: "/repo",
+				home: "/repo",
 				files: ["/repo/default.rogen.json", "/repo/lobby.rogen.json"],
 				everyConfig: true,
 			});
@@ -183,7 +183,7 @@ describe("ConfigDiscovery", () => {
 			const result = await nested.discover(["lobby"]);
 
 			expect(result.unwrap()).toEqual({
-				directory: "/repo",
+				home: "/repo",
 				files: ["/repo/lobby.rogen.json"],
 				everyConfig: false,
 			});

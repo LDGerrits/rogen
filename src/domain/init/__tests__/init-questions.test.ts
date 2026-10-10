@@ -60,7 +60,7 @@ const rbxts: WorkspaceSpec = {
 	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
-		hasInclude: true,
+		includeInstalled: true,
 	},
 	packageManager: "wally",
 	packageDirs: ["Packages"],
@@ -519,7 +519,7 @@ describe("InitQuestions askProject", () => {
 				withRobloxTs(
 					{ ...luau, packageManager: "wally" },
 					{
-						hasInclude: true,
+						includeInstalled: true,
 						rbxtsScopes: ["@rbxts", "@flamework"],
 					}
 				)

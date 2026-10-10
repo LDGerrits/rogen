@@ -82,7 +82,7 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					options: line.options,
-					server: line.options.tool,
+					serverId: line.options.tool,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.
@@ -126,7 +126,7 @@ registerCommand(
 			store.add(session.onDidOutput((said) => log.said(said)));
 			store.add(session.onDidChange((change) => log.changed(change)));
 			store.add(
-				session.onDidStop((stop) => {
+				session.onDidExit((stop) => {
 					log.stopped(stop);
 					stopped.complete(stop);
 				})

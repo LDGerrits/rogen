@@ -42,7 +42,7 @@ export class ServePorts {
 		const defaults = await this.defaultsOf(server, config.projectDir);
 		return {
 			config,
-			project: config.name,
+			project: config.projectName,
 			address: new ServeAddress(
 				server.hostIn(serverArgs) ??
 					project?.serveAddress ??

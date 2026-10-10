@@ -62,12 +62,12 @@ export class Placer {
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
 			...this.landsElsewhereErrors(
-				variants.landingApart(routed),
+				variants.landingElsewhere(routed),
 				markerClashes
 			),
 		];
 		const routedNodes = this.initScripts.withCopies(routed, toCopy);
-		const applied = variants.apply(routedNodes);
+		const applied = variants.resolve(routedNodes);
 		if (applied.isErr()) return err([...routeErrors, ...applied.error]);
 		if (routeErrors.length > 0) return err(routeErrors);
 		const nodes = this.initScripts.withoutLoneInits(applied.value.nodes);

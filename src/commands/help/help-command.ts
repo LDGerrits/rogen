@@ -44,7 +44,9 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			if (line.options.version) {
-				const version = await accessor.get(ProductService).getVersion();
+				const version = await accessor
+					.get(ProductService)
+					.readVersion();
 				logService.print(`rogen ${version}`);
 				return ok(undefined);
 			}

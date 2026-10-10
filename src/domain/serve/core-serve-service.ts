@@ -59,7 +59,7 @@ export class CoreServeService implements ServeService {
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
-		const server = CoreServeService.serverOf(request.server);
+		const server = CoreServeService.serverOf(request.serverId);
 		if (server.isErr()) return server;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
