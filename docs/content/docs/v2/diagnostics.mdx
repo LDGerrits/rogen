@@ -395,10 +395,10 @@ Error. Two marker files in one folder name different routes, such as `@server` b
 
 ```
 src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)
-src/Combat - error: "init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Route the folder once, and put the files only a variant sends elsewhere in a folder named after it, with its own marker: dev/@server and prod/@client. (route.markerClash)
+src/Combat - error: "init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: Combat.dev@server/ and Combat.prod@client/. (route.markerClash)
 ```
 
-Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. Where a file lands never depends on which variants are on, so init scripts of two variants, even ones that are never on together, can't send their folder to two places. Route the folder once, and put the files that only one variant sends elsewhere in a variant folder with its own marker, such as `Combat/dev/@server`. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. Where a file lands never depends on which variants are on, so init scripts of two variants, even ones that are never on together, can't send their folder to two places. Keep the folder's own route, if it has one, and move the files that only a variant sends elsewhere into a folder beside it that names the variant and the route, such as `Combat.dev@server/`. A marker inside the folder wouldn't work, since the folder's route governs everything in it. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 

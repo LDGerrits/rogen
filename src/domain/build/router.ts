@@ -72,8 +72,8 @@ export interface MarkerClash {
 	readonly dir: string;
 	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
-	/** When only init scripts of variants route it apart from the rest, the folder each set of variants needs with its own marker, such as `mock/dev/@client`. */
-	readonly variantFolders?: readonly string[];
+	/** Set when only init scripts of variants route it apart: the folder beside it each set of variants needs, such as `Net.dev.mock@client`, unless its own name carries keys. */
+	readonly besideFolders?: readonly string[];
 }
 
 /** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
@@ -352,33 +352,45 @@ export class Router {
 				clashes.push({
 					dir: joinPosix(root.rootDir, dir),
 					names: claims.map(({ name }) => name).sort(compareStrings),
-					...Router.variantFoldersOf(claims),
+					...this.besideFoldersOf(root.rootDir, dir, claims),
 				});
 		}
 		return clashes;
 	}
 
-	/** Markers and plain init scripts that agree leave the folder one route, so only the variants' init scripts route it apart; each set of variants then needs its own folder, unless two scripts of one set disagree too. */
-	private static variantFoldersOf(
+	/** Markers and plain init scripts that agree leave the folder at most one route, so only the variants' init scripts route it apart, unless two of one set of variants disagree too. Each set's files then move to a folder beside it that names the set and its route. */
+	private besideFoldersOf(
+		rootDir: string,
+		dir: string,
 		claims: readonly Pick<InitRoute, "key" | "variants">[]
-	): Pick<MarkerClash, "variantFolders"> {
+	): Pick<MarkerClash, "besideFolders"> {
 		const plainKeys = new Set(
 			claims
 				.filter(({ variants }) => variants.length === 0)
 				.map(({ key }) => key)
 		);
-		const bySet = groupBy(
-			claims.filter(({ variants }) => variants.length > 0),
-			({ variants }) => variants.join("/")
-		);
-		const agree = [...bySet.values()].every(
-			(set) => new Set(set.map(({ key }) => key)).size === 1
-		);
-		if (plainKeys.size > 1 || !agree) return {};
+		if (plainKeys.size > 1) return {};
+		const sets = [
+			...groupBy(
+				claims.filter(({ variants }) => variants.length > 0),
+				({ variants }) =>
+					[...new Set(variants)].sort(compareStrings).join(".")
+			),
+		].map(([set, scripts]) => ({
+			set,
+			keys: new Set(scripts.map(({ key }) => key)),
+		}));
+		if (sets.some(({ keys }) => keys.size > 1)) return {};
+		const folder = this.readings.folders.get(joinPosix(rootDir, dir));
+		if (!folder || folder.keptName !== folder.segment)
+			return { besideFolders: [] };
 		return {
-			variantFolders: [...bySet]
-				.filter(([, [{ key }]]) => !plainKeys.has(key))
-				.map(([folder, [{ key }]]) => `${folder}/@${key}`)
+			besideFolders: sets
+				.flatMap(({ set, keys: [key] }) =>
+					plainKeys.has(key)
+						? []
+						: [`${folder.segment}.${set}@${key}`]
+				)
 				.sort(compareStrings),
 		};
 	}
