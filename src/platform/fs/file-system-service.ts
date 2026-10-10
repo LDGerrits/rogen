@@ -41,7 +41,7 @@ export interface FileSystemService {
 
 /** The codes a file system rejects with, as Node's own errors carry them. */
 export type FileSystemErrorCode =
-	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP";
+	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP" | "EINVAL";
 
 /** An error shaped like Node's, so a caller checks `code` alike on every file system. */
 export function fileSystemError(

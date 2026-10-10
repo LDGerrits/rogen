@@ -50,34 +50,6 @@ describe("MemoryFileSystemService: core operations", () => {
 	});
 
 	describe("Renames", () => {
-		it("should move a file to a new path, creating parent directories", async () => {
-			await memFs.writeFile("a.txt", "data");
-
-			await memFs.rename("a.txt", "out/b.txt");
-
-			expect(await memFs.exists("a.txt")).toBe(false);
-			expect(await memFs.readFile("out/b.txt")).toBe("data");
-		});
-
-		it("should replace the destination only if overwrite is true", async () => {
-			await memFs.writeFile("a.txt", "new");
-			await memFs.writeFile("b.txt", "old");
-
-			await expect(memFs.rename("a.txt", "b.txt")).rejects.toMatchObject({
-				code: "EEXIST",
-			});
-
-			await memFs.rename("a.txt", "b.txt", true);
-			expect(await memFs.readFile("b.txt")).toBe("new");
-			expect(await memFs.exists("a.txt")).toBe(false);
-		});
-
-		it("should throw ENOENT when the source is missing", async () => {
-			await expect(
-				memFs.rename("missing.txt", "b.txt")
-			).rejects.toMatchObject({ code: "ENOENT" });
-		});
-
 		it("should emit DELETED for the source and UPDATED for a replaced destination", async () => {
 			await memFs.writeFile("a.txt", "new");
 			await memFs.writeFile("b.txt", "old");
@@ -100,12 +72,6 @@ describe("MemoryFileSystemService: core operations", () => {
 	});
 
 	describe("Deletions", () => {
-		it("should successfully delete a single file", async () => {
-			await memFs.writeFile("temp.txt", "data");
-			await memFs.delete("temp.txt");
-			expect(await memFs.exists("temp.txt")).toBe(false);
-		});
-
 		it("should recursively delete a directory and all its contents", async () => {
 			await memFs.writeFile("dist/js/app.js", "code");
 			await memFs.writeFile("dist/index.html", "html");
@@ -114,69 +80,6 @@ describe("MemoryFileSystemService: core operations", () => {
 
 			expect(await memFs.exists("dist")).toBe(false);
 			expect(await memFs.exists("dist/js/app.js")).toBe(false);
-		});
-
-		it("should fail gracefully (no-op) when deleting a non-existent file", async () => {
-			await expect(
-				memFs.delete("does-not-exist.txt")
-			).resolves.not.toThrow();
-		});
-	});
-
-	describe("Error Handling", () => {
-		it("should throw EISDIR when attempting to read or write a directory as a file", async () => {
-			await memFs.createDirectory("assets");
-
-			await expect(memFs.readFile("assets")).rejects.toMatchObject({
-				code: "EISDIR",
-			});
-			await expect(
-				memFs.writeFile("assets", "data")
-			).rejects.toMatchObject({
-				code: "EISDIR",
-			});
-		});
-
-		it("should throw ENOTDIR when trying to read a file as a directory", async () => {
-			await memFs.writeFile("config.json", "{}");
-
-			await expect(
-				memFs.readDirectory("config.json")
-			).rejects.toMatchObject({
-				code: "ENOTDIR",
-			});
-		});
-
-		it("should throw ENOTDIR when writing a file where a parent in the path is actually a file", async () => {
-			await memFs.writeFile("src/file.ts", "data");
-			await expect(
-				memFs.writeFile("src/file.ts/nested.ts", "data")
-			).rejects.toMatchObject({
-				code: "ENOTDIR",
-			});
-		});
-
-		it("should throw EISDIR when non-recursively deleting a directory", async () => {
-			await memFs.createDirectory("temp");
-
-			await expect(memFs.delete("temp", false)).rejects.toMatchObject({
-				code: "EISDIR",
-			});
-		});
-
-		it("should throw EEXIST when creating a directory where a file already exists", async () => {
-			await memFs.writeFile("file.txt", "content");
-			await expect(
-				memFs.createDirectory("file.txt")
-			).rejects.toMatchObject({
-				code: "EEXIST",
-			});
-		});
-
-		it("should throw ENOENT when reading a non-existent file", async () => {
-			await expect(memFs.readFile("missing.txt")).rejects.toMatchObject({
-				code: "ENOENT",
-			});
 		});
 	});
 

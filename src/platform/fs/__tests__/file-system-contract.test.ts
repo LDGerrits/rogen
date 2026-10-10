@@ -68,7 +68,60 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 		});
 	});
 
+	describe("readFile", () => {
+		it("should reject with ENOENT for a file that doesn't exist", async () => {
+			await expect(
+				fixture.fileSystem.readFile(at("missing.txt"))
+			).rejects.toMatchObject({ code: "ENOENT" });
+		});
+
+		it("should reject with EISDIR for a directory", async () => {
+			await fixture.fileSystem.createDirectory(at("assets"));
+
+			await expect(
+				fixture.fileSystem.readFile(at("assets"))
+			).rejects.toMatchObject({ code: "EISDIR" });
+		});
+	});
+
+	describe("writeFile", () => {
+		it("should reject with EISDIR for a directory", async () => {
+			await fixture.fileSystem.createDirectory(at("assets"));
+
+			await expect(
+				fixture.fileSystem.writeFile(at("assets"), "data")
+			).rejects.toMatchObject({ code: "EISDIR" });
+		});
+
+		it("should reject with ENOTDIR below a file", async () => {
+			await fixture.fileSystem.writeFile(at("src/file.ts"), "data");
+
+			await expect(
+				fixture.fileSystem.writeFile(at("src/file.ts/nested.ts"), "")
+			).rejects.toMatchObject({ code: "ENOTDIR" });
+		});
+	});
+
 	describe("delete", () => {
+		it("should remove a file, and do nothing for one that isn't there", async () => {
+			await fixture.fileSystem.writeFile(at("temp.txt"), "data");
+
+			await fixture.fileSystem.delete(at("temp.txt"));
+			await expect(
+				fixture.fileSystem.delete(at("temp.txt"))
+			).resolves.toBeUndefined();
+
+			expect(await fixture.fileSystem.exists(at("temp.txt"))).toBe(false);
+		});
+
+		it("should reject with ENOTDIR for a path below a file", async () => {
+			await fixture.fileSystem.writeFile(at("a.luau"), "");
+
+			await expect(
+				fixture.fileSystem.delete(at("a.luau/b"))
+			).rejects.toMatchObject({ code: "ENOTDIR" });
+		});
+
 		it("should do nothing for a path whose parent is missing", async () => {
 			await expect(
 				fixture.fileSystem.delete(at("missing/a.luau"))
@@ -138,6 +191,27 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			expect(await fixture.fileSystem.exists(at("src/a.luau"))).toBe(
 				true
 			);
+		});
+
+		it("should reject with ENOENT when the source is missing", async () => {
+			await expect(
+				fixture.fileSystem.rename(at("missing.txt"), at("b.txt"))
+			).rejects.toMatchObject({ code: "ENOENT" });
+		});
+
+		it("should do nothing for a path renamed onto itself, even one that isn't there", async () => {
+			await expect(
+				fixture.fileSystem.rename(at("missing"), at("missing"))
+			).resolves.toBeUndefined();
+		});
+
+		it("should reject with EINVAL to move a directory into itself", async () => {
+			await fixture.fileSystem.writeFile(at("d/a.luau"), "");
+
+			await expect(
+				fixture.fileSystem.rename(at("d"), at("d/e"))
+			).rejects.toMatchObject({ code: "EINVAL" });
+			expect(await fixture.fileSystem.exists(at("d/a.luau"))).toBe(true);
 		});
 
 		it("should reject with EISDIR to replace a directory, even when told to overwrite", async () => {

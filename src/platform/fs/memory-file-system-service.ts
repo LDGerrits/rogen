@@ -292,7 +292,9 @@ export class MemoryFileSystemService
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop();
-		const parent = this._lookup(parts.join("/"));
+		const { node: parent, failure } = this._walk(parts.join("/"), true);
+		if (failure === "ENOTDIR" || parent?.type === FileType.File)
+			throw walkError("ENOTDIR", "rm", filePath);
 		if (!name || parent?.type !== FileType.Directory) return;
 		const target = parent.entries.get(name);
 		if (!target) return;
@@ -314,10 +316,15 @@ export class MemoryFileSystemService
 		destination: string,
 		overwrite: boolean = false
 	): Promise<void> {
-		const node = this._lookup(source, false, false) as Node;
 		const from = toPosix(source);
 		const to = toPosix(destination);
 		if (from === to) return;
+		const node = this._lookup(source, false, false) as Node;
+		if (containsPosix(from, to))
+			throw fileSystemError(
+				"EINVAL",
+				`EINVAL: invalid argument, rename '${source}' -> '${destination}'`
+			);
 
 		const existing = this._lookup(destination, true, false);
 		if (existing && !overwrite) {
