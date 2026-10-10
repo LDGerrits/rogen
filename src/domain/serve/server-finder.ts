@@ -11,7 +11,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./serve.js";
 import { ServeTool } from "./serve-service.js";
-import { ToolchainFile } from "./toolchain-file.js";
+import { ToolManifest } from "./tool-manifest.js";
 
 /** How long `--version` may take; a toolchain manager may download the tool first. */
 const VERSION_TIMEOUT_MS = 60_000;
@@ -20,12 +20,12 @@ interface Candidate {
 	readonly server: SyncServer;
 	/** The name it runs as. */
 	readonly command: string;
-	readonly manifest?: ToolchainFile;
+	readonly manifest?: ToolManifest;
 }
 
 /** A candidate a toolchain file pins. */
 interface PinnedCandidate extends Candidate {
-	readonly manifest: ToolchainFile;
+	readonly manifest: ToolManifest;
 }
 
 /** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
@@ -88,14 +88,14 @@ export class ServerFinder {
 	}
 
 	/** The toolchain files of `directory` and every folder above it, the nearest first. */
-	private async manifestsFor(directory: string): Promise<ToolchainFile[]> {
-		const manifests: ToolchainFile[] = [];
+	private async manifestsFor(directory: string): Promise<ToolManifest[]> {
+		const manifests: ToolManifest[] = [];
 		for (const dir of [directory, ...ancestors(directory)]) {
-			for (const fileName of ToolchainFile.FILE_NAMES) {
+			for (const fileName of ToolManifest.FILE_NAMES) {
 				const file = path.join(dir, fileName);
 				if (!(await this.fileSystemService.exists(file))) continue;
 				try {
-					const manifest = ToolchainFile.parse(
+					const manifest = ToolManifest.parse(
 						file,
 						await this.fileSystemService.readFile(file)
 					);
@@ -113,7 +113,7 @@ export class ServerFinder {
 		candidate: Candidate,
 		file: string,
 		directory: string,
-		manifests: readonly ToolchainFile[],
+		manifests: readonly ToolManifest[],
 		resource: string
 	): Promise<Result<string, DiagnosticsError>> {
 		const output = await this.processService.exec(file, ["--version"], {
@@ -165,7 +165,7 @@ export class ServerFinder {
 
 	private noServer(
 		directory: string,
-		manifests: readonly ToolchainFile[],
+		manifests: readonly ToolManifest[],
 		wanted: SyncServer | undefined,
 		resource: string
 	) {
@@ -192,7 +192,7 @@ export class ServerFinder {
 	private pinFix(
 		server: SyncServer,
 		directory: string,
-		manifests: readonly ToolchainFile[]
+		manifests: readonly ToolManifest[]
 	): Extract<DiagnosticFix, { run: unknown }> | undefined {
 		const [nearest] = manifests;
 		const command = nearest

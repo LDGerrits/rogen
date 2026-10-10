@@ -28,7 +28,7 @@ function sourceOf(value: string): string | undefined {
 }
 
 /** The tools one file of a toolchain manager pins, by the name each runs as. */
-export class ToolchainFile {
+export class ToolManifest {
 	static readonly FILE_NAMES: readonly string[] = MANAGERS.map(
 		({ fileName }) => fileName
 	);
@@ -41,7 +41,7 @@ export class ToolchainFile {
 	) {}
 
 	/** Reads `text` as the file `file`, whose name says which manager it belongs to; `undefined` for any other file. */
-	static parse(file: string, text: string): ToolchainFile | undefined {
+	static parse(file: string, text: string): ToolManifest | undefined {
 		const manager = MANAGERS.find(
 			({ fileName }) => fileName === path.basename(file)
 		);
@@ -59,7 +59,7 @@ export class ToolchainFile {
 			const source = sourceOf(entry[2]);
 			if (source) tools.set(unquoted(entry[1]), source.toLowerCase());
 		}
-		return new ToolchainFile(file, manager, tools);
+		return new ToolManifest(file, manager, tools);
 	}
 
 	/** The name the tool from `repository` runs as, when this file pins it. */
