@@ -1,3 +1,4 @@
+import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import {
@@ -25,7 +26,7 @@ const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 /** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead. */
 export class ChangeBatcher extends AbstractDisposable {
 	private buffer: FileChange[] = [];
-	private flushTimer: ReturnType<typeof setTimeout> | undefined;
+	private readonly flush: RunOnceScheduler;
 
 	private readonly _onDidEmitChanges = this._register(
 		new Emitter<FileChange[]>()
@@ -43,6 +44,9 @@ export class ChangeBatcher extends AbstractDisposable {
 		private readonly options: ChangeBatcherOptions = DEFAULT_OPTIONS
 	) {
 		super();
+		this.flush = this._register(
+			new RunOnceScheduler(() => this.flushBuffer(), options.debounceMs)
+		);
 	}
 
 	queueEvents(changes: readonly FileChange[]): void {
@@ -59,15 +63,10 @@ export class ChangeBatcher extends AbstractDisposable {
 			return;
 		}
 
-		clearTimeout(this.flushTimer);
-		this.flushTimer = setTimeout(
-			() => this.flushBuffer(),
-			this.options.debounceMs
-		);
+		this.flush.schedule();
 	}
 
 	private flushBuffer(): void {
-		this.flushTimer = undefined;
 		const normalized = normalizeFileChanges(this.buffer);
 		this.buffer = [];
 		if (normalized.length > 0) {
@@ -76,13 +75,12 @@ export class ChangeBatcher extends AbstractDisposable {
 	}
 
 	private clearBuffer(): void {
-		clearTimeout(this.flushTimer);
-		this.flushTimer = undefined;
+		this.flush.cancel();
 		this.buffer = [];
 	}
 
 	override [Symbol.dispose](): void {
-		this.clearBuffer();
+		this.buffer = [];
 		super[Symbol.dispose]();
 	}
 }

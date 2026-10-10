@@ -1,4 +1,5 @@
-import { Sequencer, DeferredPromise } from "../async.js";
+import { jest } from "@jest/globals";
+import { DeferredPromise, RunOnceScheduler, Sequencer } from "../async.js";
 
 describe("Async Utilities", () => {
 	describe("Sequencer", () => {
@@ -85,6 +86,49 @@ describe("Async Utilities", () => {
 			deferred.error(new Error("late error"));
 
 			await expect(deferred.p).resolves.toBe("first");
+		});
+	});
+
+	describe("RunOnceScheduler", () => {
+		beforeEach(() => jest.useFakeTimers());
+		afterEach(() => jest.useRealTimers());
+
+		it("should run once, after the delay of the last schedule", () => {
+			const runner = jest.fn();
+			const scheduler = new RunOnceScheduler(runner, 100);
+
+			scheduler.schedule();
+			jest.advanceTimersByTime(60);
+			scheduler.schedule();
+			jest.advanceTimersByTime(60);
+			expect(runner).not.toHaveBeenCalled();
+			jest.advanceTimersByTime(40);
+
+			expect(runner).toHaveBeenCalledTimes(1);
+			expect(scheduler.isScheduled).toBe(false);
+		});
+
+		it("should wait for the delay it is given in place of its own", () => {
+			const runner = jest.fn();
+			const scheduler = new RunOnceScheduler(runner, 100);
+
+			scheduler.schedule(10);
+			jest.advanceTimersByTime(10);
+
+			expect(runner).toHaveBeenCalledTimes(1);
+		});
+
+		it("should not run once cancelled or disposed", () => {
+			const runner = jest.fn();
+			const scheduler = new RunOnceScheduler(runner, 100);
+
+			scheduler.schedule();
+			scheduler.cancel();
+			scheduler.schedule();
+			scheduler[Symbol.dispose]();
+			jest.advanceTimersByTime(500);
+
+			expect(runner).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,4 +1,5 @@
 import path from "path";
+import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -56,7 +57,8 @@ export class StartedServer extends AbstractDisposable {
 	/** The write of its record, once it answered. */
 	private record: Promise<void> | undefined;
 	/** The next time its port is asked whether it answers yet. */
-	private readyTimer: ReturnType<typeof setTimeout> | undefined;
+	private readonly ready: RunOnceScheduler;
+	private readyDelay = READY_POLL_MS.first;
 
 	constructor(
 		readonly target: ServeTarget,
@@ -95,13 +97,16 @@ export class StartedServer extends AbstractDisposable {
 					this.listener.stopped(this.stopOf(exit, said));
 			})
 		);
-		this.awaitReady(READY_POLL_MS.first);
+		this.ready = this._register(
+			new RunOnceScheduler(() => this.askReady(), READY_POLL_MS.first)
+		);
+		this.ready.schedule();
 	}
 
 	/** Ends the process without a failure to report, and stops asking its port. */
 	async terminate(): Promise<void> {
 		this.ending = true;
-		clearTimeout(this.readyTimer);
+		this.ready.cancel();
 		await this.child.terminate();
 	}
 
@@ -119,37 +124,34 @@ export class StartedServer extends AbstractDisposable {
 		await this.records.remove(this.target.address).catch(() => undefined);
 	}
 
-	override [Symbol.dispose](): void {
-		clearTimeout(this.readyTimer);
-		super[Symbol.dispose]();
-	}
-
-	/** Asks the server's port until it answers for the project, while it runs. */
-	private awaitReady(delay: number): void {
+	/** Asks the server's port whether it answers for the project, and asks again later while it runs and doesn't. */
+	private askReady(): void {
 		const { target } = this;
-		this.readyTimer = setTimeout(() => {
-			this.probe
-				.probe(target.address, this.plan.tool.server)
-				.then((state) => {
-					if (this.ending || this.exited) return;
-					if (
-						state.kind === "serving" &&
-						state.info.project === target.project
-					) {
-						this.record = this.records
-							.write(
-								target.address,
-								state.info,
-								target.config.outFile
-							)
-							.catch((error) => this.listener.failed(error));
-						this.listener.served({ target, info: state.info });
-						return;
-					}
-					this.awaitReady(Math.min(delay * 2, READY_POLL_MS.max));
-				})
-				.catch((error) => this.listener.failed(error));
-		}, delay);
+		this.probe
+			.probe(target.address, this.plan.tool.server)
+			.then((state) => {
+				if (this.ending || this.exited) return;
+				if (
+					state.kind === "serving" &&
+					state.info.project === target.project
+				) {
+					this.record = this.records
+						.write(
+							target.address,
+							state.info,
+							target.config.outFile
+						)
+						.catch((error) => this.listener.failed(error));
+					this.listener.served({ target, info: state.info });
+					return;
+				}
+				this.readyDelay = Math.min(
+					this.readyDelay * 2,
+					READY_POLL_MS.max
+				);
+				this.ready.schedule(this.readyDelay);
+			})
+			.catch((error) => this.listener.failed(error));
 	}
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */

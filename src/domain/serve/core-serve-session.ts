@@ -1,4 +1,4 @@
-import { DeferredPromise } from "../../base/async.js";
+import { DeferredPromise, Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
@@ -60,7 +60,7 @@ export class CoreServeSession
 	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
 	private launched = false;
-	private reconciling: Promise<void> = Promise.resolve();
+	private readonly reconciling = new Sequencer();
 	/** The first round of builds, or the error that ended it before it said anything. */
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
@@ -88,8 +88,8 @@ export class CoreServeSession
 					this.firstUpdate.complete(update);
 				this._onDidUpdate.fire(update);
 				if (this.launched)
-					this.reconciling = this.reconciling
-						.then(() => this.reconcile())
+					this.reconciling
+						.queue(() => this.reconcile())
 						.catch((error) => this._onDidError.fire(error));
 			})
 		);
