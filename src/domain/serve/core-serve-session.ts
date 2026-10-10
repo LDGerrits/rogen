@@ -189,12 +189,7 @@ export class CoreServeSession
 		config: ResolvedConfig,
 		served: ServedConfigs
 	): Promise<void> {
-		const { executable, serverArgs } = this.plan;
-		const target = await this.ports.targetOf(
-			config,
-			executable,
-			serverArgs
-		);
+		const target = await this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.file);
 		if (started?.target.address.toString() === address) return;
@@ -224,7 +219,6 @@ export class CoreServeSession
 				: await this.ports.check(
 						target,
 						others,
-						executable.server,
 						served.sharesName(target.project)
 					);
 		if (this.stopping) return;

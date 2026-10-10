@@ -15,40 +15,50 @@ import {
 	ServerInfo,
 	SyncServer,
 } from "./serve.js";
-import { ServeTarget, ServerExecutable } from "./serve-service.js";
+import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
 /** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;
 
-/** Where each config is served, and whether its port is free for it, when a serve starts and whenever its configs change. */
+/** Where each config of one serve is served, and whether its port is free for it, when the serve starts and whenever its configs change. */
 export class ServePorts {
+	private readonly host: string | undefined;
+	private readonly port: Result<number | undefined, UsageError>;
+
+	/** `serverArgs` are the words after `--`, which the server gets as they are. */
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
-		private readonly userHome: string
-	) {}
+		private readonly userHome: string,
+		private readonly server: SyncServer,
+		serverArgs: readonly string[]
+	) {
+		this.host = server.hostIn(serverArgs);
+		this.port = server.portIn(serverArgs);
+	}
+
+	/** The error in the `--port` after `--`, when its value isn't a port. */
+	get portError(): UsageError | undefined {
+		return this.port.isErr() ? this.port.error : undefined;
+	}
 
 	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own settings and defaults. */
-	async targetOf(
-		config: ResolvedConfig,
-		executable: ServerExecutable,
-		serverArgs: readonly string[]
-	): Promise<ServeTarget> {
-		const { server } = executable;
+	async targetOf(config: ResolvedConfig): Promise<ServeTarget> {
+		const { server } = this;
 		const project = config.template?.project;
-		const defaults = await this.defaultsOf(server, config.projectDir);
+		const defaults = await this.defaultsOf(config.projectDir);
 		return {
 			config,
 			project: config.projectName,
 			address: new ServeAddress(
-				server.hostIn(serverArgs) ??
+				this.host ??
 					project?.serveAddress ??
 					defaults.host ??
 					server.defaultHost,
-				server.portIn(serverArgs).unwrapOr(undefined) ??
+				this.port.unwrapOr(undefined) ??
 					project?.servePort ??
 					defaults.port ??
 					server.defaultPort
@@ -57,10 +67,8 @@ export class ServePorts {
 	}
 
 	/** Two targets on one port can't both be served; the command line is what has to change. */
-	clashOf(
-		targets: readonly ServeTarget[],
-		portGiven: boolean
-	): UsageError | undefined {
+	clashOf(targets: readonly ServeTarget[]): UsageError | undefined {
+		const portGiven = this.port.unwrapOr(undefined) !== undefined;
 		const byPort = new Map<number, ServeTarget[]>();
 		for (const target of targets) {
 			const sharing = byPort.get(target.address.port) ?? [];
@@ -83,10 +91,9 @@ export class ServePorts {
 	async check(
 		target: ServeTarget,
 		others: readonly ServeTarget[],
-		server: SyncServer,
 		sharedName: boolean
 	): Promise<Result<ServeTarget, Diagnostic>> {
-		const state = await this.probe.probe(target.address, server);
+		const state = await this.probe.probe(target.address, this.server);
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
 		const elsewhere =
@@ -102,8 +109,7 @@ export class ServePorts {
 				target,
 				holder,
 				elsewhere ? path.dirname(elsewhere) : undefined,
-				others,
-				server
+				others
 			)
 		);
 	}
@@ -118,10 +124,8 @@ export class ServePorts {
 		);
 	}
 
-	private async defaultsOf(
-		server: SyncServer,
-		projectDir: string
-	): Promise<ServerDefaults> {
+	private async defaultsOf(projectDir: string): Promise<ServerDefaults> {
+		const { server } = this;
 		for (const file of server.settingsFiles(projectDir, this.userHome)) {
 			let text: string;
 			try {
@@ -140,15 +144,14 @@ export class ServePorts {
 		target: ServeTarget,
 		holder: ServerInfo | undefined,
 		from: string | undefined,
-		targets: readonly ServeTarget[],
-		server: SyncServer
+		targets: readonly ServeTarget[]
 	): Promise<Diagnostic> {
 		const { config, address } = target;
 		const by = holder
 			? `${holder.server.name} serving ${holder.project}${from ? ` from ${from}` : ""}`
 			: "another program";
 		const free = address.isLocal
-			? await this.freePortAfter(address, targets, server)
+			? await this.freePortAfter(address, targets)
 			: undefined;
 		const command = `rogen serve ${config.label} -- --port ${free ?? "<port>"}`;
 		return errorDiagnostic(
@@ -176,8 +179,7 @@ export class ServePorts {
 
 	private async freePortAfter(
 		address: ServeAddress,
-		targets: readonly ServeTarget[],
-		server: SyncServer
+		targets: readonly ServeTarget[]
 	): Promise<number | undefined> {
 		const planned = new Set(targets.map((target) => target.address.port));
 		for (let offset = 1; offset <= FREE_PORT_SEARCH; offset++) {
@@ -186,7 +188,7 @@ export class ServePorts {
 			if (planned.has(port)) continue;
 			const state = await this.probe.probe(
 				new ServeAddress(address.host, port),
-				server
+				this.server
 			);
 			if (state.kind === "free") return port;
 		}

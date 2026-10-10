@@ -34,11 +34,11 @@ export class CoreServeService implements ServeService {
 	private readonly finder: ServerFinder;
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
-	private readonly ports: ServePorts;
+	private readonly userHome: string;
 
 	constructor(
 		private readonly configService: ConfigService,
-		fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileSystemService,
 		private readonly processService: ProcessService,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
@@ -50,11 +50,21 @@ export class CoreServeService implements ServeService {
 			fileSystemService,
 			environmentService.tmpDir
 		);
-		this.ports = new ServePorts(
-			fileSystemService,
+		this.userHome = environmentService.userHome;
+	}
+
+	/** The ports of a serve of `server`, which gets `serverArgs` as they are. */
+	private portsFor(
+		server: SyncServer,
+		serverArgs: readonly string[]
+	): ServePorts {
+		return new ServePorts(
+			this.fileSystemService,
 			this.probe,
 			this.records,
-			environmentService.userHome
+			this.userHome,
+			server,
+			serverArgs
 		);
 	}
 
@@ -77,28 +87,23 @@ export class CoreServeService implements ServeService {
 		);
 		if (executable.isErr()) return executable;
 
-		const port = executable.value.server.portIn(request.serverArgs);
-		if (port.isErr()) return port;
+		const ports = this.portsFor(
+			executable.value.server,
+			request.serverArgs
+		);
+		if (ports.portError) return err(ports.portError);
 		const targets: ServeTarget[] = [];
-		for (const config of served)
-			targets.push(
-				await this.ports.targetOf(
-					config,
-					executable.value,
-					request.serverArgs
-				)
-			);
+		for (const config of served) targets.push(await ports.targetOf(config));
 
-		const clash = this.ports.clashOf(targets, port.value !== undefined);
+		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
 
 		const checked: ServeTarget[] = [];
 		const taken: Diagnostic[] = [];
 		for (const target of targets) {
-			const result = await this.ports.check(
+			const result = await ports.check(
 				target,
 				targets,
-				executable.value.server,
 				servedConfigs.sharesName(target.project)
 			);
 			if (result.isOk()) checked.push(result.value);
@@ -170,7 +175,7 @@ export class CoreServeService implements ServeService {
 				this.processService,
 				this.probe,
 				this.records,
-				this.ports
+				this.portsFor(plan.executable.server, plan.serverArgs)
 			)
 		);
 	}
