@@ -391,7 +391,7 @@ Rename the folder to the key suggested, or, when the key in your config is the t
 
 ### `route.markerClash` [#route-markerclash]
 
-Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
+Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too, as does `init@server.luau` beside `init.mock@client.luau`, whether or not `mock` is on. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
 
 ```
 src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)

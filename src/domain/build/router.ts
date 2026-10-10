@@ -321,65 +321,30 @@ export class Router {
 		return folder;
 	}
 
-	/** The routes each folder's init scripts give it; a script with a dormant variant can't be placed, and a plain one an active variant's replaces isn't, so neither gives one. */
+	/** The routes each folder's init scripts give it, whichever variants are on, so turning one on never moves the files beside it. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
-		const placeable = new Map<
-			string,
-			{
-				stem: string;
-				spans: readonly SuffixSpan[];
-				source: string;
-				varied: boolean;
-			}[]
-		>();
-		for (const entry of root.entries) {
-			const read = this.readings.entryAt(entry.source);
-			if (!this.isInitEntry(read)) continue;
-			const {
-				stem,
-				match: { spans },
-			} = read;
-			const variants = spans
-				.filter(({ key }) => this.keys.isVariant(key))
-				.map((span) => this.asVariantMatch(span));
-			if (!this.config.allVariantsOn(variants)) continue;
-			const dir = dirnamePosix(entry.relativePath);
-			placeable.set(dir, [
-				...(placeable.get(dir) ?? []),
-				{
-					stem,
-					spans,
-					source: entry.source,
-					varied: variants.length > 0,
-				},
-			]);
-		}
 		const routes = new Map<
 			string,
 			{ key: string; source: string; at: boolean }[]
 		>();
-		for (const [dir, inits] of placeable) {
-			const varied = inits.some((init) => init.varied);
+		for (const entry of root.entries) {
+			const read = this.readings.entryAt(entry.source);
+			if (!this.isInitEntry(read)) continue;
+			const { stem, match } = read;
 			// Only the last `@key` of a name routes; the ones before it are outranked.
-			routes.set(
-				dir,
-				inits
-					.filter((init) => init.varied || !varied)
-					.flatMap(({ stem, spans, source }) => {
-						const governing = spans.find(({ key }) =>
-							this.keys.isRoute(key)
-						);
-						return governing
-							? [
-									{
-										key: governing.key,
-										source,
-										at: stem[governing.start] === "@",
-									},
-								]
-							: [];
-					})
+			const governing = match.spans.find(({ key }) =>
+				this.keys.isRoute(key)
 			);
+			if (!governing) continue;
+			const dir = dirnamePosix(entry.relativePath);
+			routes.set(dir, [
+				...(routes.get(dir) ?? []),
+				{
+					key: governing.key,
+					source: entry.source,
+					at: stem[governing.start] === "@",
+				},
+			]);
 		}
 		return routes;
 	}
