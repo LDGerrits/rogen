@@ -502,6 +502,16 @@ Rename one of the files, as the message says. The warning is the preview: `rogen
 
 ## Tree
 
+### `tree.reservedName` [#tree-reservedname]
+
+Warning. A file or folder would become an instance named with a leading `$`, which Rojo reserves for its own fields. Rojo keeps the instance but warns of it on every build and serve.
+
+```
+src/$Config.luau - warning: becomes the instance "$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
+```
+
+Rename the file or folder without the `$`. A `$` inside a name, as in `Cost$`, is fine.
+
 ### `tree.instanceClash` [#tree-instanceclash]
 
 Warning. Two plain files become the same instance, such as `Types.lua` and `Types.luau`. One takes the instance and the other is left out.

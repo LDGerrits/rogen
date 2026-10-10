@@ -1046,6 +1046,49 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("an instance named with a leading $", () => {
+			const reserved = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "tree.reservedName"
+					);
+
+			it("should warn of a file Rojo would name with a $, and propose the name without it", async () => {
+				await write("src/$Config.luau", "src/Fine.luau");
+
+				expect(await reserved()).toMatchObject([
+					{
+						resource: abs("src/$Config.luau"),
+						message: expect.stringContaining('"$Config"'),
+						fixes: [
+							{
+								rename: {
+									from: abs("src/$Config.luau"),
+									to: abs("src/Config.luau"),
+								},
+							},
+						],
+					},
+				]);
+			});
+
+			it("should warn of a folder whose name an init script gives, with no rename to propose", async () => {
+				await write("src/$Kit/init.luau");
+
+				const [warning] = await reserved();
+
+				expect(warning.resource).toBe(abs("src/$Kit/init.luau"));
+				expect(warning.fixes ?? []).toEqual([]);
+			});
+
+			it("should leave a $ inside a name alone", async () => {
+				await write("src/Cost$.luau");
+
+				expect(await reserved()).toEqual([]);
+			});
+		});
+
 		describe("instances no variant gives", () => {
 			const missing = async (
 				variants: Record<string, boolean>,

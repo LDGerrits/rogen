@@ -71,6 +71,7 @@ export class BuildValidator {
 			...this.serverCodeShipped(),
 			...this.deadScript(),
 			...this.buriedScriptSuffix(),
+			...this.reservedName(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
 			...this.templateClash(),
@@ -468,6 +469,41 @@ export class BuildValidator {
 					]
 				: []
 		);
+	}
+
+	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. */
+	private reservedName(): Diagnostic[] {
+		const { routed, leftOut } = this.placement;
+		return routed.flatMap(({ entry, instancePath, init }) => {
+			const name = instancePath[instancePath.length - 1];
+			if (
+				!name?.startsWith("$") ||
+				leftOut.get(entry.source)?.status === "pruned"
+			)
+				return [];
+			const fileName = path.posix.basename(entry.source);
+			const renamable = init === undefined && fileName.startsWith("$");
+			return [
+				warningDiagnostic(
+					"tree.reservedName",
+					{ resource: entry.source },
+					`becomes the instance "${name}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${init === undefined ? "the file" : "the folder"} without the $.`,
+					renamable && fileName.length > 1
+						? [
+								{
+									rename: {
+										from: entry.source,
+										to: path.posix.join(
+											path.posix.dirname(entry.source),
+											fileName.slice(1)
+										),
+									},
+								},
+							]
+						: []
+				),
+			];
+		});
 	}
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
