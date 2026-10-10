@@ -72,6 +72,11 @@ export interface MarkerClash {
 	readonly dir: string;
 	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
+	/** Set when only init scripts of variants route it apart and no route above it governs. */
+	readonly variantClash?: {
+		/** The folder beside it each set of variants needs, such as `Net.dev.mock@client`; none when its name carries more than a name. */
+		readonly besideFolders: readonly string[];
+	};
 }
 
 /** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
@@ -183,15 +188,16 @@ interface DirClaims {
 	readonly initRoutes: InitRoutes;
 }
 
-/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, and whether it's spelled `@key`. */
-type InitRoutes = ReadonlyMap<
-	string,
-	readonly {
-		readonly key: string;
-		readonly source: string;
-		readonly at: boolean;
-	}[]
->;
+/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, whether it's spelled `@key`, and the script's variants. */
+type InitRoutes = ReadonlyMap<string, readonly InitRoute[]>;
+
+interface InitRoute {
+	readonly key: string;
+	readonly source: string;
+	readonly at: boolean;
+	/** In the order the name spells them. */
+	readonly variants: readonly string[];
+}
 
 /** What routing found in the scanned files. */
 export interface Routing {
@@ -324,31 +330,91 @@ export class Router {
 	}
 
 	/** Markers in one directory all sit at one level, so no order could choose between two routes; claiming them in scan order would pick one silently. */
-	private markerClashesOf(
-		root: ScannedRoot,
-		{ markers, initRoutes }: DirClaims
-	): MarkerClash[] {
+	private markerClashesOf(root: ScannedRoot, dirs: DirClaims): MarkerClash[] {
+		const { markers, initRoutes } = dirs;
 		const clashes: MarkerClash[] = [];
 		for (const dir of new Set([...markers.keys(), ...initRoutes.keys()])) {
 			const claims = [
 				...(markers.get(dir) ?? []).flatMap((fileName) => {
 					const key = this.markerKeyAt(root.rootDir, dir, fileName);
 					return key !== undefined && this.keys.isRoute(key)
-						? [{ key, name: fileName }]
+						? [{ key, name: fileName, variants: [] }]
 						: [];
 				}),
-				...(initRoutes.get(dir) ?? []).map(({ key, source }) => ({
-					key,
-					name: path.posix.basename(source),
-				})),
+				...(initRoutes.get(dir) ?? []).map(
+					({ key, source, variants }) => ({
+						key,
+						name: path.posix.basename(source),
+						variants,
+					})
+				),
 			];
 			if (new Set(claims.map(({ key }) => key)).size > 1)
 				clashes.push({
 					dir: joinPosix(root.rootDir, dir),
 					names: claims.map(({ name }) => name).sort(compareStrings),
+					...(dir !== "" &&
+						!this.routedAbove(root.rootDir, dir, dirs) &&
+						this.variantClashOf(root.rootDir, dir, claims)),
 				});
 		}
 		return clashes;
+	}
+
+	/** Markers and plain init scripts that agree leave the folder at most one route, so only the variants' init scripts route it apart, unless two of one set of variants disagree too. Each set's files then move to a folder beside it that names the set and its route. */
+	private variantClashOf(
+		rootDir: string,
+		dir: string,
+		claims: readonly Pick<InitRoute, "key" | "variants">[]
+	): Pick<MarkerClash, "variantClash"> {
+		const plainKeys = new Set(
+			claims
+				.filter(({ variants }) => variants.length === 0)
+				.map(({ key }) => key)
+		);
+		if (plainKeys.size > 1) return {};
+		const sets = [
+			...groupBy(
+				claims.filter(({ variants }) => variants.length > 0),
+				({ variants }) =>
+					[...new Set(variants)].sort(compareStrings).join(".")
+			),
+		].map(([set, scripts]) => ({
+			set,
+			keys: new Set(scripts.map(({ key }) => key)),
+		}));
+		if (sets.some(({ keys }) => keys.size > 1)) return {};
+		const folder = this.readings.folders.get(joinPosix(rootDir, dir));
+		if (!folder || folder.keptName !== folder.segment)
+			return { variantClash: { besideFolders: [] } };
+		const besideFolders = sets
+			.flatMap(({ set, keys: [key] }) =>
+				plainKeys.has(key) ? [] : [`${folder.segment}.${set}@${key}`]
+			)
+			.sort(compareStrings);
+		return { variantClash: { besideFolders } };
+	}
+
+	/** Whether a route outranks the markers and init scripts of `dir`: its own name's, or a folder's, marker's or init script's above it. */
+	private routedAbove(
+		rootDir: string,
+		dir: string,
+		{ markers, initRoutes }: DirClaims
+	): boolean {
+		const segments = dir.split("/");
+		return segments.some((_, index) => {
+			const at = segments.slice(0, index + 1).join("/");
+			const above = segments.slice(0, index).join("/");
+			return (
+				this.readings.folders.get(joinPosix(rootDir, at))?.route !==
+					undefined ||
+				(initRoutes.get(above)?.length ?? 0) > 0 ||
+				(markers.get(above) ?? []).some((fileName) => {
+					const key = this.markerKeyAt(rootDir, above, fileName);
+					return key !== undefined && this.keys.isRoute(key);
+				})
+			);
+		});
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
@@ -366,10 +432,7 @@ export class Router {
 
 	/** The routes each folder's init scripts give it, whichever variants are on, so turning one on never moves the files beside it. */
 	private initRoutesOf(root: ScannedRoot): InitRoutes {
-		const routes = new Map<
-			string,
-			{ key: string; source: string; at: boolean }[]
-		>();
+		const routes = new Map<string, InitRoute[]>();
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitEntry(read)) continue;
@@ -386,6 +449,10 @@ export class Router {
 					key: governing.key,
 					source: entry.source,
 					at: stem[governing.start] === "@",
+					variants: match.spans
+						.filter(({ key }) => this.keys.isVariant(key))
+						.map(({ key }) => key)
+						.reverse(),
 				},
 			]);
 		}

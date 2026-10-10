@@ -533,6 +533,129 @@ describe("Router", () => {
 				}
 			);
 
+			it("should point init scripts of variants that are never on together at a folder beside theirs for each", async () => {
+				await write(
+					"src/C/init.dev@server.luau",
+					"src/C/init.prod@client.luau",
+					"src/C/X.luau"
+				);
+
+				const result = await route({
+					variants: { dev: true, prod: false },
+					conflicts: [["dev", "prod"]],
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, message }) => [
+							code,
+							message,
+						])
+				).toEqual([
+					[
+						"route.markerClash",
+						'"init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: C.dev@server/ and C.prod@client/.',
+					],
+				]);
+			});
+
+			it("should name the folder beside it that each set of variants needs, and keep the plain message when the clash isn't a variant's", async () => {
+				await write(
+					"src/C/@server",
+					"src/C/init.mock@server.luau",
+					"src/C/init.dev@client.luau",
+					"src/D/@server",
+					"src/D/@client",
+					"src/D/init.mock@server.luau",
+					"src/E/init.dev@server.luau",
+					"src/E/init.dev@client.luau",
+					"src/F/@server",
+					"src/F/init.mock.dev@client.luau",
+					"src/G/@server",
+					"src/G/init.dev@client.luau",
+					"src/G/init.prod@ReplicatedFirst.luau",
+					"src/H/@server",
+					"src/H/init.mock.dev@client.luau",
+					"src/H/init.dev.mock@ReplicatedFirst.luau",
+					"src/I.mock/@server",
+					"src/I.mock/init.dev@client.luau",
+					"src/server/J/init.dev@client.luau",
+					"src/server/J/init.prod@ReplicatedFirst.luau",
+					"src/K@server/@server",
+					"src/K@server/init.dev@client.luau"
+				);
+
+				const result = await route({
+					variants: { mock: true, dev: true, prod: false },
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code === "route.markerClash")
+							.map(({ resource, message }) => [
+								resource,
+								message.slice(message.indexOf(" places") + 7),
+							])
+				).toEqual([
+					[
+						abs("src/C"),
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: C.dev@client/.",
+					],
+					[
+						abs("src/D"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/F"),
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: F.dev.mock@client/.",
+					],
+					[
+						abs("src/G"),
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: G.dev@client/ and G.prod@ReplicatedFirst/.",
+					],
+					[
+						abs("src/H"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/I.mock"),
+						", but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one.",
+					],
+					[
+						abs("src/K@server"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/E"),
+						", and nothing decides between them. Keep one.",
+					],
+					[
+						abs("src/server/J"),
+						", and nothing decides between them. Keep one.",
+					],
+				]);
+			});
+
+			it("should keep the plain message for init scripts of variants that clash in a root dir", async () => {
+				await write(
+					"src/@server",
+					"src/init.dev@client.luau",
+					"src/X.luau"
+				);
+
+				const result = await route({ variants: { dev: true } });
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code === "route.markerClash")
+							.map(({ message }) => message)
+				).toEqual([
+					'"@server" and "init.dev@client.luau" route this folder to different places, and nothing decides between them. Keep one.',
+				]);
+			});
+
 			it("should route an init script's folder by its last @key alone, so two in its name aren't a clash", async () => {
 				await write("src/I/init@client@server.luau", "src/I/X.luau");
 
