@@ -56,42 +56,47 @@ registerCommand(
 				accessor.get(EnvironmentService).cwd
 			);
 
-			const selection = await configService.select(
-				line.positionals,
-				line.options
-			);
-			if (selection.isErr()) return selection;
-			const watched = watchService.watch(selection.value);
-			if (watched.isErr()) return watched;
-			// The watch started, so every config is valid.
-			log.begin(
-				selection.value.requireValid().unwrap(),
-				selection.value.home
-			);
-
+			// Subscribed first, so Ctrl+C while the configs load still stops the run.
 			const store = new DisposableStore();
 			const shutdown = new DeferredPromise<void>();
-			const session = store.add(watched.value);
+			store.add(
+				lifecycleService.onWillShutdown(() => shutdown.complete())
+			);
 			try {
-				store.add(
-					lifecycleService.onWillShutdown(() => shutdown.complete())
+				const selection = await configService.select(
+					line.positionals,
+					line.options
 				);
+				if (selection.isErr()) return selection;
+				const watched = watchService.watch(selection.value);
+				if (watched.isErr()) return watched;
+				const session = store.add(watched.value);
+				if (shutdown.isSettled) return ok(undefined);
+				// The watch started, so every config is valid.
+				log.begin(
+					selection.value.requireValid().unwrap(),
+					selection.value.home
+				);
+
 				store.add(session.onDidUpdate((update) => log.update(update)));
 				store.add(
 					session.onDidError((error) =>
 						logService.error(error.message)
 					)
 				);
-				await session.start();
-				await shutdown.p;
+				try {
+					await session.start();
+					await shutdown.p;
+				} finally {
+					await session.stop();
+				}
+				log.end();
+				return ok(undefined);
 			} catch (error) {
 				return err(ErrorUtils.fromUnknown(error));
 			} finally {
-				await session.stop();
 				store[Symbol.dispose]();
 			}
-			log.end();
-			return ok(undefined);
 		}
 	}
 );

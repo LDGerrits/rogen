@@ -125,6 +125,18 @@ describe("watch command", () => {
 			);
 		});
 
+		it("should start nothing when asked to shut down while the configs load", async () => {
+			const watch = jest.spyOn(watcher, "watch");
+			const running = startWatch();
+			lifecycle.shutdown();
+
+			const result = await running;
+
+			expect(result.isOk()).toBe(true);
+			expect(watch).not.toHaveBeenCalled();
+			expect(logService.lines).toEqual([]);
+		});
+
 		it("should refuse to start when a config is invalid", async () => {
 			await write("/repo/default.rogen.json", '{"nope": 1}');
 			const watch = jest.spyOn(watcher, "watch");
