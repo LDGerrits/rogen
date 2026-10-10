@@ -389,7 +389,7 @@ function missingRoutes(config: ResolvedConfig): Diagnostic[] {
 				errorDiagnostic(
 					"route.noRoutes",
 					{ resource: config.file },
-					'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
+					"no routes declared, so nothing can be placed.\nAdd a \"routes\" map; 'rogen init' writes a starting set."
 				),
 			];
 }

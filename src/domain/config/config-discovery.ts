@@ -120,7 +120,7 @@ export class ConfigDiscovery {
 			? ok(enclosing)
 			: err(
 					new Error(
-						`No *${CONFIG_SUFFIX} found in ${cwd}. Run "rogen init" to create one.`
+						`No *${CONFIG_SUFFIX} found in ${cwd}. Run 'rogen init' to create one.`
 					)
 				);
 	}
@@ -153,7 +153,7 @@ export class ConfigDiscovery {
 			? `Did you mean "${suggestion}"?`
 			: labels.length > 0
 				? `Configs here: ${labels.join(", ")}.`
-				: `Run "rogen init" to create one.`;
+				: `Run 'rogen init' to create one.`;
 		return new UsageError(
 			`Config "${name}" not found: looked for ${candidate}. ${hint}`
 		);

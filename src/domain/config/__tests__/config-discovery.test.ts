@@ -50,7 +50,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result).message).toBe(
-				'No *.rogen.json found in /repo. Run "rogen init" to create one.'
+				"No *.rogen.json found in /repo. Run 'rogen init' to create one."
 			);
 			expect(errorOf(result)).not.toBeInstanceOf(UsageError);
 		});
@@ -99,7 +99,7 @@ describe("ConfigDiscovery", () => {
 			const result = await nested.discover([]);
 
 			expect(errorOf(result).message).toBe(
-				'No *.rogen.json found in /repo/src. Run "rogen init" to create one.'
+				"No *.rogen.json found in /repo/src. Run 'rogen init' to create one."
 			);
 		});
 
@@ -149,7 +149,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["ghost"]);
 
 			expect(errorOf(result).message).toBe(
-				'Config "ghost" not found: looked for /repo/ghost.rogen.json. Run "rogen init" to create one.'
+				`Config "ghost" not found: looked for /repo/ghost.rogen.json. Run 'rogen init' to create one.`
 			);
 		});
 
