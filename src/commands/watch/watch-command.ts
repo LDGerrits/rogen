@@ -1,4 +1,3 @@
-import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -12,7 +11,6 @@ import {
 import { CommandLine } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { WatchLog } from "./watch-log.js";
 
@@ -50,7 +48,6 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
 			const watchService = accessor.get(WatchService);
-			const lifecycleService = accessor.get(LifecycleService);
 			const log = new WatchLog(
 				logService,
 				accessor.get(EnvironmentService).cwd
@@ -58,10 +55,7 @@ registerCommand(
 
 			// Subscribed first, so Ctrl+C while the configs load still stops the run.
 			const store = new DisposableStore();
-			const shutdown = new DeferredPromise<void>();
-			store.add(
-				lifecycleService.onWillShutdown(() => shutdown.complete())
-			);
+			const shutdown = this.untilShutdown(accessor, store);
 			try {
 				const selection = await configService.select(
 					line.positionals,

@@ -1,4 +1,5 @@
-import { Disposable } from "../../base/disposable.js";
+import { DeferredPromise } from "../../base/async.js";
+import { Disposable, DisposableStore } from "../../base/disposable.js";
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -11,6 +12,7 @@ import {
 	ServicesAccessor,
 	createServiceIdentifier,
 } from "../instantiation/instantiation.js";
+import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 
@@ -173,6 +175,20 @@ export abstract class AbstractCommand<
 		accessor: ServicesAccessor,
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
+
+	/** Settles when the process is asked to shut down. The subscription is `store`'s, and made at once, so a request during the awaits that follow still counts. */
+	protected untilShutdown(
+		accessor: ServicesAccessor,
+		store: DisposableStore
+	): DeferredPromise<void> {
+		const shutdown = new DeferredPromise<void>();
+		store.add(
+			accessor
+				.get(LifecycleService)
+				.onWillShutdown(() => shutdown.complete())
+		);
+		return shutdown;
+	}
 
 	/** Prints the run's one JSON document. A run that failed passes `failure`, which then only sets the exit code, since the document says what went wrong. */
 	protected printJson(

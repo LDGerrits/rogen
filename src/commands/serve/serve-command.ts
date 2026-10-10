@@ -25,7 +25,6 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
@@ -90,12 +89,7 @@ registerCommand(
 
 			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
-			const shutdown = new DeferredPromise<void>();
-			store.add(
-				accessor
-					.get(LifecycleService)
-					.onWillShutdown(() => shutdown.complete())
-			);
+			const shutdown = this.untilShutdown(accessor, store);
 			try {
 				const plan = await serveService.prepare({
 					refs: line.positionals,
@@ -148,7 +142,7 @@ registerCommand(
 			store.add(
 				session.onDidStop((stop) => {
 					log.stopped(stop);
-					if (!stopped.isSettled) stopped.complete(stop);
+					stopped.complete(stop);
 				})
 			);
 			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
