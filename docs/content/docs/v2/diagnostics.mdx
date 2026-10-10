@@ -466,6 +466,16 @@ src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Ana
 
 Turn one of the variants off, by leaving it out of the mode or with `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
+### `variant.landsElsewhere` [#variant-landselsewhere]
+
+Error. A variant file lands somewhere other than the plain file beside it, so it would ship next to that file instead of replacing it. A route suffix, a marker in a variant folder or a `^` that only one of them has does this. It's reported whether or not the variant is on.
+
+```
+src/Analytics.mock@server.luau - error: lands at "ServerScriptService/Analytics", but src/Analytics.luau, which it is a variant of, lands at "ReplicatedStorage/shared/Analytics", so both would ship. Route and hoist them the same way. (variant.landsElsewhere)
+```
+
+Give both files the same route and `^`: `Analytics.mock.luau` beside `Analytics.luau`, or `Analytics.mock@server.luau` beside `Analytics@server.luau`. The plain file beside a variant is the one with the same name once its variants and route are off, in the same folder once variant folders are left out. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+
 ### `variant.buriedScriptSuffix` [#variant-buriedscriptsuffix]
 
 Warning. Rojo's `.server` or `.client` isn't the file's last suffix, so once the variant comes off, Rojo reads the file as a ModuleScript.

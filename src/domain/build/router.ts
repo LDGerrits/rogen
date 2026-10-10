@@ -1,8 +1,9 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareStrings, groupBy } from "../../base/collections.js";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { RouteMatch, VariantMatch } from "./build.js";
 import { NameReader, SuffixSpan } from "./name-reader.js";
 import {
@@ -71,6 +72,12 @@ export interface MarkerClash {
 	readonly dir: string;
 	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
+}
+
+/** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
+export interface LandsElsewhere {
+	readonly file: RoutedFile;
+	readonly plain: RoutedFile;
 }
 
 /** An init script that no folder of its own becomes a node for, so it has no instance to be. */
@@ -194,6 +201,7 @@ export interface Routing {
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
 	readonly markerClashes: MarkerClash[];
+	readonly landsElsewhere: LandsElsewhere[];
 }
 
 /** Finds each scanned file's governing route and instance path. */
@@ -219,6 +227,7 @@ export class Router {
 			withoutFolder: [],
 			hoistedInits: [],
 			markerClashes: [],
+			landsElsewhere: [],
 		};
 		for (const root of roots) {
 			const dirs: DirClaims = {
@@ -226,10 +235,49 @@ export class Router {
 				initRoutes: this.initRoutesOf(root),
 			};
 			routing.markerClashes.push(...this.markerClashesOf(root, dirs));
+			const before = routing.routed.length;
 			for (const entry of root.entries)
 				this.routeEntry(entry, dirs, routing);
+			routing.landsElsewhere.push(
+				...this.landingElsewhere(routing.routed.slice(before))
+			);
 		}
 		return routing;
+	}
+
+	/** A variant file is an alternative of the plain file beside it, so it has to land where one of those does. */
+	private landingElsewhere(routed: readonly RoutedFile[]): LandsElsewhere[] {
+		const besides = groupBy(routed, ({ entry }) => this.besideKeyOf(entry));
+		return routed.flatMap((file) => {
+			if (file.variants.length === 0) return [];
+			const plain = (
+				besides.get(this.besideKeyOf(file.entry)) ?? []
+			).filter((other) => other.variants.length === 0);
+			const lands = instanceKey(file.instancePath);
+			return plain.length > 0 &&
+				plain.every(
+					(other) => instanceKey(other.instancePath) !== lands
+				)
+				? [{ file, plain: plain[0] }]
+				: [];
+		});
+	}
+
+	/** Where a file sits with its variants off: its directory without variant folders or the variants on its folders, and its instance name with every key off. */
+	private besideKeyOf(entry: ScannedFile): string {
+		const read = this.readings.entryAt(entry.source);
+		const dirs = read.folders.flatMap((folder) =>
+			folder.variants.length > 0 &&
+			folder.keptName === undefined &&
+			folder.route === undefined
+				? []
+				: [folder.outrankedName]
+		);
+		const { name } = this.leafName(
+			read.kind,
+			NameReader.withoutSpans(read.stem, read.match.spans)
+		);
+		return joinPosix(entry.rootDir, ...dirs, name);
 	}
 
 	/** Adds `entry` to `routing` as what it turns out to be: hoisted, an init script without a folder, or a routed or unrouted file. */

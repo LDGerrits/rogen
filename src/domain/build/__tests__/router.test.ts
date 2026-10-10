@@ -597,17 +597,13 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should refuse it on a file whose variant is off, or that a variant replaces", async () => {
+			it("should refuse it on a file whose variant is off", async () => {
 				await write(
 					"src/server/Util.mock@client.luau",
-					"src/server/Save@client.luau",
-					"src/server/Save.dev.luau"
+					"src/server/Util.luau"
 				);
 
-				expect(
-					await errors({ variants: { mock: false, dev: true } })
-				).toEqual([
-					["route.ignoredAt", abs("src/server/Save@client.luau")],
+				expect(await errors({ variants: { mock: false } })).toEqual([
 					[
 						"route.ignoredAt",
 						abs("src/server/Util.mock@client.luau"),
@@ -1248,6 +1244,78 @@ describe("Router", () => {
 					undefined,
 					"server",
 				]);
+			});
+		});
+
+		describe("a variant that lands elsewhere", () => {
+			const elsewhere = async (mock: boolean) => {
+				const result = await route({ variants: { mock } });
+				return result.isErr()
+					? result.error.diagnostics
+							.filter(
+								({ code }) => code === "variant.landsElsewhere"
+							)
+							.map(({ resource }) => resource)
+					: [];
+			};
+
+			it.each([true, false])(
+				"should refuse a variant that a route suffix, a marker or a ^ lands apart from the plain file beside it (mock: %s)",
+				async (mock) => {
+					await write(
+						"src/Analytics.luau",
+						"src/Analytics.mock@server.luau",
+						"src/A/Service.luau",
+						"src/A/mock/@server",
+						"src/A/mock/Service.luau",
+						"src/B/Hud.luau",
+						"src/B/^Hud.mock.luau",
+						"src/Net/init.luau",
+						"src/Net/Remote.luau",
+						"src/Net/mock/@client",
+						"src/Net/mock/init.luau"
+					);
+
+					expect(await elsewhere(mock)).toEqual([
+						abs("src/A/mock/Service.luau"),
+						abs("src/Analytics.mock@server.luau"),
+						abs("src/B/^Hud.mock.luau"),
+						abs("src/Net/mock/init.luau"),
+					]);
+				}
+			);
+
+			it("should say where each lands and how to fix it", async () => {
+				await write(
+					"src/Analytics.luau",
+					"src/Analytics.mock@server.luau"
+				);
+
+				const result = await route({ variants: { mock: true } });
+
+				expect(
+					result.isErr() && result.error.diagnostics[0].message
+				).toBe(
+					`lands at "ServerScriptService/Analytics", but ${abs("src/Analytics.luau")}, which it is a variant of, lands at "ReplicatedStorage/shared/Analytics", so both would ship. Route and hoist them the same way.`
+				);
+			});
+
+			it("should accept a variant beside plain files when it lands with one of them, or with nothing beside it", async () => {
+				await write(
+					"src/Types.luau",
+					"src/Types@server.luau",
+					"src/Types.mock.luau",
+					"src/A/X.luau",
+					"src/A/server/X.mock.luau",
+					"src/C/Probe.mock@server.luau",
+					"src/Analytics.mock/Service.luau",
+					"src/Analytics/Service.luau"
+				);
+
+				expect(await elsewhere(true)).toEqual([]);
+				expect((await route({ variants: { mock: true } })).isOk()).toBe(
+					true
+				);
 			});
 		});
 

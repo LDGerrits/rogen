@@ -9,6 +9,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { instanceKey } from "../rojo/rojo-project.js";
 import { LeftOut, SyncTool } from "./build.js";
 import { BuildTemplate } from "./build-template.js";
 import { NameReader } from "./name-reader.js";
@@ -18,6 +19,7 @@ import { RootScanner, ScannedRoot } from "./root-scanner.js";
 import {
 	HoistedInit,
 	InitWithoutFolder,
+	LandsElsewhere,
 	MarkerClash,
 	RoutedFile,
 	Router,
@@ -58,6 +60,7 @@ export class Placer {
 			withoutFolder,
 			hoistedInits,
 			markerClashes,
+			landsElsewhere,
 		} = new Router(this.config, readings, this.layout.initNames).route(
 			roots
 		);
@@ -65,6 +68,7 @@ export class Placer {
 		const initErrors = [
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
+			...this.landsElsewhereErrors(landsElsewhere, markerClashes),
 		];
 		const routeErrors = [
 			...clashErrors,
@@ -203,6 +207,28 @@ export class Placer {
 				`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
 			);
 		});
+	}
+
+	/** A variant that lands apart from the plain file beside it replaces nothing, so both would ship. A clash or an ignored `@` is that error's. */
+	private landsElsewhereErrors(
+		landsElsewhere: readonly LandsElsewhere[],
+		markerClashes: readonly MarkerClash[]
+	): Diagnostic[] {
+		const clashing = new Set(markerClashes.map(({ dir }) => dir));
+		return landsElsewhere
+			.filter(
+				({ file, plain }) =>
+					!clashing.has(path.posix.dirname(file.entry.source)) &&
+					file.ignoredAts.length === 0 &&
+					plain.ignoredAts.length === 0
+			)
+			.map(({ file, plain }) =>
+				errorDiagnostic(
+					"variant.landsElsewhere",
+					{ resource: file.entry.source },
+					`lands at "${instanceKey(file.instancePath)}", but ${plain.entry.source}, which it is a variant of, lands at "${instanceKey(plain.instancePath)}", so both would ship. Route and hoist them the same way.`
+				)
+			);
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */

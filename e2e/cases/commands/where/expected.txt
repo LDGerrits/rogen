@@ -4,7 +4,7 @@ stdout:
   src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
   src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
-  src/Net/Http.mock.luau -> pruned · variant mock is off (suffix)
+  src/Net/Http.mock@client.luau -> pruned · variant mock is off (suffix)
   src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
     warning: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
@@ -14,7 +14,7 @@ stdout:
 $ rogen where src/Net src/Combat/Server/Moves/Sweep.luau src/Empty README.md
 exit 0
 stdout:
-  src/Net/Http.mock.luau -> pruned · variant mock is off (suffix)
+  src/Net/Http.mock@client.luau -> pruned · variant mock is off (suffix)
   src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
     warning: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
@@ -24,11 +24,11 @@ stdout:
   src/Empty -> empty · no file in it places
   README.md -> outside the root dirs
 
-$ rogen where src/Net/Http.mock.luau --variant mock
+$ rogen where src/Net/Http.mock@client.luau --variant mock
 exit 0
 stdout:
-  src/Net/Http.mock.luau -> ReplicatedStorage/Shared/Net/Http · route * (fallback) · variant mock (suffix)
-    require(game:GetService("ReplicatedStorage").Shared.Net.Http)
+  src/Net/Http.mock@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix) · variant mock (suffix)
+    no require by this path: StarterPlayerScripts is cloned into each player
 
 $ rogen where ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
 exit 0

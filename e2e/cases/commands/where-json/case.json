@@ -1,7 +1,7 @@
 {
 	"steps": [
 		["where", "--json"],
-		["where", "--json", "src/Net/Http.mock.luau", "--variant", "mock"],
+		["where", "--json", "src/Net/Http.mock@client.luau", "--variant", "mock"],
 		["where", "--json", "ServerScriptService.Combat.Moves:4: attempt to index nil", "ReplicatedStorage/Shared/Nope"]
 	],
 	"rojo": false

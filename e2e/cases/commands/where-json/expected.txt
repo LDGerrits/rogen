@@ -54,7 +54,7 @@ stdout:
       },
       {
         "config": "default",
-        "source": "<dir>/src/Net/Http.mock.luau",
+        "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "pruned",
         "exists": true,
         "variants": [
@@ -126,25 +126,24 @@ stdout:
     "diagnostics": []
   }
 
-$ rogen where --json src/Net/Http.mock.luau --variant mock
+$ rogen where --json src/Net/Http.mock@client.luau --variant mock
 exit 0
 stdout:
   {
     "locations": [
       {
         "config": "default",
-        "source": "<dir>/src/Net/Http.mock.luau",
+        "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "placed",
         "exists": true,
         "instancePath": [
-          "ReplicatedStorage",
-          "Shared",
+          "StarterPlayer",
+          "StarterPlayerScripts",
           "Net",
           "Http"
         ],
-        "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Http",
-        "route": "*",
-        "routeMatch": "fallback",
+        "route": "Client",
+        "routeMatch": "suffix",
         "variants": [
           {
             "variant": "mock",

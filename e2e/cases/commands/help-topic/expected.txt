@@ -9,6 +9,7 @@ stdout:
   - A variant folder (`mock/`) or marker file (`.mock`) marks everything inside. `dev/Service.luau` beside `prod/Service.luau` lets the active variant pick which file becomes `Service`. With both off, `Service` is missing, and Rogen warns.
   - `Analytics.mock/` carries the variant and keeps the name `Analytics`.
   - Only a dot carries a variant: `HttpMock.luau` and `Http-mock.luau` are ordinary names, and `Analytics@mock.luau` warns.
+  - A variant has to land where the plain file beside it does: `Analytics.mock@server.luau` beside `Analytics.luau` is an error, since both would ship. Route and hoist them the same way.
   - Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off.
   - Of the files at one name, the active one with the most variants wins, if it has every variant the others have: `mock/Service.dev.luau` replaces `mock/Service.luau`, which replaces `Service.luau`. Two that each lack one of the other's variants (`Service.mock.luau`, `Service.dev.luau`) are an error; two plain files are a warning. Nesting means "and": `mock/dev/` needs both on.
   - A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it, which applies last. `--variant dev` for a mode named `dev` is an error that suggests `--mode dev`.

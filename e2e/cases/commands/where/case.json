@@ -2,7 +2,7 @@
 	"steps": [
 		["where"],
 		["where", "src/Net", "src/Combat/Server/Moves/Sweep.luau", "src/Empty", "README.md"],
-		["where", "src/Net/Http.mock.luau", "--variant", "mock"],
+		["where", "src/Net/Http.mock@client.luau", "--variant", "mock"],
 		["where", "ServerScriptService.Combat.Moves:4: attempt to index nil", "ReplicatedStorage/Shared/Nope"],
 		["where", "src/Combat/Server/Moves/Sweep.luau:12", "src/Net/Http@client.luau:3:9: unexpected symbol"],
 		["where", "ServerScriptService.Inventory.Export", "ServerScriptService.Nothing.Here"]

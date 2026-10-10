@@ -76,6 +76,8 @@ Within one root directory, the files that land on one instance compete, and the 
 
 Nesting means "and": `mock/dev/Service.luau` is used only while both `mock` and `dev` are on.
 
+A variant has to land where the plain file beside it does, or it would ship next to it instead of replacing it. `Analytics.mock@server.luau` beside `Analytics.luau` is an error, as is a `^` or a route marker that only one of them has. Route them the same way: `Analytics.mock@server.luau` beside `Analytics@server.luau`.
+
 Variants are independent switches, but a set of alternatives like `dev/Service.luau` and `prod/Service.luau` is meant to have one of them on. With both off, `Service` is missing and whatever requires it fails in Studio, so Rogen warns:
 
 ```
