@@ -95,4 +95,10 @@ describe("BaseConfigReader", () => {
 			(result as ResultError<Diagnostic[]>).error.length
 		).toBeGreaterThan(0);
 	});
+
+	it("should refuse a listing without default.rogen.json, which only a caller that found it asks about", async () => {
+		await expect(readBase(["lobby.rogen.json"])).rejects.toThrow(
+			"is not in the listing"
+		);
+	});
 });

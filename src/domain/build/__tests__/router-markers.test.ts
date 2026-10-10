@@ -243,6 +243,33 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should keep the plain message when a marker in a folder above governs the clash", async () => {
+				await write(
+					"src/L/@server",
+					"src/L/Sub/init.dev@client.luau",
+					"src/L/Sub/init.prod@ReplicatedFirst.luau"
+				);
+
+				const result = await route({
+					variants: { dev: true, prod: false },
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code === "route.markerClash")
+							.map(({ resource, message }) => [
+								resource,
+								message.slice(message.indexOf(" places") + 7),
+							])
+				).toEqual([
+					[
+						abs("src/L/Sub"),
+						", and nothing decides between them. Keep one.",
+					],
+				]);
+			});
+
 			it("should keep the plain message for init scripts of variants that clash in a root dir", async () => {
 				await write(
 					"src/@server",
