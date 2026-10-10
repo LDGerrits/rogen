@@ -699,6 +699,32 @@ describe("CoreBuildService", () => {
 				{ code: "route.folderTypo" },
 			]);
 		});
+
+		it("should report the error of a config the set blocks beside what reaches the path in the others", async () => {
+			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+
+			const result = (
+				await buildServiceOfFs().diagnose(
+					selectionOf(
+						configOf({ routes: {}, file: abs("bare.rogen.json") }),
+						configOf({
+							routes: {
+								server: "ServerScriptService",
+								"*": "ReplicatedStorage",
+							},
+							outFile: abs("lobby.project.json"),
+						})
+					),
+					{ args: ["src/F/Sever/A.luau"], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(result.diagnostics).toMatchObject([
+				{ code: "route.noRoutes", resource: abs("bare.rogen.json") },
+				{ code: "route.folderTypo" },
+			]);
+			expect(result.stoppedBy).toEqual([]);
+		});
 	});
 
 	describe("build with configs the set blocks", () => {
