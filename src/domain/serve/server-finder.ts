@@ -83,7 +83,7 @@ export class ServerFinder {
 			server: chosen.candidate.server,
 			file: chosen.file,
 			version: version.value,
-			passedOver: other?.candidate.server,
+			passedOver: pinned.length > 0 ? other?.candidate.server : undefined,
 		});
 	}
 

@@ -72,6 +72,20 @@ export class ConfigSet {
 				)
 			);
 		}
+		if (name !== name.trim()) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: it can't start or end with a space.`
+				)
+			);
+		}
+		if (name.endsWith(".json")) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: a name ending in .json is read as a path.`
+				)
+			);
+		}
 		// eslint-disable-next-line no-control-regex
 		const unfit = /[<>:"|?*\u0000-\u001f]/.exec(name);
 		if (unfit) {

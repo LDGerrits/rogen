@@ -120,6 +120,8 @@ describe("ConfigSet naming", () => {
 			[["a/b"], "path separators"],
 			[[".."], "path separators"],
 			[["a:b"], `can't contain ":"`],
+			[["lobby.json"], "read as a path"],
+			[["lobby "], "start or end with a space"],
 			[["a*b"], `can't contain "*"`],
 			[["a\nb"], "control characters"],
 			[["template"], "over template.project.json"],

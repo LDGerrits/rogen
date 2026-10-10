@@ -164,6 +164,7 @@ function findOptionProblem(
 		}
 		const missing =
 			token.value === undefined ||
+			token.value === "" ||
 			(!token.inlineValue && token.value.startsWith("-"));
 		if (option.type === "string" && missing) {
 			return `Option '${token.rawName}' needs a value.`;

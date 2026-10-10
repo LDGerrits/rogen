@@ -74,6 +74,17 @@ describe("ServerFinder", () => {
 		expect(tool.passedOver).toBe(SyncServer.ARGON);
 	});
 
+	it("should say nothing of the other server when both are only on the PATH", async () => {
+		processes.installed.set("rojo", "/usr/bin/rojo");
+		processes.installed.set("argon", "/usr/bin/argon");
+		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
+
+		const tool = (await find()).unwrap();
+
+		expect(tool.server).toBe(SyncServer.ROJO);
+		expect(tool.passedOver).toBeUndefined();
+	});
+
 	it("should pick the server asked for", async () => {
 		await fs.writeFile(
 			"/repo/game/rokit.toml",

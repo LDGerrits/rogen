@@ -214,6 +214,7 @@ describe("parseArgs", () => {
 
 	it.each([
 		[["build", "--variant"], "Option '--variant' needs a value."],
+		[["build", "--variant", ""], "Option '--variant' needs a value."],
 		[
 			["build", "--quiet=yes"],
 			"Option '--quiet' is a flag and takes no value.",

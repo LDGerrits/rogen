@@ -34,7 +34,7 @@ export interface ServeTool {
 	/** The file that runs it. */
 	readonly file: string;
 	readonly version: string;
-	/** Another server the project has, which this one was picked over. */
+	/** Another server the project pins, which this one was picked over. */
 	readonly passedOver?: SyncServer;
 }
 
