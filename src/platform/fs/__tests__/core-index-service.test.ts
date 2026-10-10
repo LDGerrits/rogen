@@ -34,6 +34,14 @@ describe("CoreIndexService", () => {
 			expect(listing.hasEntry("src", "missing.ts")).toBe(false);
 		});
 
+		it("should list a root that is a file as nothing", async () => {
+			await memoryFs.writeFile("afile", "");
+
+			listing = await indexService.list(["afile"]);
+
+			expect(listing.getEntries("afile")).toBeUndefined();
+		});
+
 		it("should leave a listing as it was while another is listed", async () => {
 			await memoryFs.writeFile("old/a.ts", "");
 			await memoryFs.writeFile("new/b.ts", "");

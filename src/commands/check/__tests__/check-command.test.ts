@@ -216,7 +216,7 @@ describe("check command", () => {
 			await run({});
 
 			expect(printed()).toEqual([
-				"missing - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)",
+				"missing - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)",
 			]);
 		});
 

@@ -721,10 +721,10 @@ Name the script `.server` or `.client`, or remove `RunContext`. See [Rojo's Scri
 
 ### `scan.missingRootDir` [#scan-missingrootdir]
 
-Warning. A directory in `rootDirs` doesn't exist, so it contributes nothing.
+Warning. A directory in `rootDirs` doesn't exist, or is a file, so it contributes nothing.
 
 ```
-later - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)
+later - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)
 ```
 
 Create it, or remove it from `rootDirs`. The path is relative to the config that sets it. See [Configuration](/docs/v2/configuration#fields).

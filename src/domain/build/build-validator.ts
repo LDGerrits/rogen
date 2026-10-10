@@ -87,7 +87,7 @@ export class BuildValidator {
 				warningDiagnostic(
 					"scan.missingRootDir",
 					{ resource: root.rootDir },
-					"this root dir does not exist, so it contributes nothing."
+					"this root dir does not exist or is not a folder, so it contributes nothing."
 				)
 			);
 	}
