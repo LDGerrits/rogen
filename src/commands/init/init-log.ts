@@ -1,4 +1,6 @@
 import path from "path";
+import { formatJsonDocument } from "../../base/json.js";
+import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import {
@@ -7,6 +9,8 @@ import {
 	NextSteps,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { ReportedError } from "../../platform/commands/commands.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
 import { BuildEntry, buildDocument } from "../build/build-document.js";
@@ -37,8 +41,18 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.errors,
 ];
 
+/** How a run of `init` tells what it wrote and built, in lines for a person or as one document for a program. */
+export interface InitReporter {
+	begin(plan: InitPlan): void;
+	written(item: InitWritten): void;
+	/** The run failed with `error`; answers with the result the run ends with. */
+	failed(error: Error): Result<void, Error>;
+	/** Everything was written and built; answers with the result the run ends with. */
+	done(plan: InitPlan, run: BuildRun): Result<void, Error>;
+}
+
 /** How `init` tells the user what it wrote and built. */
-export class InitLog {
+export class InitLog implements InitReporter {
 	private readonly buildLog: BuildLog;
 
 	constructor(
@@ -71,24 +85,26 @@ export class InitLog {
 		);
 	}
 
-	built(run: BuildRun): void {
-		for (const build of run.builds)
-			this.buildLog.outcome(build, foundBy(build));
+	failed(error: Error): Result<void, Error> {
+		return err(error);
 	}
 
-	/** The closing lines: the next steps, or that the build of what was written failed. */
-	end(plan: InitPlan, run: BuildRun): void {
+	/** What the build of each written config said, then the next steps, or that the build failed. */
+	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
+		for (const build of run.builds)
+			this.buildLog.outcome(build, foundBy(build));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
 				`Wrote ${files}, but the build failed. Fix the config and run rogen build.`
 			);
-			return;
+			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}
 		this.logService.step("Next steps");
 		for (const line of stepLines(plan.nextSteps))
 			this.logService.info(line);
 		this.logService.outro(`Wrote ${files}.`);
+		return ok(undefined);
 	}
 }
 
@@ -103,14 +119,20 @@ export interface InitDocument {
 	readonly nextSteps?: NextSteps;
 }
 
-export class InitDocumentBuilder {
+/** Prints what `init` did as one JSON document, naming the files written even when a step failed. */
+export class InitJsonLog implements InitReporter {
 	private readonly files: string[] = [];
 	private readonly appended: string[] = [];
 	private readonly directories: string[] = [];
 
-	constructor(private readonly directory: string) {}
+	constructor(
+		private readonly logService: LogService,
+		private readonly directory: string
+	) {}
 
-	add(item: InitWritten): void {
+	begin(): void {}
+
+	written(item: InitWritten): void {
 		if (item.kind === "directory") {
 			this.directories.push(path.join(this.directory, item.directory));
 			return;
@@ -120,19 +142,32 @@ export class InitDocumentBuilder {
 		if (item.file.addition !== undefined) this.appended.push(file);
 	}
 
-	/** The document of a run that failed with `error`. */
-	failed(error: Error): InitDocument {
-		return { ...this.writtenSoFar(), error: error.message };
+	failed(error: Error): Result<void, Error> {
+		return this.print(
+			{ ...this.writtenSoFar(), error: error.message },
+			error
+		);
 	}
 
-	/** The document of a run that wrote everything and built it. */
-	done(plan: InitPlan, run: BuildRun): InitDocument {
-		return {
-			...this.writtenSoFar(),
-			built: buildDocument(run.builds, foundBy).configs,
-			notes: plan.notes,
-			nextSteps: plan.nextSteps,
-		};
+	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
+		return this.print(
+			{
+				...this.writtenSoFar(),
+				built: buildDocument(run.builds, foundBy).configs,
+				notes: plan.notes,
+				nextSteps: plan.nextSteps,
+			},
+			DiagnosticsError.of(run.errors)
+		);
+	}
+
+	/** Prints `document`; a run that failed with `failure` only has its exit code left to set, since the document says what went wrong. */
+	private print(
+		document: InitDocument,
+		failure?: Error
+	): Result<void, Error> {
+		this.logService.print(formatJsonDocument(document));
+		return failure ? err(new ReportedError(failure)) : ok(undefined);
 	}
 
 	private writtenSoFar() {

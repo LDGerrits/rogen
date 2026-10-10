@@ -10,10 +10,9 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { InitDocumentBuilder, InitLog } from "./init-log.js";
+import { InitJsonLog, InitLog, InitReporter } from "./init-log.js";
 
 const InitOptions = [
 	{
@@ -57,8 +56,9 @@ registerCommand(
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
 			const initService = accessor.get(InitService);
+			const logService = accessor.get(LogService);
 			const log = new InitLog(
-				accessor.get(LogService),
+				logService,
 				accessor.get(EnvironmentService).cwd
 			);
 			// A JSON document is read by a program, which can't answer a question.
@@ -70,9 +70,17 @@ registerCommand(
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
 
-			return line.options.json
-				? this.writeAsJson(accessor, plan)
-				: this.writeAsText(accessor, plan, log);
+			const reporter: InitReporter = line.options.json
+				? new InitJsonLog(logService, plan.directory)
+				: log;
+			reporter.begin(plan);
+			const written = await initService.write(plan, (item) =>
+				reporter.written(item)
+			);
+			if (written.isErr()) return reporter.failed(written.error);
+			const built = await this.buildConfigs(accessor, plan);
+			if (built.isErr()) return reporter.failed(built.error);
+			return reporter.done(plan, built.value);
 		}
 
 		/** The project file of every config the plan wrote, so `rojo serve` and the compiler have one to read. */
@@ -87,57 +95,6 @@ registerCommand(
 				.select(plan.configs, {});
 			if (selection.isErr()) return selection;
 			return ok(await accessor.get(BuildService).build(selection.value));
-		}
-
-		private async writeAsText(
-			accessor: ServicesAccessor,
-			plan: InitPlan,
-			log: InitLog
-		): Promise<Result<void, Error>> {
-			log.begin(plan);
-			const written = await accessor
-				.get(InitService)
-				.write(plan, (item) => log.written(item));
-			if (written.isErr()) return written;
-
-			const built = await this.buildConfigs(accessor, plan);
-			if (built.isErr()) return built;
-			log.built(built.value);
-			log.end(plan, built.value);
-			const { errors } = built.value;
-			return errors.length > 0
-				? this.reported(new DiagnosticsError(errors))
-				: ok(undefined);
-		}
-
-		/** A failed write still names the files written before it, so a program knows what is on disk. */
-		private async writeAsJson(
-			accessor: ServicesAccessor,
-			plan: InitPlan
-		): Promise<Result<void, Error>> {
-			const logService = accessor.get(LogService);
-			const json = new InitDocumentBuilder(plan.directory);
-			const written = await accessor
-				.get(InitService)
-				.write(plan, (item) => json.add(item));
-			if (written.isErr())
-				return this.printJson(
-					logService,
-					json.failed(written.error),
-					written.error
-				);
-			const built = await this.buildConfigs(accessor, plan);
-			if (built.isErr())
-				return this.printJson(
-					logService,
-					json.failed(built.error),
-					built.error
-				);
-			return this.printJson(
-				logService,
-				json.done(plan, built.value),
-				DiagnosticsError.of(built.value.errors)
-			);
 		}
 	}
 );
