@@ -46,7 +46,7 @@ export class CoreCommandService implements CommandService {
 /** What to say of `commandId`: the version flag, the command it's closest to, or what the command that offers to take the word would do with it. */
 function unknownCommand(commandId: string, registry: CommandRegistry): string {
 	const prefix = `Unknown command "${commandId}".`;
-	// `version` was a command once; the flag does its job now.
+	// `version` is a flag now.
 	if (commandId === "version")
 		return `${prefix} Did you mean 'rogen --version'?`;
 	const commands = registry.getCommands();

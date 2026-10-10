@@ -34,12 +34,7 @@ export class DisposableStore implements Disposable {
 	}
 }
 
-/**
- * Abstract base class for a disposable object.
- *
- * Subclasses can `_register` disposables that will be automatically
- * cleaned up when this object is disposed of.
- */
+/** A disposable whose subclasses `_register` what is disposed with it. */
 export abstract class AbstractDisposable implements Disposable {
 	protected readonly _store = new DisposableStore();
 

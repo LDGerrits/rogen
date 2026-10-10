@@ -21,9 +21,7 @@ export function sortObject<T>(obj: T): T {
 		}, {}) as T;
 }
 
-/**
- * Deeply merges objects into a new object without mutation of the original objects.
- */
+/** Deeply merges objects into a new one, leaving the originals alone. */
 export function mergeDeep<T = Record<string, unknown>>(
 	...objects: unknown[]
 ): T {

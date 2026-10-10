@@ -12,9 +12,7 @@ export interface FileChange {
 	readonly fileType: FileType;
 }
 
-/**
- * Resolves redundant file changes.
- */
+/** `changes` without the redundant ones: an add then a delete cancel, and an add then an update stays an add. */
 export function normalizeFileChanges(
 	changes: readonly FileChange[]
 ): FileChange[] {

@@ -152,7 +152,7 @@ export function commandHarness(
 	};
 }
 
-/** Adds the v1 config check, as main.ts does. */
+/** Adds the legacy config check, as main.ts does. */
 function legacyChecked(config: CoreConfigService): CoreConfigService {
 	config.registerFileCheck(LegacyConfig.check);
 	return config;
