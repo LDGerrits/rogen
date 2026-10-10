@@ -34,6 +34,19 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
+/** Anything that holds config values by field name, such as a config model or the chain of them. */
+export interface ConfigValues {
+	getValue<T>(section?: string | readonly string[]): T | undefined;
+}
+
+/** What `values` holds under the top-level field `key`, typed as the config declares it. */
+export function fieldOf<K extends keyof RogenConfig>(
+	values: ConfigValues,
+	key: K
+): RogenConfig[K] {
+	return values.getValue<RogenConfig[K]>(key);
+}
+
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";
 

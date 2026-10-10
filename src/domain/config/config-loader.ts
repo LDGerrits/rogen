@@ -22,7 +22,12 @@ import {
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configSchema, configWrongTypeAdvice } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
-import { CONFIG_SUFFIX, ResolvedConfig, ResolvedTemplate } from "./config.js";
+import {
+	CONFIG_SUFFIX,
+	ResolvedConfig,
+	ResolvedTemplate,
+	fieldOf,
+} from "./config.js";
 import { ConfigOverrides, LayeredConfig } from "./layered-config.js";
 import { ConfigValidator } from "./config-validator.js";
 
@@ -191,7 +196,7 @@ export class ConfigLoader {
 
 			const layer = loaded.value;
 			layers.push(layer);
-			const parent = layer.model.getValue<string>("extends");
+			const parent = fieldOf(layer.model, "extends");
 			if (parent === undefined) return { files, layers, diagnostics: [] };
 			written = parent;
 

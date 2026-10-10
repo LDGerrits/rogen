@@ -6,6 +6,7 @@ import {
 	SCHEMA_URL,
 	configFileName,
 	configLabel,
+	fieldOf,
 	rootDirOverlap,
 	schemaUrlFor,
 } from "../config.js";
@@ -18,6 +19,23 @@ describe("domain/config/config", () => {
 
 		it("should take the stem back out of a config path", () => {
 			expect(configLabel("/repo/lobby.rogen.json")).toBe("lobby");
+		});
+	});
+
+	describe("fieldOf", () => {
+		const values = {
+			getValue: <T>(section?: string | readonly string[]) =>
+				(section === "mode" ? "dev" : undefined) as T | undefined,
+		};
+
+		it("should read a field the values hold, as the config declares it", () => {
+			const mode: string | undefined = fieldOf(values, "mode");
+
+			expect(mode).toBe("dev");
+		});
+
+		it("should give undefined for a field they lack", () => {
+			expect(fieldOf(values, "syncDir")).toBeUndefined();
 		});
 	});
 

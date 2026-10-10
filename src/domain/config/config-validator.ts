@@ -13,6 +13,7 @@ import {
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
+	fieldOf,
 	isConfigFileName,
 	rootDirOverlap,
 } from "./config.js";
@@ -44,11 +45,11 @@ export class ConfigValidator {
 		private readonly parents: readonly string[]
 	) {
 		const { config } = layered;
-		this.rootDirs = config.getValue<string[]>("rootDirs") ?? [];
-		this.routes = config.getValue<Record<string, string>>("routes") ?? {};
+		this.rootDirs = fieldOf(config, "rootDirs") ?? [];
+		this.routes = fieldOf(config, "routes") ?? {};
 		this.variants = layered.variants;
 		this.outFile =
-			config.getValue<string>("outFile") ??
+			fieldOf(config, "outFile") ??
 			path.join(
 				path.dirname(layered.leaf.file),
 				projectFileName(configLabel(layered.leaf.file))
@@ -83,11 +84,11 @@ export class ConfigValidator {
 				routes,
 				variants: variantStates(this.layered.switches),
 				conflicts: groups.map(({ names }) => names),
-				exclude: config.getValue<string[]>("exclude") ?? [],
+				exclude: fieldOf(config, "exclude") ?? [],
 				mode: this.layered.mode,
 				modeViews: this.modeViews(),
 				template,
-				syncDir: config.getValue<string>("syncDir"),
+				syncDir: fieldOf(config, "syncDir"),
 				outFile: this.outFile,
 			})
 		);
@@ -178,9 +179,7 @@ export class ConfigValidator {
 				{
 					variants: variantStates(this.layered.switchesIn(mode)),
 					exclude:
-						this.layered
-							.configIn(mode)
-							.getValue<string[]>("exclude") ?? [],
+						fieldOf(this.layered.configIn(mode), "exclude") ?? [],
 				},
 			])
 		);
@@ -224,9 +223,7 @@ export class ConfigValidator {
 				`this config declares modes but not which one to build in. Set "mode" to ${joinedWithAnd(modes.map((mode) => `"${mode}"`))}, or pass --mode.`
 			);
 		}
-		const written = this.layered
-			.configIn(undefined)
-			.getValue<string>("mode");
+		const written = fieldOf(this.layered.configIn(undefined), "mode");
 		if (written !== undefined && !modes.includes(written)) {
 			this.problems.error(
 				"config.unknownMode",

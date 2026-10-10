@@ -16,6 +16,7 @@ import {
 	configMergePolicies,
 	configPathForms,
 } from "./config-schema.js";
+import { fieldOf } from "./config.js";
 import { VariantSwitch, switchVariants } from "./variant-switch.js";
 
 /** Per-invocation values that sit above every layer of a config's chain. */
@@ -98,12 +99,10 @@ export class LayeredConfig {
 				.map((name) => [name, overrides.variants[name]])
 		);
 
-		this.modes = Object.keys(
-			this.chain.getValue<Record<string, unknown>>("modes") ?? {}
-		);
+		this.modes = Object.keys(fieldOf(this.chain, "modes") ?? {});
 		this.modeChoice = LayeredConfig.choiceOf(
 			overrides.mode,
-			this.chain.getValue<string>("mode")
+			fieldOf(this.chain, "mode")
 		);
 		this.mode =
 			this.modeChoice.name !== undefined &&
@@ -153,7 +152,7 @@ export class LayeredConfig {
 	templates(): { file: string; location: DiagnosticLocation }[] {
 		const named = new Map<string, DiagnosticLocation>();
 		this.layers.forEach((layer, index) => {
-			const file = layer.getValue<string>("template");
+			const file = fieldOf(layer, "template");
 			if (typeof file !== "string") return;
 			named.delete(file);
 			named.set(file, this.positionIn(index, ["template"]));
