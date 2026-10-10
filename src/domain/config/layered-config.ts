@@ -100,16 +100,10 @@ export class LayeredConfig {
 		this.modes = Object.keys(
 			this.chain.getValue<Record<string, unknown>>("modes") ?? {}
 		);
-		const written = this.chain.getValue<string>("mode");
-		this.modeChoice = {
-			name: overrides.mode ?? written,
-			source:
-				overrides.mode !== undefined
-					? "cli"
-					: written !== undefined
-						? "config"
-						: undefined,
-		};
+		this.modeChoice = LayeredConfig.choiceOf(
+			overrides.mode,
+			this.chain.getValue<string>("mode")
+		);
 		this.mode =
 			this.modeChoice.name !== undefined &&
 			this.modes.includes(this.modeChoice.name)
@@ -251,6 +245,17 @@ export class LayeredConfig {
 		);
 	}
 
+	/** The command line's mode over the one the config writes. */
+	private static choiceOf(
+		requested: string | undefined,
+		written: string | undefined
+	): ModeChoice {
+		if (requested !== undefined) return { name: requested, source: "cli" };
+		return written !== undefined
+			? { name: written, source: "config" }
+			: { name: undefined, source: undefined };
+	}
+
 	private static cliModel(
 		overrides: ConfigOverrides,
 		cwd: string
@@ -286,6 +291,16 @@ export class LayeredConfig {
 				? value.map((entry) => path.resolve(dir, entry))
 				: value.map((glob) => path.posix.join(toPosix(dir), glob));
 		};
+		const resolveFields = (
+			body: Record<string, unknown>,
+			each: Readonly<Record<string, PathForm>>
+		) => {
+			const resolved = { ...body };
+			for (const [field, fieldForm] of Object.entries(each))
+				if (field in body)
+					resolved[field] = resolve(body[field], fieldForm);
+			return resolved;
+		};
 		const result = { ...contents };
 		for (const [key, form] of Object.entries(configPathForms)) {
 			if (!(key in result)) continue;
@@ -298,27 +313,7 @@ export class LayeredConfig {
 			result[key] = Object.fromEntries(
 				Object.entries(value).map(([name, body]) => [
 					name,
-					isObject(body)
-						? {
-								...body,
-								...Object.fromEntries(
-									Object.entries(form.each).flatMap(
-										([field, fieldForm]) =>
-											field in body
-												? [
-														[
-															field,
-															resolve(
-																body[field],
-																fieldForm
-															),
-														],
-													]
-												: []
-									)
-								),
-							}
-						: body,
+					isObject(body) ? resolveFields(body, form.each) : body,
 				])
 			);
 		}
