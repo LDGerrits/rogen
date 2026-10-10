@@ -72,8 +72,8 @@ export interface MarkerClash {
 	readonly dir: string;
 	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
-	/** The variant of an init script that routes the folder apart from markers and plain init scripts that agree, and the route it names. */
-	readonly varied?: { readonly variant: string; readonly key: string };
+	/** When only init scripts of variants route it apart from the rest, the folder each set of variants needs with its own marker, such as `mock/dev/@client`. */
+	readonly variantFolders?: readonly string[];
 }
 
 /** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
@@ -185,14 +185,15 @@ interface DirClaims {
 	readonly initRoutes: InitRoutes;
 }
 
-/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, whether it's spelled `@key`, and the script's variant. */
+/** The route an init script's suffix gives the folder it sits in, by that folder relative to the root dir, whether it's spelled `@key`, and the script's variants. */
 type InitRoutes = ReadonlyMap<string, readonly InitRoute[]>;
 
 interface InitRoute {
 	readonly key: string;
 	readonly source: string;
 	readonly at: boolean;
-	readonly variant?: string;
+	/** In the order the name spells them. */
+	readonly variants: readonly string[];
 }
 
 /** What routing found in the scanned files. */
@@ -336,14 +337,14 @@ export class Router {
 				...(markers.get(dir) ?? []).flatMap((fileName) => {
 					const key = this.markerKeyAt(root.rootDir, dir, fileName);
 					return key !== undefined && this.keys.isRoute(key)
-						? [{ key, name: fileName }]
+						? [{ key, name: fileName, variants: [] }]
 						: [];
 				}),
 				...(initRoutes.get(dir) ?? []).map(
-					({ key, source, variant }) => ({
+					({ key, source, variants }) => ({
 						key,
 						name: path.posix.basename(source),
-						variant,
+						variants,
 					})
 				),
 			];
@@ -351,31 +352,35 @@ export class Router {
 				clashes.push({
 					dir: joinPosix(root.rootDir, dir),
 					names: claims.map(({ name }) => name).sort(compareStrings),
-					...Router.variedOf(claims),
+					...Router.variantFoldersOf(claims),
 				});
 		}
 		return clashes;
 	}
 
-	/** The init script of a variant that routes a folder apart from its markers and plain init scripts, when they agree among themselves. */
-	private static variedOf(
-		claims: readonly { key: string; variant?: string }[]
-	): Pick<MarkerClash, "varied"> {
+	/** Markers and plain init scripts that agree leave the folder one route, so only the variants' init scripts route it apart; each set of variants then needs its own folder, unless two scripts of one set disagree too. */
+	private static variantFoldersOf(
+		claims: readonly Pick<InitRoute, "key" | "variants">[]
+	): Pick<MarkerClash, "variantFolders"> {
 		const plainKeys = new Set(
 			claims
-				.filter(({ variant }) => variant === undefined)
+				.filter(({ variants }) => variants.length === 0)
 				.map(({ key }) => key)
 		);
-		const varied =
-			plainKeys.size <= 1
-				? claims.find(
-						({ key, variant }) =>
-							variant !== undefined && !plainKeys.has(key)
-					)
-				: undefined;
-		return varied?.variant === undefined
-			? {}
-			: { varied: { variant: varied.variant, key: varied.key } };
+		const bySet = groupBy(
+			claims.filter(({ variants }) => variants.length > 0),
+			({ variants }) => variants.join("/")
+		);
+		const agree = [...bySet.values()].every(
+			(set) => new Set(set.map(({ key }) => key)).size === 1
+		);
+		if (plainKeys.size > 1 || !agree) return {};
+		return {
+			variantFolders: [...bySet]
+				.filter(([, [{ key }]]) => !plainKeys.has(key))
+				.map(([folder, [{ key }]]) => `${folder}/@${key}`)
+				.sort(compareStrings),
+		};
 	}
 
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
@@ -410,9 +415,10 @@ export class Router {
 					key: governing.key,
 					source: entry.source,
 					at: stem[governing.start] === "@",
-					variant: match.spans.find(({ key }) =>
-						this.keys.isVariant(key)
-					)?.key,
+					variants: match.spans
+						.filter(({ key }) => this.keys.isVariant(key))
+						.map(({ key }) => key)
+						.reverse(),
 				},
 			]);
 		}
