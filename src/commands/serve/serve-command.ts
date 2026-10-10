@@ -4,7 +4,6 @@ import { ErrorUtils, ExitCodeError, ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config.js";
 import {
-	ServePlan,
 	ServerStop,
 	ServeService,
 	ServeSession,
@@ -83,13 +82,6 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
-			const logService = accessor.get(LogService);
-			const log: ServeReporter = line.options.json
-				? new ServeJsonLog(logService)
-				: new ServeLog(
-						logService,
-						accessor.get(EnvironmentService).cwd
-					);
 
 			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
@@ -110,7 +102,14 @@ registerCommand(
 				if (shutdown.isSettled) return ok(undefined);
 				if (plan.isErr()) return plan;
 
-				log.begin(plan.value);
+				const log: ServeReporter = line.options.json
+					? new ServeJsonLog(accessor.get(LogService), plan.value)
+					: new ServeLog(
+							accessor.get(LogService),
+							accessor.get(EnvironmentService).cwd,
+							plan.value
+						);
+				log.begin();
 				if (plan.value.isIdle) {
 					log.end(
 						"Nothing to start: every config is already served, so nothing is built or watched here."
@@ -120,12 +119,7 @@ registerCommand(
 				const session = serveService.serve(plan.value);
 				if (session.isErr()) return session;
 				store.add(session.value);
-				return await this.serve(
-					session.value,
-					plan.value,
-					log,
-					shutdown
-				);
+				return await this.serve(session.value, log, shutdown);
 			} catch (error) {
 				return err(ErrorUtils.fromUnknown(error));
 			} finally {
@@ -136,7 +130,6 @@ registerCommand(
 		/** Runs `session` until shutdown or until a server stops, and answers with the server's exit code when it failed. */
 		private async serve(
 			session: ServeSession,
-			plan: ServePlan,
 			log: ServeReporter,
 			shutdown: DeferredPromise<void>
 		): Promise<Result<void, Error>> {
@@ -145,13 +138,11 @@ registerCommand(
 			store.add(session.onDidUpdate((update) => log.update(update)));
 			store.add(session.onDidError((error) => log.error(error)));
 			store.add(session.onDidServe((serving) => log.serving(serving)));
-			store.add(session.onDidSay((said) => log.said(said, plan)));
-			store.add(
-				session.onDidChange((change) => log.changed(change, plan))
-			);
+			store.add(session.onDidSay((said) => log.said(said)));
+			store.add(session.onDidChange((change) => log.changed(change)));
 			store.add(
 				session.onDidStop((stop) => {
-					log.stopped(stop, plan);
+					log.stopped(stop);
 					if (!stopped.isSettled) stopped.complete(stop);
 				})
 			);
@@ -167,7 +158,7 @@ registerCommand(
 					stopped.p,
 				]);
 				await session.stop();
-				if (!stop) log.shutdown(plan, session.targets);
+				if (!stop) log.shutdown(session.targets);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return ok(undefined);

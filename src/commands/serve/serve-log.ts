@@ -27,15 +27,15 @@ const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
 /** What a serve tells its user, as it happens. */
 export interface ServeReporter {
 	/** Opens the output: the configs served, the server, and those a server already serves. */
-	begin(plan: ServePlan): void;
+	begin(): void;
 	update(update: WatchUpdate): void;
 	serving(serving: ServingServer): void;
-	said(said: ServerSaid, plan: ServePlan): void;
-	stopped(stop: ServerStop, plan: ServePlan): void;
+	said(said: ServerSaid): void;
+	stopped(stop: ServerStop): void;
 	/** How the servers followed the configs as they changed. */
-	changed(change: ServeChange, plan: ServePlan): void;
+	changed(change: ServeChange): void;
 	/** Says each server running at the end was stopped because the run was asked to stop. */
-	shutdown(plan: ServePlan, targets: readonly ServeTarget[]): void;
+	shutdown(targets: readonly ServeTarget[]): void;
 	error(error: Error): void;
 	/** Ends the output of a run whose errors the lines before already told. */
 	abort(error: Error): void;
@@ -55,12 +55,14 @@ export class ServeLog implements ServeReporter {
 
 	constructor(
 		private readonly logService: LogService,
-		private readonly cwd: string
+		private readonly cwd: string,
+		private readonly plan: ServePlan
 	) {
 		this.watchLog = new WatchLog(logService, cwd);
 	}
 
-	begin(plan: ServePlan): void {
+	begin(): void {
+		const { plan } = this;
 		const { tool, selection } = plan;
 		this.watchLog.begin(
 			plan.targets.map(({ config }) => config),
@@ -86,7 +88,8 @@ export class ServeLog implements ServeReporter {
 	}
 
 	/** What a server said, as Rogen's own line, with the paths under the working folder relative to it; what Rogen drops shows only with `--verbose`. */
-	said(said: ServerSaid, plan: ServePlan): void {
+	said(said: ServerSaid): void {
+		const { plan } = this;
 		const { message } = said;
 		if (message.severity === "debug") {
 			this.logService.debug(`${plan.tool.server.name}: ${message.text}`);
@@ -98,14 +101,11 @@ export class ServeLog implements ServeReporter {
 		else this.logService.info(text);
 	}
 
-	stopped(
-		{ target, interrupted, failure }: ServerStop,
-		plan: ServePlan
-	): void {
+	stopped({ target, interrupted, failure }: ServerStop): void {
 		if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
-				`${plan.tool.server.name} stopped serving ${target.config.label}.`
+				`${this.plan.tool.server.name} stopped serving ${target.config.label}.`
 			);
 	}
 
@@ -150,10 +150,13 @@ export class ServeLog implements ServeReporter {
 
 /** Reports a serve as one JSON object per line for a program, each keyed by what it reports. */
 export class ServeJsonLog implements ServeReporter {
-	constructor(private readonly logService: LogService) {}
+	constructor(
+		private readonly logService: LogService,
+		private readonly plan: ServePlan
+	) {}
 
-	begin(plan: ServePlan): void {
-		for (const target of plan.running) this.running(target);
+	begin(): void {
+		for (const target of this.plan.running) this.running(target);
 	}
 
 	update(update: WatchUpdate): void {
@@ -166,7 +169,8 @@ export class ServeJsonLog implements ServeReporter {
 		this.line({ serving: this.servingJson(target, info, false) });
 	}
 
-	said(said: ServerSaid, plan: ServePlan): void {
+	said(said: ServerSaid): void {
+		const { plan } = this;
 		const { target, message } = said;
 		if (message.severity === "debug") {
 			this.logService.debug(`${plan.tool.server.name}: ${message.text}`);
@@ -182,7 +186,8 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	stopped({ target, exit, failure }: ServerStop, plan: ServePlan): void {
+	stopped({ target, exit, failure }: ServerStop): void {
+		const { plan } = this;
 		this.line({
 			stopped: {
 				config: target.config.label,
@@ -195,10 +200,10 @@ export class ServeJsonLog implements ServeReporter {
 		if (failure) this.line(diagnosticsJson([failure]));
 	}
 
-	changed(change: ServeChange, plan: ServePlan): void {
+	changed(change: ServeChange): void {
 		const { target } = change;
 		const { label } = target.config;
-		const tool = plan.tool.server.id;
+		const tool = this.plan.tool.server.id;
 		switch (change.kind) {
 			case "running":
 				this.running(change.target);
@@ -219,12 +224,12 @@ export class ServeJsonLog implements ServeReporter {
 		}
 	}
 
-	shutdown(plan: ServePlan, targets: readonly ServeTarget[]): void {
+	shutdown(targets: readonly ServeTarget[]): void {
 		for (const { config } of targets)
 			this.line({
 				stopped: {
 					config: config.label,
-					tool: plan.tool.server.id,
+					tool: this.plan.tool.server.id,
 					reason: "shutdown",
 				},
 			});
