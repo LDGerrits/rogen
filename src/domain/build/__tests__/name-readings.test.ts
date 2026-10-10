@@ -35,8 +35,6 @@ describe("NameReadings", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		afterEach(() => {});
-
 		describe("folders", () => {
 			it("should classify each folder above an entry, outermost first", async () => {
 				await write("src/server/(Hidden)/mock/Inventory/Save.luau");

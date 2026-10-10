@@ -49,8 +49,6 @@ describe("TreeAssembler", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		afterEach(() => {});
-
 		describe("template", () => {
 			it("should start from a bare DataModel with the resolved name when there is no template", async () => {
 				const { tree: value } = await assemble({ name: "game" });

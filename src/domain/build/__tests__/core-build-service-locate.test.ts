@@ -58,8 +58,6 @@ describe("CoreBuildService.locate", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	afterEach(() => {});
-
 	describe("a named file", () => {
 		beforeEach(() =>
 			write("src/Util.luau", "src/Net/Http.luau", "src/Net/Socket.luau")

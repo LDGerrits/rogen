@@ -32,8 +32,6 @@ describe("modes in a build", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	afterEach(() => {});
-
 	describe("marking files", () => {
 		it("should place the active mode's suffix file under the plain name and prune the other mode's", async () => {
 			await write("src/Service.dev.luau", "src/Service.prod.luau");

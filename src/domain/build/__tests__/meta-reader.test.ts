@@ -29,8 +29,6 @@ describe("MetaReader", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		afterEach(() => {});
-
 		it("should say a meta file that vanished while the build ran does not exist", async () => {
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
 			jest.spyOn(fs, "readFile").mockRejectedValue(

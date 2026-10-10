@@ -33,8 +33,6 @@ describe("build command", () => {
 		await fs.createDirectory("/repo");
 	});
 
-	afterEach(() => {});
-
 	const run = async (
 		config: MockConfigService,
 		log: LogService,

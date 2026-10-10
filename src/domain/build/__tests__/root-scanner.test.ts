@@ -57,8 +57,6 @@ describe("RootScanner", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		afterEach(() => {});
-
 		describe("the project file it writes", () => {
 			it("should be left out when a root dir holds it", async () => {
 				await write("src/A.luau", "src/game.project.json");

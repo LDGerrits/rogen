@@ -58,8 +58,6 @@ describe("Router", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		afterEach(() => {});
-
 		describe("hoisted names", () => {
 			const CHARACTER = {
 				...ROUTES,

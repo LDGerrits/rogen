@@ -21,8 +21,6 @@ describe("ConfigBuilder", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	afterEach(() => {});
-
 	describe("build", () => {
 		it("should report the folder meta it read, and not a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");

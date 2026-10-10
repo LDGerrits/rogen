@@ -24,8 +24,6 @@ describe("CoreBuildService", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	afterEach(() => {});
-
 	describe("build", () => {
 		const lobby = (spec: ResolvedConfigSpec = {}) =>
 			configOf({

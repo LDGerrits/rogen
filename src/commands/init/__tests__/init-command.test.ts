@@ -68,8 +68,6 @@ describe("init command", () => {
 		await memFs.createDirectory(cwd);
 	});
 
-	afterEach(() => {});
-
 	describe("--json", () => {
 		const runJson = async (names: string[] = []) => {
 			const logService = new MockLogService();

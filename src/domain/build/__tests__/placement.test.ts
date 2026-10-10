@@ -20,8 +20,6 @@ describe("Placement", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	afterEach(() => {});
-
 	describe("metaFiles", () => {
 		it("should list every meta file of every root dir, with its path in the root dir", async () => {
 			await writeFiles(fs, "src/Net/A.luau", "lib/B.luau");
