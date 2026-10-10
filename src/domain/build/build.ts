@@ -3,10 +3,8 @@ import { groupBy } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
-	DiagnosticRelated,
 	RenameFix,
 	errorDiagnostic,
-	isRenameFix,
 	renderDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -440,60 +438,8 @@ export class OutputFile {
 	}
 }
 
-/** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */
-function narrowedTo(
-	diagnostic: Omit<Diagnostic, "related">,
-	{ resource, message }: DiagnosticRelated
-): Diagnostic {
-	return {
-		...diagnostic,
-		resource,
-		position: undefined,
-		message,
-		fixes: diagnostic.fixes?.filter(
-			(fix) =>
-				isRenameFix(fix) &&
-				toPosix(fix.rename.from) === toPosix(resource)
-		),
-	};
-}
-
-/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
-export function diagnosticsAbout(
-	diagnostics: readonly Diagnostic[],
-	source: string
-): Diagnostic[] {
-	const target = toPosix(source);
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		const entries = (related ?? []).filter(
-			({ resource }) => toPosix(resource) === target
-		);
-		if (entries.length > 0)
-			return entries.map((entry) =>
-				narrowedTo(rest, { ...entry, resource: source })
-			);
-		// A group is about its related files; its own resource is the config.
-		return !related?.length && toPosix(diagnostic.resource) === target
-			? [rest]
-			: [];
-	});
-}
-
-/** Every diagnostic once per file it is about: a grouped one becomes an entry per related file, and any other stays as it is. */
-export function diagnosticsPerFile(
-	diagnostics: readonly Diagnostic[]
-): Diagnostic[] {
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		return related?.length
-			? related.map((entry) => narrowedTo(rest, entry))
-			: [rest];
-	});
-}
-
 /** Nothing can be placed without a route. */
-export function missingRoutes(config: ResolvedConfig): Diagnostic[] {
+function missingRoutes(config: ResolvedConfig): Diagnostic[] {
 	return config.routes.size > 0
 		? []
 		: [

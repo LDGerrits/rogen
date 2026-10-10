@@ -1,4 +1,5 @@
 import { Result } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
@@ -32,6 +33,12 @@ export interface BuildService {
 		listing: IndexReader,
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;
+
+	/** What a build raises about each of `targets.args`, narrowed to that path, and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` and `check` do. */
+	diagnose(
+		selection: ConfigSelection,
+		targets?: LocateTargets
+	): Promise<Result<Diagnostic[], DiagnosticsError>>;
 
 	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load answers nothing, and its errors come back beside the answers of the rest. Fails when the configs that load can't be built together, as `build` does. */
 	locate(

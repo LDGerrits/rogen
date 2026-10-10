@@ -64,7 +64,10 @@ export interface Respelling {
 export type NotedName<T> = T & { readonly renamedTo?: string };
 
 /** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
-export const DOT_ROUTE_KEYS: ReadonlySet<string> = new Set(["server", "client"]);
+export const DOT_ROUTE_KEYS: ReadonlySet<string> = new Set([
+	"server",
+	"client",
+]);
 
 /** Shorter keys are one edit from real words, so a folder is not read as a slip of them. */
 const MIN_TYPO_KEY_LENGTH = 4;
@@ -84,7 +87,12 @@ export class MisspellingFinder {
 		const text = remaining.slice(dot + 1);
 		const key = this.dotRouteKey(text);
 		return key
-			? MisspellingFinder.dotRouteOf(text, key, dot, script ? stem : undefined)
+			? MisspellingFinder.dotRouteOf(
+					text,
+					key,
+					dot,
+					script ? stem : undefined
+				)
 			: undefined;
 	}
 
@@ -105,11 +113,14 @@ export class MisspellingFinder {
 		stem?: string
 	): DotRoute {
 		const rojo = text.toLowerCase();
-		const after =
-			stem?.slice(start + text.length + 1) ?? "";
+		const after = stem?.slice(start + text.length + 1) ?? "";
 		const respelling =
 			stem !== undefined && DOT_ROUTE_KEYS.has(rojo)
-				? { start, written: `.${text}${after}`, spelling: `${after}.${rojo}` }
+				? {
+						start,
+						written: `.${text}${after}`,
+						spelling: `${after}.${rojo}`,
+					}
 				: { start, written: `.${text}`, spelling: `@${key}` };
 		return { kind: "dotRoute", text, key, respelling };
 	}
@@ -177,7 +188,10 @@ export class MisspellingFinder {
 	}
 
 	/** `.text`, written at `start`, as a typo of the closest declared variant one edit away, if any. */
-	private variantTypoOf(text: string, start: number): VariantTypo | undefined {
+	private variantTypoOf(
+		text: string,
+		start: number
+	): VariantTypo | undefined {
 		const distances = [...this.keys.variantKeys]
 			.map((key) => ({
 				key,
@@ -203,7 +217,6 @@ export class MisspellingFinder {
 			}),
 		};
 	}
-
 
 	strayAt(name: string): StrayAt | undefined {
 		const at = name.lastIndexOf("@");

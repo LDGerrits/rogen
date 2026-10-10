@@ -1,5 +1,9 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	diagnosticsAbout,
+	diagnosticsPerFile,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
@@ -124,6 +128,27 @@ export class CoreBuildService implements BuildService {
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
 		return ok({ ...located.value, errors });
+	}
+
+	async diagnose(
+		selection: ConfigSelection,
+		targets?: LocateTargets
+	): Promise<Result<Diagnostic[], DiagnosticsError>> {
+		if (!targets || targets.args.length === 0) {
+			const run = await this.check(selection);
+			return run.map(({ diagnostics }) =>
+				diagnosticsPerFile(diagnostics)
+			);
+		}
+		const located = await this.locate(selection, targets);
+		return located.map(({ errors, configs }) => [
+			...errors,
+			...configs.flatMap(({ files, diagnostics }) =>
+				files.flatMap(({ source }) =>
+					diagnosticsAbout(diagnostics, source)
+				)
+			),
+		]);
 	}
 
 	/** Builds each config from `listing` in memory, in order. */

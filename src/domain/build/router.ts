@@ -320,7 +320,10 @@ export class Router {
 		for (const entry of root.entries) {
 			const read = this.readings.entryAt(entry.source);
 			if (!this.isInitEntry(read)) continue;
-			const { stem, match: { spans } } = read;
+			const {
+				stem,
+				match: { spans },
+			} = read;
 			const variants = spans
 				.filter(({ key }) => this.keys.isVariant(key))
 				.map((span) => this.asVariantMatch(span));
@@ -328,7 +331,12 @@ export class Router {
 			const dir = dirnamePosix(entry.relativePath);
 			placeable.set(dir, [
 				...(placeable.get(dir) ?? []),
-				{ stem, spans, source: entry.source, varied: variants.length > 0 },
+				{
+					stem,
+					spans,
+					source: entry.source,
+					varied: variants.length > 0,
+				},
 			]);
 		}
 		const routes = new Map<
@@ -547,7 +555,9 @@ export class Router {
 			kind === "script" &&
 			variantSpans.length > 0 &&
 			!RojoFile.scriptSuffixOf(stem)
-				? RojoFile.scriptSuffixOf(NameReader.withoutSpans(stem, variantSpans))
+				? RojoFile.scriptSuffixOf(
+						NameReader.withoutSpans(stem, variantSpans)
+					)
 				: undefined;
 		const stripped = NameReader.withoutSpans(
 			stem,
@@ -568,7 +578,8 @@ export class Router {
 		return (
 			kind === "script" &&
 			this.initNames.has(
-				this.leafName(kind, NameReader.withoutSpans(stem, match.spans)).name
+				this.leafName(kind, NameReader.withoutSpans(stem, match.spans))
+					.name
 			)
 		);
 	}

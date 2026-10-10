@@ -137,8 +137,8 @@ export class NameReader {
 		const variantSpans = spans.filter(({ key }) =>
 			this.keys.isVariant(key)
 		);
-		const [routeSpan, ...innerRouteSpans] = spans.filter(
-			({ key }) => this.keys.isRoute(key)
+		const [routeSpan, ...innerRouteSpans] = spans.filter(({ key }) =>
+			this.keys.isRoute(key)
 		);
 		const keptName = NameReader.withoutSpans(
 			name,
@@ -155,14 +155,18 @@ export class NameReader {
 			outrankedName: NameReader.withoutSpans(name, variantSpans),
 			misspellings: NameReader.inFolderName(
 				[
-					...(routeSpan ? [] : NameReader.present([this.finder.strayAt(name)])),
+					...(routeSpan
+						? []
+						: NameReader.present([this.finder.strayAt(name)])),
 					...suffixed.misspellings.filter(
 						({ kind }) => kind !== "strayAt"
 					),
 					...NameReader.present([leadingTypo]),
 					...(routeSpan
 						? []
-						: NameReader.present([this.finder.folderTypo(keptName)])),
+						: NameReader.present([
+								this.finder.folderTypo(keptName),
+							])),
 				],
 				offset
 			),
@@ -200,8 +204,7 @@ export class NameReader {
 		let key: string | undefined;
 		if (baseName.startsWith("@") && !routed)
 			key = this.keys.resolveRoute(text);
-		else if (baseName.startsWith("."))
-			key = this.keys.resolveVariant(text);
+		else if (baseName.startsWith(".")) key = this.keys.resolveVariant(text);
 		return key ? { key, start: 0, length: baseName.length } : undefined;
 	}
 
@@ -256,7 +259,9 @@ export class NameReader {
 					? nearMiss
 					: undefined,
 			misspellings: NameReader.present([
-				key === undefined ? this.finder.dotNameMisspelling(text) : undefined,
+				key === undefined
+					? this.finder.dotNameMisspelling(text)
+					: undefined,
 			]),
 		};
 	}
@@ -317,10 +322,7 @@ export class NameReader {
 	}
 
 	/** Only a folder named by keys alone loses all of its name. */
-	static withoutSpans(
-		name: string,
-		spans: readonly SuffixSpan[]
-	): string {
+	static withoutSpans(name: string, spans: readonly SuffixSpan[]): string {
 		return [...spans]
 			.sort((a, b) => b.start - a.start)
 			.reduce(

@@ -4,6 +4,7 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 	diagnosticToJson,
+	diagnosticsAbout,
 	renderDiagnostic,
 	warningDiagnostic,
 } from "../diagnostic.js";
@@ -222,6 +223,68 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(diagnosticToJson(diagnostic).url).toBe(
 				`${DOCS_URL}/diagnostics#route-dotroute`
 			);
+		});
+	});
+
+	describe("diagnosticsAbout", () => {
+		const own = warningDiagnostic(
+			"x.own",
+			{ resource: "/repo/src/A.luau" },
+			"own"
+		);
+		const group = warningDiagnostic(
+			"x.group",
+			{ resource: "/repo/default.rogen.json" },
+			"2 files:\n  src/A.luau\n  src/B.luau",
+			[
+				{
+					rename: {
+						from: "/repo/src/A.luau",
+						to: "/repo/src/a.luau",
+					},
+				},
+				{
+					rename: {
+						from: "/repo/src/B.luau",
+						to: "/repo/src/b.luau",
+					},
+				},
+			],
+			[
+				{ resource: "/repo/src/A.luau", message: "A is odd" },
+				{ resource: "/repo/src/B.luau", message: "B is odd" },
+			]
+		);
+
+		it("should keep a diagnostic whose resource is the path", () => {
+			expect(diagnosticsAbout([own], "/repo/src/A.luau")).toEqual([own]);
+			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
+		});
+
+		it("should narrow a grouped one to the entry that names the path, with its own fixes", () => {
+			expect(diagnosticsAbout([group], "/repo/src/B.luau")).toMatchObject(
+				[
+					{
+						code: "x.group",
+						resource: "/repo/src/B.luau",
+						message: "B is odd",
+						fixes: [
+							{
+								rename: {
+									from: "/repo/src/B.luau",
+									to: "/repo/src/b.luau",
+								},
+							},
+						],
+					},
+				]
+			);
+		});
+
+		it("should say nothing of the config a group is filed under", () => {
+			expect(
+				diagnosticsAbout([group], "/repo/default.rogen.json")
+			).toEqual([]);
 		});
 	});
 });

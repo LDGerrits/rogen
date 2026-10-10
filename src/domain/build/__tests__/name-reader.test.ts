@@ -492,7 +492,10 @@ describe("NameReader folder", () => {
 
 	it("should note a route key after a folder's dot as a misspelling", () => {
 		expect(
-			misspelt(new NameReader(ALL_KEYS).folder("Queue.server"), "dotRoute")
+			misspelt(
+				new NameReader(ALL_KEYS).folder("Queue.server"),
+				"dotRoute"
+			)
 		).toMatchObject({ key: "server" });
 	});
 
@@ -615,12 +618,12 @@ describe("NameReader routes in one name", () => {
 	});
 
 	it("should read a bare @key before another as a route, and alone as a name", () => {
-		expect(
-			[...readerOf(ALL_KEYS).suffixes("@client@server").matchedKeys]
-		).toEqual(["server", "client"]);
-		expect(
-			[...readerOf(ALL_KEYS).suffixes("@server").matchedKeys]
-		).toEqual([]);
+		expect([
+			...readerOf(ALL_KEYS).suffixes("@client@server").matchedKeys,
+		]).toEqual(["server", "client"]);
+		expect([...readerOf(ALL_KEYS).suffixes("@server").matchedKeys]).toEqual(
+			[]
+		);
 	});
 });
 

@@ -6,7 +6,6 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
-	diagnosticsAbout,
 } from "../../domain/build/build.js";
 import {
 	requireExpression,
@@ -18,6 +17,7 @@ import {
 	Diagnostic,
 	DiagnosticJson,
 	diagnosticSummary,
+	diagnosticsAbout,
 	diagnosticToJson,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
