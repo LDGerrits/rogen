@@ -29,20 +29,14 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		const { workspace } = directory;
 		if (base.isErr()) return err(base.error);
 
-		const filesFor = (candidate: string) =>
-			ConfigSet.in(workspace, candidate).placeFiles;
-		const given = directory.givenName;
-		if (given) {
-			const conflicts = directory.checkFree(filesFor(given));
-			if (conflicts.length > 0) return err(conflicts);
-		}
-		const name =
-			given ??
-			(await questions.name(directory, {
-				message: "Place name",
-				description: "Writes <name>.rogen.json.",
-				filesFor,
-			}));
+		const named = await questions.givenOrAskedName(directory, {
+			message: "Place name",
+			description: "Writes <name>.rogen.json.",
+			filesFor: (candidate) =>
+				ConfigSet.in(workspace, candidate).placeFiles,
+		});
+		if (named.isErr()) return named;
+		const name = named.value;
 		if (name === undefined) return ok(undefined);
 
 		const folder = await questions.placeFolder(directory, base.value, name);

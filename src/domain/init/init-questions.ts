@@ -1,4 +1,6 @@
 import { normalizeDir } from "../../base/path.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
 	PromptChoice,
@@ -176,6 +178,18 @@ export class InitQuestions {
 			},
 		});
 		return answer?.trim();
+	}
+
+	/** The name given on the command line, which must be free to write, else the name asked for. */
+	async givenOrAskedName(
+		directory: InitDirectory,
+		question: NameQuestion
+	): Promise<Result<string | undefined, Diagnostic[]>> {
+		const given = directory.givenName;
+		if (given === undefined)
+			return ok(await this.name(directory, question));
+		const conflicts = directory.checkFree(question.filesFor(given));
+		return conflicts.length > 0 ? err(conflicts) : ok(given);
 	}
 
 	/** The name of a config added beside `default`. */

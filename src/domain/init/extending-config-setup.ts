@@ -1,4 +1,4 @@
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
@@ -22,22 +22,14 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		Result<ExtendingConfigChoices | undefined, Diagnostic[]>
 	> {
 		const { directory, questions } = this;
-		const given = directory.givenName;
-		if (given) {
-			const conflicts = directory.checkFree(
-				ConfigSet.in(this.directory.workspace, given).writtenFiles
-			);
-			if (conflicts.length > 0) return err(conflicts);
-		}
-		const name =
-			given ??
-			(await questions.name(directory, {
-				message: "Config name",
-				description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
-				filesFor: (candidate) =>
-					ConfigSet.in(this.directory.workspace, candidate)
-						.writtenFiles,
-			}));
+		const named = await questions.givenOrAskedName(directory, {
+			message: "Config name",
+			description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
+			filesFor: (candidate) =>
+				ConfigSet.in(directory.workspace, candidate).writtenFiles,
+		});
+		if (named.isErr()) return named;
+		const name = named.value;
 		return ok(name === undefined ? undefined : { name });
 	}
 
