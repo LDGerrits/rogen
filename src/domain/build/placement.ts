@@ -124,7 +124,7 @@ export class Placement {
 	}
 
 	/** What the name of `file` says it is. */
-	readingOf(file: Pick<RoutedFile, "entry">): EntryRead {
+	readingOf(file: RoutedFile): EntryRead {
 		return this.readings.entryAt(file.entry.source);
 	}
 

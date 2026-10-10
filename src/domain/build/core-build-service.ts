@@ -17,7 +17,6 @@ import {
 	LoadedBuild,
 	OutputFile,
 	SyncTool,
-	UnloadedBuild,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";
@@ -61,7 +60,7 @@ export class CoreBuildService implements BuildService {
 		selection: ConfigSelection,
 		write: boolean
 	): Promise<BuildRun> {
-		const { set, unloaded } = CoreBuildService.split(selection);
+		const { set, unloaded } = BuildSet.partition(selection);
 		const listing = await this.indexService.list(set.rootDirs);
 		const attempts = await this.attempt(
 			set,
@@ -80,25 +79,6 @@ export class CoreBuildService implements BuildService {
 		return new BuildRun(
 			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
 		);
-	}
-
-	/** The configs of `selection` that load, as a set, and the others as builds that didn't. */
-	private static split(selection: ConfigSelection): {
-		readonly set: BuildSet;
-		readonly unloaded: readonly UnloadedBuild[];
-	} {
-		return {
-			set: new BuildSet(
-				selection.entries.flatMap((entry) =>
-					entry.status === "valid" ? [entry.config] : []
-				)
-			),
-			unloaded: selection.entries.flatMap((entry) =>
-				entry.status === "broken"
-					? [new UnloadedBuild(entry.file, entry.errors)]
-					: []
-			),
-		};
 	}
 
 	async rebuild(
@@ -126,7 +106,7 @@ export class CoreBuildService implements BuildService {
 		targets?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
 		// What stops a config's build stops its answer too: it would describe a project that can't be built.
-		const { set, unloaded } = CoreBuildService.split(selection);
+		const { set, unloaded } = BuildSet.partition(selection);
 		const errors = [
 			...unloaded.flatMap((build) => build.errors),
 			...set.diagnostics,

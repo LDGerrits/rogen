@@ -441,6 +441,25 @@ export class BuildSet {
 			: ok(set);
 	}
 
+	/** The configs of `selection` that load, as a set, and the others as builds that didn't. */
+	static partition(selection: ConfigSelection): {
+		readonly set: BuildSet;
+		readonly unloaded: readonly UnloadedBuild[];
+	} {
+		return {
+			set: new BuildSet(
+				selection.entries.flatMap((entry) =>
+					entry.status === "valid" ? [entry.config] : []
+				)
+			),
+			unloaded: selection.entries.flatMap((entry) =>
+				entry.status === "broken"
+					? [new UnloadedBuild(entry.file, entry.errors)]
+					: []
+			),
+		};
+	}
+
 	/** Each problem once, in the order it is reported. */
 	get diagnostics(): readonly Diagnostic[] {
 		return this.blockers.map(({ diagnostic }) => diagnostic);

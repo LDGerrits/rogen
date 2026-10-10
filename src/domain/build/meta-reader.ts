@@ -174,40 +174,36 @@ export class MetaReader {
 		folderMeta: readonly FolderMeta[]
 	): ScriptMetaSource[] {
 		const metaFiles = new Set(placement.metaFiles.map(({ file }) => file));
-		return placement.files.flatMap(
-			({ entry, init }): ScriptMetaSource[] => {
-				const { kind, scriptSuffix } = placement.readingOf({ entry });
-				if (kind !== "script") return [];
-				for (const dir of init ? [init.becomes, init.sitsIn] : []) {
-					const meta = folderMeta.find(
-						({ folder }) => folder === dir
-					);
-					if (meta?.properties?.RunContext !== undefined)
-						return [
-							{
-								entry,
-								scriptSuffix,
-								fromFolder: {
-									metaFile: meta.file,
-									runContext: meta.properties.RunContext,
-								},
+		return placement.files.flatMap((file): ScriptMetaSource[] => {
+			const { entry, init } = file;
+			const { kind, scriptSuffix } = placement.readingOf(file);
+			if (kind !== "script") return [];
+			for (const dir of init ? [init.becomes, init.sitsIn] : []) {
+				const meta = folderMeta.find(({ folder }) => folder === dir);
+				if (meta?.properties?.RunContext !== undefined)
+					return [
+						{
+							entry,
+							scriptSuffix,
+							fromFolder: {
+								metaFile: meta.file,
+								runContext: meta.properties.RunContext,
 							},
-						];
-				}
-				const beside = path.join(
-					entry.rootDir,
-					path.dirname(entry.relativePath),
-					new RojoFile(path.basename(entry.relativePath)).metaFile ??
-						""
-				);
-				const sibling =
-					metaFiles.has(beside) &&
-					!folderMeta.some((meta) => meta.file === beside)
-						? beside
-						: undefined;
-				return [{ entry, scriptSuffix, sibling }];
+						},
+					];
 			}
-		);
+			const beside = path.join(
+				entry.rootDir,
+				path.dirname(entry.relativePath),
+				new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
+			);
+			const sibling =
+				metaFiles.has(beside) &&
+				!folderMeta.some((meta) => meta.file === beside)
+					? beside
+					: undefined;
+			return [{ entry, scriptSuffix, sibling }];
+		});
 	}
 
 	private async readMeta(
