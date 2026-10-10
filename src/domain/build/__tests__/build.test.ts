@@ -100,6 +100,25 @@ describe("domain/build/build", () => {
 		it("should not fail a run whose configs all built", () => {
 			expect(new BuildRun([written(lobby, [shared])]).failed).toBe(false);
 		});
+
+		it("should give the failure of a run: its errors, or its warnings only when they are denied", () => {
+			const error = errorDiagnostic(
+				"x.error",
+				{ resource: abs("src/A.luau") },
+				"broken"
+			);
+			const warned = new BuildRun([written(lobby, [shared])]);
+			const broken = new BuildRun([new FailedBuild(lobby, [error])]);
+
+			expect(warned.failure(false)).toBeUndefined();
+			expect(warned.failure(true)?.message).toBe(
+				"1 warning denied by --deny-warnings."
+			);
+			expect(broken.failure(false)).toMatchObject({
+				diagnostics: [error],
+			});
+			expect(new BuildRun([]).failure(true)).toBeUndefined();
+		});
 	});
 
 	describe("OutputFile", () => {

@@ -7,7 +7,6 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	CommandLine,
@@ -17,7 +16,7 @@ import {
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
-import { BuildReport } from "./build-report.js";
+import { buildReport } from "./build-report.js";
 
 const DenyWarningsOption = {
 	name: "deny-warnings",
@@ -80,17 +79,13 @@ registerCommand(
 			const run = built.value;
 
 			const denyWarnings = Boolean(line.options["deny-warnings"]);
-			const failure =
-				run.errors.length > 0
-					? new DiagnosticsError(run.errors)
-					: denyWarnings && run.warningCount > 0
-						? new Error("--deny-warnings")
-						: undefined;
-			if (line.options.json) {
-				const report = new BuildReport();
-				for (const build of run.builds) report.add(build);
-				return this.printJson(logService, report.json(), failure);
-			}
+			const failure = run.failure(denyWarnings);
+			if (line.options.json)
+				return this.printJson(
+					logService,
+					buildReport(run.builds),
+					failure
+				);
 			new BuildLog(logService, cwd).report(
 				run,
 				selection.value.home,

@@ -1,6 +1,7 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
 import { toPosix } from "../../base/path.js";
+import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
 	RenameFix,
@@ -308,6 +309,16 @@ export class BuildRun {
 			(count, { warnings }) => count + warnings.fresh.length,
 			0
 		);
+	}
+
+	/** Why the run fails: an error, or, when warnings are denied, a warning it says. */
+	failure(denyWarnings: boolean): Error | undefined {
+		if (this.errors.length > 0) return new DiagnosticsError(this.errors);
+		return denyWarnings && this.warningCount > 0
+			? new Error(
+					`${plural(this.warningCount, "warning")} denied by --deny-warnings.`
+				)
+			: undefined;
 	}
 
 	/** What the run says, config by config: its fresh warnings, then its fresh errors. */

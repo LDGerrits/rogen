@@ -61,10 +61,7 @@ registerCommand(
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			const failure =
-				report.errors.length > 0
-					? new DiagnosticsError(report.errors)
-					: undefined;
+			const failure = DiagnosticsError.of(report.errors);
 			if (line.options.json)
 				return this.printJson(logService, report.json(), failure);
 			const blocks = report.blocks();

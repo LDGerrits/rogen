@@ -21,7 +21,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-import { BuildReport } from "../build/build-report.js";
+import { buildReport } from "../build/build-report.js";
 
 const InitOptions = [
 	{
@@ -217,9 +217,7 @@ registerCommand(
 					},
 					built.error
 				);
-			const report = new BuildReport();
-			for (const build of built.value.builds)
-				report.add(build, foundBy(build));
+			const report = buildReport(built.value.builds, foundBy);
 			const { errors } = built.value;
 			return this.printJson(
 				logService,
@@ -227,11 +225,11 @@ registerCommand(
 					files,
 					appended,
 					directories,
-					built: report.json().configs,
+					built: report.configs,
 					notes: plan.notes,
 					nextSteps: plan.nextSteps,
 				},
-				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+				DiagnosticsError.of(errors)
 			);
 		}
 	}

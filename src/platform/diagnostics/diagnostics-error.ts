@@ -23,6 +23,15 @@ export class DiagnosticsError extends Error {
 		this.name = "DiagnosticsError";
 		this.diagnostics = unique;
 	}
+
+	/** The error for `diagnostics`; none when there are none. */
+	static of(
+		diagnostics: readonly Diagnostic[]
+	): DiagnosticsError | undefined {
+		return diagnostics.length > 0
+			? new DiagnosticsError(diagnostics)
+			: undefined;
+	}
 }
 
 /** What a `--json` run prints when it fails before it has anything else to show. */

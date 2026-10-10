@@ -66,10 +66,7 @@ registerCommand(
 			);
 			if (found.isErr()) return found;
 
-			const failure =
-				found.value.length > 0
-					? new DiagnosticsError(found.value)
-					: undefined;
+			const failure = DiagnosticsError.of(found.value);
 			if (line.options.json)
 				return this.printJson(
 					logService,

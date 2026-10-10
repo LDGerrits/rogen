@@ -19,7 +19,7 @@ import {
 	failureToJson,
 } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildReport } from "../build/build-report.js";
+import { buildEntry } from "../build/build-report.js";
 import { WatchLog } from "../watch/watch-log.js";
 
 /** Who serves `info`'s project, as a person reads it: `Rojo 7.7.1`. */
@@ -62,7 +62,7 @@ export class ServeLog {
 		}
 		update.notices.forEach((notice) => this.notice(notice));
 		for (const { build } of update.reports)
-			this.line({ build: BuildReport.entry(build) });
+			this.line({ build: buildEntry(build) });
 	}
 
 	serving({ target, info }: ServingServer): void {
