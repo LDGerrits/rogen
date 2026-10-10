@@ -1,6 +1,11 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { ErrorUtils, ExitCodeError, ReportedError } from "../../base/errors.js";
+import {
+	ErrorUtils,
+	ExitCodeError,
+	ReportedError,
+	onUnexpectedError,
+} from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config.js";
 import {
@@ -146,7 +151,7 @@ registerCommand(
 					if (!stopped.isSettled) stopped.complete(stop);
 				})
 			);
-			void shutdown.p.then(() => session.stop());
+			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
 			try {
 				const started = await session.start();
 				if (started.isErr()) {

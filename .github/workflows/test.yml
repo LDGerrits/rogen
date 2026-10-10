@@ -41,6 +41,9 @@ jobs:
             - name: Type-check End-to-End Tests
               run: npx tsc -p e2e
 
+            - name: Type-check Scripts
+              run: npx tsc -p scripts
+
             - name: Test
               run: npm test
 

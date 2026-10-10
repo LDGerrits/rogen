@@ -1,5 +1,6 @@
 import path from "path";
 import { RunOnceScheduler } from "../../base/async.js";
+import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -141,7 +142,9 @@ export class StartedServer extends AbstractDisposable {
 							state.info,
 							target.config.outFile
 						)
-						.catch((error) => this.listener.failed(error));
+						.catch((error) =>
+							this.listener.failed(ErrorUtils.fromUnknown(error))
+						);
 					this.listener.served({ target, info: state.info });
 					return;
 				}
@@ -151,7 +154,9 @@ export class StartedServer extends AbstractDisposable {
 				);
 				this.ready.schedule(this.readyDelay);
 			})
-			.catch((error) => this.listener.failed(error));
+			.catch((error) =>
+				this.listener.failed(ErrorUtils.fromUnknown(error))
+			);
 	}
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */

@@ -1,6 +1,6 @@
 import { DeferredPromise, Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { onUnexpectedError } from "../../base/errors.js";
+import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
@@ -89,7 +89,9 @@ export class CoreServeSession
 				if (this.launched)
 					this.reconciling
 						.queue(() => this.reconcile())
-						.catch((error) => this._onDidError.fire(error));
+						.catch((error) =>
+							this._onDidError.fire(ErrorUtils.fromUnknown(error))
+						);
 			})
 		);
 		this._register(

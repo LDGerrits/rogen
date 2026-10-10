@@ -1,5 +1,6 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { samePath } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -94,8 +95,7 @@ export class ServePorts {
 			holder?.project === target.project &&
 			!sharedName &&
 			(!elsewhere ||
-				path.resolve(elsewhere.projectFile) ===
-					path.resolve(target.config.outFile));
+				samePath(elsewhere.projectFile, target.config.outFile));
 		if (ownServer) return ok({ ...target, running: holder });
 		return err(
 			await this.portTaken(

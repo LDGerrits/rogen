@@ -240,11 +240,12 @@ export class CoreWatchSession
 	}
 
 	private async watchPlan(): Promise<void> {
-		this.activeWatch = this.watchKey();
+		const key = this.watchKey();
 		await this.watcher.watch(this.watchPaths(), {
 			ignored: [...this.plan.ignored],
 			shallow: this.shallowDirs,
 		});
+		this.activeWatch = key;
 		this.listing = await this.indexService.list(this.plan.roots);
 	}
 
