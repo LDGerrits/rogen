@@ -458,7 +458,7 @@ Turn one of the variants on, by listing it in a mode or with `--variant`, or add
 
 ### `variant.activeClash` [#variant-activeclash]
 
-Error. Two files with active variants become the same instance, so Rogen can't tell which one to use.
+Error. Two files with active variants become the same instance, and neither has all of the other's variants, so Rogen can't tell which one to use. `Analytics.mock.luau` and `Analytics.dev.luau` clash; `mock/Analytics.dev.luau` has both variants, so it replaces `Analytics.mock.luau` instead.
 
 ```
 src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)

@@ -7,7 +7,7 @@ A variant swaps a file at build time. Declare every variant by name in `variants
 - `Analytics.mock/` carries the variant and keeps the name `Analytics`.
 - Only a dot carries a variant: `HttpMock.luau` and `Http-mock.luau` are ordinary names, and `Analytics@mock.luau` warns.
 - Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off.
-- Two files with active variants at one name are an error; two plain files at one name are a warning.
+- Of the files at one name, the active one with the most variants wins, if it has every variant the others have: `mock/Service.dev.luau` replaces `mock/Service.luau`, which replaces `Service.luau`. Two that each lack one of the other's variants (`Service.mock.luau`, `Service.dev.luau`) are an error; two plain files are a warning. Nesting means "and": `mock/dev/` needs both on.
 - A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it, which applies last. `--variant dev` for a mode named `dev` is an error that suggests `--mode dev`.
 - `--variant mock` and `--no-variant mock` last for one run and have no short flags. For a lasting choice, list the variant in a mode.
 - `conflicts` lists groups of variants of which at most one may be on: `"conflicts": [["halloween", "christmas"]]`. Two on is an error, from a mode, `--variant` or both. `--variant christmas` never turns `halloween` off; use `--no-variant halloween --variant christmas`. A group names variants, never a mode.

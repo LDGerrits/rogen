@@ -371,6 +371,64 @@ describe("Placer", () => {
 				).toBe("variant.activeClash");
 			});
 
+			it("should let the file with more active variants replace one whose variants it also has", async () => {
+				await write(
+					"src/A/Service.luau",
+					"src/A/mock/Service.luau",
+					"src/A/mock/Service.dev.luau"
+				);
+
+				const result = (
+					await apply({ mock: true, dev: true })
+				).unwrap();
+
+				expect(
+					result.files.map((file) => file.entry.relativePath)
+				).toEqual(["A/mock/Service.dev.luau"]);
+				expect(
+					[...result.leftOut].map(([source, why]) => [
+						source,
+						why.status === "replaced" && why.by,
+					])
+				).toEqual([
+					[
+						abs("src/A/Service.luau"),
+						abs("src/A/mock/Service.dev.luau"),
+					],
+					[
+						abs("src/A/mock/Service.luau"),
+						abs("src/A/mock/Service.dev.luau"),
+					],
+				]);
+				expect(result.warnings).toEqual([]);
+			});
+
+			it("should fail at the files with the most variants only, when neither has all of the other's", async () => {
+				await write(
+					"src/Service.luau",
+					"src/Service.mock.luau",
+					"src/mock/Service.dev.luau",
+					"src/Service.halloween.luau"
+				);
+
+				const result = await apply({
+					mock: true,
+					dev: true,
+					halloween: true,
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+				).toEqual([
+					["variant.activeClash", abs("src/Service.halloween.luau")],
+					["variant.activeClash", abs("src/mock/Service.dev.luau")],
+				]);
+			});
+
 			it("should warn at the plain file left out, naming the one used", async () => {
 				await write("src/Types.luau", "src/Types.lua");
 
