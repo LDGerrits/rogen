@@ -12,10 +12,10 @@ import {
 } from "./name-readings.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
-/** A node one of the file's own folders becomes, with that folder relative to the root dir. */
+/** A node one of the file's own folders becomes, with that folder as an absolute POSIX path. */
 export interface FolderNode {
 	readonly instancePath: readonly string[];
-	readonly dir: string;
+	readonly folder: string;
 }
 
 export interface RoutedFile {
@@ -409,7 +409,10 @@ export class Router {
 		let parent: readonly string[] = target.instancePath;
 		for (const { name: folderName, dir } of folders) {
 			parent = [...parent, folderName];
-			folderNodes.push({ instancePath: parent, dir });
+			folderNodes.push({
+				instancePath: parent,
+				folder: joinPosix(entry.rootDir, dir),
+			});
 		}
 		const instancePath = leaf.isInit ? parent : [...parent, leaf.name];
 		return {

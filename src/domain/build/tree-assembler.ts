@@ -180,8 +180,7 @@ export class TreeAssembler {
 			}
 
 			const rootDir = toPosix(scanned.rootDir);
-			for (const { dir } of folderNodes)
-				namedDirs.add(path.posix.join(rootDir, dir));
+			for (const { folder } of folderNodes) namedDirs.add(folder);
 			for (const dir of ancestors(entry.source)) {
 				if (!isInside(dir, rootDir)) break;
 				const inDir = entriesByDir.get(dir);

@@ -1,6 +1,6 @@
 import path from "path";
 import { isMatch } from "../../base/glob.js";
-import { contains, isInside, joinPosix, toPosix } from "../../base/path.js";
+import { contains, isInside, toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -164,7 +164,7 @@ export class BuildTemplate {
 		readonly entry: { readonly source: string; readonly rootDir: string };
 		readonly instancePath: readonly string[];
 		readonly folderNodes: readonly {
-			readonly dir: string;
+			readonly folder: string;
 			readonly instancePath: readonly string[];
 		}[];
 	}):
@@ -184,9 +184,7 @@ export class BuildTemplate {
 		);
 		return {
 			node,
-			source: folder
-				? joinPosix(file.entry.rootDir, folder.dir)
-				: file.entry.source,
+			source: folder ? folder.folder : file.entry.source,
 		};
 	}
 

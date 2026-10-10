@@ -193,8 +193,8 @@ export class FolderMetaApplier {
 	private instanceless(): FolderMetaOutcome[] {
 		const { readings, routed } = this.placement;
 		const named = new Set(
-			routed.flatMap(({ entry, folderNodes }) =>
-				folderNodes.map(({ dir }) => joinPosix(entry.rootDir, dir))
+			routed.flatMap(({ folderNodes }) =>
+				folderNodes.map(({ folder }) => folder)
 			)
 		);
 		const folderOf = ({
@@ -242,13 +242,13 @@ export class FolderMetaApplier {
 		files: readonly RoutedFile[]
 	): InstanceMap<ReachedNode> {
 		const reached = new InstanceMap<ReachedNode>();
-		for (const { entry, folderNodes } of files) {
-			for (const { instancePath, dir } of folderNodes) {
+		for (const { folderNodes } of files) {
+			for (const { instancePath, folder } of folderNodes) {
 				const node = reached.get(instancePath) ?? {
 					instancePath,
 					dirs: new Set(),
 				};
-				node.dirs.add(joinPosix(entry.rootDir, dir));
+				node.dirs.add(folder);
 				reached.set(instancePath, node);
 			}
 		}

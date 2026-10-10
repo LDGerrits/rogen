@@ -691,9 +691,9 @@ describe("Placer", () => {
 
 			const [, copy] = (await route()).nodes;
 
-			expect(copy.folderNodes.map(({ dir }) => dir)).toEqual([
-				"Net",
-				"Net/Inner",
+			expect(copy.folderNodes.map(({ folder }) => folder)).toEqual([
+				`${abs("src")}/Net`,
+				`${abs("src")}/Net/Inner`,
 			]);
 			expect(copy.outrankedFolderRoutes).toEqual([]);
 		});

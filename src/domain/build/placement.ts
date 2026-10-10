@@ -411,9 +411,9 @@ export class Placer {
 				owned.set(file.instancePath, true);
 		const throughFolder = groupBy(
 			routed.flatMap((file) =>
-				file.folderNodes.map(({ dir }, at) => ({ file, dir, at }))
+				file.folderNodes.map(({ folder }, at) => ({ file, folder, at }))
 			),
-			({ file, dir }) => joinPosix(file.entry.rootDir, dir)
+			({ folder }) => folder
 		);
 		return toCopy.flatMap(
 			({ entry, variants, buriedScriptSuffix, init, placed }) => {
