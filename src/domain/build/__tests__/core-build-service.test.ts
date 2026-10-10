@@ -397,6 +397,44 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
+		it("should return an error two configs share once, where the first of them is selected", async () => {
+			const broken = brokenEntry(
+				[
+					errorDiagnostic(
+						"config.invalidSyntax",
+						{ resource: abs("broken.rogen.json") },
+						"not JSON"
+					),
+				],
+				abs("broken.rogen.json")
+			);
+			const sameOut = (file: string) =>
+				mockEntry(
+					{
+						rootDirs: [abs("src")],
+						routes,
+						outFile: abs("game.project.json"),
+					},
+					abs(file)
+				);
+
+			const result = (
+				await buildServiceOfFs().locate(
+					new MockConfigSelection([
+						sameOut("a.rogen.json"),
+						broken,
+						sameOut("b.rogen.json"),
+					]),
+					{ args: [], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(result.errors.map(({ code }) => code)).toEqual([
+				"output.sameOutFile",
+				"config.invalidSyntax",
+			]);
+		});
+
 		it("should answer from no config that writes the file another writes, as build does", async () => {
 			const result = (
 				await buildServiceOfFs().locate(

@@ -28,7 +28,7 @@ const needsShell = (file: string, windows: boolean) =>
 const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 
 /** `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there. */
-const expandedByShell = (arg: string) => /%[^%]+%/.test(arg);
+const expandedByShell = (arg: string) => /%[^%\s]+%/.test(arg);
 
 interface Launch {
 	readonly command: string;
@@ -49,11 +49,11 @@ export function launch(
 			args: [...args],
 			windowsVerbatimArguments: false,
 		});
-	const expanded = args.find(expandedByShell);
+	const expanded = [file, ...args].find(expandedByShell);
 	if (expanded !== undefined)
 		return err(
 			new Error(
-				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe), or rename the folder.`
+				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
 			)
 		);
 	return ok({

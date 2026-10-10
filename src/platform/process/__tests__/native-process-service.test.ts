@@ -191,6 +191,18 @@ describe("NativeProcessService", () => {
 			expect(run.isErr() && run.error.message).toContain('"100%PATH%x"');
 		});
 
+		it("should refuse a batch file whose own path would be expanded", () => {
+			const run = launch("C:\\%TOOLS%\\rojo.cmd", ["serve"], env, true);
+
+			expect(run.isErr() && run.error.message).toContain("%TOOLS%");
+		});
+
+		it("should pass percent signs that are not around a name", () => {
+			expect(
+				launch("rojo.cmd", ["50% of 60%", "100%%"], env, true).isOk()
+			).toBe(true);
+		});
+
 		it("should pass a percent sign that names no variable", () => {
 			expect(launch("rojo.cmd", ["50%"], env, true).isOk()).toBe(true);
 		});
