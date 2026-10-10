@@ -1,7 +1,13 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { dirnamePosix, joinPosix, stemOf, toPosix } from "../../base/path.js";
+import {
+	dirnamePosix,
+	joinPosix,
+	samePath,
+	stemOf,
+	toPosix,
+} from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -157,7 +163,9 @@ export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
 		private readonly exclude: readonly string[],
-		private readonly mounts: TemplateMounts
+		private readonly mounts: TemplateMounts,
+		/** The project file the build writes, which a root dir that holds it must not scan. */
+		private readonly outFile: string
 	) {}
 
 	scan(rootDir: string): ScannedRoot {
@@ -208,7 +216,10 @@ export class RootScanner {
 			const glob =
 				isFileType(type) && isConfigFileName(name)
 					? `*${CONFIG_SUFFIX}`
-					: this.excludingGlob(path.join(dir, name));
+					: isFileType(type) &&
+						  samePath(path.join(dir, name), this.outFile)
+						? path.basename(this.outFile)
+						: this.excludingGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "mounted",

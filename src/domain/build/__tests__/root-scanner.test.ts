@@ -64,6 +64,30 @@ describe("RootScanner", () => {
 			store[Symbol.dispose]();
 		});
 
+		describe("the project file it writes", () => {
+			it("should be left out when a root dir holds it", async () => {
+				await write("src/A.luau", "src/game.project.json");
+				const index = await newIndex().list([abs("src")]);
+				const config = configOf({
+					rootDirs: [abs("src")],
+					exclude: [],
+					outFile: abs("src/game.project.json"),
+				});
+
+				const [root] = builderOf(fs, index)
+					.place(config)
+					.unwrap().roots;
+
+				expect(files(root)).toEqual(["script:A.luau"]);
+				expect(
+					root.leftOut.get(toPosix(abs("src/game.project.json")))
+				).toEqual({
+					status: "excluded",
+					pattern: "game.project.json",
+				});
+			});
+		});
+
 		describe("recognised files", () => {
 			it("should keep scripts, models and data files, and record their kind", async () => {
 				await write(

@@ -13,6 +13,7 @@ import {
 	ResolvedConfig,
 	ResolvedTemplate,
 	configLabel,
+	isConfigFileName,
 	rootDirOverlap,
 } from "./config.js";
 import { projectFileName } from "../rojo/rojo-project.js";
@@ -337,20 +338,29 @@ export class ConfigValidator {
 		);
 	}
 
-	/** The output file may be no template of the chain's, since a build would overwrite it. */
+	/** The output file may be no template of the chain's and no config, since a build would overwrite it. */
 	private checkOutFile(): void {
+		const explicit =
+			this.layered.config.inspect("outFile").source?.tier === "layer";
+		const here = explicit
+			? this.layered.locate("outFile")
+			: { resource: this.layered.leaf.file };
 		const template = this.layered
 			.templates()
 			.find(({ file }) => file === this.outFile);
-		if (!template) return;
-		const explicit = this.layered.config.inspect("outFile").source?.tier;
-		this.problems.error(
-			"config.outFileIsTemplate",
-			explicit === "layer"
-				? this.layered.locate("outFile")
-				: template.location,
-			`the output file ${this.outFile} is also the template, and a build would overwrite it. Set "outFile" to another path.`
-		);
+		if (template) {
+			this.problems.error(
+				"config.outFileIsTemplate",
+				explicit ? here : template.location,
+				`the output file ${this.outFile} is also the template, and a build would overwrite it. Set "outFile" to another path.`
+			);
+		} else if (isConfigFileName(path.basename(this.outFile))) {
+			this.problems.error(
+				"config.outFileIsConfig",
+				here,
+				`the output file ${this.outFile} is named like a config, and a build would overwrite it. Set "outFile" to a .project.json path.`
+			);
+		}
 	}
 
 	private checkRootDirs(): void {

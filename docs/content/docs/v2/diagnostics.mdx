@@ -122,6 +122,16 @@ default.rogen.json:11:14 - error: the output file default.project.json is also t
 
 Rename the template to `template.project.json`, or set `outFile` to another path. See [Template](/docs/v2/core-concepts/output#template).
 
+### `config.outFileIsConfig` [#config-outfileisconfig]
+
+Error. The project file the config writes is named like a config, so a build would overwrite a config.
+
+```
+default.rogen.json:3:14 - error: the output file /repo/default.rogen.json is named like a config, and a build would overwrite it. Set "outFile" to a .project.json path. (config.outFileIsConfig)
+```
+
+Set `outFile` to a path that ends in `.project.json`. `-o` follows the same rule.
+
 ### `config.duplicateRootDir` [#config-duplicaterootdir]
 
 Error. One directory appears twice in `rootDirs`, so every file in it would belong to both entries.

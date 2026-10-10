@@ -112,7 +112,8 @@ export class Placer {
 		const scanner = new RootScanner(
 			this.index,
 			this.config.exclude,
-			this.template.mounts
+			this.template.mounts,
+			this.config.outFile
 		);
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
 	}
