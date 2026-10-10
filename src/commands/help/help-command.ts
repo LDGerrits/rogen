@@ -4,8 +4,7 @@ import { closestMatch } from "../../base/strings.js";
 import {
 	AbstractCommand,
 	Command,
-	CommandRegistry,
-	Extensions,
+	CommandService,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
@@ -17,7 +16,6 @@ import {
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ProductService } from "../../platform/product/product-service.js";
-import { Registry } from "../../platform/registry/registry.js";
 import { helpTexts } from "./help-texts.js";
 
 /** A section of the reference, by name; its text ships in the binary. */
@@ -218,7 +216,7 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<readonly []>
 		): Promise<Result<void, Error>> {
-			const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+			const commandService = accessor.get(CommandService);
 			const logService = accessor.get(LogService);
 
 			if (line.options.version) {
@@ -232,32 +230,33 @@ registerCommand(
 
 			if (target === undefined) {
 				logService.print(
-					formatHelp(registry.getCommands(), GlobalOptions)
+					formatHelp(commandService.getCommands(), GlobalOptions)
 				);
 				return ok(undefined);
 			}
 
-			const text = this.textOf(target, registry);
-			if (text === undefined) return err(this.unknown(target, registry));
+			const text = this.textOf(target, commandService);
+			if (text === undefined)
+				return err(this.unknown(target, commandService));
 			logService.print(text);
 			return ok(undefined);
 		}
 
 		private textOf(
 			target: string,
-			registry: CommandRegistry
+			commandService: CommandService
 		): string | undefined {
 			const code = codeNamed(target);
 			if (isCode(target)) return code && helpTexts.diagnostics[code];
 			const name = target.toLowerCase();
-			const command = registry.getCommand(name);
+			const command = commandService.getCommand(name);
 			if (command) return formatCommandHelp(command, GlobalOptions);
 			if (TOPICS.some((topic) => topic.name === name))
 				return helpTexts.topics[name];
 			return code && helpTexts.diagnostics[code];
 		}
 
-		private unknown(target: string, registry: CommandRegistry): Error {
+		private unknown(target: string, commandService: CommandService): Error {
 			const codes = Object.keys(helpTexts.diagnostics);
 			// A command or topic wins over the end of a code.
 			const named = new Map<string, string>();
@@ -267,7 +266,7 @@ registerCommand(
 			if (isCode(target)) codes.forEach((code) => add(code, code));
 			else {
 				const names = [
-					...registry.getCommands().keys(),
+					...commandService.getCommands().keys(),
 					...TOPICS.map(({ name }) => name),
 				];
 				names.forEach((name) => add(name, name));

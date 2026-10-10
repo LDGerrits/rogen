@@ -19,7 +19,7 @@ describe("CoreCommandService", () => {
 		store = new DisposableStore();
 		services = new ServiceCollection();
 		services.set(LogService, logService);
-		commandService = new CoreCommandService(services, logService);
+		commandService = new CoreCommandService(services, logService, registry);
 	});
 
 	afterEach(() => {

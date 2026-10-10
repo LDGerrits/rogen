@@ -33,7 +33,12 @@ import { MockRequestService } from "../../platform/request/__tests__/mock-reques
 import { MemoryWatcher } from "../../platform/watcher/memory-watcher.js";
 import { ProductService } from "../../platform/product/product-service.js";
 import { MockProductService } from "../../platform/product/__tests__/mock-product-service.js";
-import { CommandService } from "../../platform/commands/commands.js";
+import {
+	CommandRegistry,
+	CommandService,
+	Extensions,
+} from "../../platform/commands/commands.js";
+import { Registry } from "../../platform/registry/registry.js";
 import { LegacyConfig } from "../../domain/legacy/legacy-config.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 
@@ -126,7 +131,11 @@ export function commandHarness(
 		)
 	);
 
-	const commands = new CoreCommandService(services, log);
+	const commands = new CoreCommandService(
+		services,
+		log,
+		Registry.as<CommandRegistry>(Extensions.Commands)
+	);
 	services.set(CommandService, commands);
 	return {
 		fs,

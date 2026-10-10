@@ -20,12 +20,15 @@ export interface CommandService {
 		commandId: string,
 		line: CommandLine
 	): Promise<Result<void, Error>>;
+	getCommand(id: string): Command | undefined;
+	/** Every registered command, by id. */
+	getCommands(): ReadonlyMap<string, Command>;
 }
 
 export const CommandService =
 	createServiceIdentifier<CommandService>("commandService");
 
-export type CommandHandler = (
+type CommandHandler = (
 	accessor: ServicesAccessor,
 	line: CommandLine
 ) => Promise<Result<void, Error>>;
@@ -36,7 +39,7 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
-export interface CommandMetadata<
+interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly description: string;
@@ -59,7 +62,7 @@ export interface CommandMetadata<
 }
 
 export interface CommandRegistry {
-	/** @throws Error if `id` is already registered, or no handler is given. */
+	/** @throws Error if `id` is already registered. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
@@ -96,12 +99,6 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	registerCommand(command: Command): Disposable {
 		const { id } = command;
-
-		if (!command.handler) {
-			throw new Error(
-				`Command "${id}" was registered without a handler.`
-			);
-		}
 
 		if (this.commands.has(id)) {
 			throw new Error(`Command "${id}" is already registered.`);
@@ -160,7 +157,7 @@ export const Extensions = {
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
 
 /** What a command is, as `rogen help` and the argument parser read it. */
-export interface CommandDescriptor<
+interface CommandDescriptor<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly id: string;

@@ -10,7 +10,12 @@ import {
 	makeRojoDir,
 	sourcemap,
 } from "../../../domain/rojo/__tests__/rojo-cli.js";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../../../platform/commands/commands.js";
 import { CoreCommandService } from "../../../platform/commands/core-command-service.js";
+import { Registry } from "../../../platform/registry/registry.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
@@ -45,10 +50,11 @@ describeWithRojo("build command against Rojo", () => {
 		services.set(IndexService, indexService);
 		services.set(BuildService, buildServiceOf(fileSystem, indexService));
 		services.set(LogService, logService);
-		return new CoreCommandService(services, logService).executeCommand(
-			"build",
-			line
-		);
+		return new CoreCommandService(
+			services,
+			logService,
+			Registry.as<CommandRegistry>(Extensions.Commands)
+		).executeCommand("build", line);
 	};
 
 	beforeEach(() => {

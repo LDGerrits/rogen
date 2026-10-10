@@ -4,16 +4,24 @@ import { closestMatch } from "../../base/strings.js";
 import { CommandLine, HELP_COMMAND } from "../environment/args.js";
 import { ServicesAccessor } from "../instantiation/instantiation.js";
 import { LogService } from "../log/log-service.js";
-import { Registry } from "../registry/registry.js";
-import { CommandRegistry, CommandService, Extensions } from "./commands.js";
+import { Command, CommandRegistry, CommandService } from "./commands.js";
 
 export class CoreCommandService implements CommandService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
 		private readonly accessor: ServicesAccessor,
-		private readonly logService: LogService
+		private readonly logService: LogService,
+		private readonly registry: CommandRegistry
 	) {}
+
+	getCommand(id: string): Command | undefined {
+		return this.registry.getCommand(id);
+	}
+
+	getCommands(): ReadonlyMap<string, Command> {
+		return this.registry.getCommands();
+	}
 
 	async executeCommand(
 		commandId: string,
@@ -21,11 +29,12 @@ export class CoreCommandService implements CommandService {
 	): Promise<Result<void, Error>> {
 		this.logService.trace("CommandService#executeCommand", commandId);
 
-		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
-		const command = registry.getCommand(commandId);
+		const command = this.registry.getCommand(commandId);
 
 		if (!command)
-			return err(new UsageError(unknownCommand(commandId, registry)));
+			return err(
+				new UsageError(unknownCommand(commandId, this.registry))
+			);
 		if (line.passthrough?.length && !command.metadata.passthrough) {
 			return err(
 				new UsageError(

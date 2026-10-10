@@ -20,6 +20,19 @@ describe("CommandFailure", () => {
 	const printed = () =>
 		logService.texts("print").map((text) => JSON.parse(text));
 
+	describe("finish", () => {
+		it("should report the failure and answer with its exit code", () => {
+			const failure = new CommandFailure(logService, false);
+
+			expect(failure.finish(new UsageError("bad flag"))).toBe(2);
+			expect(failure.finish(new Error("no config"), "build")).toBe(1);
+			expect(logService.texts("error")).toEqual([
+				"bad flag",
+				"no config",
+			]);
+		});
+	});
+
 	describe("report", () => {
 		it("should print nothing for a failure already reported in full", () => {
 			new CommandFailure(logService, false).report(
