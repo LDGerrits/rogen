@@ -200,7 +200,7 @@ describe("StartedServer", () => {
 	});
 
 	it("should stop without a failure when Ctrl+C ended it", () => {
-		start().exit({ code: 130, signal: null });
+		start().exit({ code: 130, signal: null, interrupted: true });
 
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({ interrupted: true });
@@ -230,16 +230,14 @@ describe("StartedServer", () => {
 		expect(stops[0].exitCode).toBeUndefined();
 	});
 
-	it.each([
-		{ code: 143, signal: null },
-		{ code: 0xc000013a, signal: null },
-		{ code: null, signal: "SIGINT" },
-		{ code: null, signal: "SIGTERM" },
-	] as const)("should count %j as an interruption", (exit) => {
-		start().exit(exit);
+	it("should fail when a signal from someone else ended it", () => {
+		start().exit({ code: null, signal: "SIGTERM" });
 
-		expect(stops[0]).toMatchObject({ interrupted: true });
-		expect(stops[0].failure).toBeUndefined();
+		expect(stops[0]).toMatchObject({
+			interrupted: false,
+			exitCode: 1,
+			failure: { code: "serve.serverExited" },
+		});
 	});
 
 	it("should show a Windows status code in hex", () => {

@@ -13,6 +13,7 @@ import {
 	ProcessOutput,
 	ProcessService,
 	SpawnOptions,
+	wasInterrupted,
 } from "./process-service.js";
 
 /** How long a process asked to stop gets before it is killed. */
@@ -112,14 +113,22 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 				this._onDidExit.fire(exit);
 			};
 			child.once("exit", (code, signal) => {
+				const exit: ProcessExit = {
+					code,
+					signal,
+					...(isWindows &&
+						wasInterrupted({ code, signal }) && {
+							interrupted: true,
+						}),
+				};
 				const timer = setTimeout(() => {
 					child.stdout?.destroy();
 					child.stderr?.destroy();
-					finish({ code, signal });
+					finish(exit);
 				}, DRAIN_MS);
 				child.once("close", () => {
 					clearTimeout(timer);
-					finish({ code, signal });
+					finish(exit);
 				});
 			});
 			child.once("error", (error) => {
@@ -147,16 +156,25 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 				)
 			);
 		} else {
-			this.child.kill("SIGTERM");
+			this.signalTree("SIGTERM");
 		}
 		const timer = setTimeout(
-			() => this.child.kill("SIGKILL"),
+			() => this.signalTree("SIGKILL"),
 			KILL_GRACE_MS
 		);
 		try {
 			return await this.exited;
 		} finally {
 			clearTimeout(timer);
+		}
+	}
+
+	/** The child leads a process group of its own, so the signal reaches what a wrapper started without handing over to it. */
+	private signalTree(signal: NodeJS.Signals): void {
+		try {
+			process.kill(-(this.child.pid ?? 0), signal);
+		} catch {
+			this.child.kill(signal);
 		}
 	}
 
@@ -245,6 +263,7 @@ export class NativeProcessService implements ProcessService {
 				env: this.env,
 				windowsVerbatimArguments: run.windowsVerbatimArguments,
 				stdio: ["ignore", "pipe", "pipe"],
+				detached: !isWindows,
 				windowsHide: true,
 			})
 		);

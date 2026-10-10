@@ -28,5 +28,21 @@ export class NativeLifecycleService
 			process.once(signal, listener);
 			this._register(toDisposable(() => process.off(signal, listener)));
 		}
+		this.listenForClosedOutput();
+	}
+
+	/** A reader that quits, as `head -1` does, is a request to stop; the write it leaves behind would otherwise crash the process with the servers it started running. */
+	private listenForClosedOutput(): void {
+		let closed = false;
+		const listener = (error: NodeJS.ErrnoException) => {
+			if (error.code !== "EPIPE") throw error;
+			if (closed) return;
+			closed = true;
+			this._onWillShutdown.fire();
+		};
+		process.stdout.on("error", listener);
+		this._register(
+			toDisposable(() => process.stdout.off("error", listener))
+		);
 	}
 }

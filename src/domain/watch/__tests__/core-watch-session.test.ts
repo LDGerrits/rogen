@@ -29,7 +29,7 @@ describe("CoreWatchSession", () => {
 	let errors: Error[];
 
 	const settle = async () => {
-		await jest.advanceTimersByTimeAsync(150);
+		await jest.advanceTimersByTimeAsync(250);
 		for (let i = 0; i < 10; i++) await jest.advanceTimersByTimeAsync(0);
 	};
 

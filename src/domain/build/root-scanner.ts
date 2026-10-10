@@ -265,6 +265,13 @@ export class RootScanner {
 				});
 			else kept.push([name, type]);
 		}
+		// Left out before it exists too, or the first build and the one after it would write different files.
+		const outName = path.basename(this.outFile);
+		if (samePath(path.dirname(this.outFile), dir) && !listing.has(outName))
+			walk.leftOut.set(joinPosix(dir, outName), {
+				status: "excluded",
+				pattern: outName,
+			});
 		return kept;
 	}
 

@@ -12,9 +12,10 @@ export interface ChangeBatcherOptions {
 	readonly debounceMs: number;
 }
 
+// Longer than the 100 ms the watcher holds back a deletion to spot an editor's save by rename, so the temporary file's add and delete arrive together and cancel out.
 const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 	burstThreshold: 200,
-	debounceMs: 100,
+	debounceMs: 200,
 };
 
 /** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead, then one more when a burst that goes on has stopped. */

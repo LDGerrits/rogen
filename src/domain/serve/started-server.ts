@@ -8,7 +8,6 @@ import {
 	ProcessExit,
 	ProcessService,
 	exitCodeText,
-	wasInterrupted,
 } from "../../platform/process/process-service.js";
 import {
 	ServePlan,
@@ -148,7 +147,7 @@ export class StartedServer extends AbstractDisposable {
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */
 	private stopOf(exit: ProcessExit, said: boolean): ServerExitEvent {
-		const interrupted = wasInterrupted(exit);
+		const interrupted = exit.interrupted === true;
 		const { server } = this.plan.executable;
 		const { label, file } = this.target.config;
 		const failure =

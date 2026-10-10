@@ -9,6 +9,8 @@ export interface ProcessExit {
 	readonly signal: string | null;
 	/** Set when the process couldn't be started. */
 	readonly error?: Error;
+	/** Set when Ctrl+C or a termination request ended it along with this process: only Windows' console sends one to every process on it; elsewhere a process this one starts has a group of its own, so only a request this one makes ends it. */
+	readonly interrupted?: boolean;
 }
 
 /** A process that ran to the end, with what it printed. */
