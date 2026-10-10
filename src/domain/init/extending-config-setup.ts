@@ -17,18 +17,9 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		private readonly questions: InitQuestions
 	) {}
 
-	private configSetOf(name: string): ConfigSet {
-		const { workspace } = this.directory;
-		return new ConfigSet(
-			name,
-			workspace.language,
-			workspace.detectedDarklua
-		);
-	}
-
 	/** The configs it writes and their project files, none of which may exist. */
 	private filesOf(name: string): string[] {
-		const configSet = this.configSetOf(name);
+		const configSet = this.directory.configSetOf(name);
 		return [...configSet.configFiles, ...configSet.outputFiles];
 	}
 
@@ -52,7 +43,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 	}
 
 	plan({ name }: ExtendingConfigChoices, builder: InitPlanBuilder): void {
-		const configSet = this.configSetOf(name);
+		const configSet = this.directory.configSetOf(name);
 		// A compiler's sync dir is inherited from default; only a synced twin adds one.
 		configSet.planConfigs(
 			builder,

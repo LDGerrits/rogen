@@ -13,6 +13,7 @@ import {
 	rootDirOverlap,
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
+import { ConfigSet } from "./config-set.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
 const DEFAULT_ROOT_DIR = "src";
@@ -47,6 +48,15 @@ export class InitDirectory {
 	/** The name of the game the project files carry. */
 	get projectName(): string {
 		return path.basename(this.path) || DEFAULT_PROJECT_NAME;
+	}
+
+	/** The names `init` writes for a config called `name`, in the language and Darklua setup found here. */
+	configSetOf(name: string): ConfigSet {
+		return new ConfigSet(
+			name,
+			this.workspace.language,
+			this.workspace.detectedDarklua
+		);
 	}
 
 	has(fileName: string): boolean {
