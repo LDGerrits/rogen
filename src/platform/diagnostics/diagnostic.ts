@@ -123,22 +123,30 @@ export function messageRelativeTo(message: string, cwd: string): string {
 }
 
 /** `message` ending in `(code)`: on its first line, since a grouped diagnostic lists its related entries on the lines after it. */
-export function messageWithCode(message: string, code: string): string {
+function messageWithCode(message: string, code: string): string {
 	const end = message.indexOf("\n");
 	return end === -1
 		? `${message} (${code})`
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
-/** With `cwd`, the resource and any path in the message are written relative to it. */
-export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
-	const { position, severity } = diagnostic;
+/** `error: message (code)`, with any path in the message written relative to `cwd`. */
+export function diagnosticSummary(
+	diagnostic: Diagnostic,
+	cwd?: string
+): string {
 	const message = messageWithCode(
 		cwd === undefined
 			? diagnostic.message
 			: stripDirectory(diagnostic.message, cwd),
 		diagnostic.code
 	);
+	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}`;
+}
+
+/** With `cwd`, the resource and any path in the message are written relative to it. */
+export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
+	const { position } = diagnostic;
 	const resource =
 		cwd === undefined
 			? toNative(diagnostic.resource)
@@ -146,7 +154,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
-	return `${where} - ${SEVERITY_LABELS[severity]}: ${message}`;
+	return `${where} - ${diagnosticSummary(diagnostic, cwd)}`;
 }
 
 export interface DiagnosticJson {
@@ -188,24 +196,25 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 				message: item.message,
 			})),
 		}),
-		...(fixes && {
-			fixes: fixes.map((fix) =>
-				isRenameFix(fix)
-					? {
-							rename: {
-								from: toNative(fix.rename.from),
-								to: toNative(fix.rename.to),
-							},
-						}
-					: {
-							run: {
-								command: fix.run.command,
-								cwd: toNative(fix.run.cwd),
-							},
-						}
-			),
-		}),
+		...(fixes && { fixes: fixes.map(fixToJson) }),
 	};
+}
+
+/** A fix with native paths, as a `--json` run prints it. */
+export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
+	return isRenameFix(fix)
+		? {
+				rename: {
+					from: toNative(fix.rename.from),
+					to: toNative(fix.rename.to),
+				},
+			}
+		: {
+				run: {
+					command: fix.run.command,
+					cwd: toNative(fix.run.cwd),
+				},
+			};
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {

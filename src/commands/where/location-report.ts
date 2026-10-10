@@ -17,10 +17,9 @@ import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
 	DiagnosticJson,
-	DiagnosticSeverity,
+	diagnosticSummary,
 	diagnosticToJson,
-	messageRelativeTo,
-	messageWithCode,
+	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
 
 /** The mode a config built in, and every mode it declares. */
@@ -340,12 +339,9 @@ export class LocationReport {
 								),
 							}),
 							...(answer.fixes.length > 0 && {
-								fixes: answer.fixes.map(({ rename }) => ({
-									rename: {
-										from: toNative(rename.from),
-										to: toNative(rename.to),
-									},
-								})),
+								fixes: answer.fixes.map(({ rename }) =>
+									fixToJson({ rename })
+								),
 							}),
 							diagnostics: [],
 						}),
@@ -367,8 +363,7 @@ export class LocationReport {
 	private noted(answer: Answer): string[] {
 		if (!("location" in answer)) return [];
 		return answer.diagnostics.map(
-			({ severity, message, code }) =>
-				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageWithCode(messageRelativeTo(message, this.cwd), code)}`
+			(diagnostic) => `  ${diagnosticSummary(diagnostic, this.cwd)}`
 		);
 	}
 

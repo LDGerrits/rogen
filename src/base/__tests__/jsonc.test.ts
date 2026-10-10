@@ -60,4 +60,31 @@ describe("parseJsonc", () => {
 			"expected ']'",
 		]);
 	});
+
+	it("should place nodes by line and column across line breaks", () => {
+		const { root } = parseJsonc('{\r\n  "a": 1,\r\n  "b": [true]\n}');
+
+		expect(root).toMatchObject({
+			line: 1,
+			column: 1,
+			properties: [
+				{
+					name: "a",
+					line: 2,
+					column: 3,
+					value: { line: 2, column: 8 },
+				},
+				{
+					name: "b",
+					line: 3,
+					column: 3,
+					value: {
+						line: 3,
+						column: 8,
+						items: [{ line: 3, column: 9 }],
+					},
+				},
+			],
+		});
+	});
 });

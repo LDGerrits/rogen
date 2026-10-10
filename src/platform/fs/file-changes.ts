@@ -15,7 +15,9 @@ export interface FileChange {
 /**
  * Resolves redundant file changes.
  */
-export function normalizeFileChanges(changes: FileChange[]): FileChange[] {
+export function normalizeFileChanges(
+	changes: readonly FileChange[]
+): FileChange[] {
 	const map = new Map<string, FileChange>();
 
 	for (const change of changes) {
@@ -31,8 +33,6 @@ export function normalizeFileChanges(changes: FileChange[]): FileChange[] {
 			change.type === FileChangeType.DELETED
 		) {
 			map.delete(change.path);
-		} else if (change.type === FileChangeType.DELETED) {
-			map.set(change.path, { ...change, type: FileChangeType.DELETED });
 		} else if (
 			existing.type === FileChangeType.ADDED &&
 			change.type === FileChangeType.UPDATED

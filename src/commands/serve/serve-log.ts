@@ -1,4 +1,3 @@
-import path from "path";
 import { toNative } from "../../base/path.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import {
@@ -11,7 +10,10 @@ import {
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo } from "../../domain/serve/serve.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
+import {
+	diagnosticToJson,
+	messageRelativeTo,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	DiagnosticsError,
 	failureToJson,
@@ -91,7 +93,7 @@ export class ServeLog {
 			});
 			return;
 		}
-		const text = `${server.name}: ${message.text.split(this.cwd + path.sep).join("")}`;
+		const text = `${server.name}: ${messageRelativeTo(message.text, this.cwd)}`;
 		if (message.severity === "error") this.logService.error(text);
 		else if (message.severity === "warning") this.logService.warn(text);
 		else this.logService.info(text);

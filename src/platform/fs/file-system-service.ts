@@ -1,3 +1,4 @@
+import { ErrorUtils } from "../../base/errors.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export enum FileType {
@@ -53,7 +54,7 @@ export function fileSystemError(
 
 /** Whether `error` says the path isn't there, by its code and not its wording. */
 export function isMissingPath(error: Error): boolean {
-	return (error as { code?: unknown }).code === "ENOENT";
+	return ErrorUtils.hasCode(error, "ENOENT");
 }
 
 /** Why a file system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */

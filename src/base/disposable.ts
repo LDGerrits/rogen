@@ -19,10 +19,18 @@ export class DisposableStore implements Disposable {
 		if (this.isDisposed) return;
 		this.isDisposed = true;
 
+		const failures: unknown[] = [];
 		for (const disposable of this.disposables) {
-			disposable[Symbol.dispose]();
+			try {
+				disposable[Symbol.dispose]();
+			} catch (error) {
+				failures.push(error);
+			}
 		}
 		this.disposables.clear();
+		if (failures.length === 1) throw failures[0];
+		if (failures.length > 1)
+			throw new AggregateError(failures, "Several disposables failed.");
 	}
 }
 

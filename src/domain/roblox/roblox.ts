@@ -1,5 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import { closestMatch } from "../../base/strings.js";
+import { closestMatch, joinedWithOr } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -47,13 +47,8 @@ export type ScriptRun =
 /** Where scripts are kept for code to clone out, so a script there that never runs isn't a mistake. */
 const SCRIPT_STORAGE_SERVICE = "ServerStorage";
 
-const orList = (items: readonly string[]): string =>
-	items.length > 1
-		? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`
-		: items.join("");
-
 /** Where each kind of script runs, as a sentence for a warning about one that doesn't. */
-export const WHERE_SCRIPTS_RUN = `A Script runs in ${orList(SERVER_SCRIPT_SERVICES)}, and a LocalScript in ${orList([...PLAYER_SCRIPT_CONTAINERS, ...CLIENT_SCRIPT_SERVICES])}. A Script with RunContext Client never runs in ${orList(SERVER_ONLY_SERVICES.filter((service) => service !== SCRIPT_STORAGE_SERVICE))}, which clients can't see.`;
+export const WHERE_SCRIPTS_RUN = `A Script runs in ${joinedWithOr(SERVER_SCRIPT_SERVICES)}, and a LocalScript in ${joinedWithOr([...PLAYER_SCRIPT_CONTAINERS, ...CLIENT_SCRIPT_SERVICES])}. A Script with RunContext Client never runs in ${joinedWithOr(SERVER_ONLY_SERVICES.filter((service) => service !== SCRIPT_STORAGE_SERVICE))}, which clients can't see.`;
 
 /** What becomes of a script that runs as `run` at `instancePath`: it runs, it is stored for code to clone out, or it never runs. */
 export function scriptFate(
