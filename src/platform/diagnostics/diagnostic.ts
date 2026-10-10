@@ -1,6 +1,6 @@
 import path from "path";
 import {
-	containsPosix,
+	containsPath,
 	relativeTo,
 	toNative,
 	toPosix,
@@ -321,8 +321,7 @@ export function diagnosticsReaching(
 	const reaches = (resource: string) => {
 		const posix = toPosix(resource);
 		return (
-			containsPosix(posixTarget, posix) ||
-			containsPosix(posix, posixTarget)
+			containsPath(posixTarget, posix) || containsPath(posix, posixTarget)
 		);
 	};
 	return diagnostics.flatMap((diagnostic): Diagnostic[] => {

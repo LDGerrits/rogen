@@ -1,5 +1,5 @@
 import path from "path";
-import { containsPosix, toPosix } from "../../base/path.js";
+import { containsPath, toPosix } from "../../base/path.js";
 import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
@@ -33,12 +33,12 @@ export function isBeyondShallow(
 	shallow: readonly string[]
 ): boolean {
 	const posixTarget = toPosix(target);
-	if (paths.some((entry) => containsPosix(toPosix(entry), posixTarget)))
+	if (paths.some((entry) => containsPath(toPosix(entry), posixTarget)))
 		return false;
 	return shallow.some((dir) => {
 		const posixDir = toPosix(dir);
 		return (
-			containsPosix(posixDir, posixTarget) &&
+			containsPath(posixDir, posixTarget) &&
 			posixTarget !== posixDir &&
 			path.posix.dirname(posixTarget) !== posixDir
 		);
@@ -53,7 +53,7 @@ export function isIgnored(
 	const posixTarget = toPosix(target);
 	return ignored.some((entry) => {
 		if (entry instanceof RegExp) return entry.test(posixTarget);
-		return containsPosix(toPosix(entry), posixTarget);
+		return containsPath(toPosix(entry), posixTarget);
 	});
 }
 
@@ -82,7 +82,7 @@ export class WatchFilter {
 		const posixTarget = toPosix(target);
 		return (
 			[...this.paths, ...this.shallow].some((watched) =>
-				containsPosix(watched, posixTarget)
+				containsPath(watched, posixTarget)
 			) && !this.skips(posixTarget)
 		);
 	}

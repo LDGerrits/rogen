@@ -1,4 +1,5 @@
 import path from "path";
+import { isWindows } from "./platform.js";
 
 const POSIX_SEP = path.posix.sep;
 
@@ -81,6 +82,17 @@ export function containsPosix(parent: string, child: string): boolean {
 	return child === parent || child.startsWith(`${parent}/`);
 }
 
+/** As `containsPosix`, but a file system that ignores letter case (Windows') makes `Src` and `src` one folder. */
+export function containsPath(
+	parent: string,
+	child: string,
+	caseInsensitive = isWindows
+): boolean {
+	return caseInsensitive
+		? containsPosix(parent.toLowerCase(), child.toLowerCase())
+		: containsPosix(parent, child);
+}
+
 /** `dirs` without repeats and without any dir that lies inside another, in their first order. */
 export function outermostDirs(dirs: readonly string[]): string[] {
 	const unique = [...new Set(dirs)];
@@ -100,7 +112,10 @@ export function stemOf(fileName: string): string {
 }
 
 /** The deepest directory containing every one of `dirs`. All paths must be absolute. Throws when `dirs` is empty. */
-export function commonAncestor(dirs: readonly string[]): string {
+export function commonAncestor(
+	dirs: readonly string[],
+	caseInsensitive = isWindows
+): string {
 	if (dirs.length === 0) {
 		throw new Error("commonAncestor needs at least one directory.");
 	}
@@ -113,7 +128,11 @@ export function commonAncestor(dirs: readonly string[]): string {
 	for (const dir of dirs.slice(1)) {
 		const segments = split(dir);
 		const length = shared.findIndex(
-			(segment, index) => segments[index] !== segment
+			(segment, index) =>
+				segments[index] === undefined ||
+				(caseInsensitive
+					? segments[index].toLowerCase() !== segment.toLowerCase()
+					: segments[index] !== segment)
 		);
 		shared = shared.slice(0, length === -1 ? shared.length : length);
 	}

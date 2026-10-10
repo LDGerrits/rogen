@@ -4,6 +4,7 @@ import {
 	ancestors,
 	commonAncestor,
 	contains,
+	containsPath,
 	containsPosix,
 	dirnamePosix,
 	isInside,
@@ -167,6 +168,23 @@ describe("normalizeDir", () => {
 		});
 	});
 
+	describe("containsPath", () => {
+		it("should compare as text where the file system tells letter cases apart", () => {
+			expect(containsPath("/repo/Src", "/repo/Src/a", false)).toBe(true);
+			expect(containsPath("/repo/Src", "/repo/src/a", false)).toBe(false);
+		});
+
+		it("should ignore letter case where the file system does", () => {
+			expect(containsPath("C:/Repo/Src", "c:/repo/src/a", true)).toBe(
+				true
+			);
+			expect(containsPath("C:/Repo/Src", "c:/repo/src", true)).toBe(true);
+			expect(containsPath("C:/Repo/Src", "c:/repo/src-extra", true)).toBe(
+				false
+			);
+		});
+	});
+
 	describe("outermostDirs", () => {
 		const abs = (...segments: string[]) =>
 			path.resolve("/repo", ...segments);
@@ -219,6 +237,15 @@ describe("normalizeDir", () => {
 
 		it("should be the shared parent of sibling directories", () => {
 			expect(commonAncestor([abs("core"), abs("lobby")])).toBe(abs("."));
+		});
+
+		it("should tell letter cases apart unless asked not to", () => {
+			expect(commonAncestor([abs("Core/a"), abs("core/b")], false)).toBe(
+				abs(".")
+			);
+			expect(commonAncestor([abs("Core/a"), abs("core/b")], true)).toBe(
+				abs("Core")
+			);
 		});
 
 		it("should be the deepest directory containing every one", () => {
