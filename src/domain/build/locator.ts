@@ -118,16 +118,15 @@ export class Locator {
 		return Promise.all(
 			paths.map(async (target): Promise<FileLocation> => {
 				const source = toPosix(target);
-				const [first] = errors;
+				const own = errors.find(
+					(error) => diagnosticsReaching([error], source).length > 0
+				);
 				return {
 					source,
 					exists: await this.fileSystemService.exists(target),
 					status: "blocked",
-					by:
-						errors.find(
-							(error) =>
-								diagnosticsReaching([error], source).length > 0
-						) ?? first,
+					by: own ?? errors[0],
+					own: own !== undefined,
 				};
 			})
 		);

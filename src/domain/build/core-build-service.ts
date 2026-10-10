@@ -159,10 +159,7 @@ export class CoreBuildService implements BuildService {
 					),
 				],
 				stoppedBy: files.flatMap(({ file }) =>
-					file.status === "blocked" &&
-					diagnosticsReaching([file.by], file.source).length === 0
-						? [file.by]
-						: []
+					file.status === "blocked" && !file.own ? [file.by] : []
 				),
 			};
 		});

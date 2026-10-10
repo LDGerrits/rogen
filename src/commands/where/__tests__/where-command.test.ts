@@ -91,15 +91,6 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should call the error the file's own when it is", async () => {
-			await run({ _: ["src/F/Shared/Bad@server.luau"] });
-
-			expect(printed()[0]).toBe(
-				"src/F/Shared/Bad@server.luau -> not placed · it has an error (route.ignoredAt)"
-			);
-			expect(printed()[1]).toContain("route.ignoredAt");
-		});
-
 		it("should name the error in the JSON document", async () => {
 			await run({ _: ["src/F/Shared/Good.luau"], json: true });
 

@@ -56,7 +56,7 @@ describe("PlainLogService", () => {
 		);
 
 		logService.diagnostic(warning);
-		logService.diagnostic(warning, { failing: true });
+		logService.diagnostic(warning, true);
 
 		expect(errors).toEqual(["/repo/a - warning: odd. (x.y)"]);
 	});

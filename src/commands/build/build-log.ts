@@ -151,9 +151,6 @@ export function sameNote(
 
 /** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
-	/** Whether the diagnostics being printed fail the run, as every warning does under `--deny-warnings`. */
-	private failing = false;
-
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
@@ -170,7 +167,6 @@ export class BuildLog {
 
 	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(run: BuildRun, home?: string, denyWarnings = false): void {
-		this.failing = denyWarnings;
 		this.begin(
 			"build",
 			run.builds.map(({ label }) => label),
@@ -187,12 +183,12 @@ export class BuildLog {
 						: undefined,
 					sameNote("errors", errors.sameAs),
 					sameNote("warnings", warnings.sameAs)
-				)
+				),
+				denyWarnings
 			);
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
 		else this.end(run.builds.length, run.warningCount, denyWarnings);
-		this.failing = false;
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
@@ -200,11 +196,12 @@ export class BuildLog {
 		this.logService.step(label);
 	}
 
-	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
+	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`, which `failing` makes the run fail. */
 	outcome(
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
-		note?: string
+		note?: string,
+		failing = false
 	): void {
 		const line = (outcome: string) =>
 			[
@@ -240,15 +237,13 @@ export class BuildLog {
 				this.logService.error(line("not loaded"));
 				break;
 		}
-		this.diagnostics(diagnostics);
+		this.diagnostics(diagnostics, failing);
 	}
 
-	diagnostics(diagnostics: readonly Diagnostic[]): void {
+	/** `failing` when the diagnostics are what fails the run, as every warning is under `--deny-warnings`. */
+	diagnostics(diagnostics: readonly Diagnostic[], failing = false): void {
 		for (const diagnostic of capped(diagnostics))
-			this.logService.diagnostic(
-				diagnostic,
-				this.failing ? { failing: true } : undefined
-			);
+			this.logService.diagnostic(diagnostic, failing);
 	}
 
 	/** Closes the output of a build that wrote every config, counting its warnings. */

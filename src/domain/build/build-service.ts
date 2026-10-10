@@ -57,6 +57,8 @@ export interface UnplacedLocation extends Located {
 export interface BlockedLocation extends Located {
 	readonly status: "blocked";
 	readonly by: Diagnostic;
+	/** `by` is about the path itself, not about a file the build stops on instead. */
+	readonly own: boolean;
 }
 
 /** Where a path lands in the tree, or why it lands nowhere. */
@@ -130,7 +132,7 @@ export interface LocateTargets {
 /** What `diagnose` found. */
 export interface Diagnosed {
 	readonly diagnostics: readonly Diagnostic[];
-	/** The errors that stopped a config's build short of the paths asked about, which are not about those paths: what was checked is only as far as the build gets. */
+	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
 	readonly stoppedBy: readonly Diagnostic[];
 }
 

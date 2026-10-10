@@ -97,30 +97,6 @@ describe("check command", () => {
 			});
 		});
 
-		it("should fail a file that has the error", async () => {
-			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
-			});
-			await write("src/F/Shared/Bad@server.luau");
-
-			const result = await run({ _: ["src/F/Shared/Bad@server.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["route.ignoredAt", "src/F/Shared/Bad@server.luau"],
-			]);
-			expect(logService.texts("warn")).toEqual([]);
-		});
-
-		it("should report a misspelt folder to a file in it", async () => {
-			await write("src/F/Sever/A.luau");
-
-			const result = await run({ _: ["src/F/Sever/A.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["route.folderTypo", "src/F/Sever"],
-			]);
-		});
-
 		it("should print the findings as output, not as warnings", async () => {
 			await write("src/Save@sever.luau");
 

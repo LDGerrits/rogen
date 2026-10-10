@@ -122,8 +122,7 @@ function outcomeOf(
 		case "extensionCase":
 			return "not an instance · its extension is not in lowercase";
 		case "blocked":
-			return diagnosticsReaching([location.by], location.source).length >
-				0
+			return location.own
 				? `not placed · it has an error (${location.by.code})`
 				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":

@@ -504,13 +504,13 @@ Rename one of the files, as the message says. The warning is the preview: `rogen
 
 ### `tree.reservedName` [#tree-reservedname]
 
-Warning. A file or folder would become an instance named with a leading `$`, which Rojo reserves for its own fields. Rojo keeps the instance but warns of it on every build and serve.
+Warning. The project file gets an instance whose key starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance but warns of it on every build and serve.
 
 ```
-src/$Config.luau - warning: becomes the instance "$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
+src/$Config.luau - warning: the project file gets the instance "ReplicatedStorage/shared/$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
 ```
 
-Rename the file or folder without the `$`. A `$` inside a name, as in `Cost$`, is fine.
+Rename the file or folder without the `$`. A `$` inside a name, as in `Cost$`, is fine, and so is a file inside a folder that Rogen gives to Rojo whole as one `$path`.
 
 ### `tree.instanceClash` [#tree-instanceclash]
 

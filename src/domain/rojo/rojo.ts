@@ -1,6 +1,5 @@
 import path from "path";
 import { JSONSchema } from "../../base/json-schema.js";
-import { parseJsonc } from "../../base/jsonc.js";
 import { stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -170,6 +169,12 @@ const META_SCHEMA: JSONSchema = {
 	},
 };
 
+/** What a `.meta.json` sets, and what is wrong with it short of making Rojo refuse it. */
+export interface ParsedMeta {
+	readonly fields: RojoMetaFields;
+	readonly typos: readonly Diagnostic[];
+}
+
 /** A `.meta.json` as Rojo reads it. */
 export class RojoMeta {
 	private static readonly documents = new JsoncDocumentReader({
@@ -177,47 +182,33 @@ export class RojoMeta {
 		noun: "a meta file",
 	});
 
-	/** The fields `text` sets, or why Rojo would refuse `file`. */
-	static parse(
-		text: string,
-		file: string
-	): Result<RojoMetaFields, Diagnostic[]> {
+	/** The fields `text` sets, with a warning for each that is a slip from one Rojo reads, such as `classname`; or why Rojo would refuse `file`. A field that resembles none, such as `$schema`, is left alone. */
+	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
 		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
 		if (document.isErr()) return err(document.error);
 
-		const { value } = document.value;
-		return ok(
-			Object.fromEntries(
-				Object.keys(META_SCHEMA.properties ?? {})
+		const { root, value } = document.value;
+		const known = Object.keys(META_SCHEMA.properties ?? {});
+		return ok({
+			fields: Object.fromEntries(
+				known
 					.filter((key) => value[key] !== undefined)
 					.map((key) => [key, value[key]])
-			) as RojoMetaFields
-		);
-	}
-
-	/** Warnings for the fields of `text` that Rojo ignores although they are a slip from one it reads, such as `classname`; a field that resembles none is left alone, since a meta may carry `$schema` or notes. */
-	static typos(text: string, file: string): Diagnostic[] {
-		const { root } = parseJsonc(text);
-		if (root?.kind !== "object") return [];
-		const known = Object.keys(META_SCHEMA.properties ?? {});
-		return root.properties.flatMap((property) => {
-			if (known.includes(property.name)) return [];
-			const suggestion = closestMatch(property.name, known);
-			return suggestion
-				? [
-						warningDiagnostic(
-							"meta.unknownField",
-							{
-								resource: file,
-								position: {
-									line: property.line,
-									column: property.column,
-								},
-							},
-							`unknown field "${property.name}"; Rojo ignores it. Did you mean "${suggestion}"?`
-						),
-					]
-				: [];
+			) as RojoMetaFields,
+			typos: root.properties.flatMap(({ name, line, column }) => {
+				const suggestion = known.includes(name)
+					? undefined
+					: closestMatch(name, known);
+				return suggestion
+					? [
+							warningDiagnostic(
+								"meta.unknownField",
+								{ resource: file, position: { line, column } },
+								`unknown field "${name}"; Rojo ignores it. Did you mean "${suggestion}"?`
+							),
+						]
+					: [];
+			}),
 		});
 	}
 

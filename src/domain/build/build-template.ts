@@ -36,7 +36,7 @@ export class TemplateMounts {
 		/** The template file, which every mount error points at; none without a template. */
 		private readonly file: string | undefined,
 		/** The mounts `exclude` dropped, which are never built. */
-		private readonly dropped: readonly DroppedMount[] = []
+		private readonly dropped: readonly DroppedMount[]
 	) {}
 
 	/** The mount at `absolutePath` or above it, which makes Rojo read it. */
@@ -116,7 +116,9 @@ export class BuildTemplate {
 			},
 			generatedContainer
 		);
-		this.project.removeNodes((target) => this.isDropped(target));
+		this.project.removeNodes(
+			(target) => this.droppingGlob(target) !== undefined
+		);
 		if (template && this.templateDir !== layout.projectDir) {
 			this.project.mapPaths((target) => this.rebase(target));
 		}
@@ -129,10 +131,6 @@ export class BuildTemplate {
 	}
 
 	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
-	private isDropped(target: string): boolean {
-		return this.droppingGlob(target) !== undefined;
-	}
-
 	private droppingGlob(target: string): string | undefined {
 		const mounted = toPosix(path.resolve(this.templateDir, target));
 		return this.config.exclude.find((glob) => isMatch(mounted, glob));
@@ -155,7 +153,7 @@ export class BuildTemplate {
 		);
 		return new TemplateMounts(
 			all
-				.filter(({ target }) => !this.isDropped(target))
+				.filter(({ target }) => this.droppingGlob(target) === undefined)
 				.map(({ mount }) => mount),
 			this.templateFile,
 			all.flatMap(({ target, mount }) => {

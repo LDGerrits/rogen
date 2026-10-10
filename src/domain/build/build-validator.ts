@@ -1,5 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
+import { isObject } from "../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import {
 	capitalized,
@@ -20,7 +21,7 @@ import {
 	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { instanceKey } from "../rojo/rojo-project.js";
+import { RojoNode, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import {
 	MisspellingKind,
@@ -31,6 +32,30 @@ import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
+
+const ROJO_NODE_FIELDS: ReadonlySet<string> = new Set([
+	"$className",
+	"$path",
+	"$properties",
+	"$attributes",
+	"$ignoreUnknownInstances",
+	"$id",
+]);
+
+/** The instance paths of the nodes of `node` whose key starts with `$` without being one of Rojo's fields. */
+function reservedKeys(
+	node: RojoNode,
+	at: readonly string[]
+): (readonly string[])[] {
+	return Object.entries(node).flatMap(([key, value]) => {
+		if (!isObject(value) || ROJO_NODE_FIELDS.has(key)) return [];
+		const here = [...at, key];
+		return [
+			...(key.startsWith("$") ? [here] : []),
+			...reservedKeys(value, here),
+		];
+	});
+}
 
 /** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
@@ -471,30 +496,40 @@ export class BuildValidator {
 		);
 	}
 
-	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. */
+	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
 	private reservedName(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		return routed.flatMap(({ entry, instancePath, init }) => {
-			const name = instancePath[instancePath.length - 1];
-			if (
-				!name?.startsWith("$") ||
-				leftOut.get(entry.source)?.status === "pruned"
-			)
-				return [];
-			const fileName = path.posix.basename(entry.source);
-			const renamable = init === undefined && fileName.startsWith("$");
+		return reservedKeys(this.assembly.tree.tree, []).flatMap((key) => {
+			const under = routed.filter(
+				({ entry, instancePath }) =>
+					leftOut.get(entry.source)?.status !== "pruned" &&
+					key.every((name, index) => instancePath[index] === name)
+			);
+			const file =
+				under.find(
+					({ instancePath }) => instancePath.length === key.length
+				) ?? under[0];
+			if (!file) return [];
+			const fileName = path.posix.basename(file.entry.source);
+			const renamable =
+				file.instancePath.length === key.length &&
+				file.init === undefined &&
+				fileName.startsWith("$") &&
+				fileName.length > 1;
 			return [
 				warningDiagnostic(
 					"tree.reservedName",
-					{ resource: entry.source },
-					`becomes the instance "${name}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${init === undefined ? "the file" : "the folder"} without the $.`,
-					renamable && fileName.length > 1
+					{ resource: file.entry.source },
+					`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
+					renamable
 						? [
 								{
 									rename: {
-										from: entry.source,
+										from: file.entry.source,
 										to: path.posix.join(
-											path.posix.dirname(entry.source),
+											path.posix.dirname(
+												file.entry.source
+											),
 											fileName.slice(1)
 										),
 									},

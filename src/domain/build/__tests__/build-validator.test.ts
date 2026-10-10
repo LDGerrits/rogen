@@ -1054,13 +1054,15 @@ describe("BuildValidator rules", () => {
 						({ code }) => code === "tree.reservedName"
 					);
 
-			it("should warn of a file Rojo would name with a $, and propose the name without it", async () => {
+			it("should warn of a file Rojo would key with a $, and propose the name without it", async () => {
 				await write("src/$Config.luau", "src/Fine.luau");
 
 				expect(await reserved()).toMatchObject([
 					{
 						resource: abs("src/$Config.luau"),
-						message: expect.stringContaining('"$Config"'),
+						message: expect.stringContaining(
+							'"ReplicatedStorage/shared/$Config"'
+						),
 						fixes: [
 							{
 								rename: {
@@ -1073,17 +1075,22 @@ describe("BuildValidator rules", () => {
 				]);
 			});
 
-			it("should warn of a folder whose name an init script gives, with no rename to propose", async () => {
-				await write("src/$Kit/init.luau");
+			it("should warn once of a folder a project key names, with no rename to propose", async () => {
+				await write(
+					"src/Fine.luau",
+					"src/$Kit/A.luau",
+					"src/$Kit/B.luau"
+				);
 
-				const [warning] = await reserved();
+				const warnings = await reserved();
 
-				expect(warning.resource).toBe(abs("src/$Kit/init.luau"));
-				expect(warning.fixes ?? []).toEqual([]);
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0].resource).toBe(abs("src/$Kit/A.luau"));
+				expect(warnings[0].fixes ?? []).toEqual([]);
 			});
 
-			it("should leave a $ inside a name alone", async () => {
-				await write("src/Cost$.luau");
+			it("should leave a $ inside a name, and a file Rojo reads from a folder it was given whole, alone", async () => {
+				await write("src/Cost$.luau", "src/Kit/$Inner.luau");
 
 				expect(await reserved()).toEqual([]);
 			});

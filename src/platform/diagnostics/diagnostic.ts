@@ -312,7 +312,7 @@ export function diagnosticsAbout(
 	});
 }
 
-/** The diagnostics that concern `target`, a file or a folder: about it, about something inside it, or about a folder it lies in, since a misspelt folder is about every file in it. A grouped one is cut down to the entries that reach `target`. */
+/** The diagnostics about `target`, inside it, or about a folder it lies in; a grouped one is cut to the entries that do. */
 export function diagnosticsReaching(
 	diagnostics: readonly Diagnostic[],
 	target: string

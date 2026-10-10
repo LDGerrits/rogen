@@ -274,7 +274,7 @@ describe("domain/rojo/rojo", () => {
 					"/repo/A.meta.json"
 				);
 
-				expect(parsed.unwrap()).toEqual({
+				expect(parsed.unwrap().fields).toEqual({
 					className: "Actor",
 					properties: { RunContext: "Client" },
 				});
@@ -290,8 +290,13 @@ describe("domain/rojo/rojo", () => {
 		});
 
 		describe("typos", () => {
+			const typosOf = (text: string, file: string) => {
+				const parsed = RojoMeta.parse(text, file);
+				return parsed.isOk() ? parsed.value.typos : [];
+			};
+
 			it("should warn of a field that is one slip from a field Rojo reads, where it is written", () => {
-				const warnings = RojoMeta.typos(
+				const warnings = typosOf(
 					'{\n  "classname": "Actor",\n  "attributs": {}\n}',
 					"/repo/A.meta.json"
 				);
@@ -314,7 +319,7 @@ describe("domain/rojo/rojo", () => {
 
 			it("should stay silent about a field that resembles none, such as $schema", () => {
 				expect(
-					RojoMeta.typos(
+					typosOf(
 						'{ "$schema": "x", "comment": "y", "className": "Actor" }',
 						"/repo/A.meta.json"
 					)
@@ -322,8 +327,8 @@ describe("domain/rojo/rojo", () => {
 			});
 
 			it("should not warn when the meta can't be read at all", () => {
-				expect(RojoMeta.typos("{bad", "/repo/A.meta.json")).toEqual([]);
-				expect(RojoMeta.typos("[]", "/repo/A.meta.json")).toEqual([]);
+				expect(typosOf("{bad", "/repo/A.meta.json")).toEqual([]);
+				expect(typosOf("[]", "/repo/A.meta.json")).toEqual([]);
 			});
 		});
 

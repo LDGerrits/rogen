@@ -146,13 +146,9 @@ export abstract class AbstractLogService implements LogService {
 		if (this.frameOpen) this.outro(message);
 	}
 
-	diagnostic(diagnostic: Diagnostic, options?: { failing?: true }): void {
+	diagnostic(diagnostic: Diagnostic, failing = false): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (
-			this.canLog(
-				isError || options?.failing ? LogLevel.Error : LogLevel.Warn
-			)
-		)
+		if (this.canLog(isError || failing ? LogLevel.Error : LogLevel.Warn))
 			this.write(
 				isError ? "diagnosticError" : "diagnosticWarning",
 				renderDiagnostic(diagnostic, this.cwd)
