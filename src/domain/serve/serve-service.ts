@@ -8,7 +8,7 @@ import { ProcessExit } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
 	ConfigOptionValues,
-	ConfigSelection,
+	ReloadableSelection,
 } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import {
@@ -57,7 +57,7 @@ export const isRunning = (target: ServeTarget): target is RunningTarget =>
 /** What a serve will do: the configs it builds, the server it runs, and each config it serves. */
 export class ServePlan {
 	constructor(
-		readonly selection: ConfigSelection,
+		readonly selection: ReloadableSelection,
 		readonly tool: ServeTool,
 		readonly targets: readonly ServeTarget[],
 		readonly serverArgs: readonly string[],

@@ -7,7 +7,7 @@ import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
-import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
+import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
 import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
@@ -45,7 +45,7 @@ export class CoreWatchSession
 	private stopping: Promise<void> | undefined;
 
 	constructor(
-		private readonly selection: ConfigSelection,
+		private readonly selection: ReloadableSelection,
 		/** The configs that build, from the latest load, and which of them can't. */
 		private set: BuildSet,
 		private readonly watcher: Watcher,

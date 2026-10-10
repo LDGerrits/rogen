@@ -118,15 +118,22 @@ export interface ConfigReload {
 	readonly notices: readonly ConfigNotice[];
 }
 
-/** The configs one invocation picked. The caller owns it, and only `reload` changes it. */
+/** The configs one invocation picked, as a command that reads them once sees them. */
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** The configs that build now: a broken entry's last valid version, or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** Every file the selected configs read: their chains and templates. */
-	readonly files: ReadonlySet<string>;
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */
 	readonly home: string;
+
+	/** The configs, or every error when any entry is broken now. */
+	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
+}
+
+/** A selection that follows its files: the caller owns it, and only `reload` changes it. */
+export interface ReloadableSelection extends ConfigSelection {
+	/** Every file the selected configs read: their chains and templates. */
+	readonly files: ReadonlySet<string>;
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
 	readonly directory: string | undefined;
 
@@ -135,9 +142,6 @@ export interface ConfigSelection {
 
 	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
 	concerns(file: string): boolean;
-
-	/** The configs, or every error when any entry is broken now. */
-	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
 
 	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `directory` first adds and drops the configs that came and went. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
@@ -170,7 +174,7 @@ export interface ConfigService {
 	select(
 		refs: readonly string[],
 		options: ConfigOptionValues
-	): Promise<Result<ConfigSelection, Error>>;
+	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above the working directory that has configs. */
 	findEnclosing(): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */

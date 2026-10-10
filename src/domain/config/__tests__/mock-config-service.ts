@@ -15,7 +15,7 @@ import {
 	ConfigEntry,
 	ConfigFileCheck,
 	ConfigReload,
-	ConfigSelection,
+	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
 	ValidConfigEntry,
@@ -153,7 +153,7 @@ export function selectionOf(
 }
 
 /** A selection of fixed entries; a reload changes nothing. */
-export class MockConfigSelection implements ConfigSelection {
+export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
 	readonly directory = undefined;
 
@@ -203,7 +203,7 @@ export class MockConfigService implements ConfigService {
 		return this.enclosing;
 	}
 
-	async select(): Promise<Result<ConfigSelection, Error>> {
+	async select(): Promise<Result<ReloadableSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));
 	}
 

@@ -17,7 +17,7 @@ import {
 	ConfigEntry,
 	ConfigNotice,
 	ConfigReload,
-	ConfigSelection,
+	ReloadableSelection,
 	buildableConfig,
 } from "./config-service.js";
 
@@ -32,7 +32,7 @@ export interface PickedFolder {
 }
 
 /** The configs one invocation picked, each loading and reloading itself. */
-export class CoreConfigSelection implements ConfigSelection {
+export class CoreConfigSelection implements ReloadableSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
 	private filePaths: PathSet;

@@ -11,7 +11,7 @@ import {
 	ConfigEntry,
 	ConfigFileCheck,
 	ConfigOptionValues,
-	ConfigSelection,
+	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
 	OutFileOption,
@@ -55,7 +55,7 @@ export class CoreConfigService implements ConfigService {
 	async select(
 		refs: readonly string[],
 		options: ConfigOptionValues
-	): Promise<Result<ConfigSelection, Error>> {
+	): Promise<Result<ReloadableSelection, Error>> {
 		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 

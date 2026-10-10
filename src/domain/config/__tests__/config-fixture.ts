@@ -1,7 +1,7 @@
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../config.js";
-import { ConfigSelection, buildableConfig } from "../config-service.js";
+import { ReloadableSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 export interface Refs {
@@ -16,7 +16,7 @@ export interface Refs {
 
 export let fs: MemoryFileSystemService;
 export let service: CoreConfigService;
-export let selection: ConfigSelection;
+export let selection: ReloadableSelection;
 
 /** A fresh `/repo` and a config service over it before each test. */
 export function useConfigFixture(): void {

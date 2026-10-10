@@ -6,7 +6,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { LoadedBuild } from "../build/build.js";
-import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
+import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 
 /** Why the configs were rebuilt. */
 export type WatchCause =
@@ -68,7 +68,9 @@ export interface WatchService {
 	readonly _serviceBrand: undefined;
 
 	/** Fails as a build would when a config is broken or the configs can't be built together. The session reloads `selection` as its files change; the caller starts it, stops it and disposes it. One session at a time: they share the process's watcher. */
-	watch(selection: ConfigSelection): Result<WatchSession, DiagnosticsError>;
+	watch(
+		selection: ReloadableSelection
+	): Result<WatchSession, DiagnosticsError>;
 }
 
 export const WatchService =

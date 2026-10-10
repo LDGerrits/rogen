@@ -9,7 +9,7 @@ import { RequestService } from "../../platform/request/request-service.js";
 
 import {
 	ConfigOptionValues,
-	ConfigSelection,
+	ReloadableSelection,
 	ConfigService,
 } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
@@ -141,7 +141,7 @@ export class CoreServeService implements ServeService {
 	): Promise<
 		Result<
 			{
-				readonly selection: ConfigSelection;
+				readonly selection: ReloadableSelection;
 				readonly named?: ReadonlySet<string>;
 			},
 			Error
