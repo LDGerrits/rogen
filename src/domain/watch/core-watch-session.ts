@@ -40,6 +40,7 @@ export class CoreWatchSession
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
+	private starting = false;
 	private started = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
@@ -69,6 +70,8 @@ export class CoreWatchSession
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
 	async start(): Promise<void> {
+		if (this.starting) throw new Error("A watch starts once.");
+		this.starting = true;
 		this._register(
 			this.watcher.onDidChangeFile((changes) => {
 				const relevant = this.dropSourceUpdates(changes);

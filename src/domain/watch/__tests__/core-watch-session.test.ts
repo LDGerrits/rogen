@@ -130,6 +130,12 @@ describe("CoreWatchSession", () => {
 		expect(await fs.exists("/repo/default.project.json")).toBe(true);
 	});
 
+	it("should refuse to start twice, which would report every update twice", async () => {
+		const session = await start();
+
+		await expect(session.start()).rejects.toThrow("A watch starts once.");
+	});
+
 	it("should rebuild only the configs whose root dirs hold a change", async () => {
 		await fs.createDirectory("/repo/lobby");
 		await writeConfig("/repo/lobby.rogen.json", { rootDirs: ["lobby"] });
