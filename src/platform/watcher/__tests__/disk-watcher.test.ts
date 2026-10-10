@@ -53,6 +53,39 @@ describe("DiskWatcher", () => {
 			expect(changes.some(added)).toBe(true);
 		});
 
+		it("should report a root that was deleted and made again", async () => {
+			const changes: FileChange[] = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+			const root = path.join(dir, "pkg", "src");
+			await fs.mkdir(root, { recursive: true });
+			await watcher.watch([root]);
+
+			await fs.rm(path.join(dir, "pkg"), { recursive: true });
+			await fs.mkdir(root, { recursive: true });
+
+			const added = (c: FileChange) =>
+				c.type === FileChangeType.ADDED && c.path === toPosix(root);
+			await waitFor(() => changes.some(added));
+
+			expect(changes.some(added)).toBe(true);
+		});
+
+		it("should report a root that did not exist when it began", async () => {
+			const changes: FileChange[] = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+			const root = path.join(dir, "later", "src");
+			await watcher.watch([root]);
+
+			await fs.mkdir(root, { recursive: true });
+			await fs.writeFile(path.join(root, "a.luau"), "");
+
+			const added = (c: FileChange) =>
+				c.type === FileChangeType.ADDED && c.path === toPosix(root);
+			await waitFor(() => changes.some(added));
+
+			expect(changes.some(added)).toBe(true);
+		});
+
 		it("should skip a file and a directory it was told to ignore", async () => {
 			const changes: FileChange[] = [];
 			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
