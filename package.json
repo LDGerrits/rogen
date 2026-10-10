@@ -56,7 +56,6 @@
 		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen",
 		"version": "tsx scripts/sync-version.ts"
 	},
-	"main": "dist/index.js",
 	"bin": {
 		"rogen": "dist/bundle.cjs"
 	},

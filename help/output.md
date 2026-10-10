@@ -1,6 +1,6 @@
 # Output
 
-Diagnostics print as `file:line:col - severity: message (code)`, on stderr; `rogen help <code>` explains the code. Errors stop every config in the run from being written. Warnings don't, and still name something to fix.
+Diagnostics print as `file:line:col - severity: message (code)`, on stderr, except those of `check`, which prints them on stdout; `rogen help <code>` explains the code. Errors stop every config in the run from being written. Warnings don't, and still name something to fix.
 
 Exit codes: 0 done, warnings included (`build --deny-warnings` exits 1 on any warning, for CI: files and diagnostics are unchanged, only the exit code differs; `check` exits 1 on any diagnostic about the paths it is given); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `rogen serve` exits 0 on Ctrl+C, and with the server's code when a server stops on its own. `--json` keeps the same codes.
 
