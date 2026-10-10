@@ -152,6 +152,11 @@ export class ConfigSet {
 		return `rogen serve ${this.servedStem}`;
 	}
 
+	/** The command that serves the set beside configs that were here before, which a bare `rogen serve` would serve on the same port. */
+	serveCommandBeside(others: boolean): string {
+		return others ? `rogen serve ${this.servedStem}` : this.serveCommand;
+	}
+
 	/** Writes `own`, which carries the sync dir; a sourced set keeps `own` rooted at the source, and a second config extending it takes the sync dir. */
 	planConfigs(
 		builder: InitPlanBuilder,

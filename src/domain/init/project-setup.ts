@@ -14,7 +14,12 @@ import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { InitQuestions, PlaceCount, SharedCode } from "./init-questions.js";
+import {
+	InitQuestions,
+	PlaceCount,
+	SharedCode,
+	UnusablePlace,
+} from "./init-questions.js";
 import { PlaceFolder, PlaceFolderReader } from "./place-folder.js";
 import { PlacePlan } from "./place-plan.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
@@ -44,6 +49,8 @@ export interface ProjectChoices {
 	readonly fallback: boolean;
 	/** Places set up alongside, each extending this config from a folder of its own. */
 	readonly places: readonly ProjectPlace[];
+	/** Place folders found that were left out, and why. */
+	readonly unusablePlaces?: readonly UnusablePlace[];
 	/** Whether the config declares dev and prod modes, the prod one leaving out specs. */
 	readonly modes?: boolean;
 }
@@ -57,10 +64,14 @@ export interface ProjectPlace {
 /** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
 function derivedRoutesOf(
 	template: ProjectTemplate,
-	rootDirs: readonly string[]
+	rootDirs: readonly string[],
+	syncDir: string | undefined
 ): DerivedRoutes | undefined {
 	return template.kind === "copy"
-		? DerivedRoutes.of(template.from, template.content, rootDirs)
+		? DerivedRoutes.of(template.from, template.content, [
+				...rootDirs,
+				...(syncDir ? [syncDir] : []),
+			])
 		: undefined;
 }
 
@@ -97,7 +108,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		let syncDir = configSet.syncDir;
 		if (darklua) {
-			const answer = await questions.syncDir(directory);
+			const answer = await questions.syncDir(directory, rootDirs);
 			if (answer === undefined) return ok(undefined);
 			syncDir = answer;
 		}
@@ -110,7 +121,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const routes = await questions.routes(
 			language,
-			derivedRoutesOf(template.value, rootDirs)
+			derivedRoutesOf(template.value, rootDirs, syncDir)
 		);
 		if (routes === undefined) return ok(undefined);
 
@@ -120,7 +131,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const places =
 			layout === "several"
 				? await this.askPlaces(identity.value, rootDirs, outputs)
-				: [];
+				: { places: [], unusable: [] };
 		if (places === undefined) return ok(undefined);
 
 		return ok({
@@ -134,7 +145,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
-			places,
+			places: places.places,
+			...(places.unusable.length > 0 && {
+				unusablePlaces: places.unusable,
+			}),
 			...(modes && { modes }),
 		});
 	}
@@ -216,7 +230,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		},
 		rootDirs: readonly string[],
 		outputs: readonly string[]
-	): Promise<readonly ProjectPlace[] | undefined> {
+	): Promise<
+		| {
+				readonly places: ProjectPlace[];
+				readonly unusable: UnusablePlace[];
+		  }
+		| undefined
+	> {
 		const { directory } = this;
 		const answer = await this.questions.places(directory, {
 			rootDirs,
@@ -229,8 +249,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			]),
 		});
 		if (answer === undefined) return undefined;
-		return Promise.all(
-			answer.map(async (place) => ({
+		const places = await Promise.all(
+			answer.places.map(async (place) => ({
 				name: place,
 				folder: await this.placeFolders.read(
 					directory.path,
@@ -238,6 +258,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				),
 			}))
 		);
+		return { places, unusable: [...answer.unusable] };
 	}
 
 	/** The file a `copy` template choice copies, as it is. */
@@ -264,7 +285,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
 		const { name, language, darklua, rootDirs, syncDir } = choices;
 		const configSet = new ConfigSet(name, language, darklua);
-		const derived = derivedRoutesOf(choices.template, rootDirs);
+		const derived = derivedRoutesOf(choices.template, rootDirs, syncDir);
 		const template = TemplatePlan.of(this.directory, configSet, {
 			template: choices.template,
 			templateDir: choices.templateDir,
@@ -310,6 +331,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		configSet.planConfigs(builder, starter, syncDir);
 
 		for (const note of template.notes) builder.addNote(note);
+		for (const { place, problem } of choices.unusablePlaces ?? [])
+			builder.addNote(`Didn't set up the place ${place}: ${problem}`);
 		if (compiler && !darklua && syncDir) {
 			builder.addNote(
 				`Syncing from ${syncDir}, where ${compiler.name} compiles to.`
@@ -380,6 +403,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const { compiler } = configSet.language;
 		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiler?.compileCommand,
+			serveCommand: configSet.serveCommandBeside(
+				this.directory.hasConfigs
+			),
 			processed: compiler ? [compiler.outDir] : rootDirs,
 			syncDir,
 		});

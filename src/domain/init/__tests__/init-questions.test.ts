@@ -362,6 +362,21 @@ describe("InitQuestions askProject", () => {
 				"Darklua writes into"
 			);
 		});
+
+		it.each(["src", "src/out", "./src/"])(
+			"should refuse %j, which holds or lies in a root dir",
+			async (answer) => {
+				await expect(
+					ask(
+						{ ...luau, darkluaConfig: ".darklua.json" },
+						{
+							"Does Darklua process your code before Rojo syncs it?": true,
+							"Sync dir": answer,
+						}
+					)
+				).rejects.toThrow("overlaps the root dir src");
+			}
+		);
 	});
 
 	it("should split root dirs on commas", async () => {

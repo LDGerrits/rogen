@@ -37,6 +37,14 @@ export interface TemplateInputs {
 	readonly derived: DerivedRoutes | undefined;
 }
 
+/** The name of the folder a mount at `target` lies in or is: a file's folder is where its marker goes. */
+function folderNameOf(target: string): string {
+	const name = path.posix.basename(target);
+	return path.posix.extname(name) === ""
+		? name
+		: path.posix.basename(path.posix.dirname(target));
+}
+
 /** Which template a new project's configs name, the file `init` writes for it, and what it says about it. */
 export class TemplatePlan {
 	private constructor(
@@ -138,7 +146,7 @@ export class TemplatePlan {
 					? [
 							`Couldn't route ${joinedWithOr(
 								derived.unrouted.map(({ node }) => node)
-							)}: only a folder directly in a root dir becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${path.posix.basename(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a root dir.`,
+							)}: only a folder directly in a root dir becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a root dir.`,
 						]
 					: []),
 				...(added.length > 0

@@ -100,9 +100,9 @@ export class InitLog implements InitReporter {
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}
-		this.logService.step("Next steps");
-		for (const line of stepLines(plan.nextSteps))
-			this.logService.info(line);
+		const steps = stepLines(plan.nextSteps);
+		if (steps.length > 0) this.logService.step("Next steps");
+		for (const line of steps) this.logService.info(line);
 		this.logService.outro(`Wrote ${files}.`);
 		return ok(undefined);
 	}

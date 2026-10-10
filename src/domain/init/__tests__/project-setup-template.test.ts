@@ -223,6 +223,18 @@ describe("ProjectSetup plan", () => {
 				);
 			});
 
+			it("should name the folder of a mounted file for the marker, not the file", async () => {
+				const files = await planDerived({
+					ServerScriptService: {
+						Main: { $path: "src/deep/Server/Main.server.luau" },
+					},
+				});
+
+				expect(files.notes.join("\n")).toContain(
+					"a marker such as Server@server"
+				);
+			});
+
 			it("should say nothing about mounts it did route", async () => {
 				const files = await planDerived({
 					ServerScriptService: { Server: { $path: "src/server" } },
@@ -263,6 +275,45 @@ describe("ProjectSetup plan", () => {
 			expect(files.notes[1]).toBe(
 				"Left out ServerScriptService/TS, since it points into src or out and Rogen generates that code now."
 			);
+		});
+
+		it("should write routes for the nodes it leaves out that point into the sync dir", async () => {
+			const tsChoices = await defaultProjectChoices(
+				{ ...luau, language: "roblox-ts" },
+				"default",
+				new Set(),
+				false
+			);
+			const copiedTemplate = JSON.stringify({
+				name: "my-game",
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: { TS: { $path: "out/server" } },
+				},
+			});
+			const starting = new StartingRoutes(
+				workspaceOf(luau).languageFor("roblox-ts"),
+				DerivedRoutes.of("default.project.json", copiedTemplate, [
+					...tsChoices.rootDirs,
+					"out",
+				])
+			);
+			const files = planProject({
+				choices: {
+					...tsChoices,
+					template: { kind: "copy", from: "default.project.json" },
+					mounts: [],
+					routes: starting.tickedByDefault,
+				},
+				projectName: "my-game",
+				directory,
+				existingFiles: new Set(["default.project.json"]),
+				copiedTemplate,
+			}).unwrap();
+
+			expect(configOf(files, "default.rogen.json").routes).toMatchObject({
+				server: "ServerScriptService/TS",
+			});
 		});
 
 		it("should leave out of a copied template the nodes that point into a place folder", async () => {

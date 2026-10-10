@@ -63,7 +63,6 @@ export class InitPlanBuilder {
 	/** The hook's script and the agents' files, written after the agent rules. */
 	addAgentHook(hooks: AgentHooks): void {
 		this.hookFiles = hooks.files;
-		for (const note of hooks.notes) this.addNote(note);
 		this.addSetup(...hooks.setup);
 	}
 

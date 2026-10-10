@@ -501,6 +501,20 @@ describe("init command", () => {
 			);
 		});
 
+		it("should not head next steps when adding the agent rules leaves none", async () => {
+			await write("default.rogen.json", "{}");
+			const log = new MockLogService();
+
+			await runInit(
+				[],
+				new MockPromptService({ [WHAT_TO_ADD]: "agent" }),
+				log
+			);
+
+			expect(await exists("AGENTS.md")).toBe(true);
+			expect(log.lines).not.toContain("step: Next steps");
+		});
+
 		it("should write the ticked routes and leave unmatched files out", async () => {
 			const prompts = new MockPromptService({
 				Routes: ["server", "starterGui"],

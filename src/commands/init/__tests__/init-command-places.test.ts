@@ -479,6 +479,20 @@ describe("init command", () => {
 			});
 		});
 
+		it("should say which detected place it left out and why, without a terminal", async () => {
+			await write("src/A.luau");
+			await write("places/lobby/B.luau");
+			await write("places/default/C.luau");
+			const log = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), log);
+
+			expect(await exists("lobby.rogen.json")).toBe(true);
+			expect(log.lines.join("\n")).toContain(
+				"Didn't set up the place default: default.rogen.json is written for default; pick another name."
+			);
+		});
+
 		it("should not take the shared folder for a place", async () => {
 			await write("places/shared/src/Types.luau");
 			await write("places/lobby/src/Queue.luau");

@@ -324,6 +324,12 @@ describe("ProjectSetup plan", () => {
 			});
 		});
 
+		it("should name the config when it is written beside another, which a bare serve would share a port with", async () => {
+			const files = await plan(luau, "default", ["game.rogen.json"]);
+
+			expect(files.nextSteps.run).toEqual(["rogen serve default"]);
+		});
+
 		it("should start rbxtsc first for roblox-ts", async () => {
 			expect(
 				await (

@@ -502,10 +502,15 @@ describe("CoreInitService", () => {
 			]);
 		});
 
-		it("should not offer it when the only file is not plain JSON", async () => {
+		it("should not offer it when the only file is not plain JSON, but still say so", async () => {
 			await write(CLAUDE, "{ // mine\n}");
 
-			expect(names(await planned())).not.toContain(SCRIPT);
+			const plan = await planned();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(plan?.notes).toEqual([
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.sh in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+			]);
 		});
 
 		it("should say what the script needs, and what an agent asks of the user", async () => {

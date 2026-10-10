@@ -1,4 +1,4 @@
-import { normalizeDir } from "../../base/path.js";
+import { containsPath, normalizeDir } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -45,6 +45,18 @@ export interface PlacesQuestion {
 	readonly filesFor: (name: string) => readonly string[];
 	/** Files the project itself writes, which no place may. */
 	readonly reserved: ReadonlySet<string>;
+}
+
+/** A place folder the workspace has that can't be set up as a place, and why. */
+export interface UnusablePlace {
+	readonly place: string;
+	readonly problem: string;
+}
+
+/** The places to set up, and the ones found that can't be. */
+export interface ChosenPlaces {
+	readonly places: readonly string[];
+	readonly unusable: readonly UnusablePlace[];
 }
 
 /** Where a new multi-place project keeps the code every place shares, unless it already has code at the root. */
@@ -386,8 +398,11 @@ export class InitQuestions {
 		return { kind: "new" };
 	}
 
-	/** The folder Darklua writes into, which Rojo syncs from. */
-	async syncDir({ workspace }: InitDirectory): Promise<string | undefined> {
+	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in a root dir, or Rogen would read the processed code as source. */
+	async syncDir(
+		{ workspace }: InitDirectory,
+		rootDirs: readonly string[]
+	): Promise<string | undefined> {
 		const placeholder = workspace.darklua.defaultSyncDir;
 		if (!this.interactive) return placeholder;
 		const answer = await this.promptService.text({
@@ -395,7 +410,17 @@ export class InitQuestions {
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
 			placeholder,
-			validate: required("a sync dir"),
+			validate: (value) => {
+				const missing = required("a sync dir")(value);
+				if (missing) return missing;
+				const dir = normalizeDir(value);
+				const overlapped = rootDirs.find(
+					(root) => containsPath(root, dir) || containsPath(dir, root)
+				);
+				return overlapped
+					? `${dir} overlaps the root dir ${overlapped}; Rogen would read the processed code as source.`
+					: undefined;
+			},
 		});
 		return answer === undefined ? undefined : normalizeDir(answer);
 	}
@@ -516,16 +541,20 @@ export class InitQuestions {
 		return fallback && { routes, fallback: fallback === "shared" };
 	}
 
-	/** The places set up alongside, the ones the workspace already has unless told otherwise. */
+	/** The places set up alongside, the ones the workspace already has unless told otherwise; unattended, the ones it has that can't be set up are told apart. */
 	async places(
 		directory: InitDirectory,
 		question: PlacesQuestion
-	): Promise<string[] | undefined> {
+	): Promise<ChosenPlaces | undefined> {
 		const { rootDirs } = question;
-		const found = directory.layout.places.filter(
-			(place) => !this.placeProblem(directory, place, question)
-		);
-		if (!this.interactive) return found;
+		const found: string[] = [];
+		const unusable: UnusablePlace[] = [];
+		for (const place of directory.layout.places) {
+			const problem = this.placeProblem(directory, place, question);
+			if (problem) unusable.push({ place, problem });
+			else found.push(place);
+		}
+		if (!this.interactive) return { places: found, unusable };
 
 		const answer = await this.promptService.text({
 			message: "Places",
@@ -547,7 +576,9 @@ export class InitQuestions {
 				return undefined;
 			},
 		});
-		return answer === undefined ? undefined : splitList(answer);
+		return answer === undefined
+			? undefined
+			: { places: splitList(answer), unusable: [] };
 	}
 
 	/** The first reason a place can't be called `place`: its name, the files it would write, or its folder. */
