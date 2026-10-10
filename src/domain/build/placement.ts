@@ -452,51 +452,92 @@ export class Placer {
 	): readonly RoutedFile[] {
 		let kept = nodes;
 		for (;;) {
-			const named = new InstanceMap<true>();
-			for (const { folderNodes, routeMatch, init } of kept)
-				if (routeMatch !== "copy")
-					for (const { instancePath } of init
-						? folderNodes.slice(0, -1)
-						: folderNodes)
-						named.set(instancePath, true);
-			const copies = kept.filter(
-				({ routeMatch, instancePath }) =>
-					routeMatch === "copy" && named.get(instancePath)
-			);
-			const carried = new Set(
-				copies
-					.filter((copy) => !this.template.displacing(copy))
-					.map(({ entry }) => entry.source)
-			);
-			const next = kept.filter(
-				({ routeMatch, init, entry, instancePath }) =>
-					routeMatch === "copy"
-						? named.get(instancePath)
-						: !init ||
-							!carried.has(entry.source) ||
-							named.get(instancePath)
-			);
+			const next = this.withoutLoneInitsOnce(kept);
 			if (next.length === kept.length) return kept;
 			kept = next;
 		}
+	}
+
+	private withoutLoneInitsOnce(
+		nodes: readonly RoutedFile[]
+	): readonly RoutedFile[] {
+		const named = new InstanceMap<true>();
+		for (const { folderNodes, routeMatch, init } of nodes)
+			if (routeMatch !== "copy")
+				for (const { instancePath } of init
+					? folderNodes.slice(0, -1)
+					: folderNodes)
+					named.set(instancePath, true);
+		const carried = new Set(
+			nodes
+				.filter(
+					(copy) =>
+						copy.routeMatch === "copy" &&
+						named.get(copy.instancePath) &&
+						!this.template.displacing(copy)
+				)
+				.map(({ entry }) => entry.source)
+		);
+		return nodes.filter(({ routeMatch, init, entry, instancePath }) =>
+			routeMatch === "copy"
+				? named.get(instancePath)
+				: !init || !carried.has(entry.source) || named.get(instancePath)
+		);
 	}
 
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */
 	private applyVariants(
 		routed: readonly RoutedFile[]
 	): Result<VariantOutcome, Diagnostic[]> {
-		const leftOut: [string, LeftOut][] = [];
+		const { kept, pruned } = this.pruneDormant(routed);
+		const resolved = this.resolveClaimants(kept);
+		if (resolved.isErr()) return resolved;
+		const { winners, clashes } = resolved.value;
+		const replaced = kept.flatMap((file): [string, LeftOut][] => {
+			const winner = winners.get(file.instancePath);
+			return winner && winner !== file
+				? [
+						[
+							file.entry.source,
+							{ status: "replaced", by: winner.entry.source },
+						],
+					]
+				: [];
+		});
+		return ok({
+			nodes: [...new Set(winners.values())],
+			leftOut: [...pruned, ...replaced],
+			clashes,
+		});
+	}
+
+	/** The files whose variants are all on, and the paths left out for one that is off. */
+	private pruneDormant(routed: readonly RoutedFile[]): {
+		kept: RoutedFile[];
+		pruned: [string, LeftOut][];
+	} {
 		const kept: RoutedFile[] = [];
+		const pruned: [string, LeftOut][] = [];
 		for (const file of routed) {
 			const dormant = this.config.dormantVariants(file.variants);
 			if (dormant.length === 0) kept.push(file);
 			else
-				leftOut.push([
+				pruned.push([
 					file.entry.source,
 					{ status: "pruned", variants: dormant },
 				]);
 		}
+		return { kept, pruned };
+	}
 
+	/** The file that gives each instance path, per root dir: a variant file over plain ones, else the last plain one. Two variant files on one path can't both apply. */
+	private resolveClaimants(kept: readonly RoutedFile[]): Result<
+		{
+			winners: InstanceMap<RoutedFile>;
+			clashes: InstanceClash[];
+		},
+		Diagnostic[]
+	> {
 		const problems = new DiagnosticCollector();
 		// A copied init script meets the same files at every node it is copied to, so each is reported once.
 		const reported = new Set<string>();
@@ -540,17 +581,9 @@ export class Placer {
 				winners.set(claimants[0].instancePath, winner);
 			}
 		}
-		if (problems.hasErrors) return err([...problems.diagnostics]);
-
-		for (const file of kept) {
-			const winner = winners.get(file.instancePath);
-			if (winner && winner !== file)
-				leftOut.push([
-					file.entry.source,
-					{ status: "replaced", by: winner.entry.source },
-				]);
-		}
-		return ok({ nodes: [...new Set(winners.values())], leftOut, clashes });
+		return problems.hasErrors
+			? err([...problems.diagnostics])
+			: ok({ winners, clashes });
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */
