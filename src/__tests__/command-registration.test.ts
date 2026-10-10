@@ -33,3 +33,31 @@ describe("the commands", () => {
 		).toEqual([]);
 	});
 });
+
+describe("the services", () => {
+	const sourcesUnder = (dir: string): string[] =>
+		fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+			const full = path.join(dir, entry.name);
+			if (entry.isDirectory())
+				return entry.name === "__tests__" ? [] : sourcesUnder(full);
+			return entry.name.endsWith(".ts") ? [full] : [];
+		});
+
+	it("should each be set in main when a command asks for it", () => {
+		const main = fs.readFileSync(path.join(SRC, "main.ts"), "utf8");
+		const provided = new Set(
+			[...main.matchAll(/services\.set\(\s*(\w+)/g)].map(([, id]) => id)
+		);
+		const asked = new Set(
+			sourcesUnder(path.join(SRC, "commands")).flatMap((file) =>
+				[
+					...fs
+						.readFileSync(file, "utf8")
+						.matchAll(/accessor\.get\((\w+)\)/g),
+				].map(([, id]) => id)
+			)
+		);
+
+		expect([...asked].filter((id) => !provided.has(id))).toEqual([]);
+	});
+});
