@@ -72,9 +72,7 @@ export class WorkspaceDetector {
 	}
 
 	/** Which package manager the workspace uses, a Pesde manifest winning over a Wally one, and every installed package directory in manager order. */
-	private async packagesIn(
-		has: (name: string) => Promise<boolean>
-	): Promise<{
+	private async packagesIn(has: (name: string) => Promise<boolean>): Promise<{
 		readonly packageManager?: PackageManager;
 		readonly packageDirs: readonly string[];
 	}> {
@@ -129,10 +127,7 @@ export class WorkspaceDetector {
 		if (
 			visible.some(
 				([name, type]) =>
-					isFileType(type) &&
-					RojoFile.SCRIPT_EXTENSIONS.some((extension) =>
-						name.endsWith(extension)
-					)
+					isFileType(type) && new RojoFile(name).kind === "script"
 			)
 		)
 			return true;
