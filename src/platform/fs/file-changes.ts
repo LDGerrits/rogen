@@ -12,25 +12,29 @@ export interface FileChange {
 	readonly fileType: FileType;
 }
 
-/** `changes` without the redundant ones: an add then a delete cancel, and an add then an update stays an add. */
+/** `changes` without the redundant ones: a path added and then deleted is as it was, and an add then an update stays an add. */
 export function normalizeFileChanges(
 	changes: readonly FileChange[]
 ): FileChange[] {
 	const map = new Map<string, FileChange>();
+	/** What the path first did, since only one that did not exist before may cancel out. */
+	const first = new Map<string, FileChangeType>();
 
 	for (const change of changes) {
 		const existing = map.get(change.path);
 
 		if (!existing) {
 			map.set(change.path, change);
+			first.set(change.path, change.type);
 			continue;
 		}
 
 		if (
-			existing.type === FileChangeType.ADDED &&
+			first.get(change.path) === FileChangeType.ADDED &&
 			change.type === FileChangeType.DELETED
 		) {
 			map.delete(change.path);
+			first.delete(change.path);
 		} else if (
 			existing.type === FileChangeType.ADDED &&
 			change.type === FileChangeType.UPDATED

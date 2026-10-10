@@ -9,7 +9,15 @@ import {
 	renameRefusal,
 } from "./file-system-service.js";
 
-const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
+const UNRESOLVED_CODES = [
+	"ENOENT",
+	"ENOTDIR",
+	"ELOOP",
+	"EACCES",
+	"EPERM",
+	"ENAMETOOLONG",
+	"EINVAL",
+];
 
 /** Whether `target` is a link that nothing may descend into: one to nothing, or back to an ancestor, which would list the tree again forever. Synchronous, because a watcher's filter can't wait. */
 export function isUnfollowableLink(target: string): boolean {
